@@ -26,7 +26,7 @@ package google.gink;
     encoded big-endian.
 */
 message Muid {
-    uint64 timestamp = 1; // less than 2**56
+    uint64 timestamp = 1; // less than 2**56, must fit exactly in double
     uint64 medallion = 2; // less than 2**52
     uint32 offset = 3; // less than 2**20
 }
@@ -35,6 +35,7 @@ message Transaction {
     uint64 timestamp = 1;
     uint64 medallion = 2;
     uint64 previous = 3; // timestamp
+    string comment = 4;
     map<uint32, Object> objects = 8; // key is offset number (>0)
 }
 
@@ -129,17 +130,19 @@ message Node {
     ValueSpec key_spec = 25; // only when behavior = SCHEMA
 }
 
-message Span {
-    uint64 from=1;
-    uint64 ends=2;
-}
 
 message Entry {
     Muid src_node = 1; // not present for root node
+
+
+    message Span {
+        uint64 from=1;
+        uint64 ends=2;
+    }
     oneof link {
-        Value key = 2; // only for behavior = SCHEMA
-        Muid edge_kind = 3; // specifies a graph edge
-        Span span = 4; // only for behavior = FILE
+        Value key = 2;      // only for src_node behavior = SCHEMA
+        Muid edge_kind = 3; // only when src_node has a node_kind
+        Span span = 4;      // only for src_node behavior = FILE
     }
     oneof value {
         Muid dest_node = 5;
