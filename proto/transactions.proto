@@ -1,4 +1,5 @@
 syntax = "proto3";
+import "values.proto";
 package google.gink;
 
 /*
@@ -33,7 +34,7 @@ message Muid {
 message Transaction {
     uint64 timestamp = 1;
     uint64 medallion = 2;
-    optional uint64 previous = 3; // timestamp
+    uint64 previous = 3; // timestamp
     map<uint32, Object> objects = 8; // key is offset number (>0)
 }
 
@@ -44,7 +45,7 @@ message Object {
         Pop pop = 3;
         Title title = 4;
         Property property = 5;
-        Metadata = 6;
+        Metadata metadata = 6;
         ValueSpec value_spec = 7;
         RowSpec row_spec = 8;
         BytesSpec bytes_spec = 9;
@@ -141,11 +142,11 @@ message Entry {
         Span span = 4; // only for behavior = FILE
     }
     oneof value {
-        Muid dest_node = 4;
-        Special special = 5; // Specials defined in values.proto (true, false, null)
+        Muid dest_node = 5;
+        Special special = 6; // Specials defined in values.proto (true, false, null)
     }
-    bool deleting = 6; // when true, removes the edge or schema key
-    uint64 expiry = 9;
+    bool deleting = 7; // when true, removes the edge or schema key
+    uint64 expiry = 8;
 }
 
 message Pop {

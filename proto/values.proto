@@ -2,7 +2,7 @@
 syntax = "proto3";
 package google.gink;
 
-enum Specials {
+enum Special {
     NULL = 0;
     TRUE = 1;
     FALSE = 2;
@@ -56,7 +56,8 @@ message Tuple {
 }
 
 message Document {
-    map<Value, Value> items = 1;
+    //TODO: figure out how to allow for number and tuple keys as well
+    map<string, Value> items = 1;
 }
 
 message Complex {
