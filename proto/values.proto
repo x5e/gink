@@ -10,6 +10,7 @@ enum Special {
 
 message Value {
     reserved 2;
+    reserved "octects";
 
     oneof value {
         Special special = 1;
@@ -36,10 +37,6 @@ message Value {
 
 message Expression {
    // TBD
-}
-
-message Spec {
-    // TBD
 }
 
 
