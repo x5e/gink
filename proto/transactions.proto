@@ -3,13 +3,12 @@ import "values.proto";
 package google.gink;
 
 /*
-
-    Any int field marked "timestamp" or "expiry" in this file should be
+    Any integer field marked "timestamp" or "expiry" in this file should be
     assumed to be epoch microseconds.
 */
 
 /**
-    Muid: Generally corresponds to the object-id for a row in the
+    Muid: Generally corresponds to the object-id for an object in the
     database, intended to be globally unique.
 
     * The timestamp and medallion may be omitted (=0) in muids found inside
@@ -26,8 +25,8 @@ package google.gink;
     encoded big-endian.
 */
 message Muid {
-    uint64 timestamp = 1; // less than 2**56, must fit exactly in double
-    uint64 medallion = 2; // less than 2**52
+    uint64 timestamp = 1; // fits into a double exactly until the year 2255.
+    uint64 medallion = 2; // less than 2**52, version 1 between 2**48 and 2**49
     uint32 offset = 3; // less than 2**20
 }
 
@@ -36,7 +35,7 @@ message Transaction {
     uint64 medallion = 2;
     uint64 previous = 3; // timestamp
     string comment = 4;
-    map<uint32, Object> objects = 8; // key is offset number (>0)
+    map<uint32, Object> objects = 8; // key is offset number (> 0 and < 2**20)
 }
 
 message Object {
