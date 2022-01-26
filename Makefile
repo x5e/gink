@@ -1,19 +1,19 @@
 #TODO: switch over to Bazel
 
-all: build/transactions_pb.js build/values_pb.js
+all: node_modules/transactions_pb.js node_modules/values_pb.js
 
-build:
-	mkdir -p build
+node_modules:
+	mkdir -p node_modules
 
-build/values_pb.js: build proto/*.proto
+node_modules/values_pb.js: node_modules proto/*.proto
 	protoc --proto_path=proto \
-	--js_out=import_style=commonjs,binary:build \
+	--js_out=import_style=commonjs,binary:node_modules \
 	values.proto
 
-build/transactions_pb.js: build proto/*.proto
+node_modules/transactions_pb.js: node_modules proto/*.proto
 	protoc --proto_path=proto \
-	--js_out=import_style=commonjs,binary:build \
+	--js_out=import_style=commonjs,binary:node_modules \
 	transactions.proto
 
 clean:
-	rm -rf build
+	rm -rf node_modules/*_pb.js
