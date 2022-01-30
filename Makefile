@@ -1,4 +1,4 @@
-#TODO: switch over to Bazel
+#TODO: maybe switch over to Bazel?
 
 all: node_modules/transactions_pb.js node_modules/values_pb.js
 

@@ -35,10 +35,11 @@ message Transaction {
     uint64 medallion = 2;
     uint64 previous = 3; // timestamp
     string comment = 4;
-    map<uint32, Object> objects = 8; // key is offset number (> 0 and < 2**20)
+    uint64 started = 5; // stream start timestamp
+    map<uint32, Obj> objects = 8; // key is offset number (> 0 and < 2**20)
 }
 
-message Object {
+message Obj {
     oneof body {
         Node node = 1;
         Entry entry = 2;
