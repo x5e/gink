@@ -1,0 +1,10 @@
+
+syntax = "proto3";
+import "transactions.proto";
+package google.gink;
+
+message Message {
+    oneof contents {
+        Transaction transaction = 1;
+    }
+}
