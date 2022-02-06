@@ -1,8 +1,6 @@
-interface Carrier<MsgType> {
-    parsed: MsgType;
-    raw: Uint8Array;
-}
+import {Carrier} from "./Carrier";
 
-interface TransactionStore {
+export interface TransactionStore {
+    add(carrier: Carrier): void
 
 }

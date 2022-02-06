@@ -1,3 +1,4 @@
+#!/usr/bin/env ts-node
 console.log("Hello from typescript foobar");
 // var transactions = require("transactions_pb");
 import {Muid} from "transactions_pb";
@@ -54,3 +55,24 @@ var muid2 = new Muid(fromHexString(eg));
 console.log(muid2.getTimestamp());
 var ser2 = toHexString(muid2.serializeBinary());
 console.log(ser2);
+
+var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket : eval("require('websocket').w3cwebsocket");
+let websocketClient: WebSocket = new W3cWebSocket("http://localhost:8080", "echo");
+
+websocketClient.onopen = function(ev: Event) {
+  console.log('connected' + ev.toString());
+  websocketClient.send(Date.now().toString());
+};
+ 
+websocketClient.onclose = function(ev: CloseEvent) {
+  console.log('disconnected' + ev.toString());
+};
+ 
+websocketClient.onmessage = function(ev: MessageEvent<any>) {
+  console.log(`Roundtrip time: ${Date.now() - Number(ev.data)} ms`);
+ 
+  setTimeout(function timeout() {
+    websocketClient.send(Date.now().toString());
+  }, 1000);
+  
+};
