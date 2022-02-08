@@ -56,8 +56,20 @@ console.log(muid2.getTimestamp());
 var ser2 = toHexString(muid2.serializeBinary());
 console.log(ser2);
 
+var target: string = "";
+if (typeof location == "object") {
+  console.log("getting websocket target from window");
+  target = ((location.protocol === "https:") ? "wss://" : "ws://") + location.host
+} else if (typeof process != "undefined") {
+  target = process.env["GINK_SERVER"];
+}
+if (!target) {
+  throw new Error("target not specified");
+}
+
 var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket : eval("require('websocket').w3cwebsocket");
-let websocketClient: WebSocket = new W3cWebSocket("http://localhost:8080", "echo");
+console.log(`Trying to connect to ${target}`);
+let websocketClient: WebSocket = new W3cWebSocket(target, "echo");
 
 websocketClient.onopen = function(ev: Event) {
   console.log('connected' + ev.toString());
