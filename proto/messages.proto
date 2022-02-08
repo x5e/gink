@@ -1,10 +1,36 @@
 
 syntax = "proto3";
-import "transactions.proto";
 package google.gink;
+
+message Greeting {
+    message GreetingEntry {
+        uint64 medallion = 1; 
+        uint64 chain_start = 2; 
+        uint64 seen_through = 3;
+        sint64 have_since = 4; // 0 => have everything, -1 => have nothing
+    }
+    repeated GreetingEntry entries = 1;
+}
 
 message Message {
     oneof contents {
-        Transaction transaction = 1;
+        Greeting greeting = 1;
+        bytes transaction = 2; // bytes so it's easy to save verbatim.
     }
+}
+
+
+/* 
+    The following protos exist primarily for file storage of transactions.
+    For this version, the implementation assumes that the chain is complete
+    (first entry is the original message of the chain and contains no gaps.
+    Future implementations may allow for checkpointing an partial Chains. 
+    Medallion and chain start timestamp will be provided by filename or key.
+*/ 
+message Chain {
+    message ChainEntry {
+        uint64 timestamp = 1;
+        bytes transaction = 2;
+    }
+    repeated ChainEntry entries = 2;
 }
