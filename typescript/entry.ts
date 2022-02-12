@@ -62,6 +62,7 @@ console.log(muid2.getTimestamp());
 var ser2 = toHexString(muid2.serializeBinary());
 console.log(ser2);
 
+/*
 var target: string = "";
 if (typeof location == "object") {
   console.log("getting websocket target from window");
@@ -98,8 +99,14 @@ websocketClient.onmessage = function(ev: MessageEvent<any>) {
 }
   
 };
+*/
 
 import { IndexedGink } from "./indexed";
+function show(x) {
+  return function(y) {
+    console.log(`show ${x}: ${y} aka ${JSON.stringify(y)}`);
+  }
+}
 
 globalThis.IndexedGink = IndexedGink;
 globalThis.gink = new IndexedGink();
@@ -109,4 +116,6 @@ testTrxn.setTimestamp(microseconds);
 testTrxn.setChainStart(microseconds);
 testTrxn.setComment("Hello, Gink!");
 var out = globalThis.gink.addTransaction(testTrxn.serializeBinary());
-out.then(info => console.log(`gink add, got ${info}`)).catch(console.error);
+out.then(show('trxn out')).catch(console.error);
+globalThis.gink.getChainInfos().then(show('objs')).catch(console.error);
+globalThis.gink.getGreeting().then(show('greeting'));
