@@ -1,7 +1,13 @@
 #!/usr/bin/env ts-node
 console.log("Hello from typescript foobar");
 // var transactions = require("transactions_pb");
-import {Muid} from "transactions_pb";
+import {Muid, Transaction} from "transactions_pb";
+try {
+  window["Muid"] = Muid;
+  window["Transaction"] = Transaction;
+} catch (e) {
+  console.log(`whatever: ${e}`)
+}
 // var values = require("values_pb");
 
 function toHexString(bytes: Uint8Array): string {
@@ -40,7 +46,7 @@ var offset = 3;
 var muid = new Muid();
 muid.setMedallion(medallion);
 muid.setTimestamp(microseconds);
-// muid.setOffset(offset);
+muid.setOffset(offset);
 
 var eg = "0880e3e6cee7d3f50210a5c097afffe1601803";
 var eg2 = toHexString(fromHexString(eg));
@@ -79,12 +85,28 @@ websocketClient.onopen = function(ev: Event) {
 websocketClient.onclose = function(ev: CloseEvent) {
   console.log('disconnected' + ev.toString());
 };
- 
+
+var calls = 0;
 websocketClient.onmessage = function(ev: MessageEvent<any>) {
   console.log(`Roundtrip time: ${Date.now() - Number(ev.data)} ms`);
  
+  calls += 1;
+  if (calls < 3) {
   setTimeout(function timeout() {
     websocketClient.send(Date.now().toString());
   }, 1000);
+}
   
 };
+
+import { IndexedGink } from "./indexed";
+
+globalThis.IndexedGink = IndexedGink;
+globalThis.gink = new IndexedGink();
+var testTrxn = new Transaction();
+testTrxn.setMedallion(medallion);
+testTrxn.setTimestamp(microseconds);
+testTrxn.setChainStart(microseconds);
+testTrxn.setComment("Hello, Gink!");
+var out = globalThis.gink.addTransaction(testTrxn.serializeBinary());
+out.then(info => console.log(`gink add, got ${info}`)).catch(console.error);
