@@ -9,11 +9,14 @@ import { Transaction } from "transactions_pb";
 import { Greeting, Log as TransactionLog } from "messages_pb";
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 
+type Medallion = number;
+type Timestamp = number;
+type ChainStart = Timestamp;
+
 interface ChainInfo {
-    medallion: number;
-    chainStart: number;
-    seenThrough: number;
-    haveSince: number;
+    medallion: Medallion;
+    chainStart: ChainStart;
+    seenThrough: Timestamp;
     lastComment?: string;
 }
 
@@ -23,15 +26,32 @@ interface FsHandle {
 }
 
 export class IndexedGink {
-    pWrapped: Promise<IDBPDatabase>;
+    #pWrapped: Promise<IDBPDatabase>;
     fileHandle: FsHandle|null = null;
     constructor(
         indexedDbName = "gink",
     ) {
-        this.pWrapped = this.getWrapped(indexedDbName);
+        this.#pWrapped = openDB(indexedDbName, 1, {
+            upgrade(db: IDBPDatabase, oldVersion: number, newVersion: number, _transaction) {
+                console.log(`upgrade, oldVersion:${oldVersion}, newVersion:${newVersion}`);
+               /*
+                    The object store for transactions will store the raw bytes received 
+                    for each transaction to avoid dropping unknown fields.  Since this 
+                    isn't a javascript object, we'll use 
+                    [timestamp, medallion] to keep transactions ordered in time.
+                */
+                db.createObjectStore('trxns');
+    
+                /*
+                    Stores ChainInfo objects.
+                    This will keep track of which transactions have been processed per chain.
+                */
+                db.createObjectStore('chainInfos', { keyPath: ["medallion", "chainStart"] });
+            },
+        });
     }
     async close() {
-        const db = await this.pWrapped;
+        const db = await this.#pWrapped;
         db.close();
         if (this.fileHandle) {
             this.fileHandle.close();
@@ -63,7 +83,7 @@ export class IndexedGink {
         return indexedGink;
     }
     async getGreeting(): Promise<Uint8Array> {
-        const asEntries = (await this.getChainInfos()).map((value) => {
+        const asEntries = (await this.#getChainInfos()).map((value) => {
             let entry = new Greeting.GreetingEntry();
             entry.setMedallion(value.medallion);
             entry.setChainStart(value.chainStart);
@@ -74,60 +94,32 @@ export class IndexedGink {
         greeting.setEntriesList(asEntries);
         return greeting.serializeBinary();
     }
-    async getChainInfos(): Promise<Array<ChainInfo>> {
-        let db: IDBPDatabase = await this.pWrapped;
+    async #getChainInfos(): Promise<Array<ChainInfo>> {
+        let db: IDBPDatabase = await this.#pWrapped;
         let wrappedTransaction: IDBPTransaction = db.transaction(['chainInfos']);
         let store = wrappedTransaction.objectStore('chainInfos');
         return await store.getAll();
     }
-    getWrapped(name: string = "gink"): Promise<IDBPDatabase> {
-        return openDB(name, 1, {
-            upgrade(db: IDBPDatabase, oldVersion: number, newVersion: number, _transaction) {
-                console.log(`upgrade, oldVersion:${oldVersion}, newVersion:${newVersion}`);
-               /*
-                    The object store for transactions will store the raw bytes received 
-                    for each transaction to avoid dropping unknown fields.  Since this 
-                    isn't a javascript object, we'll use a string representation of
-                    (timestamp, medallion) to keep transactions ordered in time.
-                */
-                db.createObjectStore('trxns');
-    
-                /*
-                    Stores ChainInfo objects.
-                    This will keep track of which transcations have been seen per chain.
-                */
-                db.createObjectStore('chainInfos', { keyPath: ["medallion", "chainStart"] });
-            },
-            blocked() { },
-            blocking() { },
-            terminated() { },
-        });
-    }
     async addTransaction(trxn: Uint8Array) {
         let deserialized = Transaction.deserializeBinary(trxn);
         let infoKey = [deserialized.getMedallion(), deserialized.getChainStart()];
-        let db: IDBPDatabase = await this.pWrapped;
+        let db: IDBPDatabase = await this.#pWrapped;
         let wrappedTransaction = db.transaction(['trxns', 'chainInfos'], 'readwrite');
         let previous = deserialized.getPreviousTimestamp();
         let newTimestamp = deserialized.getTimestamp();
-        let haveSince = 0;
         let present: ChainInfo = await wrappedTransaction.objectStore("chainInfos").get(infoKey);
-        console.log("present: " + JSON.stringify(present));
         if (present || previous != 0) {
             if (present?.seenThrough >= newTimestamp) {
-                console.log(`already have info for chain for ${present}`)
                 return present;
             }
             if ( present?.seenThrough != previous) {
                 throw new Error(`missing prior chain entry for ${deserialized.toObject()}, have ${present}`);
             }
-            haveSince = present.haveSince;
         }
         let newInfo: ChainInfo = {
             medallion: deserialized.getMedallion(),
             chainStart: deserialized.getChainStart(),
             seenThrough: deserialized.getTimestamp(),
-            haveSince: haveSince,
             lastComment: deserialized.getComment(),
         }
         await wrappedTransaction.objectStore("chainInfos").put(newInfo);
@@ -140,5 +132,17 @@ export class IndexedGink {
             await this.fileHandle.appendFile(logFragment.serializeBinary());
         }
         return newInfo;
+    }
+    async getNeededTransactions(greeting: Uint8Array): Promise<Iterable<Uint8Array>> {
+        const parsed = Greeting.deserializeBinary(greeting);
+        const tree: Map<Medallion,Map<ChainStart,Greeting.GreetingEntry>> = new Map();
+        let entry: Greeting.GreetingEntry;
+        for (entry in parsed.getEntriesList()) {
+            if (!tree.has(entry.getMedallion())) {
+                tree.set(entry.getMedallion(), new Map());
+            }
+            tree.get(entry.getMedallion()).set(entry.getChainStart(), entry);
+        }
+        return [];
     }
 }
