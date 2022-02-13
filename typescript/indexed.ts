@@ -4,6 +4,8 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
 import { Transaction } from "transactions_pb";
 import { Greeting } from "messages_pb";
 import { openDB, deleteDB, unwrap, IDBPDatabase, IDBPTransaction } from 'idb';
+import { FileHandle } from "fs/promises";
+var promises = require("fs").promises;
 
 interface ChainInfo {
     medallion: number;
@@ -15,8 +17,18 @@ interface ChainInfo {
 
 export class IndexedGink {
     pWrapped: Promise<IDBPDatabase>;
-    constructor(name: string = "gink") {
-        this.pWrapped = this.getWrapped(name);
+    pFileHandle: Promise<FileHandle|null>;
+    constructor({
+        indexedDbName = "gink",
+        localTrxnLog = null, // only valid on server side
+    }) {
+        this.pWrapped = this.getWrapped(indexedDbName);
+        this.pFileHandle = this.openFile(localTrxnLog);
+    }
+    async openFile(fn?: string): Promise<FileHandle|null> {
+        if (!fn) return null;
+        // TODO: probably should get an exclusive lock on the file
+
     }
     async getGreeting(): Promise<Uint8Array> {
         const asEntries = (await this.getChainInfos()).map((value) => {
