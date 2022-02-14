@@ -101,7 +101,8 @@ websocketClient.onmessage = function(ev: MessageEvent<any>) {
 };
 */
 
-import { IndexedGink, mode } from "./indexed";
+import { IndexedGink, mode } from "./IndexedGink";
+import { IndexedGinkWithLog } from "./IndexedGinkWithLog";
 function show(x: string) {
   return function(y: any) {
     console.log(`show ${x}: ${y} aka ${JSON.stringify(y)}`);
@@ -110,16 +111,22 @@ function show(x: string) {
 
 globalThis.IndexedGink = IndexedGink;
 (async function() {
-  globalThis.gink = mode == "browser" ? new IndexedGink() : 
-    await IndexedGink.withTransactionLog("/tmp/gink.trxns");
+  if (mode == "browser") {
+    globalThis.gink = new IndexedGink();
+  } else {
+    globalThis.gink = new IndexedGinkWithLog("/tmp/gink.trxns");
+    var red = await globalThis.gink.readLog();
+    show("red from file")(red);
+  }
   var testTrxn = new Transaction();
   testTrxn.setMedallion(medallion);
   testTrxn.setTimestamp(microseconds);
   testTrxn.setChainStart(microseconds);
   testTrxn.setComment("Hello, Gink!");
-  var out = globalThis.gink.addTransaction(testTrxn.serializeBinary());
+  var added = await globalThis.gink.addTransaction(testTrxn.serializeBinary());
+  show("added?")(added);
   // out.then(show('trxn out')).catch(console.error);
   // globalThis.gink.getChainInfos().then(show('objs')).catch(console.error);
   // globalThis.gink.getGreeting().then(show('greeting'));
-  await globalThis.gink.close();
+  // await globalThis.gink.close();
 })();

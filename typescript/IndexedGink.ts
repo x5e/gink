@@ -1,47 +1,35 @@
-var promises = null;
+
 export var mode = "browser";
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
-    promises = eval('require("fs").promises'); // ditto
     mode = "node";
 }
 import { Transaction } from "transactions_pb";
-import { Greeting, Log as TransactionLog } from "messages_pb";
+import { Greeting } from "messages_pb";
 import { openDB, IDBPDatabase, IDBPTransaction } from 'idb';
+import { GinkStore, GreetingBytes, GinkTrxnBytes, Timestamp, Medallion, ChainStart, HasMap } from "./GinkStore";
 
-type Medallion = number;
-type Timestamp = number;
-type ChainStart = Timestamp;
-type PriorTime = Timestamp;
-type SeenThrough = Timestamp;
-type HasMap = Map<Medallion,Map<ChainStart,SeenThrough>>;
-type GinkTrxnBytes = Uint8Array;
-type GreetingBytes = Uint8Array;
-
-interface ChainInfo {
+export interface ChainInfo {
     medallion: Medallion;
     chainStart: ChainStart;
     seenThrough: Timestamp;
     lastComment?: string;
 }
 
+
+type PriorTime = Timestamp;
+
+
 // [Timestamp, Medallion] should enough to uniquely specify a Transaction.
 // ChainStart and PriorTime are just included here to avoid re-parsing.
 type TransactionKey = [Timestamp, Medallion, ChainStart, PriorTime];
 
-interface FsHandle {
-    appendFile(uint8Array: Uint8Array): Promise<any>;
-    close(): void;
-}
 
-export class IndexedGink {
+export class IndexedGink implements GinkStore{
 
     #pWrapped: Promise<IDBPDatabase>;
-    fileHandle: FsHandle|null = null;
 
-    constructor(
-        indexedDbName = "gink",
-    ) {
+    constructor(indexedDbName = "gink",) {
         this.#pWrapped = openDB(indexedDbName, 1, {
             upgrade(db: IDBPDatabase, oldVersion: number, newVersion: number, _transaction) {
                 console.log(`upgrade, oldVersion:${oldVersion}, newVersion:${newVersion}`);
@@ -63,39 +51,9 @@ export class IndexedGink {
     }
 
     async close() {
-        const db = await this.#pWrapped;
-        db.close();
-        if (this.fileHandle) {
-            this.fileHandle.close();
-        }
+        (await this.#pWrapped).close();
     }
 
-    static async withTransactionLog(filename: string): Promise<IndexedGink> {
-        /*
-            The current implementation uses a fake in-memory implementation
-            of IndexedDB.  So rather than rely on that for durability of 
-            data, I'll just append each transaction to a log file and then
-            read them all back into an empty IndexedDB on server startup.
-            This is obviously not ideal; eventually want to move to a 
-            durable indexedDB implementation (when I can find/write one).
-        */
-        // TODO: probably should get an exclusive lock on the file
-        const fileHandle = await promises.open(filename, "a+");
-        const stats = await fileHandle.stat();
-        const size = stats.size;
-        const uint8Array = new Uint8Array(size);
-        await fileHandle.read(uint8Array, 0, size, 0);
-        const trxns = TransactionLog.deserializeBinary(uint8Array).getTransactionsList();
-        const indexedGink = new IndexedGink();
-        // Note that indexedGink.fileHandle is null at this point so transactions aren't rewritten.
-        for (const trxn of trxns) {
-            await indexedGink.addTransaction(trxn);
-        }
-        console.log(`successfully read ${trxns.length} transactions`);
-        indexedGink.fileHandle = fileHandle;
-        return indexedGink;
-    }
-    
     async getGreeting(): Promise<GreetingBytes> {
         const asEntries = (await this.#getChainInfos()).map((value) => {
             let entry = new Greeting.GreetingEntry();
@@ -116,7 +74,7 @@ export class IndexedGink {
         return await store.getAll();
     }
 
-    async addTransaction(trxn: GinkTrxnBytes) {
+    async addTransaction(trxn: GinkTrxnBytes): Promise<boolean> {
         let parsed = Transaction.deserializeBinary(trxn);
         let infoKey = [parsed.getMedallion(), parsed.getChainStart()];
         let db: IDBPDatabase = await this.#pWrapped;
@@ -126,7 +84,7 @@ export class IndexedGink {
         let present: ChainInfo = await wrappedTransaction.objectStore("chainInfos").get(infoKey);
         if (present || previous != 0) {
             if (present?.seenThrough >= newTimestamp) {
-                return present;
+                return false;
             }
             if ( present?.seenThrough != previous) {
                 throw new Error(`missing prior chain entry for ${parsed.toObject()}, have ${present}`);
@@ -143,12 +101,7 @@ export class IndexedGink {
             parsed.getChainStart(), parsed.getPreviousTimestamp()];
         await wrappedTransaction.objectStore("trxns").add(trxn, trxnKey);
         await wrappedTransaction.done;
-        if (this.fileHandle) {
-            const logFragment = new TransactionLog();
-            logFragment.setTransactionsList([trxn]);
-            await this.fileHandle.appendFile(logFragment.serializeBinary());
-        }
-        return newInfo;
+        return true;
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated
