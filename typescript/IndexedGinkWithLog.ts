@@ -1,7 +1,8 @@
 import { GinkTrxnBytes, GreetingBytes, HasMap } from "./GinkStore";
 import { IndexedGink } from "./IndexedGink";
-import { FileHandle, open } from "fs/promises";
 import { Log as TransactionLog } from "messages_pb";
+//import { FileHandle, open } from "fs/promises"; // broken on node-12
+var promises = require("fs").promises;
 
 /*
     At time of writing, there's only an in-memory implementation of 
@@ -16,13 +17,14 @@ import { Log as TransactionLog } from "messages_pb";
 
 export class IndexedGinkWithLog extends IndexedGink {
 
-    #pFileHandle: Promise<FileHandle>;
+    // Promise<promises.FileHandle> doesn't work, not sure why.
+    #pFileHandle: Promise<any>; 
     #initialized: boolean;
 
     constructor(filename: string, indexedDbName = "gink") {
         super(indexedDbName);
         // TODO: probably should get an exclusive lock on the file        
-        this.#pFileHandle = open(filename, "a+");
+        this.#pFileHandle = promises.open(filename, "a+");
         this.#initialized = false;
     }
 
