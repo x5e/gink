@@ -25,6 +25,7 @@
   "scripts": {
     "build": "webpack",
     "devel": "webpack-dev-server --mode development",
-    "serve": "ts-node typescript/server.ts"
+    "serve": "ts-node typescript/server.ts",
+    "test": "jest"
   }
 }
