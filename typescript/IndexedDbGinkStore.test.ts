@@ -1,5 +1,9 @@
-import {testAcceptsChainStartOnce} from "./GinkStore.test";
-import {IndexedDbGinkStore} from "./IndexedDbGinkStore";
+import { testGinkStore } from "./GinkStore.test";
+import { IndexedDbGinkStore } from "./IndexedDbGinkStore";
 
-test("IndexedGink testAcceptsChainStartOnce", 
-    async () => {await testAcceptsChainStartOnce(new IndexedDbGinkStore())});
+// Jest complains if there's a test suite without a test.
+test('placeholder', () => {
+    expect(1 + 2).toBe(3);
+});
+
+testGinkStore('IndexedDbGinkStore', async () => new IndexedDbGinkStore("test", true));

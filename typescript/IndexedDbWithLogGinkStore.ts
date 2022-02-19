@@ -74,7 +74,7 @@ export class IndexedDbWithLogGinkStore extends IndexedDbGinkStore {
         greeting: Uint8Array | null = null,
         partialOkay: boolean = false): Promise<HasMap> {
         if (!this.#initialized) { await this.readLog(); }
-        return await super.getNeededTransactions(callBack, greeting, partialOkay);
+        return await super.getNeededTransactions(callBack, greeting);
     }
 
     async close() {
