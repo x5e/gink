@@ -102,7 +102,7 @@ websocketClient.onmessage = function(ev: MessageEvent<any>) {
 */
 
 import { IndexedDbGinkStore, mode } from "./IndexedDbGinkStore";
-import { IndexedGinkWithLog } from "./IndexedGinkWithLog";
+import { IndexedDbWithLogGinkStore } from "./IndexedDbWithLogGinkStore";
 function show(x: string) {
   return function(y: any) {
     console.log(`show ${x}: ${y} aka ${JSON.stringify(y)}`);
@@ -114,7 +114,7 @@ globalThis.IndexedGink = IndexedDbGinkStore;
   if (mode == "browser") {
     globalThis.gink = new IndexedDbGinkStore();
   } else {
-    globalThis.gink = new IndexedGinkWithLog("/tmp/gink.trxns");
+    globalThis.gink = new IndexedDbWithLogGinkStore("/tmp/gink.trxns");
     var red = await globalThis.gink.readLog();
     show("red from file")(red);
   }

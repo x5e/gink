@@ -34,8 +34,7 @@ export interface GinkStore {
      */
     getNeededTransactions: (
         callback: (x: GinkTrxnBytes) => void, 
-        greeting?: GreetingBytes, 
-        partialOkay?: boolean) => Promise<HasMap>;
+        greeting?: GreetingBytes) => Promise<HasMap>;
 
     close: () => Promise<void>;
 }

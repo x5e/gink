@@ -108,8 +108,7 @@ export class IndexedDbGinkStore implements GinkStore{
     // to the current transaction, so its best if `callBack` doesn't call await.
     async getNeededTransactions(
             callBack: (x: GinkTrxnBytes) => void, 
-            greeting: Uint8Array|null = null, 
-            partialOkay: boolean = false): Promise<HasMap> {
+            greeting: Uint8Array|null = null): Promise<HasMap> {
         const parsed = greeting ? Greeting.deserializeBinary(greeting) : new Greeting();
         const hasMap: HasMap = new Map();
         let entry: Greeting.GreetingEntry|null;
@@ -129,14 +128,14 @@ export class IndexedDbGinkStore implements GinkStore{
             if (!hasMap.has(medallion)) {hasMap.set(medallion, new Map());}
             let seenThrough = hasMap.get(medallion).get(chainStart);
             if (!seenThrough) {
-                if (priorTime == 0 || partialOkay) {
+                if (priorTime == 0) {
                     // happy path: sending the start of a chain
                     callBack(ginkTrxn);
                     hasMap.get(medallion).set(chainStart, trxnTime);
                     continue;
                 } 
                 throw new Error(`Peer doesn't have the start of ${medallion},${chainStart}` +
-                    "and neither do I and partialOkay=False"); 
+                    "and neither do I."); 
             } 
             if (seenThrough >= trxnTime) {
                 continue;  // happy path: peer doesn't need this transaction
@@ -145,10 +144,6 @@ export class IndexedDbGinkStore implements GinkStore{
                 // another happy path: peer has everything in this chain up to this transaction
                 callBack(ginkTrxn);
                 hasMap.get(medallion).set(chainStart, trxnTime);
-                continue;
-            }
-            if (partialOkay) {
-                // not really a happy path but we're just going to skip syncing this chain
                 continue;
             }
             throw new Error(`unable to continue chain ${medallion},${chainStart} ` +

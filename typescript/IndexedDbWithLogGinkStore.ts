@@ -15,7 +15,7 @@ var promises = require("fs").promises;
     durable indexedDB implementation (when I can find/write one).
 */
 
-export class IndexedGinkWithLog extends IndexedDbGinkStore {
+export class IndexedDbWithLogGinkStore extends IndexedDbGinkStore {
 
     // Promise<promises.FileHandle> doesn't work, not sure why.
     #pFileHandle: Promise<any>;
