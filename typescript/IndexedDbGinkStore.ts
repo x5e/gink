@@ -25,7 +25,7 @@ type PriorTime = Timestamp;
 type TransactionKey = [Timestamp, Medallion, ChainStart, PriorTime];
 
 
-export class IndexedGink implements GinkStore{
+export class IndexedDbGinkStore implements GinkStore{
 
     #pWrapped: Promise<IDBPDatabase>;
 

@@ -1,5 +1,5 @@
 import { GinkTrxnBytes, GreetingBytes, HasMap } from "./GinkStore";
-import { IndexedGink } from "./IndexedGink";
+import { IndexedDbGinkStore } from "./IndexedDbGinkStore";
 import { Log as TransactionLog } from "messages_pb";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12
 var promises = require("fs").promises;
@@ -15,10 +15,10 @@ var promises = require("fs").promises;
     durable indexedDB implementation (when I can find/write one).
 */
 
-export class IndexedGinkWithLog extends IndexedGink {
+export class IndexedGinkWithLog extends IndexedDbGinkStore {
 
     // Promise<promises.FileHandle> doesn't work, not sure why.
-    #pFileHandle: Promise<any>; 
+    #pFileHandle: Promise<any>;
     #initialized: boolean;
 
     constructor(filename: string, indexedDbName = "gink") {
@@ -53,28 +53,28 @@ export class IndexedGinkWithLog extends IndexedGink {
     }
 
     async addTransaction(trxn: GinkTrxnBytes): Promise<boolean> {
-        if (! this.#initialized) {await this.readLog();}
+        if (!this.#initialized) { await this.readLog(); }
         const added = await super.addTransaction(trxn);
         if (added) {
             const logFragment = new TransactionLog();
-           logFragment.setTransactionsList([trxn]);
-           const fileHandle = await this.#pFileHandle;
-           await fileHandle.appendFile(logFragment.serializeBinary());
+            logFragment.setTransactionsList([trxn]);
+            const fileHandle = await this.#pFileHandle;
+            await fileHandle.appendFile(logFragment.serializeBinary());
         }
         return added;
     }
 
     async getGreeting(): Promise<GreetingBytes> {
-        if (! this.#initialized) {await this.readLog();}
+        if (!this.#initialized) { await this.readLog(); }
         return await super.getGreeting();
     }
 
     async getNeededTransactions(
-        callBack: (x: GinkTrxnBytes) => void, 
-        greeting: Uint8Array|null = null, 
+        callBack: (x: GinkTrxnBytes) => void,
+        greeting: Uint8Array | null = null,
         partialOkay: boolean = false): Promise<HasMap> {
-            if (! this.#initialized) {await this.readLog();}
-            return await super.getNeededTransactions(callBack, greeting, partialOkay);
+        if (!this.#initialized) { await this.readLog(); }
+        return await super.getNeededTransactions(callBack, greeting, partialOkay);
     }
 
     async close() {
