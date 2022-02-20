@@ -114,6 +114,16 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
         expect(hasMap.has(MEDALLION2));
         expect(hasMap.get(MEDALLION1).get(START_MICROS1)).toBe(NEXT_TS1);
         expect(hasMap.get(MEDALLION2).get(START_MICROS2)).toBe(NEXT_TS2);
-    })
+    });
 
+    test(`${implName} test sends trxns in order`, async () => {
+        await addTrxns(ginkStore);
+        const sent: Array<GinkTrxnBytes> = [];
+        await ginkStore.getNeededTransactions((x: GinkTrxnBytes) => {sent.push(x);});
+        expect(sent.length).toBe(4);
+        expect(Transaction.deserializeBinary(sent[0]).getTimestamp()).toBe(START_MICROS1);
+        expect(Transaction.deserializeBinary(sent[1]).getTimestamp()).toBe(START_MICROS2);
+        expect(Transaction.deserializeBinary(sent[2]).getTimestamp()).toBe(NEXT_TS1);
+        expect(Transaction.deserializeBinary(sent[3]).getTimestamp()).toBe(NEXT_TS2);
+    });
 }
