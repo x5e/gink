@@ -1,10 +1,4 @@
-export type GreetingBytes = Uint8Array;
-export type GinkTrxnBytes = Uint8Array;
-export type Medallion = number;
-export type Timestamp = number;
-export type ChainStart = Timestamp;
-export type SeenThrough = Timestamp;
-export type HasMap = Map<Medallion,Map<ChainStart,SeenThrough>>;
+import {GreetingBytes, GinkTrxnBytes, HasMap} from "./typedefs"
 
 export interface GinkStore {
 
@@ -17,10 +11,13 @@ export interface GinkStore {
     getGreeting: () => Promise<GreetingBytes>;
 
     /**
-     * Tries to add a transaction to this store; returns true if
-     * actually added, false if not (e.g. if already has it).
+     * Tries to add a transaction to this store; returns truthy
+     * if actually added, false if not (e.g. if already has it).
+     * If adding to the store, will also update the HasMap.
+     * Will throw if passed a transaction without the proceeding
+     * ones in the associated change. 
      */
-    addTransaction: (trxn: GinkTrxnBytes) => Promise<boolean>;
+    addTransaction: (trxn: GinkTrxnBytes, hasMap?: HasMap) => Promise<boolean>;
 
     /**
      * Sends to the callback transactions that a peer needs

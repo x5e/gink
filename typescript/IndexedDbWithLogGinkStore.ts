@@ -1,4 +1,4 @@
-import { GinkTrxnBytes, GreetingBytes, HasMap } from "./GinkStore";
+import { GinkTrxnBytes, GreetingBytes, HasMap } from "./typedefs";
 import { IndexedDbGinkStore } from "./IndexedDbGinkStore";
 import { Log as TransactionLog } from "messages_pb";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12
@@ -21,8 +21,8 @@ export class IndexedDbWithLogGinkStore extends IndexedDbGinkStore {
     #pFileHandle: Promise<any>;
     #initialized: boolean;
 
-    constructor(filename: string, indexedDbName = "gink") {
-        super(indexedDbName);
+    constructor(filename: string, indexedDbName = "gink", reset = false) {
+        super(indexedDbName, reset);
         // TODO: probably should get an exclusive lock on the file        
         this.#pFileHandle = promises.open(filename, "a+");
         this.#initialized = false;
@@ -32,6 +32,8 @@ export class IndexedDbWithLogGinkStore extends IndexedDbGinkStore {
      * (Re-)reads the log file and trys to adds each transaction
      * to the underlying IndexedGink instance.  Run implicitly 
      * (if it hasn't run yet) when any GinkStore method is called.
+     * Left as a public method just in case user is interested in 
+     * the number of transactions in the log.
      * @returns number of transactions read
      */
     async readLog(): Promise<number> {
@@ -71,8 +73,7 @@ export class IndexedDbWithLogGinkStore extends IndexedDbGinkStore {
 
     async getNeededTransactions(
         callBack: (x: GinkTrxnBytes) => void,
-        greeting: Uint8Array | null = null,
-        partialOkay: boolean = false): Promise<HasMap> {
+        greeting: Uint8Array | null = null): Promise<HasMap> {
         if (!this.#initialized) { await this.readLog(); }
         return await super.getNeededTransactions(callBack, greeting);
     }

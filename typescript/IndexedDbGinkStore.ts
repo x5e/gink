@@ -7,7 +7,9 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
 import { Transaction } from "transactions_pb";
 import { Greeting } from "messages_pb";
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
-import { GinkStore, GreetingBytes, GinkTrxnBytes, Timestamp, Medallion, ChainStart, HasMap } from "./GinkStore";
+import { GinkStore } from "./GinkStore";
+import { GreetingBytes, GinkTrxnBytes, Timestamp, Medallion, ChainStart, HasMap } from "./typedefs";
+import { makeHasMap } from "./makeHasMap";
 
 export interface ChainInfo {
     medallion: Medallion;
@@ -90,33 +92,40 @@ export class IndexedDbGinkStore implements GinkStore {
         return await store.getAll();
     }
 
-    async addTransaction(trxn: GinkTrxnBytes): Promise<boolean> {
+    async addTransaction(trxn: GinkTrxnBytes, hasMap?: HasMap): Promise<boolean> {
         let parsed = Transaction.deserializeBinary(trxn);
-        let infoKey = [parsed.getMedallion(), parsed.getChainStart()];
-        let db: IDBPDatabase = await this.#pWrapped;
-        let wrappedTransaction = db.transaction(['trxns', 'chainInfos'], 'readwrite');
-        let previous = parsed.getPreviousTimestamp();
-        let newTimestamp = parsed.getTimestamp();
-        let present: ChainInfo = await wrappedTransaction.objectStore("chainInfos").get(infoKey);
-        if (present || previous != 0) {
-            if (present?.seenThrough >= newTimestamp) {
+        const medallion = parsed.getMedallion();
+        const chainStart = parsed.getChainStart();
+        const infoKey = [medallion, chainStart];
+        const db: IDBPDatabase = await this.#pWrapped;
+        const wrappedTransaction = db.transaction(['trxns', 'chainInfos'], 'readwrite');
+        const trxnPreviousTimestamp = parsed.getPreviousTimestamp();
+        const trxnTimestamp = parsed.getTimestamp();
+        let oldChainInfo: ChainInfo = await wrappedTransaction.objectStore("chainInfos").get(infoKey);
+        if (oldChainInfo || trxnPreviousTimestamp != 0) {
+            if (oldChainInfo?.seenThrough >= trxnTimestamp) {
                 return false;
             }
-            if (present?.seenThrough != previous) {
-                throw new Error(`missing prior chain entry for ${parsed.toObject()}, have ${present}`);
+            if (oldChainInfo?.seenThrough != trxnPreviousTimestamp) {
+                throw new Error(`missing prior chain entry for ${parsed.toObject()}, have ${oldChainInfo}`);
             }
         }
         let newInfo: ChainInfo = {
-            medallion: parsed.getMedallion(),
-            chainStart: parsed.getChainStart(),
-            seenThrough: parsed.getTimestamp(),
+            medallion: medallion,
+            chainStart: chainStart,
+            seenThrough: trxnTimestamp,
             lastComment: parsed.getComment(),
         }
         await wrappedTransaction.objectStore("chainInfos").put(newInfo);
-        const trxnKey: TransactionKey = [parsed.getTimestamp(), parsed.getMedallion(),
-        parsed.getChainStart(), parsed.getPreviousTimestamp()];
+        // Only timestamp and medallion are required for uniqueness, the others just added to make
+        // the getNeededTransactions faster by not requiring re-parsing.
+        const trxnKey: TransactionKey = [trxnTimestamp, medallion, chainStart, trxnPreviousTimestamp];
         await wrappedTransaction.objectStore("trxns").add(trxn, trxnKey);
         await wrappedTransaction.done;
+        if (hasMap) {
+            if (!hasMap.has(medallion)) { hasMap.set(medallion, new Map()); }
+            hasMap.get(medallion).set(chainStart, trxnTimestamp);
+        }
         return true;
     }
 
@@ -124,18 +133,12 @@ export class IndexedDbGinkStore implements GinkStore {
     // to the current transaction, so its best if `callBack` doesn't call await.
     async getNeededTransactions(
         callBack: (x: GinkTrxnBytes) => void,
-        greeting: Uint8Array | null = null): Promise<HasMap> {
-        const parsed = greeting ? Greeting.deserializeBinary(greeting) : new Greeting();
-        const hasMap: HasMap = new Map();
-        let entry: Greeting.GreetingEntry | null;
-        for (entry in parsed.getEntriesList()) {
-            if (!hasMap.has(entry.getMedallion())) {
-                hasMap.set(entry.getMedallion(), new Map());
-            }
-            hasMap.get(entry.getMedallion()).set(entry.getChainStart(), entry.getSeenThrough());
-        }
-        const db = await this.#pWrapped;
+        greeting?: GreetingBytes): Promise<HasMap> {
 
+        const hasMap: HasMap = makeHasMap(greeting);
+
+        // We loop through all transactions and send those the peer doesn't have.
+        const db = await this.#pWrapped;
         for (let cursor = await db.transaction("trxns").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
             const key = <TransactionKey>cursor.key;
