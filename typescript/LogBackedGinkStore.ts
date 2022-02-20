@@ -1,5 +1,6 @@
 import { GinkTrxnBytes, GreetingBytes, HasMap } from "./typedefs";
 import { IndexedDbGinkStore } from "./IndexedDbGinkStore";
+import { GinkStore } from "./GinkStore";
 import { Log as TransactionLog } from "messages_pb";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
 const promises = require("fs").promises;
@@ -17,18 +18,19 @@ type FileHandle = any;
     implementation of GinkStore using some other system (e.g. LMDB).
 */
 
-export class LogBackedGinkStore extends IndexedDbGinkStore {
+export class LogBackedGinkStore implements GinkStore {
 
-    #fileHandle: FileHandle;
     readonly initialized: Promise<void>;
+    commitsProcessed: number = 0;
+    #fileHandle: FileHandle;
+    #indexedDbGinkStore: IndexedDbGinkStore;
 
-    constructor(filename: string, reset = false, indexedDbName = "gink") {
-        super(indexedDbName, reset);
+    constructor(filename: string, reset = false) {
+        this.#indexedDbGinkStore = new IndexedDbGinkStore(filename, reset);
         this.initialized = this.#initialize(filename, reset);
     }
 
     async #initialize(filename: string, reset: boolean): Promise<void> {
-        let count: number = 0;
         // TODO: probably should get an exclusive lock on the file
         this.#fileHandle = await promises.open(filename, "a+");
         if (reset) {
@@ -41,8 +43,8 @@ export class LogBackedGinkStore extends IndexedDbGinkStore {
                 await this.#fileHandle.read(uint8Array, 0, size, 0);
                 const trxns = TransactionLog.deserializeBinary(uint8Array).getTransactionsList();
                 for (const trxn of trxns) {
-                    // Use the super method to avoid rewriting the trxn to the log file.
-                    count += !!(await super.addTransaction(trxn)) ? 1 : 0;
+                    const added = !!(await this.#indexedDbGinkStore.addTransaction(trxn));
+                    this.commitsProcessed += added ? 1 : 0;
                 }
             }
         }
@@ -50,7 +52,7 @@ export class LogBackedGinkStore extends IndexedDbGinkStore {
 
     async addTransaction(trxn: GinkTrxnBytes): Promise<boolean> {
         await this.initialized;
-        const added = await super.addTransaction(trxn);
+        const added = await this.#indexedDbGinkStore.addTransaction(trxn);
         if (added) {
             const logFragment = new TransactionLog();
             logFragment.setTransactionsList([trxn]);
@@ -61,19 +63,19 @@ export class LogBackedGinkStore extends IndexedDbGinkStore {
 
     async getGreeting(): Promise<GreetingBytes> {
         await this.initialized;
-        return await super.getGreeting();
+        return await this.#indexedDbGinkStore.getGreeting();
     }
 
     async getNeededTransactions(
         callBack: (x: GinkTrxnBytes) => void,
         greeting: Uint8Array | null = null): Promise<HasMap> {
         await this.initialized;
-        return await super.getNeededTransactions(callBack, greeting);
+        return await this.#indexedDbGinkStore.getNeededTransactions(callBack, greeting);
     }
 
     async close() {
         await this.initialized;
         await this.#fileHandle.close();
-        await super.close();
+        await this.#indexedDbGinkStore.close();
     }
 }
