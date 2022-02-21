@@ -1,6 +1,8 @@
-import {GreetingBytes, GinkTrxnBytes, HasMap} from "./typedefs"
+import {GreetingBytes, GinkTrxnBytes, HasMap, CommitInfo} from "./typedefs"
 
 export interface GinkStore {
+
+    readonly initialized: Promise<void>;
 
     /**
      * Generates the greeting message that should be sent on a 
@@ -9,6 +11,8 @@ export interface GinkStore {
      * to send.
      */
     getGreeting: () => Promise<GreetingBytes>;
+
+    getHasMap: () => Promise<HasMap>;
 
     /**
      * Tries to add a transaction to this store; returns truthy
@@ -20,18 +24,15 @@ export interface GinkStore {
     addTransaction: (trxn: GinkTrxnBytes, hasMap?: HasMap) => Promise<boolean>;
 
     /**
-     * Sends to the callback transactions that a peer needs
-     * as evidenced by the greeting (or all if greeting is null).
-     * The transactions are sent to the callback ordered by time.
-     * The partialOkay flag is only relevant when this store has
-     * dumped history after a checkpoint and doesn't have the full
-     * history for all chains.  The default (false) will barf if
-     * the remote node hasn't seen a chain and this node doesn't 
-     * have the start of it.
+     * Send to the callback transactions that a peer needs
+     * as evidenced by the HasMap (or all if no HasMap passed).
+     * The commits must be sent to the callback ordered by time.
+     * The passed HasMap should be updated as messages are sent.
+     * @returns the passed HasMap, or a new one appropriately populated.
      */
     getNeededTransactions: (
-        callback: (x: GinkTrxnBytes) => void, 
-        greeting?: GreetingBytes) => Promise<HasMap>;
+        callback: (commitBytes: GinkTrxnBytes, commitInfo: CommitInfo) => void, 
+        peerHasMap?: HasMap) => Promise<HasMap>;
 
     close: () => Promise<void>;
 }

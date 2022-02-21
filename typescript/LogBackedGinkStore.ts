@@ -1,4 +1,4 @@
-import { GinkTrxnBytes, GreetingBytes, HasMap } from "./typedefs";
+import { GinkTrxnBytes, GreetingBytes, HasMap, CommitInfo } from "./typedefs";
 import { IndexedDbGinkStore } from "./IndexedDbGinkStore";
 import { GinkStore } from "./GinkStore";
 import { Log as TransactionLog } from "messages_pb";
@@ -21,16 +21,18 @@ type FileHandle = any;
 export class LogBackedGinkStore implements GinkStore {
 
     readonly initialized: Promise<void>;
-    commitsProcessed: number = 0;
+    #commitsProcessed: number = 0;
     #fileHandle: FileHandle;
     #indexedDbGinkStore: IndexedDbGinkStore;
 
     constructor(filename: string, reset = false) {
-        this.#indexedDbGinkStore = new IndexedDbGinkStore(filename, reset);
         this.initialized = this.#initialize(filename, reset);
     }
 
     async #initialize(filename: string, reset: boolean): Promise<void> {
+        this.#indexedDbGinkStore = new IndexedDbGinkStore(filename, reset);
+        await this.#indexedDbGinkStore.initialized;
+
         // TODO: probably should get an exclusive lock on the file
         this.#fileHandle = await promises.open(filename, "a+");
         if (reset) {
@@ -44,10 +46,15 @@ export class LogBackedGinkStore implements GinkStore {
                 const trxns = TransactionLog.deserializeBinary(uint8Array).getTransactionsList();
                 for (const trxn of trxns) {
                     const added = !!(await this.#indexedDbGinkStore.addTransaction(trxn));
-                    this.commitsProcessed += added ? 1 : 0;
+                    this.#commitsProcessed += added ? 1 : 0;
                 }
             }
         }
+    }
+
+    async getCommitsProcessed() {
+        await this.initialized;
+        return this.#commitsProcessed;
     }
 
     async addTransaction(trxn: GinkTrxnBytes): Promise<boolean> {
@@ -65,12 +72,17 @@ export class LogBackedGinkStore implements GinkStore {
         await this.initialized;
         return await this.#indexedDbGinkStore.getGreeting();
     }
+    
+    async getHasMap(): Promise<HasMap> {
+        await this.initialized;
+        return await this.#indexedDbGinkStore.getHasMap();
+    }
 
     async getNeededTransactions(
-        callBack: (x: GinkTrxnBytes) => void,
-        greeting: Uint8Array | null = null): Promise<HasMap> {
+        callBack: (commitBytes: GinkTrxnBytes, commitInfo: CommitInfo) => void,
+        hasMap?: HasMap): Promise<HasMap> {
         await this.initialized;
-        return await this.#indexedDbGinkStore.getNeededTransactions(callBack, greeting);
+        return await this.#indexedDbGinkStore.getNeededTransactions(callBack, hasMap);
     }
 
     async close() {

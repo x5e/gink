@@ -1,7 +1,7 @@
 import { Medallion, ChainStart, GinkTrxnBytes, HasMap, Timestamp } from "./typedefs"
 import { GinkStore } from "./GinkStore";
 import { Transaction } from "transactions_pb";
-import { makeHasMap } from "./makeHasMap";
+import { makeHasMap } from "./utils";
 
 // makes an empty GinkStore for testing purposes
 export type GinkStoreMaker = () => Promise<GinkStore>;
