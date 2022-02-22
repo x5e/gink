@@ -97,7 +97,7 @@ export class IndexedDbGinkStore implements GinkStore {
         return await store.getAll();
     }
 
-    async addTransaction(trxn: GinkTrxnBytes, hasMap?: HasMap): Promise<boolean> {
+    async addTransaction(trxn: GinkTrxnBytes, hasMap?: HasMap): Promise<CommitInfo|null> {
         await this.initialized;
         let parsed = Transaction.deserializeBinary(trxn);
         const medallion = parsed.getMedallion();
@@ -109,7 +109,7 @@ export class IndexedDbGinkStore implements GinkStore {
         let oldChainInfo: ChainInfo = await wrappedTransaction.objectStore("chainInfos").get(infoKey);
         if (oldChainInfo || trxnPreviousTimestamp != 0) {
             if (oldChainInfo?.seenThrough >= trxnTimestamp) {
-                return false;
+                return null;
             }
             if (oldChainInfo?.seenThrough != trxnPreviousTimestamp) {
                 throw new Error(`missing prior chain entry for ${parsed.toObject()}, have ${oldChainInfo}`);
@@ -131,7 +131,7 @@ export class IndexedDbGinkStore implements GinkStore {
             if (!hasMap.has(medallion)) { hasMap.set(medallion, new Map()); }
             hasMap.get(medallion).set(chainStart, trxnTimestamp);
         }
-        return true;
+        return trxnKey;
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated

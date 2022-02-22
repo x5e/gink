@@ -1,5 +1,5 @@
 import { HasMap, CommitInfo, GinkTrxnBytes } from "./typedefs";
-import { Message as GinkMessage } from "messages_pb";
+import { makeCommitMessage } from "./utils";
 
 export class GinkPeer {
     readonly webSocket: WebSocket;
@@ -7,6 +7,18 @@ export class GinkPeer {
 
     constructor(webSocket: WebSocket) { 
         this.webSocket = webSocket;
+    }
+
+    markReceived(commitInfo: CommitInfo) {
+        const [timestamp, medallion, chainStart, _priorTime] = commitInfo;
+        if (this.hasMap) {
+            let medallionMap = this.hasMap.get(medallion);
+            if (!medallionMap) {
+                medallionMap = new Map();
+                this.hasMap.set(medallion, medallionMap);
+            }
+            medallionMap.set(chainStart, timestamp);
+        }
     }
 
     sendToPeer(commitBytes: GinkTrxnBytes, commitInfo: CommitInfo) {
@@ -25,9 +37,7 @@ export class GinkPeer {
             // We're missing at least one link.
             return;
         }
-        const ginkMessage = new GinkMessage();
-        ginkMessage.setTransaction(commitBytes);
-        this.webSocket.send(ginkMessage.serializeBinary());
+        this.webSocket.send(makeCommitMessage(commitBytes));
         if (!medallionMap) {
             medallionMap = new Map();
             this.hasMap.set(medallion, medallionMap);

@@ -57,7 +57,7 @@ export class LogBackedGinkStore implements GinkStore {
         return this.#commitsProcessed;
     }
 
-    async addTransaction(trxn: GinkTrxnBytes): Promise<boolean> {
+    async addTransaction(trxn: GinkTrxnBytes): Promise<CommitInfo|null> {
         await this.initialized;
         const added = await this.#indexedDbGinkStore.addTransaction(trxn);
         if (added) {

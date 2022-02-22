@@ -21,7 +21,7 @@ export interface GinkStore {
      * Will throw if passed a transaction without the proceeding
      * ones in the associated change. 
      */
-    addTransaction: (trxn: GinkTrxnBytes, hasMap?: HasMap) => Promise<boolean>;
+    addTransaction: (trxn: GinkTrxnBytes, hasMap?: HasMap) => Promise<CommitInfo|null>;
 
     /**
      * Send to the callback transactions that a peer needs

@@ -42,13 +42,13 @@ function extendChain(comment: string, previous: GinkTrxnBytes, timestamp: Timest
 
 async function addTrxns(ginkStore: GinkStore, hasMap?: HasMap) {
     const start1 = makeChainStart("chain1,tx1", MEDALLION1, START_MICROS1);
-    await ginkStore.addTransaction(start1);
+    await ginkStore.addTransaction(start1, hasMap);
     const next1 = extendChain("chain1,tx2", start1, NEXT_TS1);
-    await ginkStore.addTransaction(next1);
+    await ginkStore.addTransaction(next1, hasMap);
     const start2 = makeChainStart("chain2,tx1", MEDALLION2, START_MICROS2);
-    await ginkStore.addTransaction(start2);
+    await ginkStore.addTransaction(start2, hasMap);
     const next2 = extendChain("chain2,2", start2, NEXT_TS2);
-    await ginkStore.addTransaction(next2);
+    await ginkStore.addTransaction(next2, hasMap);
 }
 
 /**
@@ -78,7 +78,7 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
     test(`${implName} ensure that it rejects when doesn't have chain start`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
-        let added = false;
+        let added = null;
         let barfed = false;
         try {
             added = await ginkStore.addTransaction(secondTrxn);
@@ -94,7 +94,7 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
         const thirdTrxn = extendChain("Hello, a third!", secondTrxn, NEXT_TS1+1);
         await ginkStore.addTransaction(chainStart);
-        let added = false;
+        let added = null;
         let barfed = false;
         try {
             added = await ginkStore.addTransaction(thirdTrxn);
@@ -107,8 +107,8 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
 
     test(`${implName} test creates greeting`, async () => {
         await addTrxns(ginkStore);
-        const greeting = await ginkStore.getGreeting();
-        const hasMap = makeHasMap(greeting);
+        const greetingBytes = await ginkStore.getGreeting();
+        const hasMap = makeHasMap({greetingBytes});
         expect(hasMap.size).toBe(2);
         expect(hasMap.has(MEDALLION1));
         expect(hasMap.has(MEDALLION2));
