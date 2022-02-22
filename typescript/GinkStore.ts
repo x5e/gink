@@ -19,7 +19,7 @@ export interface GinkStore {
      * if actually added, false if not (e.g. if already has it).
      * If adding to the store, will also update the HasMap.
      * Will throw if passed a transaction without the proceeding
-     * ones in the associated change. 
+     * ones in the associated chain.
      */
     addTransaction: (trxn: GinkTrxnBytes, hasMap?: HasMap) => Promise<CommitInfo|null>;
 
