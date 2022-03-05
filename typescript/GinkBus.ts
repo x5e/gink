@@ -2,9 +2,10 @@ var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
     eval("require('websocket').w3cwebsocket");
 import { GinkPeer } from "./GinkPeer";
 import { GinkStore } from "./GinkStore";
-import { makeHasMap } from "./utils";
+import { makeHasMap, hasMapToGreeting } from "./utils";
 import { HasMap, GinkTrxnBytes, CommitInfo } from "./typedefs";
 import { Message as GinkMessage } from "messages_pb";
+import { Message } from "google-protobuf";
 
 export class GinkBus {
 
@@ -39,17 +40,19 @@ export class GinkBus {
             this.peers.get(fromConnectionId)?.webSocket.close();
             this.peers.delete(fromConnectionId);
         }
-        if (!commitInfo) return;
+        if (!commitInfo) return; // commitInfo will be falsey if already had this commit
         this.peers.get(fromConnectionId)?.markReceived(commitInfo);
-        this.peers.forEach((ginkPeer: GinkPeer, peerId: number) => {
+        for (const [peerId, ginkPeer] of this.peers) {
             if (peerId != fromConnectionId)
-                ginkPeer.sendToPeer(trxnBytes, commitInfo);
-        });
+                ginkPeer.sendToPeerIfNeeded(trxnBytes, commitInfo);
+        }
     }
 
-    getGreetingMessage(): Uint8Array {
-        this.#iHave.size;
-        throw new Error("not implemented");
+    getGreetingMessageBytes(): Uint8Array {
+        const greeting = hasMapToGreeting(this.#iHave);
+        const msg = new GinkMessage();
+        msg.setGreeting(greeting);
+        return msg.serializeBinary();
     }
 
     async connectTo(target: string) {
@@ -64,7 +67,7 @@ export class GinkBus {
             websocketClient.binaryType = "arraybuffer";
             websocketClient.onopen = function (_ev: Event) {
                 console.log(`opened connection ${connectionId} to ${target}`);
-                websocketClient.send(bus.getGreetingMessage());
+                websocketClient.send(bus.getGreetingMessageBytes());
                 bus.peers.set(connectionId, peer);
                 opened = true;
                 resolve(peer);
@@ -91,7 +94,7 @@ export class GinkBus {
                     }
                     if (parsed.hasGreeting()) {
                         const greeting = parsed.getGreeting();
-                        const hasMap = makeHasMap({greeting})
+                        const hasMap = makeHasMap({ greeting })
                     }
                 }
             }

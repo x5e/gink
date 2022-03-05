@@ -9,7 +9,7 @@ import { Greeting } from "messages_pb";
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { GinkStore } from "./GinkStore";
 import { GreetingBytes, GinkTrxnBytes, Timestamp, Medallion, ChainStart, HasMap, CommitInfo } from "./typedefs";
-import { chdir } from "process";
+
 
 export interface ChainInfo {
     medallion: Medallion;

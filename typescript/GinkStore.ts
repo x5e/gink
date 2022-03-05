@@ -1,27 +1,22 @@
-import {GreetingBytes, GinkTrxnBytes, HasMap, CommitInfo} from "./typedefs"
+import { GinkTrxnBytes, HasMap, CommitInfo } from "./typedefs"
 
 export interface GinkStore {
 
     readonly initialized: Promise<void>;
 
     /**
-     * Generates the greeting message that should be sent on a 
-     * new connection between Gink peers.  It how much of each
-     * chain the sender has, so the recepient will know what 
-     * to send.
+     * Generates a HasMap describing how much of each chain this store has.
      */
-    getGreeting: () => Promise<GreetingBytes>;
-
     getHasMap: () => Promise<HasMap>;
 
     /**
      * Tries to add a transaction to this store; returns truthy
      * if actually added, false if not (e.g. if already has it).
-     * If adding to the store, will also update the HasMap.
+     * If adding to the store, will also update the passed HasMap.
      * Will throw if passed a transaction without the proceeding
      * ones in the associated chain.
      */
-    addTransaction: (trxn: GinkTrxnBytes, hasMap?: HasMap) => Promise<CommitInfo|null>;
+    addTransaction: (trxn: GinkTrxnBytes, hasMap?: HasMap) => Promise<CommitInfo | null>;
 
     /**
      * Send to the callback transactions that a peer needs
@@ -31,7 +26,7 @@ export interface GinkStore {
      * @returns the passed HasMap, or a new one appropriately populated.
      */
     getNeededTransactions: (
-        callback: (commitBytes: GinkTrxnBytes, commitInfo: CommitInfo) => void, 
+        callback: (commitBytes: GinkTrxnBytes, commitInfo: CommitInfo) => void,
         peerHasMap?: HasMap) => Promise<HasMap>;
 
     close: () => Promise<void>;

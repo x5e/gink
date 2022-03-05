@@ -107,8 +107,7 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
 
     test(`${implName} test creates greeting`, async () => {
         await addTrxns(ginkStore);
-        const greetingBytes = await ginkStore.getGreeting();
-        const hasMap = makeHasMap({greetingBytes});
+        const hasMap = await ginkStore.getHasMap();
         expect(hasMap.size).toBe(2);
         expect(hasMap.has(MEDALLION1));
         expect(hasMap.has(MEDALLION2));
