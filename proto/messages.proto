@@ -11,17 +11,17 @@ message Greeting {
     repeated GreetingEntry entries = 1;
 }
 
-message Message {
+message GinkMessage {
     oneof contents {
-        bytes transaction = 1; // bytes so it's easy to save verbatim.
+        bytes commit = 1; // bytes so it's easy to save verbatim.
         Greeting greeting = 2;
     }
 }
 
 message Log {
     /* 
-    The writer must ensure that all transactions per chain are in order 
+    The writer must ensure that all commits per chain are in order 
     and that there are no gaps in any of the chains.
     */
-    repeated bytes transactions = 1;
+    repeated bytes commits = 1;
 }

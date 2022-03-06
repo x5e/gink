@@ -12,12 +12,12 @@ package google.gink;
     database, intended to be globally unique.
 
     * The timestamp and medallion may be omitted (=0) in muids found inside
-      rows when they point to another row in the same transaction.
+      rows when they point to another row in the same commit.
 
     * The medallion may be omitted (=0) for a muid that points to a row
       from the same stream.
 
-    * The offset value of 0 (omitted) referrs to the transaction.
+    * The offset value of 0 (omitted) referrs to the commit.
 
     The limits specified below allow a Muid to be packed into a canonical
     16 byte representation: effectively a 128-bit integer that
@@ -30,7 +30,7 @@ message Muid {
     uint32 offset = 3; // less than 2**20
 }
 
-message Transaction {
+message Commit {
     uint64 timestamp = 1;
     uint64 medallion = 2;
     uint64 previous_timestamp = 3;
@@ -133,7 +133,6 @@ message Node {
 
 message Entry {
     Muid src_node = 1; // not present for root node
-
 
     message Span {
         uint64 from=1;
