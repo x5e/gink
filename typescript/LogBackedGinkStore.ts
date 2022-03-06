@@ -1,4 +1,4 @@
-import { GinkTrxnBytes, GreetingBytes, HasMap, CommitInfo } from "./typedefs";
+import { CommitBytes, GreetingBytes, HasMap, CommitInfo } from "./typedefs";
 import { IndexedDbGinkStore } from "./IndexedDbGinkStore";
 import { GinkStore } from "./GinkStore";
 import { Log as TransactionLog } from "messages_pb";
@@ -45,7 +45,7 @@ export class LogBackedGinkStore implements GinkStore {
                 await this.#fileHandle.read(uint8Array, 0, size, 0);
                 const trxns = TransactionLog.deserializeBinary(uint8Array).getTransactionsList();
                 for (const trxn of trxns) {
-                    const added = !!(await this.#indexedDbGinkStore.addTransaction(trxn));
+                    const added = !!(await this.#indexedDbGinkStore.addCommit(trxn));
                     this.#commitsProcessed += added ? 1 : 0;
                 }
             }
@@ -57,12 +57,12 @@ export class LogBackedGinkStore implements GinkStore {
         return this.#commitsProcessed;
     }
 
-    async addTransaction(trxn: GinkTrxnBytes): Promise<CommitInfo|null> {
+    async addCommit(trxn: CommitBytes): Promise<CommitInfo|null> {
         await this.initialized;
-        const added = await this.#indexedDbGinkStore.addTransaction(trxn);
+        const added = await this.#indexedDbGinkStore.addCommit(trxn);
         if (added) {
             const logFragment = new TransactionLog();
-            logFragment.setTransactionsList([trxn]);
+            logFragment.setCommitsList([trxn]);
             await this.#fileHandle.appendFile(logFragment.serializeBinary());
         }
         return added;
@@ -78,11 +78,11 @@ export class LogBackedGinkStore implements GinkStore {
         return await this.#indexedDbGinkStore.getHasMap();
     }
 
-    async getNeededTransactions(
-        callBack: (commitBytes: GinkTrxnBytes, commitInfo: CommitInfo) => void,
+    async getNeededCommits(
+        callBack: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void,
         hasMap?: HasMap): Promise<HasMap> {
         await this.initialized;
-        return await this.#indexedDbGinkStore.getNeededTransactions(callBack, hasMap);
+        return await this.#indexedDbGinkStore.getNeededCommits(callBack, hasMap);
     }
 
     async close() {

@@ -1,5 +1,5 @@
-import { Medallion, ChainStart, SeenThrough, HasMap, GreetingBytes } from "./typedefs"
-import { Greeting, Message as GinkMessage } from "messages_pb";
+import { Medallion, ChainStart, SeenThrough, HasMap } from "./typedefs"
+import { Greeting, GinkMessage } from "messages_pb";
 
 export var assert = assert || function (x: any, msg?: string) {
     if (!x) throw new Error(msg ?? "assert failed");
@@ -39,17 +39,17 @@ export function hasMapToGreeting(hasMap: HasMap) {
 
 /**
  * A Gink Message contains an embedded oneof.  Essentially this will wrap
- * the transaction bytes payload in a wrapper by prefixing a few bytes to it.
+ * the commit bytes payload in a wrapper by prefixing a few bytes to it.
  * In theory the "Message" proto could be expanded with some extra metadata
  * (e.g. send time) in the future.
- * Note that the transaction is always passed around as bytes and then
+ * Note that the commit is always passed around as bytes and then
  * re-parsed as needed to avoid losing unknown fields.
- * @param commitBytes: the bytes corresponding to a gink commit/transaction
+ * @param commitBytes: the bytes corresponding to a gink commit
  * @returns a serialized "Message" proto
  */
 export function makeCommitMessage(commitBytes: Uint8Array): Uint8Array {
     const ginkMessage = new GinkMessage();
-    ginkMessage.setTransaction(commitBytes);
+    ginkMessage.setCommit(commitBytes);
     const msgBytes = ginkMessage.serializeBinary();
     return msgBytes;
 }

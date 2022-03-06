@@ -4,11 +4,11 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
     mode = "node";
 }
-import { Transaction } from "transactions_pb";
+import { Commit } from "transactions_pb";
 import { Greeting } from "messages_pb";
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { GinkStore } from "./GinkStore";
-import { GreetingBytes, GinkTrxnBytes, Timestamp, Medallion, ChainStart, HasMap, CommitInfo } from "./typedefs";
+import { GreetingBytes, CommitBytes, Timestamp, Medallion, ChainStart, HasMap, CommitInfo } from "./typedefs";
 
 
 export interface ChainInfo {
@@ -97,9 +97,9 @@ export class IndexedDbGinkStore implements GinkStore {
         return await store.getAll();
     }
 
-    async addTransaction(trxn: GinkTrxnBytes, hasMap?: HasMap): Promise<CommitInfo|null> {
+    async addCommit(trxn: CommitBytes, hasMap?: HasMap): Promise<CommitInfo|null> {
         await this.initialized;
-        let parsed = Transaction.deserializeBinary(trxn);
+        let parsed = Commit.deserializeBinary(trxn);
         const medallion = parsed.getMedallion();
         const chainStart = parsed.getChainStart();
         const infoKey = [medallion, chainStart];
@@ -135,19 +135,19 @@ export class IndexedDbGinkStore implements GinkStore {
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated
-    // to the current transaction, so its best if `callBack` doesn't call await.
-    async getNeededTransactions(
-        callBack: (commitBytes: GinkTrxnBytes, commitInfo: CommitInfo) => void,
+    // to the current commit, so its best if `callBack` doesn't call await.
+    async getNeededCommits(
+        callBack: (commitBytes: Commit, commitInfo: CommitInfo) => void,
         hasMap?: HasMap) {
 
         await this.initialized;
         hasMap = hasMap ?? new Map();
 
-        // We loop through all transactions and send those the peer doesn't have.
+        // We loop through all commits and send those the peer doesn't have.
         for (let cursor = await this.#wrapped.transaction("trxns").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
             const commitInfo = <CommitInfo>cursor.key;
-            const ginkTrxn: GinkTrxnBytes = cursor.value;
+            const ginkTrxn: CommitBytes = cursor.value;
             const [trxnTime, medallion, chainStart, priorTime] = commitInfo;
             if (!hasMap.has(medallion)) { hasMap.set(medallion, new Map()); }
             let seenThrough = hasMap.get(medallion).get(chainStart);
@@ -162,10 +162,10 @@ export class IndexedDbGinkStore implements GinkStore {
                     "and neither do I.");
             }
             if (seenThrough >= trxnTime) {
-                continue;  // happy path: peer doesn't need this transaction
+                continue;  // happy path: peer doesn't need this commit
             }
             if (seenThrough == priorTime) {
-                // another happy path: peer has everything in this chain up to this transaction
+                // another happy path: peer has everything in this chain up to this commit
                 callBack(ginkTrxn, commitInfo);
                 hasMap.get(medallion).set(chainStart, trxnTime);
                 continue;

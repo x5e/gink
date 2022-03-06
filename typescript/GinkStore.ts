@@ -1,4 +1,4 @@
-import { GinkTrxnBytes, HasMap, CommitInfo } from "./typedefs"
+import { CommitBytes, HasMap, CommitInfo } from "./typedefs"
 
 export interface GinkStore {
 
@@ -10,23 +10,23 @@ export interface GinkStore {
     getHasMap: () => Promise<HasMap>;
 
     /**
-     * Tries to add a transaction to this store; returns truthy
+     * Tries to add a commit to this store; returns truthy
      * if actually added, false if not (e.g. if already has it).
      * If adding to the store, will also update the passed HasMap.
-     * Will throw if passed a transaction without the proceeding
+     * Will throw if passed a commit without the proceeding
      * ones in the associated chain.
      */
-    addTransaction: (trxn: GinkTrxnBytes, hasMap?: HasMap) => Promise<CommitInfo | null>;
+    addCommit: (trxn: CommitBytes, hasMap?: HasMap) => Promise<CommitInfo | null>;
 
     /**
-     * Send to the callback transactions that a peer needs
+     * Send to the callback commits that a peer needs
      * as evidenced by the HasMap (or all if no HasMap passed).
      * The commits must be sent to the callback ordered by time.
      * The passed HasMap should be updated as messages are sent.
      * @returns the passed HasMap, or a new one appropriately populated.
      */
-    getNeededTransactions: (
-        callback: (commitBytes: GinkTrxnBytes, commitInfo: CommitInfo) => void,
+    getNeededCommits: (
+        callback: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void,
         peerHasMap?: HasMap) => Promise<HasMap>;
 
     close: () => Promise<void>;

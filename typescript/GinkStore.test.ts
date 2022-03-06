@@ -1,7 +1,6 @@
-import { Medallion, ChainStart, GinkTrxnBytes, HasMap, Timestamp } from "./typedefs"
+import { Medallion, ChainStart, CommitBytes, HasMap, Timestamp } from "./typedefs"
 import { GinkStore } from "./GinkStore";
-import { Transaction } from "transactions_pb";
-import { makeHasMap } from "./utils";
+import { Commit } from "transactions_pb";
 
 // makes an empty GinkStore for testing purposes
 export type GinkStoreMaker = () => Promise<GinkStore>;
@@ -20,18 +19,18 @@ const START_MICROS2 = Date.parse("2022-02-20 00:38:21") * 1000;
 const NEXT_TS2 = Date.parse("2022-02-20 00:40:12") * 1000;
 
 
-function makeChainStart(comment: string, medallion: Medallion, chainStart: ChainStart): GinkTrxnBytes {
-    const transaction = new Transaction();
-    transaction.setChainStart(chainStart);
-    transaction.setTimestamp(chainStart);
-    transaction.setMedallion(medallion);
-    transaction.setComment(comment);
-    return transaction.serializeBinary();
+function makeChainStart(comment: string, medallion: Medallion, chainStart: ChainStart): CommitBytes {
+    const commit = new Commit();
+    commit.setChainStart(chainStart);
+    commit.setTimestamp(chainStart);
+    commit.setMedallion(medallion);
+    commit.setComment(comment);
+    return commit.serializeBinary();
 }
 
-function extendChain(comment: string, previous: GinkTrxnBytes, timestamp: Timestamp): GinkTrxnBytes {
-    const parsedPrevious = Transaction.deserializeBinary(previous);
-    const subsequent = new Transaction();
+function extendChain(comment: string, previous: CommitBytes, timestamp: Timestamp): CommitBytes {
+    const parsedPrevious = Commit.deserializeBinary(previous);
+    const subsequent = new Commit();
     subsequent.setMedallion(parsedPrevious.getMedallion());
     subsequent.setPreviousTimestamp(parsedPrevious.getTimestamp());
     subsequent.setChainStart(parsedPrevious.getChainStart());
@@ -42,13 +41,13 @@ function extendChain(comment: string, previous: GinkTrxnBytes, timestamp: Timest
 
 async function addTrxns(ginkStore: GinkStore, hasMap?: HasMap) {
     const start1 = makeChainStart("chain1,tx1", MEDALLION1, START_MICROS1);
-    await ginkStore.addTransaction(start1, hasMap);
+    await ginkStore.addCommit(start1, hasMap);
     const next1 = extendChain("chain1,tx2", start1, NEXT_TS1);
-    await ginkStore.addTransaction(next1, hasMap);
+    await ginkStore.addCommit(next1, hasMap);
     const start2 = makeChainStart("chain2,tx1", MEDALLION2, START_MICROS2);
-    await ginkStore.addTransaction(start2, hasMap);
+    await ginkStore.addCommit(start2, hasMap);
     const next2 = extendChain("chain2,2", start2, NEXT_TS2);
-    await ginkStore.addTransaction(next2, hasMap);
+    await ginkStore.addCommit(next2, hasMap);
 }
 
 /**
@@ -69,8 +68,8 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
 
     test(`${implName} test accepts chain start but only once`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const acceptedOnce = await ginkStore.addTransaction(chainStart);
-        const acceptedTwice = await ginkStore.addTransaction(chainStart);
+        const acceptedOnce = await ginkStore.addCommit(chainStart);
+        const acceptedTwice = await ginkStore.addCommit(chainStart);
         expect(acceptedOnce).toBeTruthy();
         expect(acceptedTwice).toBeFalsy();
     });
@@ -81,7 +80,7 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
         let added = null;
         let barfed = false;
         try {
-            added = await ginkStore.addTransaction(secondTrxn);
+            added = await ginkStore.addCommit(secondTrxn);
         } catch (e) {
             barfed = true;
         }
@@ -93,11 +92,11 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
         const thirdTrxn = extendChain("Hello, a third!", secondTrxn, NEXT_TS1+1);
-        await ginkStore.addTransaction(chainStart);
+        await ginkStore.addCommit(chainStart);
         let added = null;
         let barfed = false;
         try {
-            added = await ginkStore.addTransaction(thirdTrxn);
+            added = await ginkStore.addCommit(thirdTrxn);
         } catch (e) {
             barfed = true;
         }
@@ -117,12 +116,12 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
 
     test(`${implName} test sends trxns in order`, async () => {
         await addTrxns(ginkStore);
-        const sent: Array<GinkTrxnBytes> = [];
-        await ginkStore.getNeededTransactions((x: GinkTrxnBytes) => {sent.push(x);});
+        const sent: Array<CommitBytes> = [];
+        await ginkStore.getNeededCommits((x: CommitBytes) => {sent.push(x);});
         expect(sent.length).toBe(4);
-        expect(Transaction.deserializeBinary(sent[0]).getTimestamp()).toBe(START_MICROS1);
-        expect(Transaction.deserializeBinary(sent[1]).getTimestamp()).toBe(START_MICROS2);
-        expect(Transaction.deserializeBinary(sent[2]).getTimestamp()).toBe(NEXT_TS1);
-        expect(Transaction.deserializeBinary(sent[3]).getTimestamp()).toBe(NEXT_TS2);
+        expect(Commit.deserializeBinary(sent[0]).getTimestamp()).toBe(START_MICROS1);
+        expect(Commit.deserializeBinary(sent[1]).getTimestamp()).toBe(START_MICROS2);
+        expect(Commit.deserializeBinary(sent[2]).getTimestamp()).toBe(NEXT_TS1);
+        expect(Commit.deserializeBinary(sent[3]).getTimestamp()).toBe(NEXT_TS2);
     });
 }
