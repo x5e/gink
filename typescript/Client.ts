@@ -4,7 +4,7 @@ import { Peer } from "./Peer";
 import { Store } from "./Store";
 import { makeHasMap, hasMapToGreeting } from "./utils";
 import { HasMap, CommitBytes, CommitInfo } from "./typedefs";
-import { GinkMessage } from "messages_pb";
+import { Message } from "messages_pb";
 
 
 export class Client {
@@ -18,6 +18,13 @@ export class Client {
     constructor(store: Store) {
         this.#store = store;
         this.initialized = this.#initialize();
+    }
+
+    async close() {
+        for (const [_peerId, peer] of this.peers) {
+            peer.close();
+        }
+        await this.#store.close();
     }
 
     async #initialize() {
@@ -46,9 +53,9 @@ export class Client {
         }
     }
 
-    async receiveMessage(fromConnectionId: number, messageBytes: Uint8Array) {
+    receiveMessage(fromConnectionId: number, messageBytes: Uint8Array) {
         try {
-            const parsed = GinkMessage.deserializeBinary(messageBytes);
+            const parsed = Message.deserializeBinary(messageBytes);
             if (parsed.hasCommit()) {
                 const commitBytes: CommitBytes = parsed.getCommit_asU8();
                 this.receiveCommit(fromConnectionId, commitBytes);
@@ -69,7 +76,7 @@ export class Client {
 
     getGreetingMessageBytes(): Uint8Array {
         const greeting = hasMapToGreeting(this.#iHave);
-        const msg = new GinkMessage();
+        const msg = new Message();
         msg.setGreeting(greeting);
         return msg.serializeBinary();
     }
@@ -79,8 +86,7 @@ export class Client {
         const bus = this;
         return new Promise<Peer>((resolve, reject) => {
             let opened = false;
-            // All connectionIds will be > 0 due to the pre-increment.
-            let connectionId = this.createConnectionId();
+            const connectionId = this.createConnectionId();
             const websocketClient: WebSocket = new W3cWebSocket(target, "gink");
             websocketClient.binaryType = "arraybuffer";
             const peer = new Peer(
@@ -107,7 +113,8 @@ export class Client {
             websocketClient.onmessage = function (ev: MessageEvent) {
                 const data = ev.data;
                 if (data instanceof ArrayBuffer) {
-                    
+                    const uint8View = new Uint8Array(data);
+                    bus.receiveMessage(connectionId, uint8View);
                 } else {
                     console.error(`got non-arraybuffer message: ${data}`)
                 }
