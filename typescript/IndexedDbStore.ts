@@ -5,10 +5,9 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
     mode = "node";
 }
 import { Commit } from "transactions_pb";
-import { Greeting } from "messages_pb";
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
-import { GinkStore } from "./GinkStore";
-import { GreetingBytes, CommitBytes, Timestamp, Medallion, ChainStart, HasMap, CommitInfo } from "./typedefs";
+import { Store } from "./Store";
+import { CommitBytes, Timestamp, Medallion, ChainStart, HasMap, CommitInfo } from "./typedefs";
 
 
 export interface ChainInfo {
@@ -18,12 +17,12 @@ export interface ChainInfo {
     lastComment?: string;
 }
 
-export class IndexedDbGinkStore implements GinkStore {
+export class IndexedDbStore implements Store {
 
     initialized: Promise<void>;
     #wrapped: IDBPDatabase;
 
-    constructor(indexedDbName = "gink", reset = false) {
+    constructor(indexedDbName = "default", reset = false) {
         this.initialized = this.#initialize(indexedDbName, reset);
     }
 
@@ -60,20 +59,6 @@ export class IndexedDbGinkStore implements GinkStore {
     async close() {
         await this.initialized;
         this.#wrapped.close();
-    }
-
-    async getGreeting(): Promise<GreetingBytes> {
-        await this.initialized;
-        const asEntries = (await this.#getChainInfos()).map((value) => {
-            let entry = new Greeting.GreetingEntry();
-            entry.setMedallion(value.medallion);
-            entry.setChainStart(value.chainStart);
-            entry.setSeenThrough(value.seenThrough);
-            return entry;
-        })
-        let greeting = new Greeting();
-        greeting.setEntriesList(asEntries);
-        return greeting.serializeBinary();
     }
 
     async getHasMap(): Promise<HasMap> {
@@ -147,14 +132,14 @@ export class IndexedDbGinkStore implements GinkStore {
         for (let cursor = await this.#wrapped.transaction("trxns").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
             const commitInfo = <CommitInfo>cursor.key;
-            const ginkTrxn: CommitBytes = cursor.value;
+            const commitBytes: CommitBytes = cursor.value;
             const [trxnTime, medallion, chainStart, priorTime] = commitInfo;
             if (!hasMap.has(medallion)) { hasMap.set(medallion, new Map()); }
             let seenThrough = hasMap.get(medallion).get(chainStart);
             if (!seenThrough) {
                 if (priorTime == 0) {
                     // happy path: sending the start of a chain
-                    callBack(ginkTrxn, commitInfo);
+                    callBack(commitBytes, commitInfo);
                     hasMap.get(medallion).set(chainStart, trxnTime);
                     continue;
                 }
@@ -166,7 +151,7 @@ export class IndexedDbGinkStore implements GinkStore {
             }
             if (seenThrough == priorTime) {
                 // another happy path: peer has everything in this chain up to this commit
-                callBack(ginkTrxn, commitInfo);
+                callBack(commitBytes, commitInfo);
                 hasMap.get(medallion).set(chainStart, trxnTime);
                 continue;
             }

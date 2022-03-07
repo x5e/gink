@@ -1,9 +1,9 @@
 import { Medallion, ChainStart, CommitBytes, HasMap, Timestamp } from "./typedefs"
-import { GinkStore } from "./GinkStore";
+import { Store } from "./Store";
 import { Commit } from "transactions_pb";
 
-// makes an empty GinkStore for testing purposes
-export type GinkStoreMaker = () => Promise<GinkStore>;
+// makes an empty Store for testing purposes
+export type StoreMaker = () => Promise<Store>;
 
 // Jest complains if there's a test suite without a test.
 test('placeholder', () => {
@@ -39,37 +39,37 @@ function extendChain(comment: string, previous: CommitBytes, timestamp: Timestam
     return subsequent.serializeBinary();
 }
 
-async function addTrxns(ginkStore: GinkStore, hasMap?: HasMap) {
+async function addTrxns(store: Store, hasMap?: HasMap) {
     const start1 = makeChainStart("chain1,tx1", MEDALLION1, START_MICROS1);
-    await ginkStore.addCommit(start1, hasMap);
+    await store.addCommit(start1, hasMap);
     const next1 = extendChain("chain1,tx2", start1, NEXT_TS1);
-    await ginkStore.addCommit(next1, hasMap);
+    await store.addCommit(next1, hasMap);
     const start2 = makeChainStart("chain2,tx1", MEDALLION2, START_MICROS2);
-    await ginkStore.addCommit(start2, hasMap);
+    await store.addCommit(start2, hasMap);
     const next2 = extendChain("chain2,2", start2, NEXT_TS2);
-    await ginkStore.addCommit(next2, hasMap);
+    await store.addCommit(next2, hasMap);
 }
 
 /**
  * 
- * @param ginkStoreMaker must return a fresh (empty) store on each invocation
+ * @param storeMaker must return a fresh (empty) store on each invocation
  * @param implName name of this implementation
  */
-export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) {
-    let ginkStore: GinkStore;
+export function testStore(implName: string, storeMaker: StoreMaker) {
+    let store: Store;
 
     beforeEach(async () => {
-        ginkStore = await ginkStoreMaker();
+        store = await storeMaker();
     });
 
     afterEach(async () => {
-        await ginkStore.close();
+        await store.close();
     });
 
     test(`${implName} test accepts chain start but only once`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const acceptedOnce = await ginkStore.addCommit(chainStart);
-        const acceptedTwice = await ginkStore.addCommit(chainStart);
+        const acceptedOnce = await store.addCommit(chainStart);
+        const acceptedTwice = await store.addCommit(chainStart);
         expect(acceptedOnce).toBeTruthy();
         expect(acceptedTwice).toBeFalsy();
     });
@@ -80,7 +80,7 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
         let added = null;
         let barfed = false;
         try {
-            added = await ginkStore.addCommit(secondTrxn);
+            added = await store.addCommit(secondTrxn);
         } catch (e) {
             barfed = true;
         }
@@ -92,11 +92,11 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
         const thirdTrxn = extendChain("Hello, a third!", secondTrxn, NEXT_TS1+1);
-        await ginkStore.addCommit(chainStart);
+        await store.addCommit(chainStart);
         let added = null;
         let barfed = false;
         try {
-            added = await ginkStore.addCommit(thirdTrxn);
+            added = await store.addCommit(thirdTrxn);
         } catch (e) {
             barfed = true;
         }
@@ -105,8 +105,8 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
     });
 
     test(`${implName} test creates greeting`, async () => {
-        await addTrxns(ginkStore);
-        const hasMap = await ginkStore.getHasMap();
+        await addTrxns(store);
+        const hasMap = await store.getHasMap();
         expect(hasMap.size).toBe(2);
         expect(hasMap.has(MEDALLION1));
         expect(hasMap.has(MEDALLION2));
@@ -115,9 +115,9 @@ export function testGinkStore(implName: string, ginkStoreMaker: GinkStoreMaker) 
     });
 
     test(`${implName} test sends trxns in order`, async () => {
-        await addTrxns(ginkStore);
+        await addTrxns(store);
         const sent: Array<CommitBytes> = [];
-        await ginkStore.getNeededCommits((x: CommitBytes) => {sent.push(x);});
+        await store.getNeededCommits((x: CommitBytes) => {sent.push(x);});
         expect(sent.length).toBe(4);
         expect(Commit.deserializeBinary(sent[0]).getTimestamp()).toBe(START_MICROS1);
         expect(Commit.deserializeBinary(sent[1]).getTimestamp()).toBe(START_MICROS2);

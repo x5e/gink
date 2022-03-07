@@ -1,6 +1,6 @@
 import { CommitBytes, GreetingBytes, HasMap, CommitInfo } from "./typedefs";
-import { IndexedDbGinkStore } from "./IndexedDbGinkStore";
-import { GinkStore } from "./GinkStore";
+import { IndexedDbStore } from "./IndexedDbStore";
+import { Store } from "./Store";
 import { Log as TransactionLog } from "messages_pb";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
 const promises = require("fs").promises;
@@ -11,27 +11,27 @@ type FileHandle = any;
     IndexedDB available for Node.js.  This subclass will append all
     transactions it receives to a log file, making it possible to
     recreate the same in-memory database in the future by simply
-    replaying the receipt of each gink commit.
+    replaying the receipt of each commit.
 
     This is obviously not ideal; eventually want to move to either 
     a durable server side indexedDB implementation or create an
-    implementation of GinkStore using some other system (e.g. LMDB).
+    implementation of Store using some other system (e.g. LMDB).
 */
 
-export class LogBackedGinkStore implements GinkStore {
+export class LogBackedStore implements Store {
 
     readonly initialized: Promise<void>;
     #commitsProcessed: number = 0;
     #fileHandle: FileHandle;
-    #indexedDbGinkStore: IndexedDbGinkStore;
+    #indexedDbStore: IndexedDbStore;
 
     constructor(filename: string, reset = false) {
         this.initialized = this.#initialize(filename, reset);
     }
 
     async #initialize(filename: string, reset: boolean): Promise<void> {
-        this.#indexedDbGinkStore = new IndexedDbGinkStore(filename, reset);
-        await this.#indexedDbGinkStore.initialized;
+        this.#indexedDbStore = new IndexedDbStore(filename, reset);
+        await this.#indexedDbStore.initialized;
 
         // TODO: probably should get an exclusive lock on the file
         this.#fileHandle = await promises.open(filename, "a+");
@@ -45,7 +45,7 @@ export class LogBackedGinkStore implements GinkStore {
                 await this.#fileHandle.read(uint8Array, 0, size, 0);
                 const trxns = TransactionLog.deserializeBinary(uint8Array).getTransactionsList();
                 for (const trxn of trxns) {
-                    const added = !!(await this.#indexedDbGinkStore.addCommit(trxn));
+                    const added = !!(await this.#indexedDbStore.addCommit(trxn));
                     this.#commitsProcessed += added ? 1 : 0;
                 }
             }
@@ -59,7 +59,7 @@ export class LogBackedGinkStore implements GinkStore {
 
     async addCommit(trxn: CommitBytes): Promise<CommitInfo|null> {
         await this.initialized;
-        const added = await this.#indexedDbGinkStore.addCommit(trxn);
+        const added = await this.#indexedDbStore.addCommit(trxn);
         if (added) {
             const logFragment = new TransactionLog();
             logFragment.setCommitsList([trxn]);
@@ -67,27 +67,22 @@ export class LogBackedGinkStore implements GinkStore {
         }
         return added;
     }
-
-    async getGreeting(): Promise<GreetingBytes> {
-        await this.initialized;
-        return await this.#indexedDbGinkStore.getGreeting();
-    }
     
     async getHasMap(): Promise<HasMap> {
         await this.initialized;
-        return await this.#indexedDbGinkStore.getHasMap();
+        return await this.#indexedDbStore.getHasMap();
     }
 
     async getNeededCommits(
         callBack: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void,
         hasMap?: HasMap): Promise<HasMap> {
         await this.initialized;
-        return await this.#indexedDbGinkStore.getNeededCommits(callBack, hasMap);
+        return await this.#indexedDbStore.getNeededCommits(callBack, hasMap);
     }
 
     async close() {
         await this.initialized;
         await this.#fileHandle.close();
-        await this.#indexedDbGinkStore.close();
+        await this.#indexedDbStore.close();
     }
 }

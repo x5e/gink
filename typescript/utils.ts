@@ -5,6 +5,10 @@ export var assert = assert || function (x: any, msg?: string) {
     if (!x) throw new Error(msg ?? "assert failed");
 }
 
+export function now() { return (new Date()).toISOString(); }
+
+export function noOp() {};
+
 export function makeHasMap({ greetingBytes = null, greeting = null }): HasMap {
     const hasMap: HasMap = new Map();
     if (greetingBytes) {

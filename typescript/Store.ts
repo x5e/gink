@@ -1,6 +1,6 @@
 import { CommitBytes, HasMap, CommitInfo } from "./typedefs"
 
-export interface GinkStore {
+export interface Store {
 
     readonly initialized: Promise<void>;
 
