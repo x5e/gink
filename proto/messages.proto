@@ -11,7 +11,7 @@ message Greeting {
     repeated GreetingEntry entries = 1;
 }
 
-message GinkMessage {
+message Message {
     oneof contents {
         bytes commit = 1; // bytes so it's easy to save verbatim.
         Greeting greeting = 2;
