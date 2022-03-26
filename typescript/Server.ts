@@ -14,6 +14,7 @@ import { Store } from "./Store";
 
 type FilePath = string;
 type NumberStr = string;
+const PROTOCOL = "gink";
 
 export interface ServerArgs {
     port: NumberStr;
@@ -62,19 +63,28 @@ export class Server extends Client {
         this.#websocketServer.on('request', this.#onRequest.bind(this));
     }
 
-    #onRequest(request: WebSocketRequest) {
-        const connection: WebSocketConnection = request.accept('gink', request.origin);
+    async #onRequest(request: WebSocketRequest) {
+        await this.initialized;
+        let protocol: string|null = null;
+        if (request.requestedProtocols.length) {
+            if (request.requestedProtocols.includes(PROTOCOL))
+                protocol = PROTOCOL;
+            else
+                return request.reject(400, "bad protocol");
+        }
+        const connection: WebSocketConnection = request.accept(protocol, request.origin);
         console.log(`${now()} Connection accepted via port ${this.port}`);
         const sendFunc = (data: Uint8Array) => { connection.sendBytes(Buffer.from(data)); };
         const closeFunc = () => { connection.close(); };
         const connectionId = this.createConnectionId();
         const peer = new Peer(sendFunc, closeFunc);
         this.peers.set(connectionId, peer);
-        connection.on('close', function (reasonCode, description) {
+        connection.on('close', function (_reasonCode, _description) {
             this.peers.delete(connectionId);
             console.log((now()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
         });
         connection.on('message', this.#onMessage.bind(this, connectionId));
+        sendFunc(this.getGreetingMessageBytes());
     }
 
     #onMessage(connectionId: number, webSocketMessage: WebSocketMessage) {

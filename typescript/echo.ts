@@ -42,7 +42,14 @@ function onMessage(message: Message) {
 }
 
 websocketServer.on('request', function(request) {
-    connection = request.accept('echo', request.origin);
+    let protocol: string = null;
+    if (request.requestedProtocols.length) {
+        if (request.requestedProtocols.includes("echo"))
+            protocol = "echo";
+        else
+            request.reject(400, "bad protocol");
+    }
+    connection = request.accept(protocol);
     console.log((now()) + ' Connection accepted.');
     connection.on('message', onMessage);
     connection.on('close', function(reasonCode, description) {

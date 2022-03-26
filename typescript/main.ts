@@ -1,6 +1,6 @@
 #!/usr/bin/env ts-node
 
-import { Server, ServerArgs } from "./Server";
+import { Server } from "./Server";
 import { LogBackedStore } from "./LogBackedStore";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
@@ -35,9 +35,9 @@ if (process.env["GINK_PORT"]) {
 const targets = process.argv.slice(2);
 
 (async () => {
+    await clientOrServer.initialized;
     for (var target of targets) {
         await clientOrServer.connectTo(target);
     }
+    console.log("started");
 })();
-
-console.log("the end");
