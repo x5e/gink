@@ -17,11 +17,3 @@ message Message {
         Greeting greeting = 2;
     }
 }
-
-message Log {
-    /* 
-    The writer must ensure that all commits per chain are in order 
-    and that there are no gaps in any of the chains.
-    */
-    repeated bytes commits = 1;
-}
