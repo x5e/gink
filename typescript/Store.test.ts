@@ -55,7 +55,7 @@ async function addTrxns(store: Store, hasMap?: HasMap) {
  * @param storeMaker must return a fresh (empty) store on each invocation
  * @param implName name of this implementation
  */
-export function testStore(implName: string, storeMaker: StoreMaker) {
+export function testStore(implName: string, storeMaker: StoreMaker, replacer?: StoreMaker) {
     let store: Store;
 
     beforeEach(async () => {
@@ -116,6 +116,10 @@ export function testStore(implName: string, storeMaker: StoreMaker) {
 
     test(`${implName} test sends trxns in order`, async () => {
         await addTrxns(store);
+        if (replacer) {
+            await store.close();
+            store = await replacer();
+        }
         const sent: Array<CommitBytes> = [];
         await store.getNeededCommits((x: CommitBytes) => {sent.push(x);});
         expect(sent.length).toBe(4);
@@ -128,6 +132,10 @@ export function testStore(implName: string, storeMaker: StoreMaker) {
     test(`${implName} test claim chains`, async () => {
         await store.activateChain(MEDALLION1, START_MICROS1);
         await store.activateChain(MEDALLION2, START_MICROS2);
+        if (replacer) {
+            await store.close();
+            store = await replacer();
+        }
         const active = await store.getActiveChains();
         expect(active.size).toBe(2);
         expect(active.get(MEDALLION1)).toBe(START_MICROS1);

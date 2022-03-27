@@ -1,7 +1,11 @@
 import { LogBackedStore } from "./LogBackedStore";
 import { testStore } from "./Store.test";
 
-testStore('LogBackedStore', async () => new LogBackedStore("/tmp/test.commits", true));
+const TEST_FILE = "/tmp/test.commits";
+testStore('LogBackedStore', 
+    async () => new LogBackedStore(TEST_FILE, true),
+    async () => new LogBackedStore(TEST_FILE, false)
+    );
 
 test('test locks', async () => {
     const fn = "/tmp/test.store";

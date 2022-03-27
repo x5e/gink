@@ -55,12 +55,12 @@ export class LogBackedStore implements Store {
                 const uint8Array = new Uint8Array(size);
                 await this.#fileHandle.read(uint8Array, 0, size, 0);
                 const logFile = LogFile.deserializeBinary(uint8Array);
-                const trxns = logFile.getTransactionsList();
+                const trxns = logFile.getCommitsList();
                 for (const trxn of trxns) {
                     const added = !!(await this.#indexedDbStore.addCommit(trxn));
                     this.#commitsProcessed += added ? 1 : 0;
                 }
-                const chainEntries = logFile.getChainEntries();
+                const chainEntries = logFile.getChainEntriesList();
                 for (const entry of chainEntries) {
                     await this.#indexedDbStore.activateChain(entry.getMedallion(), entry.getChainStart());
                 }
