@@ -1,10 +1,12 @@
-import { CommitBytes, GreetingBytes, HasMap, CommitInfo } from "./typedefs";
+import { CommitBytes, HasMap, CommitInfo } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 import { Log as TransactionLog } from "messages_pb";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
 const promises = require("fs").promises;
 type FileHandle = any;
+const open = promises.open;
+import { flock } from "fs-ext";
 
 /*
     At time of writing, there's only an in-memory implementation of 
@@ -29,12 +31,22 @@ export class LogBackedStore implements Store {
         this.initialized = this.#initialize(filename, reset);
     }
 
+    async #openAndLock(filename: string): Promise<FileHandle> {
+        return new Promise(async (resolve, reject) => {
+            const fh = await open(filename, "a+");
+            flock(fh.fd, "exnb", async (err) => {
+                if (err) return reject(err);
+                resolve(fh);
+            });
+        });
+    }
+
     async #initialize(filename: string, reset: boolean): Promise<void> {
         this.#indexedDbStore = new IndexedDbStore(filename, reset);
         await this.#indexedDbStore.initialized;
 
         // TODO: probably should get an exclusive lock on the file
-        this.#fileHandle = await promises.open(filename, "a+");
+        this.#fileHandle = await this.#openAndLock(filename);
         if (reset) {
             await this.#fileHandle.truncate();
         } else {
