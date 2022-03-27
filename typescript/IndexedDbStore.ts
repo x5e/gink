@@ -7,8 +7,7 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
 import { Commit } from "transactions_pb";
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { Store } from "./Store";
-import { CommitBytes, Timestamp, Medallion, ChainStart, HasMap, CommitInfo } from "./typedefs";
-
+import { CommitBytes, Timestamp, Medallion, ChainStart, HasMap, CommitInfo, ActiveChains } from "./typedefs";
 
 export interface ChainInfo {
     medallion: Medallion;
@@ -52,6 +51,11 @@ export class IndexedDbStore implements Store {
                     This will keep track of which transactions have been processed per chain.
                 */
                 db.createObjectStore('chainInfos', { keyPath: ["medallion", "chainStart"] });
+
+                /*
+                    Keep track of active chains this instance can write to.
+                */
+                db.createObjectStore('activeChains', { keyPath: "medallion" });
             },
         });
     }
@@ -59,6 +63,24 @@ export class IndexedDbStore implements Store {
     async close() {
         await this.initialized;
         this.#wrapped.close();
+    }
+
+    async getActiveChains(): Promise<ActiveChains> {
+        await this.initialized;
+        const objectStore = this.#wrapped.transaction("activeChains").objectStore("activeChains");
+        const items = await objectStore.getAll();
+        const result = new Map();
+        for (let i=0; i<items.length; i++) {
+            result.set(items[i].medallion, items[i].chainStart);
+        }
+        return result;
+    }
+
+    async activateChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
+        await this.initialized;
+        const wrappedTransaction = this.#wrapped.transaction(['activeChains'], 'readwrite');
+        await wrappedTransaction.objectStore('activeChains').add({chainStart, medallion});
+        await wrappedTransaction.done;
     }
 
     async getHasMap(): Promise<HasMap> {
@@ -82,7 +104,7 @@ export class IndexedDbStore implements Store {
         return await store.getAll();
     }
 
-    async addCommit(trxn: CommitBytes, hasMap?: HasMap): Promise<CommitInfo|null> {
+    async addCommit(trxn: CommitBytes, hasMap?: HasMap): Promise<CommitInfo | null> {
         await this.initialized;
         let parsed = Commit.deserializeBinary(trxn);
         const medallion = parsed.getMedallion();

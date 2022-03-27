@@ -1,4 +1,4 @@
-import { CommitBytes, HasMap, CommitInfo } from "./typedefs"
+import { CommitBytes, HasMap, CommitInfo, ActiveChains, Medallion, ChainStart } from "./typedefs"
 
 export interface Store {
 
@@ -8,6 +8,27 @@ export interface Store {
      * Generates a HasMap describing how much of each chain this store has.
      */
     getHasMap: () => Promise<HasMap>;
+
+    /**
+     * Returns a set of chains that may be appended to.
+     * You'll need to getHasMap to figure out the last 
+     * commit for any chain you want to add to though.
+     */
+    getActiveChains: () => Promise<ActiveChains>;
+
+    /**
+     * Start a chain (medallion must be reserved or randomly generated).
+     * User must also create an initial transaction with the ChainStart
+     * timestamp and add it via addCommit().  
+     */
+    activateChain: (medallion: Medallion, chainStart: ChainStart) => Promise<void>;
+
+    /**
+     * Mark a chain as being closed and unavailable for new commits.
+     * (Not really necessary when medallions are randomly generated).
+     * endChain: (medallion: Medallion) => Promise<void>;
+     * Needs to be added for version 2;
+     */
 
     /**
      * Tries to add a commit to this store; returns truthy

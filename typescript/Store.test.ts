@@ -124,4 +124,13 @@ export function testStore(implName: string, storeMaker: StoreMaker) {
         expect(Commit.deserializeBinary(sent[2]).getTimestamp()).toBe(NEXT_TS1);
         expect(Commit.deserializeBinary(sent[3]).getTimestamp()).toBe(NEXT_TS2);
     });
+
+    test(`${implName} test claim chains`, async () => {
+        await store.activateChain(MEDALLION1, START_MICROS1);
+        await store.activateChain(MEDALLION2, START_MICROS2);
+        const active = await store.getActiveChains();
+        expect(active.size).toBe(2);
+        expect(active.get(MEDALLION1)).toBe(START_MICROS1);
+        expect(active.get(MEDALLION2)).toBe(START_MICROS2);
+    });
 }

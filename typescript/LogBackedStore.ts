@@ -1,12 +1,12 @@
-import { CommitBytes, HasMap, CommitInfo } from "./typedefs";
+import { CommitBytes, HasMap, CommitInfo, ActiveChains, Medallion, ChainStart } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
-import { Log as TransactionLog } from "messages_pb";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
 const promises = require("fs").promises;
 type FileHandle = any;
 const open = promises.open;
 import { flock } from "fs-ext";
+import { LogFile } from "log_pb";
 
 /*
     At time of writing, there's only an in-memory implementation of 
@@ -45,7 +45,6 @@ export class LogBackedStore implements Store {
         this.#indexedDbStore = new IndexedDbStore(filename, reset);
         await this.#indexedDbStore.initialized;
 
-        // TODO: probably should get an exclusive lock on the file
         this.#fileHandle = await this.#openAndLock(filename);
         if (reset) {
             await this.#fileHandle.truncate();
@@ -55,10 +54,15 @@ export class LogBackedStore implements Store {
             if (size) {
                 const uint8Array = new Uint8Array(size);
                 await this.#fileHandle.read(uint8Array, 0, size, 0);
-                const trxns = TransactionLog.deserializeBinary(uint8Array).getTransactionsList();
+                const logFile = LogFile.deserializeBinary(uint8Array);
+                const trxns = logFile.getTransactionsList();
                 for (const trxn of trxns) {
                     const added = !!(await this.#indexedDbStore.addCommit(trxn));
                     this.#commitsProcessed += added ? 1 : 0;
+                }
+                const chainEntries = logFile.getChainEntries();
+                for (const entry of chainEntries) {
+                    await this.#indexedDbStore.activateChain(entry.getMedallion(), entry.getChainStart());
                 }
             }
         }
@@ -73,11 +77,27 @@ export class LogBackedStore implements Store {
         await this.initialized;
         const added = await this.#indexedDbStore.addCommit(trxn);
         if (added) {
-            const logFragment = new TransactionLog();
+            const logFragment = new LogFile();
             logFragment.setCommitsList([trxn]);
             await this.#fileHandle.appendFile(logFragment.serializeBinary());
         }
         return added;
+    }
+
+    async getActiveChains() {
+        await this.initialized;
+        return this.#indexedDbStore.getActiveChains();
+    }
+
+    async activateChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
+        await this.initialized;
+        const fragment = new LogFile();
+        const entry = new LogFile.ChainEntry();
+        entry.setChainStart(chainStart);
+        entry.setMedallion(medallion);
+        fragment.setChainEntriesList([entry]);
+        await this.#fileHandle.appendFile(fragment.serializeBinary());
+        await this.#indexedDbStore.activateChain(medallion, chainStart);
     }
     
     async getHasMap(): Promise<HasMap> {
