@@ -1,7 +1,6 @@
 import { Medallion, ChainStart, CommitBytes, HasMap, Timestamp } from "./typedefs"
 import { Store } from "./Store";
 import { Commit } from "transactions_pb";
-
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 
@@ -39,7 +38,7 @@ function extendChain(comment: string, previous: CommitBytes, timestamp: Timestam
     return subsequent.serializeBinary();
 }
 
-async function addTrxns(store: Store, hasMap?: HasMap) {
+export async function addTrxns(store: Store, hasMap?: HasMap) {
     const start1 = makeChainStart("chain1,tx1", MEDALLION1, START_MICROS1);
     await store.addCommit(start1, hasMap);
     const next1 = extendChain("chain1,tx2", start1, NEXT_TS1);
@@ -60,6 +59,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
 
     beforeEach(async () => {
         store = await storeMaker();
+        await store.initialized;
     });
 
     afterEach(async () => {

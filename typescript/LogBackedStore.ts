@@ -28,12 +28,17 @@ export class LogBackedStore implements Store {
     #indexedDbStore: IndexedDbStore;
 
     constructor(filename: string, reset = false) {
+        if (globalThis.debugging)
+            console.log(`creating LogBackedStore ${filename}, reset=${reset}`)
         this.initialized = this.#initialize(filename, reset);
     }
 
-    async #openAndLock(filename: string): Promise<FileHandle> {
+    async #openAndLock(filename: string, truncate?: boolean): Promise<FileHandle> {
         return new Promise(async (resolve, reject) => {
             const fh = await open(filename, "a+");
+            // It's better to truncate rather than unlink, because an unlink could result
+            // in two instances thinking that they have a lock on the same file.
+            if (truncate) await fh.truncate();
             flock(fh.fd, "exnb", async (err) => {
                 if (err) return reject(err);
                 resolve(fh);
@@ -42,13 +47,16 @@ export class LogBackedStore implements Store {
     }
 
     async #initialize(filename: string, reset: boolean): Promise<void> {
-        this.#indexedDbStore = new IndexedDbStore(filename, reset);
+
+        // Try (and maybe fail) to get a lock on the file before resetting the in-memory store,
+        // so that we don't mess things up if another LogBackedStore has this file open.
+        this.#fileHandle = await this.#openAndLock(filename, reset);
+
+        // Assuming we have the lock, clear the in memory store and then re-populate it.
+        this.#indexedDbStore = new IndexedDbStore(filename, true);
         await this.#indexedDbStore.initialized;
 
-        this.#fileHandle = await this.#openAndLock(filename);
-        if (reset) {
-            await this.#fileHandle.truncate();
-        } else {
+        if (!reset) {
             const stats = await this.#fileHandle.stat();
             const size = stats.size;
             if (size) {
