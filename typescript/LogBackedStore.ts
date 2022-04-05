@@ -1,4 +1,4 @@
-import { CommitBytes, HasMap, CommitInfo, ActiveChains, Medallion, ChainStart } from "./typedefs";
+import { CommitBytes, HasMap, CommitInfo, ClaimedChains, Medallion, ChainStart } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -70,7 +70,7 @@ export class LogBackedStore implements Store {
                 }
                 const chainEntries = logFile.getChainEntriesList();
                 for (const entry of chainEntries) {
-                    await this.#indexedDbStore.activateChain(entry.getMedallion(), entry.getChainStart());
+                    await this.#indexedDbStore.claimChain(entry.getMedallion(), entry.getChainStart());
                 }
             }
         }
@@ -92,12 +92,12 @@ export class LogBackedStore implements Store {
         return added;
     }
 
-    async getActiveChains() {
+    async getClaimedChains() {
         await this.initialized;
-        return this.#indexedDbStore.getActiveChains();
+        return this.#indexedDbStore.getClaimedChains();
     }
 
-    async activateChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
+    async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
         await this.initialized;
         const fragment = new LogFile();
         const entry = new LogFile.ChainEntry();
@@ -105,7 +105,7 @@ export class LogBackedStore implements Store {
         entry.setMedallion(medallion);
         fragment.setChainEntriesList([entry]);
         await this.#fileHandle.appendFile(fragment.serializeBinary());
-        await this.#indexedDbStore.activateChain(medallion, chainStart);
+        await this.#indexedDbStore.claimChain(medallion, chainStart);
     }
     
     async getHasMap(): Promise<HasMap> {

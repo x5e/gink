@@ -2,9 +2,10 @@ var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
     eval("require('websocket').w3cwebsocket");
 import { Peer } from "./Peer";
 import { Store } from "./Store";
-import { makeHasMap, hasMapToGreeting } from "./utils";
-import { HasMap, CommitBytes, CommitInfo } from "./typedefs";
+import { makeHasMap, hasMapToGreeting, makeMedallion, assert } from "./utils";
+import { HasMap, CommitBytes, CommitInfo, ClaimedChains, Medallion, ChainStart, Timestamp } from "./typedefs";
 import { Message } from "messages_pb";
+import { Commit } from "transactions_pb";
 
 
 export class Client {
@@ -13,11 +14,38 @@ export class Client {
     #store: Store;
     #iHave: HasMap;
     #countConnections: number = 0; // Includes disconnected clients.
+    #availableChains: ClaimedChains;
     readonly peers: Map<number, Peer> = new Map();
 
     constructor(store: Store) {
         this.#store = store;
         this.initialized = this.#initialize();
+    }
+
+    async getChainManager(): Promise<ChainManager> {
+        let medallion: number;
+        let chainStart: number;
+        let seenTo: number;
+        if (this.#availableChains.size == 0) {
+            medallion = makeMedallion();
+            seenTo = chainStart = Date.now() * 1000;
+            const startCommit = new Commit();
+            startCommit.setTimestamp(seenTo);
+            startCommit.setChainStart(chainStart);
+            startCommit.setMedallion(medallion);
+            startCommit.setComment("<start>");
+            const startCommitBytes = startCommit.serializeBinary();
+            await this.#store.addCommit(startCommitBytes, this.#iHave);
+            await this.#store.claimChain(medallion, chainStart);
+            await this.receiveCommit(0, startCommitBytes);
+        } else {
+            const iterator = this.#availableChains.entries();
+            [medallion, chainStart] = iterator.next().value;
+            seenTo = this.#iHave.get(medallion)?.get(chainStart);
+            assert(seenTo);
+            this.#availableChains.delete(medallion);
+        }
+        return new ChainManager(this, medallion, chainStart, seenTo);
     }
 
     async close() {
@@ -30,6 +58,7 @@ export class Client {
     async #initialize() {
         await this.#store.initialized;
         this.#iHave = await this.#store.getHasMap();
+        this.#availableChains = await this.#store.getClaimedChains();
     }
 
     // returns a truthy number that can be used as a connection id
@@ -120,5 +149,18 @@ export class Client {
                 }
             }
         });
+    }
+}
+
+export class ChainManager {
+    readonly #client: Client;
+    readonly #medallion: Medallion;
+    readonly #chainStart: ChainStart;
+    #lastSeen: Timestamp;
+    constructor(client: Client, medallion: Medallion, chainStart: ChainStart, lastSeen: Timestamp) {
+        this.#client = client;
+        this.#medallion = medallion;
+        this.#chainStart = chainStart;
+        this.#lastSeen = lastSeen;
     }
 }

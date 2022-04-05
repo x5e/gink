@@ -6,7 +6,7 @@ export type ChainStart = Timestamp;
 export type SeenThrough = Timestamp;
 export type HasMap = Map<Medallion,Map<ChainStart,SeenThrough>>;
 export type PriorTime = Timestamp;
-export type ActiveChains = Map<Medallion, ChainStart>;
+export type ClaimedChains = Map<Medallion, ChainStart>;
 
 
 // [Timestamp, Medallion] should enough to uniquely specify a Commit.

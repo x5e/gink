@@ -57,3 +57,11 @@ export function makeCommitMessage(commitBytes: Uint8Array): Uint8Array {
     const msgBytes = message.serializeBinary();
     return msgBytes;
 }
+
+export function makeMedallion() {
+    // TODO: figure out a cryptographically secure random number generator
+    // that will work in both node and the browser.
+    const result = Math.floor(Math.random() * (2**48)) + 2**48;
+    assert(result < 2**49 && result > 2**48);
+    return result;
+}

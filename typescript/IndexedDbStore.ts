@@ -7,7 +7,7 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
 import { Commit } from "transactions_pb";
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { Store } from "./Store";
-import { CommitBytes, Timestamp, Medallion, ChainStart, HasMap, CommitInfo, ActiveChains } from "./typedefs";
+import { CommitBytes, Timestamp, Medallion, ChainStart, HasMap, CommitInfo, ClaimedChains } from "./typedefs";
 
 export interface ChainInfo {
     medallion: Medallion;
@@ -67,7 +67,7 @@ export class IndexedDbStore implements Store {
         this.#wrapped.close();
     }
 
-    async getActiveChains(): Promise<ActiveChains> {
+    async getClaimedChains(): Promise<ClaimedChains> {
         await this.initialized;
         const objectStore = this.#wrapped.transaction("activeChains").objectStore("activeChains");
         const items = await objectStore.getAll();
@@ -78,7 +78,7 @@ export class IndexedDbStore implements Store {
         return result;
     }
 
-    async activateChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
+    async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
         await this.initialized;
         const wrappedTransaction = this.#wrapped.transaction(['activeChains'], 'readwrite');
         await wrappedTransaction.objectStore('activeChains').add({chainStart, medallion});
