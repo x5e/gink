@@ -1,4 +1,4 @@
-import { CommitBytes, HasMap, CommitInfo, ClaimedChains, Medallion, ChainStart } from "./typedefs";
+import { CommitBytes, CommitInfo, Medallion, ChainStart } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -7,6 +7,9 @@ type FileHandle = any;
 const open = promises.open;
 import { flock } from "fs-ext";
 import { LogFile } from "log_pb";
+import { extractCommitInfo } from "./utils";
+import { assert } from "console";
+import { HasMap } from "./HasMap";
 
 /*
     At time of writing, there's only an in-memory implementation of 
@@ -63,10 +66,12 @@ export class LogBackedStore implements Store {
                 const uint8Array = new Uint8Array(size);
                 await this.#fileHandle.read(uint8Array, 0, size, 0);
                 const logFile = LogFile.deserializeBinary(uint8Array);
-                const trxns = logFile.getCommitsList();
-                for (const trxn of trxns) {
-                    const added = !!(await this.#indexedDbStore.addCommit(trxn));
-                    this.#commitsProcessed += added ? 1 : 0;
+                const commits = logFile.getCommitsList();
+                for (const commit of commits) {
+                    const commitInfo = extractCommitInfo(commit)
+                    const added = await this.#indexedDbStore.addCommit(commit, commitInfo);
+                    assert(added);
+                    this.#commitsProcessed += 1;
                 }
                 const chainEntries = logFile.getChainEntriesList();
                 for (const entry of chainEntries) {
@@ -81,12 +86,12 @@ export class LogBackedStore implements Store {
         return this.#commitsProcessed;
     }
 
-    async addCommit(trxn: CommitBytes): Promise<CommitInfo|null> {
+    async addCommit(commitBytes: CommitBytes, commitInfo: CommitInfo): Promise<Boolean> {
         await this.initialized;
-        const added = await this.#indexedDbStore.addCommit(trxn);
+        const added = await this.#indexedDbStore.addCommit(commitBytes, commitInfo);
         if (added) {
             const logFragment = new LogFile();
-            logFragment.setCommitsList([trxn]);
+            logFragment.setCommitsList([commitBytes]);
             await this.#fileHandle.appendFile(logFragment.serializeBinary());
         }
         return added;
@@ -113,11 +118,9 @@ export class LogBackedStore implements Store {
         return await this.#indexedDbStore.getHasMap();
     }
 
-    async getNeededCommits(
-        callBack: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void,
-        hasMap?: HasMap): Promise<HasMap> {
+    async getCommits(callBack: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void): Promise<void> {
         await this.initialized;
-        return await this.#indexedDbStore.getNeededCommits(callBack, hasMap);
+        await this.#indexedDbStore.getCommits(callBack);
     }
 
     async close() {

@@ -93,7 +93,7 @@ export class Server extends Client {
         }
         else if (webSocketMessage.type === 'binary') {
             console.log('Server received binary message of ' + webSocketMessage.binaryData.length + ' bytes.');
-            this.receiveMessage(connectionId, webSocketMessage.binaryData);
+            this.receiveMessage(webSocketMessage.binaryData, connectionId);
         }
     }
 }

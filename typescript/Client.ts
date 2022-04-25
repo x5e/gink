@@ -2,20 +2,21 @@ var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
     eval("require('websocket').w3cwebsocket");
 import { Peer } from "./Peer";
 import { Store } from "./Store";
-import { makeHasMap, hasMapToGreeting, makeMedallion, assert } from "./utils";
-import { HasMap, CommitBytes, CommitInfo, ClaimedChains, Medallion, ChainStart, Timestamp, Offset } 
+import { makeMedallion, assert, extractCommitInfo } from "./utils";
+import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset } 
     from "./typedefs";
 import { Message } from "messages_pb";
 import { Commit as CommitMessage } from "transactions_pb";
+import { HasMap } from "./HasMap";
 
 
 export class Client {
 
     initialized: Promise<void>;
     #store: Store;
-    #iHave: HasMap;
     #countConnections: number = 0; // Includes disconnected clients.
     #availableChains: ClaimedChains;
+    #iHave: HasMap;
     readonly peers: Map<number, Peer> = new Map();
 
     constructor(store: Store) {
@@ -40,13 +41,12 @@ export class Client {
             startCommit.setMedallion(medallion);
             startCommit.setComment("<start>");
             const startCommitBytes = startCommit.serializeBinary();
-            await this.#store.addCommit(startCommitBytes, this.#iHave);
+            await this.receiveCommit(startCommitBytes);
             await this.#store.claimChain(medallion, chainStart);
-            await this.receiveCommit(0, startCommitBytes);
         } else {
             const iterator = this.#availableChains.entries();
             [medallion, chainStart] = iterator.next().value;
-            seenTo = this.#iHave.get(medallion)?.get(chainStart);
+            seenTo = this.#iHave.getSeenTo(medallion, chainStart)
             assert(seenTo);
             this.#availableChains.delete(medallion);
         }
@@ -62,8 +62,8 @@ export class Client {
 
     async #initialize() {
         await this.#store.initialized;
-        this.#iHave = await this.#store.getHasMap();
         this.#availableChains = await this.#store.getClaimedChains();
+        this.#iHave = await this.#store.getHasMap();
     }
 
     // returns a truthy number that can be used as a connection id
@@ -72,44 +72,57 @@ export class Client {
     }
 
     /**
+     * Tries to add a commit to the local store.  If successful (i.e. it hasn't seen it before)
+     * then it will also publish that commit to the connected peers.
      * 
      * @param commitBytes The bytes that correspond to this transaction.
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns 
      */
-    async receiveCommit(fromConnectionId: number|null, commitBytes: CommitBytes) {
-        let commitInfo: CommitInfo|null = await this.#store.addCommit(commitBytes, this.#iHave);
-        if (!commitInfo) return; // commitInfo will be falsey if already had this commit
-        this.peers.get(fromConnectionId)?.markReceived(commitInfo);
+    async receiveCommit(commitBytes: CommitBytes, fromConnectionId?: number) {
+        const commitInfo = extractCommitInfo(commitBytes);
+        this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);
+        if (globalThis.debugging) {
+            console.log(`received commit: ${JSON.stringify(commitInfo)}`)
+        }
+        const added = await this.#store.addCommit(commitBytes, commitInfo);
+        // If this commit isn't new to this instance, then it will have already been 
+        // sent to the connected peers and doesn't need to be sent again.
+        if (!added) return;
         for (const [peerId, peer] of this.peers) {
             if (peerId != fromConnectionId)
                 peer.sendIfNeeded(commitBytes, commitInfo);
         }
     }
 
-    receiveMessage(fromConnectionId: number, messageBytes: Uint8Array) {
+    receiveMessage(messageBytes: Uint8Array, fromConnectionId: number) {
+        const peer = this.peers.get(fromConnectionId);
+        if (!peer) throw Error("Got a message from a peer I don't have a proxy for?")
         try {
             const parsed = Message.deserializeBinary(messageBytes);
             if (parsed.hasCommit()) {
                 const commitBytes: CommitBytes = parsed.getCommit_asU8();
-                this.receiveCommit(fromConnectionId, commitBytes);
+                // TODO: chain these receiveCommit class to ensure they get processed
+                // in the order of being received.
+                this.receiveCommit(commitBytes, fromConnectionId);
                 return;
             }
             if (parsed.hasGreeting()) {
                 const greeting = parsed.getGreeting();
-                const hasMap = makeHasMap({ greeting });
-                this.peers.get(fromConnectionId)?.receiveHasMap(hasMap);
+                peer.receiveHasMap(new HasMap({ greeting }));
+                // TODO: figure out how to block processing of receiving other messages while sending
+                this.#store.getCommits(peer.sendIfNeeded.bind(peer));
                 return;
             }
         } catch (e) {
-            //TODO: Send some sensible code to say what went wrong.
+            //TODO: Send some sensible code to the peer to say what went wrong.
             this.peers.get(fromConnectionId)?.close();
             this.peers.delete(fromConnectionId);
         }   
     }
 
     getGreetingMessageBytes(): Uint8Array {
-        const greeting = hasMapToGreeting(this.#iHave);
+        const greeting = this.#iHave.constructGreeting();
         const msg = new Message();
         msg.setGreeting(greeting);
         return msg.serializeBinary();
@@ -117,7 +130,7 @@ export class Client {
 
     async connectTo(target: string): Promise<Peer> {
         await this.initialized;
-        const bus = this;
+        const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
             let opened = false;
             const connectionId = this.createConnectionId();
@@ -128,8 +141,8 @@ export class Client {
                 websocketClient.close.bind(websocketClient));
             websocketClient.onopen = function (_ev: Event) {
                 console.log(`opened connection ${connectionId} to ${target}`);
-                websocketClient.send(bus.getGreetingMessageBytes());
-                bus.peers.set(connectionId, peer);
+                websocketClient.send(thisClient.getGreetingMessageBytes());
+                thisClient.peers.set(connectionId, peer);
                 opened = true;
                 resolve(peer);
             }
@@ -139,7 +152,7 @@ export class Client {
             websocketClient.onclose = function (ev: CloseEvent) {
                 console.log(`closed connection ${connectionId} to ${target}`);
                 if (opened) {
-                    bus.peers.delete(connectionId);
+                    thisClient.peers.delete(connectionId);
                 } else {
                     reject(ev);
                 }
@@ -148,7 +161,7 @@ export class Client {
                 const data = ev.data;
                 if (data instanceof ArrayBuffer) {
                     const uint8View = new Uint8Array(data);
-                    bus.receiveMessage(connectionId, uint8View);
+                    thisClient.receiveMessage(uint8View, connectionId);
                 } else {
                     console.error(`got non-arraybuffer message: ${data}`)
                 }
@@ -157,6 +170,10 @@ export class Client {
     }
 }
 
+/**
+ * Its expected that each thread will have a unique chain to add commits to.
+ * The ChainManager class is expected to be this thread-specific class.
+ */
 export class ChainManager {
     readonly #client: Client;
     readonly #medallion: Medallion;
@@ -179,6 +196,7 @@ export class ChainManager {
      */
     async addCommit(commit: Commit): Promise<Timestamp> {
         // We want to ensure that commits are ordered on the chain in the order that addCommit is called.
+        // This is done by chaining promises (which ensures that they will be resolved in order).
         this.#last = this.#last.then((lastTimestamp) => new Promise<number>((resolve)=> {
             // If the current time isn't greater than the last timestamp, then we need to wait a bit 
             // so that all commits get a unique timestamp.
@@ -187,7 +205,7 @@ export class ChainManager {
                 const newTimestamp = Date.now() * 1000;
                 assert(newTimestamp > lastTimestamp);
                 const bytes = commit.seal(this.#medallion, this.#chainStart, lastTimestamp, newTimestamp);
-                await this.#client.receiveCommit(undefined, bytes);
+                await this.#client.receiveCommit(bytes);
                 resolve(newTimestamp);
             }, waitNeeded);
         }));
@@ -205,6 +223,7 @@ export class Commit {
     #comment: string|null = null;
     #timestamp: Timestamp|null = null;
     #medallion: Medallion|null = null;
+    #serialized: Uint8Array|null = null;
 
     constructor(comment?: string) {
         this.#comment = comment;
@@ -229,23 +248,41 @@ export class Commit {
         commitMessage.setChainStart(chainStart);
         commitMessage.setMedallion(medallion);
         if (this.#comment) { commitMessage.setComment(this.#comment); }
-        return commitMessage.serializeBinary();
+        this.#serialized = commitMessage.serializeBinary();
+        return this.#serialized;
     }
 
+    /**
+     * The timestamp won't be available until this Commit has been sealed to a chain.
+     */
     get timestamp() {
         assert(this.#timestamp);
         return this.#timestamp;
     }
 
+    /**
+     * The medallion for this Commit won't be available until it's sealed to a chain.
+     */
     get medallion() {
         assert(this.#medallion);
         return this.#medallion;
+    }
+
+    get serialized() {
+        assert(this.#serialized);
+        return this.#serialized;
     }
 
 }
 
 export class Obj {}
 
+/**
+ * This Identifier class is intended to be used when you want
+ * one object within a commit to reference another object within
+ * the same commit (though it could also be used to reference 
+ * objects from other commits that have been sealed).
+ */
 export class Identifier {
     readonly commit: Commit;
     readonly offset: Offset;

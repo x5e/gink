@@ -7,13 +7,32 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
 import { Commit } from "transactions_pb";
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { Store } from "./Store";
-import { CommitBytes, Timestamp, Medallion, ChainStart, HasMap, CommitInfo, ClaimedChains } from "./typedefs";
+import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, ClaimedChains, PriorTime } from "./typedefs";
+import { HasMap } from "./HasMap"
+
+// IndexedDb orders entries in its b-tree according to a tuple.
+// So this CommitKey is specific to this implementation of the Store.
+// [Timestamp, Medallion] should enough to uniquely specify a Commit.
+// ChainStart and PriorTime are just included here to avoid re-parsing.
+export type CommitKey = [Timestamp, Medallion, ChainStart, PriorTime];
+
+function commitInfoToKey(commitInfo: CommitInfo): CommitKey {
+    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart, commitInfo.priorTime]
+}
+
+function commitKeyToInfo(commitKey: CommitKey) {
+    return {
+        timestamp: commitKey[0],
+        medallion: commitKey[1],
+        chainStart: commitKey[2],
+        priorTime: commitKey[3],
+    }
+}
 
 export interface ChainInfo {
     medallion: Medallion;
     chainStart: ChainStart;
     seenThrough: Timestamp;
-    lastComment?: string;
 }
 
 export class IndexedDbStore implements Store {
@@ -72,7 +91,7 @@ export class IndexedDbStore implements Store {
         const objectStore = this.#wrapped.transaction("activeChains").objectStore("activeChains");
         const items = await objectStore.getAll();
         const result = new Map();
-        for (let i=0; i<items.length; i++) {
+        for (let i = 0; i < items.length; i++) {
             result.set(items[i].medallion, items[i].chainStart);
         }
         return result;
@@ -81,20 +100,19 @@ export class IndexedDbStore implements Store {
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
         await this.initialized;
         const wrappedTransaction = this.#wrapped.transaction(['activeChains'], 'readwrite');
-        await wrappedTransaction.objectStore('activeChains').add({chainStart, medallion});
+        await wrappedTransaction.objectStore('activeChains').add({ chainStart, medallion });
         await wrappedTransaction.done;
     }
 
     async getHasMap(): Promise<HasMap> {
         await this.initialized;
-        const hasMap: HasMap = new Map();
+        const hasMap: HasMap = new HasMap({});
         (await this.#getChainInfos()).map((value) => {
-            let medallionMap = hasMap.get(value.medallion);
-            if (!medallionMap) {
-                medallionMap = new Map();
-                hasMap.set(value.medallion, medallionMap);
-            }
-            medallionMap.set(value.chainStart, value.seenThrough);
+            hasMap.markIfNovel({
+                medallion: value.medallion,
+                chainStart: value.chainStart,
+                timestamp: value.seenThrough
+            })
         })
         return hasMap;
     }
@@ -106,82 +124,45 @@ export class IndexedDbStore implements Store {
         return await store.getAll();
     }
 
-    async addCommit(trxn: CommitBytes, hasMap?: HasMap): Promise<CommitInfo | null> {
+    async addCommit(commitBytes: CommitBytes, commitInfo: CommitInfo): Promise<Boolean> {
         await this.initialized;
-        let parsed = Commit.deserializeBinary(trxn);
-        const medallion = parsed.getMedallion();
-        const chainStart = parsed.getChainStart();
-        const infoKey = [medallion, chainStart];
+        const {timestamp, medallion, chainStart, priorTime} = commitInfo
         const wrappedTransaction = this.#wrapped.transaction(['trxns', 'chainInfos'], 'readwrite');
-        const trxnPreviousTimestamp = parsed.getPreviousTimestamp();
-        const trxnTimestamp = parsed.getTimestamp();
-        let oldChainInfo: ChainInfo = await wrappedTransaction.objectStore("chainInfos").get(infoKey);
-        if (oldChainInfo || trxnPreviousTimestamp != 0) {
-            if (oldChainInfo?.seenThrough >= trxnTimestamp) {
-                return null;
+        let oldChainInfo: ChainInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
+        if (oldChainInfo || priorTime != 0) {
+            if (oldChainInfo?.seenThrough >= timestamp) {
+                return false;
             }
-            if (oldChainInfo?.seenThrough != trxnPreviousTimestamp) {
-                throw new Error(`missing prior chain entry for ${parsed.toObject()}, have ${oldChainInfo}`);
+            if (oldChainInfo?.seenThrough != priorTime) {
+                throw new Error(`missing prior chain entry for ${commitInfo}, have ${oldChainInfo}`);
             }
         }
         let newInfo: ChainInfo = {
             medallion: medallion,
             chainStart: chainStart,
-            seenThrough: trxnTimestamp,
-            lastComment: parsed.getComment(),
+            seenThrough: timestamp,
         }
         await wrappedTransaction.objectStore("chainInfos").put(newInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring re-parsing.
-        const trxnKey: CommitInfo = [trxnTimestamp, medallion, chainStart, trxnPreviousTimestamp];
-        await wrappedTransaction.objectStore("trxns").add(trxn, trxnKey);
+        const commitKey: CommitKey = commitInfoToKey(commitInfo);
+        await wrappedTransaction.objectStore("trxns").add(commitBytes, commitKey);
         await wrappedTransaction.done;
-        if (hasMap) {
-            if (!hasMap.has(medallion)) { hasMap.set(medallion, new Map()); }
-            hasMap.get(medallion).set(chainStart, trxnTimestamp);
-        }
-        return trxnKey;
+        return true;
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated
-    // to the current commit, so its best if `callBack` doesn't call await.
-    async getNeededCommits(
-        callBack: (commitBytes: Commit, commitInfo: CommitInfo) => void,
-        hasMap?: HasMap) {
-
+    // to the current commit, so its best if `callBack` doesn't await.
+    async getCommits(callBack: (commitBytes: Commit, commitInfo: CommitInfo) => void) {
         await this.initialized;
-        hasMap = hasMap ?? new Map();
 
         // We loop through all commits and send those the peer doesn't have.
         for (let cursor = await this.#wrapped.transaction("trxns").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
-            const commitInfo = <CommitInfo>cursor.key;
+            const commitKey = <CommitKey>cursor.key;
+            const commitInfo = commitKeyToInfo(commitKey);
             const commitBytes: CommitBytes = cursor.value;
-            const [trxnTime, medallion, chainStart, priorTime] = commitInfo;
-            if (!hasMap.has(medallion)) { hasMap.set(medallion, new Map()); }
-            let seenThrough = hasMap.get(medallion).get(chainStart);
-            if (!seenThrough) {
-                if (priorTime == 0) {
-                    // happy path: sending the start of a chain
-                    callBack(commitBytes, commitInfo);
-                    hasMap.get(medallion).set(chainStart, trxnTime);
-                    continue;
-                }
-                throw new Error(`Peer doesn't have the start of ${medallion},${chainStart}` +
-                    "and neither do I.");
-            }
-            if (seenThrough >= trxnTime) {
-                continue;  // happy path: peer doesn't need this commit
-            }
-            if (seenThrough == priorTime) {
-                // another happy path: peer has everything in this chain up to this commit
-                callBack(commitBytes, commitInfo);
-                hasMap.get(medallion).set(chainStart, trxnTime);
-                continue;
-            }
-            throw new Error(`unable to continue chain ${medallion},${chainStart} ` +
-                `peer has seenThrough=${seenThrough}, I have priorTime=${priorTime}`);
+            callBack(commitBytes, commitInfo);
         }
-        return hasMap;
     }
 }

@@ -1,5 +1,16 @@
-import { Medallion, ChainStart, SeenThrough, HasMap } from "./typedefs"
-import { Greeting, Message } from "messages_pb";
+import { CommitInfo } from "./typedefs"
+import { Message } from "messages_pb";
+import { Commit } from "transactions_pb";
+
+export function extractCommitInfo(commitBytes: Uint8Array): CommitInfo {
+    const parsed = Commit.deserializeBinary(commitBytes);
+    return {
+        timestamp: parsed.getTimestamp(), 
+        medallion: parsed.getMedallion(), 
+        chainStart: parsed.getChainStart(), 
+        priorTime: parsed.getPreviousTimestamp(),
+    }
+}
 
 export var assert = assert || function (x: any, msg?: string) {
     if (!x) throw new Error(msg ?? "assert failed");
@@ -8,38 +19,6 @@ export var assert = assert || function (x: any, msg?: string) {
 export function now() { return (new Date()).toISOString(); }
 
 export function noOp() {};
-
-export function makeHasMap({ greetingBytes = null, greeting = null }): HasMap {
-    const hasMap: HasMap = new Map();
-    if (greetingBytes) {
-        greeting = Greeting.deserializeBinary(greetingBytes)
-    }
-    assert(greeting, "greeting still null?");
-    for (let entry of greeting.getEntriesList()) {
-        const medallion: Medallion = entry.getMedallion();
-        const chainStart: ChainStart = entry.getChainStart();
-        const seenThrough: SeenThrough = entry.getSeenThrough();
-        if (!hasMap.has(medallion)) {
-            hasMap.set(medallion, new Map());
-        }
-        hasMap.get(medallion).set(chainStart, seenThrough);
-    }
-    return hasMap;
-}
-
-export function hasMapToGreeting(hasMap: HasMap) {
-    const greeting = new Greeting();
-    for (const [medallion, medallionMap] of hasMap) {
-        for (const [chainStart, seenThrough] of medallionMap) {
-            const entry = new Greeting.GreetingEntry();
-            entry.setMedallion(medallion);
-            entry.setChainStart(chainStart);
-            entry.setSeenThrough(seenThrough);
-            greeting.addEntries(entry);
-        }
-    }
-    return greeting;
-}
 
 /**
  * The Message proto contains an embedded oneof.  Essentially this will wrap

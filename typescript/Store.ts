@@ -1,4 +1,5 @@
-import { CommitBytes, HasMap, CommitInfo, ClaimedChains, Medallion, ChainStart } from "./typedefs"
+import { CommitBytes, CommitInfo, ClaimedChains, Medallion, ChainStart } from "./typedefs"
+import { HasMap } from "./HasMap"
 
 export interface Store {
 
@@ -6,6 +7,9 @@ export interface Store {
 
     /**
      * Generates a HasMap describing how much of each chain this store has.
+     * Note that this might be expensive to compute (e.g. require going to disk),
+     * so it's best for a user of this class to get a has map and then update that
+     * in-memory accounting object rather than re-requesting all the time.
      */
     getHasMap: () => Promise<HasMap>;
 
@@ -35,18 +39,16 @@ export interface Store {
      * Will throw if passed a commit without the proceeding
      * ones in the associated chain.
      */
-    addCommit: (trxn: CommitBytes, hasMap?: HasMap) => Promise<CommitInfo | null>;
+    addCommit: (trxn: CommitBytes, commitInfo: CommitInfo) => Promise<Boolean>;
 
     /**
-     * Send to the callback commits that a peer needs
-     * as evidenced by the HasMap (or all if no HasMap passed).
-     * The commits must be sent to the callback ordered by time.
-     * The passed HasMap should be updated as messages are sent.
-     * @returns the passed HasMap, or a new one appropriately populated.
+     * Get all commits from a store ordered by [timestamp, medallion].
+     * Intended to be used to send to a peer.
+     * 
+     * The callback should *NOT* await on anything (will cause problems 
+     * with the IndexedDb implementation if you do).
      */
-    getNeededCommits: (
-        callback: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void,
-        peerHasMap?: HasMap) => Promise<HasMap>;
+    getCommits: (callback: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void) => Promise<void>;
 
     close: () => Promise<void>;
 }

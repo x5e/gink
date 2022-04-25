@@ -1,6 +1,8 @@
-import { Medallion, ChainStart, CommitBytes, HasMap, Timestamp } from "./typedefs"
+import { Medallion, ChainStart, CommitBytes, Timestamp } from "./typedefs"
 import { Store } from "./Store";
 import { Commit } from "transactions_pb";
+import { HasMap } from "./HasMap";
+import { extractCommitInfo } from "./utils";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 
@@ -40,13 +42,13 @@ function extendChain(comment: string, previous: CommitBytes, timestamp: Timestam
 
 export async function addTrxns(store: Store, hasMap?: HasMap) {
     const start1 = makeChainStart("chain1,tx1", MEDALLION1, START_MICROS1);
-    await store.addCommit(start1, hasMap);
+    await store.addCommit(start1, extractCommitInfo(start1));
     const next1 = extendChain("chain1,tx2", start1, NEXT_TS1);
-    await store.addCommit(next1, hasMap);
+    await store.addCommit(next1, extractCommitInfo(next1));
     const start2 = makeChainStart("chain2,tx1", MEDALLION2, START_MICROS2);
-    await store.addCommit(start2, hasMap);
+    await store.addCommit(start2, extractCommitInfo(start2));
     const next2 = extendChain("chain2,2", start2, NEXT_TS2);
-    await store.addCommit(next2, hasMap);
+    await store.addCommit(next2, extractCommitInfo(next2));
 }
 
 /**
@@ -68,8 +70,9 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
 
     test(`${implName} test accepts chain start but only once`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const acceptedOnce = await store.addCommit(chainStart);
-        const acceptedTwice = await store.addCommit(chainStart);
+        const commitInfo = extractCommitInfo(chainStart)
+        const acceptedOnce = await store.addCommit(chainStart, commitInfo);
+        const acceptedTwice = await store.addCommit(chainStart, commitInfo);
         expect(acceptedOnce).toBeTruthy();
         expect(acceptedTwice).toBeFalsy();
     });
@@ -80,7 +83,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         let added = null;
         let barfed = false;
         try {
-            added = await store.addCommit(secondTrxn);
+            added = await store.addCommit(secondTrxn, extractCommitInfo(secondTrxn));
         } catch (e) {
             barfed = true;
         }
@@ -92,11 +95,11 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
         const thirdTrxn = extendChain("Hello, a third!", secondTrxn, NEXT_TS1+1);
-        await store.addCommit(chainStart);
+        await store.addCommit(chainStart, extractCommitInfo(chainStart));
         let added = null;
         let barfed = false;
         try {
-            added = await store.addCommit(thirdTrxn);
+            added = await store.addCommit(thirdTrxn, extractCommitInfo(thirdTrxn));
         } catch (e) {
             barfed = true;
         }
@@ -107,11 +110,9 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     test(`${implName} test creates greeting`, async () => {
         await addTrxns(store);
         const hasMap = await store.getHasMap();
-        expect(hasMap.size).toBe(2);
-        expect(hasMap.has(MEDALLION1));
-        expect(hasMap.has(MEDALLION2));
-        expect(hasMap.get(MEDALLION1).get(START_MICROS1)).toBe(NEXT_TS1);
-        expect(hasMap.get(MEDALLION2).get(START_MICROS2)).toBe(NEXT_TS2);
+
+        expect(hasMap.getSeenTo(MEDALLION1, START_MICROS1)).toBe(NEXT_TS1);
+        expect(hasMap.getSeenTo(MEDALLION2, START_MICROS2)).toBe(NEXT_TS2);
     });
 
     test(`${implName} test sends trxns in order`, async () => {
@@ -121,7 +122,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
             store = await replacer();
         }
         const sent: Array<CommitBytes> = [];
-        await store.getNeededCommits((x: CommitBytes) => {sent.push(x);});
+        await store.getCommits((x: CommitBytes) => {sent.push(x);});
         expect(sent.length).toBe(4);
         expect(Commit.deserializeBinary(sent[0]).getTimestamp()).toBe(START_MICROS1);
         expect(Commit.deserializeBinary(sent[1]).getTimestamp()).toBe(START_MICROS2);
