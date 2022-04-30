@@ -17,3 +17,9 @@ clean:
 
 test: node_modules javascript_protos
 	npm run test
+
+server: node_modules javascript_protos
+	GINK_PORT=8080 node ./node_modules/.bin/ts-node ./typescript/main.ts
+
+client: node_modules javascript_protos
+	node ./node_modules/.bin/ts-node ./typescript/main.ts ws://localhost:8080
