@@ -63,10 +63,10 @@ Each node in the system has a unique medallion to identify it.
 A number of different schemes could be
 used to assign these numbers, but for version 1, implementations should
 randomly select numbers the range 
-4503599627370496 to 9007199254740991 ('0x10000000000000' to '0x1FFFFFFFFFFFFF').
-Numbers in this range will always have exactly 14 hex digits.
+281474976710656 to 562949953421312 (2 ** 48 to 2 ** 49).
+Numbers in this range will always have exactly 13 hex digits.
 For example, one medallion randomly selected from that range could be
-6227685815851846, which has the hex sequence '16200C18D39B46'.
+555027746660010, which has the hex sequence `1F8CB77AE1EAA`.
 
 Though this initial version specifies that the first hex digit should 
 always be '1', future versions may allow for different digits, so 
@@ -74,25 +74,31 @@ implementations should not reject medallions outside the specified range,
 though they may assume that the medallion as an integer can be exactly
 represented in an IEEE Double.
 
-A muid with a zero medallion ('00000000000000') 
+A muid with a zero medallion (`00000000000000`) 
 may be used to designate pure timestamp and will 
-should never be used as an object identifier
-(and if the medallion is 0 the offset should be 0 as well).
+never be used as an object identifier
+(and if the medallion is 0 the offset must be 0 as well).
 
 # Offset
-Only four hex digits remain for the offset, effectively bounding transactions
-to have no more 65536 distinct objects a piece.  Additionally,
+Only five hex digits remain for the offset, effectively bounding transactions
+to have no more 1,048,576 distinct objects.  Additionally,
 the offset "0" should be used to designate refer to the transaction itself,
 when used with a non-zero medallion.
 
-For example, one offset could be the number 11 which has the hex digits "000B".
+For example, one offset could be the number 11 which has the hex digits "0000B".
 
-# Combined Cononical Representation
+# Combined String Representation
 Concatenating all of the upper case hex digits in the order:
-timestamp, medallion, offset together produces the cononical representation.
-Though adding dashes or underscores between components would have made 
-the representation marginally easier to read 
-(e.g., wrong: "05D5EAC793E61F-16200C18D39B46-000B"), 
-the dashes introduce problems for systems that parse hex digits.
-So the correct muid combining the examples from above 
-should be "05D5EAC793E61F16200C18D39B46000B".
+timestamp, medallion, offset together produces the cononical string representation.
+If the offset is 0 it may be omitted, and if both the offset and medallion are 0
+they may both be omitted.
+
+For example, combining the values from the prior explinations would give a muid who's string representation is `05D5EAC793E61F-1F8CB77AE1EAA-0000B`.
+
+Replacing the offset with 0 (representing the containing transaction) would give
+the muid `05D5EAC793E61F-1F8CB77AE1EAA-00000` that could also be written 
+`05D5EAC793E61F-1F8CB77AE1EAA`.
+
+Replacing both the offset and transaction numbers with 0 would result in a muid
+who's representation would be `05D5EAC793E61F-0000000000000-00000` or
+`05D5EAC793E61F-0000000000000` or `05D5EAC793E61F`.
