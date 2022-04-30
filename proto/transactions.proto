@@ -1,5 +1,4 @@
 syntax = "proto3";
-import "values.proto";
 package google.gink;
 
 /*
@@ -42,116 +41,8 @@ message Commit {
 message Obj {
     oneof body {
         Node node = 1;
-        Entry entry = 2;
-        Pop pop = 3;
-        Title title = 4;
-        Property property = 5;
-        Metadata metadata = 6;
-        ValueSpec value_spec = 7;
-        RowSpec row_spec = 8;
-        BytesSpec bytes_spec = 9;
     }
-}
-
-message ValueSpec {
-    // TBD
-}
-
-message RowSpec {
-    map<uint32,string> names = 2;
-    map<uint32,ValueSpec> value_specs = 3;
-}
-
-message Row {
-    oneof mask { // a bitmask indicating which columns are present
-        uint64 integer_mask = 1; 
-        bytes bytes_mask = 2; // only for when you have more than 63 columns
-    }
-    repeated Value values = 3;
-}
-
-message Property {
-    ValueSpec value_spec = 1;
-}
-
-message NodeKind {
-}
-
-message EdgeKind {
-    // designated exclusivity from source, e.g. an employee can have 
-    // only one manager but a manager can have multiple reports.
-    bool exclusive = 1;
-}
-
-message Title {
-    Muid describes = 1; // Property or NodeKind or EdgeKind
-    string title = 2;
-}
-
-message Metadata {
-    Muid describes = 1; // the id of a node or an entry
-    Muid property = 2; // the id of a property
-    Value value = 3;  // must adhere to the property's value spec if present
-}
-
-message Encrypted {
-    bytes encrypted = 1;
-    bytes iv = 2;
-    bytes key_id = 3; 
-}
-
-message BytesSpec {
-    // TBD
 }
 
 message Node {
-    enum Behavior {
-        NONE = 0;
-        STREAM = 8;
-        SCHEMA = 9;
-        BOX = 10;
-        FILE = 11;
-    }
-    oneof contents {
-        Muid node_kind = 1;
-        Behavior behavior = 2;
-        Row row = 3;
-        Value value = 4;
-        Encrypted encrypted_value = 5;
-        bytes octects = 8;
-        Encrypted encrypted_octects = 9;
-    }
-    Muid extends = 21; // optional inheritance when behavior in {STREAM,SCHEMA}
-    oneof spec { // can be used with a behavior or to describe the contents
-        Muid value_spec = 22;
-        Muid row_spec = 23;
-        Muid bytes_spec = 24;
-    }
-    ValueSpec key_spec = 25; // only when behavior = SCHEMA
-}
-
-
-message Entry {
-    Muid src_node = 1; // not present for root node
-
-    message Span {
-        uint64 from=1;
-        uint64 ends=2;
-    }
-    oneof link {
-        Value key = 2;      // only for src_node behavior = SCHEMA
-        Muid edge_kind = 3; // only when src_node has a node_kind
-        Span span = 4;      // only for src_node behavior = FILE
-    }
-    oneof value {
-        Muid dest_node = 5;
-        Special special = 6; // Specials defined in values.proto (true, false, null)
-    }
-    bool deleting = 7; // when true, removes the edge or schema key
-    uint64 expiry = 8;
-}
-
-message Pop {
-    Muid entry = 1;  // an entry in a stream or an edge
-    uint64 expiry = 2;
 }

@@ -1,24 +1,17 @@
 #TODO: maybe switch over to Bazel?
+PROTOS=$(wildcard proto/*.proto)
 
-all: node_modules/transactions_pb.js node_modules/values_pb.js node_modules/messages_pb.js
+all: javascript_protos
 
 node_modules:
 	mkdir -p node_modules
 
-node_modules/values_pb.js: node_modules proto/*.proto
-	protoc --proto_path=proto \
+javascript_protos: $(PROTOS)
+	protoc \
+	--proto_path=proto \
 	--js_out=import_style=commonjs,binary:node_modules \
-	values.proto
+	$(PROTOS)
 
-node_modules/transactions_pb.js: node_modules proto/*.proto
-	protoc --proto_path=proto \
-	--js_out=import_style=commonjs,binary:node_modules \
-	transactions.proto
-
-node_modules/messages_pb.js: node_modules proto/*.proto
-	protoc --proto_path=proto \
-	--js_out=import_style=commonjs,binary:node_modules \
-	messages.proto
 
 clean:
 	rm -rf node_modules/*_pb.js
