@@ -5,10 +5,9 @@ import { LogBackedStore } from "./LogBackedStore";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 import { Client, Commit } from "./Client";
-import { Commit as CommitMessage } from "transactions_pb";
 var readline = require('readline');
 
-console.log("hello world");
+console.log("gink starting...");
 globalThis.debugging = true;
 
 
@@ -40,7 +39,9 @@ const targets = process.argv.slice(2);
 (async () => {
     await instance.initialized;
     for (let target of targets) {
+        console.log(`connecting to: ${target}`)
         await instance.connectTo(target);
+        console.log(`connected!`)
     }
     const chainManager = await instance.getChainManager();
     console.log(`got chain manager, using medallion=${chainManager.medallion}`)

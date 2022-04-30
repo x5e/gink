@@ -1,22 +1,19 @@
 #TODO: maybe switch over to Bazel?
 PROTOS=$(wildcard proto/*.proto)
 
-all: javascript_protos
+all: node_modules javascript_protos
 
-node_modules:
-	mkdir -p node_modules
+node_modules: package.json
+	npm install
 
-javascript_protos: $(PROTOS)
-	protoc \
+javascript_protos: $(PROTOS) 
+	 mkdir -p node_modules && protoc \
 	--proto_path=proto \
 	--js_out=import_style=commonjs,binary:node_modules \
 	$(PROTOS)
 
-
-node_modules/log_pb.js: node_modules proto/*.proto
-	protoc --proto_path=proto \
-	--js_out=import_style=commonjs,binary:node_modules \
-	log.proto
-
 clean:
 	rm -rf node_modules/*_pb.js
+
+test: node_modules javascript_protos
+	npm run test

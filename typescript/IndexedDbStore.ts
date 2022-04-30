@@ -42,7 +42,7 @@ export class IndexedDbStore implements Store {
 
     constructor(indexedDbName = "default", reset = false) {
         if (globalThis.debugging)
-            console.log(`createing indexedDb ${indexedDbName}, reset=${reset}`)
+            console.log(`creating indexedDb ${indexedDbName}, reset=${reset}`)
         this.initialized = this.#initialize(indexedDbName, reset);
     }
 
