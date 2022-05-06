@@ -65,6 +65,7 @@ export class Server extends Client {
 
     async #onRequest(request: WebSocketRequest) {
         await this.initialized;
+        const thisServer = this; // do pass into closures
         let protocol: string|null = null;
         if (request.requestedProtocols.length) {
             if (request.requestedProtocols.includes(PROTOCOL))
@@ -80,7 +81,7 @@ export class Server extends Client {
         const peer = new Peer(sendFunc, closeFunc);
         this.peers.set(connectionId, peer);
         connection.on('close', function (_reasonCode, _description) {
-            this.peers.delete(connectionId);
+            thisServer.peers.delete(connectionId);
             console.log((now()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
         });
         connection.on('message', this.#onMessage.bind(this, connectionId));
