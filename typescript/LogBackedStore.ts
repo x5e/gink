@@ -10,6 +10,7 @@ import { LogFile } from "log_pb";
 import { extractCommitInfo } from "./utils";
 import { assert } from "console";
 import { HasMap } from "./HasMap";
+import { Logger } from "./Logger";
 
 /*
     At time of writing, there's only an in-memory implementation of 
@@ -23,7 +24,7 @@ import { HasMap } from "./HasMap";
     implementation of Store using some other system (e.g. LMDB).
 */
 
-export class LogBackedStore implements Store {
+export class LogBackedStore extends Logger implements Store {
 
     readonly initialized: Promise<void>;
     #commitsProcessed: number = 0;
@@ -31,8 +32,8 @@ export class LogBackedStore implements Store {
     #indexedDbStore: IndexedDbStore;
 
     constructor(filename: string, reset = false) {
-        if (globalThis.debugging)
-            console.log(`creating LogBackedStore ${filename}, reset=${reset}`)
+        super();
+        this.info(`creating LogBackedStore ${filename}, reset=${reset}`)
         this.initialized = this.#initialize(filename, reset);
     }
 

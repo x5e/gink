@@ -40,7 +40,7 @@ export class Server extends Client {
         const staticServer = new StaticServer(staticPath);
         assert(args.port);
         const port = this.port = args.port;
-        console.log(`using port ${port}`);
+        this.info(`using port ${port}`);
         let httpServer: HttpServer | HttpsServer;
         if (args["sslKeyFilePath"] && args["sslCertFilePath"]) {
             var options = {
@@ -49,14 +49,14 @@ export class Server extends Client {
             };
             httpServer = createHttpsServer(options, function (request, response) {
                 staticServer.serve(request, response);
-            }).listen(port, () => console.log(
+            }).listen(port, () => this.info(
                 `${now()} Secure server is listening on port ${port}`));
         } else {
             httpServer = createHttpServer(function (request, response) {
                 staticServer.serve(request, response);
             });
             httpServer.listen(port, function () {
-                console.log(`${now()} Insecure server is listening on port ${port}`);
+                this.info(`Insecure server is listening on port ${port}`);
             });
         }
         this.#websocketServer = new WebSocketServer({ httpServer });
@@ -74,7 +74,7 @@ export class Server extends Client {
                 return request.reject(400, "bad protocol");
         }
         const connection: WebSocketConnection = request.accept(protocol, request.origin);
-        console.log(`${now()} Connection accepted via port ${this.port}`);
+        this.info(`${now()} Connection accepted via port ${this.port}`);
         const sendFunc = (data: Uint8Array) => { connection.sendBytes(Buffer.from(data)); };
         const closeFunc = () => { connection.close(); };
         const connectionId = this.createConnectionId();
@@ -82,7 +82,7 @@ export class Server extends Client {
         this.peers.set(connectionId, peer);
         connection.on('close', function (_reasonCode, _description) {
             thisServer.peers.delete(connectionId);
-            console.log((now()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
+            this.info((now()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
         });
         connection.on('message', this.#onMessage.bind(this, connectionId));
         sendFunc(this.getGreetingMessageBytes());
@@ -90,10 +90,10 @@ export class Server extends Client {
 
     #onMessage(connectionId: number, webSocketMessage: WebSocketMessage) {
         if (webSocketMessage.type === 'utf8') {
-            console.log('Received Text Message: ' + webSocketMessage.utf8Data);
+            this.info('Received Text Message: ' + webSocketMessage.utf8Data);
         }
         else if (webSocketMessage.type === 'binary') {
-            console.log('Server received binary message of ' + webSocketMessage.binaryData.length + ' bytes.');
+            this.info('Server received binary message of ' + webSocketMessage.binaryData.length + ' bytes.');
             this.receiveMessage(webSocketMessage.binaryData, connectionId);
         }
     }

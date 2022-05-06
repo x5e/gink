@@ -9,6 +9,7 @@ import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { Store } from "./Store";
 import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, ClaimedChains, PriorTime } from "./typedefs";
 import { HasMap } from "./HasMap"
+import { Logger } from "./Logger";
 
 // IndexedDb orders entries in its b-tree according to a tuple.
 // So this CommitKey is specific to this implementation of the Store.
@@ -35,14 +36,14 @@ export interface ChainInfo {
     seenThrough: Timestamp;
 }
 
-export class IndexedDbStore implements Store {
+export class IndexedDbStore extends Logger implements Store {
 
     initialized: Promise<void>;
     #wrapped: IDBPDatabase;
 
     constructor(indexedDbName = "default", reset = false) {
-        if (globalThis.debugging)
-            console.log(`creating indexedDb ${indexedDbName}, reset=${reset}`)
+        super();
+        this.info(`creating indexedDb ${indexedDbName}, reset=${reset}`)
         this.initialized = this.#initialize(indexedDbName, reset);
     }
 
@@ -58,7 +59,7 @@ export class IndexedDbStore implements Store {
         }
         this.#wrapped = await openDB(indexedDbName, 1, {
             upgrade(db: IDBPDatabase, _oldVersion: number, _newVersion: number, _transaction) {
-                // console.log(`upgrade, oldVersion:${oldVersion}, newVersion:${newVersion}`);
+                // this.info(`upgrade, oldVersion:${oldVersion}, newVersion:${newVersion}`);
                 /*
                      The object store for transactions will store the raw bytes received 
                      for each transaction to avoid dropping unknown fields.  Since this 

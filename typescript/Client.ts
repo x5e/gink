@@ -2,15 +2,16 @@ var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
     eval("require('websocket').w3cwebsocket");
 import { Peer } from "./Peer";
 import { Store } from "./Store";
-import { makeMedallion, assert, extractCommitInfo } from "./utils";
-import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset } 
+import { makeMedallion, assert, extractCommitInfo} from "./utils";
+import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset }
     from "./typedefs";
 import { Message } from "messages_pb";
 import { Commit as CommitMessage } from "transactions_pb";
 import { HasMap } from "./HasMap";
+import { Logger } from "./Logger";
 
 
-export class Client {
+export class Client extends Logger {
 
     initialized: Promise<void>;
     #store: Store;
@@ -20,6 +21,7 @@ export class Client {
     readonly peers: Map<number, Peer> = new Map();
 
     constructor(store: Store) {
+        super();
         this.#store = store;
         this.initialized = this.#initialize();
     }
@@ -82,9 +84,7 @@ export class Client {
     async receiveCommit(commitBytes: CommitBytes, fromConnectionId?: number) {
         const commitInfo = extractCommitInfo(commitBytes);
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);
-        if (globalThis.debugging) {
-            console.log(`received commit: ${JSON.stringify(commitInfo)}`)
-        }
+        this.info(`received commit: ${JSON.stringify(commitInfo)}`);
         const added = await this.#store.addCommit(commitBytes, commitInfo);
         // If this commit isn't new to this instance, then it will have already been 
         // sent to the connected peers and doesn't need to be sent again.
@@ -118,7 +118,7 @@ export class Client {
             //TODO: Send some sensible code to the peer to say what went wrong.
             this.peers.get(fromConnectionId)?.close();
             this.peers.delete(fromConnectionId);
-        }   
+        }
     }
 
     getGreetingMessageBytes(): Uint8Array {
@@ -137,10 +137,10 @@ export class Client {
             const websocketClient: WebSocket = new W3cWebSocket(target, "gink");
             websocketClient.binaryType = "arraybuffer";
             const peer = new Peer(
-                websocketClient.send.bind(websocketClient), 
+                websocketClient.send.bind(websocketClient),
                 websocketClient.close.bind(websocketClient));
             websocketClient.onopen = function (_ev: Event) {
-                console.log(`opened connection ${connectionId} to ${target}`);
+                thisClient.info(`opened connection ${connectionId} to ${target}`);
                 websocketClient.send(thisClient.getGreetingMessageBytes());
                 thisClient.peers.set(connectionId, peer);
                 opened = true;
@@ -150,7 +150,7 @@ export class Client {
                 console.error(`error on connection ${connectionId} to ${target}, ${ev}`)
             }
             websocketClient.onclose = function (ev: CloseEvent) {
-                console.log(`closed connection ${connectionId} to ${target}`);
+                thisClient.info(`closed connection ${connectionId} to ${target}`);
                 if (opened) {
                     thisClient.peers.delete(connectionId);
                 } else {
@@ -183,11 +183,11 @@ export class ChainManager {
         this.#client = client;
         this.#medallion = medallion;
         this.#chainStart = chainStart;
-        this.#last = new Promise((resolve, _reject) => {resolve(lastSeen)});
+        this.#last = new Promise((resolve, _reject) => { resolve(lastSeen) });
     }
 
     get medallion() { return this.#medallion; }
-    
+
     /**
      * Adds a commit to a chain, setting the medallion and timestamps on the commit in the process.
      * 
@@ -197,7 +197,7 @@ export class ChainManager {
     async addCommit(commit: Commit): Promise<Timestamp> {
         // We want to ensure that commits are ordered on the chain in the order that addCommit is called.
         // This is done by chaining promises (which ensures that they will be resolved in order).
-        this.#last = this.#last.then((lastTimestamp) => new Promise<number>((resolve)=> {
+        this.#last = this.#last.then((lastTimestamp) => new Promise<number>((resolve) => {
             // If the current time isn't greater than the last timestamp, then we need to wait a bit 
             // so that all commits get a unique timestamp.
             const waitNeeded = Date.now() * 1000 > lastTimestamp ? 0 : 1;
@@ -220,18 +220,18 @@ export class ChainManager {
  * other objects with timestamps in the future).
  */
 export class Commit {
-    #comment: string|null = null;
-    #timestamp: Timestamp|null = null;
-    #medallion: Medallion|null = null;
-    #serialized: Uint8Array|null = null;
+    #comment: string | null = null;
+    #timestamp: Timestamp | null = null;
+    #medallion: Medallion | null = null;
+    #serialized: Uint8Array | null = null;
 
     constructor(comment?: string) {
         this.#comment = comment;
     }
 
     set comment(value: string) {
-        assert(!this.#timestamp); 
-        this.#comment = value; 
+        assert(!this.#timestamp);
+        this.#comment = value;
     }
 
     addObj(_obj: Obj): Identifier {
@@ -275,7 +275,7 @@ export class Commit {
 
 }
 
-export class Obj {}
+export class Obj { }
 
 /**
  * This Identifier class is intended to be used when you want
