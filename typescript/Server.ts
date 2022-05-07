@@ -2,7 +2,7 @@ import { createServer as createHttpServer, Server as HttpServer } from 'http';
 import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
 import { readFileSync } from 'fs';
 import { Server as StaticServer } from 'node-static';
-import { now, assert } from "./utils";
+import { info } from "./utils";
 import {
     server as WebSocketServer, request as WebSocketRequest,
     connection as WebSocketConnection, Message as WebSocketMessage
@@ -17,7 +17,7 @@ type NumberStr = string;
 const PROTOCOL = "gink";
 
 export interface ServerArgs {
-    port: NumberStr;
+    port?: NumberStr;
     sslKeyFilePath?: FilePath;
     sslCertFilePath?: FilePath;
     medallion?: NumberStr;
@@ -25,22 +25,14 @@ export interface ServerArgs {
 }
 
 export class Server extends Client {
-    readonly port: NumberStr;
     #websocketServer: WebSocketServer;
 
     constructor(store: Store, args: ServerArgs) {
         super(store);
-        let staticPath = args.staticPath;
-        if (!staticPath) {
-            // TODO: path.sep
-            const pathParts = __dirname.split("/");
-            pathParts.pop();
-            staticPath = "/" + pathParts.join("/");
-        }
+        const staticPath = args.staticPath || __dirname.split("/").slice(0, -1).join("/");
         const staticServer = new StaticServer(staticPath);
-        assert(args.port);
-        const port = this.port = args.port;
-        this.info(`using port ${port}`);
+        const port = args.port || "8080";
+        const thisServer = this;
         let httpServer: HttpServer | HttpsServer;
         if (args["sslKeyFilePath"] && args["sslCertFilePath"]) {
             var options = {
@@ -49,14 +41,14 @@ export class Server extends Client {
             };
             httpServer = createHttpsServer(options, function (request, response) {
                 staticServer.serve(request, response);
-            }).listen(port, () => this.info(
-                `${now()} Secure server is listening on port ${port}`));
+            }).listen(port, () => info(
+                `Secure server is listening on port ${port}`));
         } else {
             httpServer = createHttpServer(function (request, response) {
                 staticServer.serve(request, response);
             });
             httpServer.listen(port, function () {
-                this.info(`Insecure server is listening on port ${port}`);
+                info(`Insecure server is listening on port ${port}`);
             });
         }
         this.#websocketServer = new WebSocketServer({ httpServer });
@@ -66,7 +58,7 @@ export class Server extends Client {
     async #onRequest(request: WebSocketRequest) {
         await this.initialized;
         const thisServer = this; // do pass into closures
-        let protocol: string|null = null;
+        let protocol: string | null = null;
         if (request.requestedProtocols.length) {
             if (request.requestedProtocols.includes(PROTOCOL))
                 protocol = PROTOCOL;
@@ -74,7 +66,7 @@ export class Server extends Client {
                 return request.reject(400, "bad protocol");
         }
         const connection: WebSocketConnection = request.accept(protocol, request.origin);
-        this.info(`${now()} Connection accepted via port ${this.port}`);
+        info(`Connection accepted.`);
         const sendFunc = (data: Uint8Array) => { connection.sendBytes(Buffer.from(data)); };
         const closeFunc = () => { connection.close(); };
         const connectionId = this.createConnectionId();
@@ -82,7 +74,7 @@ export class Server extends Client {
         this.peers.set(connectionId, peer);
         connection.on('close', function (_reasonCode, _description) {
             thisServer.peers.delete(connectionId);
-            this.info((now()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
+            info(' Peer ' + connection.remoteAddress + ' disconnected.');
         });
         connection.on('message', this.#onMessage.bind(this, connectionId));
         sendFunc(this.getGreetingMessageBytes());
@@ -90,10 +82,10 @@ export class Server extends Client {
 
     #onMessage(connectionId: number, webSocketMessage: WebSocketMessage) {
         if (webSocketMessage.type === 'utf8') {
-            this.info('Received Text Message: ' + webSocketMessage.utf8Data);
+            info('Received Text Message: ' + webSocketMessage.utf8Data);
         }
         else if (webSocketMessage.type === 'binary') {
-            this.info('Server received binary message of ' + webSocketMessage.binaryData.length + ' bytes.');
+            info('Server received binary message of ' + webSocketMessage.binaryData.length + ' bytes.');
             this.receiveMessage(webSocketMessage.binaryData, connectionId);
         }
     }

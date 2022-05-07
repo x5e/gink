@@ -7,10 +7,9 @@ type FileHandle = any;
 const open = promises.open;
 import { flock } from "fs-ext";
 import { LogFile } from "log_pb";
-import { extractCommitInfo } from "./utils";
+import { extractCommitInfo, info } from "./utils";
 import { assert } from "console";
 import { HasMap } from "./HasMap";
-import { Logger } from "./Logger";
 
 /*
     At time of writing, there's only an in-memory implementation of 
@@ -24,7 +23,7 @@ import { Logger } from "./Logger";
     implementation of Store using some other system (e.g. LMDB).
 */
 
-export class LogBackedStore extends Logger implements Store {
+export class LogBackedStore implements Store {
 
     readonly initialized: Promise<void>;
     #commitsProcessed: number = 0;
@@ -32,8 +31,7 @@ export class LogBackedStore extends Logger implements Store {
     #indexedDbStore: IndexedDbStore;
 
     constructor(filename: string, reset = false) {
-        super();
-        this.info(`creating LogBackedStore ${filename}, reset=${reset}`)
+        info(`creating LogBackedStore ${filename}, reset=${reset}`)
         this.initialized = this.#initialize(filename, reset);
     }
 

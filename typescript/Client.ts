@@ -2,16 +2,15 @@ var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
     eval("require('websocket').w3cwebsocket");
 import { Peer } from "./Peer";
 import { Store } from "./Store";
-import { makeMedallion, assert, extractCommitInfo} from "./utils";
+import { makeMedallion, assert, extractCommitInfo, info } from "./utils";
 import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset }
     from "./typedefs";
 import { Message } from "messages_pb";
 import { Commit as CommitMessage } from "transactions_pb";
 import { HasMap } from "./HasMap";
-import { Logger } from "./Logger";
 
 
-export class Client extends Logger {
+export class Client {
 
     initialized: Promise<void>;
     #store: Store;
@@ -21,7 +20,6 @@ export class Client extends Logger {
     readonly peers: Map<number, Peer> = new Map();
 
     constructor(store: Store) {
-        super();
         this.#store = store;
         this.initialized = this.#initialize();
     }
@@ -84,7 +82,7 @@ export class Client extends Logger {
     async receiveCommit(commitBytes: CommitBytes, fromConnectionId?: number) {
         const commitInfo = extractCommitInfo(commitBytes);
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);
-        this.info(`received commit: ${JSON.stringify(commitInfo)}`);
+        info(`received commit: ${JSON.stringify(commitInfo)}`);
         const added = await this.#store.addCommit(commitBytes, commitInfo);
         // If this commit isn't new to this instance, then it will have already been 
         // sent to the connected peers and doesn't need to be sent again.
@@ -140,7 +138,7 @@ export class Client extends Logger {
                 websocketClient.send.bind(websocketClient),
                 websocketClient.close.bind(websocketClient));
             websocketClient.onopen = function (_ev: Event) {
-                thisClient.info(`opened connection ${connectionId} to ${target}`);
+                info(`opened connection ${connectionId} to ${target}`);
                 websocketClient.send(thisClient.getGreetingMessageBytes());
                 thisClient.peers.set(connectionId, peer);
                 opened = true;
@@ -150,7 +148,7 @@ export class Client extends Logger {
                 console.error(`error on connection ${connectionId} to ${target}, ${ev}`)
             }
             websocketClient.onclose = function (ev: CloseEvent) {
-                thisClient.info(`closed connection ${connectionId} to ${target}`);
+                info(`closed connection ${connectionId} to ${target}`);
                 if (opened) {
                     thisClient.peers.delete(connectionId);
                 } else {

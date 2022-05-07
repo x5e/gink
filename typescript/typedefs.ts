@@ -13,4 +13,5 @@ export interface CommitInfo {
     medallion: Medallion;
     chainStart: ChainStart;
     priorTime?: PriorTime;
+    comment?: string;
 }

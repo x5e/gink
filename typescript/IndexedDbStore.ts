@@ -8,8 +8,8 @@ import { Commit } from "transactions_pb";
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { Store } from "./Store";
 import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, ClaimedChains, PriorTime } from "./typedefs";
-import { HasMap } from "./HasMap"
-import { Logger } from "./Logger";
+import { HasMap } from "./HasMap";
+import { info } from "./utils";
 
 // IndexedDb orders entries in its b-tree according to a tuple.
 // So this CommitKey is specific to this implementation of the Store.
@@ -36,14 +36,13 @@ export interface ChainInfo {
     seenThrough: Timestamp;
 }
 
-export class IndexedDbStore extends Logger implements Store {
+export class IndexedDbStore implements Store {
 
     initialized: Promise<void>;
     #wrapped: IDBPDatabase;
 
     constructor(indexedDbName = "default", reset = false) {
-        super();
-        this.info(`creating indexedDb ${indexedDbName}, reset=${reset}`)
+        info(`creating indexedDb ${indexedDbName}, reset=${reset}`)
         this.initialized = this.#initialize(indexedDbName, reset);
     }
 
@@ -59,7 +58,7 @@ export class IndexedDbStore extends Logger implements Store {
         }
         this.#wrapped = await openDB(indexedDbName, 1, {
             upgrade(db: IDBPDatabase, _oldVersion: number, _newVersion: number, _transaction) {
-                // this.info(`upgrade, oldVersion:${oldVersion}, newVersion:${newVersion}`);
+                // info(`upgrade, oldVersion:${oldVersion}, newVersion:${newVersion}`);
                 /*
                      The object store for transactions will store the raw bytes received 
                      for each transaction to avoid dropping unknown fields.  Since this 
@@ -127,7 +126,7 @@ export class IndexedDbStore extends Logger implements Store {
 
     async addCommit(commitBytes: CommitBytes, commitInfo: CommitInfo): Promise<Boolean> {
         await this.initialized;
-        const {timestamp, medallion, chainStart, priorTime} = commitInfo
+        const { timestamp, medallion, chainStart, priorTime } = commitInfo
         const wrappedTransaction = this.#wrapped.transaction(['trxns', 'chainInfos'], 'readwrite');
         let oldChainInfo: ChainInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime != 0) {

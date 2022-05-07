@@ -9,6 +9,7 @@ export function extractCommitInfo(commitBytes: Uint8Array): CommitInfo {
         medallion: parsed.getMedallion(), 
         chainStart: parsed.getChainStart(), 
         priorTime: parsed.getPreviousTimestamp(),
+        comment: parsed.getComment(),
     }
 }
 
@@ -43,4 +44,20 @@ export function makeMedallion() {
     const result = Math.floor(Math.random() * (2**48)) + 2**48;
     assert(result < 2**49 && result > 2**48);
     return result;
+}
+
+let logLevel = 0;
+
+export function setLogLevel(level: number) {
+    logLevel = level;
+}
+
+export function info(msg: string) {
+    if (logLevel < 1) return;
+    const stackString = new Error().stack;
+    const callerLine = stackString.split("\n")[2];
+    const caller = callerLine.split(/\//).pop().replace(/:\d+\)/,"");
+    const timestamp = now().split("T").pop();
+    // using console.error because I want to write to stderr
+    console.error(`[${timestamp} ${caller}] ${msg}`);
 }
