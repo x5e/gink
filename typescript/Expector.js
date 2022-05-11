@@ -1,6 +1,6 @@
 #!/usr/bin/node 
 const { spawn } = require('child_process');
-export class Expector {
+module.exports = class Expector {
     constructor(shellCmd) {
         const thisExpector = this;
         this.captured = "";
@@ -25,7 +25,7 @@ export class Expector {
         const thisExpector = this;
         const returning = new Promise((resolve, reject) => {
             thisExpector.onHit = resolve;
-            setTimeout(reject, timeout);
+            setTimeout(()=>{reject(`expected ${what}`)}, timeout);
         });
         this.notify();
         return returning;
