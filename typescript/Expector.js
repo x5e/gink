@@ -1,5 +1,9 @@
 #!/usr/bin/node 
 const { spawn } = require('child_process');
+/**
+Expector is a utility class to replecate the functionality found in the command line 
+utility "expect" and allow me to test the command line interface in integration tests.
+*/
 module.exports = class Expector {
     constructor(shellCmd) {
         const thisExpector = this;
@@ -25,9 +29,19 @@ module.exports = class Expector {
         const thisExpector = this;
         const returning = new Promise((resolve, reject) => {
             thisExpector.onHit = resolve;
-            setTimeout(()=>{reject(`expected ${what}`)}, timeout);
+            setTimeout(()=>{reject(`expected ${what}, had ${thisExpector.captured}`)}, timeout);
         });
         this.notify();
+        return returning;
+    }
+    send(what) { this.proc.stdin.write(what); }
+    async close(timeout=1000) { 
+        const thisExpector = this;
+        const returning = new Promise((resolve, reject) => {
+            thisExpector.proc.on('close', resolve);
+            setTimeout(reject, timeout);
+        });
+        this.proc.kill(); 
         return returning;
     }
 }
