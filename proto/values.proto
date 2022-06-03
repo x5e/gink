@@ -55,6 +55,12 @@ message Document {
     map<string, Value> items = 1;
 }
 
+message Pyon {
+    string func = 1;
+    repeated Value ordered = 2;
+    map<string, Value> keyed = 3;
+}
+
 message Complex {
     Number real = 1;
     Number imag = 2;
