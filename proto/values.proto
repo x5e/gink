@@ -9,12 +9,10 @@ enum Special {
 }
 
 message Value {
-    reserved 2;
-    reserved "octects";
 
     oneof value {
         Special special = 1;
-        
+        bytes octects = 2;
         string characters = 3;
         Number number = 4;
         Timestamp timestamp = 5;
