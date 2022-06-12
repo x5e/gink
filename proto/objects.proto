@@ -1,5 +1,6 @@
 syntax = "proto3";
 import "values.proto";
+import "muid.proto";
 package google.gink;
 
 message Obj {
@@ -10,8 +11,8 @@ message Obj {
         Title title = 4;
         Property property = 5;
         Metadata metadata = 6;
-        NodeKind = 8;
-        EdgeKind = 9;
+        NodeKind node_kind = 8;
+        EdgeKind edge_kind = 9;
     }
 }
 
@@ -64,7 +65,7 @@ message Node {
         Muid node_kind = 1;
         Behavior behavior = 2;
     }
-    Muid extends = 21; // optional inheritance {TABLE,QUEUE,SCHEMA,PROTO}
+    Muid extends = 21; // inheritance (for TABLE,QUEUE,SCHEMA,PROTO,ACTION)
     oneof spec { // can be used with a behavior or to describe/limit entries 
         ValueSpec value_spec = 22;
         RowSpec row_spec = 23;
