@@ -149,3 +149,20 @@ message ZonedDateTime {
     Zone zone = 3;
 }
 
+
+message ValueSpec {
+    // TBD
+}
+
+message RowSpec {
+    map<uint32,string> names = 2;
+    map<uint32,ValueSpec> value_specs = 3;
+}
+
+message Row {
+    oneof mask { // a bitmask indicating which columns are present
+        uint64 integer_mask = 1; 
+        bytes bytes_mask = 2; // only for when you have more than 63 columns
+    }
+    repeated Value values = 3;
+}
