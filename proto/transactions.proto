@@ -43,13 +43,10 @@ message Obj {
     oneof body {
         Node node = 1;
         Entry entry = 2;
-        Pop pop = 3;
+        Exit exit = 3;
         Title title = 4;
         Property property = 5;
         Metadata metadata = 6;
-        ValueSpec value_spec = 7;
-        RowSpec row_spec = 8;
-        BytesSpec bytes_spec = 9;
     }
 }
 
@@ -75,83 +72,97 @@ message Property {
 }
 
 message NodeKind {
+    Muid extends = 1;
 }
 
 message EdgeKind {
     // designated exclusivity from source, e.g. an employee can have 
     // only one manager but a manager can have multiple reports.
     bool exclusive = 1;
+    repeated Muid src_node_kinds = 2;
+    repeated Muid dst_node_kinds = 3;
 }
 
 message Title {
-    Muid describes = 1; // Property or NodeKind or EdgeKind
+    Muid describes = 1;
     string title = 2;
 }
 
 message Metadata {
-    Muid describes = 1; // the id of a node or an entry
+    Muid describes = 1; // the id of a node entry
     Muid property = 2; // the id of a property
     Value value = 3;  // must adhere to the property's value spec if present
 }
 
-message Encrypted {
-    bytes encrypted = 1;
-    bytes iv = 2;
-    bytes key_id = 3; 
-}
-
-message BytesSpec {
-    // TBD
-}
-
 message Node {
     enum Behavior {
-        NONE = 0;
-        STREAM = 8;
+        UNKNOWN = 0;
+        VALUE = 1;
+        PROTO2 = 2;
+        PROTO3 = 3;
+        TABLE = 5;
+        INDEX = 6;
+        VIEW = 7;
+        QUEUE = 8;
         SCHEMA = 9;
         BOX = 10;
         FILE = 11;
+        BINLOG = 12;
+        SET = 13;
+        ENUM = 14;
+        SUM = 15;
     }
     oneof contents {
         Muid node_kind = 1;
         Behavior behavior = 2;
-        Row row = 3;
-        Value value = 4;
-        Encrypted encrypted_value = 5;
-        bytes octects = 8;
-        Encrypted encrypted_octects = 9;
     }
-    Muid extends = 21; // optional inheritance when behavior in {STREAM,SCHEMA}
-    oneof spec { // can be used with a behavior or to describe the contents
-        Muid value_spec = 22;
-        Muid row_spec = 23;
-        Muid bytes_spec = 24;
+    Muid extends = 21; // optional inheritance {TABLE,QUEUE,SCHEMA,PROTO}
+    oneof spec { // can be used with a behavior or to describe/limit entries 
+        ValueSpec value_spec = 22;
+        RowSpec row_spec = 23;
     }
     ValueSpec key_spec = 25; // only when behavior = SCHEMA
 }
 
 
 message Entry {
-    Muid src_node = 1; // not present for root node
+    Muid src_node = 1; // not present for "root" entry
 
     message Span {
         uint64 from=1;
         uint64 ends=2;
     }
     oneof link {
-        Value key = 2;      // only for src_node behavior = SCHEMA
+        // Note that for behavior in {BOX, QUEUE} there is no link.
+        // This includes when setting the root entry (i.e. no src_node).
+        Value key = 2;      // only for src_node behavior in {SCHEMA, SET}
         Muid edge_kind = 3; // only when src_node has a node_kind
         Span span = 4;      // only for src_node behavior = FILE
     }
-    oneof value {
-        Muid dest_node = 5;
-        Special special = 6; // Specials defined in values.proto (true, false, null)
+    oneof destination {
+        Muid dst_node = 5;
+        bool deleting = 6; // only for src_node behavior in {SCHEMA, SET}
+        uint64 medallion = 7;
+        bytes octects = 8; // for src_node behavior in {FILE, BINLOG}
+        Value value = 9;
+        Row row = 10; // only when src_node has row_spec
     }
-    bool deleting = 7; // when true, removes the edge or schema key
-    uint64 expiry = 8;
+    uint64 expiry = 11; // timestamp of expiration in microseconds since epoch
+    bytes iv = 15; // initialization vector when octects are encrypted
+    bytes key_id = 16; // optional hint of which key was used (when encrypted)
 }
 
-message Pop {
-    Muid entry = 1;  // an entry in a stream or an edge
+/**
+    An "Exit" acts to remove an Entry.  After seeing an Exit pointing to
+    an Entry, the system should act as though that Entry no longer exists.
+    An expiry set on an Exit makes this removal temporary.  One use case is
+    to temporarily remove an item from a work queue to start processing it,
+    then permanently remove it once processing has been completed.
+    To remove keys from a schema, adding a new Entry with deleting=True 
+    is generally better (otherwise prior Entries with earlier timestamps
+    will appear to be in effect).
+*/
+message Exit {
+    Muid entry = 1;  // an entry in a QUEUE
     uint64 expiry = 2;
 }

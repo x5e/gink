@@ -12,19 +12,20 @@ message Value {
 
     oneof value {
         Special special = 1;
-        bytes octects = 2;
+        uint64 enum_value = 2;
         string characters = 3;
         Number number = 4;
-        Timestamp timestamp = 5;
-        Date date = 6;
-        Time time = 7;
+        bytes octects = 8;
         Tuple tuple = 11;
         Document document = 12;
         string symbol = 13;
-        Expression expression = 14;
 
         bytes uuid = 16;
 
+        Expression expression = 14;
+        Timestamp timestamp = 5;
+        Date date = 6;
+        Time time = 7;
         Complex complex = 18;
         Zone timezone = 19;
         DateTime datetime = 20;
