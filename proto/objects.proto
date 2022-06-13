@@ -46,7 +46,7 @@ message Metadata {
 message Node {
     enum Behavior {
         UNKNOWN = 0;
-        ACTION = 1;
+        ACTYPE = 1;
         PROTO2 = 2;
         PROTO3 = 3;
         TABLE = 5;
@@ -65,12 +65,13 @@ message Node {
         Muid node_kind = 1;
         Behavior behavior = 2;
     }
-    Muid extends = 21; // inheritance (for TABLE,QUEUE,SCHEMA,PROTO,ACTION)
+    Muid extends = 3; // inheritance (for TABLE,QUEUE,SCHEMA,PROTO,ACTYPE)
     oneof spec { // can be used with a behavior or to describe/limit entries 
-        ValueSpec value_spec = 22;
-        RowSpec row_spec = 23;
+        ValueSpec value_spec = 4;
+        RowSpec row_spec = 5;
     }
-    ValueSpec key_spec = 25; // only when behavior = SCHEMA
+    ValueSpec key_spec = 6; // only when behavior = SCHEMA
+    bool allow_resets = 7; // may require storing entries between resets (e.g. for SUM)
 }
 
 
@@ -82,7 +83,7 @@ message Entry {
         uint64 ends=2;
     }
     oneof link {
-        // For behavior in {BOX, QUEUE, ACTION, TABLE} there is no link.
+        // For behavior in {BOX, QUEUE, ACTYPE, TABLE, BINLOG} there is no link.
         // This includes when setting the root entry (i.e. no src_node).
         Value key = 2;      // only for src_node behavior in {SCHEMA, SET}
         Muid edge_kind = 3; // only when src_node has a node_kind
@@ -90,11 +91,11 @@ message Entry {
     }
     oneof destination {
         Muid dst_node = 5;
-        bool deleting = 6; // only for src_node behavior in {SCHEMA, SET}
-        uint64 medallion = 7;
+        bool deleting = 6; // serves as reset when no link is set
+        uint64 medallion = 7; // follow the root entry of another db instance
         bytes octects = 8; // for src_node behavior in {FILE, BINLOG}
         Value value = 9;
-        Row row = 10; // only when src_node has row_spec
+        Row row = 10; // only when src_node has row_spec (TABLE or ACTYPE)
     }
     uint64 expiry = 11; // timestamp of expiration in microseconds since epoch
     bytes iv = 15; // initialization vector when octects are encrypted
@@ -109,10 +110,11 @@ message Entry {
     then permanently remove it once processing has been completed.
     To remove keys from a schema, adding a new Entry with deleting=True 
     is generally better (otherwise prior Entries with earlier timestamps
-    will appear to be in effect).
+    will appear to be in effect).  When the effect Muid is set that indicates
+    that the specified Effect has been processed (it not a general deletion).
 */
 message Exit {
     Muid entry = 1;
     uint64 expiry = 2;
-    Muid trigger = 3;
+    Muid effect = 3;
 }
