@@ -1,0 +1,26 @@
+
+message Container {
+    enum Behavior {
+        UNKNOWN = 0;
+        BOX = 1; // only holds on entry at a time, each only has a value
+        FILE = 2; // entries contain bytes and specify location in file
+        BINLOG = 3; // entries contain bytes, order is implicit by time
+        TABLE = 4; // entries have only value (row), keyed on expr over row
+        SET = 5; // entries have only "key"
+        SUM = 6; // entries combined by adding together values
+        SCHEMA = 7; // entries have key & value and replace matching key
+        QUEUE = 8; // entries only have value, never replace prior entry
+        ENUM = 14;
+        SUM = 15;
+        INDEX = 6;
+        VIEW = 7;
+    }
+    Behavior behavior = 1;
+    Muid extends = 2; // inheritance (for TABLE,QUEUE,SCHEMA,PROTO,ACTYPE)
+    oneof spec { // can be used with a behavior or to describe/limit entries 
+        ValueSpec value_spec = 4;
+        RowSpec row_spec = 5;
+    }
+    ValueSpec key_spec = 6; // only when behavior in  (SCHEMA, SET)
+    bool allow_resets = 7; // may require storing entries between resets (e.g. for SUM)
+}

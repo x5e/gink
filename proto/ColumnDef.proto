@@ -1,0 +1,31 @@
+
+syntax = "proto3";
+package google.gink;
+
+message ColumnDef {
+    enum BasicType {
+        ANY = 0;
+        BOOL = 1;
+        BYTES = 2;
+        JSON = 3;
+        ENUM = 4;
+        STRING = 5;
+        NUMBER = 6;
+        INTEGER = 7;
+        BIGINT = 8;
+        FLOAT = 9;
+        DOUBLE = 10;
+        DECIMAL = 11;
+        TIMESTAMP = 12;
+        DATE = 13;
+        TIME = 14;
+        DATETIME = 15;
+    }
+    oneof {
+        BasicType basic_type = 1;
+        Muid compound_type = 4;
+        Value computed_expr = 5;
+    }
+    bool not_null = 2;
+    bool is_array = 3;
+}

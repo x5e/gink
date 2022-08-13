@@ -43,36 +43,6 @@ message Metadata {
     Value value = 3;  // must adhere to the property's value spec if present
 }
 
-message Node {
-    enum Behavior {
-        UNKNOWN = 0;
-        ACTYPE = 1;
-        PROTO2 = 2;
-        PROTO3 = 3;
-        TABLE = 5;
-        INDEX = 6;
-        VIEW = 7;
-        QUEUE = 8;
-        SCHEMA = 9;
-        BOX = 10;
-        FILE = 11;
-        BINLOG = 12;
-        SET = 13;
-        ENUM = 14;
-        SUM = 15;
-    }
-    oneof contents {
-        Muid node_kind = 1;
-        Behavior behavior = 2;
-    }
-    Muid extends = 3; // inheritance (for TABLE,QUEUE,SCHEMA,PROTO,ACTYPE)
-    oneof spec { // can be used with a behavior or to describe/limit entries 
-        ValueSpec value_spec = 4;
-        RowSpec row_spec = 5;
-    }
-    ValueSpec key_spec = 6; // only when behavior = SCHEMA
-    bool allow_resets = 7; // may require storing entries between resets (e.g. for SUM)
-}
 
 
 message Entry {
