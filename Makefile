@@ -15,11 +15,20 @@ javascript_protos: $(PROTOS)
 clean:
 	rm -rf node_modules/*_pb.js
 
-test: node_modules javascript_protos
+unit_tests: node_modules javascript_protos
 	npm run test
 
+integration_tests:
+	./typescript/integration-test.js
+
+test: unit_tests integration_tests
+
 server: node_modules javascript_protos
-	GINK_PORT=8080 node ./node_modules/.bin/ts-node ./typescript/main.ts
+	GINK_SERVER=1 GINK_PORT=8080 node ./node_modules/.bin/ts-node ./typescript/main.ts
+
+kill_server:
+	kill `ps auxe | egrep '(GINK_SERVER)=1' | awk '{print $2}'` 2>/dev/null \
+	|| echo 'not running'
 
 client: node_modules javascript_protos
 	node ./node_modules/.bin/ts-node ./typescript/main.ts ws://localhost:8080
