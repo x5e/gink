@@ -25,7 +25,7 @@ export interface ServerArgs {
 }
 
 export class Server extends Client {
-    #websocketServer: WebSocketServer;
+    private websocketServer: WebSocketServer;
 
     constructor(store: Store, args: ServerArgs) {
         super(store);
@@ -51,11 +51,11 @@ export class Server extends Client {
                 info(`Insecure server is listening on port ${port}`);
             });
         }
-        this.#websocketServer = new WebSocketServer({ httpServer });
-        this.#websocketServer.on('request', this.#onRequest.bind(this));
+        this.websocketServer = new WebSocketServer({ httpServer });
+        this.websocketServer.on('request', this.onRequest.bind(this));
     }
 
-    async #onRequest(request: WebSocketRequest) {
+    private async onRequest(request: WebSocketRequest) {
         await this.initialized;
         const thisServer = this; // do pass into closures
         let protocol: string | null = null;
@@ -76,11 +76,11 @@ export class Server extends Client {
             thisServer.peers.delete(connectionId);
             info(' Peer ' + connection.remoteAddress + ' disconnected.');
         });
-        connection.on('message', this.#onMessage.bind(this, connectionId));
+        connection.on('message', this.onMessage.bind(this, connectionId));
         sendFunc(this.getGreetingMessageBytes());
     }
 
-    #onMessage(connectionId: number, webSocketMessage: WebSocketMessage) {
+    private onMessage(connectionId: number, webSocketMessage: WebSocketMessage) {
         if (webSocketMessage.type === 'utf8') {
             info('Received Text Message: ' + webSocketMessage.utf8Data);
         }

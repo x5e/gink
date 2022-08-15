@@ -1,6 +1,6 @@
 import { Medallion, ChainStart, CommitBytes, Timestamp } from "./typedefs"
 import { Store } from "./Store";
-import { Commit } from "transactions_pb";
+import { Commit } from "commit_pb";
 import { HasMap } from "./HasMap";
 import { extractCommitInfo } from "./utils";
 // makes an empty Store for testing purposes

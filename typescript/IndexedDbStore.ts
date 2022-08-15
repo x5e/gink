@@ -4,7 +4,7 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
     mode = "node";
 }
-import { Commit } from "transactions_pb";
+import { Commit } from "commit_pb";
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { Store } from "./Store";
 import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, ClaimedChains, PriorTime } from "./typedefs";
@@ -39,14 +39,14 @@ export interface ChainInfo {
 export class IndexedDbStore implements Store {
 
     initialized: Promise<void>;
-    #wrapped: IDBPDatabase;
+    private wrapped: IDBPDatabase;
 
     constructor(indexedDbName = "default", reset = false) {
         info(`creating indexedDb ${indexedDbName}, reset=${reset}`)
-        this.initialized = this.#initialize(indexedDbName, reset);
+        this.initialized = this.initialize(indexedDbName, reset);
     }
 
-    async #initialize(indexedDbName: string, reset: boolean): Promise<void> {
+    private async initialize(indexedDbName: string, reset: boolean): Promise<void> {
         if (reset) {
             await deleteDB(indexedDbName, {
                 blocked() {
@@ -56,7 +56,7 @@ export class IndexedDbStore implements Store {
                 }
             });
         }
-        this.#wrapped = await openDB(indexedDbName, 1, {
+        this.wrapped = await openDB(indexedDbName, 1, {
             upgrade(db: IDBPDatabase, _oldVersion: number, _newVersion: number, _transaction) {
                 // info(`upgrade, oldVersion:${oldVersion}, newVersion:${newVersion}`);
                 /*
@@ -83,12 +83,12 @@ export class IndexedDbStore implements Store {
 
     async close() {
         await this.initialized;
-        this.#wrapped.close();
+        this.wrapped.close();
     }
 
     async getClaimedChains(): Promise<ClaimedChains> {
         await this.initialized;
-        const objectStore = this.#wrapped.transaction("activeChains").objectStore("activeChains");
+        const objectStore = this.wrapped.transaction("activeChains").objectStore("activeChains");
         const items = await objectStore.getAll();
         const result = new Map();
         for (let i = 0; i < items.length; i++) {
@@ -99,7 +99,7 @@ export class IndexedDbStore implements Store {
 
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
         await this.initialized;
-        const wrappedTransaction = this.#wrapped.transaction(['activeChains'], 'readwrite');
+        const wrappedTransaction = this.wrapped.transaction(['activeChains'], 'readwrite');
         await wrappedTransaction.objectStore('activeChains').add({ chainStart, medallion });
         await wrappedTransaction.done;
     }
@@ -107,7 +107,7 @@ export class IndexedDbStore implements Store {
     async getHasMap(): Promise<HasMap> {
         await this.initialized;
         const hasMap: HasMap = new HasMap({});
-        (await this.#getChainInfos()).map((value) => {
+        (await this.getChainInfos()).map((value) => {
             hasMap.markIfNovel({
                 medallion: value.medallion,
                 chainStart: value.chainStart,
@@ -117,9 +117,9 @@ export class IndexedDbStore implements Store {
         return hasMap;
     }
 
-    async #getChainInfos(): Promise<Array<ChainInfo>> {
+    private async getChainInfos(): Promise<Array<ChainInfo>> {
         await this.initialized;
-        let wrappedTransaction: IDBPTransaction = this.#wrapped.transaction(['chainInfos']);
+        let wrappedTransaction: IDBPTransaction = this.wrapped.transaction(['chainInfos']);
         let store = wrappedTransaction.objectStore('chainInfos');
         return await store.getAll();
     }
@@ -127,7 +127,7 @@ export class IndexedDbStore implements Store {
     async addCommit(commitBytes: CommitBytes, commitInfo: CommitInfo): Promise<Boolean> {
         await this.initialized;
         const { timestamp, medallion, chainStart, priorTime } = commitInfo
-        const wrappedTransaction = this.#wrapped.transaction(['trxns', 'chainInfos'], 'readwrite');
+        const wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos'], 'readwrite');
         let oldChainInfo: ChainInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime != 0) {
             if (oldChainInfo?.seenThrough >= timestamp) {
@@ -157,7 +157,7 @@ export class IndexedDbStore implements Store {
         await this.initialized;
 
         // We loop through all commits and send those the peer doesn't have.
-        for (let cursor = await this.#wrapped.transaction("trxns").objectStore("trxns").openCursor();
+        for (let cursor = await this.wrapped.transaction("trxns").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
             const commitKey = <CommitKey>cursor.key;
             const commitInfo = commitKeyToInfo(commitKey);

@@ -4,17 +4,17 @@ import { makeCommitMessage, noOp } from "./utils";
 import { HasMap } from "./HasMap";
 
 export class Peer {
-    #sendFunc: (msg: Uint8Array) => void;
-    #closeFunc: () => void;
+    private sendFunc: (msg: Uint8Array) => void;
+    private closeFunc: () => void;
     hasMap?: HasMap;
 
     constructor(sendFunc: (msg: Uint8Array) => void, closeFunc: () => void = noOp) { 
-        this.#sendFunc = sendFunc;
-        this.#closeFunc = closeFunc;
+        this.sendFunc = sendFunc;
+        this.closeFunc = closeFunc;
     }
 
     close() {
-        var func = this.#closeFunc;
+        var func = this.closeFunc;
         func();
     }
 
@@ -32,7 +32,7 @@ export class Peer {
      */
     sendIfNeeded(commitBytes: CommitBytes, commitInfo: CommitInfo) {
         if (this.hasMap?.markIfNovel(commitInfo, true)) {
-            this.#sendFunc(makeCommitMessage(commitBytes));
+            this.sendFunc(makeCommitMessage(commitBytes));
         }
     }
 }

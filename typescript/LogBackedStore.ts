@@ -6,7 +6,7 @@ const promises = require("fs").promises;
 type FileHandle = any;
 const open = promises.open;
 import { flock } from "fs-ext";
-import { LogFile } from "log_pb";
+import { LogFile } from "log_file_pb";
 import { extractCommitInfo, info } from "./utils";
 import { assert } from "console";
 import { HasMap } from "./HasMap";
@@ -26,16 +26,16 @@ import { HasMap } from "./HasMap";
 export class LogBackedStore implements Store {
 
     readonly initialized: Promise<void>;
-    #commitsProcessed: number = 0;
-    #fileHandle: FileHandle;
-    #indexedDbStore: IndexedDbStore;
+    private commitsProcessed: number = 0;
+    private fileHandle: FileHandle;
+    private indexedDbStore: IndexedDbStore;
 
     constructor(filename: string, reset = false) {
         info(`creating LogBackedStore ${filename}, reset=${reset}`)
-        this.initialized = this.#initialize(filename, reset);
+        this.initialized = this.initialize(filename, reset);
     }
 
-    async #openAndLock(filename: string, truncate?: boolean): Promise<FileHandle> {
+    private async openAndLock(filename: string, truncate?: boolean): Promise<FileHandle> {
         return new Promise(async (resolve, reject) => {
             const fh = await open(filename, "a+");
             // It's better to truncate rather than unlink, because an unlink could result
@@ -48,33 +48,33 @@ export class LogBackedStore implements Store {
         });
     }
 
-    async #initialize(filename: string, reset: boolean): Promise<void> {
+    private async initialize(filename: string, reset: boolean): Promise<void> {
 
         // Try (and maybe fail) to get a lock on the file before resetting the in-memory store,
         // so that we don't mess things up if another LogBackedStore has this file open.
-        this.#fileHandle = await this.#openAndLock(filename, reset);
+        this.fileHandle = await this.openAndLock(filename, reset);
 
         // Assuming we have the lock, clear the in memory store and then re-populate it.
-        this.#indexedDbStore = new IndexedDbStore(filename, true);
-        await this.#indexedDbStore.initialized;
+        this.indexedDbStore = new IndexedDbStore(filename, true);
+        await this.indexedDbStore.initialized;
 
         if (!reset) {
-            const stats = await this.#fileHandle.stat();
+            const stats = await this.fileHandle.stat();
             const size = stats.size;
             if (size) {
                 const uint8Array = new Uint8Array(size);
-                await this.#fileHandle.read(uint8Array, 0, size, 0);
+                await this.fileHandle.read(uint8Array, 0, size, 0);
                 const logFile = LogFile.deserializeBinary(uint8Array);
                 const commits = logFile.getCommitsList();
                 for (const commit of commits) {
                     const commitInfo = extractCommitInfo(commit)
-                    const added = await this.#indexedDbStore.addCommit(commit, commitInfo);
+                    const added = await this.indexedDbStore.addCommit(commit, commitInfo);
                     assert(added);
-                    this.#commitsProcessed += 1;
+                    this.commitsProcessed += 1;
                 }
                 const chainEntries = logFile.getChainEntriesList();
                 for (const entry of chainEntries) {
-                    await this.#indexedDbStore.claimChain(entry.getMedallion(), entry.getChainStart());
+                    await this.indexedDbStore.claimChain(entry.getMedallion(), entry.getChainStart());
                 }
             }
         }
@@ -82,23 +82,23 @@ export class LogBackedStore implements Store {
 
     async getCommitsProcessed() {
         await this.initialized;
-        return this.#commitsProcessed;
+        return this.commitsProcessed;
     }
 
     async addCommit(commitBytes: CommitBytes, commitInfo: CommitInfo): Promise<Boolean> {
         await this.initialized;
-        const added = await this.#indexedDbStore.addCommit(commitBytes, commitInfo);
+        const added = await this.indexedDbStore.addCommit(commitBytes, commitInfo);
         if (added) {
             const logFragment = new LogFile();
             logFragment.setCommitsList([commitBytes]);
-            await this.#fileHandle.appendFile(logFragment.serializeBinary());
+            await this.fileHandle.appendFile(logFragment.serializeBinary());
         }
         return added;
     }
 
     async getClaimedChains() {
         await this.initialized;
-        return this.#indexedDbStore.getClaimedChains();
+        return this.indexedDbStore.getClaimedChains();
     }
 
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
@@ -108,23 +108,23 @@ export class LogBackedStore implements Store {
         entry.setChainStart(chainStart);
         entry.setMedallion(medallion);
         fragment.setChainEntriesList([entry]);
-        await this.#fileHandle.appendFile(fragment.serializeBinary());
-        await this.#indexedDbStore.claimChain(medallion, chainStart);
+        await this.fileHandle.appendFile(fragment.serializeBinary());
+        await this.indexedDbStore.claimChain(medallion, chainStart);
     }
     
     async getHasMap(): Promise<HasMap> {
         await this.initialized;
-        return await this.#indexedDbStore.getHasMap();
+        return await this.indexedDbStore.getHasMap();
     }
 
     async getCommits(callBack: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void): Promise<void> {
         await this.initialized;
-        await this.#indexedDbStore.getCommits(callBack);
+        await this.indexedDbStore.getCommits(callBack);
     }
 
     async close() {
         await this.initialized;
-        await this.#fileHandle.close();
-        await this.#indexedDbStore.close();
+        await this.fileHandle.close();
+        await this.indexedDbStore.close();
     }
 }

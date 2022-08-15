@@ -1,6 +1,6 @@
 import { CommitInfo } from "./typedefs"
-import { Message } from "messages_pb";
-import { Commit } from "transactions_pb";
+import { SyncMessage } from "sync_message_pb";
+import { Commit } from "commit_pb";
 
 export function extractCommitInfo(commitBytes: Uint8Array): CommitInfo {
     const parsed = Commit.deserializeBinary(commitBytes);
@@ -32,7 +32,7 @@ export function noOp() {};
  * @returns a serialized "Message" proto
  */
 export function makeCommitMessage(commitBytes: Uint8Array): Uint8Array {
-    const message = new Message();
+    const message = new SyncMessage();
     message.setCommit(commitBytes);
     const msgBytes = message.serializeBinary();
     return msgBytes;
