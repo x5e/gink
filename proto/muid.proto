@@ -1,8 +1,11 @@
 syntax = "proto3";
 
 /**
-    Muid: Generally corresponds to the object-id for an object in the
-    database, intended to be globally unique.
+    Muid: globally unique object-id in the Gink system.
+    See also the documentation in docs/muid.md
+
+    The "Mu" comes from the symbol µ (micro), so this could also be called Micro-Id,
+    chosen because the IDs contain an embedded micro-second timestamp.
 
     * The timestamp and medallion may be omitted (=0) in muids found inside
       rows when they point to another row in the same commit.
@@ -16,9 +19,17 @@ syntax = "proto3";
     16 byte representation: effectively a 128-bit integer that
     corresponds to (timestamp << 72) + (medallion << 20) + offset,
     encoded big-endian.
+
+    14 hex-digit time,  13 hex-digit medallion, 5 hex-digit offset  
+    TTTTTTTTTTTTTTMMMMMMMMMMMMMOOOOO
+
+    ^ This representation works for timestamps up to the year 4253, though 
+    languages like Javascript that only have doubles may have trouble with
+    microseconds timestamps past the year 2255 (2**53).
 */
+
 message Muid {
-    uint64 timestamp = 1; // fits into a double exactly until the year 2255.
+    uint64 timestamp = 1; // microseconds since epoch
     uint64 medallion = 2; // less than 2**52, version 1 between 2**48 and 2**49
-    uint32 offset = 3; // less than 2**20
+    uint32 offset = 3; // less than 2**20 (== 16**5)
 }

@@ -1,0 +1,35 @@
+
+syntax = "proto3";
+package google.gink;
+
+/**
+    These are messages used in the peer to peer connections between gink instances.
+    On connection, each peer sends a SyncMessage containing a Greeting, where the 
+    GreetingEntries within it communicate how far along each chain that instance has
+    data for.  Once a peer has received a greeting from the other, then it can begin
+    to send messages it knows that the destination peer doesn't have yet (ensuring though
+    that it doesn't send a commit unless it first sends the one immediately prior in the
+    chain or knows from the peer's greeting that it already has the prior commit).
+
+    The commits are passed along as opaque byte blobs.  In theory each will be an instance
+    of the Commit proto, but we want each instance to save and forward along commits exactly
+    as it receives them, so that fields can be added to the Commit proto and we can ensure
+    that nodes which haven't seen the expanded proto definition will still forward the full
+    message and not drop fields that it doesn't know about.
+*/
+message SyncMessage {
+
+    oneof contents {
+        bytes commit = 1; // bytes so it's easy to save verbatim.
+        Greeting greeting = 2;  // sent by each peer when the connection is made
+    }
+
+    message Greeting {
+        message GreetingEntry {
+            uint64 medallion = 1; 
+            uint64 chain_start = 2; 
+            uint64 seen_through = 3;
+        }
+        repeated GreetingEntry entries = 1; // contains one entry per chain
+    }
+}
