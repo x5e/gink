@@ -1,5 +1,5 @@
 import { Medallion, Timestamp, ChainStart, SeenThrough, CommitInfo } from "./typedefs"
-import { Greeting } from "messages_pb";
+import { SyncMessage } from "sync_message_pb";
 
 /**
  * A class to keep track of what data a given instance (self or peer) has for each
@@ -8,21 +8,21 @@ import { Greeting } from "messages_pb";
  * functionality to convert from/to Greeting objects.
  */
 export class HasMap {
-    readonly #data: Map<Medallion, Map<ChainStart, Timestamp>> = new Map();
+    private readonly data: Map<Medallion, Map<ChainStart, Timestamp>> = new Map();
 
     constructor({ greetingBytes = null, greeting = null }) {
         if (greetingBytes) {
-            greeting = Greeting.deserializeBinary(greetingBytes)
+            greeting = SyncMessage.Greeting.deserializeBinary(greetingBytes)
         }
         if (!greeting) return;
         for (let entry of greeting.getEntriesList()) {
             const medallion: Medallion = entry.getMedallion();
             const chainStart: ChainStart = entry.getChainStart();
             const seenThrough: SeenThrough = entry.getSeenThrough();
-            if (!this.#data.has(medallion)) {
-                this.#data.set(medallion, new Map());
+            if (!this.data.has(medallion)) {
+                this.data.set(medallion, new Map());
             }
-            this.#data.get(medallion).set(chainStart, seenThrough);
+            this.data.get(medallion).set(chainStart, seenThrough);
         }
     }
 
@@ -33,10 +33,10 @@ export class HasMap {
      * @returns true if the commit represents data not seen before
      */
     markIfNovel(commitInfo: CommitInfo, checkValidExtension?: Boolean): Boolean {
-        if (!this.#data.has(commitInfo.medallion)) {
-            this.#data.set(commitInfo.medallion, new Map());
+        if (!this.data.has(commitInfo.medallion)) {
+            this.data.set(commitInfo.medallion, new Map());
         }
-        const innerMap = this.#data.get(commitInfo.medallion);
+        const innerMap = this.data.get(commitInfo.medallion);
         const seenThrough = innerMap.get(commitInfo.chainStart) || 0;
         if (commitInfo.timestamp > seenThrough) {
             if (checkValidExtension && commitInfo.priorTime > seenThrough) {
@@ -48,11 +48,11 @@ export class HasMap {
         return false;
     }
 
-    constructGreeting(): Greeting {
-        const greeting = new Greeting();
-        for (const [medallion, medallionMap] of this.#data) {
+    constructGreeting(): SyncMessage.Greeting {
+        const greeting = new SyncMessage.Greeting();
+        for (const [medallion, medallionMap] of this.data) {
             for (const [chainStart, seenThrough] of medallionMap) {
-                const entry = new Greeting.GreetingEntry();
+                const entry = new SyncMessage.Greeting.GreetingEntry();
                 entry.setMedallion(medallion);
                 entry.setChainStart(chainStart);
                 entry.setSeenThrough(seenThrough);
@@ -63,7 +63,7 @@ export class HasMap {
     }
 
     getSeenTo(medallion: Medallion, chainStart: ChainStart): SeenThrough | undefined {
-        const inner = this.#data.get(medallion);
+        const inner = this.data.get(medallion);
         if (!inner) return undefined;
         return inner.get(chainStart);
     }
