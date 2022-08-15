@@ -30,5 +30,5 @@ kill_server:
 	kill `ps auxe | egrep '(GINK_SERVER)=1' | awk '{print $2}'` 2>/dev/null \
 	|| echo 'not running'
 
-client: node_modules javascript_protos
+instance: node_modules javascript_protos
 	node ./node_modules/.bin/ts-node ./typescript/main.ts ws://localhost:8080

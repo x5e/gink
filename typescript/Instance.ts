@@ -6,11 +6,15 @@ import { makeMedallion, assert, extractCommitInfo, info } from "./utils";
 import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset }
     from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
-import { Commit as CommitMessage } from "commit_pb";
+import { Commit as CommitProto } from "commit_pb";
 import { HasMap } from "./HasMap";
 
-
-export class Client {
+/**
+ * This is an instance of the Gink database that can be run inside of a web browser or via
+ * ts-node on a server.  Because of the need to work within a browser it doesn't do any port
+ * listening (see Server.ts which extends this class for that capability).
+ */
+export class Instance {
 
     initialized: Promise<void>;
     private store: Store;
@@ -35,7 +39,7 @@ export class Client {
         if (this.availableChains.size == 0) {
             medallion = makeMedallion();
             seenTo = chainStart = Date.now() * 1000;
-            const startCommit = new CommitMessage();
+            const startCommit = new CommitProto();
             startCommit.setTimestamp(seenTo);
             startCommit.setChainStart(chainStart);
             startCommit.setMedallion(medallion);
@@ -174,7 +178,7 @@ export class Client {
  */
 export class ChainManager {
     private last: Promise<Timestamp>;
-    constructor(private readonly client: Client, 
+    constructor(private readonly client: Instance, 
         readonly medallion: Medallion, 
         readonly chainStart: ChainStart, lastSeen: Timestamp) {
         
@@ -222,7 +226,7 @@ export class Commit {
 
     }
 
-    addObj(_obj: Obj): Identifier {
+    addAddressableObject(_obj: Obj): Identifier {
         throw new Error("not implemented");
     }
 
@@ -230,13 +234,13 @@ export class Commit {
         assert(!this.timestamp);
         this.timestamp = timestamp;
         this.medallion = medallion;
-        const commitMessage = new CommitMessage();
-        commitMessage.setTimestamp(timestamp);
-        commitMessage.setPreviousTimestamp(priorTimestamp);
-        commitMessage.setChainStart(chainStart);
-        commitMessage.setMedallion(medallion);
-        if (this.comment) { commitMessage.setComment(this.comment); }
-        this.serialized = commitMessage.serializeBinary();
+        const commitProto = new CommitProto();
+        commitProto.setTimestamp(timestamp);
+        commitProto.setPreviousTimestamp(priorTimestamp);
+        commitProto.setChainStart(chainStart);
+        commitProto.setMedallion(medallion);
+        if (this.comment) { commitProto.setComment(this.comment); }
+        this.serialized = commitProto.serializeBinary();
         return this.serialized;
     }
 

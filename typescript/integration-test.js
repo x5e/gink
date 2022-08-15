@@ -3,7 +3,7 @@ const Expector = require("./Expector");
 (async () => {
     const server = new Expector("make server");
     await server.expect("ready", 6000);
-    const client = new Expector("make client");
+    const client = new Expector("make instance");
     await client.expect("ready", 6000);
 
     server.send("hello\r\n");

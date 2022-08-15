@@ -7,7 +7,7 @@ import {
     server as WebSocketServer, request as WebSocketRequest,
     connection as WebSocketConnection, Message as WebSocketMessage
 } from 'websocket';
-import { Client } from "./Client";
+import { Instance } from "./Instance";
 import { Peer } from './Peer';
 import { Buffer } from "buffer";
 import { Store } from "./Store";
@@ -24,7 +24,7 @@ export interface ServerArgs {
     staticPath?: string;
 }
 
-export class Server extends Client {
+export class Server extends Instance {
     private websocketServer: WebSocketServer;
 
     constructor(store: Store, args: ServerArgs) {
