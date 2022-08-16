@@ -15,7 +15,7 @@ export class HasMap {
             greeting = SyncMessage.Greeting.deserializeBinary(greetingBytes)
         }
         if (!greeting) return;
-        for (let entry of greeting.getEntriesList()) {
+        for (const entry of greeting.getEntriesList()) {
             const medallion: Medallion = entry.getMedallion();
             const chainStart: ChainStart = entry.getChainStart();
             const seenThrough: SeenThrough = entry.getSeenThrough();

@@ -41,7 +41,7 @@ export class CommandLineInterface {
 
     async run() {
         await this.instance.initialized;
-        for (let target of this.targets) {
+        for (const target of this.targets) {
             info(`connecting to: ${target}`)
             await this.instance.connectTo(target);
             info(`connected!`)
