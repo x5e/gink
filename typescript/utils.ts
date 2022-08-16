@@ -61,7 +61,7 @@ export function makeMedallion() {
             return 2 ** 48 + randomInt(1, 2 ** 48);
         }
     }
-    return Math.floor(Math.random() * (2 ** 48)) + 2 ** 48;
+    return Math.floor(Math.random() * ((2 ** 48)-1)) + 1 + 2 ** 48;
 }
 
 let logLevel = 0;
