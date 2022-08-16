@@ -1,5 +1,5 @@
 import { CommitBytes, CommitInfo, ClaimedChains, Medallion, ChainStart } from "./typedefs"
-import { HasMap } from "./HasMap"
+import { ChainTracker } from "./ChainTracker"
 
 export interface Store {
 
@@ -11,7 +11,7 @@ export interface Store {
      * so it's best for a user of this class to get a has map and then update that
      * in-memory accounting object rather than re-requesting all the time.
      */
-    getHasMap: () => Promise<HasMap>;
+    getHasMap: () => Promise<ChainTracker>;
 
     /**
      * Returns a set of chains that may be appended to.

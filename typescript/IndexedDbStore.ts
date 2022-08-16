@@ -4,11 +4,10 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
     mode = "node";
 }
-import { Commit } from "commit_pb";
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { Store } from "./Store";
 import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, ClaimedChains, PriorTime } from "./typedefs";
-import { HasMap } from "./HasMap";
+import { ChainTracker } from "./ChainTracker";
 import { info } from "./utils";
 
 // IndexedDb orders entries in its b-tree according to a tuple.
@@ -104,9 +103,9 @@ export class IndexedDbStore implements Store {
         await wrappedTransaction.done;
     }
 
-    async getHasMap(): Promise<HasMap> {
+    async getHasMap(): Promise<ChainTracker> {
         await this.initialized;
-        const hasMap: HasMap = new HasMap({});
+        const hasMap: ChainTracker = new ChainTracker({});
         (await this.getChainInfos()).map((value) => {
             hasMap.markIfNovel({
                 medallion: value.medallion,
@@ -153,7 +152,7 @@ export class IndexedDbStore implements Store {
 
     // Note the IndexedDB has problems when await is called on anything unrelated
     // to the current commit, so its best if `callBack` doesn't await.
-    async getCommits(callBack: (commitBytes: Commit, commitInfo: CommitInfo) => void) {
+    async getCommits(callBack: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void) {
         await this.initialized;
 
         // We loop through all commits and send those the peer doesn't have.

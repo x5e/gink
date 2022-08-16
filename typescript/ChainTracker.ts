@@ -7,7 +7,7 @@ import { SyncMessage } from "sync_message_pb";
  * This is essentially the same data thats in the Greeting message, so I've included
  * functionality to convert from/to Greeting objects.
  */
-export class HasMap {
+export class ChainTracker {
     private readonly data: Map<Medallion, Map<ChainStart, Timestamp>> = new Map();
 
     constructor({ greetingBytes = null, greeting = null }) {

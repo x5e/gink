@@ -1,7 +1,7 @@
 import { Medallion, ChainStart, CommitBytes, Timestamp } from "./typedefs"
 import { Store } from "./Store";
 import { Commit } from "commit_pb";
-import { HasMap } from "./HasMap";
+import { ChainTracker } from "./ChainTracker";
 import { extractCommitInfo } from "./utils";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
@@ -40,7 +40,7 @@ function extendChain(comment: string, previous: CommitBytes, timestamp: Timestam
     return subsequent.serializeBinary();
 }
 
-export async function addTrxns(store: Store, hasMap?: HasMap) {
+export async function addTrxns(store: Store, hasMap?: ChainTracker) {
     const start1 = makeChainStart("chain1,tx1", MEDALLION1, START_MICROS1);
     await store.addCommit(start1, extractCommitInfo(start1));
     const next1 = extendChain("chain1,tx2", start1, NEXT_TS1);

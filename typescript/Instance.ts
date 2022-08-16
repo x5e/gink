@@ -7,7 +7,7 @@ import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset }
     from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
 import { Commit as CommitProto } from "commit_pb";
-import { HasMap } from "./HasMap";
+import { ChainTracker } from "./ChainTracker";
 
 /**
  * This is an instance of the Gink database that can be run inside of a web browser or via
@@ -20,7 +20,7 @@ export class Instance {
     private store: Store;
     private countConnections: number = 0; // Includes disconnected clients.
     private availableChains: ClaimedChains;
-    private iHave: HasMap;
+    private iHave: ChainTracker;
     readonly peers: Map<number, Peer> = new Map();
 
     constructor(store: Store) {
@@ -111,7 +111,7 @@ export class Instance {
             }
             if (parsed.hasGreeting()) {
                 const greeting = parsed.getGreeting();
-                peer.receiveHasMap(new HasMap({ greeting }));
+                peer.receiveHasMap(new ChainTracker({ greeting }));
                 // TODO: figure out how to block processing of receiving other messages while sending
                 this.store.getCommits(peer.sendIfNeeded.bind(peer));
                 return;

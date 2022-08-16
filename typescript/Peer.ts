@@ -1,12 +1,12 @@
 import { assert } from "console";
 import { CommitInfo, CommitBytes } from "./typedefs";
 import { makeCommitMessage, noOp } from "./utils";
-import { HasMap } from "./HasMap";
+import { ChainTracker } from "./ChainTracker";
 
 export class Peer {
     private sendFunc: (msg: Uint8Array) => void;
     private closeFunc: () => void;
-    hasMap?: HasMap;
+    hasMap?: ChainTracker;
 
     constructor(sendFunc: (msg: Uint8Array) => void, closeFunc: () => void = noOp) { 
         this.sendFunc = sendFunc;
@@ -18,7 +18,7 @@ export class Peer {
         func();
     }
 
-    receiveHasMap(hasMap: HasMap) {
+    receiveHasMap(hasMap: ChainTracker) {
         assert(!this.hasMap, "Already received a HasMap/Greeting from this Peer!");
         this.hasMap = hasMap;
     }

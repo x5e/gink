@@ -9,7 +9,7 @@ import { flock } from "fs-ext";
 import { LogFile } from "log_file_pb";
 import { extractCommitInfo, info } from "./utils";
 import { assert } from "console";
-import { HasMap } from "./HasMap";
+import { ChainTracker } from "./ChainTracker";
 
 /*
     At time of writing, there's only an in-memory implementation of 
@@ -112,7 +112,7 @@ export class LogBackedStore implements Store {
         await this.indexedDbStore.claimChain(medallion, chainStart);
     }
     
-    async getHasMap(): Promise<HasMap> {
+    async getHasMap(): Promise<ChainTracker> {
         await this.initialized;
         return await this.indexedDbStore.getHasMap();
     }
