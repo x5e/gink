@@ -69,7 +69,13 @@ let logLevel = 0;
 export function setLogLevel(level: number) {
     logLevel = level;
 }
-
+/**
+ * Uses console.error to log messages to stderr in a form like:
+ * [04:07:03.227Z CommandLineInterace.ts:51] got chain manager, using medallion=383316229311328
+ * That is to say, it's:
+ * [<Timestamp> <SourceFileName>:<SourceLine>] <Message>
+ * @param msg message to log
+ */
 export function info(msg: string) {
     if (logLevel < 1) return;
     const stackString = new Error().stack;
