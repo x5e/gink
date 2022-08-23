@@ -1,14 +1,14 @@
-
+import { info } from "./utils";
 export var mode = "browser";
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
     mode = "node";
 }
+console.log(`mode=${mode}`);
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { Store } from "./Store";
 import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, ClaimedChains, PriorTime } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
-import { info } from "./utils";
 
 // IndexedDb orders entries in its b-tree according to a tuple.
 // So this CommitKey is specific to this implementation of the Store.

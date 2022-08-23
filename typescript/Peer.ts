@@ -1,6 +1,5 @@
-import { assert } from "console";
 import { CommitInfo, CommitBytes } from "./typedefs";
-import { makeCommitMessage, noOp } from "./utils";
+import { makeCommitMessage, noOp, assert } from "./utils";
 import { ChainTracker } from "./ChainTracker";
 
 export class Peer {

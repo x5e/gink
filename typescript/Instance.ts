@@ -3,11 +3,15 @@ var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
 import { Peer } from "./Peer";
 import { Store } from "./Store";
 import { makeMedallion, assert, extractCommitInfo, info } from "./utils";
-import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset }
+import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset, CommitInfo }
     from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
 import { Commit as CommitProto } from "commit_pb";
 import { ChainTracker } from "./ChainTracker";
+
+interface CommitListener {
+    (commitInfo: CommitInfo): Promise<void>;
+}
 
 /**
  * This is an instance of the Gink database that can be run inside of a web browser or via
@@ -17,6 +21,7 @@ import { ChainTracker } from "./ChainTracker";
 export class Instance {
 
     initialized: Promise<void>;
+    private listeners: CommitListener[] = [];
     private store: Store;
     private countConnections: number = 0; // Includes disconnected clients.
     private availableChains: ClaimedChains;
@@ -26,6 +31,10 @@ export class Instance {
     constructor(store: Store) {
         this.store = store;
         this.initialized = this.initialize();
+    }
+
+    addListener(listener: CommitListener) {
+        this.listeners.push(listener);
     }
 
     /**
@@ -94,6 +103,9 @@ export class Instance {
         for (const [peerId, peer] of this.peers) {
             if (peerId != fromConnectionId)
                 peer.sendIfNeeded(commitBytes, commitInfo);
+        }
+        for (const listener of this.listeners) {
+            await listener(commitInfo);
         }
     }
 
