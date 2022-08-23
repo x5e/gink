@@ -204,7 +204,7 @@ export class ChainManager {
      * @param commit 
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
-    async addCommit(commit: Commit): Promise<Timestamp> {
+    async addCommit(commit: CommitCoordinator): Promise<Timestamp> {
         // We want to ensure that commits are ordered on the chain in the order that addCommit is called.
         // This is done by chaining promises (which ensures that they will be resolved in order).
         this.last = this.last.then((lastTimestamp) => new Promise<number>((resolve) => {
@@ -224,12 +224,12 @@ export class ChainManager {
 }
 
 /**
- * An open transaction that you can add objects to.  It's a little funky because the timestamp
+ * An open commit that you can add objects to.  It's a little funky because the timestamp
  * of the commit will be determined when it's closed, so the ID of any object added to the commit
  * isn't completely known until after it's closed.  (That's required to avoid objects referencing 
  * other objects with timestamps in the future).
  */
-export class Commit {
+export class CommitCoordinator {
     private timestamp: Timestamp | null = null;
     private medallion: Medallion | null = null;
     private serialized: Uint8Array | null = null;
@@ -267,9 +267,9 @@ export class Obj { }
  * objects from other commits that have been sealed).
  */
 export class Identifier {
-    readonly commit: Commit;
+    readonly commit: CommitCoordinator;
     readonly offset: Offset;
-    constructor(commit: Commit, offset: Offset) {
+    constructor(commit: CommitCoordinator, offset: Offset) {
         this.offset = offset;
         this.commit = commit;
     }

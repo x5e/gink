@@ -14,10 +14,10 @@ import { ChainTracker } from "./ChainTracker";
 // So this CommitKey is specific to this implementation of the Store.
 // [Timestamp, Medallion] should enough to uniquely specify a Commit.
 // ChainStart and PriorTime are just included here to avoid re-parsing.
-export type CommitKey = [Timestamp, Medallion, ChainStart, PriorTime];
+export type CommitKey = [Timestamp, Medallion, ChainStart, PriorTime, string];
 
 function commitInfoToKey(commitInfo: CommitInfo): CommitKey {
-    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart, commitInfo.priorTime]
+    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart, commitInfo.priorTime, commitInfo.comment]
 }
 
 function commitKeyToInfo(commitKey: CommitKey) {
@@ -26,13 +26,8 @@ function commitKeyToInfo(commitKey: CommitKey) {
         medallion: commitKey[1],
         chainStart: commitKey[2],
         priorTime: commitKey[3],
+        comment: commitKey[4],
     }
-}
-
-export interface ChainInfo {
-    medallion: Medallion;
-    chainStart: ChainStart;
-    seenThrough: Timestamp;
 }
 
 export class IndexedDbStore implements Store {
@@ -107,16 +102,12 @@ export class IndexedDbStore implements Store {
         await this.initialized;
         const hasMap: ChainTracker = new ChainTracker({});
         (await this.getChainInfos()).map((value) => {
-            hasMap.markIfNovel({
-                medallion: value.medallion,
-                chainStart: value.chainStart,
-                timestamp: value.seenThrough
-            })
+            hasMap.markIfNovel(value)
         })
         return hasMap;
     }
 
-    private async getChainInfos(): Promise<Array<ChainInfo>> {
+    private async getChainInfos(): Promise<Array<CommitInfo>> {
         await this.initialized;
         let wrappedTransaction: IDBPTransaction = this.wrapped.transaction(['chainInfos']);
         let store = wrappedTransaction.objectStore('chainInfos');
@@ -127,21 +118,16 @@ export class IndexedDbStore implements Store {
         await this.initialized;
         const { timestamp, medallion, chainStart, priorTime } = commitInfo
         const wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos'], 'readwrite');
-        let oldChainInfo: ChainInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
+        let oldChainInfo: CommitInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime != 0) {
-            if (oldChainInfo?.seenThrough >= timestamp) {
+            if (oldChainInfo?.timestamp >= timestamp) {
                 return false;
             }
-            if (oldChainInfo?.seenThrough != priorTime) {
+            if (oldChainInfo?.timestamp != priorTime) {
                 throw new Error(`missing prior chain entry for ${commitInfo}, have ${oldChainInfo}`);
             }
         }
-        let newInfo: ChainInfo = {
-            medallion: medallion,
-            chainStart: chainStart,
-            seenThrough: timestamp,
-        }
-        await wrappedTransaction.objectStore("chainInfos").put(newInfo);
+        await wrappedTransaction.objectStore("chainInfos").put(commitInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring re-parsing.
         const commitKey: CommitKey = commitInfoToKey(commitInfo);

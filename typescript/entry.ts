@@ -4,7 +4,7 @@ import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
 import { CommitBytes, CommitInfo } from "./typedefs";
 import { extractCommitInfo, info, setLogLevel, assert } from "./utils";
 import { Commit } from "commit_pb";
-import { Instance } from "./Instance";
+import { Instance, CommitCoordinator } from "./Instance";
 
 setLogLevel(1);
 
@@ -32,6 +32,7 @@ async function onCommit(commitInfo: CommitInfo) {
     const commitBytes = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
     const commitInfo = extractCommitInfo(commitBytes);
     await store.addCommit(commitBytes, commitInfo);
+    await store.claimChain(MEDALLION1, START_MICROS1);
     store.getCommits((commitBytes: CommitBytes, _commitInfo: CommitInfo) => {
         const commit = Commit.deserializeBinary(commitBytes);
         info(`got commit with comment: ${commit.getComment()}`);
@@ -42,7 +43,7 @@ async function onCommit(commitInfo: CommitInfo) {
     instance.addListener(onCommit);
     const chainManager = await instance.getChainManager();
     assert(chainManager.medallion == MEDALLION1);
-    await chainManager.addCommit(new Commit("Hello, Universe!"));
+    await chainManager.addCommit(new CommitCoordinator("Hello, Universe!"));
     await instance.connectTo(getWebsocketTarget());
     info("connected!");
 })();

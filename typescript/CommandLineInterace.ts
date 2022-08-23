@@ -2,7 +2,7 @@ import { Server } from "./Server";
 import { LogBackedStore } from "./LogBackedStore";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
-import { Instance, Commit } from "./Instance";
+import { Instance, CommitCoordinator } from "./Instance";
 import { info } from "./utils";
 var readline = require('readline');
 
@@ -51,7 +51,7 @@ export class CommandLineInterface {
         info("ready (type a comment and press enter to create a commit)");
         const readlineInterface = readline.createInterface(process.stdin, process.stdout);
         readlineInterface.on('line', async (comment: string) => {
-            const commit = new Commit(comment);
+            const commit = new CommitCoordinator(comment);
             await chainManager.addCommit(commit);
         })
     }
