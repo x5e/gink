@@ -32,3 +32,4 @@ kill_server:
 
 instance: node_modules javascript_protos
 	node ./node_modules/.bin/ts-node ./typescript/main.ts ws://localhost:8080
+
