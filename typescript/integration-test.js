@@ -1,10 +1,12 @@
-#!/usr/bin/node --unhandled-rejections=strict
+#!/usr/bin/env node --unhandled-rejections=strict
 const Expector = require("./Expector");
 (async () => {
+    console.log("starting");
     const server = new Expector("make server");
     await server.expect("ready", 6000);
     const client = new Expector("make instance");
     await client.expect("ready", 6000);
+    console.log("all ready");
 
     server.send("hello\r\n");
     await client.expect(/received commit:.*hello/);

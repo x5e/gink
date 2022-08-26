@@ -6,3 +6,8 @@ RUN mkdir -p $WORKING
 WORKDIR $WORKING
 COPY package.json ./
 RUN npm install
+CMD bash
+COPY . .
+RUN make
+RUN make unit_tests
+#RUN make integration_tests # foo
