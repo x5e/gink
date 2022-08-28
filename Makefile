@@ -28,7 +28,7 @@ integration_tests:
 test: unit_tests integration_tests
 
 server: node_modules javascript_protos
-	GINK_SERVER=1 GINK_PORT=8080 node ts-node ./typescript/main.ts
+	GINK_SERVER=1 GINK_PORT=8080 ts-node ./typescript/main.ts
 
 kill_server:
 	kill `ps auxe | egrep '(GINK_SERVER)=1' | awk '{print $2}'` 2>/dev/null \
