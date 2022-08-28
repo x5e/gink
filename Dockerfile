@@ -10,4 +10,4 @@ CMD bash
 COPY . .
 RUN make
 RUN make unit_tests
-#RUN make integration_tests # foo
+RUN make integration_tests

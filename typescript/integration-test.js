@@ -9,13 +9,15 @@ const Expector = require("./Expector");
     console.log("all ready");
 
     server.send("hello\r\n");
+    console.log("sent");
     await client.expect(/received commit:.*hello/);
-
+    console.log("received");
     client.send("world\r\n");
     await server.expect(/received commit:.*world/);
 
-    await server.close();
-    await client.close();
+    console.log("closing...");
+    server.close();
+    client.close();
     console.log("ok!");
-    //process.exit(0);
+    process.exit(0);
 })().catch((reason) => {console.error(reason); process.exit(1);})
