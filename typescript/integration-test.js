@@ -3,9 +3,9 @@ const Expector = require("./Expector");
 (async () => {
     console.log("starting");
     const server = new Expector("make server");
-    await server.expect("ready", 6000);
+    await server.expect("ready", 60000);
     const client = new Expector("make instance");
-    await client.expect("ready", 6000);
+    await client.expect("ready", 60000);
     console.log("all ready");
 
     server.send("hello\r\n");
