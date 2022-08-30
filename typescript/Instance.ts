@@ -52,7 +52,7 @@ export class Instance {
             startCommit.setTimestamp(seenTo);
             startCommit.setChainStart(chainStart);
             startCommit.setMedallion(medallion);
-            startCommit.setComment("<start>");
+            startCommit.setComment("Default Start Chain Comment");
             const startCommitBytes = startCommit.serializeBinary();
             await this.receiveCommit(startCommitBytes);
             await this.store.claimChain(medallion, chainStart);
@@ -204,7 +204,7 @@ export class ChainManager {
      * @param commit 
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
-    async addCommit(commit: CommitCoordinator): Promise<Timestamp> {
+    async addCommit(commit: CommitCoordinator, newTimestamp?: Timestamp): Promise<Timestamp> {
         // We want to ensure that commits are ordered on the chain in the order that addCommit is called.
         // This is done by chaining promises (which ensures that they will be resolved in order).
         this.last = this.last.then((lastTimestamp) => new Promise<number>((resolve) => {
@@ -212,7 +212,7 @@ export class ChainManager {
             // so that all commits get a unique timestamp.
             const waitNeeded = Date.now() * 1000 > lastTimestamp ? 0 : 1;
             setTimeout(async () => {
-                const newTimestamp = Date.now() * 1000;
+                newTimestamp = newTimestamp || Date.now() * 1000;
                 assert(newTimestamp > lastTimestamp);
                 const bytes = commit.seal(this.medallion, this.chainStart, lastTimestamp, newTimestamp);
                 await this.client.receiveCommit(bytes);

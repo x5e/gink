@@ -1,6 +1,6 @@
 eval("globalThis.test = function() {};");
 import { IndexedDbStore } from "./IndexedDbStore";
-import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
+import { makeChainStart, MEDALLION1, START_MICROS1, NEXT_TS1 } from "./test_utils";
 import { CommitBytes, CommitInfo } from "./typedefs";
 import { extractCommitInfo, info, setLogLevel, assert } from "./utils";
 import { Commit } from "commit_pb";
@@ -22,7 +22,9 @@ function getWebsocketTarget(): string {
 }
 
 async function onCommit(commitInfo: CommitInfo) {
-    info(`received commit from ${commitInfo.medallion} with comment ${commitInfo.comment}`);
+    document.getElementById('messages').innerHTML += 
+        `${commitInfo.medallion}, ${commitInfo.timestamp}, ` + 
+        `"${commitInfo.comment}"\n`;
 }
 
 (async () => {
@@ -43,7 +45,7 @@ async function onCommit(commitInfo: CommitInfo) {
     instance.addListener(onCommit);
     const chainManager = await instance.getChainManager();
     assert(chainManager.medallion == MEDALLION1);
-    await chainManager.addCommit(new CommitCoordinator("Hello, Universe!"));
+    await chainManager.addCommit(new CommitCoordinator("Hello, Universe!"), NEXT_TS1);
     await instance.connectTo(getWebsocketTarget());
     info("connected!");
 })();
