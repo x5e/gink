@@ -57,7 +57,7 @@ export class IndexedDbStore implements Store {
                      isn't a javascript object, we'll use 
                      [timestamp, medallion] to keep transactions ordered in time.
                  */
-                db.createObjectStore('trxns');
+                db.createObjectStore('trxns'); // a map from CommitKey to CommitBytes
 
                 /*
                     Stores ChainInfo objects.
@@ -67,6 +67,12 @@ export class IndexedDbStore implements Store {
 
                 /*
                     Keep track of active chains this instance can write to.
+                    Stores objects with two keys: "medallion" and "chainStart",
+                    which have value Medallion and ChainStart respectively.
+                    This could alternatively be implemented with a keys being
+                    medallions and values being chainStarts, but this is a little
+                    bit easier because the getAll() interface is a bit nicer than
+                    working with the cursor interface.
                 */
                 db.createObjectStore('activeChains', { keyPath: "medallion" });
             },
@@ -95,6 +101,7 @@ export class IndexedDbStore implements Store {
     }
 
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
+        //TODO(https://github.com/google/gink/issues/29): check for medallion reuse
         await this.initialized;
         const wrappedTransaction = this.wrapped.transaction(['activeChains'], 'readwrite');
         await wrappedTransaction.objectStore('activeChains').add({ chainStart, medallion });
@@ -106,15 +113,13 @@ export class IndexedDbStore implements Store {
         const hasMap: ChainTracker = new ChainTracker({});
         (await this.getChainInfos()).map((value) => {
             hasMap.markIfNovel(value)
-        })
+        });
         return hasMap;
     }
 
     private async getChainInfos(): Promise<Array<CommitInfo>> {
         await this.initialized;
-        let wrappedTransaction: IDBPTransaction = this.wrapped.transaction(['chainInfos']);
-        let store = wrappedTransaction.objectStore('chainInfos');
-        return await store.getAll();
+        return await this.wrapped.transaction(['chainInfos']).objectStore('chainInfos').getAll();
     }
 
     async addCommit(commitBytes: CommitBytes, commitInfo: CommitInfo): Promise<Boolean> {
@@ -127,6 +132,7 @@ export class IndexedDbStore implements Store {
                 return false;
             }
             if (oldChainInfo?.timestamp != priorTime) {
+                //TODO(https://github.com/google/gink/issues/27): Need to explicitly close trxn?
                 throw new Error(`missing prior chain entry for ${commitInfo}, have ${oldChainInfo}`);
             }
         }

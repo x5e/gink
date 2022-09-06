@@ -46,7 +46,6 @@ export interface Store {
     /**
      * Tries to add a commit to this store; returns truthy
      * if actually added, false if not (e.g. if already has it).
-     * If adding to the store, will also update the passed HasMap.
      * Will throw if passed a commit without the proceeding
      * ones in the associated chain.
      *
@@ -60,6 +59,7 @@ export interface Store {
      * 
      * The callback should *NOT* await on anything (will cause problems 
      * with the IndexedDb implementation if you do).
+     * See https://github.com/google/gink/issues/28
      *
      * Implicitly awaits on this.initialized;
      */

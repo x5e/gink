@@ -1,5 +1,3 @@
-var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
-    eval("require('websocket').w3cwebsocket");
 import { Peer } from "./Peer";
 import { Store } from "./Store";
 import { makeMedallion, assert, extractCommitInfo, info } from "./utils";
@@ -8,6 +6,10 @@ import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset, C
 import { SyncMessage } from "sync_message_pb";
 import { Commit as CommitProto } from "commit_pb";
 import { ChainTracker } from "./ChainTracker";
+
+//TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
+var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
+    eval("require('websocket').w3cwebsocket");
 
 interface CommitListener {
     (commitInfo: CommitInfo): Promise<void>;
