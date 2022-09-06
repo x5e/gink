@@ -4,7 +4,6 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
     mode = "node";
 }
-console.log(`mode=${mode}`);
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { Store } from "./Store";
 import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, ClaimedChains, PriorTime } from "./typedefs";
@@ -35,7 +34,7 @@ export class IndexedDbStore implements Store {
     initialized: Promise<void>;
     private wrapped: IDBPDatabase;
 
-    constructor(indexedDbName = "default", reset = false) {
+    constructor(indexedDbName = "gink-default", reset = false) {
         info(`creating indexedDb ${indexedDbName}, reset=${reset}`)
         this.initialized = this.initialize(indexedDbName, reset);
     }
@@ -45,7 +44,6 @@ export class IndexedDbStore implements Store {
             await deleteDB(indexedDbName, {
                 blocked() {
                     const msg = `Unable to delete IndexedDB database ${indexedDbName} !!!`;
-                    console.error(msg);
                     throw new Error(msg);
                 }
             });
@@ -76,8 +74,13 @@ export class IndexedDbStore implements Store {
     }
 
     async close() {
-        await this.initialized;
-        this.wrapped.close();
+        try {
+            await this.initialized;
+        } finally {
+            if (this.wrapped) {
+                this.wrapped.close();
+            }
+        }
     }
 
     async getClaimedChains(): Promise<ClaimedChains> {
@@ -98,7 +101,7 @@ export class IndexedDbStore implements Store {
         await wrappedTransaction.done;
     }
 
-    async getHasMap(): Promise<ChainTracker> {
+    async getChainTracker(): Promise<ChainTracker> {
         await this.initialized;
         const hasMap: ChainTracker = new ChainTracker({});
         (await this.getChainInfos()).map((value) => {

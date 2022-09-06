@@ -112,9 +112,9 @@ export class LogBackedStore implements Store {
         await this.indexedDbStore.claimChain(medallion, chainStart);
     }
     
-    async getHasMap(): Promise<ChainTracker> {
+    async getChainTracker(): Promise<ChainTracker> {
         await this.initialized;
-        return await this.indexedDbStore.getHasMap();
+        return await this.indexedDbStore.getChainTracker();
     }
 
     async getCommits(callBack: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void): Promise<void> {

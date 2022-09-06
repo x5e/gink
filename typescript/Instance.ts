@@ -76,7 +76,7 @@ export class Instance {
     private async initialize() {
         await this.store.initialized;
         this.availableChains = await this.store.getClaimedChains();
-        this.iHave = await this.store.getHasMap();
+        this.iHave = await this.store.getChainTracker();
     }
 
     // returns a truthy number that can be used as a connection id

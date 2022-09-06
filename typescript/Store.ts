@@ -3,6 +3,11 @@ import { ChainTracker } from "./ChainTracker"
 
 export interface Store {
 
+    /**
+     * Can be awaited on for the underlying store to be ready for operations.
+     * Methods of the store should await on this, so if initialization fails then
+     * no other method will work either.
+     */
     readonly initialized: Promise<void>;
 
     /**
@@ -10,18 +15,24 @@ export interface Store {
      * Note that this might be expensive to compute (e.g. require going to disk),
      * so it's best for a user of this class to get a has map and then update that
      * in-memory accounting object rather than re-requesting all the time.
+     *
+     * Implicitly awaits on this.initialized;
      */
-    getHasMap: () => Promise<ChainTracker>;
+    getChainTracker: () => Promise<ChainTracker>;
 
     /**
      * Returns a set of chains that may be appended to.
-     * You'll need to getHasMap to figure out the last 
+     * You'll need to getChainTracker to figure out the last 
      * commit for any chain you want to add to though.
+     *
+     * Implicitly awaits on this.initialized;
      */
     getClaimedChains: () => Promise<ClaimedChains>;
 
     /**
      * Mark a chain as being owned by this store.
+     *
+     * Implicitly awaits on this.initialized;
      */
     claimChain: (medallion: Medallion, chainStart: ChainStart) => Promise<void>;
 
@@ -38,6 +49,8 @@ export interface Store {
      * If adding to the store, will also update the passed HasMap.
      * Will throw if passed a commit without the proceeding
      * ones in the associated chain.
+     *
+     * Implicitly awaits on this.initialized;
      */
     addCommit: (trxn: CommitBytes, commitInfo: CommitInfo) => Promise<Boolean>;
 
@@ -47,8 +60,13 @@ export interface Store {
      * 
      * The callback should *NOT* await on anything (will cause problems 
      * with the IndexedDb implementation if you do).
+     *
+     * Implicitly awaits on this.initialized;
      */
     getCommits: (callback: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void) => Promise<void>;
 
+    /**
+     * Closes the underlying data store.  Implicitly awaits on the this.initialized promise.
+     */
     close: () => Promise<void>;
 }
