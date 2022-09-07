@@ -1,7 +1,11 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
+const { spawnSync } = require("child_process");
+function hasInstalled(program) {
+    return !spawnSync(`which ${program}`, [], {shell:true}).status;
+}
 const browserCommand = [
-    "chromium", 
+    hasInstalled('chromium') ? "chromium" : "google-chrome",
     "--headless",
     "--no-sandbox", 
     "--remote-debugging-port=9222", 
