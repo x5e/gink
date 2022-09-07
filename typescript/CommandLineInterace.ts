@@ -2,7 +2,7 @@ import { Server } from "./Server";
 import { LogBackedStore } from "./LogBackedStore";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
-import { Instance, CommitCoordinator } from "./Instance";
+import { GinkInstance, CommitCoordinator } from "./GinkInstance";
 import { info } from "./utils";
 var readline = require('readline');
 
@@ -10,7 +10,7 @@ var readline = require('readline');
 export class CommandLineInterface {
     targets;
     store: Store;
-    instance: Instance | Server;
+    instance: GinkInstance;
 
     constructor(process: NodeJS.Process) {
         info("starting...");
@@ -34,7 +34,7 @@ export class CommandLineInterface {
                 staticPath: process.env["GINK_STATIC_PATH"],
             });
         } else {
-            this.instance = new Instance(this.store);
+            this.instance = new GinkInstance(this.store);
         }
         this.targets = process.argv.slice(2);
     }

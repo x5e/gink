@@ -4,7 +4,7 @@ import { makeChainStart, MEDALLION1, START_MICROS1, NEXT_TS1 } from "./test_util
 import { CommitBytes, CommitInfo } from "./typedefs";
 import { extractCommitInfo, info, setLogLevel, assert } from "./utils";
 import { Commit } from "commit_pb";
-import { Instance, CommitCoordinator } from "./Instance";
+import { GinkInstance, CommitCoordinator } from "./GinkInstance";
 
 setLogLevel(1);
 
@@ -40,7 +40,7 @@ async function onCommit(commitInfo: CommitInfo) {
         info(`got commit with comment: ${commit.getComment()}`);
     })
     info("after checking store");
-    const instance = new Instance(store);
+    const instance = new GinkInstance(store);
     await instance.initialized;
     instance.addListener(onCommit);
     const chainManager = await instance.getChainManager();

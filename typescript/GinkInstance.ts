@@ -20,7 +20,7 @@ interface CommitListener {
  * ts-node on a server.  Because of the need to work within a browser it doesn't do any port
  * listening (see Server.ts which extends this class for that capability).
  */
-export class Instance {
+export class GinkInstance {
 
     initialized: Promise<void>;
     private listeners: CommitListener[] = [];
@@ -35,6 +35,10 @@ export class Instance {
         this.initialized = this.initialize();
     }
 
+    /**
+    * Adds a listener that will be called every time a commit is received with the
+    * CommitInfo (which contains chain information, timestamp, and commit comment).
+    */
     addListener(listener: CommitListener) {
         this.listeners.push(listener);
     }
@@ -192,7 +196,7 @@ export class Instance {
  */
 export class ChainManager {
     private last: Promise<Timestamp>;
-    constructor(private readonly client: Instance, 
+    constructor(private readonly client: GinkInstance, 
         readonly medallion: Medallion, 
         readonly chainStart: ChainStart, lastSeen: Timestamp) {
         
