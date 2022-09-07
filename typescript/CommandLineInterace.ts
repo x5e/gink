@@ -1,4 +1,4 @@
-import { Server } from "./Server";
+import { GinkServer } from "./GinkServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
@@ -27,7 +27,7 @@ export class CommandLineInterface {
         }
 
         if (process.env["GINK_PORT"]) {
-            this.instance = new Server(this.store, {
+            this.instance = new GinkServer(this.store, {
                 port: process.env["GINK_PORT"],
                 sslKeyFilePath: process.env["GINK_SSL_KEY"],
                 sslCertFilePath: process.env["GINK_SSL_CERT"],

@@ -24,7 +24,7 @@ export interface ServerArgs {
     staticPath?: string;
 }
 
-export class Server extends GinkInstance {
+export class GinkServer extends GinkInstance {
     private websocketServer: WebSocketServer;
 
     constructor(store: Store, args: ServerArgs) {
