@@ -15,3 +15,15 @@ export interface CommitInfo {
     priorTime?: PriorTime;
     comment?: string;
 }
+
+export interface CommitListener {
+    (commitInfo: CommitInfo): Promise<void>;
+}
+
+export interface AddressableObject {
+
+}
+
+export interface Address {
+
+}

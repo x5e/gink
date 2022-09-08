@@ -73,8 +73,8 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         await addTrxns(store);
         const hasMap = await store.getChainTracker();
 
-        expect(hasMap.getSeenTo(MEDALLION1, START_MICROS1)).toBe(NEXT_TS1);
-        expect(hasMap.getSeenTo(MEDALLION2, START_MICROS2)).toBe(NEXT_TS2);
+        expect(hasMap.getSeenTo([MEDALLION1, START_MICROS1])).toBe(NEXT_TS1);
+        expect(hasMap.getSeenTo([MEDALLION2, START_MICROS2])).toBe(NEXT_TS2);
     });
 
     test(`${implName} test sends trxns in order`, async () => {

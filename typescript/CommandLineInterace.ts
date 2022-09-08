@@ -2,10 +2,15 @@ import { GinkServer } from "./GinkServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
-import { GinkInstance, CommitCoordinator } from "./GinkInstance";
+import { GinkInstance } from "./GinkInstance";
 import { info } from "./utils";
+import { CommitInfo } from "./typedefs";
+import { PendingCommit } from "./PendingCommit";
 var readline = require('readline');
 
+function onCommit(commitInfo: CommitInfo) {
+    info(`received commit: ${JSON.stringify(commitInfo)}`);
+}
 
 export class CommandLineInterface {
     targets;
@@ -46,13 +51,10 @@ export class CommandLineInterface {
             await this.instance.connectTo(target);
             info(`connected!`)
         }
-        const chainManager = await this.instance.getChainManager();
-        info(`got chain manager, using medallion=${chainManager.medallion}`)
         info("ready (type a comment and press enter to create a commit)");
         const readlineInterface = readline.createInterface(process.stdin, process.stdout);
         readlineInterface.on('line', async (comment: string) => {
-            const commit = new CommitCoordinator(comment);
-            await chainManager.addCommit(commit);
+            await this.instance.addCommit(new PendingCommit(comment));
         })
     }
 

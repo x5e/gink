@@ -62,9 +62,30 @@ export class ChainTracker {
         return greeting;
     }
 
-    getSeenTo(medallion: Medallion, chainStart: ChainStart): SeenThrough | undefined {
-        const inner = this.data.get(medallion);
+    /**
+     * Returns how far along data is seen for a particular chain.
+     * @param key A [Medallion, ChainStart] tuple
+     * @returns SeenThrough (a Timestamp) or undefined if not yet seen
+     */
+    getSeenTo(key: [Medallion, ChainStart]): SeenThrough | undefined {
+        const inner = this.data.get(key[0]);
         if (!inner) return undefined;
-        return inner.get(chainStart);
+        return inner.get(key[1]);
+    }
+
+    /**
+     * Gets a list of chains seen for a particular medallion, or a list of all seen chains
+     * @param singleMedallion The single medallion to get chains for (returns all if undefined)
+     * @returns a list of known chains
+     */
+    getChains(singleMedallion?: Medallion): Array<[Medallion, ChainStart]> {
+        const result = [];
+        for (const [medallion, map] of this.data.entries()) {
+            if (singleMedallion && medallion != singleMedallion) continue;
+            for (const chainStart of map.keys()) {
+                result.push([medallion, chainStart]);
+            }
+        }
+        return result;
     }
 }

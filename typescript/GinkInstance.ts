@@ -1,19 +1,18 @@
 import { Peer } from "./Peer";
 import { Store } from "./Store";
-import { makeMedallion, assert, extractCommitInfo, info } from "./utils";
-import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset, CommitInfo }
+import { makeMedallion, assert, extractCommitInfo, info, now } from "./utils";
+import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset, CommitInfo, CommitListener }
     from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
-import { Commit as CommitProto } from "commit_pb";
 import { ChainTracker } from "./ChainTracker";
+import { PendingCommit } from "./PendingCommit";
+import { Commit as CommitProto } from "commit_pb";
+import { time } from "console";
 
 //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
 var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
     eval("require('websocket').w3cwebsocket");
 
-interface CommitListener {
-    (commitInfo: CommitInfo): Promise<void>;
-}
 
 /**
  * This is an instance of the Gink database that can be run inside of a web browser or via
@@ -26,7 +25,7 @@ export class GinkInstance {
     private listeners: CommitListener[] = [];
     private store: Store;
     private countConnections: number = 0; // Includes disconnected clients.
-    private availableChains: ClaimedChains;
+    private claimedChains: ClaimedChains;
     private iHave: ChainTracker;
     readonly peers: Map<number, Peer> = new Map();
 
@@ -34,6 +33,13 @@ export class GinkInstance {
         this.store = store;
         this.initialized = this.initialize();
     }
+
+    private async initialize() {
+        await this.store.initialized;
+        this.claimedChains = await this.store.getClaimedChains();
+        this.iHave = await this.store.getChainTracker();
+    }
+
 
     /**
     * Adds a listener that will be called every time a commit is received with the
@@ -44,45 +50,70 @@ export class GinkInstance {
     }
 
     /**
-     * 
-     * @returns Promise of a new chain manager that can be used to create new commits.
+     * Creates an empty commit with only a comment in order to start a chain.
+     * @param medallion Medallion to use (only for testing), leave blank in production
+     * @param chainStart ChainStart to use (only for testing), leave blank in production
      */
-    async getChainManager(): Promise<ChainManager> {
-        let medallion: number;
-        let chainStart: number;
-        let seenTo: number;
-        if (this.availableChains.size == 0) {
-            medallion = makeMedallion();
-            seenTo = chainStart = Date.now() * 1000;
-            const startCommit = new CommitProto();
-            startCommit.setTimestamp(seenTo);
-            startCommit.setChainStart(chainStart);
-            startCommit.setMedallion(medallion);
-            startCommit.setComment("Default Start Chain Comment");
-            const startCommitBytes = startCommit.serializeBinary();
-            await this.receiveCommit(startCommitBytes);
-            await this.store.claimChain(medallion, chainStart);
-        } else {
-            const iterator = this.availableChains.entries();
-            [medallion, chainStart] = iterator.next().value;
-            seenTo = this.iHave.getSeenTo(medallion, chainStart)
-            assert(seenTo);
-            this.availableChains.delete(medallion);
-        }
-        return new ChainManager(this, medallion, chainStart, seenTo);
+    async startChain(medallion?: Medallion, chainStart?: ChainStart): Promise<[Medallion, ChainStart]> {
+        medallion = medallion || makeMedallion();
+        chainStart = chainStart || Date.now() * 1000;
+        assert(this.iHave.getChains(medallion).length === 0)  // no medallion reuse in 1.x
+        assert(chainStart <= Date.now() * 1000) // don't start in the future
+        const startCommit = new CommitProto();
+        startCommit.setTimestamp(chainStart);
+        startCommit.setChainStart(chainStart);
+        startCommit.setMedallion(medallion);
+        startCommit.setComment("Default Start Chain Comment");
+        const startCommitBytes = startCommit.serializeBinary();
+        await this.receiveCommit(startCommitBytes);
+        await this.store.claimChain(medallion, chainStart);
+        this.claimedChains.set(medallion, chainStart);
+        return [medallion, chainStart];
     }
+
+    /**
+     * Adds a commit to a chain, setting the medallion and timestamps on the commit in the process.
+     * 
+     * @param pendingCommit a PendingCommit ready to be sealed
+     * @param commitInfo optionally explicitly specify the chain and timestamp; intended for deterministic testing
+     * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
+     */
+    async addCommit(pendingCommit: PendingCommit, commitInfo?: CommitInfo): Promise<CommitInfo> {
+        if (!commitInfo) {
+            if (!this.claimedChains.size) {
+                await this.startChain();
+            }
+            const chain = this.claimedChains.entries().next().value;
+            const seenTo = this.iHave.getSeenTo(chain);
+            const nowMicros = Date.now() * 1000;
+            assert(seenTo > 0 && seenTo < nowMicros + 500);
+            commitInfo = {
+                medallion: chain[0],
+                chainStart: chain[1],
+                timestamp: nowMicros > seenTo ? nowMicros : seenTo + 1,
+                priorTime: seenTo,
+            }
+        }
+        const serialized = pendingCommit.seal(commitInfo);
+        const resultInfo = await this.receiveCommit(serialized);
+        // receiveCommit currently deserializes the commit to get the commit info,
+        // which isn't ideal, but we can use it as an opportunity to ensure it's right.
+        assert(
+            commitInfo.timestamp == resultInfo.timestamp &&
+            commitInfo.chainStart == resultInfo.chainStart &&
+            commitInfo.medallion == resultInfo.medallion &&
+            commitInfo.priorTime == resultInfo.priorTime &&
+            commitInfo.comment == resultInfo.comment
+            );
+        return resultInfo;
+    }
+
 
     async close() {
         for (const [_peerId, peer] of this.peers) {
             peer.close();
         }
         await this.store.close();
-    }
-
-    private async initialize() {
-        await this.store.initialized;
-        this.availableChains = await this.store.getClaimedChains();
-        this.iHave = await this.store.getChainTracker();
     }
 
     // returns a truthy number that can be used as a connection id
@@ -98,10 +129,9 @@ export class GinkInstance {
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns 
      */
-    async receiveCommit(commitBytes: CommitBytes, fromConnectionId?: number) {
+    async receiveCommit(commitBytes: CommitBytes, fromConnectionId?: number): Promise<CommitInfo> {
         const commitInfo = extractCommitInfo(commitBytes);
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);
-        info(`received commit: ${JSON.stringify(commitInfo)}`);
         const added = await this.store.addCommit(commitBytes, commitInfo);
         // If this commit isn't new to this instance, then it will have already been 
         // sent to the connected peers and doesn't need to be sent again.
@@ -113,6 +143,7 @@ export class GinkInstance {
         for (const listener of this.listeners) {
             await listener(commitInfo);
         }
+        return commitInfo;
     }
 
     receiveMessage(messageBytes: Uint8Array, fromConnectionId: number) {
@@ -190,93 +221,3 @@ export class GinkInstance {
     }
 }
 
-/**
- * Its expected that each thread will have a unique chain to add commits to.
- * The ChainManager class is expected to be this thread-specific class.
- */
-export class ChainManager {
-    private last: Promise<Timestamp>;
-    constructor(private readonly client: GinkInstance, 
-        readonly medallion: Medallion, 
-        readonly chainStart: ChainStart, lastSeen: Timestamp) {
-        
-        this.last = new Promise((resolve, _reject) => { resolve(lastSeen) });
-    }
-
-
-    /**
-     * Adds a commit to a chain, setting the medallion and timestamps on the commit in the process.
-     * 
-     * @param commit 
-     * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
-     */
-    async addCommit(commit: CommitCoordinator, newTimestamp?: Timestamp): Promise<Timestamp> {
-        // We want to ensure that commits are ordered on the chain in the order that addCommit is called.
-        // This is done by chaining promises (which ensures that they will be resolved in order).
-        this.last = this.last.then((lastTimestamp) => new Promise<number>((resolve) => {
-            // If the current time isn't greater than the last timestamp, then we need to wait a bit 
-            // so that all commits get a unique timestamp.
-            const waitNeeded = Date.now() * 1000 > lastTimestamp ? 0 : 1;
-            setTimeout(async () => {
-                newTimestamp = newTimestamp || Date.now() * 1000;
-                assert(newTimestamp > lastTimestamp);
-                const bytes = commit.seal(this.medallion, this.chainStart, lastTimestamp, newTimestamp);
-                await this.client.receiveCommit(bytes);
-                resolve(newTimestamp);
-            }, waitNeeded);
-        }));
-        return this.last;
-    }
-}
-
-/**
- * An open commit that you can add objects to.  It's a little funky because the timestamp
- * of the commit will be determined when it's closed, so the ID of any object added to the commit
- * isn't completely known until after it's closed.  (That's required to avoid objects referencing 
- * other objects with timestamps in the future).
- */
-export class CommitCoordinator {
-    private timestamp: Timestamp | null = null;
-    private medallion: Medallion | null = null;
-    private serialized: Uint8Array | null = null;
-
-    constructor(private comment?: string) {
-
-    }
-
-    addAddressableObject(_obj: Obj): Identifier {
-        throw new Error("not implemented");
-    }
-
-    seal(medallion: Medallion, chainStart: ChainStart, priorTimestamp: Timestamp, timestamp: Timestamp) {
-        assert(!this.timestamp);
-        this.timestamp = timestamp;
-        this.medallion = medallion;
-        const commitProto = new CommitProto();
-        commitProto.setTimestamp(timestamp);
-        commitProto.setPreviousTimestamp(priorTimestamp);
-        commitProto.setChainStart(chainStart);
-        commitProto.setMedallion(medallion);
-        if (this.comment) { commitProto.setComment(this.comment); }
-        this.serialized = commitProto.serializeBinary();
-        return this.serialized;
-    }
-
-}
-
-export class Obj { }
-
-/**
- * This Identifier class is intended to be used when you want
- * one object within a commit to reference another object within
- * the same commit (though it could also be used to reference 
- * objects from other commits that have been sealed).
- */
-export class Identifier {
-    readonly commit: CommitCoordinator;
-    readonly offset: Offset;
-    constructor(commit: CommitCoordinator, offset: Offset) {
-        this.offset = offset;
-        this.commit = commit;
-    }
-}

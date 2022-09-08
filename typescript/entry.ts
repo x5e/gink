@@ -1,10 +1,11 @@
 eval("globalThis.test = function() {};");
 import { IndexedDbStore } from "./IndexedDbStore";
-import { makeChainStart, MEDALLION1, START_MICROS1, NEXT_TS1 } from "./test_utils";
+import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
 import { CommitBytes, CommitInfo } from "./typedefs";
 import { extractCommitInfo, info, setLogLevel, assert } from "./utils";
 import { Commit } from "commit_pb";
-import { GinkInstance, CommitCoordinator } from "./GinkInstance";
+import { GinkInstance } from "./GinkInstance";
+import { PendingCommit } from "./PendingCommit";
 
 setLogLevel(1);
 
@@ -43,9 +44,12 @@ async function onCommit(commitInfo: CommitInfo) {
     const instance = new GinkInstance(store);
     await instance.initialized;
     instance.addListener(onCommit);
-    const chainManager = await instance.getChainManager();
-    assert(chainManager.medallion == MEDALLION1);
-    await chainManager.addCommit(new CommitCoordinator("Hello, Universe!"), NEXT_TS1);
+    const secondInfo = await instance.addCommit(new PendingCommit("Hello, Universe!"));
+    assert(
+        secondInfo.medallion == MEDALLION1 &&
+        secondInfo.priorTime == START_MICROS1 &&
+        secondInfo.chainStart == START_MICROS1
+        );
     await instance.connectTo(getWebsocketTarget());
     info("connected!");
 })();
