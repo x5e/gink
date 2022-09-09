@@ -7,7 +7,6 @@ import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { PendingCommit } from "./PendingCommit";
 import { Commit as CommitProto } from "commit_pb";
-import { time } from "console";
 
 //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
 var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
@@ -55,6 +54,7 @@ export class GinkInstance {
      * @param chainStart ChainStart to use (only for testing), leave blank in production
      */
     async startChain(medallion?: Medallion, chainStart?: ChainStart): Promise<[Medallion, ChainStart]> {
+        await this.initialized;
         medallion = medallion || makeMedallion();
         chainStart = chainStart || Date.now() * 1000;
         assert(this.iHave.getChains(medallion).length === 0)  // no medallion reuse in 1.x
@@ -79,6 +79,7 @@ export class GinkInstance {
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
     async addCommit(pendingCommit: PendingCommit, commitInfo?: CommitInfo): Promise<CommitInfo> {
+        await this.initialized;
         if (!commitInfo) {
             if (!this.claimedChains.size) {
                 await this.startChain();
@@ -86,7 +87,8 @@ export class GinkInstance {
             const chain = this.claimedChains.entries().next().value;
             const seenTo = this.iHave.getSeenTo(chain);
             const nowMicros = Date.now() * 1000;
-            assert(seenTo > 0 && seenTo < nowMicros + 500);
+            assert(seenTo > 0 && seenTo < nowMicros + 500, 
+                `seenTo=${seenTo} nowMicros=${nowMicros}`);
             commitInfo = {
                 medallion: chain[0],
                 chainStart: chain[1],
