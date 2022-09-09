@@ -1,4 +1,4 @@
-import { Medallion, Timestamp, ChainStart, SeenThrough, CommitInfo } from "./typedefs"
+import { Medallion, ChainStart, SeenThrough, CommitInfo } from "./typedefs"
 import { SyncMessage } from "sync_message_pb";
 
 /**
@@ -8,7 +8,7 @@ import { SyncMessage } from "sync_message_pb";
  * functionality to convert from/to Greeting objects.
  */
 export class ChainTracker {
-    private readonly data: Map<Medallion, Map<ChainStart, Timestamp>> = new Map();
+    private readonly data: Map<Medallion, Map<ChainStart, CommitInfo>> = new Map();
 
     constructor({ greetingBytes = null, greeting = null }) {
         if (greetingBytes) {
@@ -18,11 +18,11 @@ export class ChainTracker {
         for (const entry of greeting.getEntriesList()) {
             const medallion: Medallion = entry.getMedallion();
             const chainStart: ChainStart = entry.getChainStart();
-            const seenThrough: SeenThrough = entry.getSeenThrough();
+            const timestamp: SeenThrough = entry.getSeenThrough();
             if (!this.data.has(medallion)) {
                 this.data.set(medallion, new Map());
             }
-            this.data.get(medallion).set(chainStart, seenThrough);
+            this.data.get(medallion).set(chainStart, {medallion, chainStart, timestamp});
         }
     }
 
@@ -40,9 +40,10 @@ export class ChainTracker {
         const seenThrough = innerMap.get(commitInfo.chainStart) || 0;
         if (commitInfo.timestamp > seenThrough) {
             if (checkValidExtension && commitInfo.priorTime > seenThrough) {
-                throw new Error(`proposed commit would be an invalid extension` + JSON.stringify(commitInfo));
+                throw new Error(`proposed commit would be an invalid extension` + 
+                                JSON.stringify(commitInfo));
             }
-            innerMap.set(commitInfo.chainStart, commitInfo.timestamp);
+            innerMap.set(commitInfo.chainStart, commitInfo);
             return true;
         }
         return false;
@@ -51,11 +52,11 @@ export class ChainTracker {
     constructGreeting(): SyncMessage.Greeting {
         const greeting = new SyncMessage.Greeting();
         for (const [medallion, medallionMap] of this.data) {
-            for (const [chainStart, seenThrough] of medallionMap) {
+            for (const [chainStart, commitInfo] of medallionMap) {
                 const entry = new SyncMessage.Greeting.GreetingEntry();
                 entry.setMedallion(medallion);
                 entry.setChainStart(chainStart);
-                entry.setSeenThrough(seenThrough);
+                entry.setSeenThrough(commitInfo.timestamp);
                 greeting.addEntries(entry);
             }
         }
@@ -67,7 +68,7 @@ export class ChainTracker {
      * @param key A [Medallion, ChainStart] tuple
      * @returns SeenThrough (a Timestamp) or undefined if not yet seen
      */
-    getSeenTo(key: [Medallion, ChainStart]): SeenThrough | undefined {
+    getCommitInfo(key: [Medallion, ChainStart]): CommitInfo | undefined {
         const inner = this.data.get(key[0]);
         if (!inner) return undefined;
         return inner.get(key[1]);

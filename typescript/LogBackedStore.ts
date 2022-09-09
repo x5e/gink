@@ -1,4 +1,4 @@
-import { CommitBytes, CommitInfo, Medallion, ChainStart } from "./typedefs";
+import { CommitBytes, CommitInfo, Medallion, ChainStart, SeenThrough } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -99,6 +99,11 @@ export class LogBackedStore implements Store {
     async getClaimedChains() {
         await this.initialized;
         return this.indexedDbStore.getClaimedChains();
+    }
+
+    async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
+        await this.initialized;
+        return this.indexedDbStore.getSeenThrough(key);
     }
 
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {

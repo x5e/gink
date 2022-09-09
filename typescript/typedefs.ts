@@ -20,6 +20,10 @@ export interface CommitListener {
     (commitInfo: CommitInfo): Promise<void>;
 }
 
+export interface CallBack {
+    (value: any): void;
+}
+
 export interface AddressableObject {
 
 }

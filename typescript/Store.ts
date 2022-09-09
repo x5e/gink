@@ -1,4 +1,4 @@
-import { CommitBytes, CommitInfo, ClaimedChains, Medallion, ChainStart } from "./typedefs"
+import { CommitBytes, CommitInfo, ClaimedChains, Medallion, ChainStart, SeenThrough } from "./typedefs"
 import { ChainTracker } from "./ChainTracker"
 
 export interface Store {
@@ -11,14 +11,16 @@ export interface Store {
     readonly initialized: Promise<void>;
 
     /**
-     * Generates a HasMap describing how much of each chain this store has.
-     * Note that this might be expensive to compute (e.g. require going to disk),
-     * so it's best for a user of this class to get a has map and then update that
-     * in-memory accounting object rather than re-requesting all the time.
+     * Generates a ChainTracker describing how much of each chain this store has.
      *
      * Implicitly awaits on this.initialized;
      */
     getChainTracker: () => Promise<ChainTracker>;
+
+    /**
+     * Check the store to see how far along a given chain it has data for.
+     */
+    getSeenThrough: (key: [Medallion, ChainStart]) => Promise<SeenThrough | undefined>
 
     /**
      * Returns a set of chains that may be appended to.

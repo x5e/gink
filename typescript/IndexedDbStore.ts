@@ -6,7 +6,7 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
 }
 import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
 import { Store } from "./Store";
-import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, ClaimedChains, PriorTime } from "./typedefs";
+import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, ClaimedChains, PriorTime, SeenThrough } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 
 // IndexedDb orders entries in its b-tree according to a tuple.
@@ -16,7 +16,7 @@ import { ChainTracker } from "./ChainTracker";
 export type CommitKey = [Timestamp, Medallion, ChainStart, PriorTime, string];
 
 function commitInfoToKey(commitInfo: CommitInfo): CommitKey {
-    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart, commitInfo.priorTime, commitInfo.comment]
+    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart, commitInfo.priorTime || 0, commitInfo.comment]
 }
 
 function commitKeyToInfo(commitKey: CommitKey) {
@@ -112,9 +112,15 @@ export class IndexedDbStore implements Store {
         await this.initialized;
         const hasMap: ChainTracker = new ChainTracker({});
         (await this.getChainInfos()).map((value) => {
-            hasMap.markIfNovel(value)
+            hasMap.markIfNovel(value);
         });
         return hasMap;
+    }
+
+    async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
+        await this.initialized;
+        const commitInfo = await this.wrapped.transaction(['chainInfos']).objectStore('chainInfos').get(key);
+        return commitInfo.timestamp;
     }
 
     private async getChainInfos(): Promise<Array<CommitInfo>> {

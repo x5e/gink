@@ -4,6 +4,8 @@
     "sourceMap": true,
     "target": "es2017",
     "moduleResolution": "node",
-    "esModuleInterop": true
-  }
+    "esModuleInterop": true,
+    "outDir": "tsc.out"
+  },
+  "include": ["typescript/*.*"]
 }

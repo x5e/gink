@@ -1,12 +1,13 @@
 import { Peer } from "./Peer";
 import { Store } from "./Store";
-import { makeMedallion, assert, extractCommitInfo, info, now } from "./utils";
-import { CommitBytes, ClaimedChains, Medallion, ChainStart, Timestamp, Offset, CommitInfo, CommitListener }
+import { makeMedallion, assert, extractCommitInfo, noOp } from "./utils";
+import { CommitBytes, Medallion, ChainStart, CommitInfo, CommitListener, CallBack }
     from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { PendingCommit } from "./PendingCommit";
 import { Commit as CommitProto } from "commit_pb";
+import { PromiseChainLock } from "./PromiseChainLock";
 
 //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
 var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
@@ -21,24 +22,30 @@ var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
 export class GinkInstance {
 
     initialized: Promise<void>;
+    readonly peers: Map<number, Peer> = new Map();
+
     private listeners: CommitListener[] = [];
     private store: Store;
     private countConnections: number = 0; // Includes disconnected clients.
-    private claimedChains: ClaimedChains;
+    private myChain: [Medallion, ChainStart];
+    private promiseChainLock = new PromiseChainLock();
     private iHave: ChainTracker;
-    readonly peers: Map<number, Peer> = new Map();
 
-    constructor(store: Store) {
+    constructor(store: Store, clientInfo: string = "Default Start Chain Comment") {
         this.store = store;
-        this.initialized = this.initialize();
+        this.initialized = this.initialize(clientInfo);
     }
 
-    private async initialize() {
+    private async initialize(clientInfo: string) {
         await this.store.initialized;
-        this.claimedChains = await this.store.getClaimedChains();
+        const claimedChains = await this.store.getClaimedChains();
+        if (claimedChains.size) {
+            this.myChain = claimedChains.entries().next().value;
+        } else {
+            this.myChain = await this.startChain(clientInfo);
+        }
         this.iHave = await this.store.getChainTracker();
     }
-
 
     /**
     * Adds a listener that will be called every time a commit is received with the
@@ -49,25 +56,21 @@ export class GinkInstance {
     }
 
     /**
-     * Creates an empty commit with only a comment in order to start a chain.
-     * @param medallion Medallion to use (only for testing), leave blank in production
-     * @param chainStart ChainStart to use (only for testing), leave blank in production
+     * Creates an empty commit with only a comment in order to start a chain,
+     * called from initialize so don't wait on initialize !
      */
-    async startChain(medallion?: Medallion, chainStart?: ChainStart): Promise<[Medallion, ChainStart]> {
-        await this.initialized;
-        medallion = medallion || makeMedallion();
-        chainStart = chainStart || Date.now() * 1000;
-        assert(this.iHave.getChains(medallion).length === 0)  // no medallion reuse in 1.x
-        assert(chainStart <= Date.now() * 1000) // don't start in the future
+    private async startChain(comment: string): Promise<[Medallion, ChainStart]> {
+        const medallion = makeMedallion();
+        const chainStart = Date.now() * 1000;
         const startCommit = new CommitProto();
         startCommit.setTimestamp(chainStart);
         startCommit.setChainStart(chainStart);
         startCommit.setMedallion(medallion);
-        startCommit.setComment("Default Start Chain Comment");
-        const startCommitBytes = startCommit.serializeBinary();
-        await this.receiveCommit(startCommitBytes);
+        startCommit.setComment(comment);
+        const commitBytes = startCommit.serializeBinary();
+        const commitInfo: CommitInfo = {medallion, chainStart, timestamp: chainStart, comment}
+        await this.store.addCommit(commitBytes, commitInfo);
         await this.store.claimChain(medallion, chainStart);
-        this.claimedChains.set(medallion, chainStart);
         return [medallion, chainStart];
     }
 
@@ -75,38 +78,37 @@ export class GinkInstance {
      * Adds a commit to a chain, setting the medallion and timestamps on the commit in the process.
      * 
      * @param pendingCommit a PendingCommit ready to be sealed
-     * @param commitInfo optionally explicitly specify the chain and timestamp; intended for deterministic testing
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
-    async addCommit(pendingCommit: PendingCommit, commitInfo?: CommitInfo): Promise<CommitInfo> {
+    async addCommit(pendingCommit: PendingCommit): Promise<CommitInfo> {
         await this.initialized;
-        if (!commitInfo) {
-            if (!this.claimedChains.size) {
-                await this.startChain();
-            }
-            const chain = this.claimedChains.entries().next().value;
-            const seenTo = this.iHave.getSeenTo(chain);
+        var unlockingFunction: CallBack;
+        var resultInfo: CommitInfo;
+        try {
+            unlockingFunction = await this.promiseChainLock.acquireLock();
             const nowMicros = Date.now() * 1000;
-            assert(seenTo > 0 && seenTo < nowMicros + 500, 
-                `seenTo=${seenTo} nowMicros=${nowMicros}`);
-            commitInfo = {
-                medallion: chain[0],
-                chainStart: chain[1],
-                timestamp: nowMicros > seenTo ? nowMicros : seenTo + 1,
-                priorTime: seenTo,
+            const seenThrough = await this.store.getSeenThrough(this.myChain);
+            assert(seenThrough > 0 && (seenThrough < nowMicros + 500));
+            const commitInfo: CommitInfo = {
+                medallion: this.myChain[0],
+                chainStart: this.myChain[1],
+                timestamp: seenThrough >= nowMicros ? seenThrough + 1 : nowMicros,
+                priorTime: seenThrough,
             }
-        }
-        const serialized = pendingCommit.seal(commitInfo);
-        const resultInfo = await this.receiveCommit(serialized);
-        // receiveCommit currently deserializes the commit to get the commit info,
-        // which isn't ideal, but we can use it as an opportunity to ensure it's right.
-        assert(
-            commitInfo.timestamp == resultInfo.timestamp &&
-            commitInfo.chainStart == resultInfo.chainStart &&
-            commitInfo.medallion == resultInfo.medallion &&
-            commitInfo.priorTime == resultInfo.priorTime &&
-            commitInfo.comment == resultInfo.comment
-            );
+            const serialized = pendingCommit.seal(commitInfo);
+            resultInfo = await this.receiveCommit(serialized);
+            // receiveCommit currently deserializes the commit to get the commit info,
+            // which isn't ideal, but we can use it as an opportunity to ensure it's right.
+            assert(
+                commitInfo.timestamp == resultInfo.timestamp &&
+                commitInfo.chainStart == resultInfo.chainStart &&
+                commitInfo.medallion == resultInfo.medallion &&
+                commitInfo.priorTime == resultInfo.priorTime &&
+                commitInfo.comment == resultInfo.comment
+                );
+        } finally {
+            unlockingFunction("this string is ignored");
+        } 
         return resultInfo;
     }
 
@@ -132,9 +134,11 @@ export class GinkInstance {
      * @returns 
      */
     async receiveCommit(commitBytes: CommitBytes, fromConnectionId?: number): Promise<CommitInfo> {
+        await this.initialized;
         const commitInfo = extractCommitInfo(commitBytes);
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);
         const added = await this.store.addCommit(commitBytes, commitInfo);
+        this.iHave.markIfNovel(commitInfo);
         // If this commit isn't new to this instance, then it will have already been 
         // sent to the connected peers and doesn't need to be sent again.
         if (!added) return;
@@ -181,7 +185,7 @@ export class GinkInstance {
         return msg.serializeBinary();
     }
 
-    async connectTo(target: string): Promise<Peer> {
+    async connectTo(target: string, onOpen: CallBack = noOp, onClose: CallBack = noOp): Promise<Peer> {
         await this.initialized;
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
@@ -193,7 +197,7 @@ export class GinkInstance {
                 websocketClient.send.bind(websocketClient),
                 websocketClient.close.bind(websocketClient));
             websocketClient.onopen = function (_ev: Event) {
-                info(`opened connection ${connectionId} to ${target}`);
+                onOpen(`opened connection ${connectionId} to ${target}`);
                 websocketClient.send(thisClient.getGreetingMessageBytes());
                 thisClient.peers.set(connectionId, peer);
                 opened = true;
@@ -203,7 +207,7 @@ export class GinkInstance {
                 console.error(`error on connection ${connectionId} to ${target}, ${ev}`)
             }
             websocketClient.onclose = function (ev: CloseEvent) {
-                info(`closed connection ${connectionId} to ${target}`);
+                onClose(`closed connection ${connectionId} to ${target}`);
                 if (opened) {
                     thisClient.peers.delete(connectionId);
                 } else {

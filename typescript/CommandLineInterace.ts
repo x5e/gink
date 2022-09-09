@@ -8,7 +8,7 @@ import { CommitInfo } from "./typedefs";
 import { PendingCommit } from "./PendingCommit";
 var readline = require('readline');
 
-function onCommit(commitInfo: CommitInfo) {
+async function onCommit(commitInfo: CommitInfo) {
     info(`received commit: ${JSON.stringify(commitInfo)}`);
 }
 
@@ -46,9 +46,10 @@ export class CommandLineInterface {
 
     async run() {
         await this.instance.initialized;
+        this.instance.addListener(onCommit);
         for (const target of this.targets) {
             info(`connecting to: ${target}`)
-            await this.instance.connectTo(target);
+            await this.instance.connectTo(target, info, info);
             info(`connected!`)
         }
         info("ready (type a comment and press enter to create a commit)");

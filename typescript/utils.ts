@@ -19,7 +19,7 @@ export var assert = assert || function (x: any, msg?: string) {
 
 export function now() { return (new Date()).toISOString(); }
 
-export function noOp() { };
+export function noOp(_ = null) { };
 
 /**
  * The Message proto contains an embedded oneof.  Essentially this will wrap
