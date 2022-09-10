@@ -260,4 +260,3 @@ export class GinkInstance {
         });
     }
 }
-
