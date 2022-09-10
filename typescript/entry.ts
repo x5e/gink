@@ -31,4 +31,3 @@ async function onCommit(commitInfo: CommitInfo) {
     await instance.addPendingCommit(new PendingCommit("Hello, Universe!"));
     await instance.connectTo(getWebsocketTarget());
 })();
-
