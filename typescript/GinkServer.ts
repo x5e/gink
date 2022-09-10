@@ -11,18 +11,7 @@ import { GinkInstance } from "./GinkInstance";
 import { Peer } from './Peer';
 import { Buffer } from "buffer";
 import { Store } from "./Store";
-
-type FilePath = string;
-type NumberStr = string;
-const PROTOCOL = "gink";
-
-export interface ServerArgs {
-    port?: NumberStr;
-    sslKeyFilePath?: FilePath;
-    sslCertFilePath?: FilePath;
-    medallion?: NumberStr;
-    staticPath?: string;
-}
+import { ServerArgs } from './typedefs';
 
 export class GinkServer extends GinkInstance {
     private websocketServer: WebSocketServer;
@@ -32,7 +21,6 @@ export class GinkServer extends GinkInstance {
         const staticPath = args.staticPath || __dirname.split("/").slice(0, -1).join("/");
         const staticServer = new StaticServer(staticPath);
         const port = args.port || "8080";
-        const thisServer = this;
         let httpServer: HttpServer | HttpsServer;
         if (args["sslKeyFilePath"] && args["sslCertFilePath"]) {
             var options = {
@@ -57,11 +45,11 @@ export class GinkServer extends GinkInstance {
 
     private async onRequest(request: WebSocketRequest) {
         await this.initialized;
-        const thisServer = this; // do pass into closures
+        const thisServer = this; // pass into closures
         let protocol: string | null = null;
         if (request.requestedProtocols.length) {
-            if (request.requestedProtocols.includes(PROTOCOL))
-                protocol = PROTOCOL;
+            if (request.requestedProtocols.includes(GinkInstance.PROTOCOL))
+                protocol = GinkInstance.PROTOCOL;
             else
                 return request.reject(400, "bad protocol");
         }

@@ -49,13 +49,13 @@ export class CommandLineInterface {
         this.instance.addListener(onCommit);
         for (const target of this.targets) {
             info(`connecting to: ${target}`)
-            await this.instance.connectTo(target, info, info);
+            await this.instance.connectTo(target, info);
             info(`connected!`)
         }
         info("ready (type a comment and press enter to create a commit)");
         const readlineInterface = readline.createInterface(process.stdin, process.stdout);
         readlineInterface.on('line', async (comment: string) => {
-            await this.instance.addCommit(new PendingCommit(comment));
+            await this.instance.addPendingCommit(new PendingCommit(comment));
         })
     }
 

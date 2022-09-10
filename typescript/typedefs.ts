@@ -7,6 +7,8 @@ export type SeenThrough = Timestamp;
 export type PriorTime = Timestamp;
 export type ClaimedChains = Map<Medallion, ChainStart>;
 export type Offset = number;
+export type FilePath = string;
+export type NumberStr = string;
 
 export interface CommitInfo {
     timestamp: Timestamp;
@@ -25,9 +27,15 @@ export interface CallBack {
 }
 
 export interface AddressableObject {
-
 }
 
 export interface Address {
+}
 
+export interface ServerArgs {
+    port?: NumberStr;
+    sslKeyFilePath?: FilePath;
+    sslCertFilePath?: FilePath;
+    medallion?: NumberStr;
+    staticPath?: string;
 }

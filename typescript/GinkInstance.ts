@@ -23,12 +23,13 @@ export class GinkInstance {
 
     initialized: Promise<void>;
     readonly peers: Map<number, Peer> = new Map();
+    static readonly PROTOCOL = "gink";
 
     private listeners: CommitListener[] = [];
     private store: Store;
     private countConnections: number = 0; // Includes disconnected clients.
     private myChain: [Medallion, ChainStart];
-    private promiseChainLock = new PromiseChainLock();
+    private processingLock = new PromiseChainLock();
     private iHave: ChainTracker;
 
     constructor(store: Store, instanceInfo: string = "Default instanceInfo") {
@@ -51,7 +52,7 @@ export class GinkInstance {
     * Adds a listener that will be called every time a commit is received with the
     * CommitInfo (which contains chain information, timestamp, and commit comment).
     */
-    addListener(listener: CommitListener) {
+    public addListener(listener: CommitListener) {
         this.listeners.push(listener);
     }
 
@@ -80,12 +81,12 @@ export class GinkInstance {
      * @param pendingCommit a PendingCommit ready to be sealed
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
-    async addCommit(pendingCommit: PendingCommit): Promise<CommitInfo> {
-        await this.initialized;
+    public async addPendingCommit(pendingCommit: PendingCommit): Promise<CommitInfo> {
         var unlockingFunction: CallBack;
         var resultInfo: CommitInfo;
         try {
-            unlockingFunction = await this.promiseChainLock.acquireLock();
+            unlockingFunction = await this.processingLock.acquireLock();
+            await this.initialized;
             const nowMicros = Date.now() * 1000;
             const seenThrough = await this.store.getSeenThrough(this.myChain);
             assert(seenThrough > 0 && (seenThrough < nowMicros + 500));
@@ -112,16 +113,24 @@ export class GinkInstance {
         return resultInfo;
     }
 
-
-    async close() {
-        for (const [_peerId, peer] of this.peers) {
-            peer.close();
+    /**
+     * Closes connections to peers and closes the store.
+     */
+    public async close() {
+        try {
+            for (const peer of this.peers.values()) {
+                peer.close();
+            }
+            await this.store.close();
+        } catch (problem) {
+            console.error(`problem in GinkInstance.close: ${problem}`)
         }
-        await this.store.close();
     }
 
-    // returns a truthy number that can be used as a connection id
-    createConnectionId(): number {
+    /**
+     * @returns a truthy number that can be used to identify connections
+     */
+    protected createConnectionId(): number {
         return ++this.countConnections;
     }
 
@@ -129,11 +138,14 @@ export class GinkInstance {
      * Tries to add a commit to the local store.  If successful (i.e. it hasn't seen it before)
      * then it will also publish that commit to the connected peers.
      * 
+     * This is called both from addPendingCommit (for locally produced commits) as well as
+     * being called by receiveMessage.
+     * 
      * @param commitBytes The bytes that correspond to this transaction.
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns 
      */
-    async receiveCommit(commitBytes: CommitBytes, fromConnectionId?: number): Promise<CommitInfo> {
+    private async receiveCommit(commitBytes: CommitBytes, fromConnectionId?: number): Promise<CommitInfo> {
         await this.initialized;
         const commitInfo = extractCommitInfo(commitBytes);
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);
@@ -153,74 +165,95 @@ export class GinkInstance {
         return commitInfo;
     }
 
-    receiveMessage(messageBytes: Uint8Array, fromConnectionId: number) {
+    /**
+     * @param messageBytes Bytes received from a peer.
+     * @param fromConnectionId Local name of the peer the data was received from.
+     * @returns 
+     */
+    protected async receiveMessage(messageBytes: Uint8Array, fromConnectionId: number) {
         const peer = this.peers.get(fromConnectionId);
         if (!peer) throw Error("Got a message from a peer I don't have a proxy for?")
+        let unlockingFunction: CallBack;
         try {
+            unlockingFunction = await this.processingLock.acquireLock();
             const parsed = SyncMessage.deserializeBinary(messageBytes);
             if (parsed.hasCommit()) {
                 const commitBytes: CommitBytes = parsed.getCommit_asU8();
-                // TODO: chain these receiveCommit class to ensure they get processed
-                // in the order of being received.
-                this.receiveCommit(commitBytes, fromConnectionId);
+                await this.receiveCommit(commitBytes, fromConnectionId);
                 return;
             }
             if (parsed.hasGreeting()) {
                 const greeting = parsed.getGreeting();
                 peer.receiveHasMap(new ChainTracker({ greeting }));
-                // TODO: figure out how to block processing of receiving other messages while sending
-                this.store.getCommits(peer.sendIfNeeded.bind(peer));
+                await this.store.getCommits(peer.sendIfNeeded.bind(peer));
                 return;
             }
         } catch (e) {
             //TODO: Send some sensible code to the peer to say what went wrong.
             this.peers.get(fromConnectionId)?.close();
             this.peers.delete(fromConnectionId);
+        } finally {
+            unlockingFunction("ignored string");
         }
     }
 
-    getGreetingMessageBytes(): Uint8Array {
+    /**
+     * @returns bytes that can be sent during the initial handshake
+     */
+    protected getGreetingMessageBytes(): Uint8Array {
         const greeting = this.iHave.constructGreeting();
         const msg = new SyncMessage();
         msg.setGreeting(greeting);
         return msg.serializeBinary();
     }
 
-    async connectTo(target: string, onOpen: CallBack = noOp, onClose: CallBack = noOp): Promise<Peer> {
+    /**
+     * Initiates a websocket connection to a peer.
+     * @param target a websocket uri, e.g. "ws://127.0.0.1:8080/"
+     * @param onClose optional callback to invoke when the connection is closed
+     * @returns a promise that's resolved once the connection has been established
+     */
+    public async connectTo(target: string, onClose: CallBack = noOp): Promise<Peer> {
         await this.initialized;
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
             let opened = false;
             const connectionId = this.createConnectionId();
-            const websocketClient: WebSocket = new W3cWebSocket(target, "gink");
+            const websocketClient: WebSocket = new W3cWebSocket(target, GinkInstance.PROTOCOL);
             websocketClient.binaryType = "arraybuffer";
             const peer = new Peer(
                 websocketClient.send.bind(websocketClient),
                 websocketClient.close.bind(websocketClient));
             websocketClient.onopen = function (_ev: Event) {
-                onOpen(`opened connection ${connectionId} to ${target}`);
+                // called once the new connection has been established
                 websocketClient.send(thisClient.getGreetingMessageBytes());
                 thisClient.peers.set(connectionId, peer);
                 opened = true;
                 resolve(peer);
             }
             websocketClient.onerror = function (ev: Event) {
+                // if/when this is called depends on the details of the websocket implementation
                 console.error(`error on connection ${connectionId} to ${target}, ${ev}`)
             }
             websocketClient.onclose = function (ev: CloseEvent) {
+                // this should always be called once the peer disconnects, including in cases of error
                 onClose(`closed connection ${connectionId} to ${target}`);
                 if (opened) {
                     thisClient.peers.delete(connectionId);
                 } else {
+                    // If the connection was never successfully established, then 
+                    // reject the promise returned from the outer connectTo.
                     reject(ev);
                 }
             }
             websocketClient.onmessage = function (ev: MessageEvent) {
+                // Called when any protocol messages are received.
                 const data = ev.data;
                 if (data instanceof ArrayBuffer) {
                     const uint8View = new Uint8Array(data);
                     thisClient.receiveMessage(uint8View, connectionId);
                 } else {
+                    // We don't expect any non-binary text messages.
                     console.error(`got non-arraybuffer message: ${data}`)
                 }
             }

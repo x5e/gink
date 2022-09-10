@@ -28,7 +28,7 @@ async function onCommit(commitInfo: CommitInfo) {
     const instance = new GinkInstance(new IndexedDbStore(), "browser instance");
     await instance.initialized;
     instance.addListener(onCommit);
-    await instance.addCommit(new PendingCommit("Hello, Universe!"));
+    await instance.addPendingCommit(new PendingCommit("Hello, Universe!"));
     await instance.connectTo(getWebsocketTarget());
 })();
 

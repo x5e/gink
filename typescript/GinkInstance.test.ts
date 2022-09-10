@@ -10,7 +10,7 @@ import { CommitBytes, CommitInfo } from "./typedefs";
 test('test commit', async () => {
     const store = new IndexedDbStore();
     const instance = new GinkInstance(store);
-    const commitInfo = await instance.addCommit(new PendingCommit("hello world"));
+    const commitInfo = await instance.addPendingCommit(new PendingCommit("hello world"));
     assert(commitInfo.comment == "hello world");
     const chainTracker = await store.getChainTracker();
     const allChains = chainTracker.getChains();
@@ -33,7 +33,7 @@ test('uses claimed chain', async() => {
     })
     const instance = new GinkInstance(store);
     await instance.initialized;
-    const secondInfo = await instance.addCommit(new PendingCommit("Hello, Universe!"));
+    const secondInfo = await instance.addPendingCommit(new PendingCommit("Hello, Universe!"));
     assert(
         secondInfo.medallion == MEDALLION1 &&
         secondInfo.priorTime == START_MICROS1 &&
