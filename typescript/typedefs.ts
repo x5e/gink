@@ -26,9 +26,17 @@ export interface CallBack {
     (value: any): void;
 }
 
+/**
+ * Will be the database objects used to change the data model.
+ * Needs to be flushed out once the sync stuff has been merged in.
+ */
 export interface AddressableObject {
 }
 
+/**
+ * Intended to be a way to point to a particular AddressableObject even if
+ * the commit its associated with hasn't been sealed yet.
+ */
 export interface Address {
 }
 
