@@ -31,18 +31,18 @@ export class GinkInstance {
     private promiseChainLock = new PromiseChainLock();
     private iHave: ChainTracker;
 
-    constructor(store: Store, clientInfo: string = "Default Start Chain Comment") {
+    constructor(store: Store, instanceInfo: string = "Default instanceInfo") {
         this.store = store;
-        this.initialized = this.initialize(clientInfo);
+        this.initialized = this.initialize(instanceInfo);
     }
 
-    private async initialize(clientInfo: string) {
+    private async initialize(instanceInfo: string) {
         await this.store.initialized;
         const claimedChains = await this.store.getClaimedChains();
         if (claimedChains.size) {
             this.myChain = claimedChains.entries().next().value;
         } else {
-            this.myChain = await this.startChain(clientInfo);
+            this.myChain = await this.startChain(instanceInfo);
         }
         this.iHave = await this.store.getChainTracker();
     }
@@ -141,7 +141,8 @@ export class GinkInstance {
         this.iHave.markIfNovel(commitInfo);
         // If this commit isn't new to this instance, then it will have already been 
         // sent to the connected peers and doesn't need to be sent again.
-        if (!added) return;
+        if (!added) 
+            return;
         for (const [peerId, peer] of this.peers) {
             if (peerId != fromConnectionId)
                 peer.sendIfNeeded(commitBytes, commitInfo);

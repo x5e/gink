@@ -1,5 +1,6 @@
 import { Medallion, ChainStart, SeenThrough, CommitInfo } from "./typedefs"
 import { SyncMessage } from "sync_message_pb";
+import { assert } from "./utils";
 
 /**
  * A class to keep track of what data a given instance (self or peer) has for each
@@ -27,7 +28,10 @@ export class ChainTracker {
     }
 
     /**
-     * 
+     * First, determine if the commit is novel (represents data not previously marked),
+     * then second, mark the data in the data structure (possibly checking that its a sensible extension).
+     * Note that checkValidExtension is used here as a safeguard to make sure we don't
+     * send broken chains to the peer; the store should have its own check for receving.
      * @param commitInfo Metadata about a particular commit.
      * @param checkValidExtension If true then barfs if this commit isn't a vaild extension.
      * @returns true if the commit represents data not seen before
@@ -36,19 +40,23 @@ export class ChainTracker {
         if (!this.data.has(commitInfo.medallion)) {
             this.data.set(commitInfo.medallion, new Map());
         }
+        assert(commitInfo.timestamp == commitInfo.chainStart || commitInfo.priorTime);
         const innerMap = this.data.get(commitInfo.medallion);
-        const seenThrough = innerMap.get(commitInfo.chainStart) || 0;
+        const seenThrough = innerMap.get(commitInfo.chainStart)?.timestamp || 0;
         if (commitInfo.timestamp > seenThrough) {
-            if (checkValidExtension && commitInfo.priorTime > seenThrough) {
-                throw new Error(`proposed commit would be an invalid extension` + 
-                                JSON.stringify(commitInfo));
-            }
+            if (checkValidExtension && (commitInfo.priorTime ?? 0) != seenThrough) 
+                    throw new Error(`proposed commit would be an invalid extension ${JSON.stringify(commitInfo)}`);
             innerMap.set(commitInfo.chainStart, commitInfo);
             return true;
         }
         return false;
     }
 
+    /**
+     * Constructs the greeting for use during the initial handshake.  Note that
+     * the priorTimes aren't included, so receipient should not markIfNovel using
+     * @returns 
+     */
     constructGreeting(): SyncMessage.Greeting {
         const greeting = new SyncMessage.Greeting();
         for (const [medallion, medallionMap] of this.data) {

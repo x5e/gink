@@ -133,7 +133,7 @@ export class IndexedDbStore implements Store {
         const { timestamp, medallion, chainStart, priorTime } = commitInfo
         const wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos'], 'readwrite');
         let oldChainInfo: CommitInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
-        if (oldChainInfo || priorTime != 0) {
+        if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
                 return false;
             }

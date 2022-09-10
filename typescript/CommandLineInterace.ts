@@ -13,7 +13,7 @@ async function onCommit(commitInfo: CommitInfo) {
 }
 
 export class CommandLineInterface {
-    targets;
+    targets: string[];
     store: Store;
     instance: GinkInstance;
 
@@ -32,14 +32,14 @@ export class CommandLineInterface {
         }
 
         if (process.env["GINK_PORT"]) {
-            this.instance = new GinkServer(this.store, {
+            this.instance = new GinkServer(this.store, "gink server", {
                 port: process.env["GINK_PORT"],
                 sslKeyFilePath: process.env["GINK_SSL_KEY"],
                 sslCertFilePath: process.env["GINK_SSL_CERT"],
                 staticPath: process.env["GINK_STATIC_PATH"],
             });
         } else {
-            this.instance = new GinkInstance(this.store);
+            this.instance = new GinkInstance(this.store, "node instance");
         }
         this.targets = process.argv.slice(2);
     }

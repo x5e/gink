@@ -27,8 +27,8 @@ export interface ServerArgs {
 export class GinkServer extends GinkInstance {
     private websocketServer: WebSocketServer;
 
-    constructor(store: Store, args: ServerArgs) {
-        super(store);
+    constructor(store: Store, instanceInfo: string, args: ServerArgs) {
+        super(store, instanceInfo);
         const staticPath = args.staticPath || __dirname.split("/").slice(0, -1).join("/");
         const staticServer = new StaticServer(staticPath);
         const port = args.port || "8080";
