@@ -2,28 +2,28 @@
 const Expector = require("./Expector");
 const { spawnSync } = require("child_process");
 function hasInstalled(program) {
-    return !spawnSync(`which ${program}`, [], {shell:true}).status;
+    return !spawnSync(`which ${program}`, [], { shell: true }).status;
 }
-const browserCommand = [
-    hasInstalled('chromium') ? "chromium" : "google-chrome",
+const browserCommand = hasInstalled('chromium') ? "chromium" : "google-chrome";
+const browserArgs = [
     "--headless",
-    "--no-sandbox", 
-    "--remote-debugging-port=9222", 
+    "--no-sandbox",
+    "--remote-debugging-port=9222",
     "--disable-gpu",
-].join(" ");
+];
 (async () => {
     console.log("starting");
-    console.log(browserCommand);
-    const browser = new Expector(browserCommand);
-    const server = new Expector("make server");
+    console.log(`${browserCommand} ${browserArgs.join(' ')}`);
+    const browser = new Expector(browserCommand, browserArgs);
+    const server = new Expector("make", ["server"]);
     await server.expect("ready", 60000);
-    const driver = new Expector("./typescript/remote-control.js");
+    const driver = new Expector("./remote-control.js", []);
     await driver.expect(/Hello from a Gink Server/, 2000);
     console.log("success!");
 
-    server.close();
-    browser.close();
-    driver.close();
+    // server.close();
+    // browser.close();
+    // driver.close();
     console.log("ok!");
     process.exit(0);
-})().catch((reason) => {console.error(reason); process.exit(1);})
+})().catch((reason) => { console.error(reason); process.exit(1); })

@@ -1,8 +1,8 @@
 #!/usr/bin/env ts-node
-import {server as WebSocketServer, connection as WebSocketConnection, Message} from 'websocket';
-import {createServer as createHttpServer, Server as HttpServer} from 'http';
-import {createServer as createHttpsServer, Server as HttpsServer} from 'https';
-import {Server as StaticServer} from 'node-static';
+import { server as WebSocketServer, connection as WebSocketConnection, Message } from 'websocket';
+import { createServer as createHttpServer, Server as HttpServer } from 'http';
+import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
+import { Server as StaticServer } from 'node-static';
 import { readFileSync } from 'fs';
 const staticServer = new StaticServer(process.env["PWD"])
 function now() { return (new Date()).toISOString(); }
@@ -13,16 +13,16 @@ if (process.env["GINK_SSL_KEY"] && process.env["GINK_SSL_CERT"]) {
     var options = {
         key: readFileSync(process.env["GINK_SSL_KEY"]),
         cert: readFileSync(process.env["GINK_SSL_CERT"]),
-      };
-      httpServer = createHttpsServer(options, function (request, response) {
+    };
+    httpServer = createHttpsServer(options, function (request, response) {
         staticServer.serve(request, response);
-      }).listen(port, () => console.log(`${now()} Secure server is listening on port ${port}`));
-      
+    }).listen(port, () => console.log(`${now()} Secure server is listening on port ${port}`));
+
 } else {
-    httpServer = createHttpServer(function(request, response) {staticServer.serve(request, response);});
-    httpServer.listen(port, function() {
+    httpServer = createHttpServer(function (request, response) { staticServer.serve(request, response); });
+    httpServer.listen(port, function () {
         console.log(`${now()} Insecure server is listening on port ${port}`);
-    });    
+    });
 }
 
 var websocketServer = new WebSocketServer({
@@ -41,7 +41,7 @@ function onMessage(message: Message) {
     }
 }
 
-websocketServer.on('request', function(request) {
+websocketServer.on('request', function (request) {
     let protocol: string = null;
     if (request.requestedProtocols.length) {
         if (request.requestedProtocols.includes("echo"))
@@ -52,7 +52,7 @@ websocketServer.on('request', function(request) {
     connection = request.accept(protocol);
     console.log((now()) + ' Connection accepted.');
     connection.on('message', onMessage);
-    connection.on('close', function(reasonCode, description) {
+    connection.on('close', function (reasonCode, description) {
         console.log((now()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
     });
 });

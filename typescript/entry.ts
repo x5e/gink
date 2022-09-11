@@ -19,8 +19,8 @@ function getWebsocketTarget(): string {
 }
 
 async function onCommit(commitInfo: CommitInfo) {
-    document.getElementById('messages').innerHTML += 
-        `${commitInfo.medallion}, ${commitInfo.timestamp}, ` + 
+    document.getElementById('messages').innerHTML +=
+        `${commitInfo.medallion}, ${commitInfo.timestamp}, ` +
         `"${commitInfo.comment}"\n`;
 }
 

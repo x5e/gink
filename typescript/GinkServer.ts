@@ -18,7 +18,7 @@ export class GinkServer extends GinkInstance {
 
     constructor(store: Store, instanceInfo: string, args: ServerArgs) {
         super(store, instanceInfo);
-        const staticPath = args.staticPath || __dirname.split("/").slice(0, -1).join("/");
+        const staticPath = args.staticPath || __dirname;
         const staticServer = new StaticServer(staticPath);
         const port = args.port || "8080";
         let httpServer: HttpServer | HttpsServer;

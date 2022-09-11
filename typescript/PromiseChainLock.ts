@@ -19,12 +19,12 @@ export class PromiseChainLock {
     async acquireLock(): Promise<CallBack> {
         let calledWhenLockAquired: (cb: CallBack) => void = null;
         var calledToReleaseLock: CallBack = null;
-        var resolvesWhenLockAquired = new Promise<CallBack>((r) => {calledWhenLockAquired = r;});
+        var resolvesWhenLockAquired = new Promise<CallBack>((r) => { calledWhenLockAquired = r; });
         this.queue = this.queue.then(() => {
-            var resolvesWhenLockReleased = new Promise<void>((r) => {calledToReleaseLock = r;});
+            var resolvesWhenLockReleased = new Promise<void>((r) => { calledToReleaseLock = r; });
             calledWhenLockAquired(calledToReleaseLock);
             return resolvesWhenLockReleased;
         });
-        return resolvesWhenLockAquired;   
+        return resolvesWhenLockAquired;
     }
 }

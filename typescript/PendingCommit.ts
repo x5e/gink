@@ -9,12 +9,12 @@ import { assert } from "./utils";
  * isn't completely known until after it's closed.  (That's required to avoid objects referencing 
  * other objects with timestamps in the future).
  */
- export class PendingCommit {
+export class PendingCommit {
 
     private commitInfo: CommitInfo | null = null;
     private serialized: Uint8Array | null = null;
 
-    constructor(private comment?: string) {}
+    constructor(private comment?: string) { }
 
     addAddressableObject(_obj: AddressableObject): Address {
         assert(!this.serialized);

@@ -1,4 +1,4 @@
-#!/usr/bin/node 
+#!/usr/bin/node
 const { spawn } = require('child_process');
 /**
 Expector is a utility class to replecate the functionality found in the command line 
@@ -10,11 +10,10 @@ module.exports = class Expector {
     * Takes a shellCommand as a string, starts it and then allows the user to send
     * data and wait for things to happen.
     */
-    constructor(shellCmd) {
-        const thisExpector = this;
+    constructor(program, args) {
         this.captured = "";
         this.expecting = null;
-        this.proc = spawn(shellCmd, [], {shell: true});
+        this.proc = spawn(program, args);
         const appender = this.notify.bind(this);
         this.proc.stdout.on('data', appender);
         this.proc.stderr.on('data', appender);
@@ -44,12 +43,12 @@ module.exports = class Expector {
     * Wait for the "what" string to appear in the stdout or stderr of the program,        
     * but reject the promise if timeout happens before the expected string appears.
     */
-    async expect(what, timeout=1000) {
+    async expect(what, timeout = 1000) {
         this.expecting = what;
         const thisExpector = this;
         const returning = new Promise((resolve, reject) => {
             thisExpector.onHit = resolve;
-            setTimeout(()=>{reject(`expected ${what}, had ${thisExpector.captured}`)}, timeout);
+            setTimeout(() => { reject(`expected ${what}, had ${thisExpector.captured}`) }, timeout);
         });
         this.notify();
         return returning;
@@ -66,13 +65,13 @@ module.exports = class Expector {
     * kill that shell, and will leave programs started by that shell alive.
     * TODO(https://github.com/google/gink/issues/30): kill decendants
     */
-    async close(timeout=1000) { 
+    async close(timeout = 1000) {
         const thisExpector = this;
         const returning = new Promise((resolve, reject) => {
             thisExpector.proc.on('close', resolve);
             setTimeout(reject, timeout);
         });
-        this.proc.kill(); 
+        this.proc.kill();
         return returning;
     }
 }

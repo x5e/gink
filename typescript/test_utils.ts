@@ -1,4 +1,4 @@
-import {Medallion, ChainStart, CommitBytes, Timestamp} from "./typedefs";
+import { Medallion, ChainStart, CommitBytes, Timestamp } from "./typedefs";
 import { Commit } from "commit_pb";
 import { Store } from "./Store";
 import { extractCommitInfo } from "./utils";

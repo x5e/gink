@@ -7,7 +7,7 @@ export class Peer {
     private closeFunc: () => void;
     hasMap?: ChainTracker;
 
-    constructor(sendFunc: (msg: Uint8Array) => void, closeFunc: () => void = noOp) { 
+    constructor(sendFunc: (msg: Uint8Array) => void, closeFunc: () => void = noOp) {
         this.sendFunc = sendFunc;
         this.closeFunc = closeFunc;
     }

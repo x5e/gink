@@ -23,7 +23,7 @@ export class ChainTracker {
             if (!this.data.has(medallion)) {
                 this.data.set(medallion, new Map());
             }
-            this.data.get(medallion).set(chainStart, {medallion, chainStart, timestamp});
+            this.data.get(medallion).set(chainStart, { medallion, chainStart, timestamp });
         }
     }
 
@@ -44,8 +44,8 @@ export class ChainTracker {
         const innerMap = this.data.get(commitInfo.medallion);
         const seenThrough = innerMap.get(commitInfo.chainStart)?.timestamp || 0;
         if (commitInfo.timestamp > seenThrough) {
-            if (checkValidExtension && (commitInfo.priorTime ?? 0) != seenThrough) 
-                    throw new Error(`proposed commit would be an invalid extension ${JSON.stringify(commitInfo)}`);
+            if (checkValidExtension && (commitInfo.priorTime ?? 0) != seenThrough)
+                throw new Error(`proposed commit would be an invalid extension ${JSON.stringify(commitInfo)}`);
             innerMap.set(commitInfo.chainStart, commitInfo);
             return true;
         }

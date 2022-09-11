@@ -2,9 +2,9 @@
 const Expector = require("./Expector");
 (async () => {
     console.log("starting");
-    const server = new Expector("make server");
+    const server = new Expector("make", ["server"]);
     await server.expect("ready", 60000);
-    const client = new Expector("make instance");
+    const client = new Expector("make", ["instance"]);
     await client.expect("ready", 60000);
     console.log("all ready");
 
@@ -20,4 +20,4 @@ const Expector = require("./Expector");
     client.close();
     console.log("ok!");
     process.exit(0);
-})().catch((reason) => {console.error(reason); process.exit(1);})
+})().catch((reason) => { console.error(reason); process.exit(1); })
