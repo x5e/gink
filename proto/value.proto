@@ -15,6 +15,7 @@ message Value {
         Tuple tuple = 11;
         Document document = 12;
         string symbol = 13;
+        Reference reference = 14; // used to reference a column in an index or view expression
         Invocation invocation = 15;
         bytes uuid = 16;
         // Muid muid = 17; maybe don't surface?
@@ -23,6 +24,17 @@ message Value {
         DateTime datetime = 20;
         ZonedDateTime zoned = 21;
         Interval interval = 22;
+    }
+
+    message Reference {
+        oneof column {
+            string column_name = 1;
+            uint32 column_number = 2;
+        }
+        oneof table {
+            string table_name = 3;
+            uint32 table_number = 4;
+        }
     }
 
     enum Special {

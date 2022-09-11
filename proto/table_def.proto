@@ -1,7 +1,0 @@
-
-
-message TableDef {
-    map<uint32,string> names = 2;
-    map<uint32,ValueSpec> value_specs = 3;
-}
-

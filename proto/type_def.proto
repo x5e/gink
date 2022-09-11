@@ -1,8 +1,9 @@
-
 syntax = "proto3";
 package google.gink;
+import "muid.proto";
 
-message ColumnDef {
+
+message TypeDef {
     enum BasicType {
         ANY = 0;
         BOOL = 1;
@@ -21,11 +22,10 @@ message ColumnDef {
         TIME = 14;
         DATETIME = 15;
     }
-    oneof {
+    oneof which_kind {
         BasicType basic_type = 1;
-        Muid compound_type = 4;
-        Value computed_expr = 5;
+        Muid compound_type = 4;  //TODO(https://github.com/google/gink/issues/35)
     }
-    bool not_null = 2;
+    bool nullable = 2;
     bool is_array = 3;
 }

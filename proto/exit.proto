@@ -1,0 +1,20 @@
+syntax = "proto3";
+import "muid.proto";
+package google.gink;
+
+/**
+    An "Exit" acts to remove an Entry.  After seeing an Exit pointing to
+    an Entry, the system should act as though that Entry no longer exists.
+    An expiry set on an Exit makes this removal temporary.  One use case is
+    to temporarily remove an item from a work queue to start processing it,
+    then permanently remove it once processing has been completed.
+    To remove keys from a schema, adding a new Entry with deleting=True 
+    is generally better (otherwise prior Entries with earlier timestamps
+    will appear to be in effect).  When the effect Muid is set that indicates
+    that the specified Effect has been processed (it is not a general deletion).
+*/
+message Exit {
+    Muid entry = 1;
+    uint64 expiry = 2;
+    Muid effect = 3;
+}

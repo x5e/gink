@@ -1,3 +1,8 @@
+syntax = "proto3";
+package google.gink;
+import "value.proto";
+
+
 message Row {
     oneof mask { // a bitmask indicating which columns are present
         uint64 integer_mask = 1; 
