@@ -1,8 +1,9 @@
-import { Medallion, ChainStart, CommitBytes, Timestamp } from "./typedefs"
+import { CommitBytes } from "./typedefs"
 import { Store } from "./Store";
-import { Commit } from "transactions_pb";
-import { HasMap } from "./HasMap";
+import { Commit } from "commit_pb";
 import { extractCommitInfo } from "./utils";
+import { makeChainStart, extendChain, addTrxns, 
+    MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2 } from "./test_utils";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 
@@ -11,45 +12,6 @@ test('placeholder', () => {
     expect(1 + 2).toBe(3);
 });
 
-const MEDALLION1 = 425579549941797;
-const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;
-const NEXT_TS1 = Date.parse("2022-02-20 00:39:29") * 1000;
-
-const MEDALLION2 = 458510670893748;
-const START_MICROS2 = Date.parse("2022-02-20 00:38:21") * 1000;
-const NEXT_TS2 = Date.parse("2022-02-20 00:40:12") * 1000;
-
-
-function makeChainStart(comment: string, medallion: Medallion, chainStart: ChainStart): CommitBytes {
-    const commit = new Commit();
-    commit.setChainStart(chainStart);
-    commit.setTimestamp(chainStart);
-    commit.setMedallion(medallion);
-    commit.setComment(comment);
-    return commit.serializeBinary();
-}
-
-function extendChain(comment: string, previous: CommitBytes, timestamp: Timestamp): CommitBytes {
-    const parsedPrevious = Commit.deserializeBinary(previous);
-    const subsequent = new Commit();
-    subsequent.setMedallion(parsedPrevious.getMedallion());
-    subsequent.setPreviousTimestamp(parsedPrevious.getTimestamp());
-    subsequent.setChainStart(parsedPrevious.getChainStart());
-    subsequent.setTimestamp(timestamp); // one millisecond later
-    subsequent.setComment(comment);
-    return subsequent.serializeBinary();
-}
-
-export async function addTrxns(store: Store, hasMap?: HasMap) {
-    const start1 = makeChainStart("chain1,tx1", MEDALLION1, START_MICROS1);
-    await store.addCommit(start1, extractCommitInfo(start1));
-    const next1 = extendChain("chain1,tx2", start1, NEXT_TS1);
-    await store.addCommit(next1, extractCommitInfo(next1));
-    const start2 = makeChainStart("chain2,tx1", MEDALLION2, START_MICROS2);
-    await store.addCommit(start2, extractCommitInfo(start2));
-    const next2 = extendChain("chain2,2", start2, NEXT_TS2);
-    await store.addCommit(next2, extractCommitInfo(next2));
-}
 
 /**
  * 
@@ -109,10 +71,10 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
 
     test(`${implName} test creates greeting`, async () => {
         await addTrxns(store);
-        const hasMap = await store.getHasMap();
+        const hasMap = await store.getChainTracker();
 
-        expect(hasMap.getSeenTo(MEDALLION1, START_MICROS1)).toBe(NEXT_TS1);
-        expect(hasMap.getSeenTo(MEDALLION2, START_MICROS2)).toBe(NEXT_TS2);
+        expect(hasMap.getCommitInfo([MEDALLION1, START_MICROS1]).timestamp).toBe(NEXT_TS1);
+        expect(hasMap.getCommitInfo([MEDALLION2, START_MICROS2]).timestamp).toBe(NEXT_TS2);
     });
 
     test(`${implName} test sends trxns in order`, async () => {

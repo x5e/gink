@@ -1,16 +1,21 @@
-import { Server } from "./Server";
+import { GinkServer } from "./GinkServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
-import { Client, Commit } from "./Client";
+import { GinkInstance } from "./GinkInstance";
 import { info } from "./utils";
+import { CommitInfo } from "./typedefs";
+import { PendingCommit } from "./PendingCommit";
 var readline = require('readline');
 
+async function onCommit(commitInfo: CommitInfo) {
+    info(`received commit: ${JSON.stringify(commitInfo)}`);
+}
 
 export class CommandLineInterface {
-    targets;
+    targets: string[];
     store: Store;
-    instance: Client | Server;
+    instance: GinkInstance;
 
     constructor(process: NodeJS.Process) {
         info("starting...");
@@ -27,32 +32,30 @@ export class CommandLineInterface {
         }
 
         if (process.env["GINK_PORT"]) {
-            this.instance = new Server(this.store, {
+            this.instance = new GinkServer(this.store, "gink server", {
                 port: process.env["GINK_PORT"],
                 sslKeyFilePath: process.env["GINK_SSL_KEY"],
                 sslCertFilePath: process.env["GINK_SSL_CERT"],
                 staticPath: process.env["GINK_STATIC_PATH"],
             });
         } else {
-            this.instance = new Client(this.store);
+            this.instance = new GinkInstance(this.store, "node instance");
         }
         this.targets = process.argv.slice(2);
     }
 
     async run() {
         await this.instance.initialized;
-        for (let target of this.targets) {
+        this.instance.addListener(onCommit);
+        for (const target of this.targets) {
             info(`connecting to: ${target}`)
-            await this.instance.connectTo(target);
+            await this.instance.connectTo(target, info);
             info(`connected!`)
         }
-        const chainManager = await this.instance.getChainManager();
-        info(`got chain manager, using medallion=${chainManager.medallion}`)
         info("ready (type a comment and press enter to create a commit)");
         const readlineInterface = readline.createInterface(process.stdin, process.stdout);
         readlineInterface.on('line', async (comment: string) => {
-            const commit = new Commit(comment);
-            await chainManager.addCommit(commit);
+            await this.instance.addPendingCommit(new PendingCommit(comment));
         })
     }
 

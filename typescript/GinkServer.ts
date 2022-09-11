@@ -7,32 +7,20 @@ import {
     server as WebSocketServer, request as WebSocketRequest,
     connection as WebSocketConnection, Message as WebSocketMessage
 } from 'websocket';
-import { Client } from "./Client";
+import { GinkInstance } from "./GinkInstance";
 import { Peer } from './Peer';
 import { Buffer } from "buffer";
 import { Store } from "./Store";
+import { ServerArgs } from './typedefs';
 
-type FilePath = string;
-type NumberStr = string;
-const PROTOCOL = "gink";
+export class GinkServer extends GinkInstance {
+    private websocketServer: WebSocketServer;
 
-export interface ServerArgs {
-    port?: NumberStr;
-    sslKeyFilePath?: FilePath;
-    sslCertFilePath?: FilePath;
-    medallion?: NumberStr;
-    staticPath?: string;
-}
-
-export class Server extends Client {
-    #websocketServer: WebSocketServer;
-
-    constructor(store: Store, args: ServerArgs) {
-        super(store);
+    constructor(store: Store, instanceInfo: string, args: ServerArgs) {
+        super(store, instanceInfo);
         const staticPath = args.staticPath || __dirname.split("/").slice(0, -1).join("/");
         const staticServer = new StaticServer(staticPath);
         const port = args.port || "8080";
-        const thisServer = this;
         let httpServer: HttpServer | HttpsServer;
         if (args["sslKeyFilePath"] && args["sslCertFilePath"]) {
             var options = {
@@ -51,17 +39,17 @@ export class Server extends Client {
                 info(`Insecure server is listening on port ${port}`);
             });
         }
-        this.#websocketServer = new WebSocketServer({ httpServer });
-        this.#websocketServer.on('request', this.#onRequest.bind(this));
+        this.websocketServer = new WebSocketServer({ httpServer });
+        this.websocketServer.on('request', this.onRequest.bind(this));
     }
 
-    async #onRequest(request: WebSocketRequest) {
+    private async onRequest(request: WebSocketRequest) {
         await this.initialized;
-        const thisServer = this; // do pass into closures
+        const thisServer = this; // pass into closures
         let protocol: string | null = null;
         if (request.requestedProtocols.length) {
-            if (request.requestedProtocols.includes(PROTOCOL))
-                protocol = PROTOCOL;
+            if (request.requestedProtocols.includes(GinkInstance.PROTOCOL))
+                protocol = GinkInstance.PROTOCOL;
             else
                 return request.reject(400, "bad protocol");
         }
@@ -76,11 +64,11 @@ export class Server extends Client {
             thisServer.peers.delete(connectionId);
             info(' Peer ' + connection.remoteAddress + ' disconnected.');
         });
-        connection.on('message', this.#onMessage.bind(this, connectionId));
+        connection.on('message', this.onMessage.bind(this, connectionId));
         sendFunc(this.getGreetingMessageBytes());
     }
 
-    #onMessage(connectionId: number, webSocketMessage: WebSocketMessage) {
+    private onMessage(connectionId: number, webSocketMessage: WebSocketMessage) {
         if (webSocketMessage.type === 'utf8') {
             info('Received Text Message: ' + webSocketMessage.utf8Data);
         }

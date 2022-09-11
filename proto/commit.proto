@@ -1,7 +1,6 @@
 syntax = "proto3";
-import "objects.proto";
+import "addressable_object.proto";
 package google.gink;
-
 
 message Commit {
     uint64 timestamp = 1;
@@ -9,6 +8,19 @@ message Commit {
     uint64 previous_timestamp = 3;
     string comment = 4;
     uint64 chain_start = 5;
-    map<uint32, Obj> objects = 8; // key is offset number (> 0 and < 2**20)
+    // key in addressable_objects is offset number (> 0 and < 2**20)
+    map<uint32, AddressableObject> addressable_objects = 6;
+
+    // I'm using a map rather than a simple repeated field of AddressableObjects for a couple of reasons:
+    // * The offset of 0 is reserved to denote the transaction, and I don't want to confuse things by
+    //   forcing people to have 1 based indexing.
+    // * A commit might involve the creation of a lot of objects, which all cross reference each other.
+    //   if part way through creating a commit you decide you don't need an object, using a map allows
+    //   you to just exclude it (and have non-sequential keys).  If the items were in a repeated field
+    //   with the index being the implied offset, then removing an object from the middle of the list
+    //   would effectively change the muid of every object after it, which would cause problems when 
+    //   objects within that commit reference each other.  An alternative approach would be to use a 
+    //   repeated field with implied offsets and use a tombstone (no-op) object in cases where the 
+    //   creator of a commit changes their mind and decides not to include a particular object.
 }
 
