@@ -69,7 +69,7 @@ export class GinkInstance {
         startCommit.setMedallion(medallion);
         startCommit.setComment(comment);
         const commitBytes = startCommit.serializeBinary();
-        const commitInfo: CommitInfo = {medallion, chainStart, timestamp: chainStart, comment}
+        const commitInfo: CommitInfo = { medallion, chainStart, timestamp: chainStart, comment }
         await this.store.addCommit(commitBytes, commitInfo);
         await this.store.claimChain(medallion, chainStart);
         return [medallion, chainStart];
@@ -106,10 +106,10 @@ export class GinkInstance {
                 commitInfo.medallion == resultInfo.medallion &&
                 commitInfo.priorTime == resultInfo.priorTime &&
                 commitInfo.comment == resultInfo.comment
-                );
+            );
         } finally {
             unlockingFunction("this string is ignored");
-        } 
+        }
         return resultInfo;
     }
 
@@ -153,7 +153,7 @@ export class GinkInstance {
         this.iHave.markIfNovel(commitInfo);
         // If this commit isn't new to this instance, then it will have already been 
         // sent to the connected peers and doesn't need to be sent again.
-        if (!added) 
+        if (!added)
             return;
         for (const [peerId, peer] of this.peers) {
             if (peerId != fromConnectionId)

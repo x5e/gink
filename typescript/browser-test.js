@@ -2,13 +2,13 @@
 const Expector = require("./Expector");
 const { spawnSync } = require("child_process");
 function hasInstalled(program) {
-    return !spawnSync(`which ${program}`, [], {shell:true}).status;
+    return !spawnSync(`which ${program}`, [], { shell: true }).status;
 }
 const browserCommand = [
     hasInstalled('chromium') ? "chromium" : "google-chrome",
     "--headless",
-    "--no-sandbox", 
-    "--remote-debugging-port=9222", 
+    "--no-sandbox",
+    "--remote-debugging-port=9222",
     "--disable-gpu",
 ].join(" ");
 (async () => {
@@ -26,4 +26,4 @@ const browserCommand = [
     driver.close();
     console.log("ok!");
     process.exit(0);
-})().catch((reason) => {console.error(reason); process.exit(1);})
+})().catch((reason) => { console.error(reason); process.exit(1); })

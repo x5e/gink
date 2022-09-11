@@ -116,7 +116,7 @@ export class LogBackedStore implements Store {
         await this.fileHandle.appendFile(fragment.serializeBinary());
         await this.indexedDbStore.claimChain(medallion, chainStart);
     }
-    
+
     async getChainTracker(): Promise<ChainTracker> {
         await this.initialized;
         return await this.indexedDbStore.getChainTracker();

@@ -20,4 +20,4 @@ const Expector = require("./Expector");
     client.close();
     console.log("ok!");
     process.exit(0);
-})().catch((reason) => {console.error(reason); process.exit(1);})
+})().catch((reason) => { console.error(reason); process.exit(1); })

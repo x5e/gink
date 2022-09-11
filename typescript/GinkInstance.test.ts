@@ -20,7 +20,7 @@ test('test commit', async () => {
     return "okay!";
 });
 
-test('uses claimed chain', async() => {
+test('uses claimed chain', async () => {
     const store = new IndexedDbStore("test", true);
     await store.initialized;
     const commitBytes = makeChainStart("chain start comment", MEDALLION1, START_MICROS1);
@@ -38,7 +38,7 @@ test('uses claimed chain', async() => {
         secondInfo.medallion == MEDALLION1 &&
         secondInfo.priorTime == START_MICROS1 &&
         secondInfo.chainStart == START_MICROS1
-        );
+    );
 })
 
 export const result = 1;
