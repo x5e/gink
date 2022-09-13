@@ -1,0 +1,8 @@
+syntax = "proto3";
+package google.gink;
+import "muid.proto";
+
+message Enum {
+    map<sint64,string> defined = 1;
+    Muid extends = 2; // if set, use the parent enum except where over-ridden by this
+}

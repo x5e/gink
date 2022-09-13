@@ -3,7 +3,6 @@ package google.gink;
 
 import "value.proto";
 import "muid.proto";
-import "row.proto";
 
 
 message Entry {
@@ -17,14 +16,22 @@ message Entry {
         // For behavior in {BOX, QUEUE, TABLE, BINLOG} there is no link.
         // This includes when setting the root entry (i.e. no src_node).
         Value key = 2;      // only for src_node behavior in {SCHEMA, SET}
-        Muid edge_kind = 3; // only when src_node has a node_kind
+        Muid edge_type = 3; // only when src_node has a node_kind
         Span span = 4;      // only for src_node behavior = FILE
+    }
+
+    message Row {
+        oneof mask { // a bitmask indicating which columns are present
+            uint64 integer_mask = 1; 
+            bytes bytes_mask = 2; // only for when you have more than 63 columns
+        }
+        repeated Value values = 3;
     }
     oneof destination {
         Muid dst_node = 5;
         bool deleting = 6; // serves as reset when no link is set
         uint64 medallion = 7; // follow the root entry of another db instance
-        bytes octects = 8; // for src_node behavior in {FILE, BINLOG}
+        bytes octects = 8; // for src_node behavior in {FILE, BINLOG} or when encrypted
         Value value = 9;
         Row row = 10; // only when source is a TABLE
     }

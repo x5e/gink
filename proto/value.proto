@@ -1,11 +1,12 @@
 syntax = "proto3";
 package google.gink;
+import "muid.proto";
 
 
 message Value {
     oneof value {
         Special special = 1;
-        uint64 enum_value = 2;
+        sint64 enum_value = 2;
         string characters = 3;
         Number number = 4;
         Timestamp timestamp = 5;
@@ -15,10 +16,10 @@ message Value {
         Tuple tuple = 11;
         Document document = 12;
         string symbol = 13;
-        Reference reference = 14; // used to reference a column in an index or view expression
+        ColumnReference column = 14;
         Invocation invocation = 15;
         bytes uuid = 16;
-        // Muid muid = 17; maybe don't surface?
+        Muid muid = 17;
         Complex complex = 18;
         Zone timezone = 19;
         DateTime datetime = 20;
@@ -26,7 +27,7 @@ message Value {
         Interval interval = 22;
     }
 
-    message Reference {
+    message ColumnReference {
         oneof column {
             string column_name = 1;
             uint32 column_number = 2;

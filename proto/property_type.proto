@@ -1,7 +1,7 @@
 syntax = "proto3";
 package google.gink;
 import "muid.proto";
-import "type_def.proto";
+import "value_type.proto";
 
 /**
     Defines a new kind of metadata, for example, for "people" node
@@ -10,7 +10,7 @@ import "type_def.proto";
 */
 message PropertyType {
     oneof type {
-        TypeDef allowed_values = 1; // limits what values this property can take
+        ValueType allowed_values = 1; // limits what values this property can take
         bool is_tag = 2;
     };
     repeated Muid allowed_on = 3; // what type of node/entry to allow this metadata on

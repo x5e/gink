@@ -2,7 +2,7 @@ syntax = "proto3";
 package google.gink;
 import "muid.proto";
 import "value.proto";
-import "type_def.proto";
+import "value_type.proto";
 
 /**
     Each new Container message establishes the existance of a mutable data structure.
@@ -12,7 +12,7 @@ import "type_def.proto";
 message Container {
     message Column {
         string name = 1;
-        TypeDef type = 2;
+        ValueType type = 2;
         Value expression = 3; // default used when no value is provided (and in computed and view columns)
         bool computed = 4; // when true, values can't be provided, and is defined by expression
         uint32 position = 5; // required when using table inheritance, implied otherwise
@@ -35,8 +35,8 @@ message Container {
     };
     Behavior behavior = 1;
     Muid extends = 2; // inheritance (an option only for a TABLE, QUEUE, SET, or SCHEMA)
-    TypeDef key_type = 3; // only when behavior in  (SCHEMA, SET)
-    TypeDef value_type = 4; // only when behavior in (BOX, SCHEMA, QUEUE)
+    ValueType key_type = 3; // only when behavior in  (SCHEMA, SET)
+    ValueType value_type = 4; // only when behavior in (BOX, SCHEMA, QUEUE)
     repeated Column columns = 5; // use when behavior in (TABLE, VIEW, DERIVED)
     bool allow_resets = 6; // allow users to clear container, may require storing entries between resets
     Muid node_type = 7; // only when behavior is NODE
