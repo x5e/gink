@@ -33,11 +33,18 @@ export interface CallBack {
 export interface AddressableObject {
 }
 
+export declare class PendingCommit {
+    medallion: Medallion;
+}
+
 /**
  * Intended to be a way to point to a particular AddressableObject even if
  * the commit its associated with hasn't been sealed yet.
  */
 export interface Address {
+    get medallion(): Medallion;
+    get timestamp(): Timestamp | undefined;
+    get offset(): number | undefined;
 }
 
 export interface ServerArgs {
@@ -46,4 +53,8 @@ export interface ServerArgs {
     sslCertFilePath?: FilePath;
     medallion?: NumberStr;
     staticPath?: string;
+}
+
+export interface ContainerArgs {
+    address?: Address,
 }

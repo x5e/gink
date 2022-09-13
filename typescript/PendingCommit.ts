@@ -16,6 +16,10 @@ export class PendingCommit {
 
     constructor(private comment?: string) { }
 
+    get medallion(): Medallion | undefined {
+        return this.commitInfo?.medallion;
+    }
+
     addAddressableObject(_obj: AddressableObject): Address {
         assert(!this.serialized);
         //TODO(https://github.com/google/gink/issues/32): fix this
