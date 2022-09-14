@@ -1,6 +1,8 @@
-import { CommitInfo } from "./typedefs"
+import { CommitInfo, Address, Medallion, Basic } from "./typedefs"
 import { SyncMessage } from "sync_message_pb";
 import { Commit } from "commit_pb";
+import { Muid } from "muid_pb";
+import { Value } from "muid_pb";
 
 export function extractCommitInfo(commitBytes: Uint8Array): CommitInfo {
     const parsed = Commit.deserializeBinary(commitBytes);
@@ -85,3 +87,45 @@ export function info(msg: string) {
     // using console.error because I want to write to stderr
     console.error(`[${timestamp} ${caller}] ${msg}`);
 }
+
+export function addressToMuid(address: Address, relativeTo?: Medallion): Muid {
+    const muid = new Muid();
+    if (address.medallion && address.medallion != relativeTo)
+        muid.setMedallion(address.medallion);
+    if (address.timestamp) // not set if also pending
+        muid.setTimestamp(address.timestamp);
+    muid.setOffset(address.offset);
+    return muid;
+}
+
+export function wrapValue(arg: Basic): Value {
+    const value = new Value();
+    while (true) {  // only goes through once; I'm using it like a switch statement
+        if (arg === null) {
+            value.setSpecial(Value.Special.NULL);
+            break;
+        }
+        if (arg === true) {
+            value.setSpecial(Value.Special.TRUE);
+            break;
+        }
+        if (arg === false) {
+            value.setSpecial(Value.Special.FALSE);
+            break;
+        }
+        const argType = typeof (arg);
+        if (argType == "string") {
+            value.setCharacters(arg);
+            break;
+        }
+        if (argType == "number") {
+            //TODO: put in special cases for integers etc to increase efficiency
+            const number = new Value.Number();
+            number.setDoubled(arg);
+            value.setNumber(number);
+            break;
+        }
+        throw new Error(`cannot be wrapped: ${arg}`);
+    }
+    return value;
+} 

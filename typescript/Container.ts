@@ -2,11 +2,13 @@ import { GinkInstance } from "./GinkInstance";
 import { PendingCommit } from "./PendingCommit";
 import { Entry } from "entry_pb";
 import { Value as ValueMessage } from "value_pb";
-import { Muid as MuidMessage } from "muid_pb";
-import { Address, ContainerArgs } from "./typedefs";
+import { Address, ContainerArgs, Basic } from "./typedefs";
+import { addressToMuid, wrapValue } from "./utils";
+import { AddressableObject } from "addressable_object_pb";
 
 export class Container {
     readonly ginkInstance: GinkInstance;
+    readonly isRoot: boolean;
     constructor(private args: ContainerArgs) {
 
     }
@@ -15,28 +17,39 @@ export class Container {
         throw new Error("not implemented");
     }
 
-    async set(key: string, value: string|Container, commit?: PendingCommit): Promise<Address> {
+    /**
+     * Sets a key/value association in a 
+     * @param key 
+     * @param value 
+     * @param commit
+     * @returns a promise that resolves to the address of the newly created entry  
+     */
+    async set(key: Basic, value: Basic|Container, commit?: PendingCommit): Promise<Address> {
         let immediate: boolean = false;
         if (!commit) {
             immediate = true;
             commit = new PendingCommit();
         }
-        const keyProto = new ValueMessage();
-        keyProto.setCharacters(key);
+
         const entry = new Entry();
-        entry.setKey(keyProto);
-        if (typeof value == "string") {
-            const valueProto = new ValueMessage();
-            valueProto.setCharacters(value);
-            entry.setValue(valueProto);            
-        } else {
-            const address = value.address;
-            const muid = new MuidMessage();
-            if (address.medallion && address.medallion != commit.medallion)
-                muid.setMedallion(address.medallion);
-            if (address.timestamp) // not set if in this same commit
-                muid.setTimestamp(address.timestamp);
-            muid.setOffset(address.offset);
+        if (!this.isRoot) {
+            entry.setSource(addressToMuid(this.address, commit.medallion));    
         }
+        // TODO: check the key against the ValueType for keys (if set)
+        entry.setKey(wrapValue(key));
+
+        // TODO: check that the destination/value is compatible with Container
+        if (value instanceof Container) {
+            entry.setDestination(addressToMuid(this.address, commit.medallion));          
+        } else {
+            entry.setValue(wrapValue(value));
+        }
+        const addresableObject = new AddressableObject();
+        addresableObject.setEntry(entry);
+        const address = commit.addAddressableObject(addresableObject);
+        if (immediate) {
+            await this.ginkInstance.addPendingCommit(commit);
+        }
+        return address;
     }
 }

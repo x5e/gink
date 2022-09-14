@@ -9,6 +9,7 @@ export type ClaimedChains = Map<Medallion, ChainStart>;
 export type Offset = number;
 export type FilePath = string;
 export type NumberStr = string;
+export type Basic = number | string | boolean | null;  // TODO: add bigints, bytes
 
 export interface CommitInfo {
     timestamp: Timestamp;
@@ -26,13 +27,6 @@ export interface CallBack {
     (value: any): void;
 }
 
-/**
- * Will be the database objects used to change the data model.
- * Needs to be flushed out once the sync stuff has been merged in.
- */
-export interface AddressableObject {
-}
-
 export declare class PendingCommit {
     medallion: Medallion;
 }
@@ -42,9 +36,9 @@ export declare class PendingCommit {
  * the commit its associated with hasn't been sealed yet.
  */
 export interface Address {
-    get medallion(): Medallion;
+    get medallion(): Medallion | undefined;
     get timestamp(): Timestamp | undefined;
-    get offset(): number | undefined;
+    get offset(): number;
 }
 
 export interface ServerArgs {

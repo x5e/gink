@@ -1,6 +1,7 @@
-import { Medallion, ChainStart, Timestamp, AddressableObject, Address, CommitInfo } from "./typedefs";
+import { Medallion, ChainStart, Timestamp, Address, CommitInfo } from "./typedefs";
 import { Commit as CommitProto } from "commit_pb";
 import { assert } from "./utils";
+import { AddressableObject } from "addressable_object_pb";
 
 
 /**
@@ -13,17 +14,30 @@ export class PendingCommit {
 
     private commitInfo: CommitInfo | null = null;
     private serialized: Uint8Array | null = null;
+    private commitProto = new CommitProto();
+    private countItems = 0;
+ 
+    constructor(private comment?: string) { 
 
-    constructor(private comment?: string) { }
+    }
 
     get medallion(): Medallion | undefined {
         return this.commitInfo?.medallion;
     }
+    get timestamp(): Timestamp | undefined {
+        return this.commitInfo?.timestamp;
+    }
 
-    addAddressableObject(_obj: AddressableObject): Address {
-        assert(!this.serialized);
-        //TODO(https://github.com/google/gink/issues/32): fix this
-        throw new Error("not implemented");
+    addAddressableObject(addressableObject: AddressableObject): Address {
+        if (this.commitInfo)
+            throw new Error("This commit has already been sealed.");
+        const offset = ++this.countItems;
+        this.commitProto.getAddressableObjectsMap().set(offset, addressableObject);
+        return new class {
+            constructor(private commit: PendingCommit, readonly offset: number) {}
+            get medallion() { return this.commit.medallion; }
+            get timestamp() { return this.commit.timestamp; }
+        }(this, offset);
     }
 
 
@@ -36,14 +50,13 @@ export class PendingCommit {
         assert(!this.serialized);
         this.commitInfo = commitInfo;
         commitInfo.comment = this.comment;
-        const commitProto = new CommitProto();
-        commitProto.setTimestamp(commitInfo.timestamp);
-        commitProto.setPreviousTimestamp(commitInfo.priorTime);
-        commitProto.setChainStart(commitInfo.chainStart);
-        commitProto.setMedallion(commitInfo.medallion);
-        commitProto.setComment(commitInfo.comment);
+        this.commitProto.setTimestamp(commitInfo.timestamp);
+        this.commitProto.setPreviousTimestamp(commitInfo.priorTime);
+        this.commitProto.setChainStart(commitInfo.chainStart);
+        this.commitProto.setMedallion(commitInfo.medallion);
+        this.commitProto.setComment(commitInfo.comment);
         // TODO(https://github.com/google/gink/issues/32): add addressable objects
-        this.serialized = commitProto.serializeBinary();
+        this.serialized = this.commitProto.serializeBinary();
         return this.serialized;
     }
 
