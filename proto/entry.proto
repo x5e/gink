@@ -27,8 +27,8 @@ message Entry {
         }
         repeated Value values = 3;
     }
-    oneof destination {
-        Muid dst_node = 5;
+    oneof target {
+        Muid destination = 5;
         bool deleting = 6; // serves as reset when no link is set
         uint64 medallion = 7; // follow the root entry of another db instance
         bytes octects = 8; // for src_node behavior in {FILE, BINLOG} or when encrypted
