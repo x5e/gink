@@ -24,7 +24,7 @@ test('uses claimed chain', async () => {
     const store = new IndexedDbStore("test", true);
     await store.initialized;
     const commitBytes = makeChainStart("chain start comment", MEDALLION1, START_MICROS1);
-    await store.addCommit(commitBytes);
+    await store.addChangeSet(commitBytes);
     await store.claimChain(MEDALLION1, START_MICROS1);
     store.getCommits((commitBytes: CommitBytes, _commitInfo: CommitInfo) => {
         const commit = ChangeSetMessage.deserializeBinary(commitBytes);

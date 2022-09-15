@@ -68,7 +68,7 @@ export class GinkInstance {
         startCommit.setMedallion(medallion);
         startCommit.setComment(comment);
         const commitBytes = startCommit.serializeBinary();
-        await this.store.addCommit(commitBytes);
+        await this.store.addChangeSet(commitBytes);
         await this.store.claimChain(medallion, chainStart);
         return [medallion, chainStart];
     }
@@ -146,7 +146,7 @@ export class GinkInstance {
         await this.initialized;
         const commitInfo = extractCommitInfo(commitBytes);
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);
-        if (await this.store.addCommit(commitBytes)) {
+        if (await this.store.addChangeSet(commitBytes)) {
             this.iHave.markIfNovel(commitInfo);
             for (const [peerId, peer] of this.peers) {
                 if (peerId != fromConnectionId)

@@ -1,8 +1,11 @@
 import { CommitBytes } from "./typedefs"
 import { Store } from "./Store";
-import { ChangeSet as ChangeSetMessage } from "change_set_pb";
+import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
+import { Change as ChangeBuilder } from "change_pb";
+import { Container as ContainerBuilder } from "container_pb";
 import { makeChainStart, extendChain, addTrxns, 
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2 } from "./test_utils";
+import { assert } from "console";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 
@@ -31,8 +34,8 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
 
     test(`${implName} test accepts chain start but only once`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const acceptedOnce = await store.addCommit(chainStart);
-        const acceptedTwice = await store.addCommit(chainStart);
+        const acceptedOnce = await store.addChangeSet(chainStart);
+        const acceptedTwice = await store.addChangeSet(chainStart);
         expect(acceptedOnce).toBeTruthy();
         expect(acceptedTwice).toBeFalsy();
     });
@@ -43,7 +46,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         let added = null;
         let barfed = false;
         try {
-            added = await store.addCommit(secondTrxn);
+            added = await store.addChangeSet(secondTrxn);
         } catch (e) {
             barfed = true;
         }
@@ -55,11 +58,11 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
         const thirdTrxn = extendChain("Hello, a third!", secondTrxn, NEXT_TS1+1);
-        await store.addCommit(chainStart);
+        await store.addChangeSet(chainStart);
         let added = null;
         let barfed = false;
         try {
-            added = await store.addCommit(thirdTrxn);
+            added = await store.addChangeSet(thirdTrxn);
         } catch (e) {
             barfed = true;
         }
@@ -84,10 +87,10 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sent: Array<CommitBytes> = [];
         await store.getCommits((x: CommitBytes) => {sent.push(x);});
         expect(sent.length).toBe(4);
-        expect(ChangeSetMessage.deserializeBinary(sent[0]).getTimestamp()).toBe(START_MICROS1);
-        expect(ChangeSetMessage.deserializeBinary(sent[1]).getTimestamp()).toBe(START_MICROS2);
-        expect(ChangeSetMessage.deserializeBinary(sent[2]).getTimestamp()).toBe(NEXT_TS1);
-        expect(ChangeSetMessage.deserializeBinary(sent[3]).getTimestamp()).toBe(NEXT_TS2);
+        expect(ChangeSetBuilder.deserializeBinary(sent[0]).getTimestamp()).toBe(START_MICROS1);
+        expect(ChangeSetBuilder.deserializeBinary(sent[1]).getTimestamp()).toBe(START_MICROS2);
+        expect(ChangeSetBuilder.deserializeBinary(sent[2]).getTimestamp()).toBe(NEXT_TS1);
+        expect(ChangeSetBuilder.deserializeBinary(sent[3]).getTimestamp()).toBe(NEXT_TS2);
     });
 
     test(`${implName} test claim chains`, async () => {
@@ -101,5 +104,25 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         expect(active.size).toBe(2);
         expect(active.get(MEDALLION1)).toBe(START_MICROS1);
         expect(active.get(MEDALLION2)).toBe(START_MICROS2);
+    });
+
+    test(`${implName} test save/fetch container`, async () => {
+        const changeSetBuilder = new ChangeSetBuilder();
+        changeSetBuilder.setChainStart(START_MICROS1);
+        changeSetBuilder.setTimestamp(START_MICROS1);
+        changeSetBuilder.setMedallion(MEDALLION1);
+        const changeBuilder = new ChangeBuilder();
+        const containerBuilder = new ContainerBuilder();
+        containerBuilder.setBehavior(ContainerBuilder.Behavior.SCHEMA);
+        changeBuilder.setContainer(containerBuilder);
+        changeSetBuilder.getChangesMap().set(7, changeBuilder);
+        const changeSetBytes = changeSetBuilder.serializeBinary();
+        const commitInfo = await store.addChangeSet(changeSetBytes);
+        assert(commitInfo.medallion == MEDALLION1);
+        assert(commitInfo.timestamp == START_MICROS1);
+        const containerBytes = await store.getContainerBytes({medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7});
+        assert(containerBytes);
+        const containerBuilder2 = ContainerBuilder.deserializeBinary(containerBytes);
+        assert(containerBuilder2.getBehavior() == ContainerBuilder.Behavior.SCHEMA);
     });
 }

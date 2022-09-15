@@ -1,5 +1,6 @@
-export type GreetingBytes = Uint8Array;
-export type CommitBytes = Uint8Array;
+export type Bytes = Uint8Array;
+export type GreetingBytes = Bytes;
+export type CommitBytes = Bytes;
 export type Medallion = number;
 export type Timestamp = number;
 export type ChainStart = Timestamp;

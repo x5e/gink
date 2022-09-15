@@ -32,11 +32,11 @@ export function extendChain(comment: string, previous: CommitBytes, timestamp: T
 
 export async function addTrxns(store: Store) {
     const start1 = makeChainStart("chain1,tx1", MEDALLION1, START_MICROS1);
-    await store.addCommit(start1);
+    await store.addChangeSet(start1);
     const next1 = extendChain("chain1,tx2", start1, NEXT_TS1);
-    await store.addCommit(next1);
+    await store.addChangeSet(next1);
     const start2 = makeChainStart("chain2,tx1", MEDALLION2, START_MICROS2);
-    await store.addCommit(start2);
+    await store.addChangeSet(start2);
     const next2 = extendChain("chain2,2", start2, NEXT_TS2);
-    await store.addCommit(next2);
+    await store.addChangeSet(next2);
 }

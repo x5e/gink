@@ -1,4 +1,4 @@
-import { CommitBytes, CommitInfo, Medallion, ChainStart, SeenThrough } from "./typedefs";
+import { CommitBytes, CommitInfo, Medallion, ChainStart, SeenThrough, Address, Bytes, Basic } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -67,7 +67,7 @@ export class LogBackedStore implements Store {
                 const logFile = LogFile.deserializeBinary(uint8Array);
                 const commits = logFile.getCommitsList();
                 for (const commit of commits) {
-                    const added = await this.indexedDbStore.addCommit(commit);
+                    const added = await this.indexedDbStore.addChangeSet(commit);
                     assert(added);
                     this.commitsProcessed += 1;
                 }
@@ -84,9 +84,9 @@ export class LogBackedStore implements Store {
         return this.commitsProcessed;
     }
 
-    async addCommit(commitBytes: CommitBytes): Promise<CommitInfo|undefined> {
+    async addChangeSet(commitBytes: CommitBytes): Promise<CommitInfo|undefined> {
         await this.initialized;
-        const added = await this.indexedDbStore.addCommit(commitBytes);
+        const added = await this.indexedDbStore.addChangeSet(commitBytes);
         if (added) {
             const logFragment = new LogFile();
             logFragment.setCommitsList([commitBytes]);
@@ -124,6 +124,16 @@ export class LogBackedStore implements Store {
     async getCommits(callBack: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void): Promise<void> {
         await this.initialized;
         await this.indexedDbStore.getCommits(callBack);
+    }
+
+    async getContainerBytes(address: Address): Promise<Bytes|undefined> {
+        await this.initialized;
+        return this.indexedDbStore.getContainerBytes(address);
+    }
+
+    async getEntryBytes(source: Address, key: Basic): Promise<Bytes| undefined> {
+        await this.initialized;
+        return this.indexedDbStore.getEntryBytes(source, key);
     }
 
     async close() {

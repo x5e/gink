@@ -1,13 +1,13 @@
-import { extractCommitInfo, info, unwrapValue } from "./utils";
-var mode = "browser";
+import { extractCommitInfo, info, unwrapValue, assert } from "./utils";
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
-    mode = "node";
 }
 import { openDB, deleteDB, IDBPDatabase } from 'idb';
 import { Store } from "./Store";
-import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, 
-    ClaimedChains, PriorTime, SeenThrough, Offset } from "./typedefs";
+import {
+    CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo,
+    ClaimedChains, PriorTime, SeenThrough, Offset, Address, Bytes, Basic
+} from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Change as ChangeBuilder } from "change_pb";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
@@ -21,7 +21,8 @@ import { Muid as MuidBuilder } from "muid_pb";
 export type CommitKey = [Timestamp, Medallion, ChainStart, PriorTime, string];
 
 function commitInfoToKey(commitInfo: CommitInfo): CommitKey {
-    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart, commitInfo.priorTime || 0, commitInfo.comment]
+    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
+    commitInfo.priorTime || 0, commitInfo.comment || ""];
 }
 
 function commitKeyToInfo(commitKey: CommitKey) {
@@ -138,7 +139,7 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction(['chainInfos']).objectStore('chainInfos').getAll();
     }
 
-    async addCommit(changeSetBytes: CommitBytes): Promise<CommitInfo|undefined> {
+    async addChangeSet(changeSetBytes: CommitBytes): Promise<CommitInfo | undefined> {
         await this.initialized;
         const changeSetMessage = ChangeSetBuilder.deserializeBinary(changeSetBytes);
         const commitInfo = extractCommitInfo(changeSetMessage);
@@ -161,6 +162,7 @@ export class IndexedDbStore implements Store {
         await wrappedTransaction.objectStore("trxns").add(changeSetBytes, commitKey);
         const changesMap: Map<Offset, ChangeBuilder> = changeSetMessage.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
+            assert(offset > 0);
             if (changeBuilder.hasContainer()) {
                 const addressTuple = [timestamp, medallion, offset];
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
@@ -170,8 +172,8 @@ export class IndexedDbStore implements Store {
             if (changeBuilder.hasEntry()) {
                 const entry: EntryBuilder = changeBuilder.getEntry();
                 const srcMuid: MuidBuilder = entry.getSource() || new MuidBuilder();
-                const entryKey = [srcMuid.getTimestamp(), srcMuid.getMedallion(), srcMuid.getOffset(), 
-                    unwrapValue(entry.getKey()), -timestamp, medallion, offset];
+                const entryKey = [srcMuid.getTimestamp(), srcMuid.getMedallion(), srcMuid.getOffset(),
+                unwrapValue(entry.getKey()), -timestamp, medallion, offset];
                 await wrappedTransaction.objectStore("entries").add(entry.serializeBinary(), entryKey);
                 break;
             }
@@ -179,6 +181,25 @@ export class IndexedDbStore implements Store {
         }
         await wrappedTransaction.done;
         return commitInfo;
+    }
+
+    async getContainerBytes(address: Address): Promise<Bytes | undefined> {
+        const addressTuple = [address.timestamp, address.medallion, address.offset];
+        const result = await this.wrapped.transaction(['containers']).objectStore('containers').get(addressTuple);
+        return result;
+    }
+
+    async getEntryBytes(source: Address, key: Basic): Promise<Bytes | undefined> {
+        const search = [source.timestamp, source.medallion, source.offset, key];
+        const searchRange = IDBKeyRange.lowerBound(search);
+        for (let cursor = await this.wrapped.transaction("entries").objectStore("entries").openCursor(searchRange);
+            cursor;
+            cursor = await cursor.continue()) {
+            for (let i = 0; i < 4; i++) {
+                if (cursor.key[i] != search[i]) return;
+            }
+            return cursor.value;
+        }
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated
