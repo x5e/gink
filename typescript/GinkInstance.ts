@@ -104,8 +104,7 @@ export class GinkInstance {
                 commitInfo.timestamp == resultInfo.timestamp &&
                 commitInfo.chainStart == resultInfo.chainStart &&
                 commitInfo.medallion == resultInfo.medallion &&
-                commitInfo.priorTime == resultInfo.priorTime &&
-                commitInfo.comment == resultInfo.comment
+                commitInfo.priorTime == resultInfo.priorTime
             );
         } finally {
             unlockingFunction("this string is ignored");

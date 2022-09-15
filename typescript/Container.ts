@@ -2,7 +2,7 @@ import { GinkInstance } from "./GinkInstance";
 import { ChangeSet } from "./ChangeSet";
 import { Entry } from "entry_pb";
 import { Address, Basic } from "./typedefs";
-import { addressToMuid, wrapValue, assert, Deletion } from "./utils";
+import { addressToMuid, wrapValue, Deletion } from "./utils";
 import { Change } from "change_pb";
 import { Container as ContainerMessage } from "container_pb";
 
