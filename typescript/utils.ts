@@ -4,6 +4,8 @@ import { Commit } from "commit_pb";
 import { Muid } from "muid_pb";
 import { Value } from "muid_pb";
 
+export class Deletion {}
+
 export function extractCommitInfo(commitBytes: Uint8Array): CommitInfo {
     const parsed = Commit.deserializeBinary(commitBytes);
     return {

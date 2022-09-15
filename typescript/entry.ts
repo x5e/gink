@@ -3,7 +3,7 @@ import { IndexedDbStore } from "./IndexedDbStore";
 
 import { CommitInfo } from "./typedefs";
 import { GinkInstance } from "./GinkInstance";
-import { PendingCommit } from "./PendingCommit";
+import { ChangeSet } from "./ChangeSet";
 
 function getWebsocketTarget(): string {
     const loc = window.location;
@@ -28,6 +28,6 @@ async function onCommit(commitInfo: CommitInfo) {
     const instance = new GinkInstance(new IndexedDbStore(), "browser instance");
     await instance.initialized;
     instance.addListener(onCommit);
-    await instance.addPendingCommit(new PendingCommit("Hello, Universe!"));
+    await instance.addChangeSet(new ChangeSet("Hello, Universe!"));
     await instance.connectTo(getWebsocketTarget());
 })();

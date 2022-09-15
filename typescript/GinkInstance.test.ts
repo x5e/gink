@@ -1,6 +1,6 @@
 import { GinkInstance } from "./GinkInstance";
 import { IndexedDbStore } from "./IndexedDbStore";
-import { PendingCommit } from "./PendingCommit";
+import { ChangeSet } from "./ChangeSet";
 import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
 import { extractCommitInfo, assert } from "./utils";
 import { Commit } from "commit_pb";
@@ -10,7 +10,7 @@ import { CommitBytes, CommitInfo } from "./typedefs";
 test('test commit', async () => {
     const store = new IndexedDbStore();
     const instance = new GinkInstance(store);
-    const commitInfo = await instance.addPendingCommit(new PendingCommit("hello world"));
+    const commitInfo = await instance.addChangeSet(new ChangeSet("hello world"));
     assert(commitInfo.comment == "hello world");
     const chainTracker = await store.getChainTracker();
     const allChains = chainTracker.getChains();
@@ -33,7 +33,7 @@ test('uses claimed chain', async () => {
     })
     const instance = new GinkInstance(store);
     await instance.initialized;
-    const secondInfo = await instance.addPendingCommit(new PendingCommit("Hello, Universe!"));
+    const secondInfo = await instance.addChangeSet(new ChangeSet("Hello, Universe!"));
     assert(
         secondInfo.medallion == MEDALLION1 &&
         secondInfo.priorTime == START_MICROS1 &&

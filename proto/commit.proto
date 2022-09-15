@@ -1,5 +1,5 @@
 syntax = "proto3";
-import "addressable_object.proto";
+import "change.proto";
 package google.gink;
 
 message Commit {
@@ -9,9 +9,9 @@ message Commit {
     string comment = 4;
     uint64 chain_start = 5;
     // key in addressable_objects is offset number (> 0 and < 2**20)
-    map<uint32, AddressableObject> addressable_objects = 6;
+    map<uint32, Change> changes = 6;
 
-    // I'm using a map rather than a simple repeated field of AddressableObjects for a couple of reasons:
+    // I'm using a map rather than a simple repeated field of Changes for a couple of reasons:
     // * The offset of 0 is reserved to denote the transaction, and I don't want to confuse things by
     //   forcing people to have 1 based indexing.
     // * A commit might involve the creation of a lot of objects, which all cross reference each other.

@@ -5,7 +5,7 @@ import { Store } from "./Store";
 import { GinkInstance } from "./GinkInstance";
 import { info } from "./utils";
 import { CommitInfo } from "./typedefs";
-import { PendingCommit } from "./PendingCommit";
+import { ChangeSet } from "./ChangeSet";
 var readline = require('readline');
 
 async function onCommit(commitInfo: CommitInfo) {
@@ -55,7 +55,7 @@ export class CommandLineInterface {
         info("ready (type a comment and press enter to create a commit)");
         const readlineInterface = readline.createInterface(process.stdin, process.stdout);
         readlineInterface.on('line', async (comment: string) => {
-            await this.instance.addPendingCommit(new PendingCommit(comment));
+            await this.instance.addChangeSet(new ChangeSet(comment));
         })
     }
 

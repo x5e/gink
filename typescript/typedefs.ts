@@ -36,9 +36,9 @@ export declare class PendingCommit {
  * the commit its associated with hasn't been sealed yet.
  */
 export interface Address {
-    get medallion(): Medallion | undefined;
-    get timestamp(): Timestamp | undefined;
-    get offset(): number;
+    medallion: Medallion | undefined;
+    timestamp: Timestamp | undefined;
+    offset: number;
 }
 
 export interface ServerArgs {

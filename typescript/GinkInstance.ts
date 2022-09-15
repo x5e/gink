@@ -5,7 +5,7 @@ import { CommitBytes, Medallion, ChainStart, CommitInfo, CommitListener, CallBac
     from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
-import { PendingCommit } from "./PendingCommit";
+import { ChangeSet } from "./ChangeSet";
 import { Commit as CommitProto } from "commit_pb";
 import { PromiseChainLock } from "./PromiseChainLock";
 
@@ -78,10 +78,10 @@ export class GinkInstance {
     /**
      * Adds a commit to a chain, setting the medallion and timestamps on the commit in the process.
      * 
-     * @param pendingCommit a PendingCommit ready to be sealed
+     * @param changeSet a PendingCommit ready to be sealed
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
-    public async addPendingCommit(pendingCommit: PendingCommit): Promise<CommitInfo> {
+    public async addChangeSet(changeSet: ChangeSet): Promise<CommitInfo> {
         var unlockingFunction: CallBack;
         var resultInfo: CommitInfo;
         try {
@@ -96,7 +96,7 @@ export class GinkInstance {
                 timestamp: seenThrough >= nowMicros ? seenThrough + 1 : nowMicros,
                 priorTime: seenThrough,
             }
-            const serialized = pendingCommit.seal(commitInfo);
+            const serialized = changeSet.seal(commitInfo);
             resultInfo = await this.receiveCommit(serialized);
             // receiveCommit currently deserializes the commit to get the commit info,
             // which isn't ideal, but we can use it as an opportunity to ensure it's right.

@@ -12,7 +12,7 @@ import "exit.proto";
 /** 
 * Any update/change that can be referenced by Gink
 */
-message AddressableObject {
+message Change {
     oneof obj {
         Description description = 1;
         Container container = 2;
