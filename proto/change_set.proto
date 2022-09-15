@@ -2,7 +2,7 @@ syntax = "proto3";
 import "change.proto";
 package google.gink;
 
-message Commit {
+message ChangeSet {
     uint64 timestamp = 1;
     uint64 medallion = 2;
     uint64 previous_timestamp = 3;

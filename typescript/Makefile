@@ -20,7 +20,7 @@ tsc.out:
 	env tsc
 
 clean:
-	rm -rf node_modules/*_pb.js
+	rm -rf node_modules/*_pb.js webpack.out tsc.out
 
 unit_tests: node_modules javascript_protos
 	env jest

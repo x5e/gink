@@ -9,9 +9,9 @@ import { Container as ContainerMessage } from "container_pb";
 
 export class Container {
     readonly ready: Promise<void>;
-    static readonly DELETION = new Deletion();
+    protected static readonly DELETION = new Deletion();
 
-    constructor(readonly ginkInstance: GinkInstance, readonly address?: Address,
+    protected constructor(readonly ginkInstance: GinkInstance, readonly address?: Address,
         protected containerMessage?: ContainerMessage) {
         if (address && !containerMessage) {
             //TODO: go and fetch the ContainerMessage from the db using the address

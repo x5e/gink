@@ -6,7 +6,7 @@ import { CommitBytes, Medallion, ChainStart, CommitInfo, CommitListener, CallBac
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
-import { Commit as CommitProto } from "commit_pb";
+import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { PromiseChainLock } from "./PromiseChainLock";
 
 //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
@@ -63,7 +63,7 @@ export class GinkInstance {
     private async startChain(comment: string): Promise<[Medallion, ChainStart]> {
         const medallion = makeMedallion();
         const chainStart = Date.now() * 1000;
-        const startCommit = new CommitProto();
+        const startCommit = new ChangeSetMessage();
         startCommit.setTimestamp(chainStart);
         startCommit.setChainStart(chainStart);
         startCommit.setMedallion(medallion);
@@ -148,18 +148,15 @@ export class GinkInstance {
         await this.initialized;
         const commitInfo = extractCommitInfo(commitBytes);
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);
-        const added = await this.store.addCommit(commitBytes, commitInfo);
-        this.iHave.markIfNovel(commitInfo);
-        // If this commit isn't new to this instance, then it will have already been 
-        // sent to the connected peers and doesn't need to be sent again.
-        if (!added)
-            return;
-        for (const [peerId, peer] of this.peers) {
-            if (peerId != fromConnectionId)
-                peer.sendIfNeeded(commitBytes, commitInfo);
-        }
-        for (const listener of this.listeners) {
-            await listener(commitInfo);
+        if (await this.store.addCommit(commitBytes, commitInfo)) {
+            this.iHave.markIfNovel(commitInfo);
+            for (const [peerId, peer] of this.peers) {
+                if (peerId != fromConnectionId)
+                    peer.sendIfNeeded(commitBytes, commitInfo);
+            }
+            for (const listener of this.listeners) {
+                await listener(commitInfo);
+            }
         }
         return commitInfo;
     }

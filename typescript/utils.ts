@@ -1,13 +1,13 @@
 import { CommitInfo, Address, Medallion, Basic } from "./typedefs"
 import { SyncMessage } from "sync_message_pb";
-import { Commit } from "commit_pb";
+import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { Muid } from "muid_pb";
 import { Value } from "muid_pb";
 
 export class Deletion {}
 
 export function extractCommitInfo(commitBytes: Uint8Array): CommitInfo {
-    const parsed = Commit.deserializeBinary(commitBytes);
+    const parsed = ChangeSetMessage.deserializeBinary(commitBytes);
     return {
         timestamp: parsed.getTimestamp(),
         medallion: parsed.getMedallion(),

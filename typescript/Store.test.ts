@@ -1,6 +1,6 @@
 import { CommitBytes } from "./typedefs"
 import { Store } from "./Store";
-import { Commit } from "commit_pb";
+import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { extractCommitInfo } from "./utils";
 import { makeChainStart, extendChain, addTrxns, 
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2 } from "./test_utils";
@@ -86,10 +86,10 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sent: Array<CommitBytes> = [];
         await store.getCommits((x: CommitBytes) => {sent.push(x);});
         expect(sent.length).toBe(4);
-        expect(Commit.deserializeBinary(sent[0]).getTimestamp()).toBe(START_MICROS1);
-        expect(Commit.deserializeBinary(sent[1]).getTimestamp()).toBe(START_MICROS2);
-        expect(Commit.deserializeBinary(sent[2]).getTimestamp()).toBe(NEXT_TS1);
-        expect(Commit.deserializeBinary(sent[3]).getTimestamp()).toBe(NEXT_TS2);
+        expect(ChangeSetMessage.deserializeBinary(sent[0]).getTimestamp()).toBe(START_MICROS1);
+        expect(ChangeSetMessage.deserializeBinary(sent[1]).getTimestamp()).toBe(START_MICROS2);
+        expect(ChangeSetMessage.deserializeBinary(sent[2]).getTimestamp()).toBe(NEXT_TS1);
+        expect(ChangeSetMessage.deserializeBinary(sent[3]).getTimestamp()).toBe(NEXT_TS2);
     });
 
     test(`${implName} test claim chains`, async () => {

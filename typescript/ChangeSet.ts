@@ -1,5 +1,5 @@
 import { Medallion, Timestamp, Address, CommitInfo } from "./typedefs";
-import { Commit as CommitProto } from "commit_pb";
+import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { Change as ChangeMessage } from "change_pb";
 
 
@@ -7,17 +7,17 @@ import { Change as ChangeMessage } from "change_pb";
  * An commit that you can add objects to.  It's a little funky because the timestamp
  * of the commit will be determined when it's finalized, so the ID of any object added to the commit
  * isn't completely known until after it's closed.  (That's required to avoid objects referencing 
- * other objects with timestamps in the future).
+ * other objects with timestamps in the future).  As a result, the timestamp property of this
+ * and 
  */
 export class ChangeSet {
 
     private commitInfo: CommitInfo | null = null;
     private serialized: Uint8Array | null = null;
-    private commitProto = new CommitProto();
+    private changeSetMessage = new ChangeSetMessage();
     private countItems = 0;
  
     constructor(private pendingComment?: string, readonly preAssignedMedallion?: Medallion) { 
-
     }
 
     requireNotSealed() {
@@ -51,7 +51,7 @@ export class ChangeSet {
     addChange(changeMessage: ChangeMessage): Address {
         this.requireNotSealed();
         const offset = ++this.countItems;
-        this.commitProto.getChangesMap().set(offset, changeMessage);
+        this.changeSetMessage.getChangesMap().set(offset, changeMessage);
         return new class {
             constructor(private changeSet: ChangeSet, readonly offset: number) {}
             get medallion() { return this.changeSet.medallion; }
@@ -61,7 +61,7 @@ export class ChangeSet {
 
     removeChange(address: Address) {
         this.requireNotSealed();
-        const map = this.commitProto.getChangesMap();
+        const map = this.changeSetMessage.getChangesMap();
         map.delete(address.offset);
     }
 
@@ -78,12 +78,12 @@ export class ChangeSet {
         }
         this.commitInfo = {...commitInfo};
         this.commitInfo.comment = this.pendingComment;
-        this.commitProto.setTimestamp(commitInfo.timestamp);
-        this.commitProto.setPreviousTimestamp(commitInfo.priorTime);
-        this.commitProto.setChainStart(commitInfo.chainStart);
-        this.commitProto.setMedallion(commitInfo.medallion);
-        this.commitProto.setComment(this.commitInfo.comment);
-        this.serialized = this.commitProto.serializeBinary();
+        this.changeSetMessage.setTimestamp(commitInfo.timestamp);
+        this.changeSetMessage.setPreviousTimestamp(commitInfo.priorTime);
+        this.changeSetMessage.setChainStart(commitInfo.chainStart);
+        this.changeSetMessage.setMedallion(commitInfo.medallion);
+        this.changeSetMessage.setComment(this.commitInfo.comment);
+        this.serialized = this.changeSetMessage.serializeBinary();
         return this.serialized;
     }
 }
