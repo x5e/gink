@@ -2,7 +2,7 @@ import { GinkInstance } from "./GinkInstance";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { ChangeSet } from "./ChangeSet";
 import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
-import { extractCommitInfo, assert } from "./utils";
+import { assert } from "./utils";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { CommitBytes, CommitInfo } from "./typedefs";
 
@@ -24,8 +24,7 @@ test('uses claimed chain', async () => {
     const store = new IndexedDbStore("test", true);
     await store.initialized;
     const commitBytes = makeChainStart("chain start comment", MEDALLION1, START_MICROS1);
-    const commitInfo = extractCommitInfo(commitBytes);
-    await store.addCommit(commitBytes, commitInfo);
+    await store.addCommit(commitBytes);
     await store.claimChain(MEDALLION1, START_MICROS1);
     store.getCommits((commitBytes: CommitBytes, _commitInfo: CommitInfo) => {
         const commit = ChangeSetMessage.deserializeBinary(commitBytes);

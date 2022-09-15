@@ -53,7 +53,7 @@ export interface Store {
      *
      * Implicitly awaits on this.initialized;
      */
-    addCommit: (trxn: CommitBytes, commitInfo: CommitInfo) => Promise<Boolean>;
+    addCommit: (trxn: CommitBytes) => Promise<CommitInfo|undefined>;
 
     /**
      * Get all commits from a store ordered by [timestamp, medallion].

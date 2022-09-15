@@ -1,8 +1,7 @@
 import { Peer } from "./Peer";
 import { Store } from "./Store";
 import { makeMedallion, assert, extractCommitInfo, noOp } from "./utils";
-import { CommitBytes, Medallion, ChainStart, CommitInfo, CommitListener, CallBack }
-    from "./typedefs";
+import { CommitBytes, Medallion, ChainStart, CommitInfo, CommitListener, CallBack } from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
@@ -69,8 +68,7 @@ export class GinkInstance {
         startCommit.setMedallion(medallion);
         startCommit.setComment(comment);
         const commitBytes = startCommit.serializeBinary();
-        const commitInfo: CommitInfo = { medallion, chainStart, timestamp: chainStart, comment }
-        await this.store.addCommit(commitBytes, commitInfo);
+        await this.store.addCommit(commitBytes);
         await this.store.claimChain(medallion, chainStart);
         return [medallion, chainStart];
     }
@@ -148,7 +146,7 @@ export class GinkInstance {
         await this.initialized;
         const commitInfo = extractCommitInfo(commitBytes);
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);
-        if (await this.store.addCommit(commitBytes, commitInfo)) {
+        if (await this.store.addCommit(commitBytes)) {
             this.iHave.markIfNovel(commitInfo);
             for (const [peerId, peer] of this.peers) {
                 if (peerId != fromConnectionId)

@@ -7,7 +7,7 @@ type FileHandle = any;
 const open = promises.open;
 import { flock } from "fs-ext";
 import { LogFile } from "log_file_pb";
-import { extractCommitInfo, info } from "./utils";
+import { info } from "./utils";
 import { assert } from "console";
 import { ChainTracker } from "./ChainTracker";
 
@@ -67,8 +67,7 @@ export class LogBackedStore implements Store {
                 const logFile = LogFile.deserializeBinary(uint8Array);
                 const commits = logFile.getCommitsList();
                 for (const commit of commits) {
-                    const commitInfo = extractCommitInfo(commit)
-                    const added = await this.indexedDbStore.addCommit(commit, commitInfo);
+                    const added = await this.indexedDbStore.addCommit(commit);
                     assert(added);
                     this.commitsProcessed += 1;
                 }
@@ -85,9 +84,9 @@ export class LogBackedStore implements Store {
         return this.commitsProcessed;
     }
 
-    async addCommit(commitBytes: CommitBytes, commitInfo: CommitInfo): Promise<Boolean> {
+    async addCommit(commitBytes: CommitBytes): Promise<CommitInfo|undefined> {
         await this.initialized;
-        const added = await this.indexedDbStore.addCommit(commitBytes, commitInfo);
+        const added = await this.indexedDbStore.addCommit(commitBytes);
         if (added) {
             const logFragment = new LogFile();
             logFragment.setCommitsList([commitBytes]);

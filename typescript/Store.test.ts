@@ -1,7 +1,6 @@
 import { CommitBytes } from "./typedefs"
 import { Store } from "./Store";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
-import { extractCommitInfo } from "./utils";
 import { makeChainStart, extendChain, addTrxns, 
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2 } from "./test_utils";
 // makes an empty Store for testing purposes
@@ -32,9 +31,8 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
 
     test(`${implName} test accepts chain start but only once`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const commitInfo = extractCommitInfo(chainStart)
-        const acceptedOnce = await store.addCommit(chainStart, commitInfo);
-        const acceptedTwice = await store.addCommit(chainStart, commitInfo);
+        const acceptedOnce = await store.addCommit(chainStart);
+        const acceptedTwice = await store.addCommit(chainStart);
         expect(acceptedOnce).toBeTruthy();
         expect(acceptedTwice).toBeFalsy();
     });
@@ -45,7 +43,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         let added = null;
         let barfed = false;
         try {
-            added = await store.addCommit(secondTrxn, extractCommitInfo(secondTrxn));
+            added = await store.addCommit(secondTrxn);
         } catch (e) {
             barfed = true;
         }
@@ -57,11 +55,11 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
         const thirdTrxn = extendChain("Hello, a third!", secondTrxn, NEXT_TS1+1);
-        await store.addCommit(chainStart, extractCommitInfo(chainStart));
+        await store.addCommit(chainStart);
         let added = null;
         let barfed = false;
         try {
-            added = await store.addCommit(thirdTrxn, extractCommitInfo(thirdTrxn));
+            added = await store.addCommit(thirdTrxn);
         } catch (e) {
             barfed = true;
         }

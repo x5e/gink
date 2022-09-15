@@ -1,13 +1,18 @@
-import { info } from "./utils";
-export var mode = "browser";
+import { extractCommitInfo, info, unwrapValue } from "./utils";
+var mode = "browser";
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
     mode = "node";
 }
-import { openDB, deleteDB, IDBPDatabase, IDBPTransaction } from 'idb';
+import { openDB, deleteDB, IDBPDatabase } from 'idb';
 import { Store } from "./Store";
-import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, ClaimedChains, PriorTime, SeenThrough } from "./typedefs";
+import { CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo, 
+    ClaimedChains, PriorTime, SeenThrough, Offset } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
+import { Change as ChangeBuilder } from "change_pb";
+import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
+import { Entry as EntryBuilder } from "entry_pb";
+import { Muid as MuidBuilder } from "muid_pb";
 
 // IndexedDb orders entries in its b-tree according to a tuple.
 // So this CommitKey is specific to this implementation of the Store.
@@ -28,6 +33,8 @@ function commitKeyToInfo(commitKey: CommitKey) {
         comment: commitKey[4],
     }
 }
+
+export type AddressTuple = [Timestamp, Medallion, Offset];
 
 export class IndexedDbStore implements Store {
 
@@ -75,6 +82,9 @@ export class IndexedDbStore implements Store {
                     working with the cursor interface.
                 */
                 db.createObjectStore('activeChains', { keyPath: "medallion" });
+
+                db.createObjectStore('containers'); // map from AddressTuple to ContainerBytes
+                db.createObjectStore('entries'); // map from EntryKey to EntryBytes
             },
         });
     }
@@ -128,14 +138,16 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction(['chainInfos']).objectStore('chainInfos').getAll();
     }
 
-    async addCommit(commitBytes: CommitBytes, commitInfo: CommitInfo): Promise<Boolean> {
+    async addCommit(changeSetBytes: CommitBytes): Promise<CommitInfo|undefined> {
         await this.initialized;
+        const changeSetMessage = ChangeSetBuilder.deserializeBinary(changeSetBytes);
+        const commitInfo = extractCommitInfo(changeSetMessage);
         const { timestamp, medallion, chainStart, priorTime } = commitInfo
-        const wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos'], 'readwrite');
+        const wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'containers'], 'readwrite');
         let oldChainInfo: CommitInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
-                return false;
+                return;
             }
             if (oldChainInfo?.timestamp != priorTime) {
                 //TODO(https://github.com/google/gink/issues/27): Need to explicitly close trxn?
@@ -146,9 +158,27 @@ export class IndexedDbStore implements Store {
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring re-parsing.
         const commitKey: CommitKey = commitInfoToKey(commitInfo);
-        await wrappedTransaction.objectStore("trxns").add(commitBytes, commitKey);
+        await wrappedTransaction.objectStore("trxns").add(changeSetBytes, commitKey);
+        const changesMap: Map<Offset, ChangeBuilder> = changeSetMessage.getChangesMap();
+        for (const [offset, changeBuilder] of changesMap.entries()) {
+            if (changeBuilder.hasContainer()) {
+                const addressTuple = [timestamp, medallion, offset];
+                const containerBytes = changeBuilder.getContainer().serializeBinary();
+                await wrappedTransaction.objectStore("containers").add(containerBytes, addressTuple);
+                break;
+            }
+            if (changeBuilder.hasEntry()) {
+                const entry: EntryBuilder = changeBuilder.getEntry();
+                const srcMuid: MuidBuilder = entry.getSource() || new MuidBuilder();
+                const entryKey = [srcMuid.getTimestamp(), srcMuid.getMedallion(), srcMuid.getOffset(), 
+                    unwrapValue(entry.getKey()), -timestamp, medallion, offset];
+                await wrappedTransaction.objectStore("entries").add(entry.serializeBinary(), entryKey);
+                break;
+            }
+            throw new Error("don't know how to apply this kind of change");
+        }
         await wrappedTransaction.done;
-        return true;
+        return commitInfo;
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated

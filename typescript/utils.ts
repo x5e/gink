@@ -2,18 +2,20 @@ import { CommitInfo, Address, Medallion, Basic } from "./typedefs"
 import { SyncMessage } from "sync_message_pb";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { Muid } from "muid_pb";
-import { Value } from "muid_pb";
+import { Value } from "value_pb";
 
 export class Deletion {}
 
-export function extractCommitInfo(commitBytes: Uint8Array): CommitInfo {
-    const parsed = ChangeSetMessage.deserializeBinary(commitBytes);
+export function extractCommitInfo(changeSetMessage: Uint8Array | ChangeSetMessage): CommitInfo {
+    if (changeSetMessage instanceof Uint8Array) {
+        changeSetMessage = ChangeSetMessage.deserializeBinary(changeSetMessage);
+    }
     return {
-        timestamp: parsed.getTimestamp(),
-        medallion: parsed.getMedallion(),
-        chainStart: parsed.getChainStart(),
-        priorTime: parsed.getPreviousTimestamp(),
-        comment: parsed.getComment(),
+        timestamp: changeSetMessage.getTimestamp(),
+        medallion: changeSetMessage.getMedallion(),
+        chainStart: changeSetMessage.getChainStart(),
+        priorTime: changeSetMessage.getPreviousTimestamp() || undefined,
+        comment: changeSetMessage.getComment() || undefined,
     }
 }
 
@@ -98,6 +100,27 @@ export function addressToMuid(address: Address, relativeTo?: Medallion): Muid {
         muid.setTimestamp(address.timestamp);
     muid.setOffset(address.offset);
     return muid;
+}
+
+export function unwrapValue(value: Value): Basic {
+    if (value.hasCharacters()) {
+        return value.getCharacters();
+    }
+    if (value.hasNumber()) {
+        const number = value.getNumber();
+        if (!number.hasDoubled()) {
+            //TODO
+            throw new Error("haven't implemented unwrapping for non-double encoded numbers");
+        }
+        return number.getDoubled();
+    }
+    if (value.hasSpecial()) {
+        const special = value.getSpecial();
+        if (special == Value.Special.NULL) return null;
+        if (special == Value.Special.TRUE) return true;
+        return false;
+    }
+    throw new Error("haven't implemented unwrap for this Value");
 }
 
 export function wrapValue(arg: Basic): Value {
