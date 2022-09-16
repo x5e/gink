@@ -7,6 +7,7 @@ import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { PromiseChainLock } from "./PromiseChainLock";
+import { IndexedDbStore } from "./IndexedDbStore";
 
 //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
 var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
@@ -25,14 +26,13 @@ export class GinkInstance {
     static readonly PROTOCOL = "gink";
 
     private listeners: CommitListener[] = [];
-    private store: Store;
     private countConnections: number = 0; // Includes disconnected clients.
     private myChain: [Medallion, ChainStart];
     private processingLock = new PromiseChainLock();
     private iHave: ChainTracker;
 
-    constructor(store: Store, instanceInfo: string = "Default instanceInfo") {
-        this.store = store;
+    constructor(readonly store?: Store, instanceInfo: string = "Default instanceInfo") {
+        this.store = this.store || new IndexedDbStore();
         this.initialized = this.initialize(instanceInfo);
     }
 

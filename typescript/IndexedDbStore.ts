@@ -167,7 +167,7 @@ export class IndexedDbStore implements Store {
                 const addressTuple = [timestamp, medallion, offset];
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
                 await wrappedTransaction.objectStore("containers").add(containerBytes, addressTuple);
-                break;
+                continue;
             }
             if (changeBuilder.hasEntry()) {
                 const entry: EntryBuilder = changeBuilder.getEntry();
@@ -175,7 +175,7 @@ export class IndexedDbStore implements Store {
                 const entryKey = [srcMuid.getTimestamp(), srcMuid.getMedallion(), srcMuid.getOffset(),
                 unwrapValue(entry.getKey()), -timestamp, medallion, offset];
                 await wrappedTransaction.objectStore("entries").add(entry.serializeBinary(), entryKey);
-                break;
+                continue;
             }
             throw new Error("don't know how to apply this kind of change");
         }
@@ -189,8 +189,8 @@ export class IndexedDbStore implements Store {
         return result;
     }
 
-    async getEntryBytes(source: Address, key: Basic): Promise<Bytes | undefined> {
-        const search = [source.timestamp, source.medallion, source.offset, key];
+    async getEntryBytes(key: Basic, source?: Address): Promise<Bytes | undefined> {
+        const search = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0, key];
         const searchRange = IDBKeyRange.lowerBound(search);
         for (let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange);
             cursor;
@@ -200,6 +200,10 @@ export class IndexedDbStore implements Store {
             }
             return cursor.value;
         }
+    }
+
+    async getAllEntryKeys() {
+        return await this.wrapped.transaction(["entries"]).objectStore("entries").getAllKeys();
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated

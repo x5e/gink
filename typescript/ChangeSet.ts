@@ -8,7 +8,7 @@ export class ChangeSet {
     // note: this class is unit tested as part of Store.test.ts
     private commitInfo: CommitInfo | null = null;
     private serialized: Uint8Array | null = null;
-    private changeSetMessage = new ChangeSetBuilder();
+    private changeSetBuilder = new ChangeSetBuilder();
     private countItems = 0;
  
     constructor(private pendingComment?: string, readonly preAssignedMedallion?: Medallion) { 
@@ -53,7 +53,7 @@ export class ChangeSet {
     addChange(changeBuilder: ChangeBuilder): Address {
         this.requireNotSealed();
         const offset = ++this.countItems;
-        this.changeSetMessage.getChangesMap().set(offset, changeBuilder);
+        this.changeSetBuilder.getChangesMap().set(offset, changeBuilder);
         return new class {
             constructor(private changeSet: ChangeSet, readonly offset: number) {}
             get medallion() { return this.changeSet.medallion; }
@@ -63,7 +63,7 @@ export class ChangeSet {
 
     removeChange(address: Address) {
         this.requireNotSealed();
-        const map = this.changeSetMessage.getChangesMap();
+        const map = this.changeSetBuilder.getChangesMap();
         map.delete(address.offset);
     }
 
@@ -80,12 +80,12 @@ export class ChangeSet {
         }
         this.commitInfo = {...commitInfo};
         this.commitInfo.comment = this.pendingComment;
-        this.changeSetMessage.setTimestamp(commitInfo.timestamp);
-        this.changeSetMessage.setPreviousTimestamp(commitInfo.priorTime);
-        this.changeSetMessage.setChainStart(commitInfo.chainStart);
-        this.changeSetMessage.setMedallion(commitInfo.medallion);
-        this.changeSetMessage.setComment(this.commitInfo.comment);
-        this.serialized = this.changeSetMessage.serializeBinary();
+        this.changeSetBuilder.setTimestamp(commitInfo.timestamp);
+        this.changeSetBuilder.setPreviousTimestamp(commitInfo.priorTime);
+        this.changeSetBuilder.setChainStart(commitInfo.chainStart);
+        this.changeSetBuilder.setMedallion(commitInfo.medallion);
+        this.changeSetBuilder.setComment(this.commitInfo.comment);
+        this.serialized = this.changeSetBuilder.serializeBinary();
         return this.serialized;
     }
 }

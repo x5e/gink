@@ -131,9 +131,9 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getContainerBytes(address);
     }
 
-    async getEntryBytes(source: Address, key: Basic): Promise<Bytes| undefined> {
+    async getEntryBytes(key: Basic, source?: Address): Promise<Bytes| undefined> {
         await this.initialized;
-        return this.indexedDbStore.getEntryBytes(source, key);
+        return this.indexedDbStore.getEntryBytes(key, source);
     }
 
     async close() {
