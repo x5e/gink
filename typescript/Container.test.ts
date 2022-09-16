@@ -30,15 +30,6 @@ test('set multiple key/value pairs in one change-set', async function() {
     changeSet.comment = "Hear me roar!";
     await instance.addChangeSet(changeSet);
 
-    const map = changeSet.changeSetBuilder.getChangesMap();
-    const changeSetBuilder = ChangeSetBuilder.deserializeBinary(changeSet.serialized);
-    console.log(changeSetBuilder.toObject());
-    
-
-    const allKeys = await store.getAllEntryKeys();
-    console.log(JSON.stringify(allKeys));
-
-
     // verify the result
     const result = await rootSchema.get("cheese");
     assert(result == "fries", `result is ${result}`);
