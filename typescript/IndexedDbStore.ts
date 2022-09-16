@@ -144,7 +144,7 @@ export class IndexedDbStore implements Store {
         const changeSetMessage = ChangeSetBuilder.deserializeBinary(changeSetBytes);
         const commitInfo = extractCommitInfo(changeSetMessage);
         const { timestamp, medallion, chainStart, priorTime } = commitInfo
-        const wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'containers'], 'readwrite');
+        const wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'containers', 'entries'], 'readwrite');
         let oldChainInfo: CommitInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
@@ -192,7 +192,7 @@ export class IndexedDbStore implements Store {
     async getEntryBytes(source: Address, key: Basic): Promise<Bytes | undefined> {
         const search = [source.timestamp, source.medallion, source.offset, key];
         const searchRange = IDBKeyRange.lowerBound(search);
-        for (let cursor = await this.wrapped.transaction("entries").objectStore("entries").openCursor(searchRange);
+        for (let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange);
             cursor;
             cursor = await cursor.continue()) {
             for (let i = 0; i < 4; i++) {

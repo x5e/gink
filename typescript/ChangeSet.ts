@@ -1,20 +1,14 @@
 import { Medallion, Timestamp, Address, CommitInfo } from "./typedefs";
-import { ChangeSet as ChangeSetMessage } from "change_set_pb";
-import { Change as ChangeMessage } from "change_pb";
+import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
+import { Change as ChangeBuilder } from "change_pb";
+import { Entry as EntryBuilder } from "entry_pb";
+import { Container as ContainerBuilder } from "container_pb";
 
-
-/**
- * An commit that you can add objects to.  It's a little funky because the timestamp
- * of the commit will be determined when it's finalized, so the ID of any object added to the commit
- * isn't completely known until after it's closed.  (That's required to avoid objects referencing 
- * other objects with timestamps in the future).  As a result, the timestamp property of this
- * and 
- */
 export class ChangeSet {
-
+    // note: this class is unit tested as part of Store.test.ts
     private commitInfo: CommitInfo | null = null;
     private serialized: Uint8Array | null = null;
-    private changeSetMessage = new ChangeSetMessage();
+    private changeSetMessage = new ChangeSetBuilder();
     private countItems = 0;
  
     constructor(private pendingComment?: string, readonly preAssignedMedallion?: Medallion) { 
@@ -42,16 +36,24 @@ export class ChangeSet {
         return this.commitInfo?.timestamp;
     }
 
+    addEntry(entryBuilder: EntryBuilder): Address {
+        return this.addChange((new ChangeBuilder()).setEntry(entryBuilder));
+    }
+
+    addContainer(containerBuilder: ContainerBuilder) {
+        return this.addChange((new ChangeBuilder()).setContainer(containerBuilder));
+    }
+
     /**
      * 
-     * @param changeMessage a protobuf Change ready to be serialized
+     * @param changeBuilder a protobuf Change ready to be serialized
      * @returns an Address who's offset is immediately available and whose medallion and
      * timestamp become defined when this ChangeSet is sealed.
      */
-    addChange(changeMessage: ChangeMessage): Address {
+    addChange(changeBuilder: ChangeBuilder): Address {
         this.requireNotSealed();
         const offset = ++this.countItems;
-        this.changeSetMessage.getChangesMap().set(offset, changeMessage);
+        this.changeSetMessage.getChangesMap().set(offset, changeBuilder);
         return new class {
             constructor(private changeSet: ChangeSet, readonly offset: number) {}
             get medallion() { return this.changeSet.medallion; }

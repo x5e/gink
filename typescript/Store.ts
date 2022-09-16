@@ -1,5 +1,7 @@
-import { CommitBytes as ChangeSetBytes, CommitInfo, ClaimedChains, Medallion, 
-    ChainStart, SeenThrough, Bytes, Address, Basic } from "./typedefs"
+import {
+    CommitBytes as ChangeSetBytes, CommitInfo, ClaimedChains, Medallion,
+    ChainStart, SeenThrough, Bytes, Address, Basic
+} from "./typedefs"
 import { ChainTracker } from "./ChainTracker"
 
 export interface Store {
@@ -54,7 +56,7 @@ export interface Store {
      *
      * Implicitly awaits on this.initialized;
      */
-    addChangeSet: (changeSet: ChangeSetBytes) => Promise<CommitInfo|undefined>;
+    addChangeSet: (changeSet: ChangeSetBytes) => Promise<CommitInfo | undefined>;
 
     /**
      * Get all commits from a store ordered by [timestamp, medallion].
@@ -72,13 +74,13 @@ export interface Store {
      * Gets the protobuf bytes corresponding to a particular container's address.
      */
     // TODO maybe return an actual data structure ?
-    getContainerBytes: (address: Address) => Promise<Bytes|undefined>;
+    getContainerBytes: (address: Address) => Promise<Bytes | undefined>;
 
     /**
      * Does a lookup for a given container at a specified address and key, and returns the most
      * recent entry stored (if there is any).
      */
-    getEntryBytes: (source: Address, key: Basic) => Promise<Bytes| undefined>;
+    getEntryBytes: (source: Address, key: Basic) => Promise<Bytes | undefined>;
 
     /**
      * Closes the underlying data store.  Implicitly awaits on the this.initialized promise.

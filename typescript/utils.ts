@@ -102,6 +102,14 @@ export function addressToMuid(address: Address, relativeTo?: Medallion): Muid {
     return muid;
 }
 
+export function muidToAddress(muid: Muid): Address {
+    return {
+        timestamp: muid.getTimestamp(),
+        medallion: muid.getMedallion(),
+        offset: muid.getOffSet(),
+    }
+}
+
 export function unwrapValue(value: Value): Basic {
     if (value.hasCharacters()) {
         return value.getCharacters();
