@@ -8,9 +8,9 @@ export class PromiseChainLock {
     /**
      * An async function that waits to aquire the lock, then provides a function to unlock.
      * Use like: 
-     * let unlockingFunction: CallBack;
+     * const unlockingFunction = await promiseChainLock.aquireLock();
      * try {
-     *   unlockingFunction = await promiseChainLock.aquireLock();
+     *   // Do some stuff.
      * } finally {
      *   unlockingFunction();
      * }

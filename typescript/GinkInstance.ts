@@ -117,14 +117,14 @@ export class GinkInstance {
      * Closes connections to peers and closes the store.
      */
     public async close() {
-        try {
-            for (const peer of this.peers.values()) {
+        for (const peer of this.peers.values()) {
+            try {
                 peer.close();
+            } catch (problem) {
+                console.error(`problem closing peer: ${problem}`)
             }
-            await this.store.close();
-        } catch (problem) {
-            console.error(`problem in GinkInstance.close: ${problem}`)
         }
+        await this.store.close();
     }
 
     /**
