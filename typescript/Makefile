@@ -28,13 +28,13 @@ unit_tests: node_modules javascript_protos
 integration_test:
 	./functional-tests/integration-test.js
 
-browser_test:
+browser_test: webpack.out library-code/* functional-tests/*
 	./functional-tests/browser-test.js
 
 test: unit_tests integration_test browser_test
 
 server: node_modules javascript_protos
-	GINK_LOG_FILE=test.binary-log GINK_SERVER=1 GINK_PORT=8080 \
+	GINK_LOG_FILE=/tmp/gink.binary-log GINK_SERVER=1 GINK_RESET=1 GINK_PORT=8080 \
         ts-node ./main.ts
 
 kill_server:

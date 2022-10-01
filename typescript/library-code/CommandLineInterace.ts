@@ -36,7 +36,7 @@ export class CommandLineInterface {
                 port: process.env["GINK_PORT"],
                 sslKeyFilePath: process.env["GINK_SSL_KEY"],
                 sslCertFilePath: process.env["GINK_SSL_CERT"],
-                staticPath: process.env["GINK_STATIC_PATH"],
+                staticPath: process.env["GINK_STATIC_PATH"] || process.cwd(),
             });
         } else {
             this.instance = new GinkInstance(this.store, "node instance");

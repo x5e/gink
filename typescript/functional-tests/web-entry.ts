@@ -25,7 +25,7 @@ async function onCommit(commitInfo: CommitInfo) {
 }
 
 (async () => {
-    const instance = new GinkInstance(new IndexedDbStore(), "browser instance");
+    const instance = new GinkInstance(new IndexedDbStore("browser-test", true), "browser instance");
     await instance.initialized;
     instance.addListener(onCommit);
     await instance.addChangeSet(new ChangeSet("Hello, Universe!"));
