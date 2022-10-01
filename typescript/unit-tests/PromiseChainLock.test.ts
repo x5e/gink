@@ -1,5 +1,5 @@
-import { assert } from "./utils";
-import { PromiseChainLock } from "./PromiseChainLock";
+import { assert } from "../library/utils";
+import { PromiseChainLock } from "../library/PromiseChainLock";
 function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 test('test lock/unlock ', async () => {

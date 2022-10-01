@@ -1,6 +1,6 @@
-import { assert } from "./utils";
-import { ChainTracker } from "./ChainTracker";
-import { CommitInfo } from "./typedefs";
+import { assert } from "../library/utils";
+import { ChainTracker } from "../library/ChainTracker";
+import { CommitInfo } from "../library/typedefs";
 
 test('track two commits', async () => {
     const chainTracker = new ChainTracker({});

@@ -26,10 +26,10 @@ unit_tests: node_modules javascript_protos
 	env jest
 
 integration_test:
-	./integration-test.js
+	./functional-tests/integration-test.js
 
 browser_test:
-	./browser-test.js
+	./functional-tests/browser-test.js
 
 test: unit_tests integration_test browser_test
 

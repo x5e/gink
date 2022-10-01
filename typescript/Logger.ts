@@ -1,4 +1,4 @@
-import { now } from "./utils";
+import { now } from "./library/utils";
 
 export class Logger {
     info(msg: string) {

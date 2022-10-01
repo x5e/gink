@@ -1,10 +1,10 @@
-import { GinkInstance } from "./GinkInstance";
-import { IndexedDbStore } from "./IndexedDbStore";
-import { ChangeSet } from "./ChangeSet";
+import { GinkInstance } from "../library/GinkInstance";
+import { IndexedDbStore } from "../library/IndexedDbStore";
+import { ChangeSet } from "../library/ChangeSet";
 import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
-import { assert } from "./utils";
+import { assert } from "../library/utils";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
-import { CommitBytes, CommitInfo } from "./typedefs";
+import { CommitBytes, CommitInfo } from "../library/typedefs";
 
 
 test('test commit', async () => {

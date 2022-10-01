@@ -7,5 +7,5 @@
     "esModuleInterop": true,
     "outDir": "tsc.out"
   },
-  "include": ["*.?s"]
+  "include": ["*.?s", "library/utils.ts", "unit-tests/test_utils.ts", "functional-tests/remote-control.js", "functional-tests/entry.ts", "unit-tests/utils.test.ts", "functional-tests/test_expect.js", "unit-tests/PromiseChainLock.test.ts", "library/PromiseChainLock.ts", "library/typedefs.ts", "unit-tests/Store.test.ts", "library/Store.ts", "library/Peer.ts", "functional-tests/integration-test.js", "functional-tests/Expector.js", "functional-tests/drive-chrome.js", "functional-tests/browser-test.js", "unit-tests/LogBackedStore.test.ts", "library/LogBackedStore.ts", "library/declarations.ts", "unit-tests/IndexedDbStore.test.ts", "library/IndexedDbStore.ts", "library/GinkServer.ts", "library/GinkInstance.ts", "unit-tests/GinkInstance.test.ts", "library/CommandLineInterace.ts", "library/Container.ts", "unit-tests/Container.test.ts", "library/ChangeSet.ts", "unit-tests/ChainTracker.test.ts", "library/ChainTracker.ts"]
 }

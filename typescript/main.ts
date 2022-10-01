@@ -1,5 +1,5 @@
 #!/usr/bin/env ts-node
-import { CommandLineInterface } from "./CommandLineInterace";
-import { setLogLevel } from "./utils";
+import { CommandLineInterface } from "./library/CommandLineInterace";
+import { setLogLevel } from "./library/utils";
 setLogLevel(1);
 new CommandLineInterface(process).run();
