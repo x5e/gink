@@ -1,4 +1,4 @@
-import { extractCommitInfo, makeMedallion, assert } from "../library/utils";
+import { extractCommitInfo, makeMedallion, assert } from "../library-code/utils";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 
 test('extract commit info', function() {

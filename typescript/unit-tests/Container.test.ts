@@ -1,8 +1,8 @@
-import { assert } from "../library/utils";
-import { Container } from "../library/Container";
-import { GinkInstance } from "../library/GinkInstance";
-import { ChangeSet } from "../library/ChangeSet";
-import { IndexedDbStore } from "../library/IndexedDbStore";
+import { assert } from "../library-code/utils";
+import { Container } from "../library-code/Container";
+import { GinkInstance } from "../library-code/GinkInstance";
+import { ChangeSet } from "../library-code/ChangeSet";
+import { IndexedDbStore } from "../library-code/IndexedDbStore";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 
 test('set and get Basic data in root schema', async function() {

@@ -1,9 +1,9 @@
 eval("globalThis.test = function() {};");
-import { IndexedDbStore } from "../library/IndexedDbStore";
+import { IndexedDbStore } from "../library-code/IndexedDbStore";
 
-import { CommitInfo } from "../library/typedefs";
-import { GinkInstance } from "../library/GinkInstance";
-import { ChangeSet } from "../library/ChangeSet";
+import { CommitInfo } from "../library-code/typedefs";
+import { GinkInstance } from "../library-code/GinkInstance";
+import { ChangeSet } from "../library-code/ChangeSet";
 
 function getWebsocketTarget(): string {
     const loc = window.location;

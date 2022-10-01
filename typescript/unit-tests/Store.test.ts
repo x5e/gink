@@ -1,5 +1,5 @@
-import { CommitBytes } from "../library/typedefs"
-import { Store } from "../library/Store";
+import { CommitBytes } from "../library-code/typedefs"
+import { Store } from "../library-code/Store";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
@@ -8,8 +8,8 @@ import {
     makeChainStart, extendChain, addTrxns,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
 } from "./test_utils";
-import { addressToMuid, assert, wrapValue, muidToAddress, unwrapValue } from "../library/utils";
-import { ChangeSet } from "../library/ChangeSet";
+import { addressToMuid, assert, wrapValue, muidToAddress, unwrapValue } from "../library-code/utils";
+import { ChangeSet } from "../library-code/ChangeSet";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 
