@@ -12,7 +12,7 @@ export type FilePath = string;
 export type NumberStr = string;
 export type Basic = number | string | boolean | null;  // TODO: add bigints, bytes
 
-export interface CommitInfo {
+export interface ChangeSetInfo {
     timestamp: Timestamp;
     medallion: Medallion;
     chainStart: ChainStart;
@@ -20,16 +20,15 @@ export interface CommitInfo {
     comment?: string;
 }
 
+/**  An ordered version of ChangeSetInfo used for indexing. */
+export type ChangeSetInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, string];
+
 export interface CommitListener {
-    (commitInfo: CommitInfo): Promise<void>;
+    (commitInfo: ChangeSetInfo): Promise<void>;
 }
 
 export interface CallBack {
     (value: any): void;
-}
-
-export declare class PendingCommit {
-    medallion: Medallion;
 }
 
 /**
@@ -41,6 +40,8 @@ export interface Address {
     timestamp: Timestamp | undefined;
     offset: number;
 }
+
+export type AddressTuple = [Timestamp, Medallion, Offset];
 
 export interface ServerArgs {
     port?: NumberStr;

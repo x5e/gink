@@ -1,5 +1,5 @@
 import {
-    CommitBytes as ChangeSetBytes, CommitInfo, ClaimedChains, Medallion,
+    CommitBytes as ChangeSetBytes, ChangeSetInfo, ClaimedChains, Medallion,
     ChainStart, SeenThrough, Bytes, Address, Basic
 } from "./typedefs"
 import { ChainTracker } from "./ChainTracker"
@@ -56,7 +56,7 @@ export interface Store {
      *
      * Implicitly awaits on this.initialized;
      */
-    addChangeSet: (changeSet: ChangeSetBytes) => Promise<CommitInfo | undefined>;
+    addChangeSet: (changeSet: ChangeSetBytes) => Promise<ChangeSetInfo | undefined>;
 
     /**
      * Get all commits from a store ordered by [timestamp, medallion].
@@ -68,7 +68,7 @@ export interface Store {
      *
      * Implicitly awaits on this.initialized;
      */
-    getCommits: (callback: (commitBytes: ChangeSetBytes, commitInfo: CommitInfo) => void) => Promise<void>;
+    getCommits: (callback: (commitBytes: ChangeSetBytes, commitInfo: ChangeSetInfo) => void) => Promise<void>;
 
     /**
      * Gets the protobuf bytes corresponding to a particular container's address.

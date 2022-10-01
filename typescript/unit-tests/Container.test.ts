@@ -3,7 +3,6 @@ import { Container } from "../library-code/Container";
 import { GinkInstance } from "../library-code/GinkInstance";
 import { ChangeSet } from "../library-code/ChangeSet";
 import { IndexedDbStore } from "../library-code/IndexedDbStore";
-import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 
 test('set and get Basic data in root schema', async function() {
     // set up the objects

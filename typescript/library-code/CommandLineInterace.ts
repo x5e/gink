@@ -4,11 +4,11 @@ import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 import { GinkInstance } from "./GinkInstance";
 import { info } from "./utils";
-import { CommitInfo } from "./typedefs";
+import { ChangeSetInfo } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
 var readline = require('readline');
 
-async function onCommit(commitInfo: CommitInfo) {
+async function onCommit(commitInfo: ChangeSetInfo) {
     info(`received commit: ${JSON.stringify(commitInfo)}`);
 }
 

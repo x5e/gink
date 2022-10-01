@@ -1,12 +1,12 @@
-import { extractCommitInfo, info, unwrapValue, assert } from "./utils";
+import { extractCommitInfo, info, unwrapValue, assert, commitInfoToKey, commitKeyToInfo } from "./utils";
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
 }
 import { openDB, deleteDB, IDBPDatabase } from 'idb';
 import { Store } from "./Store";
 import {
-    CommitBytes, Timestamp, Medallion, ChainStart, CommitInfo,
-    ClaimedChains, PriorTime, SeenThrough, Offset, Address, Bytes, Basic
+    CommitBytes, Medallion, ChainStart, ChangeSetInfo,
+    ClaimedChains, ChangeSetInfoTuple, SeenThrough, Offset, Address, Bytes, Basic
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Change as ChangeBuilder } from "change_pb";
@@ -14,28 +14,6 @@ import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Entry as EntryBuilder } from "entry_pb";
 import { Muid as MuidBuilder } from "muid_pb";
 
-// IndexedDb orders entries in its b-tree according to a tuple.
-// So this CommitKey is specific to this implementation of the Store.
-// [Timestamp, Medallion] should enough to uniquely specify a Commit.
-// ChainStart and PriorTime are just included here to avoid re-parsing.
-export type CommitKey = [Timestamp, Medallion, ChainStart, PriorTime, string];
-
-function commitInfoToKey(commitInfo: CommitInfo): CommitKey {
-    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
-    commitInfo.priorTime || 0, commitInfo.comment || ""];
-}
-
-function commitKeyToInfo(commitKey: CommitKey) {
-    return {
-        timestamp: commitKey[0],
-        medallion: commitKey[1],
-        chainStart: commitKey[2],
-        priorTime: commitKey[3],
-        comment: commitKey[4],
-    }
-}
-
-export type AddressTuple = [Timestamp, Medallion, Offset];
 
 export class IndexedDbStore implements Store {
 
@@ -134,18 +112,18 @@ export class IndexedDbStore implements Store {
         return commitInfo.timestamp;
     }
 
-    private async getChainInfos(): Promise<Array<CommitInfo>> {
+    private async getChainInfos(): Promise<Array<ChangeSetInfo>> {
         await this.initialized;
         return await this.wrapped.transaction(['chainInfos']).objectStore('chainInfos').getAll();
     }
 
-    async addChangeSet(changeSetBytes: CommitBytes): Promise<CommitInfo | undefined> {
+    async addChangeSet(changeSetBytes: CommitBytes): Promise<ChangeSetInfo | undefined> {
         await this.initialized;
         const changeSetMessage = ChangeSetBuilder.deserializeBinary(changeSetBytes);
         const commitInfo = extractCommitInfo(changeSetMessage);
         const { timestamp, medallion, chainStart, priorTime } = commitInfo
         const wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'containers', 'entries'], 'readwrite');
-        let oldChainInfo: CommitInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
+        let oldChainInfo: ChangeSetInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
                 return;
@@ -158,7 +136,7 @@ export class IndexedDbStore implements Store {
         await wrappedTransaction.objectStore("chainInfos").put(commitInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring re-parsing.
-        const commitKey: CommitKey = commitInfoToKey(commitInfo);
+        const commitKey: ChangeSetInfoTuple = commitInfoToKey(commitInfo);
         await wrappedTransaction.objectStore("trxns").add(changeSetBytes, commitKey);
         const changesMap: Map<Offset, ChangeBuilder> = changeSetMessage.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
@@ -208,13 +186,13 @@ export class IndexedDbStore implements Store {
 
     // Note the IndexedDB has problems when await is called on anything unrelated
     // to the current commit, so its best if `callBack` doesn't await.
-    async getCommits(callBack: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void) {
+    async getCommits(callBack: (commitBytes: CommitBytes, commitInfo: ChangeSetInfo) => void) {
         await this.initialized;
 
         // We loop through all commits and send those the peer doesn't have.
         for (let cursor = await this.wrapped.transaction("trxns").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
-            const commitKey = <CommitKey>cursor.key;
+            const commitKey = <ChangeSetInfoTuple>cursor.key;
             const commitInfo = commitKeyToInfo(commitKey);
             const commitBytes: CommitBytes = cursor.value;
             callBack(commitBytes, commitInfo);

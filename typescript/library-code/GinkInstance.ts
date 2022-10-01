@@ -1,7 +1,7 @@
 import { Peer } from "./Peer";
 import { Store } from "./Store";
 import { makeMedallion, assert, extractCommitInfo, noOp } from "./utils";
-import { CommitBytes, Medallion, ChainStart, CommitInfo, CommitListener, CallBack } from "./typedefs";
+import { CommitBytes, Medallion, ChainStart, ChangeSetInfo, CommitListener, CallBack } from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
@@ -79,16 +79,16 @@ export class GinkInstance {
      * @param changeSet a PendingCommit ready to be sealed
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
-    public async addChangeSet(changeSet: ChangeSet): Promise<CommitInfo> {
+    public async addChangeSet(changeSet: ChangeSet): Promise<ChangeSetInfo> {
         var unlockingFunction: CallBack;
-        var resultInfo: CommitInfo;
+        var resultInfo: ChangeSetInfo;
         try {
             unlockingFunction = await this.processingLock.acquireLock();
             await this.initialized;
             const nowMicros = Date.now() * 1000;
             const seenThrough = await this.store.getSeenThrough(this.myChain);
             assert(seenThrough > 0 && (seenThrough < nowMicros + 500));
-            const commitInfo: CommitInfo = {
+            const commitInfo: ChangeSetInfo = {
                 medallion: this.myChain[0],
                 chainStart: this.myChain[1],
                 timestamp: seenThrough >= nowMicros ? seenThrough + 1 : nowMicros,
@@ -142,7 +142,7 @@ export class GinkInstance {
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns 
      */
-    private async receiveCommit(commitBytes: CommitBytes, fromConnectionId?: number): Promise<CommitInfo> {
+    private async receiveCommit(commitBytes: CommitBytes, fromConnectionId?: number): Promise<ChangeSetInfo> {
         await this.initialized;
         const commitInfo = extractCommitInfo(commitBytes);
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);

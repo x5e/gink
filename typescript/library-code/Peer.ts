@@ -1,4 +1,4 @@
-import { CommitInfo, CommitBytes } from "./typedefs";
+import { ChangeSetInfo, CommitBytes } from "./typedefs";
 import { makeCommitMessage, noOp, assert } from "./utils";
 import { ChainTracker } from "./ChainTracker";
 
@@ -29,7 +29,7 @@ export class Peer {
      * @param commitBytes The commit to be sent.
      * @param commitInfo Metadata about the commit.
      */
-    sendIfNeeded(commitBytes: CommitBytes, commitInfo: CommitInfo) {
+    sendIfNeeded(commitBytes: CommitBytes, commitInfo: ChangeSetInfo) {
         if (this.hasMap?.markIfNovel(commitInfo, true)) {
             this.sendFunc(makeCommitMessage(commitBytes));
         }

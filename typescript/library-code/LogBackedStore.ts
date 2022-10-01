@@ -1,4 +1,4 @@
-import { CommitBytes, CommitInfo, Medallion, ChainStart, SeenThrough, Address, Bytes, Basic } from "./typedefs";
+import { CommitBytes, ChangeSetInfo, Medallion, ChainStart, SeenThrough, Address, Bytes, Basic } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -84,7 +84,7 @@ export class LogBackedStore implements Store {
         return this.commitsProcessed;
     }
 
-    async addChangeSet(commitBytes: CommitBytes): Promise<CommitInfo|undefined> {
+    async addChangeSet(commitBytes: CommitBytes): Promise<ChangeSetInfo|undefined> {
         await this.initialized;
         const added = await this.indexedDbStore.addChangeSet(commitBytes);
         if (added) {
@@ -121,7 +121,7 @@ export class LogBackedStore implements Store {
         return await this.indexedDbStore.getChainTracker();
     }
 
-    async getCommits(callBack: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void): Promise<void> {
+    async getCommits(callBack: (commitBytes: CommitBytes, commitInfo: ChangeSetInfo) => void): Promise<void> {
         await this.initialized;
         await this.indexedDbStore.getCommits(callBack);
     }

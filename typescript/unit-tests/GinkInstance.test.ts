@@ -4,7 +4,7 @@ import { ChangeSet } from "../library-code/ChangeSet";
 import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
 import { assert } from "../library-code/utils";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
-import { CommitBytes, CommitInfo } from "../library-code/typedefs";
+import { CommitBytes, ChangeSetInfo } from "../library-code/typedefs";
 
 
 test('test commit', async () => {
@@ -26,7 +26,7 @@ test('uses claimed chain', async () => {
     const commitBytes = makeChainStart("chain start comment", MEDALLION1, START_MICROS1);
     await store.addChangeSet(commitBytes);
     await store.claimChain(MEDALLION1, START_MICROS1);
-    store.getCommits((commitBytes: CommitBytes, _commitInfo: CommitInfo) => {
+    store.getCommits((commitBytes: CommitBytes, _commitInfo: ChangeSetInfo) => {
         const commit = ChangeSetMessage.deserializeBinary(commitBytes);
         assert(commit.getComment() == "chain start comment")
     })

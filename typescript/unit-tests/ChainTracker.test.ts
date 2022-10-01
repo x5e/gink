@@ -1,6 +1,6 @@
 import { assert } from "../library-code/utils";
 import { ChainTracker } from "../library-code/ChainTracker";
-import { CommitInfo } from "../library-code/typedefs";
+import { ChangeSetInfo } from "../library-code/typedefs";
 
 test('track two commits', async () => {
     const chainTracker = new ChainTracker({});
@@ -8,10 +8,10 @@ test('track two commits', async () => {
     const chainStart = 1662789574924000;
     const secondTime = 1662789590300000;
 
-    const commitInfo1: CommitInfo = { "timestamp": chainStart, medallion, chainStart, "comment": "node instance" };
+    const commitInfo1: ChangeSetInfo = { "timestamp": chainStart, medallion, chainStart, "comment": "node instance" };
     chainTracker.markIfNovel(commitInfo1, true);
 
-    const commitInfo2: CommitInfo = {
+    const commitInfo2: ChangeSetInfo = {
         "timestamp": secondTime, medallion, chainStart, "priorTime": chainStart, "comment": "hello"
     }
     chainTracker.markIfNovel(commitInfo2, true);

@@ -1,4 +1,4 @@
-import { Medallion, ChainStart, SeenThrough, CommitInfo } from "./typedefs"
+import { Medallion, ChainStart, SeenThrough, ChangeSetInfo } from "./typedefs"
 import { SyncMessage } from "sync_message_pb";
 import { assert } from "./utils";
 
@@ -9,7 +9,7 @@ import { assert } from "./utils";
  * functionality to convert from/to Greeting objects.
  */
 export class ChainTracker {
-    private readonly data: Map<Medallion, Map<ChainStart, CommitInfo>> = new Map();
+    private readonly data: Map<Medallion, Map<ChainStart, ChangeSetInfo>> = new Map();
 
     constructor({ greetingBytes = null, greeting = null }) {
         if (greetingBytes) {
@@ -36,7 +36,7 @@ export class ChainTracker {
      * @param checkValidExtension If true then barfs if this commit isn't a vaild extension.
      * @returns true if the commit represents data not seen before
      */
-    markIfNovel(commitInfo: CommitInfo, checkValidExtension?: Boolean): Boolean {
+    markIfNovel(commitInfo: ChangeSetInfo, checkValidExtension?: Boolean): Boolean {
         if (!this.data.has(commitInfo.medallion)) {
             this.data.set(commitInfo.medallion, new Map());
         }
@@ -76,7 +76,7 @@ export class ChainTracker {
      * @param key A [Medallion, ChainStart] tuple
      * @returns SeenThrough (a Timestamp) or undefined if not yet seen
      */
-    getCommitInfo(key: [Medallion, ChainStart]): CommitInfo | undefined {
+    getCommitInfo(key: [Medallion, ChainStart]): ChangeSetInfo | undefined {
         const inner = this.data.get(key[0]);
         if (!inner) return undefined;
         return inner.get(key[1]);

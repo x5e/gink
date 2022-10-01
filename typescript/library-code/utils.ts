@@ -1,4 +1,4 @@
-import { CommitInfo, Address, Medallion, Basic } from "./typedefs"
+import { ChangeSetInfo, Address, Medallion, Basic, ChangeSetInfoTuple } from "./typedefs"
 import { SyncMessage } from "sync_message_pb";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { Muid } from "muid_pb";
@@ -6,7 +6,7 @@ import { Value } from "value_pb";
 
 export class Deletion {}
 
-export function extractCommitInfo(changeSetMessage: Uint8Array | ChangeSetMessage): CommitInfo {
+export function extractCommitInfo(changeSetMessage: Uint8Array | ChangeSetMessage): ChangeSetInfo {
     if (changeSetMessage instanceof Uint8Array) {
         changeSetMessage = ChangeSetMessage.deserializeBinary(changeSetMessage);
     }
@@ -162,3 +162,19 @@ export function wrapValue(arg: Basic): Value {
     }
     return value;
 } 
+
+
+export function commitInfoToKey(commitInfo: ChangeSetInfo): ChangeSetInfoTuple {
+    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
+    commitInfo.priorTime || 0, commitInfo.comment || ""];
+}
+
+export function commitKeyToInfo(commitKey: ChangeSetInfoTuple) {
+    return {
+        timestamp: commitKey[0],
+        medallion: commitKey[1],
+        chainStart: commitKey[2],
+        priorTime: commitKey[3],
+        comment: commitKey[4],
+    }
+}

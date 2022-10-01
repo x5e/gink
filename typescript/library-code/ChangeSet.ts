@@ -1,4 +1,4 @@
-import { Medallion, Timestamp, Address, CommitInfo } from "./typedefs";
+import { Medallion, Timestamp, Address, ChangeSetInfo } from "./typedefs";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Change as ChangeBuilder } from "change_pb";
 import { Entry as EntryBuilder } from "entry_pb";
@@ -6,7 +6,7 @@ import { Container as ContainerBuilder } from "container_pb";
 
 export class ChangeSet {
     // note: this class is unit tested as part of Store.test.ts
-    private commitInfo: CommitInfo | null = null;
+    private commitInfo: ChangeSetInfo | null = null;
     private serialized: Uint8Array | null = null;
     private changeSetBuilder = new ChangeSetBuilder();
     private countItems = 0;
@@ -73,7 +73,7 @@ export class ChangeSet {
      * @param commitInfo the commit metadata to add when serializing
      * @returns serialized 
      */
-    seal(commitInfo: CommitInfo) {
+    seal(commitInfo: ChangeSetInfo) {
         this.requireNotSealed();
         if (this.preAssignedMedallion && this.preAssignedMedallion != commitInfo.medallion) {
             throw new Error("specifed commitInfo doesn't match pre-assigned medallion");
