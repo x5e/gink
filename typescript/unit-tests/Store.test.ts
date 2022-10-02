@@ -1,5 +1,5 @@
-import { CommitBytes } from "../library-code/typedefs"
-import { Store } from "../library-code/Store";
+import { ChangeSetBytes } from "../library-code/typedefs"
+import { Store } from "../library-code/interfaces";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
@@ -88,8 +88,8 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
             await store.close();
             store = await replacer();
         }
-        const sent: Array<CommitBytes> = [];
-        await store.getCommits((x: CommitBytes) => { sent.push(x); });
+        const sent: Array<ChangeSetBytes> = [];
+        await store.getCommits((x: ChangeSetBytes) => { sent.push(x); });
         expect(sent.length).toBe(4);
         expect(ChangeSetBuilder.deserializeBinary(sent[0]).getTimestamp()).toBe(START_MICROS1);
         expect(ChangeSetBuilder.deserializeBinary(sent[1]).getTimestamp()).toBe(START_MICROS2);

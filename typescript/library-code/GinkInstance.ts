@@ -1,18 +1,14 @@
 import { Peer } from "./Peer";
-import { Store } from "./Store";
 import { makeMedallion, assert, extractCommitInfo, noOp } from "./utils";
-import { CommitBytes, Medallion, ChainStart, ChangeSetInfo, CommitListener, CallBack } from "./typedefs";
+import { ChangeSetBytes, Medallion, ChainStart } from "./typedefs";
+import { ChangeSetInfo, CommitListener, CallBack, Store, ChainTrackerInterface } from "./interfaces";
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
-
-//TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
-var W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
-    eval("require('websocket').w3cwebsocket");
-
+import { Container } from "./Container";
 
 /**
  * This is an instance of the Gink database that can be run inside of a web browser or via
@@ -29,11 +25,20 @@ export class GinkInstance {
     private countConnections: number = 0; // Includes disconnected clients.
     private myChain: [Medallion, ChainStart];
     private processingLock = new PromiseChainLock();
-    private iHave: ChainTracker;
+    protected iHave: ChainTrackerInterface;
+    protected myStore: Store;
 
-    constructor(readonly store?: Store, instanceInfo: string = "Default instanceInfo") {
-        this.store = this.store || new IndexedDbStore();
+    //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
+    private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
+    eval("require('websocket').w3cwebsocket");
+
+    constructor(store?: Store, instanceInfo: string = "Default instanceInfo") {
+        this.myStore = store || new IndexedDbStore();
         this.initialized = this.initialize(instanceInfo);
+    }
+
+    get store(): Store {
+        return this.myStore;
     }
 
     private async initialize(instanceInfo: string) {
@@ -45,6 +50,10 @@ export class GinkInstance {
             this.myChain = await this.startChain(instanceInfo);
         }
         this.iHave = await this.store.getChainTracker();
+    }
+
+    get root(): Container {
+        throw new Error("not")
     }
 
     /**
@@ -142,7 +151,7 @@ export class GinkInstance {
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns 
      */
-    private async receiveCommit(commitBytes: CommitBytes, fromConnectionId?: number): Promise<ChangeSetInfo> {
+    private async receiveCommit(commitBytes: ChangeSetBytes, fromConnectionId?: number): Promise<ChangeSetInfo> {
         await this.initialized;
         const commitInfo = extractCommitInfo(commitBytes);
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);
@@ -172,7 +181,7 @@ export class GinkInstance {
             unlockingFunction = await this.processingLock.acquireLock();
             const parsed = SyncMessage.deserializeBinary(messageBytes);
             if (parsed.hasCommit()) {
-                const commitBytes: CommitBytes = parsed.getCommit_asU8();
+                const commitBytes: ChangeSetBytes = parsed.getCommit_asU8();
                 await this.receiveCommit(commitBytes, fromConnectionId);
                 return;
             }
@@ -191,15 +200,6 @@ export class GinkInstance {
         }
     }
 
-    /**
-     * @returns bytes that can be sent during the initial handshake
-     */
-    protected getGreetingMessageBytes(): Uint8Array {
-        const greeting = this.iHave.constructGreeting();
-        const msg = new SyncMessage();
-        msg.setGreeting(greeting);
-        return msg.serializeBinary();
-    }
 
     /**
      * Initiates a websocket connection to a peer.
@@ -213,14 +213,14 @@ export class GinkInstance {
         return new Promise<Peer>((resolve, reject) => {
             let opened = false;
             const connectionId = this.createConnectionId();
-            const websocketClient: WebSocket = new W3cWebSocket(target, GinkInstance.PROTOCOL);
+            const websocketClient: WebSocket = new GinkInstance.W3cWebSocket(target, GinkInstance.PROTOCOL);
             websocketClient.binaryType = "arraybuffer";
             const peer = new Peer(
                 websocketClient.send.bind(websocketClient),
                 websocketClient.close.bind(websocketClient));
             websocketClient.onopen = function (_ev: Event) {
                 // called once the new connection has been established
-                websocketClient.send(thisClient.getGreetingMessageBytes());
+                websocketClient.send(thisClient.iHave.getGreetingMessageBytes());
                 thisClient.peers.set(connectionId, peer);
                 opened = true;
                 resolve(peer);

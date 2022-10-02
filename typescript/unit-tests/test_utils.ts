@@ -1,6 +1,6 @@
-import { Medallion, ChainStart, CommitBytes, Timestamp } from "../library-code/typedefs";
+import { Medallion, ChainStart, ChangeSetBytes, Timestamp } from "../library-code/typedefs";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
-import { Store } from "../library-code/Store";
+import { Store } from "../library-code/interfaces";
 
 export const MEDALLION1 = 425579549941797;
 export const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;
@@ -10,7 +10,7 @@ export const MEDALLION2 = 458510670893748;
 export const START_MICROS2 = Date.parse("2022-02-20 00:38:21") * 1000;
 export const NEXT_TS2 = Date.parse("2022-02-20 00:40:12") * 1000;
 
-export function makeChainStart(comment: string, medallion: Medallion, chainStart: ChainStart): CommitBytes {
+export function makeChainStart(comment: string, medallion: Medallion, chainStart: ChainStart): ChangeSetBytes {
     const commit = new ChangeSetMessage();
     commit.setChainStart(chainStart);
     commit.setTimestamp(chainStart);
@@ -19,7 +19,7 @@ export function makeChainStart(comment: string, medallion: Medallion, chainStart
     return commit.serializeBinary();
 }
 
-export function extendChain(comment: string, previous: CommitBytes, timestamp: Timestamp): CommitBytes {
+export function extendChain(comment: string, previous: ChangeSetBytes, timestamp: Timestamp): ChangeSetBytes {
     const parsedPrevious = ChangeSetMessage.deserializeBinary(previous);
     const subsequent = new ChangeSetMessage();
     subsequent.setMedallion(parsedPrevious.getMedallion());

@@ -1,4 +1,5 @@
-import { ChangeSetInfo, Address, Medallion, Basic, ChangeSetInfoTuple } from "./typedefs"
+import {  Medallion, Basic } from "./typedefs"
+import { ChangeSetInfo, Address, ChangeSetInfoTuple } from "./interfaces";
 import { SyncMessage } from "sync_message_pb";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { Muid } from "muid_pb";

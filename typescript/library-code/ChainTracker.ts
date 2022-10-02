@@ -1,4 +1,5 @@
-import { Medallion, ChainStart, SeenThrough, ChangeSetInfo } from "./typedefs"
+import { Medallion, ChainStart, SeenThrough } from "./typedefs"
+import { ChangeSetInfo } from "./interfaces";
 import { SyncMessage } from "sync_message_pb";
 import { assert } from "./utils";
 
@@ -57,7 +58,7 @@ export class ChainTracker {
      * the priorTimes aren't included, so receipient should not markIfNovel using
      * @returns 
      */
-    constructGreeting(): SyncMessage.Greeting {
+    private constructGreeting(): SyncMessage.Greeting {
         const greeting = new SyncMessage.Greeting();
         for (const [medallion, medallionMap] of this.data) {
             for (const [chainStart, commitInfo] of medallionMap) {
@@ -70,6 +71,16 @@ export class ChainTracker {
         }
         return greeting;
     }
+
+       /**
+     * @returns bytes that can be sent during the initial handshake
+     */
+    getGreetingMessageBytes(): Uint8Array {
+            const greeting = this.constructGreeting();
+            const msg = new SyncMessage();
+            msg.setGreeting(greeting);
+            return msg.serializeBinary();
+        }
 
     /**
      * Returns how far along data is seen for a particular chain.

@@ -1,10 +1,10 @@
 import { GinkServer } from "./GinkServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { IndexedDbStore } from "./IndexedDbStore";
-import { Store } from "./Store";
+import { Store } from "./interfaces";
 import { GinkInstance } from "./GinkInstance";
 import { info } from "./utils";
-import { ChangeSetInfo } from "./typedefs";
+import { ChangeSetInfo } from "./interfaces";
 import { ChangeSet } from "./ChangeSet";
 var readline = require('readline');
 

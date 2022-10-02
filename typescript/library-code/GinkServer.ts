@@ -10,8 +10,7 @@ import {
 import { GinkInstance } from "./GinkInstance";
 import { Peer } from './Peer';
 import { Buffer } from "buffer";
-import { Store } from "./Store";
-import { ServerArgs } from './typedefs';
+import { Store, ServerArgs } from "./interfaces";
 
 export class GinkServer extends GinkInstance {
     private websocketServer: WebSocketServer;
@@ -65,7 +64,7 @@ export class GinkServer extends GinkInstance {
             info(' Peer ' + connection.remoteAddress + ' disconnected.');
         });
         connection.on('message', this.onMessage.bind(this, connectionId));
-        sendFunc(this.getGreetingMessageBytes());
+        sendFunc(this.iHave.getGreetingMessageBytes());
     }
 
     private onMessage(connectionId: number, webSocketMessage: WebSocketMessage) {

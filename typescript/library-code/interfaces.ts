@@ -1,8 +1,67 @@
 import {
-    CommitBytes as ChangeSetBytes, ChangeSetInfo, ClaimedChains, Medallion,
-    ChainStart, SeenThrough, Bytes, Address, Basic
+    ChangeSetBytes as ChangeSetBytes, ClaimedChains, Medallion,
+    ChainStart, SeenThrough, Bytes, Basic, Timestamp, PriorTime, Offset,
+    NumberStr, FilePath
 } from "./typedefs"
-import { ChainTracker } from "./ChainTracker"
+
+
+export interface ChangeSetInfo {
+    timestamp: Timestamp;
+    medallion: Medallion;
+    chainStart: ChainStart;
+    priorTime?: PriorTime;
+    comment?: string;
+}
+
+/**  An ordered version of ChangeSetInfo used for indexing. */
+export type ChangeSetInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, string];
+
+export interface CommitListener {
+    (commitInfo: ChangeSetInfo): Promise<void>;
+}
+
+export interface CallBack {
+    (value: any): void;
+}
+
+/**
+ * Intended to be a way to point to a particular AddressableObject even if
+ * the commit its associated with hasn't been sealed yet.
+ */
+export interface Address {
+    medallion: Medallion | undefined;
+    timestamp: Timestamp | undefined;
+    offset: number;
+}
+
+export type AddressTuple = [Timestamp, Medallion, Offset];
+
+export interface ServerArgs {
+    port?: NumberStr;
+    sslKeyFilePath?: FilePath;
+    sslCertFilePath?: FilePath;
+    medallion?: NumberStr;
+    staticPath?: string;
+}
+
+export interface ContainerArgs {
+    address?: Address,
+}
+
+export interface ChangeSet {}
+
+export interface InstanceInterface {
+    readonly initialized: Promise<void>;
+    addChangeSet(changeSet: ChangeSet): Promise<ChangeSetInfo>;
+    get store(): Store;
+}
+
+export interface ChainTrackerInterface {
+    markIfNovel(commitInfo: ChangeSetInfo, checkValidExtension?: Boolean): Boolean;
+    getCommitInfo(key: [Medallion, ChainStart]): ChangeSetInfo | undefined;
+    getChains(singleMedallion?: Medallion): Array<[Medallion, ChainStart]>;
+    getGreetingMessageBytes(): Uint8Array;
+}
 
 export interface Store {
 
@@ -18,7 +77,7 @@ export interface Store {
      *
      * Implicitly awaits on this.initialized;
      */
-    getChainTracker: () => Promise<ChainTracker>;
+    getChainTracker: () => Promise<ChainTrackerInterface>;
 
     /**
      * Check the store to see how far along a given chain it has data for.

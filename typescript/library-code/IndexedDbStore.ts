@@ -3,11 +3,12 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
 }
 import { openDB, deleteDB, IDBPDatabase } from 'idb';
-import { Store } from "./Store";
+import { Store } from "./interfaces";
 import {
-    CommitBytes, Medallion, ChainStart, ChangeSetInfo,
-    ClaimedChains, ChangeSetInfoTuple, SeenThrough, Offset, Address, Bytes, Basic
+    ChangeSetBytes, Medallion, ChainStart,
+    ClaimedChains, SeenThrough, Offset, Bytes, Basic
 } from "./typedefs";
+import { ChangeSetInfo, ChangeSetInfoTuple, Address  } from "./interfaces"; 
 import { ChainTracker } from "./ChainTracker";
 import { Change as ChangeBuilder } from "change_pb";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
@@ -117,7 +118,7 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction(['chainInfos']).objectStore('chainInfos').getAll();
     }
 
-    async addChangeSet(changeSetBytes: CommitBytes): Promise<ChangeSetInfo | undefined> {
+    async addChangeSet(changeSetBytes: ChangeSetBytes): Promise<ChangeSetInfo | undefined> {
         await this.initialized;
         const changeSetMessage = ChangeSetBuilder.deserializeBinary(changeSetBytes);
         const commitInfo = extractCommitInfo(changeSetMessage);
@@ -186,7 +187,7 @@ export class IndexedDbStore implements Store {
 
     // Note the IndexedDB has problems when await is called on anything unrelated
     // to the current commit, so its best if `callBack` doesn't await.
-    async getCommits(callBack: (commitBytes: CommitBytes, commitInfo: ChangeSetInfo) => void) {
+    async getCommits(callBack: (commitBytes: ChangeSetBytes, commitInfo: ChangeSetInfo) => void) {
         await this.initialized;
 
         // We loop through all commits and send those the peer doesn't have.
@@ -194,7 +195,7 @@ export class IndexedDbStore implements Store {
             cursor; cursor = await cursor.continue()) {
             const commitKey = <ChangeSetInfoTuple>cursor.key;
             const commitInfo = commitKeyToInfo(commitKey);
-            const commitBytes: CommitBytes = cursor.value;
+            const commitBytes: ChangeSetBytes = cursor.value;
             callBack(commitBytes, commitInfo);
         }
     }

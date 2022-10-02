@@ -1,7 +1,7 @@
 eval("globalThis.test = function() {};");
 import { IndexedDbStore } from "../library-code/IndexedDbStore";
 
-import { ChangeSetInfo } from "../library-code/typedefs";
+import { ChangeSetInfo } from "../library-code/interfaces";
 import { GinkInstance } from "../library-code/GinkInstance";
 import { ChangeSet } from "../library-code/ChangeSet";
 

@@ -1,4 +1,5 @@
-import { Medallion, Timestamp, Address, ChangeSetInfo } from "./typedefs";
+import { Medallion, Timestamp } from "./typedefs";
+import { Address, ChangeSetInfo } from "./interfaces";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Change as ChangeBuilder } from "change_pb";
 import { Entry as EntryBuilder } from "entry_pb";

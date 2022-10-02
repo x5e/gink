@@ -1,7 +1,7 @@
-import { GinkInstance } from "./GinkInstance";
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
-import { Address, Basic } from "./typedefs";
+import {  Basic } from "./typedefs";
+import { Address, InstanceInterface } from "./interfaces";
 import { addressToMuid, wrapValue, Deletion, unwrapValue, assert } from "./utils";
 import { Change } from "change_pb";
 import { Container as ContainerMessage } from "container_pb";
@@ -17,7 +17,7 @@ export class Container {
      * @param address not necessary for root schema
      * @param containerMessage will try to fetch if not specified
      */
-    constructor(readonly ginkInstance: GinkInstance, readonly address?: Address,
+    constructor(readonly ginkInstance: InstanceInterface, readonly address?: Address,
         protected containerMessage?: ContainerMessage) {
         if (address && !containerMessage) {
             //TODO: go and fetch the ContainerMessage from the db using the address
