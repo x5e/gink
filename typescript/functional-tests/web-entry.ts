@@ -1,7 +1,7 @@
 eval("globalThis.test = function() {};");
 import { IndexedDbStore } from "../library-code/IndexedDbStore";
 
-import { CommitInfo } from "../library-code/typedefs";
+import { ChangeSetInfo } from "../library-code/typedefs";
 import { GinkInstance } from "../library-code/GinkInstance";
 import { ChangeSet } from "../library-code/ChangeSet";
 
@@ -18,10 +18,10 @@ function getWebsocketTarget(): string {
     return target;
 }
 
-async function onCommit(commitInfo: CommitInfo) {
+async function onCommit(changeSetInfo: ChangeSetInfo) {
     document.getElementById('messages').innerHTML +=
-        `${commitInfo.medallion}, ${commitInfo.timestamp}, ` +
-        `"${commitInfo.comment}"\n`;
+        `${changeSetInfo.medallion}, ${changeSetInfo.timestamp}, ` +
+        `"${changeSetInfo.comment}"\n`;
 }
 
 (async () => {
