@@ -1,4 +1,4 @@
-import { LogBackedStore } from "../library-code/LogBackedStore";
+import { LogBackedStore } from "../library-implementation/LogBackedStore";
 import { testStore } from "./Store.test";
 
 const TEST_FILE = "/tmp/test.store";

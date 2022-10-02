@@ -1,24 +1,6 @@
-import {  Medallion, Basic } from "./typedefs"
-import { ChangeSetInfo, Address, ChangeSetInfoTuple } from "./interfaces";
-import { SyncMessage } from "sync_message_pb";
-import { ChangeSet as ChangeSetMessage } from "change_set_pb";
+import { ChangeSetInfo, Address, Medallion, Basic, ChangeSetInfoTuple } from "../api";
 import { Muid } from "muid_pb";
 import { Value } from "value_pb";
-
-export class Deletion {}
-
-export function extractCommitInfo(changeSetMessage: Uint8Array | ChangeSetMessage): ChangeSetInfo {
-    if (changeSetMessage instanceof Uint8Array) {
-        changeSetMessage = ChangeSetMessage.deserializeBinary(changeSetMessage);
-    }
-    return {
-        timestamp: changeSetMessage.getTimestamp(),
-        medallion: changeSetMessage.getMedallion(),
-        chainStart: changeSetMessage.getChainStart(),
-        priorTime: changeSetMessage.getPreviousTimestamp() || undefined,
-        comment: changeSetMessage.getComment() || undefined,
-    }
-}
 
 export var assert = assert || function (x: any, msg?: string) {
     if (!x) throw new Error(msg ?? "assert failed");
@@ -28,22 +10,7 @@ export function now() { return (new Date()).toISOString(); }
 
 export function noOp(_ = null) { };
 
-/**
- * The Message proto contains an embedded oneof.  Essentially this will wrap
- * the commit bytes payload in a wrapper by prefixing a few bytes to it.
- * In theory the "Message" proto could be expanded with some extra metadata
- * (e.g. send time) in the future.
- * Note that the commit is always passed around as bytes and then
- * re-parsed as needed to avoid losing unknown fields.
- * @param commitBytes: the bytes corresponding to a commit
- * @returns a serialized "Message" proto
- */
-export function makeCommitMessage(commitBytes: Uint8Array): Uint8Array {
-    const message = new SyncMessage();
-    message.setCommit(commitBytes);
-    const msgBytes = message.serializeBinary();
-    return msgBytes;
-}
+
 
 /**
  * Randomly selects a number that can be used as a medallion.

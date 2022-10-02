@@ -1,14 +1,16 @@
 import { Peer } from "./Peer";
-import { makeMedallion, assert, extractCommitInfo, noOp } from "./utils";
-import { ChangeSetBytes, Medallion, ChainStart } from "./typedefs";
-import { ChangeSetInfo, CommitListener, CallBack, Store, ChainTrackerInterface } from "./interfaces";
+import { makeMedallion, assert, noOp } from "./utils";
+import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack } from "../api";
+import { ChangeSetInfo } from "../api";
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
-import { Container } from "./Container";
+import { Container as ContainerBuilder } from "container_pb";
+import { Schema } from "./Schema";
+import { Store } from "./Store";
 
 /**
  * This is an instance of the Gink database that can be run inside of a web browser or via
@@ -25,7 +27,7 @@ export class GinkInstance {
     private countConnections: number = 0; // Includes disconnected clients.
     private myChain: [Medallion, ChainStart];
     private processingLock = new PromiseChainLock();
-    protected iHave: ChainTrackerInterface;
+    protected iHave: ChainTracker;
     protected myStore: Store;
 
     //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
@@ -52,8 +54,24 @@ export class GinkInstance {
         this.iHave = await this.store.getChainTracker();
     }
 
-    get root(): Container {
-        throw new Error("not")
+    get root(): Schema {
+        return new Schema(this);
+    }
+
+    // TODO: allow user to specify the types allowed for keys and values
+    async createSchema(changeSet?: ChangeSet): Promise<Schema> {
+        let immediate: boolean = false;
+        if (!changeSet) {
+            immediate = true;
+            changeSet = new ChangeSet();
+        }
+        const containerBuilder = new ContainerBuilder();
+        containerBuilder.setBehavior(ContainerBuilder.Behavior.SCHEMA);
+        const address = changeSet.addContainer(containerBuilder);
+        if (immediate) {
+            await this.addChangeSet(changeSet);
+        }
+        return new Schema(this, address, containerBuilder);
     }
 
     /**
@@ -103,16 +121,8 @@ export class GinkInstance {
                 timestamp: seenThrough >= nowMicros ? seenThrough + 1 : nowMicros,
                 priorTime: seenThrough,
             }
-            const serialized = changeSet.seal(commitInfo);
-            resultInfo = await this.receiveCommit(serialized);
-            // receiveCommit currently deserializes the commit to get the commit info,
-            // which isn't ideal, but we can use it as an opportunity to ensure it's right.
-            assert(
-                commitInfo.timestamp == resultInfo.timestamp &&
-                commitInfo.chainStart == resultInfo.chainStart &&
-                commitInfo.medallion == resultInfo.medallion &&
-                commitInfo.priorTime == resultInfo.priorTime
-            );
+            resultInfo = changeSet.seal(commitInfo);
+            await this.receiveCommit(changeSet.bytes);
         } finally {
             unlockingFunction("this string is ignored");
         }
@@ -151,21 +161,19 @@ export class GinkInstance {
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns 
      */
-    private async receiveCommit(commitBytes: ChangeSetBytes, fromConnectionId?: number): Promise<ChangeSetInfo> {
+    private async receiveCommit(commitBytes: ChangeSetBytes, fromConnectionId?: number): Promise<void> {
         await this.initialized;
-        const commitInfo = extractCommitInfo(commitBytes);
-        this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(commitInfo);
-        if (await this.store.addChangeSet(commitBytes)) {
-            this.iHave.markIfNovel(commitInfo);
-            for (const [peerId, peer] of this.peers) {
-                if (peerId != fromConnectionId)
-                    peer.sendIfNeeded(commitBytes, commitInfo);
-            }
-            for (const listener of this.listeners) {
-                await listener(commitInfo);
-            }
+        const changeSetInfo = await this.store.addChangeSet(commitBytes);
+        if (!changeSetInfo) return;
+        this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(changeSetInfo);
+        this.iHave.markIfNovel(changeSetInfo);
+        for (const [peerId, peer] of this.peers) {
+            if (peerId != fromConnectionId)
+                peer.sendIfNeeded(commitBytes, changeSetInfo);
         }
-        return commitInfo;
+        for (const listener of this.listeners) {
+            await listener(changeSetInfo);
+        }
     }
 
     /**

@@ -1,5 +1,5 @@
-import { ChangeSetBytes } from "../library-code/typedefs"
-import { Store } from "../library-code/interfaces";
+import { ChangeSetBytes } from "../api"
+import { Store } from "../library-implementation/Store";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
@@ -8,8 +8,8 @@ import {
     makeChainStart, extendChain, addTrxns,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
 } from "./test_utils";
-import { addressToMuid, assert, wrapValue, muidToAddress, unwrapValue } from "../library-code/utils";
-import { ChangeSet } from "../library-code/ChangeSet";
+import { addressToMuid, assert, wrapValue, unwrapValue } from "../library-implementation/utils";
+import { ChangeSet } from "../library-implementation/ChangeSet";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 
@@ -139,7 +139,8 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
                 .setKey(wrapValue("abc"))
                 .setValue(wrapValue("xyz"))
         );
-        await store.addChangeSet(changeSet.seal({medallion: 4, chainStart: 5, timestamp: 5}));
+        changeSet.seal({medallion: 4, chainStart: 5, timestamp: 5});
+        await store.addChangeSet(changeSet.bytes);
         assert(address.medallion == 4);
         assert(address.timestamp == 5);
         const entryBytes = await store.getEntryBytes("abc", sourceAddress);

@@ -28,7 +28,7 @@ unit_tests: node_modules javascript_protos
 integration_test:
 	./functional-tests/integration-test.js
 
-browser_test: webpack.out library-code/* functional-tests/*
+browser_test: webpack.out library-implementation/* functional-tests/*
 	./functional-tests/browser-test.js
 
 test: unit_tests integration_test browser_test

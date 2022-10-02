@@ -1,9 +1,8 @@
 eval("globalThis.test = function() {};");
-import { IndexedDbStore } from "../library-code/IndexedDbStore";
-
-import { ChangeSetInfo } from "../library-code/interfaces";
-import { GinkInstance } from "../library-code/GinkInstance";
-import { ChangeSet } from "../library-code/ChangeSet";
+import { IndexedDbStore } from "../library-implementation/IndexedDbStore";
+import { GinkInstance } from "../library-implementation/GinkInstance";
+import { ChangeSet } from "../library-implementation/ChangeSet";
+import { ChangeSetInfo } from "../api";
 
 function getWebsocketTarget(): string {
     const loc = window.location;
@@ -19,7 +18,8 @@ function getWebsocketTarget(): string {
 }
 
 async function onCommit(changeSetInfo: ChangeSetInfo) {
-    document.getElementById('messages').innerHTML +=
+    if (document == null) { throw new Error("unexpected"); }
+    document.getElementById('messages')!.innerHTML +=
         `${changeSetInfo.medallion}, ${changeSetInfo.timestamp}, ` +
         `"${changeSetInfo.comment}"\n`;
 }

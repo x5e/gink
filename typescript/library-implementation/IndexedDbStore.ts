@@ -1,19 +1,19 @@
-import { extractCommitInfo, info, unwrapValue, assert, commitInfoToKey, commitKeyToInfo } from "./utils";
+import { info, unwrapValue, assert, commitInfoToKey, commitKeyToInfo } from "./utils";
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
 }
 import { openDB, deleteDB, IDBPDatabase } from 'idb';
-import { Store } from "./interfaces";
 import {
-    ChangeSetBytes, Medallion, ChainStart,
+    ChangeSetBytes, Medallion, ChainStart, ChangeSetInfoTuple, 
     ClaimedChains, SeenThrough, Offset, Bytes, Basic
-} from "./typedefs";
-import { ChangeSetInfo, ChangeSetInfoTuple, Address  } from "./interfaces"; 
+} from "../api";
+import { ChangeSetInfo, Address  } from "../api"; 
 import { ChainTracker } from "./ChainTracker";
 import { Change as ChangeBuilder } from "change_pb";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Entry as EntryBuilder } from "entry_pb";
 import { Muid as MuidBuilder } from "muid_pb";
+import { Store } from "./Store"; 
 
 
 export class IndexedDbStore implements Store {
@@ -118,10 +118,23 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction(['chainInfos']).objectStore('chainInfos').getAll();
     }
 
+    private static extractCommitInfo(changeSetData: Uint8Array | ChangeSetBuilder): ChangeSetInfo {
+        if (changeSetData instanceof Uint8Array) {
+            changeSetData = ChangeSetBuilder.deserializeBinary(changeSetData);
+        }
+        return {
+            timestamp: changeSetData.getTimestamp(),
+            medallion: changeSetData.getMedallion(),
+            chainStart: changeSetData.getChainStart(),
+            priorTime: changeSetData.getPreviousTimestamp() || undefined,
+            comment: changeSetData.getComment() || undefined,
+        }
+    }
+
     async addChangeSet(changeSetBytes: ChangeSetBytes): Promise<ChangeSetInfo | undefined> {
         await this.initialized;
         const changeSetMessage = ChangeSetBuilder.deserializeBinary(changeSetBytes);
-        const commitInfo = extractCommitInfo(changeSetMessage);
+        const commitInfo = IndexedDbStore.extractCommitInfo(changeSetMessage);
         const { timestamp, medallion, chainStart, priorTime } = commitInfo
         const wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'containers', 'entries'], 'readwrite');
         let oldChainInfo: ChangeSetInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);

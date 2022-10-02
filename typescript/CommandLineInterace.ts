@@ -1,11 +1,11 @@
-import { GinkServer } from "./GinkServer";
-import { LogBackedStore } from "./LogBackedStore";
-import { IndexedDbStore } from "./IndexedDbStore";
-import { Store } from "./interfaces";
-import { GinkInstance } from "./GinkInstance";
-import { info } from "./utils";
-import { ChangeSetInfo } from "./interfaces";
-import { ChangeSet } from "./ChangeSet";
+import { GinkServer } from "./library-implementation/GinkServer";
+import { LogBackedStore } from "./library-implementation/LogBackedStore";
+import { IndexedDbStore } from "./library-implementation/IndexedDbStore";
+import { Store } from "./library-implementation/Store";
+import { GinkInstance } from "./library-implementation/GinkInstance";
+import { info } from "./library-implementation/utils";
+import { ChangeSetInfo } from "./api";
+import { ChangeSet } from "./library-implementation/ChangeSet";
 var readline = require('readline');
 
 async function onCommit(commitInfo: ChangeSetInfo) {

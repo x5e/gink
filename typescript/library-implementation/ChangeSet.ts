@@ -1,5 +1,4 @@
-import { Medallion, Timestamp } from "./typedefs";
-import { Address, ChangeSetInfo } from "./interfaces";
+import { Address, ChangeSetInfo, Medallion, Timestamp } from "../api";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Change as ChangeBuilder } from "change_pb";
 import { Entry as EntryBuilder } from "entry_pb";
@@ -20,12 +19,16 @@ export class ChangeSet {
             throw new Error("This ChangeSet has already been sealed.");
     }
 
+    get bytes() {
+        return this.serialized;
+    }
+
     set comment(value) {
         this.requireNotSealed();
         this.pendingComment = value;
     }
 
-    get comment(): string {
+    get comment(): string | undefined {
         return this.pendingComment || this.commitInfo?.comment;
     }
 
@@ -41,7 +44,7 @@ export class ChangeSet {
         return this.addChange((new ChangeBuilder()).setEntry(entryBuilder));
     }
 
-    addContainer(containerBuilder: ContainerBuilder) {
+    addContainer(containerBuilder: ContainerBuilder): Address {
         return this.addChange((new ChangeBuilder()).setContainer(containerBuilder));
     }
 
@@ -74,7 +77,7 @@ export class ChangeSet {
      * @param commitInfo the commit metadata to add when serializing
      * @returns serialized 
      */
-    seal(commitInfo: ChangeSetInfo) {
+    seal(commitInfo: ChangeSetInfo): ChangeSetInfo {
         this.requireNotSealed();
         if (this.preAssignedMedallion && this.preAssignedMedallion != commitInfo.medallion) {
             throw new Error("specifed commitInfo doesn't match pre-assigned medallion");
@@ -87,6 +90,6 @@ export class ChangeSet {
         this.changeSetBuilder.setMedallion(commitInfo.medallion);
         this.changeSetBuilder.setComment(this.commitInfo.comment);
         this.serialized = this.changeSetBuilder.serializeBinary();
-        return this.serialized;
+        return this.commitInfo;
     }
 }

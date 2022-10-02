@@ -1,7 +1,7 @@
-import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, Basic } from "./typedefs";
-import { ChangeSetInfo, Address } from "./interfaces";
+import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, Basic } from "../api";
+import { ChangeSetInfo, Address } from "../api";
 import { IndexedDbStore } from "./IndexedDbStore";
-import { Store } from "./interfaces";
+import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
 const promises = require("fs").promises;
 type FileHandle = any;

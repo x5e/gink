@@ -1,13 +1,12 @@
-import { assert } from "../library-code/utils";
-import { Container } from "../library-code/Container";
-import { GinkInstance } from "../library-code/GinkInstance";
-import { ChangeSet } from "../library-code/ChangeSet";
-import { IndexedDbStore } from "../library-code/IndexedDbStore";
+import { assert } from "../library-implementation/utils";
+import { GinkInstance } from "../library-implementation/GinkInstance";
+import { ChangeSet } from "../library-implementation/ChangeSet";
+import { IndexedDbStore } from "../library-implementation/IndexedDbStore";
 
 test('set and get Basic data in root schema', async function() {
     // set up the objects
     const instance = new GinkInstance();
-    const rootSchema = new Container(instance);  // should probably become instance.getRoot()
+    const rootSchema = instance.root;  // should probably become instance.getRoot()
 
     // set a value
     await rootSchema.set("a key", "a value");
@@ -20,7 +19,7 @@ test('set and get Basic data in root schema', async function() {
 test('set multiple key/value pairs in one change-set', async function() {
     const store = new IndexedDbStore('test2', true);
     const instance = new GinkInstance(store);
-    const rootSchema = new Container(instance);
+    const rootSchema = instance.root;
 
     // make multiple changes in a change set
     const changeSet = new ChangeSet();

@@ -1,6 +1,6 @@
-import { Medallion, ChainStart, ChangeSetBytes, Timestamp } from "../library-code/typedefs";
+import { Medallion, ChainStart, ChangeSetBytes, Timestamp } from "../api";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
-import { Store } from "../library-code/interfaces";
+import { Store } from "../library-implementation/Store";
 
 export const MEDALLION1 = 425579549941797;
 export const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;

@@ -1,5 +1,4 @@
-import { Medallion, ChainStart, SeenThrough } from "./typedefs"
-import { ChangeSetInfo } from "./interfaces";
+import { ChangeSetInfo, Medallion, ChainStart, SeenThrough } from "../api";
 import { SyncMessage } from "sync_message_pb";
 import { assert } from "./utils";
 
