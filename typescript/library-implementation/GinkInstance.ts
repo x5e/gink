@@ -1,7 +1,7 @@
 import { Peer } from "./Peer";
-import { makeMedallion, assert, noOp } from "./utils";
-import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack } from "../api";
-import { ChangeSetInfo } from "../api";
+import { makeMedallion, ensure, noOp } from "./utils";
+import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack } from "./typedefs";
+import { ChangeSetInfo } from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
@@ -114,7 +114,7 @@ export class GinkInstance {
             await this.initialized;
             const nowMicros = Date.now() * 1000;
             const seenThrough = await this.store.getSeenThrough(this.myChain);
-            assert(seenThrough > 0 && (seenThrough < nowMicros + 500));
+            ensure(seenThrough > 0 && (seenThrough < nowMicros + 500));
             const commitInfo: ChangeSetInfo = {
                 medallion: this.myChain[0],
                 chainStart: this.myChain[1],

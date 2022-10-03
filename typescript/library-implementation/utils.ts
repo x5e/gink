@@ -1,9 +1,10 @@
-import { ChangeSetInfo, Address, Medallion, Basic, ChangeSetInfoTuple } from "../api";
+import { Address, Medallion, Basic } from "./typedefs";
 import { Muid } from "muid_pb";
 import { Value } from "value_pb";
 
-export var assert = assert || function (x: any, msg?: string) {
+export function ensure(x: any, msg?: string) {
     if (!x) throw new Error(msg ?? "assert failed");
+    return x;
 }
 
 export function now() { return (new Date()).toISOString(); }
@@ -130,19 +131,3 @@ export function wrapValue(arg: Basic): Value {
     }
     return value;
 } 
-
-
-export function commitInfoToKey(commitInfo: ChangeSetInfo): ChangeSetInfoTuple {
-    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
-    commitInfo.priorTime || 0, commitInfo.comment || ""];
-}
-
-export function commitKeyToInfo(commitKey: ChangeSetInfoTuple) {
-    return {
-        timestamp: commitKey[0],
-        medallion: commitKey[1],
-        chainStart: commitKey[2],
-        priorTime: commitKey[3],
-        comment: commitKey[4],
-    }
-}

@@ -1,19 +1,19 @@
-import { info, unwrapValue, assert, commitInfoToKey, commitKeyToInfo } from "./utils";
+import { info, unwrapValue, ensure } from "./utils";
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
 }
 import { openDB, deleteDB, IDBPDatabase } from 'idb';
 import {
-    ChangeSetBytes, Medallion, ChainStart, ChangeSetInfoTuple, 
+    ChangeSetBytes, Medallion, ChainStart, ChangeSetInfoTuple,
     ClaimedChains, SeenThrough, Offset, Bytes, Basic
-} from "../api";
-import { ChangeSetInfo, Address  } from "../api"; 
+} from "./typedefs";
+import { ChangeSetInfo, Address } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Change as ChangeBuilder } from "change_pb";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Entry as EntryBuilder } from "entry_pb";
 import { Muid as MuidBuilder } from "muid_pb";
-import { Store } from "./Store"; 
+import { Store } from "./Store";
 
 
 export class IndexedDbStore implements Store {
@@ -150,11 +150,11 @@ export class IndexedDbStore implements Store {
         await wrappedTransaction.objectStore("chainInfos").put(commitInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring re-parsing.
-        const commitKey: ChangeSetInfoTuple = commitInfoToKey(commitInfo);
+        const commitKey: ChangeSetInfoTuple = IndexedDbStore.commitInfoToKey(commitInfo);
         await wrappedTransaction.objectStore("trxns").add(changeSetBytes, commitKey);
         const changesMap: Map<Offset, ChangeBuilder> = changeSetMessage.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
-            assert(offset > 0);
+            ensure(offset > 0);
             if (changeBuilder.hasContainer()) {
                 const addressTuple = [timestamp, medallion, offset];
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
@@ -181,7 +181,7 @@ export class IndexedDbStore implements Store {
         return result;
     }
 
-    async getEntryBytes(key: Basic, source?: Address): Promise<Bytes | undefined> {
+    async getEntry(key: Basic, source?: Address): Promise<[Address, Bytes] | undefined> {
         const search = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0, key];
         const searchRange = IDBKeyRange.lowerBound(search);
         for (let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange);
@@ -190,8 +190,28 @@ export class IndexedDbStore implements Store {
             for (let i = 0; i < 4; i++) {
                 if (cursor.key[i] != search[i]) return;
             }
-            return cursor.value;
+            const address: Address = {
+                timestamp: cursor.key[0],
+                medallion: cursor.key[1],
+                offset: cursor.key[2],
+            }
+            return [address, cursor.value];
         }
+    }
+
+    private static commitKeyToInfo(commitKey: ChangeSetInfoTuple) {
+        return {
+            timestamp: commitKey[0],
+            medallion: commitKey[1],
+            chainStart: commitKey[2],
+            priorTime: commitKey[3],
+            comment: commitKey[4],
+        }
+    }
+
+    private static commitInfoToKey(commitInfo: ChangeSetInfo): ChangeSetInfoTuple {
+        return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
+        commitInfo.priorTime || 0, commitInfo.comment || ""];
     }
 
     async getAllEntryKeys() {
@@ -207,7 +227,7 @@ export class IndexedDbStore implements Store {
         for (let cursor = await this.wrapped.transaction("trxns").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
             const commitKey = <ChangeSetInfoTuple>cursor.key;
-            const commitInfo = commitKeyToInfo(commitKey);
+            const commitInfo = IndexedDbStore.commitKeyToInfo(commitKey);
             const commitBytes: ChangeSetBytes = cursor.value;
             callBack(commitBytes, commitInfo);
         }

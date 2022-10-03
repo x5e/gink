@@ -11,7 +11,7 @@ import { GinkInstance } from "./GinkInstance";
 import { Peer } from './Peer';
 import { Buffer } from "buffer";
 import { Store,  } from "./Store";
-import { ServerArgs } from "../api";
+import { ServerArgs } from "./typedefs";
 
 export class GinkServer extends GinkInstance {
     private websocketServer: WebSocketServer;

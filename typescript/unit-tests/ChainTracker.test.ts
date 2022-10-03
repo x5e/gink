@@ -1,6 +1,6 @@
-import { assert } from "../library-implementation/utils";
+import { ensure } from "../library-implementation/utils";
 import { ChainTracker } from "../library-implementation/ChainTracker";
-import { ChangeSetInfo } from "../api";
+import { ChangeSetInfo } from "../library-implementation/typedefs";
 
 test('track two commits', async () => {
     const chainTracker = new ChainTracker({});
@@ -17,15 +17,15 @@ test('track two commits', async () => {
     chainTracker.markIfNovel(commitInfo2, true);
 
     const commitInfo3 = chainTracker.getCommitInfo([medallion, chainStart]);
-    assert(commitInfo3);
-    assert(commitInfo3.medallion == medallion);
-    assert(commitInfo3.chainStart == chainStart);
-    assert(commitInfo3.timestamp == secondTime);
-    assert(commitInfo3.priorTime == chainStart);
-    assert(commitInfo3.comment == "hello");
+    ensure(commitInfo3);
+    ensure(commitInfo3.medallion == medallion);
+    ensure(commitInfo3.chainStart == chainStart);
+    ensure(commitInfo3.timestamp == secondTime);
+    ensure(commitInfo3.priorTime == chainStart);
+    ensure(commitInfo3.comment == "hello");
 
     const chains = chainTracker.getChains();
-    assert(chains.length == 1);
-    assert(chains[0][0] == medallion);
-    assert(chains[0][1] == chainStart);
+    ensure(chains.length == 1);
+    ensure(chains[0][0] == medallion);
+    ensure(chains[0][1] == chainStart);
 });

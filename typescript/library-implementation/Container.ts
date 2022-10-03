@@ -1,14 +1,27 @@
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
-import { Basic, Address, GinkInstance } from "../api";
+import { Basic, Address } from "./typedefs";
 import { addressToMuid, wrapValue, } from "./utils";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
 import { Deletion } from "./Deletion";
+import { ensure } from "./utils";
+import { Schema } from "./Schema";
+import { GinkInstance } from "./GinkInstance";
 
 export class Container {
     readonly initialized: Promise<void>;
     protected static readonly DELETION = new Deletion();
+
+    static async construct(ginkInstance: GinkInstance, address?: Address, containerBuilder?: ContainerBuilder): Promise<Container> {
+        if (!containerBuilder) {
+            const containerBytes = ensure(await ginkInstance.store.getContainerBytes(address));
+            containerBuilder = ContainerBuilder.deserializeBinary(containerBytes);
+        }
+        if (containerBuilder.getBehavior() == ContainerBuilder.Behavior.SCHEMA) {
+            return (new Schema(ginkInstance, address, containerBuilder));
+        }
+    }
 
     /**
      * 
@@ -16,12 +29,9 @@ export class Container {
      * @param address not necessary for root schema
      * @param containerBuilder will try to fetch if not specified
      */
-    constructor(readonly ginkInstance: GinkInstance, readonly address?: Address,
+    protected constructor(readonly ginkInstance: GinkInstance, readonly address?: Address,
         protected containerBuilder?: ContainerBuilder) {
-        if (address && !containerBuilder) {
-            //TODO: go and fetch the ContainerMessage from the db using the address
-            throw new Error("not implemented");
-        }
+        ensure(containerBuilder || !address);
         this.initialized = ginkInstance.initialized;
     }
 
@@ -44,7 +54,7 @@ export class Container {
         // TODO: check that the destination/value is compatible with Container
         if (value !== undefined) {
             if (value instanceof Container) {
-                entry.setDestination(addressToMuid(this.address, changeSet.medallion));
+                entry.setDestination(addressToMuid(value.address, changeSet.medallion));
             } else if (value instanceof Deletion) {
                 entry.setDeleting(true);
             } else {

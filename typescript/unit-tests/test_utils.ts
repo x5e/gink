@@ -1,4 +1,4 @@
-import { Medallion, ChainStart, ChangeSetBytes, Timestamp } from "../api";
+import { Medallion, ChainStart, ChangeSetBytes, Timestamp } from "../library-implementation/typedefs";
 import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { Store } from "../library-implementation/Store";
 

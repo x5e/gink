@@ -1,4 +1,4 @@
-import { CallBack } from "../api";
+import { CallBack } from "./typedefs";
 
 export class PromiseChainLock {
 

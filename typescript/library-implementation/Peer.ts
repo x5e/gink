@@ -1,5 +1,5 @@
-import { ChangeSetInfo, ChangeSetBytes } from "../api";
-import { noOp, assert } from "./utils";
+import { ChangeSetInfo, ChangeSetBytes } from "./typedefs";
+import { noOp, ensure } from "./utils";
 import { ChainTracker } from "./ChainTracker";
 import { SyncMessage } from "sync_message_pb";
 
@@ -19,7 +19,7 @@ export class Peer {
     }
 
     receiveHasMap(hasMap: ChainTracker) {
-        assert(!this.hasMap, "Already received a HasMap/Greeting from this Peer!");
+        ensure(!this.hasMap, "Already received a HasMap/Greeting from this Peer!");
         this.hasMap = hasMap;
     }
 

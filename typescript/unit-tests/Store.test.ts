@@ -1,4 +1,4 @@
-import { ChangeSetBytes } from "../api"
+import { ChangeSetBytes } from "../library-implementation/typedefs"
 import { Store } from "../library-implementation/Store";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Change as ChangeBuilder } from "change_pb";
@@ -8,7 +8,7 @@ import {
     makeChainStart, extendChain, addTrxns,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
 } from "./test_utils";
-import { addressToMuid, assert, wrapValue, unwrapValue } from "../library-implementation/utils";
+import { addressToMuid, ensure, wrapValue, unwrapValue } from "../library-implementation/utils";
 import { ChangeSet } from "../library-implementation/ChangeSet";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
@@ -122,12 +122,12 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         changeSetBuilder.getChangesMap().set(7, changeBuilder);
         const changeSetBytes = changeSetBuilder.serializeBinary();
         const commitInfo = await store.addChangeSet(changeSetBytes);
-        assert(commitInfo.medallion == MEDALLION1);
-        assert(commitInfo.timestamp == START_MICROS1);
+        ensure(commitInfo.medallion == MEDALLION1);
+        ensure(commitInfo.timestamp == START_MICROS1);
         const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
-        assert(containerBytes);
+        ensure(containerBytes);
         const containerBuilder2 = ContainerBuilder.deserializeBinary(containerBytes);
-        assert(containerBuilder2.getBehavior() == ContainerBuilder.Behavior.SCHEMA);
+        ensure(containerBuilder2.getBehavior() == ContainerBuilder.Behavior.SCHEMA);
     });
 
     test(`${implName} create / view Entry`, async () => {
@@ -141,14 +141,14 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         );
         changeSet.seal({medallion: 4, chainStart: 5, timestamp: 5});
         await store.addChangeSet(changeSet.bytes);
-        assert(address.medallion == 4);
-        assert(address.timestamp == 5);
-        const entryBytes = await store.getEntryBytes("abc", sourceAddress);
+        ensure(address.medallion == 4);
+        ensure(address.timestamp == 5);
+        const entryBytes = (await store.getEntry("abc", sourceAddress))[1];
         const entryBuilder = EntryBuilder.deserializeBinary(entryBytes);
-        assert(entryBuilder.getSource().getMedallion() == 1);
-        assert(entryBuilder.getSource().getTimestamp() == 2);
-        assert(entryBuilder.getSource().getOffset() == 3);
-        assert(unwrapValue(entryBuilder.getKey()) == "abc");
-        assert(unwrapValue(entryBuilder.getValue()) == "xyz");
+        ensure(entryBuilder.getSource().getMedallion() == 1);
+        ensure(entryBuilder.getSource().getTimestamp() == 2);
+        ensure(entryBuilder.getSource().getOffset() == 3);
+        ensure(unwrapValue(entryBuilder.getKey()) == "abc");
+        ensure(unwrapValue(entryBuilder.getValue()) == "xyz");
     });
 }

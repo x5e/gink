@@ -4,7 +4,7 @@ import { IndexedDbStore } from "./library-implementation/IndexedDbStore";
 import { Store } from "./library-implementation/Store";
 import { GinkInstance } from "./library-implementation/GinkInstance";
 import { info } from "./library-implementation/utils";
-import { ChangeSetInfo } from "./api";
+import { ChangeSetInfo } from "./library-implementation/typedefs";
 import { ChangeSet } from "./library-implementation/ChangeSet";
 var readline = require('readline');
 

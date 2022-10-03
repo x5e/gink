@@ -1,7 +1,7 @@
 import { ChainTracker } from "./ChainTracker";
 import { Medallion, ChainStart, SeenThrough, Address, Bytes, Basic, ChangeSetInfo,
     ClaimedChains 
-    } from "../api";
+    } from "./typedefs";
 
 export interface Store {
 
@@ -79,7 +79,7 @@ export interface Store {
      * Does a lookup for a given container at a specified address and key, and returns the most
      * recent entry stored (if there is any).
      */
-    getEntryBytes: (key: Basic, source?: Address) => Promise<Bytes | undefined>;
+    getEntry(key: Basic, source?: Address): Promise<[Address, Bytes] | undefined>;
 
     /**
      * Closes the underlying data store.  Implicitly awaits on the this.initialized promise.

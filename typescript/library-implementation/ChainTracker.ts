@@ -1,6 +1,6 @@
-import { ChangeSetInfo, Medallion, ChainStart, SeenThrough } from "../api";
+import { ChangeSetInfo, Medallion, ChainStart, SeenThrough } from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
-import { assert } from "./utils";
+import { ensure } from "./utils";
 
 /**
  * A class to keep track of what data a given instance (self or peer) has for each
@@ -40,7 +40,7 @@ export class ChainTracker {
         if (!this.data.has(commitInfo.medallion)) {
             this.data.set(commitInfo.medallion, new Map());
         }
-        assert(commitInfo.timestamp == commitInfo.chainStart || commitInfo.priorTime);
+        ensure(commitInfo.timestamp == commitInfo.chainStart || commitInfo.priorTime);
         const innerMap = this.data.get(commitInfo.medallion);
         const seenThrough = innerMap.get(commitInfo.chainStart)?.timestamp || 0;
         if (commitInfo.timestamp > seenThrough) {

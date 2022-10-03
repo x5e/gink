@@ -1,5 +1,5 @@
-import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, Basic } from "../api";
-import { ChangeSetInfo, Address } from "../api";
+import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, Basic } from "./typedefs";
+import { ChangeSetInfo, Address } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -132,9 +132,9 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getContainerBytes(address);
     }
 
-    async getEntryBytes(key: Basic, source?: Address): Promise<Bytes| undefined> {
+    async getEntry(key: Basic, source?: Address): Promise<[Address, Bytes]| undefined> {
         await this.initialized;
-        return this.indexedDbStore.getEntryBytes(key, source);
+        return this.indexedDbStore.getEntry(key, source);
     }
 
     async close() {
