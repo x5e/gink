@@ -2,7 +2,7 @@ eval("globalThis.test = function() {};");
 import { IndexedDbStore } from "../library-implementation/IndexedDbStore";
 import { GinkInstance } from "../library-implementation/GinkInstance";
 import { ChangeSet } from "../library-implementation/ChangeSet";
-import { ChangeSetInfo } from "../api";
+import { ChangeSetInfo } from "../library-implementation/typedefs";
 
 function getWebsocketTarget(): string {
     const loc = window.location;
