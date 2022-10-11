@@ -29,7 +29,7 @@ export interface ServerArgs {
     staticPath?: string;
 }
 
-export interface Address {
+export interface Muid {
     medallion: Medallion | undefined;
     timestamp: Timestamp | undefined;
     offset: number;

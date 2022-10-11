@@ -7,7 +7,7 @@ import {
     ChangeSetBytes, Medallion, ChainStart, ChangeSetInfoTuple,
     ClaimedChains, SeenThrough, Offset, Bytes, Basic
 } from "./typedefs";
-import { ChangeSetInfo, Address } from "./typedefs";
+import { ChangeSetInfo, Muid } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Change as ChangeBuilder } from "change_pb";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
@@ -175,13 +175,13 @@ export class IndexedDbStore implements Store {
         return commitInfo;
     }
 
-    async getContainerBytes(address: Address): Promise<Bytes | undefined> {
+    async getContainerBytes(address: Muid): Promise<Bytes | undefined> {
         const addressTuple = [address.timestamp, address.medallion, address.offset];
         const result = await this.wrapped.transaction(['containers']).objectStore('containers').get(addressTuple);
         return result;
     }
 
-    async getEntry(key: Basic, source?: Address): Promise<[Address, Bytes] | undefined> {
+    async getEntry(key: Basic, source?: Muid): Promise<[Muid, Bytes] | undefined> {
         const search = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0, key];
         const searchRange = IDBKeyRange.lowerBound(search);
         for (let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange);
@@ -190,7 +190,7 @@ export class IndexedDbStore implements Store {
             for (let i = 0; i < 4; i++) {
                 if (cursor.key[i] != search[i]) return;
             }
-            const address: Address = {
+            const address: Muid = {
                 timestamp: cursor.key[0],
                 medallion: cursor.key[1],
                 offset: cursor.key[2],

@@ -1,5 +1,5 @@
 import { ChainTracker } from "./ChainTracker";
-import { Medallion, ChainStart, SeenThrough, Address, Bytes, Basic, ChangeSetInfo,
+import { Medallion, ChainStart, SeenThrough, Muid, Bytes, Basic, ChangeSetInfo,
     ClaimedChains 
     } from "./typedefs";
 
@@ -73,13 +73,13 @@ export interface Store {
      * Gets the protobuf bytes corresponding to a particular container's address.
      */
     // TODO maybe return an actual data structure ?
-    getContainerBytes: (address: Address) => Promise<Bytes | undefined>;
+    getContainerBytes: (address: Muid) => Promise<Bytes | undefined>;
 
     /**
      * Does a lookup for a given container at a specified address and key, and returns the most
      * recent entry stored (if there is any).
      */
-    getEntry(key: Basic, source?: Address): Promise<[Address, Bytes] | undefined>;
+    getEntry(key: Basic, source?: Muid): Promise<[Muid, Bytes] | undefined>;
 
     /**
      * Closes the underlying data store.  Implicitly awaits on the this.initialized promise.

@@ -1,4 +1,4 @@
-import { Address, ChangeSetInfo, Medallion, Timestamp } from "./typedefs";
+import { Muid, ChangeSetInfo, Medallion, Timestamp } from "./typedefs";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Change as ChangeBuilder } from "change_pb";
 import { Entry as EntryBuilder } from "entry_pb";
@@ -40,11 +40,11 @@ export class ChangeSet {
         return this.commitInfo?.timestamp;
     }
 
-    addEntry(entryBuilder: EntryBuilder): Address {
+    addEntry(entryBuilder: EntryBuilder): Muid {
         return this.addChange((new ChangeBuilder()).setEntry(entryBuilder));
     }
 
-    addContainer(containerBuilder: ContainerBuilder): Address {
+    addContainer(containerBuilder: ContainerBuilder): Muid {
         return this.addChange((new ChangeBuilder()).setContainer(containerBuilder));
     }
 
@@ -54,10 +54,14 @@ export class ChangeSet {
      * @returns an Address who's offset is immediately available and whose medallion and
      * timestamp become defined when this ChangeSet is sealed.
      */
-    addChange(changeBuilder: ChangeBuilder): Address {
+    addChange(changeBuilder: ChangeBuilder): Muid {
         this.requireNotSealed();
         const offset = ++this.countItems;
         this.changeSetBuilder.getChangesMap().set(offset, changeBuilder);
+        // Using an anonymous class here because I only need the interface of Address
+        // but I need some non-trivial behavior: the timestamp and possibly medallion 
+        // are undefined until the associated change set is finalized, then all of the 
+        // components of the address become well defined.
         return new class {
             constructor(private changeSet: ChangeSet, readonly offset: number) {}
             get medallion() { return this.changeSet.medallion; }
@@ -65,7 +69,7 @@ export class ChangeSet {
         }(this, offset);
     }
 
-    removeChange(address: Address) {
+    removeChange(address: Muid) {
         this.requireNotSealed();
         const map = this.changeSetBuilder.getChangesMap();
         map.delete(address.offset);

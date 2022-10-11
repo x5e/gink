@@ -1,5 +1,5 @@
-import { Address, Medallion, Basic } from "./typedefs";
-import { Muid } from "muid_pb";
+import { Muid, Medallion, Basic } from "./typedefs";
+import { Muid as MuidBuilder } from "muid_pb";
 import { Value } from "value_pb";
 
 export function ensure(x: any, msg?: string) {
@@ -33,10 +33,10 @@ export function makeMedallion() {
         }
         const randomInt = crypto["randomInt"];  // defined in some versions of node
         if (randomInt) {
-            return 2 ** 48 + randomInt(1, 2 ** 48);
+            return  randomInt((2 ** 48) + 1, (2 ** 49) - 1);
         }
     }
-    return Math.floor(Math.random() * ((2 ** 48) - 1)) + 1 + 2 ** 48;
+    return Math.floor(Math.random() * (2 ** 48)) + 1 + 2 ** 48;
 }
 
 let logLevel = 0;
@@ -61,8 +61,8 @@ export function info(msg: string) {
     console.error(`[${timestamp} ${caller}] ${msg}`);
 }
 
-export function addressToMuid(address: Address, relativeTo?: Medallion): Muid {
-    const muid = new Muid();
+export function muidToBuilder(address: Muid, relativeTo?: Medallion): MuidBuilder {
+    const muid = new MuidBuilder();
     if (address.medallion && address.medallion != relativeTo)
         muid.setMedallion(address.medallion);
     if (address.timestamp) // not set if also pending
@@ -71,12 +71,14 @@ export function addressToMuid(address: Address, relativeTo?: Medallion): Muid {
     return muid;
 }
 
-export function muidToAddress(muid: Muid): Address {
+export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid {
+    // If a MuidBuilder in a message has a zero medallion and/or timestamp, it should be 
+    // interpreted that those values are the same as the trxn it comes from.
     return {
-        timestamp: muid.getTimestamp(),
-        medallion: muid.getMedallion(),
-        offset: muid.getOffSet(),
-    }
+        timestamp: muidBuilder.getTimestamp() || relativeTo.timestamp,
+        medallion: muidBuilder.getMedallion() || relativeTo.medallion,
+        offset: ensure(muidBuilder.getOffset(), "zero offset")
+    };
 }
 
 export function unwrapValue(value: Value): Basic {
@@ -102,7 +104,7 @@ export function unwrapValue(value: Value): Basic {
 
 export function wrapValue(arg: Basic): Value {
     const value = new Value();
-    while (true) {  // only goes through once; I'm using it like a switch statement
+    do {  // only goes through once; I'm using it like a switch statement
         if (arg === null) {
             value.setSpecial(Value.Special.NULL);
             break;
@@ -128,6 +130,6 @@ export function wrapValue(arg: Basic): Value {
             break;
         }
         throw new Error(`cannot be wrapped: ${arg}`);
-    }
+    } while (false);
     return value;
 } 

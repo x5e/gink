@@ -14,7 +14,7 @@ export class Peer {
     }
 
     close() {
-        var func = this.closeFunc;
+        const func = this.closeFunc;
         func();
     }
 
@@ -41,7 +41,7 @@ export class Peer {
     }
 
     /**
-     * Sends a commit if we've received a greeting and our internal recordkeeing indicates
+     * Sends a commit if we've received a greeting and our internal recordkeeping indicates
      * that the peer could use this particular commit (but ensures that we're not sending
      * commits that would cause gaps in the peer's chain.)
      * @param commitBytes The commit to be sent.

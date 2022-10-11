@@ -1,7 +1,7 @@
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
-import { Basic, Address } from "./typedefs";
-import { addressToMuid, wrapValue, } from "./utils";
+import { Basic, Muid } from "./typedefs";
+import { muidToBuilder, wrapValue, } from "./utils";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
 import { Deletion } from "./Deletion";
@@ -13,7 +13,7 @@ export class Container {
     readonly initialized: Promise<void>;
     protected static readonly DELETION = new Deletion();
 
-    static async construct(ginkInstance: GinkInstance, address?: Address, containerBuilder?: ContainerBuilder): Promise<Container> {
+    static async construct(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
         if (!containerBuilder) {
             const containerBytes = ensure(await ginkInstance.store.getContainerBytes(address));
             containerBuilder = ContainerBuilder.deserializeBinary(containerBytes);
@@ -21,6 +21,7 @@ export class Container {
         if (containerBuilder.getBehavior() == ContainerBuilder.Behavior.SCHEMA) {
             return (new Schema(ginkInstance, address, containerBuilder));
         }
+        throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
     }
 
     /**
@@ -29,13 +30,13 @@ export class Container {
      * @param address not necessary for root schema
      * @param containerBuilder will try to fetch if not specified
      */
-    protected constructor(readonly ginkInstance: GinkInstance, readonly address?: Address,
+    protected constructor(readonly ginkInstance: GinkInstance, readonly address?: Muid,
         protected containerBuilder?: ContainerBuilder) {
         ensure(containerBuilder || !address);
         this.initialized = ginkInstance.initialized;
     }
 
-    protected async addEntry(key?: Basic, value?: Basic | Container | Deletion, changeSet?: ChangeSet): Promise<Address> {
+    protected async addEntry(key?: Basic, value?: Basic | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
         await this.initialized;
         let immediate: boolean = false;
         if (!changeSet) {
@@ -45,7 +46,7 @@ export class Container {
 
         const entry = new EntryBuilder();
         if (this.address) {
-            entry.setSource(addressToMuid(this.address, changeSet.medallion));
+            entry.setSource(muidToBuilder(this.address, changeSet.medallion));
         }
         // TODO: check the key against the ValueType for keys (if set)
         if (key)
@@ -54,7 +55,7 @@ export class Container {
         // TODO: check that the destination/value is compatible with Container
         if (value !== undefined) {
             if (value instanceof Container) {
-                entry.setDestination(addressToMuid(value.address, changeSet.medallion));
+                entry.setDestination(muidToBuilder(value.address, changeSet.medallion));
             } else if (value instanceof Deletion) {
                 entry.setDeleting(true);
             } else {
