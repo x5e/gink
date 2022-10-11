@@ -12,7 +12,7 @@ import "value_type.proto";
 message Container {
     message Column {
         string name = 1;
-        ValueType type = 2;
+        ValueType type = 2; // might want a type defined even when a expression is provided so you can override
         Value expression = 3; // default used when no value is provided (and in computed and view columns)
         bool computed = 4; // when true, values can't be provided, and is defined by expression
         uint32 position = 5; // required when using table inheritance, implied otherwise

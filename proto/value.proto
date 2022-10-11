@@ -2,7 +2,7 @@ syntax = "proto3";
 package google.gink;
 import "muid.proto";
 
-
+// TODO(https://github.com/google/gink/issues/53): Add link to design doc here.
 message Value {
     oneof value {
         Special special = 1;

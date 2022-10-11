@@ -9,9 +9,11 @@ message Entry {
     Muid source = 1; // not present for "root" entry
 
     message Span {
+        // defines where to put octects in the FILE, may be omitted to place all at start
         uint64 from=1;
         uint64 ends=2;
     }
+    
     oneof link {
         // For behavior in {BOX, QUEUE, TABLE, BINLOG} there is no link.
         // This includes when setting the root entry (i.e. no src_node).
@@ -21,12 +23,10 @@ message Entry {
     }
 
     message Row {
-        oneof mask { // a bitmask indicating which columns are present
-            uint64 integer_mask = 1; 
-            bytes bytes_mask = 2; // only for when you have more than 63 columns
-        }
+        bytes bytes_mask = 2; // only for when you have more than 63 columns    
         repeated Value values = 3;
     }
+
     oneof target {
         Muid destination = 5;
         bool deleting = 6; // serves as reset when no link is set
@@ -35,6 +35,7 @@ message Entry {
         Value value = 9;
         Row row = 10; // only when source is a TABLE
     }
+
     uint64 expiry = 11; // timestamp of expiration in microseconds since epoch
     bytes iv = 15; // initialization vector when octects are encrypted
     bytes key_id = 16; // optional hint of which key was used (when encrypted)
