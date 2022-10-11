@@ -1,6 +1,6 @@
-import { Medallion, ChainStart, SeenThrough, CommitInfo } from "./typedefs"
+import { ChangeSetInfo, Medallion, ChainStart, SeenThrough } from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
-import { assert } from "./utils";
+import { ensure } from "./utils";
 
 /**
  * A class to keep track of what data a given instance (self or peer) has for each
@@ -9,7 +9,7 @@ import { assert } from "./utils";
  * functionality to convert from/to Greeting objects.
  */
 export class ChainTracker {
-    private readonly data: Map<Medallion, Map<ChainStart, CommitInfo>> = new Map();
+    private readonly data: Map<Medallion, Map<ChainStart, ChangeSetInfo>> = new Map();
 
     constructor({ greetingBytes = null, greeting = null }) {
         if (greetingBytes) {
@@ -36,11 +36,11 @@ export class ChainTracker {
      * @param checkValidExtension If true then barfs if this commit isn't a vaild extension.
      * @returns true if the commit represents data not seen before
      */
-    markIfNovel(commitInfo: CommitInfo, checkValidExtension?: Boolean): Boolean {
+    markIfNovel(commitInfo: ChangeSetInfo, checkValidExtension?: Boolean): Boolean {
         if (!this.data.has(commitInfo.medallion)) {
             this.data.set(commitInfo.medallion, new Map());
         }
-        assert(commitInfo.timestamp == commitInfo.chainStart || commitInfo.priorTime);
+        ensure(commitInfo.timestamp == commitInfo.chainStart || commitInfo.priorTime);
         const innerMap = this.data.get(commitInfo.medallion);
         const seenThrough = innerMap.get(commitInfo.chainStart)?.timestamp || 0;
         if (commitInfo.timestamp > seenThrough) {
@@ -57,7 +57,7 @@ export class ChainTracker {
      * the priorTimes aren't included, so receipient should not markIfNovel using
      * @returns 
      */
-    constructGreeting(): SyncMessage.Greeting {
+    private constructGreeting(): SyncMessage.Greeting {
         const greeting = new SyncMessage.Greeting();
         for (const [medallion, medallionMap] of this.data) {
             for (const [chainStart, commitInfo] of medallionMap) {
@@ -71,12 +71,22 @@ export class ChainTracker {
         return greeting;
     }
 
+       /**
+     * @returns bytes that can be sent during the initial handshake
+     */
+    getGreetingMessageBytes(): Uint8Array {
+            const greeting = this.constructGreeting();
+            const msg = new SyncMessage();
+            msg.setGreeting(greeting);
+            return msg.serializeBinary();
+        }
+
     /**
      * Returns how far along data is seen for a particular chain.
      * @param key A [Medallion, ChainStart] tuple
      * @returns SeenThrough (a Timestamp) or undefined if not yet seen
      */
-    getCommitInfo(key: [Medallion, ChainStart]): CommitInfo | undefined {
+    getCommitInfo(key: [Medallion, ChainStart]): ChangeSetInfo | undefined {
         const inner = this.data.get(key[0]);
         if (!inner) return undefined;
         return inner.get(key[1]);

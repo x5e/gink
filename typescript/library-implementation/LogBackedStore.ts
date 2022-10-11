@@ -1,4 +1,5 @@
-import { CommitBytes, CommitInfo, Medallion, ChainStart, SeenThrough } from "./typedefs";
+import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, Basic } from "./typedefs";
+import { ChangeSetInfo, Muid } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -7,7 +8,7 @@ type FileHandle = any;
 const open = promises.open;
 import { flock } from "fs-ext";
 import { LogFile } from "log_file_pb";
-import { extractCommitInfo, info } from "./utils";
+import { info } from "./utils";
 import { assert } from "console";
 import { ChainTracker } from "./ChainTracker";
 
@@ -67,8 +68,7 @@ export class LogBackedStore implements Store {
                 const logFile = LogFile.deserializeBinary(uint8Array);
                 const commits = logFile.getCommitsList();
                 for (const commit of commits) {
-                    const commitInfo = extractCommitInfo(commit)
-                    const added = await this.indexedDbStore.addCommit(commit, commitInfo);
+                    const added = await this.indexedDbStore.addChangeSet(commit);
                     assert(added);
                     this.commitsProcessed += 1;
                 }
@@ -85,9 +85,9 @@ export class LogBackedStore implements Store {
         return this.commitsProcessed;
     }
 
-    async addCommit(commitBytes: CommitBytes, commitInfo: CommitInfo): Promise<Boolean> {
+    async addChangeSet(commitBytes: ChangeSetBytes): Promise<ChangeSetInfo|undefined> {
         await this.initialized;
-        const added = await this.indexedDbStore.addCommit(commitBytes, commitInfo);
+        const added = await this.indexedDbStore.addChangeSet(commitBytes);
         if (added) {
             const logFragment = new LogFile();
             logFragment.setCommitsList([commitBytes]);
@@ -122,9 +122,19 @@ export class LogBackedStore implements Store {
         return await this.indexedDbStore.getChainTracker();
     }
 
-    async getCommits(callBack: (commitBytes: CommitBytes, commitInfo: CommitInfo) => void): Promise<void> {
+    async getCommits(callBack: (commitBytes: ChangeSetBytes, commitInfo: ChangeSetInfo) => void): Promise<void> {
         await this.initialized;
         await this.indexedDbStore.getCommits(callBack);
+    }
+
+    async getContainerBytes(address: Muid): Promise<Bytes|undefined> {
+        await this.initialized;
+        return this.indexedDbStore.getContainerBytes(address);
+    }
+
+    async getEntry(key: Basic, source?: Muid): Promise<[Muid, Bytes]| undefined> {
+        await this.initialized;
+        return this.indexedDbStore.getEntry(key, source);
     }
 
     async close() {

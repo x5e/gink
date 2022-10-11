@@ -20,21 +20,21 @@ tsc.out:
 	env tsc
 
 clean:
-	rm -rf node_modules/*_pb.js
+	rm -rf node_modules/*_pb.js webpack.out tsc.out
 
 unit_tests: node_modules javascript_protos
 	env jest
 
 integration_test:
-	./integration-test.js
+	./functional-tests/integration-test.js
 
-browser_test:
-	./browser-test.js
+browser_test: webpack.out library-implementation/* functional-tests/*
+	./functional-tests/browser-test.js
 
 test: unit_tests integration_test browser_test
 
 server: node_modules javascript_protos
-	GINK_LOG_FILE=test.binary-log GINK_SERVER=1 GINK_PORT=8080 \
+	GINK_LOG_FILE=/tmp/gink.binary-log GINK_SERVER=1 GINK_RESET=1 GINK_PORT=8080 \
         ts-node ./main.ts
 
 kill_server:
