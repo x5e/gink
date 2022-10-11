@@ -1,8 +1,0 @@
-syntax = "proto3";
-package google.gink;
-
-/** Container for any object that can be addressed (referenced) in the gink system.
-*/
-message AddressableObject {
-    
-}

@@ -1,14 +1,14 @@
-import { GinkServer } from "./GinkServer";
-import { LogBackedStore } from "./LogBackedStore";
-import { IndexedDbStore } from "./IndexedDbStore";
-import { Store } from "./Store";
-import { GinkInstance } from "./GinkInstance";
-import { info } from "./utils";
-import { CommitInfo } from "./typedefs";
-import { PendingCommit } from "./PendingCommit";
+import { GinkServer } from "./library-implementation/GinkServer";
+import { LogBackedStore } from "./library-implementation/LogBackedStore";
+import { IndexedDbStore } from "./library-implementation/IndexedDbStore";
+import { Store } from "./library-implementation/Store";
+import { GinkInstance } from "./library-implementation/GinkInstance";
+import { info } from "./library-implementation/utils";
+import { ChangeSetInfo } from "./library-implementation/typedefs";
+import { ChangeSet } from "./library-implementation/ChangeSet";
 var readline = require('readline');
 
-async function onCommit(commitInfo: CommitInfo) {
+async function onCommit(commitInfo: ChangeSetInfo) {
     info(`received commit: ${JSON.stringify(commitInfo)}`);
 }
 
@@ -44,7 +44,7 @@ export class CommandLineInterface {
                 port: process.env["GINK_PORT"],
                 sslKeyFilePath: process.env["GINK_SSL_KEY"],
                 sslCertFilePath: process.env["GINK_SSL_CERT"],
-                staticPath: process.env["GINK_STATIC_PATH"],
+                staticPath: process.env["GINK_STATIC_PATH"] || process.cwd(),
             });
         } else {
             this.instance = new GinkInstance(this.store, "node instance");
@@ -63,7 +63,7 @@ export class CommandLineInterface {
         info("ready (type a comment and press enter to create a commit)");
         const readlineInterface = readline.createInterface(process.stdin, process.stdout);
         readlineInterface.on('line', async (comment: string) => {
-            await this.instance.addPendingCommit(new PendingCommit(comment));
+            await this.instance.addChangeSet(new ChangeSet(comment));
         })
     }
 

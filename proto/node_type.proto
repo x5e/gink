@@ -1,0 +1,9 @@
+syntax = "proto3";
+package google.gink;
+
+/**
+    Defines a type of graph node, which often represents something in the external world.
+    For example, a node type might be named person or employee or asset.
+*/
+message NodeType {
+}

@@ -1,4 +1,5 @@
 syntax = "proto3";
+package google.gink;
 
 /**
     Muid: globally unique object-id in the Gink system.

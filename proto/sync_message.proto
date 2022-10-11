@@ -2,6 +2,7 @@
 syntax = "proto3";
 package google.gink;
 
+
 /**
     These are messages used in the peer to peer connections between gink instances.
     On connection, each peer sends a SyncMessage containing a Greeting, where the 
