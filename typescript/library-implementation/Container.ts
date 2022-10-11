@@ -1,13 +1,14 @@
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
 import { Basic, Muid } from "./typedefs";
-import { muidToBuilder, wrapValue, } from "./utils";
+import { muidToBuilder, wrapValue, unwrapValue, builderToMuid } from "./utils";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
 import { Deletion } from "./Deletion";
 import { ensure } from "./utils";
 import { Schema } from "./Schema";
 import { GinkInstance } from "./GinkInstance";
+
 
 export class Container {
     readonly initialized: Promise<void>;
@@ -34,6 +35,23 @@ export class Container {
         protected containerBuilder?: ContainerBuilder) {
         ensure(containerBuilder || !address);
         this.initialized = ginkInstance.initialized;
+    }
+
+    protected async getEntry(key?: Basic): Promise<[Muid | undefined, Container | Basic | undefined]> {
+        await this.initialized;
+        const result = await this.ginkInstance.store.getEntry(key, this.address);
+        if (!result) return [undefined, undefined];
+        const [entryAddress, entryBytes] = result;
+        const entryBuilder = EntryBuilder.deserializeBinary(entryBytes);
+        if (entryBuilder.hasValue()) return [entryAddress, unwrapValue(entryBuilder.getValue())];
+        if (entryBuilder.hasDestination()) {
+            const destAddress = builderToMuid(entryBuilder.getDestination(), entryAddress)
+            return [entryAddress, await Container.construct(this.ginkInstance, destAddress)];
+        }
+        if (entryBuilder.hasDeleting() && entryBuilder.getDeleting()) {
+            return [entryAddress, undefined];
+        }
+        throw new Error("unsupported entry type");
     }
 
     protected async addEntry(key?: Basic, value?: Basic | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
@@ -71,7 +89,5 @@ export class Container {
         }
         return address;
     }
-
-
 
 }

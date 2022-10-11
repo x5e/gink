@@ -1,6 +1,6 @@
 import { Muid, Medallion, Basic } from "./typedefs";
 import { Muid as MuidBuilder } from "muid_pb";
-import { Value } from "value_pb";
+import { Value as ValueBuilder } from "value_pb";
 
 export function ensure(x: any, msg?: string) {
     if (!x) throw new Error(msg ?? "assert failed");
@@ -81,7 +81,7 @@ export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid
     };
 }
 
-export function unwrapValue(value: Value): Basic {
+export function unwrapValue(value: ValueBuilder): Basic {
     if (value.hasCharacters()) {
         return value.getCharacters();
     }
@@ -95,26 +95,26 @@ export function unwrapValue(value: Value): Basic {
     }
     if (value.hasSpecial()) {
         const special = value.getSpecial();
-        if (special == Value.Special.NULL) return null;
-        if (special == Value.Special.TRUE) return true;
+        if (special == ValueBuilder.Special.NULL) return null;
+        if (special == ValueBuilder.Special.TRUE) return true;
         return false;
     }
     throw new Error("haven't implemented unwrap for this Value");
 }
 
-export function wrapValue(arg: Basic): Value {
-    const value = new Value();
+export function wrapValue(arg: Basic): ValueBuilder {
+    const value = new ValueBuilder();
     do {  // only goes through once; I'm using it like a switch statement
         if (arg === null) {
-            value.setSpecial(Value.Special.NULL);
+            value.setSpecial(ValueBuilder.Special.NULL);
             break;
         }
         if (arg === true) {
-            value.setSpecial(Value.Special.TRUE);
+            value.setSpecial(ValueBuilder.Special.TRUE);
             break;
         }
         if (arg === false) {
-            value.setSpecial(Value.Special.FALSE);
+            value.setSpecial(ValueBuilder.Special.FALSE);
             break;
         }
         const argType = typeof (arg);
@@ -124,7 +124,7 @@ export function wrapValue(arg: Basic): Value {
         }
         if (argType == "number") {
             //TODO: put in special cases for integers etc to increase efficiency
-            const number = new Value.Number();
+            const number = new ValueBuilder.Number();
             number.setDoubled(arg);
             value.setNumber(number);
             break;

@@ -15,6 +15,8 @@ export class Schema extends Container {
         }
     }
 
+    //TODO(https://github.com/google/gink/issues/54): Implement clear().
+
     /**
      * Sets a key/value association in a Schema.
      * If a change set is supplied, the function will add the entry to that change set 
@@ -60,4 +62,39 @@ export class Schema extends Container {
         }
         throw new Error("non-trivial entries not supported yet");
     }
+
+    async size(): Promise<number> {
+        //TODO(TESTME)
+        throw new Error("not implemented");
+    }
+
+    async has(key: Basic): Promise<boolean> {
+        //TODO(TESTME)
+        throw new Error("not implemented");
+    }
+
+    async entries(): Promise<void> {
+        //TODO(TESTME)
+        throw new Error("not implemented");
+    }
+
+    async keys(): Promise<void> {
+        //TODO(TESTME)
+        throw new Error("not implemented");
+    }
+
+    async values(): Promise<void> {
+        //TODO(TESTME)
+        throw new Error("not implemented");
+    }
+
+    async clear(changeSet?: ChangeSet): Promise<Muid> {
+        //TODO(TESTME)
+        throw new Error("not implemented");
+    }
+
+    async forEach(callBack, thisArg): Promise<void> {
+
+    }
+
 }
