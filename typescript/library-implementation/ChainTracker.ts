@@ -40,7 +40,9 @@ export class ChainTracker {
         if (!this.data.has(commitInfo.medallion)) {
             this.data.set(commitInfo.medallion, new Map());
         }
-        ensure(commitInfo.timestamp == commitInfo.chainStart || commitInfo.priorTime);
+        if(commitInfo.timestamp != commitInfo.chainStart && !commitInfo.priorTime) {
+            throw new Error(`commitInfo appears to be invalid: ${JSON.stringify(commitInfo)}`);
+        }
         const innerMap = this.data.get(commitInfo.medallion);
         const seenThrough = innerMap.get(commitInfo.chainStart)?.timestamp || 0;
         if (commitInfo.timestamp > seenThrough) {

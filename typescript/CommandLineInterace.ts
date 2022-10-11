@@ -12,6 +12,14 @@ async function onCommit(commitInfo: ChangeSetInfo) {
     info(`received commit: ${JSON.stringify(commitInfo)}`);
 }
 
+/**
+    Intended to manage server side running of Gink.
+    Basically it takes some settings in the form of
+    environment variables plus a list of peers to
+    connect to then starts up the Gink Instance,
+    or Gink Server if port listening is specfied.
+    TODO(https://github.com/google/gink/issues/43): implement --help
+*/
 export class CommandLineInterface {
     targets: string[];
     store: Store;
