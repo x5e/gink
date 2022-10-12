@@ -1,7 +1,7 @@
 import { Peer } from "./Peer";
 import { makeMedallion, ensure, noOp } from "./utils";
 import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack } from "./typedefs";
-import { ChangeSetInfo, Muid, Bytes } from "./typedefs";
+import { ChangeSetInfo, Muid } from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
@@ -11,6 +11,7 @@ import { IndexedDbStore } from "./IndexedDbStore";
 import { Container as ContainerBuilder } from "container_pb";
 import { Schema } from "./Schema";
 import { Box } from "./Box";
+import { Queue } from "./Queue";
 import { Store } from "./Store";
 
 
@@ -63,6 +64,11 @@ export class GinkInstance {
     async createBox(changeSet?: ChangeSet): Promise<Box> {
         const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.BOX, changeSet);
         return new Box(this, muid, containerBuilder);
+    }
+
+    async createQueue(changeSet?: ChangeSet): Promise<Queue> {
+        const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.BOX, changeSet);
+        return new Queue(this, muid, containerBuilder);
     }
 
     // TODO: allow user to specify the types allowed for keys and values

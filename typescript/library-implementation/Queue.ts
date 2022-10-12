@@ -29,6 +29,10 @@ export class Queue extends Container {
         return await this.addEntry(undefined, value, changeSet);
     }
 
+    async peek(): Promise<Container | Basic> {
+        return (await this.getEntry(undefined))[1];
+    }
+
     /**
      * Returns 
      * @param muid 
