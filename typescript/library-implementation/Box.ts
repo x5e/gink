@@ -50,11 +50,9 @@ export class Box extends Container {
         return await this.getEntry(undefined)[1];
     }
 
-
     async size(): Promise<number> {
         //TODO(TESTME)
-        throw new Error("not implemented");
+        return +!(this.getEntry(undefined)[1] === undefined);
     }
-
 
 }

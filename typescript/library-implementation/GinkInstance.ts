@@ -1,7 +1,7 @@
 import { Peer } from "./Peer";
 import { makeMedallion, ensure, noOp } from "./utils";
 import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack } from "./typedefs";
-import { ChangeSetInfo } from "./typedefs";
+import { ChangeSetInfo, Muid, Bytes } from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
@@ -10,7 +10,9 @@ import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Container as ContainerBuilder } from "container_pb";
 import { Schema } from "./Schema";
+import { Box } from "./Box";
 import { Store } from "./Store";
+
 
 /**
  * This is an instance of the Gink database that can be run inside of a web browser or via
@@ -58,20 +60,30 @@ export class GinkInstance {
         return new Schema(this);
     }
 
+    async createBox(changeSet?: ChangeSet): Promise<Box> {
+        const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.BOX, changeSet);
+        return new Box(this, muid, containerBuilder);
+    }
+
     // TODO: allow user to specify the types allowed for keys and values
     async createSchema(changeSet?: ChangeSet): Promise<Schema> {
+        const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.SCHEMA, changeSet);
+        return new Schema(this, muid, containerBuilder);
+    }
+
+    protected async createContainer(behavior: ContainerBuilder.Behavior, changeSet?: ChangeSet): Promise<[Muid, ContainerBuilder]> {
         let immediate: boolean = false;
         if (!changeSet) {
             immediate = true;
             changeSet = new ChangeSet();
         }
         const containerBuilder = new ContainerBuilder();
-        containerBuilder.setBehavior(ContainerBuilder.Behavior.SCHEMA);
+        containerBuilder.setBehavior(behavior);
         const address = changeSet.addContainer(containerBuilder);
         if (immediate) {
             await this.addChangeSet(changeSet);
         }
-        return new Schema(this, address, containerBuilder);
+        return [address, containerBuilder];
     }
 
     /**
