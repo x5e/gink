@@ -3,7 +3,9 @@ import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
 import { Basic, Muid } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
-import { ensure } from "./utils";
+import { ensure, muidToBuilder } from "./utils";
+import { Exit as ExitBuilder } from "exit_pb";
+import { Change as ChangeBuilder } from "change_pb";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
@@ -19,7 +21,7 @@ export class List extends Container {
     }
 
     /**
-     * Adds an element to the end of the queue.
+     * Adds an element to the end of the list.
      * @param value 
      * @param changeSet 
      * @returns 
@@ -45,16 +47,31 @@ export class List extends Container {
      */
     async pop(muid?: Muid, changeSet?: ChangeSet): Promise<Container | Basic | undefined> {
         //TODO(TESTME)
+        await this.initialized;
         let returning: Container | Basic;
-        if (!muid) {
+        if (muid) {
+            throw new Error("not implemented");
+        } else {
             const result = await this.getEntry(undefined);
             if (!result[0]) return undefined;
             muid = result[0];
             returning = result[1];
-        } else {
-
         }
-        throw new Error("not implemented");
+        let immediate: boolean = false;
+        if (!changeSet) {
+            immediate = true;
+            changeSet = new ChangeSet();
+        }
+        const exitBuilder = new ExitBuilder();
+        exitBuilder.setEntry(muidToBuilder(muid));
+        exitBuilder.setSource(muidToBuilder(this.address));
+        const changeBuilder = new ChangeBuilder();
+        changeBuilder.setExit(exitBuilder);
+        changeSet.addChange(changeBuilder);
+        if (immediate) {
+            await this.ginkInstance.addChangeSet(changeSet);
+        }
+        return returning;
     }
 
     /**

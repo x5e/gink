@@ -10,6 +10,7 @@ import {
 import { ChangeSetInfo, Muid } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Change as ChangeBuilder } from "change_pb";
+import { Exit as ExitBuilder } from "exit_pb";
 import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Entry as EntryBuilder } from "entry_pb";
 import { Muid as MuidBuilder } from "muid_pb";
@@ -65,6 +66,7 @@ export class IndexedDbStore implements Store {
 
                 db.createObjectStore('containers'); // map from AddressTuple to ContainerBytes
                 db.createObjectStore('entries'); // map from EntryKey to EntryBytes
+                db.createObjectStore('exits');
             },
         });
     }
@@ -176,6 +178,21 @@ export class IndexedDbStore implements Store {
                 const entryKey = [sourceTuple, semanticKey, entryIdentifier];
                 await wrappedTransaction.objectStore("entries").add(entry.serializeBinary(), entryKey);
                 continue;
+            }
+            if (changeBuilder.hasExit()) {
+                const exit: ExitBuilder = changeBuilder.getExit();
+                const srcMuid: MuidBuilder = exit.getSource();
+                const sourceTuple: number[] = [0, commitInfo.medallion, 0];
+                sourceTuple[0] = srcMuid.getTimestamp() || commitInfo.timestamp;
+                sourceTuple[1] = srcMuid.getMedallion() || commitInfo.medallion;
+                sourceTuple[2] = srcMuid.getOffset();
+                const entryMuid = exit.getEntry();
+                const entryIdentifier: number[] = [0,0,0];
+                entryIdentifier[0] = -1 * (entryMuid.getTimestamp() || timestamp);
+                entryIdentifier[1] = entryMuid.getMedallion() || medallion;
+                entryIdentifier[2] = entryMuid.getOffset();
+                const exitKey = [sourceTuple, [], entryIdentifier, -timestamp];
+                await wrappedTransaction.objectStore("exits").add(true, exitKey);
             }
             throw new Error("don't know how to apply this kind of change");
         }

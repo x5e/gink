@@ -10,11 +10,10 @@ package google.gink;
     then permanently remove it once processing has been completed.
     To remove keys from a schema, adding a new Entry with deleting=True 
     is generally better (otherwise prior Entries with earlier timestamps
-    will appear to be in effect).  When the effect Muid is set that indicates
-    that the specified Effect has been processed (it is not a general deletion).
+    will appear to be in effect).  
 */
 message Exit {
-    Muid entry = 1;
-    uint64 expiry = 2;
-    Muid effect = 3;
+    Muid source = 1;
+    Muid entry = 2;
+    uint64 expiry = 3;
 }
