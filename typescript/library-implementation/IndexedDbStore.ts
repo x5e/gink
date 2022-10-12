@@ -1,4 +1,4 @@
-import { info, unwrapValue, ensure } from "./utils";
+import { info, ensure, matches, unwrapKey } from "./utils";
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
 }
@@ -163,9 +163,17 @@ export class IndexedDbStore implements Store {
             }
             if (changeBuilder.hasEntry()) {
                 const entry: EntryBuilder = changeBuilder.getEntry();
-                const srcMuid: MuidBuilder = entry.getSource() || new MuidBuilder();
-                const entryKey = [srcMuid.getTimestamp(), srcMuid.getMedallion(), srcMuid.getOffset(),
-                unwrapValue(entry.getKey()), -timestamp, medallion, offset];
+                // TODO(https://github.com/google/gink/issues/55): explain root
+                const sourceTuple: number[] = [0, commitInfo.medallion, 0];
+                if (entry.hasSource()) {
+                    const srcMuid: MuidBuilder = entry.getSource();
+                    sourceTuple[0] = srcMuid.getTimestamp() || commitInfo.timestamp;
+                    sourceTuple[1] = srcMuid.getMedallion() || commitInfo.medallion;
+                    sourceTuple[2] = srcMuid.getOffset();
+                }
+                const semanticKey = entry.hasKey() ? [unwrapKey(entry.getKey())]  : [];
+                const entryIdentifier: number[] = [-timestamp, medallion, offset];
+                const entryKey = [sourceTuple, semanticKey, entryIdentifier];
                 await wrappedTransaction.objectStore("entries").add(entry.serializeBinary(), entryKey);
                 continue;
             }
@@ -182,18 +190,25 @@ export class IndexedDbStore implements Store {
     }
 
     async getEntry(key: Basic, source?: Muid): Promise<[Muid, Bytes] | undefined> {
-        const search = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0, key];
+        const desiredSrc = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0];
+        const desiredKey = (key == null ? [] : [key]);
+        const search = [desiredSrc, desiredKey];
         const searchRange = IDBKeyRange.lowerBound(search);
-        for (let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange);
-            cursor;
-            cursor = await cursor.continue()) {
-            for (let i = 0; i < 4; i++) {
-                if (cursor.key[i] != search[i]) return;
+        let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange);
+        for (;cursor; cursor = await cursor.continue()) {
+            const cursorSource = cursor.key[0];
+            const cursorKey = cursor.key[1];
+            const cursorEnt = cursor.key[2];
+            if (!matches(cursorSource, desiredSrc)) {
+                return;
+            }
+            if (!matches(cursorKey, desiredKey)) {
+                return;
             }
             const address: Muid = {
-                timestamp: cursor.key[0],
-                medallion: cursor.key[1],
-                offset: cursor.key[2],
+                timestamp: cursorEnt[0],
+                medallion: cursorEnt[1],
+                offset: cursorEnt[2],
             }
             return [address, cursor.value];
         }

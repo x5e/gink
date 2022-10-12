@@ -1,6 +1,6 @@
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
-import { Basic, Muid } from "./typedefs";
+import { Basic, KeyType, Muid } from "./typedefs";
 import { muidToBuilder, wrapValue, unwrapValue, builderToMuid } from "./utils";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
@@ -37,24 +37,32 @@ export class Container {
         this.initialized = ginkInstance.initialized;
     }
 
-    protected async getEntry(key?: Basic): Promise<[Muid | undefined, Container | Basic | undefined]> {
+    protected async getEntry(key?: KeyType): Promise<[Muid | undefined, Container | Basic | undefined]> {
         await this.initialized;
         const result = await this.ginkInstance.store.getEntry(key, this.address);
-        if (!result) return [undefined, undefined];
+        if (!result) {
+            // console.log("no entries found in store");
+            return [undefined, undefined];
+        }
         const [entryAddress, entryBytes] = result;
         const entryBuilder = EntryBuilder.deserializeBinary(entryBytes);
-        if (entryBuilder.hasValue()) return [entryAddress, unwrapValue(entryBuilder.getValue())];
+        if (entryBuilder.hasValue()) {
+            // console.log("found value");
+            return [entryAddress, unwrapValue(entryBuilder.getValue())];
+        }
         if (entryBuilder.hasDestination()) {
+            // console.log("found dest")
             const destAddress = builderToMuid(entryBuilder.getDestination(), entryAddress)
             return [entryAddress, await Container.construct(this.ginkInstance, destAddress)];
         }
         if (entryBuilder.hasDeleting() && entryBuilder.getDeleting()) {
+            // console.log("found deleting");
             return [entryAddress, undefined];
         }
         throw new Error("unsupported entry type");
     }
 
-    protected async addEntry(key?: Basic, value?: Basic | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
+    protected async addEntry(key?: KeyType, value?: Basic | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
         await this.initialized;
         let immediate: boolean = false;
         if (!changeSet) {

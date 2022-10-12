@@ -1,5 +1,5 @@
 import { Container } from "./Container";
-import { Basic, Muid } from "./typedefs";
+import { Basic, Muid, KeyType } from "./typedefs";
 import { Container as ContainerBuilder } from "container_pb";
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
@@ -30,7 +30,7 @@ export class Schema extends Container {
      * @param changeSet an optional change set to put this in.
      * @returns a promise that resolves to the address of the newly created entry  
      */
-    async set(key: Basic, value: Basic | Container, changeSet?: ChangeSet): Promise<Muid> {
+    async set(key: KeyType, value: Basic | Container, changeSet?: ChangeSet): Promise<Muid> {
         return await this.addEntry(key, value, changeSet);
     }
 
@@ -41,7 +41,7 @@ export class Schema extends Container {
      * @param changeSet an optional change set to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
-    async delete(key: Basic, changeSet?: ChangeSet): Promise<Muid> {
+    async delete(key: KeyType, changeSet?: ChangeSet): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, changeSet);
     }
 
@@ -50,7 +50,7 @@ export class Schema extends Container {
     * @param key
     * @returns undefined, a basic value, or a container
     */
-    async get(key: Basic): Promise<Container | Basic | undefined> {
+    async get(key: KeyType): Promise<Container | Basic | undefined> {
         await this.initialized;
         const [entryAddress, entryBytes] = await this.ginkInstance.store.getEntry(key, this.address);
         if (!entryBytes) return;
@@ -68,7 +68,7 @@ export class Schema extends Container {
         throw new Error("not implemented");
     }
 
-    async has(key: Basic): Promise<boolean> {
+    async has(key: KeyType): Promise<boolean> {
         //TODO(TESTME)
         throw new Error("not implemented");
     }

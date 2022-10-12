@@ -22,7 +22,7 @@ tsc.out:
 clean:
 	rm -rf node_modules/*_pb.js webpack.out tsc.out
 
-unit_tests: node_modules javascript_protos
+unit_tests:
 	env jest
 
 integration_test:

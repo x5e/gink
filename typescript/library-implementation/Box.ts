@@ -13,6 +13,7 @@ export class Box extends Container {
             ensure(this.containerBuilder.getBehavior() == ContainerBuilder.Behavior.BOX);
         }
     }
+
     /**
      * Puts a value or a reference to another container in this box. 
      * If a change set is supplied, the function will add the entry to that change set 
@@ -26,8 +27,7 @@ export class Box extends Container {
      * @returns a promise that resolves to the address of the newly created entry  
      */
     async set(value: Basic | Container, changeSet?: ChangeSet): Promise<Muid> {
-        //TODO(TESTME)
-        return await this.addEntry(undefined, value, changeSet);
+        return this.addEntry(undefined, value, changeSet);
     }
 
     /**
@@ -37,8 +37,7 @@ export class Box extends Container {
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
     async clear(changeSet?: ChangeSet): Promise<Muid> {
-        //TODO(TESTME)
-        return await this.addEntry(undefined, Container.DELETION, changeSet);
+        return this.addEntry(undefined, Container.DELETION, changeSet);
     }
 
     /**
@@ -46,13 +45,11 @@ export class Box extends Container {
     * @returns undefined, a basic value, or a container
     */
     async get(): Promise<Container | Basic | undefined> {
-        //TODO(TESTME)
-        return await this.getEntry(undefined)[1];
+        return (await this.getEntry(undefined))[1];
     }
 
     async size(): Promise<number> {
-        //TODO(TESTME)
-        return +!(this.getEntry(undefined)[1] === undefined);
+        return +!((await this.getEntry(undefined))[1] === undefined);
     }
 
 }

@@ -11,8 +11,6 @@ export function now() { return (new Date()).toISOString(); }
 
 export function noOp(_ = null) { };
 
-
-
 /**
  * Randomly selects a number that can be used as a medallion.
  * Note that this doesn't actually have to be cryptographically secure;
@@ -81,7 +79,39 @@ export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid
     };
 }
 
+export function wrapKey(key: number|string): ValueBuilder {
+    const value = new ValueBuilder();
+    if (typeof(key) == "string") {
+        value.setCharacters(key);
+        return value;
+    }
+    if (typeof(key) == "number") {
+        const number = new ValueBuilder.Number();
+        number.setDoubled(key);
+        value.setNumber(number);
+        return value;
+    }
+    throw new Error(`key not a number or string: ${key}`);
+}
+
+export function unwrapKey(value: ValueBuilder): number|string {
+    ensure(value);
+    if (value.hasCharacters()) {
+        return value.getCharacters();
+    }
+    if (value.hasNumber()) {
+        const number = value.getNumber();
+        if (!number.hasDoubled()) {
+            //TODO
+            throw new Error("haven't implemented unwrapping for non-double encoded numbers");
+        }
+        return number.getDoubled();
+    }
+    throw new Error("value isn't a number or string!");
+}
+
 export function unwrapValue(value: ValueBuilder): Basic {
+    ensure(value);
     if (value.hasCharacters()) {
         return value.getCharacters();
     }
@@ -133,3 +163,11 @@ export function wrapValue(arg: Basic): ValueBuilder {
     } while (false);
     return value;
 } 
+
+export function matches(a: any[], b: any[]) {
+    if (a.length != b.length) return false;
+    for (let i=0; i<a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}

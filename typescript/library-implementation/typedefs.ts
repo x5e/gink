@@ -10,6 +10,7 @@ export type ClaimedChains = Map<Medallion, ChainStart>;
 export type Offset = number;
 export type FilePath = string;
 export type NumberStr = string;
+export type KeyType = number | string;
 export type Basic = number | string | boolean | null;  // TODO: add bigints, bytes
 export type ChangeSetInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, string];
 
