@@ -6,7 +6,7 @@ import { Entry as EntryBuilder } from "entry_pb";
 import { ensure, unwrapValue, builderToMuid } from "./utils";
 import { GinkInstance } from "./GinkInstance";
 
-export class Schema extends Container {
+export class Directory extends Container {
 
     constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, containerBuilder);
@@ -51,16 +51,7 @@ export class Schema extends Container {
     * @returns undefined, a basic value, or a container
     */
     async get(key: KeyType): Promise<Container | Basic | undefined> {
-        await this.initialized;
-        const [entryAddress, entryBytes] = await this.ginkInstance.store.getEntry(key, this.address);
-        if (!entryBytes) return;
-        const entryBuilder = EntryBuilder.deserializeBinary(entryBytes);
-        if (entryBuilder.hasValue()) return unwrapValue(entryBuilder.getValue());
-        if (entryBuilder.hasDestination()) {
-            const destAddress = builderToMuid(entryBuilder.getDestination(), entryAddress)
-            return Container.construct(this.ginkInstance, destAddress);
-        }
-        throw new Error("non-trivial entries not supported yet");
+        return (await this.getEntry(key))[1];
     }
 
     async size(): Promise<number> {

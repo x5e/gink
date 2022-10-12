@@ -2,7 +2,7 @@ import { ensure } from "../library-implementation/utils";
 import { GinkInstance } from "../library-implementation/GinkInstance";
 import { ChangeSet } from "../library-implementation/ChangeSet";
 import { IndexedDbStore } from "../library-implementation/IndexedDbStore";
-import { Schema } from "../library-implementation/Schema";
+import { Directory } from "../library-implementation/Directory";
 
 test('set and get Basic data', async function() {
     // set up the objects
@@ -48,6 +48,6 @@ test('use a sub-schema', async function() {
     await schema.set("abc", newSchema);
 
     const anotherProxy = await schema.get("abc");
-    if (!(anotherProxy instanceof Schema)) throw new Error("not a schema?");
+    if (!(anotherProxy instanceof Directory)) throw new Error("not a schema?");
     ensure("123" == await anotherProxy.get("xyz"));
 });

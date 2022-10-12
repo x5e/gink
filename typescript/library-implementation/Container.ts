@@ -6,7 +6,7 @@ import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
 import { Deletion } from "./Deletion";
 import { ensure } from "./utils";
-import { Schema } from "./Schema";
+import { Directory } from "./Directory";
 import { GinkInstance } from "./GinkInstance";
 
 
@@ -20,7 +20,7 @@ export class Container {
             containerBuilder = ContainerBuilder.deserializeBinary(containerBytes);
         }
         if (containerBuilder.getBehavior() == ContainerBuilder.Behavior.SCHEMA) {
-            return (new Schema(ginkInstance, address, containerBuilder));
+            return (new Directory(ginkInstance, address, containerBuilder));
         }
         throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
     }

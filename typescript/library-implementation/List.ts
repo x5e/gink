@@ -9,7 +9,7 @@ import { ensure } from "./utils";
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
  * Doesn't support unshift at the moment because order is defined by insertion order.
  */
-export class Queue extends Container {
+export class List extends Container {
 
     constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, containerBuilder);
@@ -25,21 +25,35 @@ export class Queue extends Container {
      * @returns 
      */
     async push(value: Basic | Container, changeSet?: ChangeSet): Promise<Muid> {
-        //TODO(TESTME)
         return await this.addEntry(undefined, value, changeSet);
     }
 
+    /**
+     * 
+     * @returns The most recently added element.
+     */
     async peek(): Promise<Container | Basic> {
         return (await this.getEntry(undefined))[1];
     }
 
     /**
-     * Returns 
+     * Removes and returns the specified entry of the list (default last),
+     * in the provided change set or immedately if no CS is supplied.
+     * Returns undefined when called on an empty list (and no changes are made).
      * @param muid 
      * @param changeSet 
      */
     async pop(muid?: Muid, changeSet?: ChangeSet): Promise<Container | Basic | undefined> {
         //TODO(TESTME)
+        let returning: Container | Basic;
+        if (!muid) {
+            const result = await this.getEntry(undefined);
+            if (!result[0]) return undefined;
+            muid = result[0];
+            returning = result[1];
+        } else {
+
+        }
         throw new Error("not implemented");
     }
 

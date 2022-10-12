@@ -9,9 +9,9 @@ import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Container as ContainerBuilder } from "container_pb";
-import { Schema } from "./Schema";
+import { Directory } from "./Directory";
 import { Box } from "./Box";
-import { Queue } from "./Queue";
+import { List } from "./List";
 import { Store } from "./Store";
 
 
@@ -57,8 +57,8 @@ export class GinkInstance {
         this.iHave = await this.store.getChainTracker();
     }
 
-    get root(): Schema {
-        return new Schema(this);
+    get root(): Directory {
+        return new Directory(this);
     }
 
     async createBox(changeSet?: ChangeSet): Promise<Box> {
@@ -66,15 +66,15 @@ export class GinkInstance {
         return new Box(this, muid, containerBuilder);
     }
 
-    async createQueue(changeSet?: ChangeSet): Promise<Queue> {
+    async createQueue(changeSet?: ChangeSet): Promise<List> {
         const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.BOX, changeSet);
-        return new Queue(this, muid, containerBuilder);
+        return new List(this, muid, containerBuilder);
     }
 
     // TODO: allow user to specify the types allowed for keys and values
-    async createSchema(changeSet?: ChangeSet): Promise<Schema> {
+    async createSchema(changeSet?: ChangeSet): Promise<Directory> {
         const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.SCHEMA, changeSet);
-        return new Schema(this, muid, containerBuilder);
+        return new Directory(this, muid, containerBuilder);
     }
 
     protected async createContainer(behavior: ContainerBuilder.Behavior, changeSet?: ChangeSet): Promise<[Muid, ContainerBuilder]> {
