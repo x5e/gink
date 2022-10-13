@@ -32,7 +32,7 @@ export class Box extends Container {
 
     /**
      * Adds a deletion marker (tombstone) to the box, effectively clearing it.
-     * The corresponding value will be seen to be unset in the datamodel.
+     * The corresponding value will be seen to be unset in the data model.
      * @param changeSet an optional change set to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */

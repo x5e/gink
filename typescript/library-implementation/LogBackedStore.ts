@@ -132,9 +132,9 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getContainerBytes(address);
     }
 
-    async getEntry(key: Basic, source?: Muid): Promise<[Muid, Bytes]| undefined> {
+    async getEntry(source?: Muid, key?: KeyType, asOf?: number): Promise<[Muid, Bytes]| undefined> {
         await this.initialized;
-        return this.indexedDbStore.getEntry(key, source);
+        return this.indexedDbStore.getEntry(source, key, asOf);
     }
 
     async close() {

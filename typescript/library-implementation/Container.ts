@@ -39,7 +39,7 @@ export class Container {
 
     protected async getEntry(key?: KeyType): Promise<[Muid | undefined, Container | Basic | undefined]> {
         await this.initialized;
-        const result = await this.ginkInstance.store.getEntry(key, this.address);
+        const result = await this.ginkInstance.store.getEntry(this.address, key);
         if (!result) {
             // console.log("no entries found in store");
             return [undefined, undefined];

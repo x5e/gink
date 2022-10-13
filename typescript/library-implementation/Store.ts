@@ -79,7 +79,7 @@ export interface Store {
      * Does a lookup for a given container at a specified address and key, and returns the most
      * recent entry stored (if there is any).
      */
-    getEntry(key: Basic, source?: Muid): Promise<[Muid, Bytes] | undefined>;
+    getEntry(source: Muid, key?: Basic, asOf?: number): Promise<[Muid, Bytes] | undefined>;
 
     /**
      * Closes the underlying data store.  Implicitly awaits on the this.initialized promise.

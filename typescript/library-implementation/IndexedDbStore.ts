@@ -5,7 +5,7 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
 import { openDB, deleteDB, IDBPDatabase } from 'idb';
 import {
     ChangeSetBytes, Medallion, ChainStart, ChangeSetInfoTuple,
-    ClaimedChains, SeenThrough, Offset, Bytes, Basic
+    ClaimedChains, SeenThrough, Offset, Bytes, Basic, KeyType
 } from "./typedefs";
 import { ChangeSetInfo, Muid } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
@@ -174,7 +174,7 @@ export class IndexedDbStore implements Store {
                     sourceTuple[2] = srcMuid.getOffset();
                 }
                 const semanticKey = entry.hasKey() ? [unwrapKey(entry.getKey())]  : [];
-                const entryIdentifier: number[] = [-timestamp, medallion, offset];
+                const entryIdentifier: number[] = [timestamp, medallion, offset];
                 const entryKey = [sourceTuple, semanticKey, entryIdentifier];
                 await wrappedTransaction.objectStore("entries").add(entry.serializeBinary(), entryKey);
                 continue;
@@ -206,12 +206,13 @@ export class IndexedDbStore implements Store {
         return result;
     }
 
-    async getEntry(key: Basic, source?: Muid): Promise<[Muid, Bytes] | undefined> {
+    async getEntry(source: Muid, key?: KeyType, asOf?: number): Promise<[Muid, Bytes] | undefined> {
+        if (!asOf) asOf = Infinity;
         const desiredSrc = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0];
         const desiredKey = (key == null ? [] : [key]);
-        const search = [desiredSrc, desiredKey];
-        const searchRange = IDBKeyRange.lowerBound(search);
-        let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange);
+        const search = [desiredSrc, desiredKey, [asOf]];
+        const searchRange = IDBKeyRange.upperBound(search);
+        let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange, "prev");
         for (;cursor; cursor = await cursor.continue()) {
             const cursorSource = cursor.key[0];
             const cursorKey = cursor.key[1];

@@ -143,7 +143,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         await store.addChangeSet(changeSet.bytes);
         ensure(address.medallion == 4);
         ensure(address.timestamp == 5);
-        const entryBytes = (await store.getEntry("abc", sourceAddress))[1];
+        const entryBytes = (await store.getEntry(sourceAddress, "abc",))[1];
         const entryBuilder = EntryBuilder.deserializeBinary(entryBytes);
         ensure(entryBuilder.getSource().getMedallion() == 1);
         ensure(entryBuilder.getSource().getTimestamp() == 2);
