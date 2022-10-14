@@ -81,6 +81,10 @@ export interface Store {
      */
     getEntry(source: Muid, key?: Basic, asOf?: number): Promise<[Muid, Bytes] | undefined>;
 
+
+    getVisibleEntries(source: Muid, reverse?: boolean, before?: number, after?: number, asOf?: number):
+        AsyncGenerator<[Muid, Bytes], void, unknown>;
+
     /**
      * Closes the underlying data store.  Implicitly awaits on the this.initialized promise.
      */

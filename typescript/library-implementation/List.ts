@@ -6,6 +6,7 @@ import { ChangeSet } from "./ChangeSet";
 import { ensure, muidToBuilder } from "./utils";
 import { Exit as ExitBuilder } from "exit_pb";
 import { Change as ChangeBuilder } from "change_pb";
+import { Entry as EntryBuilder } from "entry_pb";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
@@ -83,9 +84,13 @@ export class List extends Container {
         throw new Error("not implemented");
     }
 
-    async entries(): Promise<void> {
-        //TODO(TESTME)
-        throw new Error("not implemented");
+    entries(): AsyncGenerator<[Muid, Container | Basic | undefined], void, unknown> {
+        const thisList = this;
+        return (async function*(){
+            for await (const [muid, bytes] of thisList.ginkInstance.store.getVisibleEntries(thisList.address)) {
+                yield [muid, await thisList.convertEntryBytes(bytes, muid)]
+            }
+        })();
     }
 
     async keys(): Promise<void> {

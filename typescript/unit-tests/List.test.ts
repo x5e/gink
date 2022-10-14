@@ -7,7 +7,7 @@ import { Muid } from "../library-implementation/typedefs";
 
 test('push to a queue and peek', async function() {
     // set up the objects
-    const store = new IndexedDbStore('box-test1', true);
+    const store = new IndexedDbStore('list-test1', true);
     const instance = new GinkInstance(store);
 
     const queue: List = await instance.createQueue();
@@ -17,4 +17,26 @@ test('push to a queue and peek', async function() {
 
     const val = await queue.peek();
     ensure(val == "Hello, World!");
+});
+
+
+test('push twice', async function() {
+    // set up the objects
+    const store = new IndexedDbStore('list-test1', true);
+    const instance = new GinkInstance(store);
+
+    const queue: List = await instance.createQueue();
+    const aMuid = await queue.push('A');
+    const bMuid = await queue.push("B");
+    console.log(`aMuid=${JSON.stringify(aMuid.timestamp)}`);
+    console.log(`bMuid=${JSON.stringify(bMuid.timestamp)}`);
+
+    const thing = store.getEntries(queue.address);
+    for await (let val of thing) {
+        console.log(`val=${JSON.stringify(val)}`);
+    }
+
+    for await (let val of queue.entries()) {
+        console.log(`val=${JSON.stringify(val)}`);
+    }
 });

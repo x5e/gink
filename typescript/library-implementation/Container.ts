@@ -1,6 +1,6 @@
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
-import { Basic, KeyType, Muid } from "./typedefs";
+import { Basic, KeyType, Muid, Bytes } from "./typedefs";
 import { muidToBuilder, wrapValue, unwrapValue, builderToMuid } from "./utils";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
@@ -37,6 +37,24 @@ export class Container {
         this.initialized = ginkInstance.initialized;
     }
 
+    protected async convertEntryBytes(entryBytes: Bytes, entryAddress?: Muid) {
+        const entryBuilder = EntryBuilder.deserializeBinary(entryBytes);
+        if (entryBuilder.hasValue()) {
+            // console.log("found value");
+            return unwrapValue(entryBuilder.getValue());
+        }
+        if (entryBuilder.hasDestination()) {
+            // console.log("found dest")
+            const destAddress = builderToMuid(entryBuilder.getDestination(), entryAddress)
+            return await Container.construct(this.ginkInstance, destAddress);
+        }
+        if (entryBuilder.hasDeleting() && entryBuilder.getDeleting()) {
+            // console.log("found deleting");
+            return undefined;
+        }
+        throw new Error("unsupported entry type");
+    }
+
     protected async getEntry(key?: KeyType): Promise<[Muid | undefined, Container | Basic | undefined]> {
         await this.initialized;
         const result = await this.ginkInstance.store.getEntry(this.address, key);
@@ -45,21 +63,7 @@ export class Container {
             return [undefined, undefined];
         }
         const [entryAddress, entryBytes] = result;
-        const entryBuilder = EntryBuilder.deserializeBinary(entryBytes);
-        if (entryBuilder.hasValue()) {
-            // console.log("found value");
-            return [entryAddress, unwrapValue(entryBuilder.getValue())];
-        }
-        if (entryBuilder.hasDestination()) {
-            // console.log("found dest")
-            const destAddress = builderToMuid(entryBuilder.getDestination(), entryAddress)
-            return [entryAddress, await Container.construct(this.ginkInstance, destAddress)];
-        }
-        if (entryBuilder.hasDeleting() && entryBuilder.getDeleting()) {
-            // console.log("found deleting");
-            return [entryAddress, undefined];
-        }
-        throw new Error("unsupported entry type");
+        return [entryAddress, await this.convertEntryBytes(entryBytes, entryAddress)];
     }
 
     protected async addEntry(key?: KeyType, value?: Basic | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
