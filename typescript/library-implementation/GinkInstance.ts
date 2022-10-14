@@ -66,13 +66,13 @@ export class GinkInstance {
         return new Box(this, muid, containerBuilder);
     }
 
-    async createQueue(changeSet?: ChangeSet): Promise<List> {
+    async createList(changeSet?: ChangeSet): Promise<List> {
         const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.BOX, changeSet);
         return new List(this, muid, containerBuilder);
     }
 
     // TODO: allow user to specify the types allowed for keys and values
-    async createSchema(changeSet?: ChangeSet): Promise<Directory> {
+    async createDirectory(changeSet?: ChangeSet): Promise<Directory> {
         const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.SCHEMA, changeSet);
         return new Directory(this, muid, containerBuilder);
     }

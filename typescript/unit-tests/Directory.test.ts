@@ -8,7 +8,7 @@ test('set and get Basic data', async function() {
     // set up the objects
     const store = new IndexedDbStore('test1', true);
     const instance = new GinkInstance(store);
-    const schema = await instance.createSchema();
+    const schema = await instance.createDirectory();
 
     // set a value
     await schema.set("a key", "a value");
@@ -21,7 +21,7 @@ test('set and get Basic data', async function() {
 test('set multiple key/value pairs in one change-set', async function() {
     const store = new IndexedDbStore('test2', true);
     const instance = new GinkInstance(store);
-    const schema = await instance.createSchema();
+    const schema = await instance.createDirectory();
 
     // make multiple changes in a change set
     const changeSet = new ChangeSet();
@@ -40,10 +40,10 @@ test('set multiple key/value pairs in one change-set', async function() {
 
 test('use a sub-schema', async function() {
     const instance = new GinkInstance(new IndexedDbStore('test3', true));
-    const schema = await instance.createSchema();
+    const schema = await instance.createDirectory();
 
     // set things up
-    const newSchema = await instance.createSchema();
+    const newSchema = await instance.createDirectory();
     await newSchema.set("xyz", "123");
     await schema.set("abc", newSchema);
 

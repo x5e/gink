@@ -37,7 +37,8 @@ export class Container {
         this.initialized = ginkInstance.initialized;
     }
 
-    protected async convertEntryBytes(entryBytes: Bytes, entryAddress?: Muid) {
+    protected async convertEntryBytes(entryBytes: Bytes, entryAddress?: Muid): Promise<Basic | Container | undefined> {
+        ensure(entryBytes instanceof Uint8Array);
         const entryBuilder = EntryBuilder.deserializeBinary(entryBytes);
         if (entryBuilder.hasValue()) {
             // console.log("found value");

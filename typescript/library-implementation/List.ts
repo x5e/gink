@@ -1,16 +1,15 @@
 import { Container as ContainerBuilder } from "container_pb";
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { Basic, Muid } from "./typedefs";
+import { Basic, Muid, MuidBytesPair } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
 import { ensure, muidToBuilder } from "./utils";
 import { Exit as ExitBuilder } from "exit_pb";
 import { Change as ChangeBuilder } from "change_pb";
-import { Entry as EntryBuilder } from "entry_pb";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
- * Doesn't support unshift at the moment because order is defined by insertion order.
+ * Doesn't support unshift because order is defined by insertion order.
  */
 export class List extends Container {
 
@@ -32,31 +31,28 @@ export class List extends Container {
     }
 
     /**
-     * 
-     * @returns The most recently added element.
-     */
-    async peek(): Promise<Container | Basic> {
-        return (await this.getEntry(undefined))[1];
-    }
-
-    /**
      * Removes and returns the specified entry of the list (default last),
      * in the provided change set or immedately if no CS is supplied.
      * Returns undefined when called on an empty list (and no changes are made).
      * @param muid 
      * @param changeSet 
      */
-    async pop(muid?: Muid, changeSet?: ChangeSet): Promise<Container | Basic | undefined> {
-        //TODO(TESTME)
+    async pop(what?: Muid | number, changeSet?: ChangeSet): Promise<Container | Basic | undefined> {
         await this.initialized;
         let returning: Container | Basic;
-        if (muid) {
-            throw new Error("not implemented");
+        let muid: Muid;
+        if (what && typeof (what) == "object") {
+            muid = what;
+            const entry = await this.ginkInstance.store.getEntry(this.address, muid);
+            ensure(entry[0].timestamp == muid.timestamp && entry[0].offset == muid.offset);
+            returning = await this.convertEntryBytes(entry[1], muid);
         } else {
-            const result = await this.getEntry(undefined);
-            if (!result[0]) return undefined;
-            muid = result[0];
-            returning = result[1];
+            what = (typeof (what) == "number") ? what : -1;
+            const changePairs = await this.ginkInstance.store.getVisibleEntries(this.address, what)
+            if (changePairs.length == 0) return undefined;
+            const changePair = changePairs.at(-1);
+            returning = await this.convertEntryBytes(changePair[1], changePair[0]);
+            muid = changePair[0];
         }
         let immediate: boolean = false;
         if (!changeSet) {
@@ -76,42 +72,40 @@ export class List extends Container {
     }
 
     /**
-     * Removes a value from the beginning of the queue and returns it.
-     * @param changeSet 
+     * Alias for this.pop(0, changeSet)
      */
     async shift(changeSet?: ChangeSet): Promise<Container | Basic | undefined> {
-        //TODO(TESTME)
-        throw new Error("not implemented");
+        return await this.pop(0, changeSet)
     }
 
-    entries(): AsyncGenerator<[Muid, Container | Basic | undefined], void, unknown> {
+    /**
+     * 
+     * @param index Index to look for the thing, negative counts from end.
+     * @param asOf 
+     * @returns value at the position of the list, or undefined if list is too small
+     */
+    async at(index: number, asOf: number=Infinity) {
+        const pairs = await this.ginkInstance.store.getVisibleEntries(this.address, index, asOf);
+        if (pairs.length == 0) return undefined;
+        if (index >= 0 && pairs.length < index+1) return undefined;
+        if (index < 0 && pairs.length < -index) return undefined;
+        const [muid, bytes] = pairs.at(-1);
+        return this.convertEntryBytes(bytes, muid);
+    }
+
+    async toArray(asOf: number=Infinity, through: number = Infinity): Promise<(Container | Basic)[]> {
         const thisList = this;
-        return (async function*(){
-            const pairs = await thisList.ginkInstance.store.getVisibleEntries(thisList.address);
-            for (const [muid, bytes] of pairs) {
-                yield [muid, await thisList.convertEntryBytes(bytes, muid)]
-            }
-        })();
+        const pairs: MuidBytesPair[] = await thisList.ginkInstance.store.getVisibleEntries(thisList.address, through, asOf);
+        const transformed = await Promise.all(pairs.map(async function (changePair: MuidBytesPair): Promise<Container | Basic> {
+            return await thisList.convertEntryBytes(changePair[1], changePair[0])
+        }));
+        return transformed;
     }
 
-    async keys(): Promise<void> {
+    async size(asOf: number=Infinity): Promise<number> {
         //TODO(TESTME)
-        throw new Error("not implemented");
-    }
-
-    async values(): Promise<void> {
-        //TODO(TESTME)
-        throw new Error("not implemented");
-    }
-
-    async at(index: number): Promise<void> {
-        //TODO(TESTME)
-    }
-
-
-    async size(): Promise<number> {
-        //TODO(TESTME)
-        throw new Error("not implemented");
+        const pairs: MuidBytesPair[] = await this.ginkInstance.store.getVisibleEntries(this.address, Infinity, asOf);
+        return pairs.length;
     }
 
 }
