@@ -1,6 +1,6 @@
 import { ChainTracker } from "./ChainTracker";
 import { Medallion, ChainStart, SeenThrough, Muid, Bytes, Basic, ChangeSetInfo,
-    ClaimedChains 
+    ClaimedChains, ChangePair
     } from "./typedefs";
 
 export interface Store {
@@ -81,9 +81,7 @@ export interface Store {
      */
     getEntry(source: Muid, key?: Basic, asOf?: number): Promise<[Muid, Bytes] | undefined>;
 
-
-    getVisibleEntries(source: Muid, reverse?: boolean, before?: number, after?: number, asOf?: number):
-        AsyncGenerator<[Muid, Bytes], void, unknown>;
+    getVisibleEntries(source: Muid, count?: number, asOf?: number): Promise<ChangePair[]>;
 
     /**
      * Closes the underlying data store.  Implicitly awaits on the this.initialized promise.

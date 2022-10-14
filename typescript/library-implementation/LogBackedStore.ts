@@ -1,5 +1,5 @@
 import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, Basic } from "./typedefs";
-import { ChangeSetInfo, Muid } from "./typedefs";
+import { ChangeSetInfo, Muid, ChangePair } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -80,12 +80,11 @@ export class LogBackedStore implements Store {
         }
     }
 
-    getVisibleEntries(source: Muid, reverse?: boolean, before?: number, after?: number, asOf?: number):
-            AsyncGenerator<[Muid, Bytes], void, unknown> { 
-        // Note that this will break if it's not initalized first...
-        // TODO: figure out how to await on this.initalized
-        return this.indexedDbStore.getVisibleEntries(source, reverse, before, after, asOf);
+    async getVisibleEntries(source: Muid, count?: number, asOf?: number): Promise<ChangePair[]> {
+        await this.initialized;
+        return this.indexedDbStore.getVisibleEntries(source, count, asOf);
     }
+
 
     async getCommitsProcessed() {
         await this.initialized;

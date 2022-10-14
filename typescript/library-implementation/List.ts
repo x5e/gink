@@ -87,7 +87,8 @@ export class List extends Container {
     entries(): AsyncGenerator<[Muid, Container | Basic | undefined], void, unknown> {
         const thisList = this;
         return (async function*(){
-            for await (const [muid, bytes] of thisList.ginkInstance.store.getVisibleEntries(thisList.address)) {
+            const pairs = await thisList.ginkInstance.store.getVisibleEntries(thisList.address);
+            for (const [muid, bytes] of pairs) {
                 yield [muid, await thisList.convertEntryBytes(bytes, muid)]
             }
         })();

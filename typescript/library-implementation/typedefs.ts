@@ -36,6 +36,8 @@ export interface Muid {
     offset: number;
 }
 
+export type ChangePair = [Muid, Bytes];
+
 export interface ChangeSetInfo {
     timestamp: Timestamp;
     medallion: Medallion;
