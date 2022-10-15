@@ -1,7 +1,7 @@
 import { Container as ContainerBuilder } from "container_pb";
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { Basic, Muid, MuidBytesPair } from "./typedefs";
+import { Basic, Muid, MuidBytesPair, MuidContentsPair } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
 import { ensure, muidToBuilder } from "./utils";
 import { Exit as ExitBuilder } from "exit_pb";
@@ -48,6 +48,7 @@ export class List extends Container {
             returning = await this.convertEntryBytes(entry[1], muid);
         } else {
             what = (typeof (what) == "number") ? what : -1;
+            // Should probably change the implementation to not copy all intermediate entries into memory.
             const changePairs = await this.ginkInstance.store.getVisibleEntries(this.address, what)
             if (changePairs.length == 0) return undefined;
             const changePair = changePairs.at(-1);
@@ -106,6 +107,21 @@ export class List extends Container {
         //TODO(TESTME)
         const pairs: MuidBytesPair[] = await this.ginkInstance.store.getVisibleEntries(this.address, Infinity, asOf);
         return pairs.length;
+    }
+
+    entries(asOf: number=Infinity, through: number=Infinity): AsyncGenerator<MuidContentsPair, void, unknown> {
+        const thisList = this;
+        return (async function*(){
+            // Note: loading all entry data into memory despite using an async generator due to shitty IndexedDb 
+            // behavior of closing transactions when you await on something else.  Hopefully they'll fix that in
+            // the future and I can improve this.  Alternative, it might make sense to hydrate everything in a single pass.
+            const pairs = await thisList.ginkInstance.store.getVisibleEntries(thisList.address, through, asOf);
+            for (const pair of pairs) {
+                const hydrated = await thisList.convertEntryBytes(pair[1], pair[0]);
+                const yielding: MuidContentsPair = [pair[0], hydrated];
+                yield yielding;
+            }
+        })();
     }
 
 }

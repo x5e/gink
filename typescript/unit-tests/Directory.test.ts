@@ -51,3 +51,22 @@ test('use a sub-schema', async function() {
     if (!(anotherProxy instanceof Directory)) throw new Error("not a schema?");
     ensure("123" == await anotherProxy.get("xyz"));
 });
+
+test('convert to standard Map', async function() {
+    const instance = new GinkInstance(new IndexedDbStore('convert', true));
+    const directory = await instance.createDirectory();
+
+    await directory.set("foo", "bar");
+    await directory.set("bar", "baz");
+    await directory.delete("foo");
+    await directory.set("bar", "iron");
+    await directory.set("cheese", "fries");
+
+    const asMap = await directory.toMap();
+    console.log(JSON.stringify(Array.from(asMap.entries())));
+    ensure(asMap.size == 2);
+    ensure(!asMap.has("foo"));
+    ensure(asMap.get("bar") == "iron");
+    ensure(asMap.get("cheese") == "fries");
+
+})

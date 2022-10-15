@@ -81,7 +81,9 @@ export interface Store {
      */
     getEntry(source: Muid, key?: KeyType|Muid, asOf?: number): Promise<[Muid, Bytes] | undefined>;
 
-    getVisibleEntries(source: Muid, count?: number, asOf?: number): Promise<MuidBytesPair[]>;
+    getVisibleEntries(source: Muid, through?: number, asOf?: number): Promise<MuidBytesPair[]>;
+
+    getEntries(source: Muid, asOf?: number): Promise<[KeyType, Muid, Bytes][]> ;
 
     /**
      * Closes the underlying data store.  Implicitly awaits on the this.initialized promise.

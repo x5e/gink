@@ -5,7 +5,7 @@ import { IndexedDbStore } from "../library-implementation/IndexedDbStore";
 import { List } from "../library-implementation/List";
 import { Muid } from "../library-implementation/typedefs";
 
-test('push to a queue and peek', async function() {
+test('push to a queue and peek', async function () {
     // set up the objects
     const store = new IndexedDbStore('list-test1', true);
     const instance = new GinkInstance(store);
@@ -20,7 +20,7 @@ test('push to a queue and peek', async function() {
 });
 
 
-test('push and pop', async function() {
+test('push and pop', async function () {
     // set up the objects
     const store = new IndexedDbStore('list-test2', true);
     const instance = new GinkInstance(store);
@@ -51,10 +51,10 @@ test('push and pop', async function() {
     const poppedByIndex = await list.pop(2);
     ensure(poppedByIndex == "F");
     ensure(matches(await list.toArray(), ["B", "E", "G"]));
-    
+
 });
 
-test('size and at', async function() {
+test('size and at', async function () {
     // set up the objects
     const store = new IndexedDbStore('list-test3', true);
     const instance = new GinkInstance(store);
@@ -83,4 +83,48 @@ test('size and at', async function() {
     const third = await list.at(3);
     ensure(third == undefined);
 
+});
+
+test('entries', async function () {
+    // set up the objects
+    const store = new IndexedDbStore('list-entries-test', true);
+    const instance = new GinkInstance(store);
+
+    const list: List = await instance.createList();
+    await list.push('A');
+    await list.push("B");
+    await list.push("C");
+
+    const buffer = [];
+    for await (const [muid, contents] of list.entries()) {
+        const val = await list.pop(muid)
+        ensure(val == contents, `val=${val}, contents=${contents}`);
+        buffer.push(contents);
+    }
+    ensure(matches(buffer, ["A","B","C"]));
+});
+
+test('list-changeset', async function() {
+    const store = new IndexedDbStore('list-changeset', true);
+    const instance = new GinkInstance(store);
+
+    const changeSet = new ChangeSet();
+    const list: List = await instance.createList(changeSet);
+    await list.push('A', changeSet);
+    await list.push("B", changeSet);
+    await list.push("C", changeSet);
+    await instance.addChangeSet(changeSet);
+
+    ensure(changeSet.timestamp != undefined && changeSet.timestamp > 0);
+    ensure(list.address.timestamp == changeSet.timestamp);
+    for await (const [muid, _] of list.entries()) {
+        ensure(muid.timestamp == changeSet.timestamp);
+    }
+
+    const changeSet2 = new ChangeSet();
+    list.shift(changeSet2);
+    list.push("D", changeSet2);
+    ensure(matches(await list.toArray(), ["A", "B", "C"]));
+    await instance.addChangeSet(changeSet2);
+    ensure(matches(await list.toArray(), ["B", "C", "D"]));
 });

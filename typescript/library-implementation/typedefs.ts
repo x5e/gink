@@ -38,6 +38,8 @@ export interface Muid {
 
 export type MuidBytesPair = [Muid, Bytes];
 
+export type MuidContentsPair = [Muid, any];
+
 export interface ChangeSetInfo {
     timestamp: Timestamp;
     medallion: Medallion;

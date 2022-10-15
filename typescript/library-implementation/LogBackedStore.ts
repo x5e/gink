@@ -143,6 +143,11 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getEntry(source, key, asOf);
     }
 
+    async getEntries(source: Muid, asOf: number=Infinity): Promise<[KeyType, Muid, Bytes][]> {
+        await this.initialized;
+        return this.getEntries(source, asOf);
+    }
+
     async close() {
         await this.initialized;
         await this.fileHandle.close();

@@ -236,6 +236,26 @@ export class IndexedDbStore implements Store {
         }
     }
 
+    async getEntries(source: Muid, asOf: number=Infinity): Promise<[KeyType, Muid, Bytes][]> {
+        const desiredSrc = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0];
+        const lower = [desiredSrc];
+        const searchRange = IDBKeyRange.lowerBound(lower);
+        let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange, "next");
+        const result = []
+        for (;cursor && matches(cursor.key[0], desiredSrc); cursor = await cursor.continue()) {
+            if (cursor.key[2][0] < asOf) {
+                const cursorEnt = cursor.key[2];
+                const address: Muid = {
+                    timestamp: cursorEnt[0],
+                    medallion: cursorEnt[1],
+                    offset: cursorEnt[2],
+                }
+                result.push([cursor.key[1][0], address, cursor.value]);
+            }
+        }
+        return result;
+    }
+
     /**
      * Returns entry data for a List.  Does it in a single pass rather than using an async generator
      * because if a user tried to await on something else between entries it would cause the IndexedDb

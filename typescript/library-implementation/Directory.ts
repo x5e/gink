@@ -2,8 +2,7 @@ import { Container } from "./Container";
 import { Basic, Muid, KeyType } from "./typedefs";
 import { Container as ContainerBuilder } from "container_pb";
 import { ChangeSet } from "./ChangeSet";
-import { Entry as EntryBuilder } from "entry_pb";
-import { ensure, unwrapValue, builderToMuid } from "./utils";
+import { ensure } from "./utils";
 import { GinkInstance } from "./GinkInstance";
 
 export class Directory extends Container {
@@ -55,37 +54,28 @@ export class Directory extends Container {
     }
 
     async size(): Promise<number> {
-        //TODO(TESTME)
-        throw new Error("not implemented");
+        // There almost certainly is a more efficient implementation that doesn't require loading
+        // the entire contents of the map into memory first.
+        return (await this.toMap()).size;
     }
 
     async has(key: KeyType): Promise<boolean> {
-        //TODO(TESTME)
-        throw new Error("not implemented");
+        await this.initialized;
+        const result = await this.ginkInstance.store.getEntry(this.address, key);
+        return result[1] !== undefined;
     }
 
-    async entries(): Promise<void> {
-        //TODO(TESTME)
-        throw new Error("not implemented");
+    async toMap(asOf: number=Infinity): Promise<Map<KeyType, any>> {
+        const entries = await this.ginkInstance.store.getEntries(this.address, asOf);
+        const resultMap = new Map();
+        for (const [key, muid, bytes] of entries) {
+            const val = await this.convertEntryBytes(bytes, muid);
+            if (val === undefined) {
+                resultMap.delete(key);
+            } else {
+                resultMap.set(key, val);
+            }
+        }
+        return resultMap;
     }
-
-    async keys(): Promise<void> {
-        //TODO(TESTME)
-        throw new Error("not implemented");
-    }
-
-    async values(): Promise<void> {
-        //TODO(TESTME)
-        throw new Error("not implemented");
-    }
-
-    async clear(changeSet?: ChangeSet): Promise<Muid> {
-        //TODO(TESTME)
-        throw new Error("not implemented");
-    }
-
-    async forEach(callBack, thisArg): Promise<void> {
-
-    }
-
 }
