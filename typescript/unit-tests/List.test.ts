@@ -128,3 +128,27 @@ test('list-changeset', async function() {
     await instance.addChangeSet(changeSet2);
     ensure(matches(await list.toArray(), ["B", "C", "D"]));
 });
+
+test('List.toJSON', async function() {
+    // set up the objects
+    const store = new IndexedDbStore('List.toJSON', true);
+    const instance = new GinkInstance(store);
+
+    const list: List = await instance.createList();
+    await list.push('A');
+    await list.push(true);
+    await list.push(false);
+
+    const subList = await instance.createList();
+    await subList.push(33);
+    await list.push(subList);
+
+    const subDir = await instance.createDirectory();
+    await subDir.set("cheese", "fries");
+    await list.push(subDir);
+
+    const asJson = await list.toJson();
+
+    ensure(asJson == `["A",true,false,[33],{"cheese":"fries"}]`);
+
+});

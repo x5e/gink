@@ -1,12 +1,11 @@
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
-import { Basic, KeyType, Muid, Bytes } from "./typedefs";
-import { muidToBuilder, wrapValue, unwrapValue, builderToMuid } from "./utils";
+import { Basic, KeyType, Muid } from "./typedefs";
+import { muidToBuilder, wrapValue } from "./utils";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
 import { Deletion } from "./Deletion";
 import { ensure } from "./utils";
-import { Directory } from "./Directory";
 import { GinkInstance } from "./GinkInstance";
 
 
@@ -14,16 +13,6 @@ export class Container {
     readonly initialized: Promise<void>;
     protected static readonly DELETION = new Deletion();
 
-    static async construct(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
-        if (!containerBuilder) {
-            const containerBytes = ensure(await ginkInstance.store.getContainerBytes(address));
-            containerBuilder = ContainerBuilder.deserializeBinary(containerBytes);
-        }
-        if (containerBuilder.getBehavior() == ContainerBuilder.Behavior.SCHEMA) {
-            return (new Directory(ginkInstance, address, containerBuilder));
-        }
-        throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
-    }
 
     /**
      * 
@@ -35,35 +24,6 @@ export class Container {
         protected containerBuilder?: ContainerBuilder) {
         ensure(containerBuilder || !address);
         this.initialized = ginkInstance.initialized;
-    }
-
-    protected async convertEntryBytes(entryBytes: Bytes, entryAddress?: Muid): Promise<Basic | Container | undefined> {
-        ensure(entryBytes instanceof Uint8Array);
-        const entryBuilder = EntryBuilder.deserializeBinary(entryBytes);
-        if (entryBuilder.hasValue()) {
-            // console.log("found value");
-            return unwrapValue(entryBuilder.getValue());
-        }
-        if (entryBuilder.hasDestination()) {
-            // console.log("found dest")
-            const destAddress = builderToMuid(entryBuilder.getDestination(), entryAddress)
-            return await Container.construct(this.ginkInstance, destAddress);
-        }
-        if (entryBuilder.hasDeleting() && entryBuilder.getDeleting()) {
-            // console.log("found deleting");
-            return undefined;
-        }
-        throw new Error("unsupported entry type");
-    }
-
-    protected async getEntry(key?: KeyType): Promise<[Muid | undefined, Container | Basic | undefined]> {
-        await this.initialized;
-        const result = await this.ginkInstance.store.getEntry(this.address, key);
-        if (result === undefined) {
-            return [undefined, undefined];
-        }
-        const [entryAddress, entryBytes] = result;
-        return [entryAddress, await this.convertEntryBytes(entryBytes, entryAddress)];
     }
 
     protected async addEntry(key?: KeyType, value?: Basic | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
@@ -101,5 +61,4 @@ export class Container {
         }
         return address;
     }
-
 }

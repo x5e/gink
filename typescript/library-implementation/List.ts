@@ -3,9 +3,10 @@ import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
 import { Basic, Muid, MuidBytesPair, MuidContentsPair } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
-import { ensure, muidToBuilder } from "./utils";
+import { ensure, muidToBuilder, muidToString } from "./utils";
 import { Exit as ExitBuilder } from "exit_pb";
 import { Change as ChangeBuilder } from "change_pb";
+import { convertEntryBytes, toJson } from "./factories";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
@@ -16,7 +17,7 @@ export class List extends Container {
     constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, containerBuilder);
         if (this.address) {
-            ensure(this.containerBuilder.getBehavior() == ContainerBuilder.Behavior.BOX);
+            ensure(this.containerBuilder.getBehavior() == ContainerBuilder.Behavior.QUEUE);
         }
     }
 
@@ -45,14 +46,14 @@ export class List extends Container {
             muid = what;
             const entry = await this.ginkInstance.store.getEntry(this.address, muid);
             ensure(entry[0].timestamp == muid.timestamp && entry[0].offset == muid.offset);
-            returning = await this.convertEntryBytes(entry[1], muid);
+            returning = await convertEntryBytes(this.ginkInstance, entry[1], muid);
         } else {
             what = (typeof (what) == "number") ? what : -1;
             // Should probably change the implementation to not copy all intermediate entries into memory.
             const changePairs = await this.ginkInstance.store.getVisibleEntries(this.address, what)
             if (changePairs.length == 0) return undefined;
             const changePair = changePairs.at(-1);
-            returning = await this.convertEntryBytes(changePair[1], changePair[0]);
+            returning = await convertEntryBytes(this.ginkInstance, changePair[1], changePair[0]);
             muid = changePair[0];
         }
         let immediate: boolean = false;
@@ -91,14 +92,14 @@ export class List extends Container {
         if (index >= 0 && pairs.length < index+1) return undefined;
         if (index < 0 && pairs.length < -index) return undefined;
         const [muid, bytes] = pairs.at(-1);
-        return this.convertEntryBytes(bytes, muid);
+        return convertEntryBytes(this.ginkInstance, bytes, muid);
     }
 
     async toArray(asOf: number=Infinity, through: number = Infinity): Promise<(Container | Basic)[]> {
         const thisList = this;
         const pairs: MuidBytesPair[] = await thisList.ginkInstance.store.getVisibleEntries(thisList.address, through, asOf);
         const transformed = await Promise.all(pairs.map(async function (changePair: MuidBytesPair): Promise<Container | Basic> {
-            return await thisList.convertEntryBytes(changePair[1], changePair[0])
+            return await convertEntryBytes(thisList.ginkInstance, changePair[1], changePair[0])
         }));
         return transformed;
     }
@@ -117,11 +118,39 @@ export class List extends Container {
             // the future and I can improve this.  Alternative, it might make sense to hydrate everything in a single pass.
             const pairs = await thisList.ginkInstance.store.getVisibleEntries(thisList.address, through, asOf);
             for (const pair of pairs) {
-                const hydrated = await thisList.convertEntryBytes(pair[1], pair[0]);
+                const hydrated = await convertEntryBytes(thisList.ginkInstance, pair[1], pair[0]);
                 const yielding: MuidContentsPair = [pair[0], hydrated];
                 yield yielding;
             }
         })();
+    }
+
+    /**
+     * 
+     * @param indent 
+     * @param asOf 
+     * @param seen 
+     * @returns 
+     */
+    async toJson(indent: number=0, asOf: number=Infinity, seen?: Set<string>): Promise<string> {
+        if (seen === undefined) seen = new Set();
+        ensure(typeof (indent) == "number");
+        const mySig = muidToString(this.address);
+        if (seen.has(mySig)) return "null";
+        seen.add(mySig);
+        const asArray = await this.toArray(asOf);
+        let returning = "[";
+        let first = true;
+        for (const value of asArray) {
+            if (first) {
+                first = false;
+            } else {
+                returning += ",";
+            }
+            returning += await toJson(value, indent + 1, asOf, seen);
+        }
+        returning += "]";
+        return returning;
     }
 
 }

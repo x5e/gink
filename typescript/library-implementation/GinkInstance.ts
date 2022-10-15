@@ -67,7 +67,7 @@ export class GinkInstance {
     }
 
     async createList(changeSet?: ChangeSet): Promise<List> {
-        const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.BOX, changeSet);
+        const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.QUEUE, changeSet);
         return new List(this, muid, containerBuilder);
     }
 

@@ -63,10 +63,24 @@ test('convert to standard Map', async function() {
     await directory.set("cheese", "fries");
 
     const asMap = await directory.toMap();
-    console.log(JSON.stringify(Array.from(asMap.entries())));
+    // console.log(JSON.stringify(Array.from(asMap.entries())));
     ensure(asMap.size == 2);
     ensure(!asMap.has("foo"));
     ensure(asMap.get("bar") == "iron");
     ensure(asMap.get("cheese") == "fries");
 
 })
+
+test('Directory.toJSON', async function () {
+    const instance = new GinkInstance(new IndexedDbStore('toJSON', true));
+    const directory = await instance.createDirectory();
+
+    await directory.set("foo", "bar");
+    await directory.set("bar", 3);
+    await directory.set("zoom", null);
+    const other = await instance.createDirectory();
+    await other.set("xxx", "yyy");
+    await directory.set("blue", other);
+    const asJSON = await directory.toJson();
+    ensure(asJSON == `{"bar":3,"blue":{"xxx":"yyy"},"foo":"bar","zoom":null}`, asJSON);
+});

@@ -2,8 +2,9 @@ import { Container } from "./Container";
 import { Basic, Muid, KeyType } from "./typedefs";
 import { Container as ContainerBuilder } from "container_pb";
 import { ChangeSet } from "./ChangeSet";
-import { ensure } from "./utils";
+import { ensure, muidToString } from "./utils";
 import { GinkInstance } from "./GinkInstance";
+import { toJson, convertEntryBytes } from "./factories";
 
 export class Directory extends Container {
 
@@ -50,7 +51,13 @@ export class Directory extends Container {
     * @returns undefined, a basic value, or a container
     */
     async get(key: KeyType): Promise<Container | Basic | undefined> {
-        return (await this.getEntry(key))[1];
+        await this.initialized;
+        const result = await this.ginkInstance.store.getEntry(this.address, key);
+        if (result === undefined) {
+            return undefined;
+        }
+        const [entryAddress, entryBytes] = result;
+        return convertEntryBytes(this.ginkInstance, entryBytes, entryAddress);
     }
 
     async size(): Promise<number> {
@@ -65,11 +72,11 @@ export class Directory extends Container {
         return result[1] !== undefined;
     }
 
-    async toMap(asOf: number=Infinity): Promise<Map<KeyType, any>> {
+    async toMap(asOf: number = Infinity): Promise<Map<KeyType, any>> {
         const entries = await this.ginkInstance.store.getEntries(this.address, asOf);
         const resultMap = new Map();
         for (const [key, muid, bytes] of entries) {
-            const val = await this.convertEntryBytes(bytes, muid);
+            const val = await convertEntryBytes(this.ginkInstance, bytes, muid);
             if (val === undefined) {
                 resultMap.delete(key);
             } else {
@@ -77,5 +84,28 @@ export class Directory extends Container {
             }
         }
         return resultMap;
+    }
+
+    async toJson(indent: number = 0, asOf: number = Infinity, seen?: Set<string>): Promise<string> {
+        //TODO(https://github.com/google/gink/issues/62): add indentation
+        if (seen === undefined) seen = new Set();
+        ensure(typeof (indent) == "number");
+        const mySig = muidToString(this.address);
+        if (seen.has(mySig)) return "null";
+        seen.add(mySig);
+        const asMap = await this.toMap(asOf);
+        let returning = "{";
+        let first = true;
+        for (const [key, value] of asMap.entries()) {
+            if (first) {
+                first = false;
+            } else {
+                returning += ",";
+            }
+            returning += `"${key}":`
+            returning += await toJson(value, indent + 1, asOf, seen);
+        }
+        returning += "}";
+        return returning;
     }
 }

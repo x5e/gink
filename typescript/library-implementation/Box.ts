@@ -4,6 +4,7 @@ import { Container } from "./Container";
 import { Basic, Muid } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
 import { ensure } from "./utils";
+import { convertEntryBytes } from "./factories";
 
 export class Box extends Container {
 
@@ -44,12 +45,18 @@ export class Box extends Container {
     * Returns a promise that resolves to the most recent value put in the box, or undefined.
     * @returns undefined, a basic value, or a container
     */
-    async get(): Promise<Container | Basic | undefined> {
-        return (await this.getEntry(undefined))[1];
+    async get(asOf:number = Infinity): Promise<Container | Basic | undefined> {
+        await this.initialized;
+        const result = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);
+        if (result === undefined) {
+            return undefined;
+        }
+        const [entryAddress, entryBytes] = result;
+        return await convertEntryBytes(this.ginkInstance, entryBytes, entryAddress);
     }
 
-    async size(): Promise<number> {
-        return +!((await this.getEntry(undefined))[1] === undefined);
+    async size(asOf: number=Infinity): Promise<number> {
+        return +!((await this.get(asOf)) === undefined);
     }
 
 }

@@ -171,3 +171,8 @@ export function matches(a: any[], b: any[]) {
     }
     return true;
 }
+
+export function muidToString(muid: Muid) {
+    // TODO(https://github.com/google/gink/issues/61): return canonical representation
+    return `${muid.timestamp},${muid.medallion},${muid.offset}`;
+}
