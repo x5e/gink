@@ -3,6 +3,7 @@ import { Muid, Value, Bytes } from "./typedefs";
 import { Container } from "./Container";
 import { Directory } from "./Directory";
 import { List } from "./List";
+import { Box } from "./Box";
 import { GinkInstance } from "./GinkInstance";
 import { ensure, unwrapValue, builderToMuid } from "./utils";
 import { Entry as EntryBuilder } from "entry_pb";
@@ -18,26 +19,32 @@ export async function construct(ginkInstance: GinkInstance, address?: Muid, cont
     if (containerBuilder.getBehavior() == ContainerBuilder.Behavior.QUEUE) {
         return (new List(ginkInstance, address, containerBuilder));
     }
+    if (containerBuilder.getBehavior() == ContainerBuilder.Behavior.BOX) {
+        return (new Box(ginkInstance, address, containerBuilder));
+    }
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
 }
 
 function byteToHex(byte: number) {
-    const returning = byte.toString(16).toUpperCase(); 
-    return byte < 0x10 ? '0'+returning : returning; 
+    const returning = byte.toString(16).toUpperCase();
+    return byte < 0x10 ? '0' + returning : returning;
 }
 
-export async function toJson(value: Value|Container, indent: number|boolean, asOf :number, seen: Set<string>): Promise<string> {
+export async function toJson(value: Value | Container, indent: number | boolean, asOf: number, seen: Set<string>): Promise<string> {
     ensure(indent === false, "indent not implemented");
     if (value instanceof Directory) {
-        return await value.toJson(indent,asOf,seen);
+        return await value.toJson(indent, asOf, seen);
     }
     if (value instanceof List) {
-        return await value.toJson(indent,asOf,seen);
+        return await value.toJson(indent, asOf, seen);
     }
-    if (typeof(value) == "string") {
+    if (value instanceof Box) {
+        return await value.toJson(indent, asOf, seen);
+    }
+    if (typeof (value) == "string") {
         return `"${value}"`;
     }
-    if (typeof(value) == "number" || value === true || value === false || value === null) {
+    if (typeof (value) == "number" || value === true || value === false || value === null) {
         return `${value}`;
     }
     if (value instanceof Uint8Array) {

@@ -4,7 +4,7 @@ import { Container } from "./Container";
 import { Value, Muid } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
 import { ensure } from "./utils";
-import { convertEntryBytes } from "./factories";
+import { convertEntryBytes, toJson } from "./factories";
 
 export class Box extends Container {
 
@@ -45,7 +45,7 @@ export class Box extends Container {
     * Returns a promise that resolves to the most recent value put in the box, or undefined.
     * @returns undefined, a basic value, or a container
     */
-    async get(asOf:number = Infinity): Promise<Container | Value | undefined> {
+    async get(asOf: number = Infinity): Promise<Container | Value | undefined> {
         await this.initialized;
         const result = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);
         if (result === undefined) {
@@ -55,8 +55,23 @@ export class Box extends Container {
         return await convertEntryBytes(this.ginkInstance, entryBytes, entryAddress);
     }
 
-    async size(asOf: number=Infinity): Promise<number> {
+    async size(asOf: number = Infinity): Promise<number> {
         return +!((await this.get(asOf)) === undefined);
+    }
+
+    /**
+     * Generates a JSON representation of the data in the box (the box itself is transparent).
+     * Mostly intended for demo/debug purposes.
+     * @param indent true to pretty print
+     * @param asOf effective time
+     * @param seen (internal use only! prevents cycles from breaking things)
+     * @returns a JSON string
+     */
+    async toJson(indent: number | boolean = false, asOf: number = Infinity, seen?: Set<string>): Promise<string> {
+        if (seen === undefined) seen = new Set();
+        const contents = await this.get(asOf);
+        if (contents === undefined) return "null";
+        return await toJson(contents, indent, asOf, seen);
     }
 
 }

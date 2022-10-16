@@ -97,3 +97,24 @@ test('set a value in a box then clear it', async function() {
     ensure(after === undefined);
 
 });
+
+test('Box.toJson', async function() {
+    const instance = new GinkInstance(new IndexedDbStore('Box.toJson', true));
+
+    // put a value into the box
+    const box = await instance.createBox();
+
+    const directory = await instance.createDirectory();
+    await box.set(directory);
+
+    const box2 = await instance.createBox();
+
+    await directory.set('cheese', box2);
+
+    await box2.set("fries");
+
+    const asJson = await box.toJson();
+
+    ensure(asJson == `{"cheese":"fries"}`);
+
+});
