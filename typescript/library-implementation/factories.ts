@@ -30,17 +30,9 @@ function byteToHex(byte: number) {
     return byte < 0x10 ? '0' + returning : returning;
 }
 
-export async function toJson(value: Value | Container, indent: number | boolean, asOf: number, seen: Set<string>): Promise<string> {
-    ensure(indent === false, "indent not implemented");
-    if (value instanceof Directory) {
-        return await value.toJson(indent, asOf, seen);
-    }
-    if (value instanceof List) {
-        return await value.toJson(indent, asOf, seen);
-    }
-    if (value instanceof Box) {
-        return await value.toJson(indent, asOf, seen);
-    }
+function valueToJson(value: Value): string {
+    // Note that this function doesn't check for circular references or anything like that, but
+    // I think this is okay because circular objects can't be encoded into the database in the first place.
     if (typeof (value) == "string") {
         return `"${value}"`;
     }
@@ -51,8 +43,30 @@ export async function toJson(value: Value | Container, indent: number | boolean,
         const hexString = Array.from(value).map(byteToHex).join("");
         return `"${hexString}"`;
     }
+    if (value instanceof Date) {
+        return `"${value.toISOString()}"`;
+    }
+    if (Array.isArray(value)) {
+        return "[" + value.map(valueToJson).join(",") + "]";
+    }
+    ensure(typeof (value) == "object");
+    const pairs = Object.entries(value);
+    pairs.sort();
+    return "{" + pairs.map(function (pair) { return `"${pair[0]}":` + valueToJson(pair[1]) }).join(",") + "}";
+}
 
-    throw new Error(`don't know how to convert to JSON: ${value}`);
+export async function toJson(value: Value | Container, indent: number | boolean = false, asOf: number = Infinity, seen?: Set<string>): Promise<string> {
+    ensure(indent === false, "indent not implemented");
+    if (value instanceof Directory) {
+        return await value.toJson(indent, asOf, seen);
+    }
+    if (value instanceof List) {
+        return await value.toJson(indent, asOf, seen);
+    }
+    if (value instanceof Box) {
+        return await value.toJson(indent, asOf, seen);
+    }
+    return valueToJson(value);
 }
 
 export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: Bytes, entryAddress?: Muid): Promise<Value | Container | undefined> {

@@ -3,7 +3,8 @@ import { Muid as MuidBuilder } from "muid_pb";
 import { Value as ValueBuilder } from "value_pb";
 
 export function ensure(x: any, msg?: string) {
-    if (!x) throw new Error(msg ?? "assert failed");
+    if (!x) 
+        throw new Error(msg ?? "assert failed");
     return x;
 }
 
@@ -31,7 +32,7 @@ export function makeMedallion() {
         }
         const randomInt = crypto["randomInt"];  // defined in some versions of node
         if (randomInt) {
-            return  randomInt((2 ** 48) + 1, (2 ** 49) - 1);
+            return randomInt((2 ** 48) + 1, (2 ** 49) - 1);
         }
     }
     return Math.floor(Math.random() * (2 ** 48)) + 1 + 2 ** 48;
@@ -79,13 +80,13 @@ export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid
     };
 }
 
-export function wrapKey(key: number|string): ValueBuilder {
+export function wrapKey(key: number | string): ValueBuilder {
     const value = new ValueBuilder();
-    if (typeof(key) == "string") {
+    if (typeof (key) == "string") {
         value.setCharacters(key);
         return value;
     }
-    if (typeof(key) == "number") {
+    if (typeof (key) == "number") {
         const number = new ValueBuilder.Number();
         number.setDoubled(key);
         value.setNumber(number);
@@ -94,7 +95,7 @@ export function wrapKey(key: number|string): ValueBuilder {
     throw new Error(`key not a number or string: ${key}`);
 }
 
-export function unwrapKey(value: ValueBuilder): number|string {
+export function unwrapKey(value: ValueBuilder): number | string {
     ensure(value);
     if (value.hasCharacters()) {
         return value.getCharacters();
@@ -110,70 +111,99 @@ export function unwrapKey(value: ValueBuilder): number|string {
     throw new Error("value isn't a number or string!");
 }
 
-export function unwrapValue(value: ValueBuilder): Value {
-    ensure(value);
-    if (value.hasCharacters()) {
-        return value.getCharacters();
+export function unwrapValue(valueBuilder: ValueBuilder): Value {
+    ensure(valueBuilder instanceof ValueBuilder);
+    if (valueBuilder.hasCharacters()) {
+        return valueBuilder.getCharacters();
     }
-    if (value.hasNumber()) {
-        const number = value.getNumber();
+    if (valueBuilder.hasNumber()) {
+        const number = valueBuilder.getNumber();
         if (!number.hasDoubled()) {
             //TODO
             throw new Error("haven't implemented unwrapping for non-double encoded numbers");
         }
         return number.getDoubled();
     }
-    if (value.hasSpecial()) {
-        const special = value.getSpecial();
+    if (valueBuilder.hasSpecial()) {
+        const special = valueBuilder.getSpecial();
         if (special == ValueBuilder.Special.NULL) return null;
         if (special == ValueBuilder.Special.TRUE) return true;
         return false;
     }
-    if (value.hasOctects()) {
-        return value.getOctects();
+    if (valueBuilder.hasOctects()) {
+        return valueBuilder.getOctects();
     }
+    if (valueBuilder.hasDocument()) {
+        const document = valueBuilder.getDocument();
+        const keys = document.getKeysList();
+        const values = document.getValuesList();
+        const result = {};
+        for (let i=0;i<keys.length;i++) {
+            result[unwrapValue(keys[i]).toString()] = unwrapValue(values[i]);
+        }
+        return result
+    }
+    if (valueBuilder.hasTuple()) {
+        const tuple = valueBuilder.getTuple();
+        return tuple.getValuesList().map(unwrapValue);
+    }
+    if (valueBuilder.hasTimestamp()) {
+        //TODO: check the other fields in the Timestamp proto
+        // (not critical while typescript is the only implementation)
+        return new Date(valueBuilder.getTimestamp().getMillis());
+    }
+
     throw new Error("haven't implemented unwrap for this Value");
 }
 
 export function wrapValue(arg: Value): ValueBuilder {
-    const value = new ValueBuilder();
-    do {  // only goes through once; I'm using it like a switch statement
-        if (arg instanceof Uint8Array) {
-            value.setOctects(arg);
-            break;
-        }
-        if (arg === null) {
-            value.setSpecial(ValueBuilder.Special.NULL);
-            break;
-        }
-        if (arg === true) {
-            value.setSpecial(ValueBuilder.Special.TRUE);
-            break;
-        }
-        if (arg === false) {
-            value.setSpecial(ValueBuilder.Special.FALSE);
-            break;
-        }
-        const argType = typeof (arg);
-        if (argType == "string") {
-            value.setCharacters(arg);
-            break;
-        }
-        if (argType == "number") {
-            //TODO: put in special cases for integers etc to increase efficiency
-            const number = new ValueBuilder.Number();
-            number.setDoubled(arg);
-            value.setNumber(number);
-            break;
-        }
-        throw new Error(`cannot be wrapped: ${arg}`);
-    } while (false);
-    return value;
-} 
+    ensure(arg !== undefined);
+    const valueBuilder = new ValueBuilder();
+    if (arg instanceof Uint8Array) {
+        return valueBuilder.setOctects(arg);
+    }
+    if (arg instanceof Date) {
+        const timestamp = new ValueBuilder.Timestamp();
+        timestamp.setMillis(arg.valueOf());
+        return valueBuilder.setTimestamp(timestamp);
+    }
+    if (arg === null) {
+        return valueBuilder.setSpecial(ValueBuilder.Special.NULL);
+    }
+    if (arg === true) {
+        return valueBuilder.setSpecial(ValueBuilder.Special.TRUE);
+    }
+    if (arg === false) {
+        return valueBuilder.setSpecial(ValueBuilder.Special.FALSE);
+    }
+    const argType = typeof (arg);
+    if (argType == "string") {
+        return valueBuilder.setCharacters(arg);
+    }
+    if (argType == "number") {
+        //TODO: put in special cases for integers etc to increase efficiency
+        const number = new ValueBuilder.Number();
+        number.setDoubled(arg);
+        return valueBuilder.setNumber(number);
+    }
+    if (Array.isArray(arg)) {
+        const tuple = new ValueBuilder.Tuple();
+        tuple.setValuesList(arg.map(wrapValue));
+        return valueBuilder.setTuple(tuple);
+    }
+    ensure(typeof(arg) == "object",`arg=${arg}`);
+    // assume "Document"
+    const document = new ValueBuilder.Document();
+    for (const [key, val] of Object.entries(arg)) {
+        document.addKeys(wrapValue(key));
+        document.addValues(wrapValue(val));
+    }
+    return valueBuilder.setDocument(document);
+}
 
 export function matches(a: any[], b: any[]) {
     if (a.length != b.length) return false;
-    for (let i=0; i<a.length; i++) {
+    for (let i = 0; i < a.length; i++) {
         if (a[i] !== b[i]) return false;
     }
     return true;
