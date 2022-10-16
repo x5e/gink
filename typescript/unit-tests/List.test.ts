@@ -147,8 +147,13 @@ test('List.toJSON', async function() {
     await subDir.set("cheese", "fries");
     await list.push(subDir);
 
+    const bytes = new Uint8Array(3);
+    bytes[0] = 255;
+    bytes[1] = 94;
+    bytes[2] = 32;
+    await list.push(bytes);
+
     const asJson = await list.toJson();
 
-    ensure(asJson == `["A",true,false,[33],{"cheese":"fries"}]`);
-
+    ensure(asJson == `["A",true,false,[33],{"cheese":"fries"},"FF5E20"]`, asJson);
 });

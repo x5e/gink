@@ -1,5 +1,5 @@
 import { Container } from "./Container";
-import { Basic, Muid, KeyType } from "./typedefs";
+import { Value, Muid, KeyType } from "./typedefs";
 import { Container as ContainerBuilder } from "container_pb";
 import { ChangeSet } from "./ChangeSet";
 import { ensure, muidToString } from "./utils";
@@ -30,7 +30,7 @@ export class Directory extends Container {
      * @param changeSet an optional change set to put this in.
      * @returns a promise that resolves to the address of the newly created entry  
      */
-    async set(key: KeyType, value: Basic | Container, changeSet?: ChangeSet): Promise<Muid> {
+    async set(key: KeyType, value: Value | Container, changeSet?: ChangeSet): Promise<Muid> {
         return await this.addEntry(key, value, changeSet);
     }
 
@@ -50,7 +50,7 @@ export class Directory extends Container {
     * @param key
     * @returns undefined, a basic value, or a container
     */
-    async get(key: KeyType): Promise<Container | Basic | undefined> {
+    async get(key: KeyType): Promise<Container | Value | undefined> {
         await this.initialized;
         const result = await this.ginkInstance.store.getEntry(this.address, key);
         if (result === undefined) {
@@ -86,10 +86,19 @@ export class Directory extends Container {
         return resultMap;
     }
 
-    async toJson(indent: number = 0, asOf: number = Infinity, seen?: Set<string>): Promise<string> {
+    /**
+     * Generates a JSON representation of the data in the list.
+     * Mostly intended for demo/debug purposes.
+     * @param indent true to pretty print
+     * @param asOf effective time
+     * @param seen (internal use only! prevents cycles from breaking things)
+     * @returns a JSON string
+     */
+    async toJson(indent: number|boolean = false, asOf: number = Infinity, seen?: Set<string>): Promise<string> {
         //TODO(https://github.com/google/gink/issues/62): add indentation
+        ensure(indent === false, "indent not implemented");
         if (seen === undefined) seen = new Set();
-        ensure(typeof (indent) == "number");
+        ensure(indent === false, "indent not implemented");
         const mySig = muidToString(this.address);
         if (seen.has(mySig)) return "null";
         seen.add(mySig);
@@ -103,7 +112,7 @@ export class Directory extends Container {
                 returning += ",";
             }
             returning += `"${key}":`
-            returning += await toJson(value, indent + 1, asOf, seen);
+            returning += await toJson(value, indent === false ? false : +indent + 1, asOf, seen);
         }
         returning += "}";
         return returning;

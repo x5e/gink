@@ -1,7 +1,7 @@
 import { Container as ContainerBuilder } from "container_pb";
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { Basic, Muid, MuidBytesPair, MuidContentsPair } from "./typedefs";
+import { Value, Muid, MuidBytesPair, MuidContentsPair } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
 import { ensure, muidToBuilder, muidToString } from "./utils";
 import { Exit as ExitBuilder } from "exit_pb";
@@ -27,7 +27,7 @@ export class List extends Container {
      * @param changeSet 
      * @returns 
      */
-    async push(value: Basic | Container, changeSet?: ChangeSet): Promise<Muid> {
+    async push(value: Value | Container, changeSet?: ChangeSet): Promise<Muid> {
         return await this.addEntry(undefined, value, changeSet);
     }
 
@@ -38,9 +38,9 @@ export class List extends Container {
      * @param muid 
      * @param changeSet 
      */
-    async pop(what?: Muid | number, changeSet?: ChangeSet): Promise<Container | Basic | undefined> {
+    async pop(what?: Muid | number, changeSet?: ChangeSet): Promise<Container | Value | undefined> {
         await this.initialized;
-        let returning: Container | Basic;
+        let returning: Container | Value;
         let muid: Muid;
         if (what && typeof (what) == "object") {
             muid = what;
@@ -76,7 +76,7 @@ export class List extends Container {
     /**
      * Alias for this.pop(0, changeSet)
      */
-    async shift(changeSet?: ChangeSet): Promise<Container | Basic | undefined> {
+    async shift(changeSet?: ChangeSet): Promise<Container | Value | undefined> {
         return await this.pop(0, changeSet)
     }
 
@@ -95,10 +95,10 @@ export class List extends Container {
         return convertEntryBytes(this.ginkInstance, bytes, muid);
     }
 
-    async toArray(asOf: number=Infinity, through: number = Infinity): Promise<(Container | Basic)[]> {
+    async toArray(asOf: number=Infinity, through: number = Infinity): Promise<(Container | Value)[]> {
         const thisList = this;
         const pairs: MuidBytesPair[] = await thisList.ginkInstance.store.getVisibleEntries(thisList.address, through, asOf);
-        const transformed = await Promise.all(pairs.map(async function (changePair: MuidBytesPair): Promise<Container | Basic> {
+        const transformed = await Promise.all(pairs.map(async function (changePair: MuidBytesPair): Promise<Container | Value> {
             return await convertEntryBytes(thisList.ginkInstance, changePair[1], changePair[0])
         }));
         return transformed;
@@ -126,15 +126,16 @@ export class List extends Container {
     }
 
     /**
-     * 
-     * @param indent 
-     * @param asOf 
-     * @param seen 
-     * @returns 
+     * Generates a JSON representation of the data in the list.
+     * Mostly intended for demo/debug purposes.
+     * @param indent true to pretty print
+     * @param asOf effective time
+     * @param seen (internal use only! prevents cycles from breaking things)
+     * @returns a JSON string
      */
-    async toJson(indent: number=0, asOf: number=Infinity, seen?: Set<string>): Promise<string> {
+    async toJson(indent: number|boolean=false, asOf: number=Infinity, seen?: Set<string>): Promise<string> {
         if (seen === undefined) seen = new Set();
-        ensure(typeof (indent) == "number");
+        ensure(indent === false, "indent not implemented");
         const mySig = muidToString(this.address);
         if (seen.has(mySig)) return "null";
         seen.add(mySig);
@@ -147,7 +148,7 @@ export class List extends Container {
             } else {
                 returning += ",";
             }
-            returning += await toJson(value, indent + 1, asOf, seen);
+            returning += await toJson(value, indent === false ? false : +indent + 1, asOf, seen);
         }
         returning += "]";
         return returning;

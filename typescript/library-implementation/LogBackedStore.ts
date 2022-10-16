@@ -1,4 +1,4 @@
-import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, Basic } from "./typedefs";
+import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, Value } from "./typedefs";
 import { ChangeSetInfo, Muid, MuidBytesPair } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";

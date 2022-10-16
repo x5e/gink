@@ -1,6 +1,6 @@
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
-import { Basic, KeyType, Muid } from "./typedefs";
+import { Value, KeyType, Muid } from "./typedefs";
 import { muidToBuilder, wrapValue } from "./utils";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
@@ -26,7 +26,7 @@ export class Container {
         this.initialized = ginkInstance.initialized;
     }
 
-    protected async addEntry(key?: KeyType, value?: Basic | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
+    protected async addEntry(key?: KeyType, value?: Value | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
         await this.initialized;
         let immediate: boolean = false;
         if (!changeSet) {

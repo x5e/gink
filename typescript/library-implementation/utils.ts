@@ -1,4 +1,4 @@
-import { Muid, Medallion, Basic } from "./typedefs";
+import { Muid, Medallion, Value, Bytes } from "./typedefs";
 import { Muid as MuidBuilder } from "muid_pb";
 import { Value as ValueBuilder } from "value_pb";
 
@@ -110,7 +110,7 @@ export function unwrapKey(value: ValueBuilder): number|string {
     throw new Error("value isn't a number or string!");
 }
 
-export function unwrapValue(value: ValueBuilder): Basic {
+export function unwrapValue(value: ValueBuilder): Value {
     ensure(value);
     if (value.hasCharacters()) {
         return value.getCharacters();
@@ -129,12 +129,19 @@ export function unwrapValue(value: ValueBuilder): Basic {
         if (special == ValueBuilder.Special.TRUE) return true;
         return false;
     }
+    if (value.hasOctects()) {
+        return value.getOctects();
+    }
     throw new Error("haven't implemented unwrap for this Value");
 }
 
-export function wrapValue(arg: Basic): ValueBuilder {
+export function wrapValue(arg: Value): ValueBuilder {
     const value = new ValueBuilder();
     do {  // only goes through once; I'm using it like a switch statement
+        if (arg instanceof Uint8Array) {
+            value.setOctects(arg);
+            break;
+        }
         if (arg === null) {
             value.setSpecial(ValueBuilder.Special.NULL);
             break;

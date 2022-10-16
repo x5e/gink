@@ -1,7 +1,7 @@
 import { Container as ContainerBuilder } from "container_pb";
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { Basic, Muid } from "./typedefs";
+import { Value, Muid } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
 import { ensure } from "./utils";
 import { convertEntryBytes } from "./factories";
@@ -27,7 +27,7 @@ export class Box extends Container {
      * @param changeSet an optional change set to put this in.
      * @returns a promise that resolves to the address of the newly created entry  
      */
-    async set(value: Basic | Container, changeSet?: ChangeSet): Promise<Muid> {
+    async set(value: Value | Container, changeSet?: ChangeSet): Promise<Muid> {
         return this.addEntry(undefined, value, changeSet);
     }
 
@@ -45,7 +45,7 @@ export class Box extends Container {
     * Returns a promise that resolves to the most recent value put in the box, or undefined.
     * @returns undefined, a basic value, or a container
     */
-    async get(asOf:number = Infinity): Promise<Container | Basic | undefined> {
+    async get(asOf:number = Infinity): Promise<Container | Value | undefined> {
         await this.initialized;
         const result = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);
         if (result === undefined) {
