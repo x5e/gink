@@ -1,4 +1,4 @@
-import { info, ensure, matches, unwrapKey } from "./utils";
+import { ensure, matches, unwrapKey } from "./utils";
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
 }
@@ -23,7 +23,6 @@ export class IndexedDbStore implements Store {
     private wrapped: IDBPDatabase;
 
     constructor(indexedDbName = "gink-default", reset = false) {
-        info(`creating indexedDb ${indexedDbName}, reset=${reset}`)
         this.initialized = this.initialize(indexedDbName, reset);
     }
 

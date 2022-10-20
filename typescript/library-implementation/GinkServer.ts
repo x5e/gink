@@ -2,7 +2,6 @@ import { createServer as createHttpServer, Server as HttpServer } from 'http';
 import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
 import { readFileSync } from 'fs';
 import { Server as StaticServer } from 'node-static';
-import { info } from "./utils";
 import {
     server as WebSocketServer, request as WebSocketRequest,
     connection as WebSocketConnection, Message as WebSocketMessage
@@ -11,10 +10,11 @@ import { GinkInstance } from "./GinkInstance";
 import { Peer } from './Peer';
 import { Buffer } from "buffer";
 import { Store,  } from "./Store";
-import { ServerArgs } from "./typedefs";
+import { CallBack, ServerArgs } from "./typedefs";
 
 export class GinkServer extends GinkInstance {
     private websocketServer: WebSocketServer;
+    private logger: CallBack;
 
     constructor(store: Store, instanceInfo: string, args: ServerArgs) {
         super(store, instanceInfo);
@@ -22,6 +22,7 @@ export class GinkServer extends GinkInstance {
         const staticServer = new StaticServer(staticPath);
         const port = args.port || "8080";
         let httpServer: HttpServer | HttpsServer;
+        const logger = this.logger = args.logger || console.log;
         if (args["sslKeyFilePath"] && args["sslCertFilePath"]) {
             var options = {
                 key: readFileSync(args["sslKeyFilePath"]),
@@ -29,19 +30,20 @@ export class GinkServer extends GinkInstance {
             };
             httpServer = createHttpsServer(options, function (request, response) {
                 staticServer.serve(request, response);
-            }).listen(port, () => info(
+            }).listen(port, () => logger(
                 `Secure server is listening on port ${port}`));
         } else {
             httpServer = createHttpServer(function (request, response) {
                 staticServer.serve(request, response);
             });
             httpServer.listen(port, function () {
-                info(`Insecure server is listening on port ${port}`);
+                logger(`Insecure server is listening on port ${port}`);
             });
         }
         this.websocketServer = new WebSocketServer({ httpServer });
         this.websocketServer.on('request', this.onRequest.bind(this));
     }
+
 
     private async onRequest(request: WebSocketRequest) {
         await this.initialized;
@@ -54,7 +56,7 @@ export class GinkServer extends GinkInstance {
                 return request.reject(400, "bad protocol");
         }
         const connection: WebSocketConnection = request.accept(protocol, request.origin);
-        info(`Connection accepted.`);
+        this.logger(`Connection accepted.`);
         const sendFunc = (data: Uint8Array) => { connection.sendBytes(Buffer.from(data)); };
         const closeFunc = () => { connection.close(); };
         const connectionId = this.createConnectionId();
@@ -62,7 +64,7 @@ export class GinkServer extends GinkInstance {
         this.peers.set(connectionId, peer);
         connection.on('close', function (_reasonCode, _description) {
             thisServer.peers.delete(connectionId);
-            info(' Peer ' + connection.remoteAddress + ' disconnected.');
+            this.logger(' Peer ' + connection.remoteAddress + ' disconnected.');
         });
         connection.on('message', this.onMessage.bind(this, connectionId));
         sendFunc(this.iHave.getGreetingMessageBytes());
@@ -70,10 +72,10 @@ export class GinkServer extends GinkInstance {
 
     private onMessage(connectionId: number, webSocketMessage: WebSocketMessage) {
         if (webSocketMessage.type === 'utf8') {
-            info('Received Text Message: ' + webSocketMessage.utf8Data);
+            this.logger('Received Text Message: ' + webSocketMessage.utf8Data);
         }
         else if (webSocketMessage.type === 'binary') {
-            info('Server received binary message of ' + webSocketMessage.binaryData.length + ' bytes.');
+            this.logger('Server received binary message of ' + webSocketMessage.binaryData.length + ' bytes.');
             this.receiveMessage(webSocketMessage.binaryData, connectionId);
         }
     }

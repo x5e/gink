@@ -28,6 +28,7 @@ export interface ServerArgs {
     sslCertFilePath?: FilePath;
     medallion?: NumberStr;
     staticPath?: string;
+    logger?: CallBack;
 }
 
 export interface Muid {

@@ -8,7 +8,6 @@ type FileHandle = any;
 const open = promises.open;
 import { flock } from "fs-ext";
 import { LogFile } from "log_file_pb";
-import { info } from "./utils";
 import { assert } from "console";
 import { ChainTracker } from "./ChainTracker";
 
@@ -32,7 +31,6 @@ export class LogBackedStore implements Store {
     private indexedDbStore: IndexedDbStore;
 
     constructor(filename: string, reset = false) {
-        info(`creating LogBackedStore ${filename}, reset=${reset}`)
         this.initialized = this.initialize(filename, reset);
     }
 

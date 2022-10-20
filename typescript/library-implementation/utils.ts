@@ -1,5 +1,5 @@
 /**
- * Herein lay a bunch of utility functions for creating and 
+ * Herein lay a bunch of utility functions, mostly for creating and 
  * manipulating the types defined in typedefs.ts.
  */
 
@@ -12,8 +12,6 @@ export function ensure(x: any, msg?: string) {
         throw new Error(msg ?? "assert failed");
     return x;
 }
-
-export function now() { return (new Date()).toISOString(); }
 
 export function noOp(_ = null) { };
 
@@ -41,28 +39,6 @@ export function makeMedallion() {
         }
     }
     return Math.floor(Math.random() * (2 ** 48)) + 1 + 2 ** 48;
-}
-
-let logLevel = 0;
-
-export function setLogLevel(level: number) {
-    logLevel = level;
-}
-/**
- * Uses console.error to log messages to stderr in a form like:
- * [04:07:03.227Z CommandLineInterace.ts:51] got chain manager, using medallion=383316229311328
- * That is to say, it's:
- * [<Timestamp> <SourceFileName>:<SourceLine>] <Message>
- * @param msg message to log
- */
-export function info(msg: string) {
-    if (logLevel < 1) return;
-    const stackString = new Error().stack;
-    const callerLine = stackString.split("\n")[2];
-    const caller = callerLine.split(/\//).pop().replace(/:\d+\)/, "");
-    const timestamp = now().split("T").pop();
-    // using console.error because I want to write to stderr
-    console.error(`[${timestamp} ${caller}] ${msg}`);
 }
 
 export function muidToBuilder(address: Muid, relativeTo?: Medallion): MuidBuilder {
