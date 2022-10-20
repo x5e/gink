@@ -1,18 +1,24 @@
-import { ensure, unwrapValue, wrapValue, matches } from "../library-implementation/utils";
+import { ensure, unwrapValue, wrapValue, matches, valueToJson } from "../library-implementation/utils";
 
 test('document', async function() {
-    const wrapped = wrapValue({"fee":"parking","cost":1000});
+    const wrapped = wrapValue((new Map()).set("fee","parking").set("cost",1000));
     const unwrapped = unwrapValue(wrapped);
-    ensure(matches(Object.keys(unwrapped).sort(), ["cost", "fee"]));
-    ensure(unwrapped["fee"]=="parking");
-    ensure(unwrapped["cost"]==1000);
+    if (unwrapped instanceof Map) {
+        const keys = Array.from(unwrapped.keys()).sort();
+        ensure(matches(keys, ["cost", "fee"]), keys.toString());
+        ensure(unwrapped.get("fee")=="parking");
+        ensure(unwrapped.get("cost")==1000);
+    } else {
+        throw new Error("wrap/unwrap failed");
+    }
 });
 
 
 test('tuple', async function() {
-    const wrapped = wrapValue(["yes", 32, null, {"cheese": "fries"}, []]);
+    const wrapped = wrapValue(["yes", 32, null, (new Map()).set("cheese","fries"), []]);
     const unwrapped = unwrapValue(wrapped);
-    ensure(JSON.stringify(unwrapped) == `["yes",32,null,{"cheese":"fries"},[]]`);
+    var asJson = valueToJson(unwrapped);
+    ensure(asJson == `["yes",32,null,{"cheese":"fries"},[]]`, asJson);
 });
 
 test('timestamp', async function () {

@@ -11,7 +11,7 @@ export type Offset = number;
 export type FilePath = string;
 export type NumberStr = string;
 export type KeyType = number | string;
-export type Value = number | string | boolean | null | Bytes | Object;
+export type Value = number | string | boolean | null | Bytes | Map<Value,Value> | Array<Value> | Date;
 export type ChangeSetInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, string];
 
 export interface CommitListener {

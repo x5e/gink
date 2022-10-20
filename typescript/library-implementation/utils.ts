@@ -1,4 +1,9 @@
-import { Muid, Medallion, Value, Bytes } from "./typedefs";
+/**
+ * Herein lay a bunch of utility functions for creating and 
+ * manipulating the types defined in typedefs.ts.
+ */
+
+import { Muid, Medallion, Value } from "./typedefs";
 import { Muid as MuidBuilder } from "muid_pb";
 import { Value as ValueBuilder } from "value_pb";
 
@@ -137,9 +142,9 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
         const document = valueBuilder.getDocument();
         const keys = document.getKeysList();
         const values = document.getValuesList();
-        const result = {};
+        const result = new Map();
         for (let i=0;i<keys.length;i++) {
-            result[unwrapValue(keys[i]).toString()] = unwrapValue(values[i]);
+            result.set(unwrapValue(keys[i]), unwrapValue(values[i]));
         }
         return result
     }
@@ -191,6 +196,14 @@ export function wrapValue(arg: Value): ValueBuilder {
         tuple.setValuesList(arg.map(wrapValue));
         return valueBuilder.setTuple(tuple);
     }
+    if (arg instanceof Map) {
+        const document = new ValueBuilder.Document();
+        for (const [key, val] of arg.entries()) {
+            document.addKeys(wrapValue(key));
+            document.addValues(wrapValue(val));            
+        }
+        return valueBuilder.setDocument(document);
+    }
     ensure(typeof(arg) == "object",`arg=${arg}`);
     // assume "Document"
     const document = new ValueBuilder.Document();
@@ -212,4 +225,36 @@ export function matches(a: any[], b: any[]) {
 export function muidToString(muid: Muid) {
     // TODO(https://github.com/google/gink/issues/61): return canonical representation
     return `${muid.timestamp},${muid.medallion},${muid.offset}`;
+}
+
+function byteToHex(byte: number) {
+    const returning = byte.toString(16).toUpperCase();
+    return byte < 0x10 ? '0' + returning : returning;
+}
+
+export function valueToJson(value: Value): string {
+    // Note that this function doesn't check for circular references or anything like that, but
+    // I think this is okay because circular objects can't be encoded into the database in the first place.
+    if (typeof (value) == "string") {
+        return `"${value}"`;
+    }
+    if (typeof (value) == "number" || value === true || value === false || value === null) {
+        return `${value}`;
+    }
+    if (value instanceof Uint8Array) {
+        const hexString = Array.from(value).map(byteToHex).join("");
+        return `"${hexString}"`;
+    }
+    if (value instanceof Date) {
+        return `"${value.toISOString()}"`;
+    }
+    if (Array.isArray(value)) {
+        return "[" + value.map(valueToJson).join(",") + "]";
+    }
+    if (value instanceof Map) {
+        const entries = Array.from(value.entries());
+        entries.sort();
+        return "{" + entries.map(function (pair) { return `"${pair[0]}":` + valueToJson(pair[1]) }).join(",") + "}";
+    }
+    throw new Error(`value not recognized: ${value}`)
 }

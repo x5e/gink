@@ -10,12 +10,12 @@ test('complex.toJSON', async function () {
     await directory.set("foo", "bar");
     await directory.set("bar", 3);
 
-    await directory.set("document", {
-        "a date": new Date(1665892249196),
-        "some bytes": new Uint8Array([94, 32]),
-        "an array": [1, 3, true, false, null],
-        "sub object": {"key": "value"},
-    });
+    await directory.set("document", (new Map())
+        .set("a date", new Date(1665892249196))
+        .set("some bytes", new Uint8Array([94, 32]))
+        .set("an array", [1, 3, true, false, null])
+        .set("sub object", {"key": "value"})
+    );
 
     await directory.set("tuple", ["yes"]);
 
