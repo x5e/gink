@@ -3,6 +3,7 @@ import { GinkInstance } from "../library-implementation/GinkInstance";
 import { ChangeSet } from "../library-implementation/ChangeSet";
 import { IndexedDbStore } from "../library-implementation/IndexedDbStore";
 import { Directory } from "../library-implementation/Directory";
+import { sleep } from "./test_utils";
 
 test('set and get Basic data', async function() {
     // set up the objects
@@ -84,3 +85,38 @@ test('Directory.toJSON', async function () {
     const asJSON = await directory.toJson();
     ensure(asJSON == `{"bar":3,"blue":{"xxx":"yyy"},"foo":"bar","zoom":null}`, asJSON);
 });
+
+test('Directory.asOf', async function () {
+    const instance = new GinkInstance(new IndexedDbStore('Directory.asOf', true));
+    const directory = await instance.createDirectory();
+
+    const time0 = Date.now() * 1000;
+    await sleep(10);
+    await directory.set('A', 'B');
+    await sleep(10);
+    const time1 = Date.now() * 1000;
+    await sleep(10);
+    await directory.set('cheese', 4);
+    await sleep(10);
+    const time2 = Date.now() * 1000;
+
+    const asJsonNow = await directory.toJson();
+    ensure(asJsonNow==`{"A":"B","cheese":4}`);
+    ensure((await directory.get('cheese')) === 4);
+
+    const asJson2 = await directory.toJson(false, time2);
+    ensure(asJson2==`{"A":"B","cheese":4}`);
+    ensure((await directory.get('cheese', time2)) === 4);
+
+    const asJson1 = await directory.toJson(false, time1);
+    ensure(asJson1==`{"A":"B"}`);
+    ensure((await directory.get('cheese', time1)) === undefined);
+
+    const asMap0 = await directory.toMap(time0);
+    ensure(asMap0.size == 0);
+
+    const asJsonBack = await directory.toJson(false, -1);
+    ensure(asJsonBack==`{"A":"B"}`);
+    ensure((await directory.get('cheese', -1)) === undefined);
+    ensure((await directory.get('A', -1)) === 'B');
+})

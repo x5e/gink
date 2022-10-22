@@ -4,6 +4,7 @@ import { ChangeSet } from "../library-implementation/ChangeSet";
 import { IndexedDbStore } from "../library-implementation/IndexedDbStore";
 import { List } from "../library-implementation/List";
 import { Muid } from "../library-implementation/typedefs";
+import { sleep } from "./test_utils";
 
 test('push to a queue and peek', async function () {
     // set up the objects
@@ -156,4 +157,36 @@ test('List.toJSON', async function() {
     const asJson = await list.toJson();
 
     ensure(asJson == `["A",true,false,[33],{"cheese":"fries"},"FF5E20"]`, asJson);
+});
+
+
+test('List.asOf', async function() {
+    // set up the objects
+    const store = new IndexedDbStore('List.asOf', true);
+    const instance = new GinkInstance(store);
+
+    const list: List = await instance.createList();
+    const time0 = Date.now() * 1000;
+    await sleep(10);
+    await list.push('A');
+    await sleep(10);
+    const time1 = Date.now() * 1000;
+    await sleep(10);
+    await list.push(true);
+    await sleep(10);
+    const time2 = Date.now() * 1000;
+    await sleep(10);
+    await list.push(false);
+    await sleep(10);
+    const time3 = Date.now() * 1000;
+
+    ensure(matches(await list.toArray(Infinity, time3), ['A', true, false]));
+    ensure(matches(await list.toArray(Infinity, time2), ['A', true]));
+    ensure(matches(await list.toArray(Infinity, time1), ['A']));
+    ensure(matches(await list.toArray(Infinity, time0), []));
+
+    ensure(matches(await list.toArray(Infinity, -1), ['A', true]));
+    ensure(matches(await list.toArray(Infinity, -2), ['A']));
+    ensure(matches(await list.toArray(Infinity, -3), []));
+
 });

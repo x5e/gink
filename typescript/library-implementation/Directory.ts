@@ -1,5 +1,5 @@
 import { Container } from "./Container";
-import { Value, Muid, KeyType } from "./typedefs";
+import { Value, Muid, KeyType, AsOf } from "./typedefs";
 import { Container as ContainerBuilder } from "container_pb";
 import { ChangeSet } from "./ChangeSet";
 import { ensure, muidToString } from "./utils";
@@ -50,9 +50,9 @@ export class Directory extends Container {
     * @param key
     * @returns undefined, a basic value, or a container
     */
-    async get(key: KeyType): Promise<Container | Value | undefined> {
+    async get(key: KeyType, asOf?: AsOf): Promise<Container | Value | undefined> {
         await this.initialized;
-        const result = await this.ginkInstance.store.getEntry(this.address, key);
+        const result = await this.ginkInstance.store.getEntry(this.address, key, asOf);
         if (result === undefined) {
             return undefined;
         }
@@ -66,13 +66,13 @@ export class Directory extends Container {
         return (await this.toMap()).size;
     }
 
-    async has(key: KeyType): Promise<boolean> {
+    async has(key: KeyType, asOf?: AsOf): Promise<boolean> {
         await this.initialized;
-        const result = await this.ginkInstance.store.getEntry(this.address, key);
+        const result = await this.ginkInstance.store.getEntry(this.address, key, asOf);
         return result[1] !== undefined;
     }
 
-    async toMap(asOf: number = Infinity): Promise<Map<KeyType, any>> {
+    async toMap(asOf?: AsOf): Promise<Map<KeyType, any>> {
         const entries = await this.ginkInstance.store.getEntries(this.address, asOf);
         const resultMap = new Map();
         for (const [key, muid, bytes] of entries) {
@@ -94,11 +94,10 @@ export class Directory extends Container {
      * @param seen (internal use only! prevents cycles from breaking things)
      * @returns a JSON string
      */
-    async toJson(indent: number|boolean = false, asOf: number = Infinity, seen?: Set<string>): Promise<string> {
+    async toJson(indent: number|boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
         //TODO(https://github.com/google/gink/issues/62): add indentation
         ensure(indent === false, "indent not implemented");
         if (seen === undefined) seen = new Set();
-        ensure(indent === false, "indent not implemented");
         const mySig = muidToString(this.address);
         if (seen.has(mySig)) return "null";
         seen.add(mySig);

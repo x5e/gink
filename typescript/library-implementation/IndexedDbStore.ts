@@ -5,9 +5,9 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
 import { openDB, deleteDB, IDBPDatabase } from 'idb';
 import {
     ChangeSetBytes, Medallion, ChainStart, ChangeSetInfoTuple,
-    ClaimedChains, SeenThrough, Offset, Bytes, KeyType, MuidBytesPair
+    ClaimedChains, SeenThrough, Offset, Bytes, KeyType, MuidBytesPair, Timestamp
 } from "./typedefs";
-import { ChangeSetInfo, Muid } from "./typedefs";
+import { ChangeSetInfo, Muid, AsOf } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Change as ChangeBuilder } from "change_pb";
 import { Exit as ExitBuilder } from "exit_pb";
@@ -21,6 +21,7 @@ export class IndexedDbStore implements Store {
 
     initialized: Promise<void>;
     private wrapped: IDBPDatabase;
+    private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
     constructor(indexedDbName = "gink-default", reset = false) {
         this.initialized = this.initialize(indexedDbName, reset);
@@ -78,6 +79,29 @@ export class IndexedDbStore implements Store {
                 this.wrapped.close();
             }
         }
+    }
+
+    private async asOfToTimestamp(asOf: AsOf): Promise<Timestamp> {
+        if (asOf instanceof Date) {
+            return asOf.getTime() * 1000;
+        }
+        if (asOf > IndexedDbStore.YEAR_2020) {
+            return asOf;
+        }
+        if (asOf < 0 && asOf > -1000) {
+            // Interpret as number of commits in the past.
+            let cursor = await this.wrapped.transaction(["trxns"]).objectStore("trxns").openCursor(undefined, "prev");
+            let commitsToTraverse = -asOf;
+            for (;cursor; cursor = await cursor.continue()) {
+                if (--commitsToTraverse == 0) {
+                    const tuple = <ChangeSetInfoTuple>cursor.key
+                    return tuple[0];
+                }
+            }
+            // Looking further back then we have commits.
+            throw new Error("no commits that far back");
+        }
+        throw new Error(`don't know how to interpret asOf=${asOf}`);
     }
 
     async getClaimedChains(): Promise<ClaimedChains> {
@@ -215,12 +239,12 @@ export class IndexedDbStore implements Store {
         return result;
     }
 
-    async getEntry(source: Muid, key?: KeyType|Muid, asOf?: number): Promise<MuidBytesPair | undefined> {
-        if (!asOf) asOf = Infinity;
+    async getEntry(source: Muid, key?: KeyType|Muid, asOf?: AsOf): Promise<MuidBytesPair | undefined> {
+        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0];
         const desiredKey = (typeof(key) == "number" || typeof(key) == "string") ? [key] : [];
         const lower = [desiredSrc, desiredKey, [0]];
-        const upperTuple = (key && typeof(key) == "object") ? [key.timestamp, key.medallion, key.offset] : [asOf];
+        const upperTuple = (key && typeof(key) == "object") ? [key.timestamp, key.medallion, key.offset] : [asOfTs];
         const upper = [desiredSrc, desiredKey, upperTuple];
         const searchRange = IDBKeyRange.bound(lower, upper);
         let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange, "prev");
@@ -235,14 +259,15 @@ export class IndexedDbStore implements Store {
         }
     }
 
-    async getEntries(source: Muid, asOf: number=Infinity): Promise<[KeyType, Muid, Bytes][]> {
+    async getEntries(source: Muid, asOf?: AsOf): Promise<[KeyType, Muid, Bytes][]> {
+        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0];
         const lower = [desiredSrc];
         const searchRange = IDBKeyRange.lowerBound(lower);
         let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange, "next");
         const result = []
         for (;cursor && matches(cursor.key[0], desiredSrc); cursor = await cursor.continue()) {
-            if (cursor.key[2][0] < asOf) {
+            if (cursor.key[2][0] < asOfTs) {
                 const cursorEnt = cursor.key[2];
                 const address: Muid = {
                     timestamp: cursorEnt[0],
@@ -264,11 +289,12 @@ export class IndexedDbStore implements Store {
      * @param asOf show results as of a time in the past
      * @returns a promise of a list of ChangePairs
      */
-    async getVisibleEntries(source: Muid, through: number=Infinity, asOf: number=Infinity): Promise<MuidBytesPair[]> {
+    async getVisibleEntries(source: Muid, through: number=Infinity, asOf?: AsOf): Promise<MuidBytesPair[]> {
+        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const after = 0;
         const desiredSrc = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0];
         const lower = [desiredSrc, [], [after]];
-        const upper = [desiredSrc, [], [asOf]];
+        const upper = [desiredSrc, [], [asOfTs]];
         const range = IDBKeyRange.bound(lower, upper);
         const trxn = this.wrapped.transaction(["entries", "exits"]);
         const entries = trxn.objectStore("entries");

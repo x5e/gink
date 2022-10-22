@@ -5,7 +5,7 @@
  * something neither Container nor any of its subclasses need directly.
  */
 import { Container as ContainerBuilder } from "container_pb";
-import { Muid, Value, Bytes } from "./typedefs";
+import { Muid, Value, Bytes, AsOf } from "./typedefs";
 import { Container } from "./Container";
 import { Directory } from "./Directory";
 import { List } from "./List";
@@ -31,7 +31,7 @@ export async function construct(ginkInstance: GinkInstance, address?: Muid, cont
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
 }
 
-export async function toJson(value: Value | Container, indent: number | boolean = false, asOf: number = Infinity, seen?: Set<string>): Promise<string> {
+export async function toJson(value: Value | Container, indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
     ensure(indent === false, "indent not implemented");
     if (value instanceof Container) {
         if (value instanceof Directory) {

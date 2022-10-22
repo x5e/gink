@@ -1,7 +1,7 @@
 import { Container as ContainerBuilder } from "container_pb";
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { Value, Muid, MuidBytesPair, MuidContentsPair } from "./typedefs";
+import { Value, Muid, MuidBytesPair, MuidContentsPair, AsOf } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
 import { ensure, muidToBuilder, muidToString } from "./utils";
 import { Exit as ExitBuilder } from "exit_pb";
@@ -86,7 +86,7 @@ export class List extends Container {
      * @param asOf 
      * @returns value at the position of the list, or undefined if list is too small
      */
-    async at(index: number, asOf: number=Infinity) {
+    async at(index: number, asOf?: AsOf) {
         const pairs = await this.ginkInstance.store.getVisibleEntries(this.address, index, asOf);
         if (pairs.length == 0) return undefined;
         if (index >= 0 && pairs.length < index+1) return undefined;
@@ -95,7 +95,7 @@ export class List extends Container {
         return convertEntryBytes(this.ginkInstance, bytes, muid);
     }
 
-    async toArray(asOf: number=Infinity, through: number = Infinity): Promise<(Container | Value)[]> {
+    async toArray(through: number = Infinity, asOf?: AsOf): Promise<(Container | Value)[]> {
         const thisList = this;
         const pairs: MuidBytesPair[] = await thisList.ginkInstance.store.getVisibleEntries(thisList.address, through, asOf);
         const transformed = await Promise.all(pairs.map(async function (changePair: MuidBytesPair): Promise<Container | Value> {
@@ -104,13 +104,13 @@ export class List extends Container {
         return transformed;
     }
 
-    async size(asOf: number=Infinity): Promise<number> {
+    async size(asOf?: AsOf): Promise<number> {
         //TODO(TESTME)
         const pairs: MuidBytesPair[] = await this.ginkInstance.store.getVisibleEntries(this.address, Infinity, asOf);
         return pairs.length;
     }
 
-    entries(asOf: number=Infinity, through: number=Infinity): AsyncGenerator<MuidContentsPair, void, unknown> {
+    entries(through: number=Infinity, asOf?: AsOf): AsyncGenerator<MuidContentsPair, void, unknown> {
         const thisList = this;
         return (async function*(){
             // Note: loading all entry data into memory despite using an async generator due to shitty IndexedDb 
@@ -133,13 +133,13 @@ export class List extends Container {
      * @param seen (internal use only! prevents cycles from breaking things)
      * @returns a JSON string
      */
-    async toJson(indent: number|boolean=false, asOf: number=Infinity, seen?: Set<string>): Promise<string> {
+    async toJson(indent: number|boolean=false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
         if (seen === undefined) seen = new Set();
         ensure(indent === false, "indent not implemented");
         const mySig = muidToString(this.address);
         if (seen.has(mySig)) return "null";
         seen.add(mySig);
-        const asArray = await this.toArray(asOf);
+        const asArray = await this.toArray(Infinity, asOf);
         let returning = "[";
         let first = true;
         for (const value of asArray) {

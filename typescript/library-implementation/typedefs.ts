@@ -13,6 +13,8 @@ export type NumberStr = string;
 export type KeyType = number | string;
 export type Value = number | string | boolean | null | Bytes | Map<Value,Value> | Array<Value> | Date;
 export type ChangeSetInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, string];
+export type ChangeSetOffset = number;
+export type AsOf = Timestamp | Date | ChangeSetOffset;
 
 export interface CommitListener {
     (commitInfo: ChangeSetInfo): Promise<void>;

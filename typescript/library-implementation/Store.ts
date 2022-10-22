@@ -1,6 +1,6 @@
 import { ChainTracker } from "./ChainTracker";
 import { Medallion, ChainStart, SeenThrough, Muid, Bytes, KeyType, ChangeSetInfo,
-    ClaimedChains, MuidBytesPair
+    ClaimedChains, MuidBytesPair, AsOf
     } from "./typedefs";
 
 export interface Store {
@@ -79,11 +79,11 @@ export interface Store {
      * Does a lookup for a given container at a specified address and key, and returns the most
      * recent entry stored (if there is any).
      */
-    getEntry(source: Muid, key?: KeyType|Muid, asOf?: number): Promise<[Muid, Bytes] | undefined>;
+    getEntry(source: Muid, key?: KeyType|Muid, asOf?: AsOf): Promise<[Muid, Bytes] | undefined>;
 
-    getVisibleEntries(source: Muid, through?: number, asOf?: number): Promise<MuidBytesPair[]>;
+    getVisibleEntries(source: Muid, through?: number, asOf?: AsOf): Promise<MuidBytesPair[]>;
 
-    getEntries(source: Muid, asOf?: number): Promise<[KeyType, Muid, Bytes][]> ;
+    getEntries(source: Muid, asOf?: AsOf): Promise<[KeyType, Muid, Bytes][]> ;
 
     /**
      * Closes the underlying data store.  Implicitly awaits on the this.initialized promise.

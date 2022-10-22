@@ -40,3 +40,10 @@ export async function addTrxns(store: Store) {
     const next2 = extendChain("chain2,2", start2, NEXT_TS2);
     await store.addChangeSet(next2);
 }
+
+
+export async function sleep(ms: number) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }

@@ -1,4 +1,4 @@
-import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, Value } from "./typedefs";
+import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, AsOf } from "./typedefs";
 import { ChangeSetInfo, Muid, MuidBytesPair } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
@@ -136,12 +136,12 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getContainerBytes(address);
     }
 
-    async getEntry(source?: Muid, key?: KeyType, asOf?: number): Promise<[Muid, Bytes]| undefined> {
+    async getEntry(source?: Muid, key?: KeyType, asOf?: AsOf): Promise<[Muid, Bytes]| undefined> {
         await this.initialized;
         return this.indexedDbStore.getEntry(source, key, asOf);
     }
 
-    async getEntries(source: Muid, asOf: number=Infinity): Promise<[KeyType, Muid, Bytes][]> {
+    async getEntries(source: Muid, asOf?: AsOf): Promise<[KeyType, Muid, Bytes][]> {
         await this.initialized;
         return this.getEntries(source, asOf);
     }
