@@ -175,19 +175,15 @@ export function wrapValue(arg: Value): ValueBuilder {
     if (arg instanceof Map) {
         const document = new ValueBuilder.Document();
         for (const [key, val] of arg.entries()) {
+            if (typeof(key) != "number" && typeof(key) != "string") {
+                throw new Error("keys in documents must be numbers or strings");
+            }
             document.addKeys(wrapValue(key));
-            document.addValues(wrapValue(val));            
+            document.addValues(wrapValue(val));
         }
         return valueBuilder.setDocument(document);
     }
-    ensure(typeof(arg) == "object",`arg=${arg}`);
-    // assume "Document"
-    const document = new ValueBuilder.Document();
-    for (const [key, val] of Object.entries(arg)) {
-        document.addKeys(wrapValue(key));
-        document.addValues(wrapValue(val));
-    }
-    return valueBuilder.setDocument(document);
+    throw new Error(`don't know how to wrap: ${arg}`);
 }
 
 export function matches(a: any[], b: any[]) {

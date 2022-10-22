@@ -14,7 +14,7 @@ test('complex.toJSON', async function () {
         .set("a date", new Date(1665892249196))
         .set("some bytes", new Uint8Array([94, 32]))
         .set("an array", [1, 3, true, false, null])
-        .set("sub object", {"key": "value"})
+        .set("sub object", (new Map()).set("key", "value"))
     );
 
     await directory.set("tuple", ["yes"]);
