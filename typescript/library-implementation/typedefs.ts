@@ -11,10 +11,11 @@ export type Offset = number;
 export type FilePath = string;
 export type NumberStr = string;
 export type KeyType = number | string;
-export type Value = number | string | boolean | null | Bytes | Map<KeyType,Value> | Array<Value> | Date;
+export type Value = number | string | boolean | null | Bytes | Map<KeyType, Value> | Array<Value> | Date;
 export type ChangeSetInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, string];
 export type ChangeSetOffset = number;
 export type AsOf = Timestamp | Date | ChangeSetOffset;
+export type MuidTuple = [Timestamp, Medallion, Offset];
 
 export interface CommitListener {
     (commitInfo: ChangeSetInfo): Promise<void>;
@@ -49,4 +50,14 @@ export interface ChangeSetInfo {
     chainStart: ChainStart;
     priorTime?: PriorTime;
     comment?: string;
+}
+
+export interface Entry {
+    containerId: MuidTuple;
+    semanticKey: KeyType[];
+    entryId: MuidTuple;
+    pointeeList: MuidTuple[];
+    immediate?: Value;
+    expiry?: Timestamp;
+    deleting?: boolean;
 }

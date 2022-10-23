@@ -1,5 +1,5 @@
 import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, AsOf } from "./typedefs";
-import { ChangeSetInfo, Muid, MuidBytesPair } from "./typedefs";
+import { ChangeSetInfo, Muid, Entry } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -78,9 +78,9 @@ export class LogBackedStore implements Store {
         }
     }
 
-    async getVisibleEntries(source: Muid, count?: number, asOf?: number): Promise<MuidBytesPair[]> {
+    async getUnKeyedEntries(container: Muid, through: number=Infinity, asOf?: AsOf): Promise<Entry[]> {
         await this.initialized;
-        return this.indexedDbStore.getVisibleEntries(source, count, asOf);
+        return this.indexedDbStore.getUnKeyedEntries(container, through, asOf);
     }
 
 
@@ -136,14 +136,14 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getContainerBytes(address);
     }
 
-    async getEntry(source?: Muid, key?: KeyType, asOf?: AsOf): Promise<[Muid, Bytes]| undefined> {
+    async getEntry(container?: Muid, key?: KeyType|Muid, asOf?: AsOf): Promise<Entry | undefined> {
         await this.initialized;
-        return this.indexedDbStore.getEntry(source, key, asOf);
+        return this.indexedDbStore.getEntry(container, key, asOf);
     }
 
-    async getEntries(source: Muid, asOf?: AsOf): Promise<[KeyType, Muid, Bytes][]> {
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>> {
         await this.initialized;
-        return this.getEntries(source, asOf);
+        return this.getKeyedEntries(container, asOf);
     }
 
     async close() {

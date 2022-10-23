@@ -1,10 +1,10 @@
-import { ensure, matches, unwrapKey } from "./utils";
+import { ensure, matches, unwrapKey, unwrapValue } from "./utils";
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
 }
 import { openDB, deleteDB, IDBPDatabase } from 'idb';
 import {
-    ChangeSetBytes, Medallion, ChainStart, ChangeSetInfoTuple,
+    ChangeSetBytes, Medallion, ChainStart, ChangeSetInfoTuple, Entry,
     ClaimedChains, SeenThrough, Offset, Bytes, KeyType, MuidBytesPair, Timestamp
 } from "./typedefs";
 import { ChangeSetInfo, Muid, AsOf } from "./typedefs";
@@ -65,8 +65,9 @@ export class IndexedDbStore implements Store {
                 db.createObjectStore('activeChains', { keyPath: "medallion" });
 
                 db.createObjectStore('containers'); // map from AddressTuple to ContainerBytes
-                db.createObjectStore('entries'); // map from EntryKey to EntryBytes
-                db.createObjectStore('exits');
+                db.createObjectStore('exits', {keyPath: ["containerId", "empty", "entryId", "exitId"]});
+                const entries = db.createObjectStore('entries', { keyPath: ["containerId", "semanticKey", "entryId"]});
+                entries.createIndex("pointees", "pointee", {multiEntry: true, unique: false});
             },
         });
     }
@@ -187,44 +188,70 @@ export class IndexedDbStore implements Store {
                 continue;
             }
             if (changeBuilder.hasEntry()) {
-                const entry: EntryBuilder = changeBuilder.getEntry();
+                const entryBuilder: EntryBuilder = changeBuilder.getEntry();
                 // TODO(https://github.com/google/gink/issues/55): explain root
-                const sourceTuple: number[] = [0, commitInfo.medallion, 0];
-                if (entry.hasSource()) {
-                    const srcMuid: MuidBuilder = entry.getSource();
-                    sourceTuple[0] = srcMuid.getTimestamp() || commitInfo.timestamp;
-                    sourceTuple[1] = srcMuid.getMedallion() || commitInfo.medallion;
-                    sourceTuple[2] = srcMuid.getOffset();
+                const containerId: number[] = [0, 0, 0];
+                if (entryBuilder.hasContainer()) {
+                    const srcMuid: MuidBuilder = entryBuilder.getContainer();
+                    containerId[0] = srcMuid.getTimestamp() || commitInfo.timestamp;
+                    containerId[1] = srcMuid.getMedallion() || commitInfo.medallion;
+                    containerId[2] = srcMuid.getOffset();
                 }
-                const semanticKey = entry.hasKey() ? [unwrapKey(entry.getKey())] : [];
-                const entryIdentifier: number[] = [timestamp, medallion, offset];
-                const entryKey = [sourceTuple, semanticKey, entryIdentifier];
-                await wrappedTransaction.objectStore("entries").add(entry.serializeBinary(), entryKey);
+                const semanticKey = entryBuilder.hasKey() ? [unwrapKey(entryBuilder.getKey())] : [];
+                const entryId: number[] = [timestamp, medallion, offset];
+                const pointeeList = [];
+                if (entryBuilder.hasPointee()) {
+                    const pointeeMuidBuilder: MuidBuilder = entryBuilder.getPointee();
+                    const pointee = [
+                        pointeeMuidBuilder.getTimestamp() || commitInfo.timestamp,
+                        pointeeMuidBuilder.getMedallion() || commitInfo.medallion,
+                        pointeeMuidBuilder.getOffset(),
+                    ];
+                    pointeeList.push(pointee);
+                }
+                const immediate = entryBuilder.hasImmediate() ? unwrapValue(entryBuilder.getImmediate()) : undefined;
+                const expiry = entryBuilder.getExpiry() || undefined;
+                const deleting = entryBuilder.hasDeleting() ? entryBuilder.getDeleting() : undefined;
+                const entry = {
+                    containerId,
+                    semanticKey,
+                    entryId,
+                    pointeeList,
+                    immediate,
+                    expiry,
+                    deleting,
+                }
+                //TODO: add code to add expiries to existing directory entries on insert
+                //console.log(JSON.stringify(entry));
+                await wrappedTransaction.objectStore("entries").add(entry);
                 continue;
             }
             if (changeBuilder.hasExit()) {
                 //TODO(https://github.com/google/gink/issues/57): When not keeping history, apply exits then discard.
-                const exit: ExitBuilder = changeBuilder.getExit();
-                const srcMuid: MuidBuilder = exit.getSource();
-                const sourceTuple: number[] = [0, commitInfo.medallion, 0];
-                sourceTuple[0] = srcMuid.getTimestamp() || commitInfo.timestamp;
-                sourceTuple[1] = srcMuid.getMedallion() || commitInfo.medallion;
-                sourceTuple[2] = srcMuid.getOffset();
-                const entryMuid = exit.getEntry();
-                const entryIdentifier: number[] = [0, 0, 0];
-                entryIdentifier[0] = entryMuid.getTimestamp() || timestamp;
-                entryIdentifier[1] = entryMuid.getMedallion() || medallion;
-                entryIdentifier[2] = entryMuid.getOffset();
-                //TODO(https://github.com/google/gink/issues/58): attach exit info for as-of queries
-                const exitKey = [sourceTuple, [], entryIdentifier];
-                // This implementation tries to keep just the first exit received instead of trying
-                // to keep the the first exit when ordered by timestamp, so there could be corner cases
-                // when changes sets are processed out of order and both have exits for one entry that 
-                // causes the "asOf" queries to give the wrong answer.  This is a very unlikely 
-                // situation though so I'm okay taking the shortcut implementation.
-                try {
-                    await wrappedTransaction.objectStore("exits").add(timestamp, exitKey);
-                } catch (_) { }
+                const exitBuilder: ExitBuilder = changeBuilder.getExit();
+                const entryMuid = exitBuilder.getEntry();
+                const entryId: number[] = [
+                    entryMuid.getTimestamp() || timestamp,
+                    entryMuid.getMedallion() || medallion,
+                    entryMuid.getOffset() ];
+                const exitId: number[] = [timestamp, medallion, offset];
+                const expiry = exitBuilder.getExpiry() || undefined;
+                const containerId: number[] = [0, 0, 0];
+                if (exitBuilder.hasContainer()) {
+                    const srcMuid: MuidBuilder = exitBuilder.getContainer();
+                    containerId[0] = srcMuid.getTimestamp() || commitInfo.timestamp;
+                    containerId[1] = srcMuid.getMedallion() || commitInfo.medallion;
+                    containerId[2] = srcMuid.getOffset();
+                }
+                const exit = {
+                    exitId,
+                    entryId,
+                    containerId,
+                    expiry,
+                    empty: [],
+                };
+                //TODO: add code to actually delete entries when not keeping full history
+                await wrappedTransaction.objectStore("exits").add(exit);
                 continue;
             }
             throw new Error("don't know how to apply this kind of change");
@@ -239,9 +266,9 @@ export class IndexedDbStore implements Store {
         return result;
     }
 
-    async getEntry(source: Muid, key?: KeyType|Muid, asOf?: AsOf): Promise<MuidBytesPair | undefined> {
+    async getEntry(container?: Muid, key?: KeyType|Muid, asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
-        const desiredSrc = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0];
+        const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const desiredKey = (typeof(key) == "number" || typeof(key) == "string") ? [key] : [];
         const lower = [desiredSrc, desiredKey, [0]];
         const upperTuple = (key && typeof(key) == "object") ? [key.timestamp, key.medallion, key.offset] : [asOfTs];
@@ -249,32 +276,26 @@ export class IndexedDbStore implements Store {
         const searchRange = IDBKeyRange.bound(lower, upper);
         let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange, "prev");
         if (cursor) {
-            const cursorEnt = cursor.key[2];
-            const address: Muid = {
-                timestamp: cursorEnt[0],
-                medallion: cursorEnt[1],
-                offset: cursorEnt[2],
-            }
-            return [address, cursor.value];
+            return cursor.value;
         }
     }
 
-    async getEntries(source: Muid, asOf?: AsOf): Promise<[KeyType, Muid, Bytes][]> {
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
-        const desiredSrc = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0];
+        const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const lower = [desiredSrc];
         const searchRange = IDBKeyRange.lowerBound(lower);
         let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange, "next");
-        const result = []
+        const result = new Map();
         for (;cursor && matches(cursor.key[0], desiredSrc); cursor = await cursor.continue()) {
-            if (cursor.key[2][0] < asOfTs) {
-                const cursorEnt = cursor.key[2];
-                const address: Muid = {
-                    timestamp: cursorEnt[0],
-                    medallion: cursorEnt[1],
-                    offset: cursorEnt[2],
+            const keyHolder: number[] = cursor.key[1];
+            if (keyHolder.length > 0 && cursor.key[2][0] < asOfTs) {
+                const entry = <Entry>cursor.value;
+                if (entry.deleting) {
+                    result.delete(entry.semanticKey[0]);
+                } else {
+                    result.set(entry.semanticKey[0], entry);
                 }
-                result.push([cursor.key[1][0], address, cursor.value]);
             }
         }
         return result;
@@ -284,17 +305,17 @@ export class IndexedDbStore implements Store {
      * Returns entry data for a List.  Does it in a single pass rather than using an async generator
      * because if a user tried to await on something else between entries it would cause the IndexedDb
      * transaction to auto-close.
-     * @param source source container to get entries for
+     * @param container to get entries for
      * @param through number to get, negative for starting from end
      * @param asOf show results as of a time in the past
      * @returns a promise of a list of ChangePairs
      */
-    async getVisibleEntries(source: Muid, through: number=Infinity, asOf?: AsOf): Promise<MuidBytesPair[]> {
+    async getUnKeyedEntries(container: Muid, through: number=Infinity, asOf?: AsOf): Promise<Entry[]> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const after = 0;
-        const desiredSrc = [source?.timestamp ?? 0, source?.medallion ?? 0, source?.offset ?? 0];
-        const lower = [desiredSrc, [], [after]];
-        const upper = [desiredSrc, [], [asOfTs]];
+        const containerId = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
+        const lower = [containerId, [], [after]];
+        const upper = [containerId, [], [asOfTs]];
         const range = IDBKeyRange.bound(lower, upper);
         const trxn = this.wrapped.transaction(["entries", "exits"]);
         const entries = trxn.objectStore("entries");
@@ -305,20 +326,14 @@ export class IndexedDbStore implements Store {
         const needed = through < 0 ? -through : through + 1;
         while (entriesCursor && returning.length < needed) {
             //TODO(https://github.com/google/gink/issues/58): Handle multi-exit
-            if (exitsCursor && (globalThis.indexedDB.cmp(entriesCursor.key, exitsCursor.key) == 0)) {
+            const exitKey: any[] = <any[]>exitsCursor?.key;
+            if (exitsCursor && (globalThis.indexedDB.cmp(entriesCursor.key, exitKey.slice(0,3)) == 0)) {
                 // This entry has been removed and needs to be skipped.
-                // TODO(TESTME): asOf
                 entriesCursor = await entriesCursor.continue();
                 exitsCursor = await exitsCursor.continue();
                 continue;
             }
-            const cursorEnt = entriesCursor.key[2];
-            const address: Muid = {
-                timestamp: cursorEnt[0],
-                medallion: cursorEnt[1],
-                offset: cursorEnt[2],
-            }
-            returning.push([address, entriesCursor.value]);
+            returning.push(entriesCursor.value);
             entriesCursor = await entriesCursor.continue();
         }
         return returning;
@@ -341,6 +356,14 @@ export class IndexedDbStore implements Store {
 
     async getAllEntryKeys() {
         return await this.wrapped.transaction(["entries"]).objectStore("entries").getAllKeys();
+    }
+
+    async getAllEntries() {
+        return await this.wrapped.transaction(["entries"]).objectStore("entries").getAll();
+    }
+
+    async getAllExits() {
+        return await this.wrapped.transaction(["exits"]).objectStore("exits").getAll();
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated

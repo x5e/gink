@@ -1,12 +1,12 @@
 import { Container as ContainerBuilder } from "container_pb";
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { Value, Muid, MuidBytesPair, MuidContentsPair, AsOf } from "./typedefs";
+import { Value, Muid, Entry, AsOf } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
-import { ensure, muidToBuilder, muidToString } from "./utils";
+import { ensure, muidToBuilder, muidToString, muidTupleToMuid } from "./utils";
 import { Exit as ExitBuilder } from "exit_pb";
 import { Change as ChangeBuilder } from "change_pb";
-import { convertEntryBytes, toJson } from "./factories";
+import { interpret, toJson } from "./factories";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
@@ -45,16 +45,16 @@ export class List extends Container {
         if (what && typeof (what) == "object") {
             muid = what;
             const entry = await this.ginkInstance.store.getEntry(this.address, muid);
-            ensure(entry[0].timestamp == muid.timestamp && entry[0].offset == muid.offset);
-            returning = await convertEntryBytes(this.ginkInstance, entry[1], muid);
+            ensure(entry.entryId[0] == muid.timestamp && entry.entryId[2] == muid.offset);
+            returning = await interpret(entry, this.ginkInstance);
         } else {
             what = (typeof (what) == "number") ? what : -1;
             // Should probably change the implementation to not copy all intermediate entries into memory.
-            const changePairs = await this.ginkInstance.store.getVisibleEntries(this.address, what)
-            if (changePairs.length == 0) return undefined;
-            const changePair = changePairs.at(-1);
-            returning = await convertEntryBytes(this.ginkInstance, changePair[1], changePair[0]);
-            muid = changePair[0];
+            const entries = await this.ginkInstance.store.getUnKeyedEntries(this.address, what)
+            if (entries.length == 0) return undefined;
+            const entry = entries.at(-1);
+            returning = await interpret(entry, this.ginkInstance);
+            muid = muidTupleToMuid(entry.entryId);
         }
         let immediate: boolean = false;
         if (!changeSet) {
@@ -63,7 +63,7 @@ export class List extends Container {
         }
         const exitBuilder = new ExitBuilder();
         exitBuilder.setEntry(muidToBuilder(muid));
-        exitBuilder.setSource(muidToBuilder(this.address));
+        exitBuilder.setContainer(muidToBuilder(this.address));
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setExit(exitBuilder);
         changeSet.addChange(changeBuilder);
@@ -87,40 +87,39 @@ export class List extends Container {
      * @returns value at the position of the list, or undefined if list is too small
      */
     async at(index: number, asOf?: AsOf) {
-        const pairs = await this.ginkInstance.store.getVisibleEntries(this.address, index, asOf);
-        if (pairs.length == 0) return undefined;
-        if (index >= 0 && pairs.length < index+1) return undefined;
-        if (index < 0 && pairs.length < -index) return undefined;
-        const [muid, bytes] = pairs.at(-1);
-        return convertEntryBytes(this.ginkInstance, bytes, muid);
+        const entries = await this.ginkInstance.store.getUnKeyedEntries(this.address, index, asOf);
+        if (entries.length == 0) return undefined;
+        if (index >= 0 && entries.length < index+1) return undefined;
+        if (index < 0 && entries.length < -index) return undefined;
+        const entry = entries.at(-1);
+        return await interpret(entry, this.ginkInstance);
     }
 
     async toArray(through: number = Infinity, asOf?: AsOf): Promise<(Container | Value)[]> {
         const thisList = this;
-        const pairs: MuidBytesPair[] = await thisList.ginkInstance.store.getVisibleEntries(thisList.address, through, asOf);
-        const transformed = await Promise.all(pairs.map(async function (changePair: MuidBytesPair): Promise<Container | Value> {
-            return await convertEntryBytes(thisList.ginkInstance, changePair[1], changePair[0])
+        const entries = await thisList.ginkInstance.store.getUnKeyedEntries(thisList.address, through, asOf);
+        const transformed = await Promise.all(entries.map(async function (entry: Entry): Promise<Container | Value> {
+            return await interpret(entry, thisList.ginkInstance);
         }));
         return transformed;
     }
 
     async size(asOf?: AsOf): Promise<number> {
         //TODO(TESTME)
-        const pairs: MuidBytesPair[] = await this.ginkInstance.store.getVisibleEntries(this.address, Infinity, asOf);
-        return pairs.length;
+        const entries = await this.ginkInstance.store.getUnKeyedEntries(this.address, Infinity, asOf);
+        return entries.length;
     }
 
-    entries(through: number=Infinity, asOf?: AsOf): AsyncGenerator<MuidContentsPair, void, unknown> {
+    entries(through: number=Infinity, asOf?: AsOf): AsyncGenerator<[Muid,Value|Container], void, unknown> {
         const thisList = this;
         return (async function*(){
             // Note: loading all entry data into memory despite using an async generator due to shitty IndexedDb 
             // behavior of closing transactions when you await on something else.  Hopefully they'll fix that in
             // the future and I can improve this.  Alternative, it might make sense to hydrate everything in a single pass.
-            const pairs = await thisList.ginkInstance.store.getVisibleEntries(thisList.address, through, asOf);
-            for (const pair of pairs) {
-                const hydrated = await convertEntryBytes(thisList.ginkInstance, pair[1], pair[0]);
-                const yielding: MuidContentsPair = [pair[0], hydrated];
-                yield yielding;
+            const entries = await thisList.ginkInstance.store.getUnKeyedEntries(thisList.address, through, asOf);
+            for (const entry of entries) {
+                const hydrated = await interpret(entry, thisList.ginkInstance);
+                yield [muidTupleToMuid(entry.entryId), hydrated];
             }
         })();
     }

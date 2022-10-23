@@ -34,7 +34,15 @@ test('push and pop', async function () {
     ensure(matches(await list.toArray(), ["A", "B", "C"]));
     const popped = await list.pop();
     ensure(popped == "C");
-    ensure(matches(await list.toArray(), ["A", "B"]));
+    /*
+    for (const entry of await store.getAllEntries()) {
+        console.log(entry);
+    }
+    for (const exit of await store.getAllExits()) {
+        console.log(exit);
+    }
+    */
+    ensure(matches(await list.toArray(), ["A", "B"]), JSON.stringify(await list.toArray()));
     const shifted = await list.shift();
     ensure(shifted == "A");
     ensure(matches(await list.toArray(), ["B"]));

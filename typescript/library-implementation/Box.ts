@@ -4,7 +4,7 @@ import { Container } from "./Container";
 import { Value, Muid, AsOf } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
 import { ensure } from "./utils";
-import { convertEntryBytes, toJson } from "./factories";
+import { toJson, interpret } from "./factories";
 
 export class Box extends Container {
 
@@ -47,12 +47,8 @@ export class Box extends Container {
     */
     async get(asOf?: AsOf): Promise<Container | Value | undefined> {
         await this.initialized;
-        const result = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);
-        if (result === undefined) {
-            return undefined;
-        }
-        const [entryAddress, entryBytes] = result;
-        return await convertEntryBytes(this.ginkInstance, entryBytes, entryAddress);
+        const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);
+        return interpret(entry, this.ginkInstance);
     }
 
     async size(asOf?: AsOf): Promise<number> {

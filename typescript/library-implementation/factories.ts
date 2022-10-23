@@ -5,7 +5,7 @@
  * something neither Container nor any of its subclasses need directly.
  */
 import { Container as ContainerBuilder } from "container_pb";
-import { Muid, Value, Bytes, AsOf } from "./typedefs";
+import { Muid, Value, Bytes, AsOf, Entry } from "./typedefs";
 import { Container } from "./Container";
 import { Directory } from "./Directory";
 import { List } from "./List";
@@ -29,6 +29,24 @@ export async function construct(ginkInstance: GinkInstance, address?: Muid, cont
         return (new Box(ginkInstance, address, containerBuilder));
     }
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
+}
+
+export async function interpret(entry: Entry, ginkInstance: GinkInstance): Promise<Container | Value | undefined> {
+    if (entry === undefined || entry.deleting) {
+        return undefined;
+    }
+    if (entry.immediate !== undefined)
+        return entry.immediate;
+    if (entry.pointeeList.length > 0) {
+        const muid: Muid = {
+            timestamp: entry.pointeeList[0][0],
+            medallion: entry.pointeeList[0][1],
+            offset: entry.pointeeList[0][2],
+        }
+        return construct(ginkInstance, muid);
+    }
+    throw new Error(`don't know how to interpret entry: ${JSON.stringify(entry)}`);
+
 }
 
 export async function toJson(value: Value | Container, indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
@@ -55,8 +73,8 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
     if (entryBuilder.hasValue()) {
         return unwrapValue(entryBuilder.getValue());
     }
-    if (entryBuilder.hasDestination()) {
-        const destAddress = builderToMuid(entryBuilder.getDestination(), entryAddress)
+    if (entryBuilder.hasPointee()) {
+        const destAddress = builderToMuid(entryBuilder.getPointee(), entryAddress)
         return await construct(ginkInstance, destAddress);
     }
     if (entryBuilder.hasDeleting() && entryBuilder.getDeleting()) {

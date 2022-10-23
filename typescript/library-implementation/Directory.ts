@@ -4,7 +4,7 @@ import { Container as ContainerBuilder } from "container_pb";
 import { ChangeSet } from "./ChangeSet";
 import { ensure, muidToString } from "./utils";
 import { GinkInstance } from "./GinkInstance";
-import { toJson, convertEntryBytes } from "./factories";
+import { toJson, interpret } from "./factories";
 
 export class Directory extends Container {
 
@@ -52,18 +52,13 @@ export class Directory extends Container {
     */
     async get(key: KeyType, asOf?: AsOf): Promise<Container | Value | undefined> {
         await this.initialized;
-        const result = await this.ginkInstance.store.getEntry(this.address, key, asOf);
-        if (result === undefined) {
-            return undefined;
-        }
-        const [entryAddress, entryBytes] = result;
-        return convertEntryBytes(this.ginkInstance, entryBytes, entryAddress);
+        const entry = await this.ginkInstance.store.getEntry(this.address, key, asOf);
+        return interpret(entry, this.ginkInstance);
     }
 
-    async size(): Promise<number> {
-        // There almost certainly is a more efficient implementation that doesn't require loading
-        // the entire contents of the map into memory first.
-        return (await this.toMap()).size;
+    async size(asOf: AsOf): Promise<number> {
+        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        return entries.size;
     }
 
     async has(key: KeyType, asOf?: AsOf): Promise<boolean> {
@@ -72,16 +67,12 @@ export class Directory extends Container {
         return result[1] !== undefined;
     }
 
-    async toMap(asOf?: AsOf): Promise<Map<KeyType, any>> {
-        const entries = await this.ginkInstance.store.getEntries(this.address, asOf);
+    async toMap(asOf?: AsOf): Promise<Map<KeyType, Value|Container>> {
+        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
         const resultMap = new Map();
-        for (const [key, muid, bytes] of entries) {
-            const val = await convertEntryBytes(this.ginkInstance, bytes, muid);
-            if (val === undefined) {
-                resultMap.delete(key);
-            } else {
-                resultMap.set(key, val);
-            }
+        for (const [key, entry] of entries) {
+            const val = await interpret(entry, this.ginkInstance);
+            resultMap.set(key, val);
         }
         return resultMap;
     }

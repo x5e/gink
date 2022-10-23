@@ -8,7 +8,7 @@ import {
     makeChainStart, extendChain, addTrxns,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
 } from "./test_utils";
-import { muidToBuilder, ensure, wrapValue, unwrapValue } from "../library-implementation/utils";
+import { muidToBuilder, ensure, wrapValue, unwrapValue, matches } from "../library-implementation/utils";
 import { ChangeSet } from "../library-implementation/ChangeSet";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
@@ -135,20 +135,18 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sourceAddress = {medallion: 1, timestamp:2, offset: 3};
         const address = changeSet.addEntry(
             (new EntryBuilder())
-                .setSource(muidToBuilder(sourceAddress))
+                .setContainer(muidToBuilder(sourceAddress))
                 .setKey(wrapValue("abc"))
-                .setValue(wrapValue("xyz"))
+                .setImmediate(wrapValue("xyz"))
         );
         changeSet.seal({medallion: 4, chainStart: 5, timestamp: 5});
         await store.addChangeSet(changeSet.bytes);
         ensure(address.medallion == 4);
         ensure(address.timestamp == 5);
-        const entryBytes = (await store.getEntry(sourceAddress, "abc",))[1];
-        const entryBuilder = EntryBuilder.deserializeBinary(entryBytes);
-        ensure(entryBuilder.getSource().getMedallion() == 1);
-        ensure(entryBuilder.getSource().getTimestamp() == 2);
-        ensure(entryBuilder.getSource().getOffset() == 3);
-        ensure(unwrapValue(entryBuilder.getKey()) == "abc");
-        ensure(unwrapValue(entryBuilder.getValue()) == "xyz");
+        const entry = await store.getEntry(sourceAddress, "abc",);
+        ensure(matches(entry.containerId, [2,1,3]));
+        ensure(matches(entry.entryId, [5,4,1]));
+        ensure(entry.immediate == "xyz");
+        ensure(entry.semanticKey[0] == "abc");
     });
 }

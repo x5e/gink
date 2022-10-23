@@ -13,7 +13,7 @@ package google.gink;
     will appear to be in effect).  
 */
 message Exit {
-    Muid source = 1;
+    Muid container = 1;
     Muid entry = 2;
     uint64 expiry = 3;
 }

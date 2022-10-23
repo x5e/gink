@@ -3,7 +3,7 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value } from "./typedefs";
+import { Muid, Medallion, Value, MuidTuple } from "./typedefs";
 import { Muid as MuidBuilder } from "muid_pb";
 import { Value as ValueBuilder } from "value_pb";
 
@@ -229,4 +229,12 @@ export function valueToJson(value: Value): string {
         return "{" + entries.map(function (pair) { return `"${pair[0]}":` + valueToJson(pair[1]) }).join(",") + "}";
     }
     throw new Error(`value not recognized: ${value}`)
+}
+
+export function muidTupleToMuid(tuple: MuidTuple): Muid {
+    return {
+        timestamp: tuple[0],
+        medallion: tuple[1],
+        offset: tuple[2],
+    }
 }
