@@ -61,6 +61,11 @@ export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid
     };
 }
 
+/**
+ * Converts from a KeyType (number or string) to a Gink Proto
+ * @param key 
+ * @returns 
+ */
 export function wrapKey(key: number | string): ValueBuilder {
     const value = new ValueBuilder();
     if (typeof (key) == "string") {
@@ -76,6 +81,12 @@ export function wrapKey(key: number | string): ValueBuilder {
     throw new Error(`key not a number or string: ${key}`);
 }
 
+/**
+ * Convert from a Gink Proto known to contain a string or number 
+ * into the equiv Javascript object.
+ * @param value 
+ * @returns 
+ */
 export function unwrapKey(value: ValueBuilder): number | string {
     ensure(value);
     if (value.hasCharacters()) {
@@ -92,6 +103,11 @@ export function unwrapKey(value: ValueBuilder): number | string {
     throw new Error("value isn't a number or string!");
 }
 
+/**
+ * Convert from a Gink Proto (Builder) for a Value to the corresponding JS object.
+ * @param valueBuilder Gink Proto for Value
+ * @returns 
+ */
 export function unwrapValue(valueBuilder: ValueBuilder): Value {
     ensure(valueBuilder instanceof ValueBuilder);
     if (valueBuilder.hasCharacters()) {
@@ -137,6 +153,11 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
     throw new Error("haven't implemented unwrap for this Value");
 }
 
+/**
+ * Converts from any javascript value Gink can store into the corresponding proto builder.
+ * @param arg Any Javascript value Gink can store
+ * @returns 
+ */
 export function wrapValue(arg: Value): ValueBuilder {
     ensure(arg !== undefined);
     const valueBuilder = new ValueBuilder();

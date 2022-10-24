@@ -89,8 +89,8 @@ export class List extends Container {
     async at(index: number, asOf?: AsOf) {
         const entries = await this.ginkInstance.store.getUnKeyedEntries(this.address, index, asOf);
         if (entries.length == 0) return undefined;
-        if (index >= 0 && entries.length < index+1) return undefined;
-        if (index < 0 && entries.length < -index) return undefined;
+        if (index >= 0 && index >= entries.length) return undefined;
+        if (index < 0 && Math.abs(index) > entries.length) return undefined;
         const entry = entries.at(-1);
         return await interpret(entry, this.ginkInstance);
     }
@@ -113,7 +113,7 @@ export class List extends Container {
     entries(through: number=Infinity, asOf?: AsOf): AsyncGenerator<[Muid,Value|Container], void, unknown> {
         const thisList = this;
         return (async function*(){
-            // Note: loading all entry data into memory despite using an async generator due to shitty IndexedDb 
+            // Note: I'm loading all entries memory despite using an async generator due to shitty IndexedDb 
             // behavior of closing transactions when you await on something else.  Hopefully they'll fix that in
             // the future and I can improve this.  Alternative, it might make sense to hydrate everything in a single pass.
             const entries = await thisList.ginkInstance.store.getUnKeyedEntries(thisList.address, through, asOf);

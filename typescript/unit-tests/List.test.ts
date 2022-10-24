@@ -81,6 +81,12 @@ test('size and at', async function () {
     const beginning = await list.at(0);
     ensure(beginning == "A");
 
+    const offEnd = await list.at(-4);
+    ensure(offEnd === undefined);
+
+    const nearEnd = await list.at(-3);
+    ensure(nearEnd == "A");
+
     await list.pop();
 
     const size2 = await list.size();

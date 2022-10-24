@@ -33,7 +33,7 @@ test('create a box; set and get data in it', async function() {
     ensure(result3 === undefined);
 
     const size3 = await aBox.size();
-    ensure(size3 == 0);
+    ensure(size3 == 0, size3.toString());
 });
 
 
