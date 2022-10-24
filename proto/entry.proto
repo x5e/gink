@@ -6,7 +6,7 @@ import "muid.proto";
 
 
 message Entry {
-    Muid source = 1; // not present for "root" entry
+    Muid container = 1; // not present for "root" entry
 
     message Span {
         // defines where to put octects in the FILE, may be omitted to place all at start
@@ -28,15 +28,15 @@ message Entry {
     }
 
     oneof target {
-        Muid destination = 5;
+        Muid pointee = 5;
         bool deleting = 6; // serves as reset when no link is set
         uint64 medallion = 7; // follow the root entry of another db instance
         bytes octects = 8; // for src_node behavior in {FILE, BINLOG} or when encrypted
-        Value value = 9;
+        Value immediate = 9;
         Row row = 10; // only when source is a TABLE
     }
 
-    uint64 expiry = 11; // timestamp of expiration in microseconds since epoch
+    uint64 expiry = 11; // timestamp of expiration in microseconds since epoch, for LIST/QUEUE only
     bytes iv = 15; // initialization vector when octects are encrypted
     bytes key_id = 16; // optional hint of which key was used (when encrypted)
 }

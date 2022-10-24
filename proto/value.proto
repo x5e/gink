@@ -59,6 +59,7 @@ message Value {
     
     message Document {
         // keys and values must be the same length
+        // keys should be numbers or strings
         repeated Value keys = 1;
         repeated Value values = 2;
     }

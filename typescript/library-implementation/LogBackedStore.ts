@@ -1,5 +1,5 @@
-import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, Basic } from "./typedefs";
-import { ChangeSetInfo, Muid } from "./typedefs";
+import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, AsOf } from "./typedefs";
+import { ChangeSetInfo, Muid, Entry } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -8,7 +8,6 @@ type FileHandle = any;
 const open = promises.open;
 import { flock } from "fs-ext";
 import { LogFile } from "log_file_pb";
-import { info } from "./utils";
 import { assert } from "console";
 import { ChainTracker } from "./ChainTracker";
 
@@ -32,7 +31,6 @@ export class LogBackedStore implements Store {
     private indexedDbStore: IndexedDbStore;
 
     constructor(filename: string, reset = false) {
-        info(`creating LogBackedStore ${filename}, reset=${reset}`)
         this.initialized = this.initialize(filename, reset);
     }
 
@@ -79,6 +77,12 @@ export class LogBackedStore implements Store {
             }
         }
     }
+
+    async getUnKeyedEntries(container: Muid, through: number=Infinity, asOf?: AsOf): Promise<Entry[]> {
+        await this.initialized;
+        return this.indexedDbStore.getUnKeyedEntries(container, through, asOf);
+    }
+
 
     async getCommitsProcessed() {
         await this.initialized;
@@ -132,9 +136,14 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getContainerBytes(address);
     }
 
-    async getEntry(key: Basic, source?: Muid): Promise<[Muid, Bytes]| undefined> {
+    async getEntry(container?: Muid, key?: KeyType|Muid, asOf?: AsOf): Promise<Entry | undefined> {
         await this.initialized;
-        return this.indexedDbStore.getEntry(key, source);
+        return this.indexedDbStore.getEntry(container, key, asOf);
+    }
+
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>> {
+        await this.initialized;
+        return this.getKeyedEntries(container, asOf);
     }
 
     async close() {

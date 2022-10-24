@@ -10,8 +10,12 @@ export type ClaimedChains = Map<Medallion, ChainStart>;
 export type Offset = number;
 export type FilePath = string;
 export type NumberStr = string;
-export type Basic = number | string | boolean | null;  // TODO: add bigints, bytes
+export type KeyType = number | string;
+export type Value = number | string | boolean | null | Bytes | Map<KeyType, Value> | Array<Value> | Date;
 export type ChangeSetInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, string];
+export type ChangeSetOffset = number;
+export type AsOf = Timestamp | Date | ChangeSetOffset;
+export type MuidTuple = [Timestamp, Medallion, Offset];
 
 export interface CommitListener {
     (commitInfo: ChangeSetInfo): Promise<void>;
@@ -27,6 +31,7 @@ export interface ServerArgs {
     sslCertFilePath?: FilePath;
     medallion?: NumberStr;
     staticPath?: string;
+    logger?: CallBack;
 }
 
 export interface Muid {
@@ -35,10 +40,24 @@ export interface Muid {
     offset: number;
 }
 
+export type MuidBytesPair = [Muid, Bytes];
+
+export type MuidContentsPair = [Muid, any];
+
 export interface ChangeSetInfo {
     timestamp: Timestamp;
     medallion: Medallion;
     chainStart: ChainStart;
     priorTime?: PriorTime;
     comment?: string;
+}
+
+export interface Entry {
+    containerId: MuidTuple;
+    semanticKey: KeyType[];
+    entryId: MuidTuple;
+    pointeeList: MuidTuple[];
+    immediate?: Value;
+    expiry?: Timestamp;
+    deleting?: boolean;
 }

@@ -1,28 +1,18 @@
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
-import { Basic, Muid } from "./typedefs";
-import { muidToBuilder, wrapValue, } from "./utils";
+import { Value, KeyType, Muid, Entry } from "./typedefs";
+import { muidToBuilder, wrapValue } from "./utils";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
 import { Deletion } from "./Deletion";
 import { ensure } from "./utils";
-import { Schema } from "./Schema";
 import { GinkInstance } from "./GinkInstance";
+
 
 export class Container {
     readonly initialized: Promise<void>;
     protected static readonly DELETION = new Deletion();
 
-    static async construct(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
-        if (!containerBuilder) {
-            const containerBytes = ensure(await ginkInstance.store.getContainerBytes(address));
-            containerBuilder = ContainerBuilder.deserializeBinary(containerBytes);
-        }
-        if (containerBuilder.getBehavior() == ContainerBuilder.Behavior.SCHEMA) {
-            return (new Schema(ginkInstance, address, containerBuilder));
-        }
-        throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
-    }
 
     /**
      * 
@@ -36,7 +26,7 @@ export class Container {
         this.initialized = ginkInstance.initialized;
     }
 
-    protected async addEntry(key?: Basic, value?: Basic | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
+    protected async addEntry(key?: KeyType, value?: Value | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
         await this.initialized;
         let immediate: boolean = false;
         if (!changeSet) {
@@ -46,7 +36,7 @@ export class Container {
 
         const entry = new EntryBuilder();
         if (this.address) {
-            entry.setSource(muidToBuilder(this.address, changeSet.medallion));
+            entry.setContainer(muidToBuilder(this.address, changeSet.medallion));
         }
         // TODO: check the key against the ValueType for keys (if set)
         if (key)
@@ -55,11 +45,11 @@ export class Container {
         // TODO: check that the destination/value is compatible with Container
         if (value !== undefined) {
             if (value instanceof Container) {
-                entry.setDestination(muidToBuilder(value.address, changeSet.medallion));
+                entry.setPointee(muidToBuilder(value.address, changeSet.medallion));
             } else if (value instanceof Deletion) {
                 entry.setDeleting(true);
             } else {
-                entry.setValue(wrapValue(value));
+                entry.setImmediate(wrapValue(value));
             }
 
         }
@@ -71,7 +61,4 @@ export class Container {
         }
         return address;
     }
-
-
-
 }
