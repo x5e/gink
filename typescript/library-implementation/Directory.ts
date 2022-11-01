@@ -8,10 +8,13 @@ import { toJson, interpret } from "./factories";
 
 export class Directory extends Container {
 
-    constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, containerBuilder);
-        if (this.address) {
+        if (this.address.timestamp) {
             ensure(this.containerBuilder.getBehavior() == ContainerBuilder.Behavior.SCHEMA);
+        } else {
+            //TODO(https://github.com/google/gink/issues/64): document default magic containers
+            ensure(address.offset == ContainerBuilder.Behavior.SCHEMA);
         }
     }
 

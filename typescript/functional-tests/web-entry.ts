@@ -26,7 +26,7 @@ async function onCommit(changeSetInfo: ChangeSetInfo) {
 
 (async () => {
     const instance = new GinkInstance(new IndexedDbStore("browser-test", true), "browser instance");
-    await instance.initialized;
+    await instance.ready;
     instance.addListener(onCommit);
     await instance.addChangeSet(new ChangeSet("Hello, Universe!"));
     await instance.connectTo(getWebsocketTarget());

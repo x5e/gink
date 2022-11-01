@@ -1,52 +1,43 @@
-import { createServer as createHttpServer, Server as HttpServer } from 'http';
-import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
-import { readFileSync } from 'fs';
-import { Server as StaticServer } from 'node-static';
 import {
-    server as WebSocketServer, request as WebSocketRequest,
+    request as WebSocketRequest,
     connection as WebSocketConnection, Message as WebSocketMessage
 } from 'websocket';
 import { GinkInstance } from "./GinkInstance";
 import { Peer } from './Peer';
 import { Buffer } from "buffer";
 import { Store,  } from "./Store";
-import { CallBack, ServerArgs } from "./typedefs";
+import { CallBack, NumberStr, FilePath, DirPath, AuthFunction } from "./typedefs";
+import { Listener } from "./Listener";
 
-export class GinkServer extends GinkInstance {
-    private websocketServer: WebSocketServer;
+/**
+ * A server that connects all inbound websocket connections to a single database instance.
+ */
+export class SimpleServer extends GinkInstance {
+
     private logger: CallBack;
+    private listener: Listener;
 
-    constructor(store: Store, instanceInfo: string, args: ServerArgs) {
-        super(store, instanceInfo);
-        const staticPath = args.staticPath || __dirname;
-        const staticServer = new StaticServer(staticPath);
-        const port = args.port || "8080";
-        let httpServer: HttpServer | HttpsServer;
-        const logger = this.logger = args.logger || console.log;
-        if (args["sslKeyFilePath"] && args["sslCertFilePath"]) {
-            var options = {
-                key: readFileSync(args["sslKeyFilePath"]),
-                cert: readFileSync(args["sslCertFilePath"]),
-            };
-            httpServer = createHttpsServer(options, function (request, response) {
-                staticServer.serve(request, response);
-            }).listen(port, () => logger(
-                `Secure server is listening on port ${port}`));
-        } else {
-            httpServer = createHttpServer(function (request, response) {
-                staticServer.serve(request, response);
-            });
-            httpServer.listen(port, function () {
-                logger(`Insecure server is listening on port ${port}`);
-            });
-        }
-        this.websocketServer = new WebSocketServer({ httpServer });
-        this.websocketServer.on('request', this.onRequest.bind(this));
+    constructor(args: {
+        store?: Store;
+        port?: NumberStr;
+        sslKeyFilePath?: FilePath;
+        sslCertFilePath?: FilePath;
+        staticContentRoot?: DirPath;
+        logger?: CallBack;
+        instanceInfo?: string;
+        authFunction?: AuthFunction;
+    }) {
+        super(args.store, args.instanceInfo || "SimpleServer");
+        this.logger = args.logger || (() => null);
+        this.listener = new Listener({
+            requestHandler: this.onRequest.bind(this), 
+            ...args
+        });
+        this.ready = Promise.all([this.ready, this.listener.ready]);
     }
 
-
     private async onRequest(request: WebSocketRequest) {
-        await this.initialized;
+        await this.ready;
         const thisServer = this; // pass into closures
         let protocol: string | null = null;
         if (request.requestedProtocols.length) {

@@ -18,13 +18,14 @@ import { Store } from "./Store";
 /**
  * This is an instance of the Gink database that can be run inside of a web browser or via
  * ts-node on a server.  Because of the need to work within a browser it doesn't do any port
- * listening (see Server.ts which extends this class for that capability).
+ * listening (see GinkListener and GinkServerInstance for that capability).
  */
 export class GinkInstance {
 
-    initialized: Promise<void>;
+    ready: Promise<any>;
     readonly peers: Map<number, Peer> = new Map();
     static readonly PROTOCOL = "gink";
+    static readonly SCHEMA = ContainerBuilder.Behavior.SCHEMA;
 
     private listeners: CommitListener[] = [];
     private countConnections: number = 0; // Includes disconnected clients.
@@ -39,7 +40,7 @@ export class GinkInstance {
 
     constructor(store?: Store, instanceInfo: string = "Default instanceInfo") {
         this.myStore = store || new IndexedDbStore();
-        this.initialized = this.initialize(instanceInfo);
+        this.ready = this.initialize(instanceInfo);
     }
 
     get store(): Store {
@@ -57,8 +58,12 @@ export class GinkInstance {
         this.iHave = await this.store.getChainTracker();
     }
 
-    get root(): Directory {
-        return new Directory(this);
+    /**
+     * Returns a handle to the magic global directory.  Primarily intended for testing.
+     * @returns a "magic" global directory that always exists and is accessible by all instances
+     */
+    getGlobalDirectory(): Directory {
+        return new Directory(this, {timestamp:0, medallion: 0, offset: ContainerBuilder.Behavior.SCHEMA});
     }
 
     async createBox(changeSet?: ChangeSet): Promise<Box> {
@@ -129,7 +134,7 @@ export class GinkInstance {
         var resultInfo: ChangeSetInfo;
         try {
             unlockingFunction = await this.processingLock.acquireLock();
-            await this.initialized;
+            await this.ready;
             const nowMicros = Date.now() * 1000;
             const seenThrough = await this.store.getSeenThrough(this.myChain);
             ensure(seenThrough > 0 && (seenThrough < nowMicros + 500));
@@ -180,7 +185,7 @@ export class GinkInstance {
      * @returns 
      */
     private async receiveCommit(commitBytes: ChangeSetBytes, fromConnectionId?: number): Promise<void> {
-        await this.initialized;
+        await this.ready;
         const changeSetInfo = await this.store.addChangeSet(commitBytes);
         if (!changeSetInfo) return;
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(changeSetInfo);
@@ -234,7 +239,7 @@ export class GinkInstance {
      * @returns a promise that's resolved once the connection has been established
      */
     public async connectTo(target: string, onClose: CallBack = noOp): Promise<Peer> {
-        await this.initialized;
+        await this.ready;
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
             let opened = false;

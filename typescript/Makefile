@@ -34,7 +34,7 @@ browser_test: webpack.out library-implementation/* functional-tests/*
 test: unit_tests integration_test browser_test
 
 server: node_modules javascript_protos
-	GINK_LOG_FILE=/tmp/gink.binary-log GINK_SERVER=1 GINK_RESET=1 GINK_PORT=8080 \
+	GINK_DATA_FILE=/tmp/gink.binary-log GINK_SERVER=1 GINK_RESET=1 GINK_PORT=8080 \
         ts-node ./main.ts
 
 kill_server:

@@ -1,7 +1,7 @@
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
 import { Value, KeyType, Muid, Entry } from "./typedefs";
-import { muidToBuilder, wrapValue } from "./utils";
+import { muidToBuilder, wrapValue, wrapKey } from "./utils";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
 import { Deletion } from "./Deletion";
@@ -23,10 +23,17 @@ export class Container {
     protected constructor(readonly ginkInstance: GinkInstance, readonly address?: Muid,
         protected containerBuilder?: ContainerBuilder) {
         ensure(containerBuilder || !address);
-        this.initialized = ginkInstance.initialized;
+        this.initialized = ginkInstance.ready;
     }
 
-    protected async addEntry(key?: KeyType, value?: Value | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
+    /**
+     * 
+     * @param key If absent, create a boxed entry, if KeyType, set a key in entry, if true, create a list entry
+     * @param value What the container ought to contain (an immediate Value, a reference, or a deletion)
+     * @param changeSet Change set to add this change to, or empty to apply immediately.
+     * @returns a promise the resolves to the muid of the change
+     */
+    protected async addEntry(key?: KeyType|true, value?: Value | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
         await this.initialized;
         let immediate: boolean = false;
         if (!changeSet) {
@@ -38,9 +45,12 @@ export class Container {
         if (this.address) {
             entry.setContainer(muidToBuilder(this.address, changeSet.medallion));
         }
-        // TODO: check the key against the ValueType for keys (if set)
-        if (key)
-            entry.setKey(wrapValue(key));
+
+        if (key === undefined) {
+            entry.setBoxed(true);
+        } else if (typeof(key) == "number" || typeof(key) == "string") {
+            entry.setKey(wrapKey(key));
+        }
 
         // TODO: check that the destination/value is compatible with Container
         if (value !== undefined) {

@@ -28,7 +28,7 @@ export class List extends Container {
      * @returns 
      */
     async push(value: Value | Container, changeSet?: ChangeSet): Promise<Muid> {
-        return await this.addEntry(undefined, value, changeSet);
+        return await this.addEntry(true, value, changeSet);
     }
 
     /**
@@ -50,7 +50,7 @@ export class List extends Container {
         } else {
             what = (typeof (what) == "number") ? what : -1;
             // Should probably change the implementation to not copy all intermediate entries into memory.
-            const entries = await this.ginkInstance.store.getUnKeyedEntries(this.address, what)
+            const entries = await this.ginkInstance.store.getOrderedEntries(this.address, what)
             if (entries.length == 0) return undefined;
             const entry = entries.at(-1);
             returning = await interpret(entry, this.ginkInstance);
@@ -87,7 +87,7 @@ export class List extends Container {
      * @returns value at the position of the list, or undefined if list is too small
      */
     async at(index: number, asOf?: AsOf) {
-        const entries = await this.ginkInstance.store.getUnKeyedEntries(this.address, index, asOf);
+        const entries = await this.ginkInstance.store.getOrderedEntries(this.address, index, asOf);
         if (entries.length == 0) return undefined;
         if (index >= 0 && index >= entries.length) return undefined;
         if (index < 0 && Math.abs(index) > entries.length) return undefined;
@@ -97,7 +97,7 @@ export class List extends Container {
 
     async toArray(through: number = Infinity, asOf?: AsOf): Promise<(Container | Value)[]> {
         const thisList = this;
-        const entries = await thisList.ginkInstance.store.getUnKeyedEntries(thisList.address, through, asOf);
+        const entries = await thisList.ginkInstance.store.getOrderedEntries(thisList.address, through, asOf);
         const transformed = await Promise.all(entries.map(async function (entry: Entry): Promise<Container | Value> {
             return await interpret(entry, thisList.ginkInstance);
         }));
@@ -106,7 +106,7 @@ export class List extends Container {
 
     async size(asOf?: AsOf): Promise<number> {
         //TODO(TESTME)
-        const entries = await this.ginkInstance.store.getUnKeyedEntries(this.address, Infinity, asOf);
+        const entries = await this.ginkInstance.store.getOrderedEntries(this.address, Infinity, asOf);
         return entries.length;
     }
 
@@ -116,7 +116,7 @@ export class List extends Container {
             // Note: I'm loading all entries memory despite using an async generator due to shitty IndexedDb 
             // behavior of closing transactions when you await on something else.  Hopefully they'll fix that in
             // the future and I can improve this.  Alternative, it might make sense to hydrate everything in a single pass.
-            const entries = await thisList.ginkInstance.store.getUnKeyedEntries(thisList.address, through, asOf);
+            const entries = await thisList.ginkInstance.store.getOrderedEntries(thisList.address, through, asOf);
             for (const entry of entries) {
                 const hydrated = await interpret(entry, thisList.ginkInstance);
                 yield [muidTupleToMuid(entry.entryId), hydrated];

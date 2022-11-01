@@ -77,7 +77,7 @@ export interface Store {
 
     getEntry(container?: Muid, key?: KeyType|Muid, asOf?: AsOf): Promise<Entry | undefined>;
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>>;
-    getUnKeyedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Entry[]>
+    getOrderedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Entry[]>
 
     /**
      * Closes the underlying data store.  Implicitly awaits on the this.initialized promise.

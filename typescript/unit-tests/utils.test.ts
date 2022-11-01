@@ -1,4 +1,4 @@
-import { ensure, unwrapValue, wrapValue, matches, valueToJson } from "../library-implementation/utils";
+import { ensure, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous } from "../library-implementation/utils";
 
 test('document', async function() {
     const wrapped = wrapValue((new Map()).set("fee","parking").set("cost",1000));
@@ -30,4 +30,12 @@ test('timestamp', async function () {
     } else {
         throw new Error("date conversion failed");
     }
+});
+
+test('isPathDangerous', function() {
+    ensure(isPathDangerous("/") == true);
+    ensure(isPathDangerous("/../foo") == true);
+    ensure(isPathDangerous("/foo/.bar") == true);
+    ensure(isPathDangerous("/user123@example.com/some.file") == false);
+    ensure(isPathDangerous("/normal-file-1234") == false); 
 });

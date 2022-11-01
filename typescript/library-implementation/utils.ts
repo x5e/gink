@@ -259,3 +259,13 @@ export function muidTupleToMuid(tuple: MuidTuple): Muid {
         offset: tuple[2],
     }
 }
+
+/**
+ * Checks the resource path to ensure that it will resolve to a sensible file.
+ * @param path resource requested
+ * @returns True if the path doesn't look like something we should let users access.
+ */
+export function isPathDangerous(path: string): boolean {
+    const pathParts = path.split(/\/+/).filter((part) => part.length > 0);
+    return (pathParts.length == 0 || !pathParts.every((part) => /^\w[\w.@-]*$/.test(part)));
+}

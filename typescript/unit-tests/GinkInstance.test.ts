@@ -31,7 +31,7 @@ test('uses claimed chain', async () => {
         ensure(commit.getComment() == "chain start comment")
     })
     const instance = new GinkInstance(store);
-    await instance.initialized;
+    await instance.ready;
     const secondInfo = await instance.addChangeSet(new ChangeSet("Hello, Universe!"));
     ensure(
         secondInfo.medallion == MEDALLION1 &&

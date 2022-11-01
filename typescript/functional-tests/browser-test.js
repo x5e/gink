@@ -18,7 +18,7 @@ const browserArgs = [
     const server = new Expector("make", ["server"]);
     await server.expect("ready", 60000);
     const driver = new Expector("./functional-tests/remote-control.js", []);
-    await driver.expect(/gink server/, 2000);
+    await driver.expect(/Server/, 2000);
     console.log("success!");
 
     server.close();

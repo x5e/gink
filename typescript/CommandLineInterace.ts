@@ -1,11 +1,12 @@
-import { GinkServer } from "./library-implementation/GinkServer";
+import { RoutingServer } from "./library-implementation/RoutingServer";
 import { LogBackedStore } from "./library-implementation/LogBackedStore";
-import { IndexedDbStore } from "./library-implementation/IndexedDbStore";
 import { Store } from "./library-implementation/Store";
 import { GinkInstance } from "./library-implementation/GinkInstance";
 import { ChangeSetInfo } from "./library-implementation/typedefs";
 import { ChangeSet } from "./library-implementation/ChangeSet";
 var readline = require('readline');
+import { SimpleServer } from "./library-implementation/SimpleServer";
+import { ensure } from "./library-implementation/utils";
 
 /**
 * Uses console.error to log messages to stderr in a form like:
@@ -38,50 +39,68 @@ async function onCommit(commitInfo: ChangeSetInfo) {
 */
 export class CommandLineInterface {
     targets: string[];
-    store: Store;
-    instance: GinkInstance;
+    store?: Store;
+    instance?: GinkInstance;
+    routingServer?: RoutingServer;
 
     constructor(process: NodeJS.Process) {
         logToStdErr("starting...");
 
-        const logFile = process.env["GINK_LOG_FILE"];
+        const dataRoot = process.env["GINK_DATA_ROOT"];
+        const dataFile = process.env["GINK_DATA_FILE"];
         const reset = !!process.env["GINK_RESET"];
 
-        if (logFile) {
-            logToStdErr(`using log file=${logFile}, reset=${reset}`);
-            this.store = new LogBackedStore(logFile,);
+
+        if (dataRoot) {
+            logToStdErr(`using data root ${dataRoot}`);
+            ensure(process.env["GINK_PORT"]);
+        } else if (dataFile) {
+            logToStdErr(`using data file=${dataFile}, reset=${reset}`);
+            this.store = new LogBackedStore(dataFile,);
         } else {
             logToStdErr(`using in-memory database`);
-            this.store = new IndexedDbStore();
         }
 
         if (process.env["GINK_PORT"]) {
-            this.instance = new GinkServer(this.store, "gink server", {
+            const common = {
                 port: process.env["GINK_PORT"],
                 sslKeyFilePath: process.env["GINK_SSL_KEY"],
                 sslCertFilePath: process.env["GINK_SSL_CERT"],
-                staticPath: process.env["GINK_STATIC_PATH"] || process.cwd(),
+                staticContentRoot: process.env["GINK_STATIC_PATH"] || process.cwd(),
                 logger: logToStdErr,
-            });
+            }
+            if (dataRoot) {
+                this.routingServer = new RoutingServer({
+                    dataFilesRoot: dataRoot, ...common
+                });
+            } else {
+                this.instance = new SimpleServer({ store: this.store, ...common });
+            }
         } else {
+            // GINK_PORT not set, so don't listen for incoming connections
             this.instance = new GinkInstance(this.store, "node instance");
         }
         this.targets = process.argv.slice(2);
     }
 
     async run() {
-        await this.instance.initialized;
-        this.instance.addListener(onCommit);
-        for (const target of this.targets) {
-            logToStdErr(`connecting to: ${target}`)
-            await this.instance.connectTo(target, logToStdErr);
-            logToStdErr(`connected!`)
+        if (this.instance) {
+            const instance = this.instance;
+            this.instance.addListener(onCommit);
+            for (const target of this.targets) {
+                logToStdErr(`connecting to: ${target}`)
+                this.instance.connectTo(target, logToStdErr);
+                logToStdErr(`connected!`)
+            }
+            logToStdErr("ready (type a comment and press enter to create a commit)");
+            const readlineInterface = readline.createInterface(process.stdin, process.stdout);
+            readlineInterface.on('line', async (comment: string) => {
+                instance.addChangeSet(new ChangeSet(comment));
+            })
+        } else {
+            await this.routingServer?.ready;
+            logToStdErr("routing server ready");
         }
-        logToStdErr("ready (type a comment and press enter to create a commit)");
-        const readlineInterface = readline.createInterface(process.stdin, process.stdout);
-        readlineInterface.on('line', async (comment: string) => {
-            await this.instance.addChangeSet(new ChangeSet(comment));
-        })
     }
 
 }

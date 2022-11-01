@@ -8,6 +8,7 @@ export type SeenThrough = Timestamp;
 export type PriorTime = Timestamp;
 export type ClaimedChains = Map<Medallion, ChainStart>;
 export type Offset = number;
+export type DirPath = string;
 export type FilePath = string;
 export type NumberStr = string;
 export type KeyType = number | string;
@@ -16,22 +17,18 @@ export type ChangeSetInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, s
 export type ChangeSetOffset = number;
 export type AsOf = Timestamp | Date | ChangeSetOffset;
 export type MuidTuple = [Timestamp, Medallion, Offset];
+export type Cookies = Map<string, string>;
 
 export interface CommitListener {
     (commitInfo: ChangeSetInfo): Promise<void>;
 }
 
 export interface CallBack {
-    (value: any): void;
+    (value?: any): void;
 }
 
-export interface ServerArgs {
-    port?: NumberStr;
-    sslKeyFilePath?: FilePath;
-    sslCertFilePath?: FilePath;
-    medallion?: NumberStr;
-    staticPath?: string;
-    logger?: CallBack;
+export interface AuthFunction {
+    (cookies: Cookies, resource: string): boolean;
 }
 
 export interface Muid {
@@ -52,7 +49,14 @@ export interface ChangeSetInfo {
     comment?: string;
 }
 
+export enum EntryType {
+    BOXED = 0,
+    KEYED = 1,
+    QUEUE = 2,
+}
+
 export interface Entry {
+    entryType: EntryType,
     containerId: MuidTuple;
     semanticKey: KeyType[];
     entryId: MuidTuple;

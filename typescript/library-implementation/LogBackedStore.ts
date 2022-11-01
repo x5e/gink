@@ -78,9 +78,9 @@ export class LogBackedStore implements Store {
         }
     }
 
-    async getUnKeyedEntries(container: Muid, through: number=Infinity, asOf?: AsOf): Promise<Entry[]> {
+    async getOrderedEntries(container: Muid, through: number=Infinity, asOf?: AsOf): Promise<Entry[]> {
         await this.initialized;
-        return this.indexedDbStore.getUnKeyedEntries(container, through, asOf);
+        return this.indexedDbStore.getOrderedEntries(container, through, asOf);
     }
 
 
