@@ -1,6 +1,6 @@
 import { Peer } from "./Peer";
-import { makeMedallion, ensure, noOp } from "./utils";
-import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack } from "./typedefs";
+import { makeMedallion, ensure, noOp, muidTupleToMuid } from "./utils";
+import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack, AsOf } from "./typedefs";
 import { ChangeSetInfo, Muid } from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
@@ -9,10 +9,13 @@ import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Container as ContainerBuilder } from "container_pb";
+import { Container } from "./Container";
 import { Directory } from "./Directory";
 import { Box } from "./Box";
 import { List } from "./List";
 import { Store } from "./Store";
+import { Behavior } from "behavior_pb";
+
 
 
 /**
@@ -25,7 +28,7 @@ export class GinkInstance {
     ready: Promise<any>;
     readonly peers: Map<number, Peer> = new Map();
     static readonly PROTOCOL = "gink";
-    static readonly SCHEMA = ContainerBuilder.Behavior.SCHEMA;
+    static readonly SCHEMA = Behavior.SCHEMA;
 
     private listeners: CommitListener[] = [];
     private countConnections: number = 0; // Includes disconnected clients.
@@ -36,7 +39,7 @@ export class GinkInstance {
 
     //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
     private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
-    eval("require('websocket').w3cwebsocket");
+        eval("require('websocket').w3cwebsocket");
 
     constructor(store?: Store, instanceInfo: string = "Default instanceInfo") {
         this.myStore = store || new IndexedDbStore();
@@ -47,8 +50,43 @@ export class GinkInstance {
         return this.myStore;
     }
 
+    /**
+     * Starts an async iterator that returns all of the containers pointing to the object in question.
+     * @param pointingTo Object to find things pointing at.
+     * @param asOf Effective time to look at.
+     * @returns an async generator of [key, Container], where key is they Directory key, or List entry muid, or undefined for Box
+     */
+    getBackRefs(pointingTo: Container, asOf?: AsOf): AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
+        const thisInstance = this;
+        return (async function* () {
+            const entries = await thisInstance.myStore.getBackRefs(pointingTo.address);
+            for (const entry of entries) {
+                const containerMuid = muidTupleToMuid(entry.containerId);
+                const containerBuilder = containerMuid.timestamp === 0 ? undefined : 
+                    ContainerBuilder.deserializeBinary(await thisInstance.store.getContainerBytes(containerMuid));
+                if (entry.behavior == Behavior.SCHEMA) {
+                    if (thisInstance.myStore.getEntry(containerMuid, entry.semanticKey[0], asOf)) {
+                        yield <[KeyType | Muid | undefined, Container]>
+                            [entry.semanticKey[0], new Directory(thisInstance, containerMuid, containerBuilder)];
+                    }
+                }
+                if (entry.behavior == Behavior.QUEUE) {
+                    const entryMuid = muidTupleToMuid(entry.entryId);
+                    if (thisInstance.myStore.getEntry(containerMuid, entryMuid, asOf)) {
+                        yield [entryMuid, new List(thisInstance, containerMuid, containerBuilder)];
+                    }
+                }
+                if (entry.behavior == Behavior.BOX) {
+                    if (thisInstance.myStore.getEntry(containerMuid, undefined, asOf)) {
+                        yield [undefined, new Box(thisInstance, containerMuid, containerBuilder)];
+                    }
+                }
+            }
+        })();
+    }
+
     private async initialize(instanceInfo: string) {
-        await this.store.initialized;
+        await this.store.ready;
         const claimedChains = await this.store.getClaimedChains();
         if (claimedChains.size) {
             this.myChain = claimedChains.entries().next().value;
@@ -63,26 +101,26 @@ export class GinkInstance {
      * @returns a "magic" global directory that always exists and is accessible by all instances
      */
     getGlobalDirectory(): Directory {
-        return new Directory(this, {timestamp:0, medallion: 0, offset: ContainerBuilder.Behavior.SCHEMA});
+        return new Directory(this, { timestamp: 0, medallion: 0, offset: Behavior.SCHEMA });
     }
 
     async createBox(changeSet?: ChangeSet): Promise<Box> {
-        const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.BOX, changeSet);
+        const [muid, containerBuilder] = await this.createContainer(Behavior.BOX, changeSet);
         return new Box(this, muid, containerBuilder);
     }
 
     async createList(changeSet?: ChangeSet): Promise<List> {
-        const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.QUEUE, changeSet);
+        const [muid, containerBuilder] = await this.createContainer(Behavior.QUEUE, changeSet);
         return new List(this, muid, containerBuilder);
     }
 
     // TODO: allow user to specify the types allowed for keys and values
     async createDirectory(changeSet?: ChangeSet): Promise<Directory> {
-        const [muid, containerBuilder] = await this.createContainer(ContainerBuilder.Behavior.SCHEMA, changeSet);
+        const [muid, containerBuilder] = await this.createContainer(Behavior.SCHEMA, changeSet);
         return new Directory(this, muid, containerBuilder);
     }
 
-    protected async createContainer(behavior: ContainerBuilder.Behavior, changeSet?: ChangeSet): Promise<[Muid, ContainerBuilder]> {
+    protected async createContainer(behavior: Behavior, changeSet?: ChangeSet): Promise<[Muid, ContainerBuilder]> {
         let immediate: boolean = false;
         if (!changeSet) {
             immediate = true;

@@ -5,16 +5,17 @@ import { ChangeSet } from "./ChangeSet";
 import { ensure, muidToString } from "./utils";
 import { GinkInstance } from "./GinkInstance";
 import { toJson, interpret } from "./factories";
+import { Behavior } from "behavior_pb";
 
 export class Directory extends Container {
 
     constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, containerBuilder);
-        if (this.address.timestamp) {
-            ensure(this.containerBuilder.getBehavior() == ContainerBuilder.Behavior.SCHEMA);
+        if (this.address.timestamp !== 0) {
+            ensure(this.containerBuilder.getBehavior() == Behavior.SCHEMA);
         } else {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
-            ensure(address.offset == ContainerBuilder.Behavior.SCHEMA);
+            ensure(address.offset == Behavior.SCHEMA);
         }
     }
 
@@ -54,7 +55,7 @@ export class Directory extends Container {
     * @returns undefined, a basic value, or a container
     */
     async get(key: KeyType, asOf?: AsOf): Promise<Container | Value | undefined> {
-        await this.initialized;
+        await this.ready;
         const entry = await this.ginkInstance.store.getEntry(this.address, key, asOf);
         return interpret(entry, this.ginkInstance);
     }
@@ -65,7 +66,7 @@ export class Directory extends Container {
     }
 
     async has(key: KeyType, asOf?: AsOf): Promise<boolean> {
-        await this.initialized;
+        await this.ready;
         const result = await this.ginkInstance.store.getEntry(this.address, key, asOf);
         return result[1] !== undefined;
     }

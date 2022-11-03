@@ -1,16 +1,15 @@
 import { ChangeSet } from "./ChangeSet";
 import { Entry as EntryBuilder } from "entry_pb";
-import { Value, KeyType, Muid, Entry } from "./typedefs";
-import { muidToBuilder, wrapValue, wrapKey } from "./utils";
+import { Value, KeyType, Muid } from "./typedefs";
+import { muidToBuilder, wrapValue, wrapKey, ensure } from "./utils";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
 import { Deletion } from "./Deletion";
-import { ensure } from "./utils";
 import { GinkInstance } from "./GinkInstance";
 
 
 export class Container {
-    readonly initialized: Promise<void>;
+    readonly ready: Promise<void>;
     protected static readonly DELETION = new Deletion();
 
 
@@ -20,10 +19,14 @@ export class Container {
      * @param address not necessary for root schema
      * @param containerBuilder will try to fetch if not specified
      */
-    protected constructor(readonly ginkInstance: GinkInstance, readonly address?: Muid,
-        protected containerBuilder?: ContainerBuilder) {
-        ensure(containerBuilder || !address);
-        this.initialized = ginkInstance.ready;
+    protected constructor(readonly ginkInstance: GinkInstance, readonly address: Muid, protected containerBuilder?: ContainerBuilder) {
+        ensure(address.timestamp == 0 || containerBuilder !== undefined, "missing container definition");
+        this.ready = ginkInstance.ready;
+    }
+
+    toString(): string {
+        const address = this.address;
+        return `Container(${address.timestamp},${address.medallion},${address.offset})`;
     }
 
     /**
@@ -33,8 +36,8 @@ export class Container {
      * @param changeSet Change set to add this change to, or empty to apply immediately.
      * @returns a promise the resolves to the muid of the change
      */
-    protected async addEntry(key?: KeyType|true, value?: Value | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
-        await this.initialized;
+    protected async addEntry(key?: KeyType | true, value?: Value | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
+        await this.ready;
         let immediate: boolean = false;
         if (!changeSet) {
             immediate = true;
@@ -48,7 +51,7 @@ export class Container {
 
         if (key === undefined) {
             entry.setBoxed(true);
-        } else if (typeof(key) == "number" || typeof(key) == "string") {
+        } else if (typeof (key) == "number" || typeof (key) == "string") {
             entry.setKey(wrapKey(key));
         }
 

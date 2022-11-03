@@ -10,7 +10,7 @@ testStore('LogBackedStore',
 test('test locks', async () => {
     const lbs2 = new LogBackedStore(TEST_FILE);
     let result = "unknown";
-    await lbs2.initialized.then(() => { result = "acquired"; }).catch(() => { result = "barfed"; });
+    await lbs2.ready.then(() => { result = "acquired"; }).catch(() => { result = "barfed"; });
     if (result != "barfed") {
         throw new Error("locking broken");
     }

@@ -4,6 +4,7 @@ import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Change as ChangeBuilder } from "change_pb";
 import { Container as ContainerBuilder } from "container_pb";
 import { Entry as EntryBuilder } from "entry_pb";
+import { Behavior } from "behavior_pb";
 import {
     makeChainStart, extendChain, addTrxns,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
@@ -29,7 +30,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
 
     beforeEach(async () => {
         store = await storeMaker();
-        await store.initialized;
+        await store.ready;
     });
 
     afterEach(async () => {
@@ -117,7 +118,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         changeSetBuilder.setMedallion(MEDALLION1);
         const changeBuilder = new ChangeBuilder();
         const containerBuilder = new ContainerBuilder();
-        containerBuilder.setBehavior(ContainerBuilder.Behavior.SCHEMA);
+        containerBuilder.setBehavior(Behavior.SCHEMA);
         changeBuilder.setContainer(containerBuilder);
         changeSetBuilder.getChangesMap().set(7, changeBuilder);
         const changeSetBytes = changeSetBuilder.serializeBinary();
@@ -127,7 +128,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
         ensure(containerBytes);
         const containerBuilder2 = ContainerBuilder.deserializeBinary(containerBytes);
-        ensure(containerBuilder2.getBehavior() == ContainerBuilder.Behavior.SCHEMA);
+        ensure(containerBuilder2.getBehavior() == Behavior.SCHEMA);
     });
 
     test(`${implName} create / view Entry`, async () => {

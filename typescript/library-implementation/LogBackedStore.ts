@@ -25,13 +25,13 @@ import { ChainTracker } from "./ChainTracker";
 
 export class LogBackedStore implements Store {
 
-    readonly initialized: Promise<void>;
+    readonly ready: Promise<void>;
     private commitsProcessed: number = 0;
     private fileHandle: FileHandle;
     private indexedDbStore: IndexedDbStore;
 
     constructor(filename: string, reset = false) {
-        this.initialized = this.initialize(filename, reset);
+        this.ready = this.initialize(filename, reset);
     }
 
     private async openAndLock(filename: string, truncate?: boolean): Promise<FileHandle> {
@@ -55,7 +55,7 @@ export class LogBackedStore implements Store {
 
         // Assuming we have the lock, clear the in memory store and then re-populate it.
         this.indexedDbStore = new IndexedDbStore(filename, true);
-        await this.indexedDbStore.initialized;
+        await this.indexedDbStore.ready;
 
         if (!reset) {
             const stats = await this.fileHandle.stat();
@@ -79,18 +79,18 @@ export class LogBackedStore implements Store {
     }
 
     async getOrderedEntries(container: Muid, through: number=Infinity, asOf?: AsOf): Promise<Entry[]> {
-        await this.initialized;
+        await this.ready;
         return this.indexedDbStore.getOrderedEntries(container, through, asOf);
     }
 
 
     async getCommitsProcessed() {
-        await this.initialized;
+        await this.ready;
         return this.commitsProcessed;
     }
 
     async addChangeSet(commitBytes: ChangeSetBytes): Promise<ChangeSetInfo|undefined> {
-        await this.initialized;
+        await this.ready;
         const added = await this.indexedDbStore.addChangeSet(commitBytes);
         if (added) {
             const logFragment = new LogFile();
@@ -101,17 +101,17 @@ export class LogBackedStore implements Store {
     }
 
     async getClaimedChains() {
-        await this.initialized;
+        await this.ready;
         return this.indexedDbStore.getClaimedChains();
     }
 
     async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
-        await this.initialized;
+        await this.ready;
         return this.indexedDbStore.getSeenThrough(key);
     }
 
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
-        await this.initialized;
+        await this.ready;
         const fragment = new LogFile();
         const entry = new LogFile.ChainEntry();
         entry.setChainStart(chainStart);
@@ -122,32 +122,37 @@ export class LogBackedStore implements Store {
     }
 
     async getChainTracker(): Promise<ChainTracker> {
-        await this.initialized;
+        await this.ready;
         return await this.indexedDbStore.getChainTracker();
     }
 
     async getCommits(callBack: (commitBytes: ChangeSetBytes, commitInfo: ChangeSetInfo) => void): Promise<void> {
-        await this.initialized;
+        await this.ready;
         await this.indexedDbStore.getCommits(callBack);
     }
 
     async getContainerBytes(address: Muid): Promise<Bytes|undefined> {
-        await this.initialized;
+        await this.ready;
         return this.indexedDbStore.getContainerBytes(address);
     }
 
     async getEntry(container?: Muid, key?: KeyType|Muid, asOf?: AsOf): Promise<Entry | undefined> {
-        await this.initialized;
+        await this.ready;
         return this.indexedDbStore.getEntry(container, key, asOf);
     }
 
     async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>> {
-        await this.initialized;
+        await this.ready;
         return this.getKeyedEntries(container, asOf);
     }
 
+    async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
+        await this.ready;
+        return this.indexedDbStore.getBackRefs(pointingTo);
+    }
+
     async close() {
-        await this.initialized;
+        await this.ready;
         await this.fileHandle.close();
         await this.indexedDbStore.close();
     }

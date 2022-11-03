@@ -7,6 +7,7 @@ import { ensure, muidToBuilder, muidToString, muidTupleToMuid } from "./utils";
 import { Exit as ExitBuilder } from "exit_pb";
 import { Change as ChangeBuilder } from "change_pb";
 import { interpret, toJson } from "./factories";
+import { Behavior } from "behavior_pb";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
@@ -16,8 +17,11 @@ export class List extends Container {
 
     constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, containerBuilder);
-        if (this.address) {
-            ensure(this.containerBuilder.getBehavior() == ContainerBuilder.Behavior.QUEUE);
+        if (this.address.timestamp !== 0) {
+            ensure(this.containerBuilder.getBehavior() == Behavior.QUEUE, "container not queue");
+        } else {
+            //TODO(https://github.com/google/gink/issues/64): document default magic containers
+            ensure(address.offset == Behavior.QUEUE, "magic tag not queue");
         }
     }
 
@@ -39,12 +43,13 @@ export class List extends Container {
      * @param changeSet 
      */
     async pop(what?: Muid | number, changeSet?: ChangeSet): Promise<Container | Value | undefined> {
-        await this.initialized;
+        await this.ready;
         let returning: Container | Value;
         let muid: Muid;
         if (what && typeof (what) == "object") {
             muid = what;
             const entry = await this.ginkInstance.store.getEntry(this.address, muid);
+            if (!entry) return undefined;
             ensure(entry.entryId[0] == muid.timestamp && entry.entryId[2] == muid.offset);
             returning = await interpret(entry, this.ginkInstance);
         } else {
@@ -82,17 +87,24 @@ export class List extends Container {
 
     /**
      * 
-     * @param index Index to look for the thing, negative counts from end.
+     * @param position Index to look for the thing, negative counts from end, or muid of entry
      * @param asOf 
      * @returns value at the position of the list, or undefined if list is too small
      */
-    async at(index: number, asOf?: AsOf) {
-        const entries = await this.ginkInstance.store.getOrderedEntries(this.address, index, asOf);
-        if (entries.length == 0) return undefined;
-        if (index >= 0 && index >= entries.length) return undefined;
-        if (index < 0 && Math.abs(index) > entries.length) return undefined;
-        const entry = entries.at(-1);
-        return await interpret(entry, this.ginkInstance);
+    async at(position: number|Muid, asOf?: AsOf): Promise<Container | Value | undefined> {
+        if (typeof(position) == "number") {
+            //TODO(https://github.com/google/gink/issues/68): fix crummy algo
+            const entries = await this.ginkInstance.store.getOrderedEntries(this.address, position, asOf);
+            if (entries.length == 0) return undefined;
+            if (position >= 0 && position >= entries.length) return undefined;
+            if (position < 0 && Math.abs(position) > entries.length) return undefined;
+            const entry = entries.at(-1);
+            return await interpret(entry, this.ginkInstance);
+        } else {
+            const entry = await this.ginkInstance.store.getEntry(this.address, position, asOf);
+            if (!entry) return undefined;
+            return await interpret(entry, this.ginkInstance);
+        }
     }
 
     async toArray(through: number = Infinity, asOf?: AsOf): Promise<(Container | Value)[]> {

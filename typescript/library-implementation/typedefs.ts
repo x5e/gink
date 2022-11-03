@@ -1,3 +1,5 @@
+import { Behavior } from "behavior_pb";
+
 export type Bytes = Uint8Array;
 export type GreetingBytes = Bytes;
 export type ChangeSetBytes = Bytes;
@@ -49,18 +51,14 @@ export interface ChangeSetInfo {
     comment?: string;
 }
 
-export enum EntryType {
-    BOXED = 0,
-    KEYED = 1,
-    QUEUE = 2,
-}
-
+// data structure to represent an Entry; some fields are tuples of 0 or 1 entries because
+// the indexeddb system can't handle null or undefined in keys (but can handle tuples).
 export interface Entry {
-    entryType: EntryType,
+    behavior: Behavior,
     containerId: MuidTuple;
-    semanticKey: KeyType[];
+    semanticKey: KeyType[]; // use an empty list to denote no semantic key
     entryId: MuidTuple;
-    pointeeList: MuidTuple[];
+    pointeeList: MuidTuple[]; // use an empty list to denote no pointees
     immediate?: Value;
     expiry?: Timestamp;
     deleting?: boolean;

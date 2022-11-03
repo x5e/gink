@@ -5,13 +5,17 @@ import { Value, Muid, AsOf } from "./typedefs";
 import { ChangeSet } from "./ChangeSet";
 import { ensure } from "./utils";
 import { toJson, interpret } from "./factories";
+import { Behavior } from "behavior_pb";
 
 export class Box extends Container {
 
     constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, containerBuilder);
-        if (this.address) {
-            ensure(this.containerBuilder.getBehavior() == ContainerBuilder.Behavior.BOX);
+        if (this.address.timestamp !== 0) {
+            ensure(this.containerBuilder.getBehavior() == Behavior.BOX);
+        } else {
+            //TODO(https://github.com/google/gink/issues/64): document default magic containers
+            ensure(address.offset == Behavior.BOX);
         }
     }
 
@@ -46,7 +50,7 @@ export class Box extends Container {
     * @returns undefined, a basic value, or a container
     */
     async get(asOf?: AsOf): Promise<Container | Value | undefined> {
-        await this.initialized;
+        await this.ready;
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);
         return interpret(entry, this.ginkInstance);
     }
@@ -57,13 +61,13 @@ export class Box extends Container {
      * @returns 0 or 1 depending on whether or not there's something in the box.
      */
     async size(asOf?: AsOf): Promise<number> {
-        await this.initialized;
+        await this.ready;
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
         return +!(entry === undefined || entry.deleting)
     }
 
     async isEmpty(asOf?: AsOf): Promise<boolean> {
-        await this.initialized;
+        await this.ready;
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
         return (entry === undefined || entry.deleting)
     }

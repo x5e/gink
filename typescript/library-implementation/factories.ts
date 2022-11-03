@@ -13,19 +13,20 @@ import { Box } from "./Box";
 import { GinkInstance } from "./GinkInstance";
 import { ensure, unwrapValue, builderToMuid, valueToJson } from "./utils";
 import { Entry as EntryBuilder } from "entry_pb";
+import { Behavior } from "behavior_pb";
 
-export async function construct(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
-    if (!containerBuilder) {
+export async function construct(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
+    if (containerBuilder === undefined && address.timestamp > 0) {
         const containerBytes = ensure(await ginkInstance.store.getContainerBytes(address));
         containerBuilder = ContainerBuilder.deserializeBinary(containerBytes);
     }
-    if (containerBuilder.getBehavior() == ContainerBuilder.Behavior.SCHEMA) {
+    if (containerBuilder.getBehavior() == Behavior.SCHEMA) {
         return (new Directory(ginkInstance, address, containerBuilder));
     }
-    if (containerBuilder.getBehavior() == ContainerBuilder.Behavior.QUEUE) {
+    if (containerBuilder.getBehavior() == Behavior.QUEUE) {
         return (new List(ginkInstance, address, containerBuilder));
     }
-    if (containerBuilder.getBehavior() == ContainerBuilder.Behavior.BOX) {
+    if (containerBuilder.getBehavior() == Behavior.BOX) {
         return (new Box(ginkInstance, address, containerBuilder));
     }
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
