@@ -55,7 +55,6 @@ export class Directory extends Container {
     * @returns undefined, a basic value, or a container
     */
     async get(key: KeyType, asOf?: AsOf): Promise<Container | Value | undefined> {
-        await this.ready;
         const entry = await this.ginkInstance.store.getEntry(this.address, key, asOf);
         return interpret(entry, this.ginkInstance);
     }
@@ -66,7 +65,6 @@ export class Directory extends Container {
     }
 
     async has(key: KeyType, asOf?: AsOf): Promise<boolean> {
-        await this.ready;
         const result = await this.ginkInstance.store.getEntry(this.address, key, asOf);
         return result[1] !== undefined;
     }

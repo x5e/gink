@@ -5,7 +5,6 @@ import { ChangeSetInfo, Muid } from "./typedefs";
 import { SyncMessage } from "sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
-import { ChangeSet as ChangeSetMessage } from "change_set_pb";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Container as ContainerBuilder } from "container_pb";
@@ -15,8 +14,6 @@ import { Box } from "./Box";
 import { List } from "./List";
 import { Store } from "./Store";
 import { Behavior } from "behavior_pb";
-
-
 
 /**
  * This is an instance of the Gink database that can be run inside of a web browser or via
@@ -41,9 +38,13 @@ export class GinkInstance {
     private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
         eval("require('websocket').w3cwebsocket");
 
-    constructor(store?: Store, instanceInfo: string = "Default instanceInfo") {
+    constructor(store: Store, info?: {
+        fullname?: string,
+        email?: string,
+        software?: string,
+    }) {
         this.myStore = store || new IndexedDbStore();
-        this.ready = this.initialize(instanceInfo);
+        this.ready = this.initialize(info);
     }
 
     get store(): Store {
@@ -85,13 +86,36 @@ export class GinkInstance {
         })();
     }
 
-    private async initialize(instanceInfo: string) {
+    private async initialize(info?: {
+        fullname?: string,
+        email?: string,
+        software?: string,
+    }) {
         await this.store.ready;
         const claimedChains = await this.store.getClaimedChains();
         if (claimedChains.size) {
             this.myChain = claimedChains.entries().next().value;
         } else {
-            this.myChain = await this.startChain(instanceInfo);
+            const medallion = makeMedallion();
+            const chainStart = Date.now() * 1000;
+            this.myChain =  [medallion, chainStart];
+            const changeSet = new ChangeSet("start", medallion);
+            const medallionInfo = new Directory(this, {timestamp:0, medallion, offset: Behavior.SCHEMA});
+            if (info?.email) {
+                await medallionInfo.set("email", info.email, changeSet);
+            }
+            if (info?.fullname) {
+                await medallionInfo.set("fullname", info.fullname, changeSet);
+            }
+            if (info?.software) {
+                await medallionInfo.set("software", info.software, changeSet);
+            }
+            changeSet.seal({
+                medallion, timestamp: chainStart, chainStart
+            })
+            const commitBytes = changeSet.bytes;
+            await this.store.addChangeSet(commitBytes);
+            await this.store.claimChain(medallion, chainStart);
         }
         this.iHave = await this.store.getChainTracker();
     }
@@ -141,24 +165,6 @@ export class GinkInstance {
     */
     public addListener(listener: CommitListener) {
         this.listeners.push(listener);
-    }
-
-    /**
-     * Creates an empty commit with only a comment in order to start a chain,
-     * called from initialize so don't wait on initialize !
-     */
-    private async startChain(comment: string): Promise<[Medallion, ChainStart]> {
-        const medallion = makeMedallion();
-        const chainStart = Date.now() * 1000;
-        const startCommit = new ChangeSetMessage();
-        startCommit.setTimestamp(chainStart);
-        startCommit.setChainStart(chainStart);
-        startCommit.setMedallion(medallion);
-        startCommit.setComment(comment);
-        const commitBytes = startCommit.serializeBinary();
-        await this.store.addChangeSet(commitBytes);
-        await this.store.claimChain(medallion, chainStart);
-        return [medallion, chainStart];
     }
 
     /**
@@ -268,7 +274,6 @@ export class GinkInstance {
             unlockingFunction("ignored string");
         }
     }
-
 
     /**
      * Initiates a websocket connection to a peer.

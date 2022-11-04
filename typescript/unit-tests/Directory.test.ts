@@ -64,7 +64,6 @@ test('convert to standard Map', async function() {
     await directory.set("cheese", "fries");
 
     const asMap = await directory.toMap();
-    // console.log(JSON.stringify(Array.from(asMap.entries())));
     ensure(asMap.size == 2);
     ensure(!asMap.has("foo"));
     ensure(asMap.get("bar") == "iron");

@@ -17,17 +17,16 @@ export class SimpleServer extends GinkInstance {
     private logger: CallBack;
     private listener: Listener;
 
-    constructor(args: {
-        store?: Store;
+    constructor(store: Store, args: {
         port?: NumberStr;
         sslKeyFilePath?: FilePath;
         sslCertFilePath?: FilePath;
         staticContentRoot?: DirPath;
         logger?: CallBack;
-        instanceInfo?: string;
+        software?: string;
         authFunction?: AuthFunction;
     }) {
-        super(args.store, args.instanceInfo || "SimpleServer");
+        super(store, {software: args.software || "SimpleServer"});
         this.logger = args.logger || (() => null);
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this), 
@@ -55,7 +54,7 @@ export class SimpleServer extends GinkInstance {
         this.peers.set(connectionId, peer);
         connection.on('close', function (_reasonCode, _description) {
             thisServer.peers.delete(connectionId);
-            this.logger(' Peer ' + connection.remoteAddress + ' disconnected.');
+            thisServer.logger(' Peer ' + connection.remoteAddress + ' disconnected.');
         });
         connection.on('message', this.onMessage.bind(this, connectionId));
         sendFunc(this.iHave.getGreetingMessageBytes());

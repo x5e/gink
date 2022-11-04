@@ -232,7 +232,6 @@ export class IndexedDbStore implements Store {
                     deleting,
                 }
                 //TODO: add code to add expiries to existing directory entries on insert
-                //console.log(JSON.stringify(entry));
                 await wrappedTransaction.objectStore("entries").add(entry);
                 continue;
             }

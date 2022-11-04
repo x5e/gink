@@ -269,3 +269,19 @@ export function isPathDangerous(path: string): boolean {
     const pathParts = path.split(/\/+/).filter((part) => part.length > 0);
     return (pathParts.length == 0 || !pathParts.every((part) => /^\w[\w.@-]*$/.test(part)));
 }
+
+/**
+* Uses console.error to log messages to stderr in a form like:
+* [04:07:03.227Z CommandLineInterace.ts:51] got chain manager, using medallion=383316229311328
+* That is to say, it's:
+* [<Timestamp> <SourceFileName>:<SourceLine>] <Message>
+* @param msg message to log
+*/
+export function logToStdErr(msg: string) {
+    const stackString = (new Error()).stack;
+    const callerLine = stackString ? stackString.split("\n")[2] : "";
+    const caller = callerLine.split(/\//).pop()?.replace(/:\d+\)/, "");
+    const timestamp = ((new Date()).toISOString()).split("T").pop();
+    // using console.error because I want to write to stderr
+    console.error(`[${timestamp} ${caller}] ${msg}`);
+}

@@ -50,7 +50,6 @@ export class Box extends Container {
     * @returns undefined, a basic value, or a container
     */
     async get(asOf?: AsOf): Promise<Container | Value | undefined> {
-        await this.ready;
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);
         return interpret(entry, this.ginkInstance);
     }
@@ -61,13 +60,11 @@ export class Box extends Container {
      * @returns 0 or 1 depending on whether or not there's something in the box.
      */
     async size(asOf?: AsOf): Promise<number> {
-        await this.ready;
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
         return +!(entry === undefined || entry.deleting)
     }
 
     async isEmpty(asOf?: AsOf): Promise<boolean> {
-        await this.ready;
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
         return (entry === undefined || entry.deleting)
     }

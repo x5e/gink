@@ -73,7 +73,6 @@ test('create a box and set in same CS', async function() {
     ensure(box.address?.timestamp);
     ensure(box.address?.timestamp === change.timestamp);
 
-    // console.log(JSON.stringify(await store.getAllEntryKeys()));
     const val = await box.get();
     ensure(val == "a value");
 });

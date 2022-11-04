@@ -1,33 +1,14 @@
-import { RoutingServer } from "./library-implementation/RoutingServer";
-import { LogBackedStore } from "./library-implementation/LogBackedStore";
-import { Store } from "./library-implementation/Store";
-import { GinkInstance } from "./library-implementation/GinkInstance";
-import { ChangeSetInfo } from "./library-implementation/typedefs";
-import { ChangeSet } from "./library-implementation/ChangeSet";
+import { RoutingServer } from "./RoutingServer";
+import { LogBackedStore } from "./LogBackedStore";
+import { Store } from "./Store";
+import { GinkInstance } from "./GinkInstance";
+import { ChangeSetInfo } from "./typedefs";
+import { ChangeSet } from "./ChangeSet";
 var readline = require('readline');
-import { SimpleServer } from "./library-implementation/SimpleServer";
-import { ensure } from "./library-implementation/utils";
+import { SimpleServer } from "./SimpleServer";
+import { ensure, logToStdErr } from "./utils";
+import { IndexedDbStore } from "./IndexedDbStore";
 
-/**
-* Uses console.error to log messages to stderr in a form like:
-* [04:07:03.227Z CommandLineInterace.ts:51] got chain manager, using medallion=383316229311328
-* That is to say, it's:
-* [<Timestamp> <SourceFileName>:<SourceLine>] <Message>
-* @param msg message to log
-*/
-function logToStdErr(msg: string) {
-    const stackString = (new Error()).stack;
-    const callerLine = stackString ? stackString.split("\n")[2] : "";
-    const caller = callerLine.split(/\//).pop()?.replace(/:\d+\)/, "");
-    const timestamp = ((new Date()).toISOString()).split("T").pop();
-    // using console.error because I want to write to stderr
-    console.error(`[${timestamp} ${caller}] ${msg}`);
-}
-
-
-async function onCommit(commitInfo: ChangeSetInfo) {
-    logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`);
-}
 
 /**
     Intended to manage server side running of Gink.
@@ -56,9 +37,10 @@ export class CommandLineInterface {
             ensure(process.env["GINK_PORT"]);
         } else if (dataFile) {
             logToStdErr(`using data file=${dataFile}, reset=${reset}`);
-            this.store = new LogBackedStore(dataFile,);
+            this.store = new LogBackedStore(dataFile, reset);
         } else {
             logToStdErr(`using in-memory database`);
+            this.store = new IndexedDbStore();
         }
 
         if (process.env["GINK_PORT"]) {
@@ -74,22 +56,27 @@ export class CommandLineInterface {
                     dataFilesRoot: dataRoot, ...common
                 });
             } else {
-                this.instance = new SimpleServer({ store: this.store, ...common });
+                this.instance = new SimpleServer(this.store!, { software: "SimpleServer", ...common });
             }
         } else {
-            // GINK_PORT not set, so don't listen for incoming connections
-            this.instance = new GinkInstance(this.store, "node instance");
+            // GINK_PfORT not set, so don't listen for incoming connections
+            this.instance = new GinkInstance(this.store!, { software: "node instance" });
         }
         this.targets = process.argv.slice(2);
     }
 
+    static async onCommit(commitInfo: ChangeSetInfo) {
+        logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`);
+    }
+
     async run() {
         if (this.instance) {
+            await this.instance.ready;
             const instance = this.instance;
-            this.instance.addListener(onCommit);
+            this.instance.addListener(CommandLineInterface.onCommit);
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`)
-                this.instance.connectTo(target, logToStdErr);
+                await this.instance.connectTo(target, logToStdErr);
                 logToStdErr(`connected!`)
             }
             logToStdErr("ready (type a comment and press enter to create a commit)");
@@ -102,5 +89,4 @@ export class CommandLineInterface {
             logToStdErr("routing server ready");
         }
     }
-
 }

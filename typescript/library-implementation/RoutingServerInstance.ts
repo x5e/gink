@@ -11,8 +11,8 @@ import { Buffer } from "buffer";
 
 export class RoutingServerInstance extends GinkInstance {
 
-    constructor(store: Store, instanceInfo?: string, readonly logger: CallBack = console.log) {
-        super(store, instanceInfo || "GinkServerInstance")
+    constructor(store: Store, software?: string, readonly logger: CallBack = console.log) {
+        super(store, {software: software || "GinkServerInstance"})
     }
 
     async onConnection(connection: WebSocketConnection) {

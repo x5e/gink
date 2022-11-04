@@ -3,6 +3,7 @@ import { ChangeSet as ChangeSetBuilder } from "change_set_pb";
 import { Change as ChangeBuilder } from "change_pb";
 import { Entry as EntryBuilder } from "entry_pb";
 import { Container as ContainerBuilder } from "container_pb";
+import { ensure } from "./utils";
 
 export class ChangeSet {
     // note: this class is unit tested as part of Store.test.ts
@@ -20,7 +21,7 @@ export class ChangeSet {
     }
 
     get bytes() {
-        return this.serialized;
+        return ensure(this.serialized, "not yet sealed!");
     }
 
     set comment(value) {

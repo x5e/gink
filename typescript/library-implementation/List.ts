@@ -43,7 +43,6 @@ export class List extends Container {
      * @param changeSet 
      */
     async pop(what?: Muid | number, changeSet?: ChangeSet): Promise<Container | Value | undefined> {
-        await this.ready;
         let returning: Container | Value;
         let muid: Muid;
         if (what && typeof (what) == "object") {

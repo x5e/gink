@@ -9,7 +9,6 @@ import { GinkInstance } from "./GinkInstance";
 
 
 export class Container {
-    readonly ready: Promise<void>;
     protected static readonly DELETION = new Deletion();
 
 
@@ -21,7 +20,6 @@ export class Container {
      */
     protected constructor(readonly ginkInstance: GinkInstance, readonly address: Muid, protected containerBuilder?: ContainerBuilder) {
         ensure(address.timestamp == 0 || containerBuilder !== undefined, "missing container definition");
-        this.ready = ginkInstance.ready;
     }
 
     toString(): string {
@@ -37,7 +35,6 @@ export class Container {
      * @returns a promise the resolves to the muid of the change
      */
     protected async addEntry(key?: KeyType | true, value?: Value | Container | Deletion, changeSet?: ChangeSet): Promise<Muid> {
-        await this.ready;
         let immediate: boolean = false;
         if (!changeSet) {
             immediate = true;

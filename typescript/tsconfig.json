@@ -7,5 +7,5 @@
     "esModuleInterop": true,
     "outDir": "tsc.out"
   },
-  "include": ["library-implementation/*.ts", "unit-tests/*.ts"]
+  "include": ["library-implementation/*.ts", "unit-tests/*.ts", "main.ts"]
 }
