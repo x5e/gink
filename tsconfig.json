@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "sourceMap": true,
+    "target": "es2017",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "outDir": "tsc.out"
+  },
+  "include": ["typescript-implementation/*.ts"]
+}
