@@ -2,7 +2,7 @@
 PROTOS=$(wildcard ../proto/*.proto)
 export PATH := ./node_modules/.bin/:$(PATH)
 
-all: node_modules javascript_protos webpack.out tsc.out
+all: node_modules javascript_protos tsc.out
 
 node_modules: package.json
 	npm install

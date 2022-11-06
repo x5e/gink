@@ -1,8 +1,8 @@
 eval("globalThis.test = function() {};");
-import { IndexedDbStore } from "../library-implementation/IndexedDbStore";
-import { GinkInstance } from "../library-implementation/GinkInstance";
-import { ChangeSet } from "../library-implementation/ChangeSet";
-import { ChangeSetInfo } from "../library-implementation/typedefs";
+import { IndexedDbStore } from "../../library-implementation/IndexedDbStore";
+import { GinkInstance } from "../../library-implementation/GinkInstance";
+import { ChangeSet } from "../../library-implementation/ChangeSet";
+import { ChangeSetInfo } from "../../library-implementation/typedefs";
 
 function getWebsocketTarget(): string {
     const loc = window.location;
@@ -25,7 +25,7 @@ async function onCommit(changeSetInfo: ChangeSetInfo) {
 }
 
 (async () => {
-    const instance = new GinkInstance(new IndexedDbStore("browser-test", true), "browser instance");
+    const instance = new GinkInstance(new IndexedDbStore("browser-test", true), {software: "browser instance"});
     await instance.ready;
     instance.addListener(onCommit);
     await instance.addChangeSet(new ChangeSet("Hello, Universe!"));
