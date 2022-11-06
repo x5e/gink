@@ -17,7 +17,7 @@ protoc.out: $(PROTOS)
 webpack.out:
 	env webpack
 
-tsc.out:
+tsc.out: tsconfig.json typescript-impl/*.ts
 	env tsc && chmod a+x tsc.out/main.js
 
 clean:
