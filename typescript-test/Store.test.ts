@@ -1,5 +1,5 @@
-import { ChangeSetBytes } from "../typescript-implementation/typedefs"
-import { Store } from "../typescript-implementation/Store";
+import { ChangeSetBytes } from "../typescript-impl/typedefs"
+import { Store } from "../typescript-impl/Store";
 import { ChangeSet as ChangeSetBuilder } from "gink/protoc.out/change_set_pb";
 import { Change as ChangeBuilder } from "gink/protoc.out/change_pb";
 import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
@@ -9,8 +9,8 @@ import {
     makeChainStart, extendChain, addTrxns,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
 } from "./test_utils";
-import { muidToBuilder, ensure, wrapValue, matches } from "../typescript-implementation/utils";
-import { ChangeSet } from "../typescript-implementation";
+import { muidToBuilder, ensure, wrapValue, matches } from "../typescript-impl/utils";
+import { ChangeSet } from "../typescript-impl";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 

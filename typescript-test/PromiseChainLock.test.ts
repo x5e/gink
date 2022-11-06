@@ -1,5 +1,5 @@
-import { ensure } from "../typescript-implementation/utils";
-import { PromiseChainLock } from "../typescript-implementation/PromiseChainLock";
+import { ensure } from "../typescript-impl/utils";
+import { PromiseChainLock } from "../typescript-impl/PromiseChainLock";
 function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 test('test lock/unlock ', async () => {

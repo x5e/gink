@@ -1,4 +1,4 @@
-import { GinkInstance, IndexedDbStore, ChangeSet, ensure, ChangeSetBytes, ChangeSetInfo } from "../typescript-implementation";
+import { GinkInstance, IndexedDbStore, ChangeSet, ensure, ChangeSetBytes, ChangeSetInfo } from "../typescript-impl";
 import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
 import { ChangeSet as ChangeSetMessage } from "gink/protoc.out/change_set_pb";
 

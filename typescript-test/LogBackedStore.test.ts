@@ -1,4 +1,4 @@
-import { LogBackedStore } from "../typescript-implementation";
+import { LogBackedStore } from "../typescript-impl";
 import { testStore } from "./Store.test";
 
 const TEST_FILE = "/tmp/test.store";

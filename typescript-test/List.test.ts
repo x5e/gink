@@ -1,5 +1,5 @@
 import { sleep } from "./test_utils";
-import { ensure, GinkInstance, ChangeSet, IndexedDbStore, List, Muid, matches } from "../typescript-implementation";
+import { ensure, GinkInstance, ChangeSet, IndexedDbStore, List, Muid, matches } from "../typescript-impl";
 
 test('push to a queue and peek', async function () {
     // set up the objects

@@ -29,21 +29,21 @@ unit_tests:
 integration_test:
 	./functional-tests/integration-test.js
 
-browser_test: webpack.out library-implementation/* functional-tests/*
+browser_test: webpack.out
 	./functional-tests/browser-test.js
 
 test: unit_tests integration_test browser_test
 
 server: node_modules protoc.out
 	GINK_DATA_FILE=/tmp/gink.binary-log GINK_SERVER=1 GINK_RESET=1 GINK_PORT=8080 \
-        ts-node ./typescript-implementation/main.ts
+        ts-node ./typescript-impl/main.ts
 
 kill_server:
 	kill `ps auxe | egrep '(GINK_SERVER)=1' | awk '{print $2}'` 2>/dev/null \
 	|| echo 'not running'
 
 instance: node_modules protoc.out
-	ts-node ./typescript-implementation/main.ts ws://127.0.0.1:8080
+	ts-node ./typescript-impl/main.ts ws://127.0.0.1:8080
 
 headless_browser:
 	google-chrome --headless --no-sandbox --remote-debugging-port=9222 --disable-gpu

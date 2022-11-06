@@ -7,5 +7,5 @@
     "esModuleInterop": true,
     "outDir": "tsc.out"
   },
-  "include": ["typescript-implementation/*.ts"]
+  "include": ["typescript-impl/*.ts"]
 }

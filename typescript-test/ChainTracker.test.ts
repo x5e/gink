@@ -1,4 +1,4 @@
-import { ensure, ChainTracker, ChangeSetInfo } from "../typescript-implementation";
+import { ensure, ChainTracker, ChangeSetInfo } from "../typescript-impl";
 
 test('track two commits', async () => {
     const chainTracker = new ChainTracker({});

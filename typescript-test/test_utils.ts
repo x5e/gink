@@ -1,6 +1,6 @@
-import { Medallion, ChainStart, ChangeSetBytes, Timestamp } from "../typescript-implementation/typedefs";
+import { Medallion, ChainStart, ChangeSetBytes, Timestamp } from "../typescript-impl/typedefs";
 import { ChangeSet as ChangeSetMessage } from "gink/protoc.out/change_set_pb";
-import { Store } from "../typescript-implementation/Store";
+import { Store } from "../typescript-impl/Store";
 
 export const MEDALLION1 = 425579549941797;
 export const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;
