@@ -1,4 +1,5 @@
-import { ChangeSetBytes } from "../typescript-impl/typedefs"
+import { ChangeSetBytes, ChangeSetInfo, Entry } from "../typescript-impl/typedefs"
+import { ChainTracker } from "../typescript-impl/ChainTracker"
 import { Store } from "../typescript-impl/Store";
 import { ChangeSet as ChangeSetBuilder } from "gink/protoc.out/change_set_pb";
 import { Change as ChangeBuilder } from "gink/protoc.out/change_pb";
@@ -48,7 +49,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     test(`${implName} ensure that it rejects when doesn't have chain start`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
-        let added = null;
+        let added: ChangeSetInfo|undefined;
         let barfed = false;
         try {
             added = await store.addChangeSet(secondTrxn);
@@ -64,7 +65,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
         const thirdTrxn = extendChain("Hello, a third!", secondTrxn, NEXT_TS1 + 1);
         await store.addChangeSet(chainStart);
-        let added = null;
+        let added: ChangeSetInfo|undefined;
         let barfed = false;
         try {
             added = await store.addChangeSet(thirdTrxn);
@@ -77,10 +78,10 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
 
     test(`${implName} test creates greeting`, async () => {
         await addTrxns(store);
-        const hasMap = await store.getChainTracker();
+        const hasMap = <ChainTracker> await store.getChainTracker();
 
-        expect(hasMap.getCommitInfo([MEDALLION1, START_MICROS1]).timestamp).toBe(NEXT_TS1);
-        expect(hasMap.getCommitInfo([MEDALLION2, START_MICROS2]).timestamp).toBe(NEXT_TS2);
+        expect(hasMap.getCommitInfo([MEDALLION1, START_MICROS1])!.timestamp).toBe(NEXT_TS1);
+        expect(hasMap.getCommitInfo([MEDALLION2, START_MICROS2])!.timestamp).toBe(NEXT_TS2);
     });
 
     test(`${implName} test sends trxns in order`, async () => {
@@ -122,7 +123,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         changeBuilder.setContainer(containerBuilder);
         changeSetBuilder.getChangesMap().set(7, changeBuilder);
         const changeSetBytes = changeSetBuilder.serializeBinary();
-        const commitInfo = await store.addChangeSet(changeSetBytes);
+        const commitInfo = <ChangeSetInfo> await store.addChangeSet(changeSetBytes);
         ensure(commitInfo.medallion == MEDALLION1);
         ensure(commitInfo.timestamp == START_MICROS1);
         const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
@@ -144,7 +145,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         await store.addChangeSet(changeSet.bytes);
         ensure(address.medallion == 4);
         ensure(address.timestamp == 5);
-        const entry = await store.getEntry(sourceAddress, "abc",);
+        const entry = <Entry> await store.getEntry(sourceAddress, "abc",);
         ensure(matches(entry.containerId, [2,1,3]));
         ensure(matches(entry.entryId, [5,4,1]));
         ensure(entry.immediate == "xyz");

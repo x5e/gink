@@ -1,5 +1,5 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
-const Expector = require("./Expector");
+const Expector = require("../Expector");
 const { spawnSync } = require("child_process");
 function hasInstalled(program) {
     return !spawnSync(`which ${program}`, [], { shell: true }).status;
@@ -17,7 +17,7 @@ const browserArgs = [
     const browser = new Expector(browserCommand, browserArgs);
     const server = new Expector("make", ["server"]);
     await server.expect("ready", 60000);
-    const driver = new Expector("./functional-tests/remote-control.js", []);
+    const driver = new Expector(`${__dirname}/remote-control.js`, []);
     await driver.expect(/Server/, 2000);
     console.log("success!");
 

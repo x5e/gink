@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-    entry: './functional-tests/web-entry.ts',
+    entry: './web-entry.js',
     mode: "development",
     devtool: "inline-source-map",
     output: {

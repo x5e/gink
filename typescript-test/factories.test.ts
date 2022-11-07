@@ -1,4 +1,5 @@
-import { GinkInstance, IndexedDbStore, ensure } from "../typescript-impl";
+import { GinkInstance, IndexedDbStore } from "../typescript-impl";
+import { ensure } from "../typescript-impl/utils"
 
 test('complex.toJSON', async function () {
     const instance = new GinkInstance(new IndexedDbStore('toJSON', true));

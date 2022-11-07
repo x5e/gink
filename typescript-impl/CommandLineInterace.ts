@@ -48,7 +48,7 @@ export class CommandLineInterface {
                 port: process.env["GINK_PORT"],
                 sslKeyFilePath: process.env["GINK_SSL_KEY"],
                 sslCertFilePath: process.env["GINK_SSL_CERT"],
-                staticContentRoot: process.env["GINK_STATIC_PATH"] || process.cwd(),
+                staticContentRoot: process.env["GINK_STATIC_PATH"],
                 logger: logToStdErr,
             }
             if (dataRoot) {

@@ -2,7 +2,7 @@
 PROTOS=$(wildcard proto/*.proto)
 export PATH := ./node_modules/.bin/:$(PATH)
 
-all: node_modules protoc.out tsc.out
+all: node_modules protoc.out tsc.out webpack.out
 
 node_modules: package.json
 	npm install
@@ -11,13 +11,16 @@ protoc.out: $(PROTOS)
 	 mkdir -p protoc.out && protoc \
 	--proto_path=proto \
 	--js_out=import_style=commonjs,binary:protoc.out \
-	$(PROTOS) && rm -rf node_modules/gink/protoc.out && \
-	mkdir -p node_modules/gink && ln -s -r -t node_modules/gink protoc.out
+	$(PROTOS)
 
-webpack.out:
+node_modules/gink/protoc.out: node_modules protoc.out
+	rm -rf node_modules/gink && mkdir -p node_modules/gink && \
+	ln -s -r -t node_modules/gink protoc.out
+
+webpack.out: tsc.out
 	env webpack
 
-tsc.out: tsconfig.json typescript-impl/*.ts
+tsc.out: protoc.out node_modules/gink/protoc.out tsconfig.json typescript-impl/*.ts
 	env tsc && chmod a+x tsc.out/main.js
 
 clean:
@@ -26,16 +29,16 @@ clean:
 unit_tests:
 	env jest
 
-integration_test:
-	./functional-tests/integration-test.js
+node-client-test: node_modules/gink/protoc.out 
+	./functional-tests/node-client-test/node-client-test.js
 
-browser_test: webpack.out
-	./functional-tests/browser-test.js
+browser-client-test: webpack.out
+	./functional-tests/browser-client-test/browser-test.js
 
-test: unit_tests integration_test browser_test
+test: unit_tests node-client-test browser-client-test
 
-server: node_modules protoc.out
-	GINK_DATA_FILE=/tmp/gink.binary-log GINK_SERVER=1 GINK_RESET=1 GINK_PORT=8080 \
+server: node_modules protoc.out node_modules/gink/protoc.out
+	GINK_STATIC_PATH=. GINK_DATA_FILE=/tmp/gink.binary-log GINK_SERVER=1 GINK_RESET=1 GINK_PORT=8080 \
         ts-node ./typescript-impl/main.ts
 
 kill_server:

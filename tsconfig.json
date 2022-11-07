@@ -8,5 +8,5 @@
     "outDir": "tsc.out",
     "declaration": true
   },
-  "include": ["typescript-impl/*.ts"]
+  "include": ["typescript-impl/*.ts", "web.ts"]
 }

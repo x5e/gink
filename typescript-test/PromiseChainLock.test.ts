@@ -5,7 +5,7 @@ function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, m
 test('test lock/unlock ', async () => {
     const promiseChainLock = new PromiseChainLock();
     let countLocks = 0;
-    const messages = [];
+    const messages: string[] = [];
     async function doSomething(msg: string) {
         const unlocker = await promiseChainLock.acquireLock();
         ensure(countLocks == 0);

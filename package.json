@@ -2,7 +2,8 @@
   "name": "gink",
   "version": "0.0.0",
   "description": "an eventually consistent database",
-  "main": "tsc.out/index.js",
+  "main": "tsc.out/main.js",
+  "browser": "webpack.out/packed.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/google/gink.git"

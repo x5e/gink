@@ -1,5 +1,6 @@
 import { sleep } from "./test_utils";
-import { ensure, GinkInstance, ChangeSet, IndexedDbStore, List, Muid, matches } from "../typescript-impl";
+import { GinkInstance, ChangeSet, IndexedDbStore, List, Muid, Value } from "../typescript-impl";
+import { ensure, matches } from "../typescript-impl/utils"
 
 test('push to a queue and peek', async function () {
     // set up the objects
@@ -9,7 +10,7 @@ test('push to a queue and peek', async function () {
     const queue: List = await instance.createList();
     await queue.push('dummy');
     const muid: Muid = await queue.push("Hello, World!");
-    ensure(muid.timestamp > 0);
+    ensure(muid.timestamp! > 0);
 
     const val = await queue.at(-1);
     ensure(val == "Hello, World!");
@@ -105,11 +106,11 @@ test('entries', async function () {
     await list.push("B");
     await list.push("C");
 
-    const buffer = [];
+    const buffer = <Value[]>[];
     for await (const [muid, contents] of list.entries()) {
         const val = await list.pop(muid)
         ensure(val == contents, `val=${val}, contents=${contents}`);
-        buffer.push(contents);
+        buffer.push(<Value>contents);
     }
     ensure(matches(buffer, ["A","B","C"]));
 });

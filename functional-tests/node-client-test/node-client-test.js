@@ -1,5 +1,5 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
-const Expector = require("./Expector");
+const Expector = require("../Expector");
 (async () => {
     console.log("starting");
     const server = new Expector("make", ["server"]);

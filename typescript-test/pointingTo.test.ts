@@ -1,5 +1,5 @@
-import { GinkInstance, IndexedDbStore, ensure } from "../typescript-impl";
-
+import { GinkInstance, IndexedDbStore } from "../typescript-impl";
+import { ensure } from "../typescript-impl/utils"
 
 test('pointingTo', async function () {
     const indexedDBStore = new IndexedDbStore('pointingTo', true);

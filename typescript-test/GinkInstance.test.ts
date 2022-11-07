@@ -1,6 +1,8 @@
-import { GinkInstance, IndexedDbStore, ChangeSet, ensure, ChangeSetBytes, ChangeSetInfo } from "../typescript-impl";
+import { GinkInstance, IndexedDbStore, ChangeSet, ChangeSetInfo } from "../typescript-impl";
 import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
 import { ChangeSet as ChangeSetMessage } from "gink/protoc.out/change_set_pb";
+import { ensure } from "../typescript-impl/utils"
+import { ChangeSetBytes } from "../typescript-impl/typedefs";
 
 test('test commit', async () => {
     const store = new IndexedDbStore();

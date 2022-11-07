@@ -1,4 +1,6 @@
-import { ensure, ChainTracker, ChangeSetInfo } from "../typescript-impl";
+import { ChangeSetInfo } from "../typescript-impl";
+import { ChainTracker } from "../typescript-impl/ChainTracker";
+import { ensure } from "../typescript-impl/utils"
 
 test('track two commits', async () => {
     const chainTracker = new ChainTracker({});
@@ -15,7 +17,7 @@ test('track two commits', async () => {
     chainTracker.markIfNovel(commitInfo2, true);
 
     const commitInfo3 = chainTracker.getCommitInfo([medallion, chainStart]);
-    ensure(commitInfo3);
+    if (!commitInfo3) throw new Error("missing");
     ensure(commitInfo3.medallion == medallion);
     ensure(commitInfo3.chainStart == chainStart);
     ensure(commitInfo3.timestamp == secondTime);

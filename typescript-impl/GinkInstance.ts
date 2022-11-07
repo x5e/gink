@@ -25,7 +25,6 @@ export class GinkInstance {
     ready: Promise<any>;
     readonly peers: Map<number, Peer> = new Map();
     static readonly PROTOCOL = "gink";
-    static readonly SCHEMA = Behavior.SCHEMA;
 
     private listeners: CommitListener[] = [];
     private countConnections: number = 0; // Includes disconnected clients.
@@ -99,7 +98,7 @@ export class GinkInstance {
             const medallion = makeMedallion();
             const chainStart = Date.now() * 1000;
             this.myChain =  [medallion, chainStart];
-            const changeSet = new ChangeSet("start", medallion);
+            const changeSet = new ChangeSet(`start: ${info?.software || "GinkInstance"}`, medallion);
             const medallionInfo = new Directory(this, {timestamp:0, medallion, offset: Behavior.SCHEMA});
             if (info?.email) {
                 await medallionInfo.set("email", info.email, changeSet);
