@@ -22,7 +22,8 @@
   },
   "files": [
     "tsc.out/**",
-    "protoc.out/**"
+    "protoc.out/**",
+    "webpack.out/**"
   ],
   "bin": "./tsc.out/main.js",
   "scripts": {
