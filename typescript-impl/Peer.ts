@@ -1,26 +1,39 @@
-import { ChangeSetInfo, ChangeSetBytes } from "./typedefs";
+import { ChangeSetInfo, ChangeSetBytes, CallBack } from "./typedefs";
 import { noOp, ensure } from "./utils";
 import { ChainTracker } from "./ChainTracker";
 import { SyncMessage } from "gink/protoc.out/sync_message_pb";
 
+
 export class Peer {
     private sendFunc: (msg: Uint8Array) => void;
     private closeFunc: () => void;
+    private callWhenReady: CallBack;
+    private callOnTimeout: CallBack;
     hasMap?: ChainTracker;
+    ready: Promise<void>;
 
     constructor(sendFunc: (msg: Uint8Array) => void, closeFunc: () => void = noOp) {
         this.sendFunc = sendFunc;
         this.closeFunc = closeFunc;
+        const thisPeer = this;
+        this.ready = new Promise((resolve, reject) => {
+            thisPeer.callWhenReady = resolve;
+            thisPeer.callOnTimeout = reject;
+        });
+        setTimeout(()=>{thisPeer.callOnTimeout()}, 1000);
     }
 
     close() {
         const func = this.closeFunc;
         func();
+        this.sendFunc = noOp;
+        this.hasMap = undefined;
     }
 
     receiveHasMap(hasMap: ChainTracker) {
         ensure(!this.hasMap, "Already received a HasMap/Greeting from this Peer!");
         this.hasMap = hasMap;
+        this.callWhenReady();
     }
 
     /**

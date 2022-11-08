@@ -10,10 +10,10 @@ module.exports = class Expector {
     * Takes a shellCommand as a string, starts it and then allows the user to send
     * data and wait for things to happen.
     */
-    constructor(program, args) {
+    constructor(program, args, options) {
         this.captured = "";
         this.expecting = null;
-        this.proc = spawn(program, args);
+        this.proc = spawn(program, args, options);
         const appender = this.notify.bind(this);
         this.proc.stdout.on('data', appender);
         this.proc.stderr.on('data', appender);

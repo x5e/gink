@@ -6,3 +6,4 @@ export { IndexedDbStore } from "./IndexedDbStore";
 export { ChangeSet } from "./ChangeSet";
 export { Muid, ChangeSetInfo, Value } from "./typedefs";
 export { Container } from "./Container";
+export { logToStdErr } from "./utils";

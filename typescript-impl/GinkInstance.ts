@@ -224,6 +224,7 @@ export class GinkInstance {
      */
     private async receiveCommit(commitBytes: ChangeSetBytes, fromConnectionId?: number): Promise<void> {
         await this.ready;
+        this.logger(`got commit from ${fromConnectionId}`);
         const changeSetInfo = await this.store.addChangeSet(commitBytes);
         if (!changeSetInfo) return;
         this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(changeSetInfo);
@@ -255,6 +256,7 @@ export class GinkInstance {
                 return;
             }
             if (parsed.hasGreeting()) {
+                this.logger(`got greeting from ${fromConnectionId}`);
                 const greeting = parsed.getGreeting();
                 peer.receiveHasMap(new ChainTracker({ greeting }));
                 await this.store.getCommits(peer.sendIfNeeded.bind(peer));

@@ -86,7 +86,6 @@ export class CommandLineInterface {
             })
         } else {
             await this.routingServer?.ready;
-            logToStdErr("routing server ready");
         }
     }
 }

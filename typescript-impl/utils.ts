@@ -3,7 +3,7 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value, MuidTuple } from "./typedefs";
+import { Muid, Medallion, Value, MuidTuple, CallBack } from "./typedefs";
 import { Muid as MuidBuilder } from "gink/protoc.out/muid_pb";
 import { Value as ValueBuilder } from "gink/protoc.out/value_pb";
 
@@ -13,7 +13,7 @@ export function ensure(x: any, msg?: string) {
     return x;
 }
 
-export function noOp(_ = null) { };
+export function noOp(_?:any) { };
 
 /**
  * Randomly selects a number that can be used as a medallion.

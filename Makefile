@@ -30,7 +30,7 @@ unit_tests:
 	env jest
 
 node-client-test: node_modules/gink/protoc.out 
-	./functional-tests/node-client-test/node-client-test.js
+	./functional-tests/node-client-test.js
 
 browser-client-test: webpack.out
 	./functional-tests/browser-client-test/browser-test.js
@@ -38,11 +38,11 @@ browser-client-test: webpack.out
 test: unit_tests node-client-test browser-client-test
 
 server: node_modules protoc.out node_modules/gink/protoc.out
-	GINK_STATIC_PATH=. GINK_DATA_FILE=/tmp/gink.binary-log GINK_SERVER=1 GINK_RESET=1 GINK_PORT=8080 \
+	GINK_STATIC_PATH=. GINK_DATA_FILE=/tmp/gink.binary-log GINK_RESET=1 GINK_PORT=8080 \
         ts-node ./typescript-impl/main.ts
 
 kill_server:
-	kill `ps auxe | egrep '(GINK_SERVER)=1' | awk '{print $2}'` 2>/dev/null \
+	kill `ps auxe | egrep '(GINK_PORT)=1' | awk '{print $2}'` 2>/dev/null \
 	|| echo 'not running'
 
 instance: node_modules protoc.out

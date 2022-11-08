@@ -11,8 +11,12 @@ COPY package.json ./
 RUN npm install
 RUN npm rebuild
 RUN rm -rf ~/.* || true
-COPY . .
+COPY proto ./proto
+COPY typescript-impl ./typescript-impl
+COPY tsconfig.json webpack.config.js web-entry.js Makefile jest.config.js ./
 RUN make
+COPY typescript-unit-tests ./typescript-unit-tests
 RUN make unit_tests
+COPY functional-tests ./functional-tests
 RUN make node-client-test
 RUN make browser-client-test

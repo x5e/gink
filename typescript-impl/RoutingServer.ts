@@ -10,7 +10,6 @@ import { LogBackedStore } from './LogBackedStore';
 import { ensure, isPathDangerous } from './utils';
 import { existsSync } from 'fs';
 import { join } from "path";
-import { PromiseChainLock } from './PromiseChainLock';
 import { Listener } from './Listener';
 
 /**
@@ -25,8 +24,7 @@ export class RoutingServer {
     private logger: CallBack;
     private dataFilesRoot: DirPath | null;
     private authFunc: AuthFunction;
-    private instanceInfo: string;
-    private lock = new PromiseChainLock();
+    private software: string;
     private listener: Listener;
 
     private instances: Map<string, RoutingServerInstance> = new Map();
@@ -38,19 +36,19 @@ export class RoutingServer {
         sslCertFilePath?: FilePath;
         staticContentRoot?: DirPath;
         logger?: CallBack;
-        instanceInfo?: string;
+        software?: string;
         authFunction?: AuthFunction;
     }) {
-        const logger = this.logger = args.logger || console.log;
+        const logger = this.logger = args.logger || (() => null);
         this.authFunc = args.authFunction || (() => true);
         this.dataFilesRoot = args.dataFilesRoot;
         ensure(existsSync(this.dataFilesRoot), "data root not there");
-        this.instanceInfo = args.instanceInfo || "RoutingServer";
+        this.software = args.software || "RoutingServer";
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this), logger,
             ...args
         });
-        this.ready = this.listener.ready;
+        this.ready = this.listener.ready.then(() => logger(`RoutingServer ready`));
     }
 
     /**
@@ -62,8 +60,7 @@ export class RoutingServer {
         // Note: can't afford to await for the instance to be ready or you'll miss the greeing.
         let instance = this.instances.get(path);
         if (!instance) {
-            instance = new RoutingServerInstance(
-                new LogBackedStore(path, false, this.logger), this.instanceInfo, this.logger);
+            instance = new RoutingServerInstance(path, this.logger);
             this.instances.set(path, instance);
         }
         return instance;

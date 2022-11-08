@@ -30,7 +30,7 @@ export class LogBackedStore implements Store {
     private fileHandle: FileHandle;
     private indexedDbStore: IndexedDbStore;
 
-    constructor(filename: string, reset = false, protected logger: CallBack = (() => null)) {
+    constructor(readonly filename: string, reset = false, protected logger: CallBack = (() => null)) {
         this.ready = this.initialize(filename, reset);
     }
 
@@ -76,7 +76,7 @@ export class LogBackedStore implements Store {
                 }
             }
         }
-        this.logger(`LogBackedStore.ready`);
+        this.logger(`LogBackedStore.ready for ${this.filename}`);
     }
 
     async getOrderedEntries(container: Muid, through: number=Infinity, asOf?: AsOf): Promise<Entry[]> {
