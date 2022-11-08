@@ -30,24 +30,19 @@ export class GinkInstance {
     private myChain: [Medallion, ChainStart];
     private processingLock = new PromiseChainLock();
     protected iHave: ChainTracker;
-    protected myStore: Store;
 
     //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
     private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
         eval("require('websocket').w3cwebsocket");
 
-    constructor(store: Store, info?: {
+    constructor(readonly store: Store = new IndexedDbStore(), info?: {
         fullname?: string,
         email?: string,
         software?: string,
     }, readonly logger:CallBack=(()=>{})) {
-        this.myStore = store || new IndexedDbStore();
         this.ready = this.initialize(info);
     }
 
-    get store(): Store {
-        return this.myStore;
-    }
 
     /**
      * Starts an async iterator that returns all of the containers pointing to the object in question.
@@ -58,25 +53,25 @@ export class GinkInstance {
     getBackRefs(pointingTo: Container, asOf?: AsOf): AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
         const thisInstance = this;
         return (async function* () {
-            const entries = await thisInstance.myStore.getBackRefs(pointingTo.address);
+            const entries = await thisInstance.store.getBackRefs(pointingTo.address);
             for (const entry of entries) {
                 const containerMuid = muidTupleToMuid(entry.containerId);
                 const containerBuilder = containerMuid.timestamp === 0 ? undefined : 
                     ContainerBuilder.deserializeBinary(await thisInstance.store.getContainerBytes(containerMuid));
                 if (entry.behavior == Behavior.SCHEMA) {
-                    if (thisInstance.myStore.getEntry(containerMuid, entry.semanticKey[0], asOf)) {
+                    if (thisInstance.store.getEntry(containerMuid, entry.semanticKey[0], asOf)) {
                         yield <[KeyType | Muid | undefined, Container]>
                             [entry.semanticKey[0], new Directory(thisInstance, containerMuid, containerBuilder)];
                     }
                 }
                 if (entry.behavior == Behavior.QUEUE) {
                     const entryMuid = muidTupleToMuid(entry.entryId);
-                    if (thisInstance.myStore.getEntry(containerMuid, entryMuid, asOf)) {
+                    if (thisInstance.store.getEntry(containerMuid, entryMuid, asOf)) {
                         yield [entryMuid, new List(thisInstance, containerMuid, containerBuilder)];
                     }
                 }
                 if (entry.behavior == Behavior.BOX) {
-                    if (thisInstance.myStore.getEntry(containerMuid, undefined, asOf)) {
+                    if (thisInstance.store.getEntry(containerMuid, undefined, asOf)) {
                         yield [undefined, new Box(thisInstance, containerMuid, containerBuilder)];
                     }
                 }
