@@ -1,7 +1,6 @@
 import { Peer } from "./Peer";
 import { makeMedallion, ensure, noOp, muidTupleToMuid } from "./utils";
-import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack, AsOf } from "./typedefs";
-import { ChangeSetInfo, Muid } from "./typedefs";
+import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack, AsOf, ChangeSetInfo, Muid, } from "./typedefs";
 import { SyncMessage } from "gink/protoc.out/sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
@@ -41,7 +40,7 @@ export class GinkInstance {
         fullname?: string,
         email?: string,
         software?: string,
-    }) {
+    }, readonly logger:CallBack=(()=>{})) {
         this.myStore = store || new IndexedDbStore();
         this.ready = this.initialize(info);
     }
@@ -117,6 +116,7 @@ export class GinkInstance {
             await this.store.claimChain(medallion, chainStart);
         }
         this.iHave = await this.store.getChainTracker();
+        this.logger(`GinkInstance.ready`);
     }
 
     /**
@@ -190,7 +190,7 @@ export class GinkInstance {
             resultInfo = changeSet.seal(commitInfo);
             await this.receiveCommit(changeSet.bytes);
         } finally {
-            unlockingFunction("this string is ignored");
+            unlockingFunction();
         }
         return resultInfo;
     }
@@ -248,11 +248,11 @@ export class GinkInstance {
      * @returns 
      */
     protected async receiveMessage(messageBytes: Uint8Array, fromConnectionId: number) {
+        await this.ready;
         const peer = this.peers.get(fromConnectionId);
         if (!peer) throw Error("Got a message from a peer I don't have a proxy for?")
-        let unlockingFunction: CallBack;
+        const unlockingFunction = await this.processingLock.acquireLock();
         try {
-            unlockingFunction = await this.processingLock.acquireLock();
             const parsed = SyncMessage.deserializeBinary(messageBytes);
             if (parsed.hasCommit()) {
                 const commitBytes: ChangeSetBytes = parsed.getCommit_asU8();
@@ -270,7 +270,7 @@ export class GinkInstance {
             this.peers.get(fromConnectionId)?.close();
             this.peers.delete(fromConnectionId);
         } finally {
-            unlockingFunction("ignored string");
+            unlockingFunction();
         }
     }
 

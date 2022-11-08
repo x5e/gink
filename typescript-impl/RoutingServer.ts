@@ -58,17 +58,15 @@ export class RoutingServer {
      * @param path absolute path to the datafile
      * @returns a promise of a instance that will manage that file
      */
-    async getInstance(path?: string): Promise<RoutingServerInstance> {
-        const unlockingFunction = await this.lock.acquireLock();
-        try {
-            let instance = this.instances.get(path);
-            instance = new RoutingServerInstance(new LogBackedStore(path), this.instanceInfo, this.logger);
-            await instance.ready;
+    getInstance(path?: string): RoutingServerInstance {
+        // Note: can't afford to await for the instance to be ready or you'll miss the greeing.
+        let instance = this.instances.get(path);
+        if (!instance) {
+            instance = new RoutingServerInstance(
+                new LogBackedStore(path, false, this.logger), this.instanceInfo, this.logger);
             this.instances.set(path, instance);
-            return instance;
-        } finally {
-            unlockingFunction();
         }
+        return instance;
     }
 
     /**
@@ -93,7 +91,7 @@ export class RoutingServer {
         }
         const connection: WebSocketConnection = request.accept(protocol, request.origin);
         const instanceKey = join(this.dataFilesRoot, request.resource);
-        const instance = await this.getInstance(instanceKey);
+        const instance = this.getInstance(instanceKey);
         instance.onConnection(connection);
     }
 }

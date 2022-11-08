@@ -14,7 +14,6 @@ import { Listener } from "./Listener";
  */
 export class SimpleServer extends GinkInstance {
 
-    private logger: CallBack;
     private listener: Listener;
 
     constructor(store: Store, args: {
@@ -26,13 +25,12 @@ export class SimpleServer extends GinkInstance {
         software?: string;
         authFunction?: AuthFunction;
     }) {
-        super(store, {software: args.software || "SimpleServer"});
-        this.logger = args.logger || (() => null);
+        super(store, {software: args.software || "SimpleServer"}, args.logger || (() => null));
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this), 
             ...args
         });
-        this.ready = Promise.all([this.ready, this.listener.ready]);
+        this.ready = Promise.all([this.ready, this.listener.ready]).then(() => args.logger(`SimpleServer.ready`));
     }
 
     private async onRequest(request: WebSocketRequest) {

@@ -1,5 +1,5 @@
 import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, AsOf } from "./typedefs";
-import { ChangeSetInfo, Muid, Entry } from "./typedefs";
+import { ChangeSetInfo, Muid, Entry, CallBack } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -30,7 +30,7 @@ export class LogBackedStore implements Store {
     private fileHandle: FileHandle;
     private indexedDbStore: IndexedDbStore;
 
-    constructor(filename: string, reset = false) {
+    constructor(filename: string, reset = false, protected logger: CallBack = (() => null)) {
         this.ready = this.initialize(filename, reset);
     }
 
@@ -76,6 +76,7 @@ export class LogBackedStore implements Store {
                 }
             }
         }
+        this.logger(`LogBackedStore.ready`);
     }
 
     async getOrderedEntries(container: Muid, through: number=Infinity, asOf?: AsOf): Promise<Entry[]> {
