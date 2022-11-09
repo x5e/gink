@@ -66,6 +66,7 @@ module.exports = class Expector {
     * TODO(https://github.com/google/gink/issues/30): kill decendants
     */
     async close(timeout = 1000) {
+        //TODO: detect when the underlying process has already exited so we don't reject on timeout
         const thisExpector = this;
         const returning = new Promise((resolve, reject) => {
             thisExpector.proc.on('close', resolve);

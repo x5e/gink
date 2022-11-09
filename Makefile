@@ -29,11 +29,14 @@ clean:
 unit_tests:
 	env jest
 
-node-client-test: node_modules/gink/protoc.out 
+node-client-test: node_modules/gink/protoc.out tsc.out
 	./functional-tests/node-client-test.js
 
 browser-client-test: webpack.out
 	./functional-tests/browser-client-test/browser-test.js
+
+routing-server-test: node_modules/gink/protoc.out tsc.out
+	./functional-tests/routing-server-test.js
 
 test: unit_tests node-client-test browser-client-test
 

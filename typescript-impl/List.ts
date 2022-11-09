@@ -17,22 +17,22 @@ export class List extends Container {
 
     constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, containerBuilder);
-        if (this.address.timestamp !== 0) {
-            ensure(this.containerBuilder.getBehavior() == Behavior.QUEUE, "container not queue");
-        } else {
+        if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
             ensure(address.offset == Behavior.QUEUE, "magic tag not queue");
+        } else {
+            ensure(this.containerBuilder.getBehavior() == Behavior.QUEUE, "container not queue");
         }
     }
 
     /**
      * Adds an element to the end of the list.
      * @param value 
-     * @param changeSet 
+     * @param change change set to apply the change to or comment to put in
      * @returns 
      */
-    async push(value: Value | Container, changeSet?: ChangeSet): Promise<Muid> {
-        return await this.addEntry(true, value, changeSet);
+    async push(value: Value | Container, change?: ChangeSet|string): Promise<Muid> {
+        return await this.addEntry(true, value, change);
     }
 
     /**
@@ -40,9 +40,9 @@ export class List extends Container {
      * in the provided change set or immedately if no CS is supplied.
      * Returns undefined when called on an empty list (and no changes are made).
      * @param muid 
-     * @param changeSet 
+     * @param change 
      */
-    async pop(what?: Muid | number, changeSet?: ChangeSet): Promise<Container | Value | undefined> {
+    async pop(what?: Muid | number, change?: ChangeSet|string): Promise<Container | Value | undefined> {
         let returning: Container | Value;
         let muid: Muid;
         if (what && typeof (what) == "object") {
@@ -61,18 +61,18 @@ export class List extends Container {
             muid = muidTupleToMuid(entry.entryId);
         }
         let immediate: boolean = false;
-        if (!changeSet) {
+        if (!(change instanceof ChangeSet)) {
             immediate = true;
-            changeSet = new ChangeSet();
+            change = new ChangeSet(change);
         }
         const exitBuilder = new ExitBuilder();
         exitBuilder.setEntry(muidToBuilder(muid));
         exitBuilder.setContainer(muidToBuilder(this.address));
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setExit(exitBuilder);
-        changeSet.addChange(changeBuilder);
+        change.addChange(changeBuilder);
         if (immediate) {
-            await this.ginkInstance.addChangeSet(changeSet);
+            await this.ginkInstance.addChangeSet(change);
         }
         return returning;
     }
@@ -80,8 +80,8 @@ export class List extends Container {
     /**
      * Alias for this.pop(0, changeSet)
      */
-    async shift(changeSet?: ChangeSet): Promise<Container | Value | undefined> {
-        return await this.pop(0, changeSet)
+    async shift(change?: ChangeSet|string): Promise<Container | Value | undefined> {
+        return await this.pop(0, change)
     }
 
     /**

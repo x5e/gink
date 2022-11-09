@@ -40,8 +40,8 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
 
     test(`${implName} test accepts chain start but only once`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const acceptedOnce = await store.addChangeSet(chainStart);
-        const acceptedTwice = await store.addChangeSet(chainStart);
+        const [_info1, acceptedOnce] = await store.addChangeSet(chainStart);
+        const [_info2, acceptedTwice] = await store.addChangeSet(chainStart);
         expect(acceptedOnce).toBeTruthy();
         expect(acceptedTwice).toBeFalsy();
     });
@@ -49,10 +49,11 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     test(`${implName} ensure that it rejects when doesn't have chain start`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
-        let added: ChangeSetInfo|undefined;
+        let added: boolean = false;
         let barfed = false;
         try {
-            added = await store.addChangeSet(secondTrxn);
+            const result = await store.addChangeSet(secondTrxn);
+            added = result[1];
         } catch (e) {
             barfed = true;
         }
@@ -65,10 +66,11 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
         const thirdTrxn = extendChain("Hello, a third!", secondTrxn, NEXT_TS1 + 1);
         await store.addChangeSet(chainStart);
-        let added: ChangeSetInfo|undefined;
+        let added: boolean = false;
         let barfed = false;
         try {
-            added = await store.addChangeSet(thirdTrxn);
+            const result = await store.addChangeSet(thirdTrxn);
+            added = result[1];
         } catch (e) {
             barfed = true;
         }
@@ -123,7 +125,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         changeBuilder.setContainer(containerBuilder);
         changeSetBuilder.getChangesMap().set(7, changeBuilder);
         const changeSetBytes = changeSetBuilder.serializeBinary();
-        const commitInfo = <ChangeSetInfo> await store.addChangeSet(changeSetBytes);
+        const [commitInfo, _novel] = await store.addChangeSet(changeSetBytes);
         ensure(commitInfo.medallion == MEDALLION1);
         ensure(commitInfo.timestamp == START_MICROS1);
         const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });

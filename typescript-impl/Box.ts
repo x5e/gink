@@ -11,11 +11,11 @@ export class Box extends Container {
 
     constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, containerBuilder);
-        if (this.address.timestamp !== 0) {
-            ensure(this.containerBuilder.getBehavior() == Behavior.BOX);
-        } else {
+        if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
-            ensure(address.offset == Behavior.BOX);
+            ensure(address.offset == Behavior.BOX);            
+        } else {
+            ensure(this.containerBuilder.getBehavior() == Behavior.BOX);
         }
     }
 
@@ -28,21 +28,21 @@ export class Box extends Container {
      * This is to allow simple console usage like:
      *      await myBox.put("some value");
      * @param value 
-     * @param changeSet an optional change set to put this in.
+     * @param change an optional change set to put this in.
      * @returns a promise that resolves to the address of the newly created entry  
      */
-    async set(value: Value | Container, changeSet?: ChangeSet): Promise<Muid> {
-        return this.addEntry(undefined, value, changeSet);
+    async set(value: Value | Container, change?: ChangeSet|string): Promise<Muid> {
+        return this.addEntry(undefined, value, change);
     }
 
     /**
      * Adds a deletion marker (tombstone) to the box, effectively clearing it.
      * The corresponding value will be seen to be unset in the data model.
-     * @param changeSet an optional change set to put this in.
+     * @param change an optional change set to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
-    async clear(changeSet?: ChangeSet): Promise<Muid> {
-        return this.addEntry(undefined, Container.DELETION, changeSet);
+    async clear(change?: ChangeSet|string): Promise<Muid> {
+        return this.addEntry(undefined, Container.DELETION, change);
     }
 
     /**

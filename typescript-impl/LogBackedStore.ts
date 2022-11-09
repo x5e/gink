@@ -66,7 +66,7 @@ export class LogBackedStore implements Store {
                 const logFile = LogFile.deserializeBinary(uint8Array);
                 const commits = logFile.getCommitsList();
                 for (const commit of commits) {
-                    const added = await this.indexedDbStore.addChangeSet(commit);
+                    const [_info, added] = await this.indexedDbStore.addChangeSet(commit);
                     assert(added);
                     this.commitsProcessed += 1;
                 }
@@ -90,15 +90,15 @@ export class LogBackedStore implements Store {
         return this.commitsProcessed;
     }
 
-    async addChangeSet(commitBytes: ChangeSetBytes): Promise<ChangeSetInfo|undefined> {
+    async addChangeSet(commitBytes: ChangeSetBytes): Promise<[ChangeSetInfo, boolean]> {
         await this.ready;
-        const added = await this.indexedDbStore.addChangeSet(commitBytes);
+        const [info, added] = await this.indexedDbStore.addChangeSet(commitBytes);
         if (added) {
             const logFragment = new LogFile();
             logFragment.setCommitsList([commitBytes]);
             await this.fileHandle.appendFile(logFragment.serializeBinary());
         }
-        return added;
+        return [info, added];
     }
 
     async getClaimedChains() {

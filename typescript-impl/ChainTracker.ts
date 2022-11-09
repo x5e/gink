@@ -1,4 +1,4 @@
-import { ChangeSetInfo, Medallion, ChainStart, SeenThrough } from "./typedefs";
+import { ChangeSetInfo, Medallion, ChainStart, SeenThrough, Muid, CallBack, Timestamp } from "./typedefs";
 import { SyncMessage } from "gink/protoc.out/sync_message_pb";
 
 
@@ -10,6 +10,7 @@ import { SyncMessage } from "gink/protoc.out/sync_message_pb";
  */
 export class ChainTracker {
     private readonly data: Map<Medallion, Map<ChainStart, ChangeSetInfo>> = new Map();
+    private readonly waiters: Map<CallBack, [Medallion, Timestamp]> = new Map();
 
     constructor({ greetingBytes = null, greeting = null }) {
         if (greetingBytes) {
@@ -28,6 +29,29 @@ export class ChainTracker {
     }
 
     /**
+     * Allows you to wait until an instance has seen a particular change set.
+     * @param what either a muid address or a change set info (indicates what to watch for)
+     * @param timeoutMs how long to wait before giving up
+     * @returns a promise that resolves when the thing has been marked as seen, or rejects at timeout
+     */
+    waitTillHas(what: ChangeSetInfo|Muid, timeoutMs: 1000): Promise<void> {
+        const {medallion, timestamp} = what;
+        const innerMap = this.data.get(medallion);
+        if (innerMap) {
+            for (const [chainStart, changeSetInfo] of innerMap.entries()) {
+                if (chainStart <= timestamp && changeSetInfo.timestamp >= timestamp)
+                    return Promise.resolve();
+            }
+        }
+        const waiters = this.waiters;
+        //TODO: prune waiters after their timeout
+        return new Promise((resolve, reject) => {
+            setTimeout(reject, timeoutMs);
+            waiters.set(resolve, [medallion, timestamp]);
+        });
+    }
+
+    /**
      * First, determine if the commit is novel (represents data not previously marked),
      * then second, mark the data in the data structure (possibly checking that its a sensible extension).
      * Note that checkValidExtension is used here as a safeguard to make sure we don't
@@ -36,19 +60,25 @@ export class ChainTracker {
      * @param checkValidExtension If true then barfs if this commit isn't a vaild extension.
      * @returns true if the commit represents data not seen before
      */
-    markIfNovel(commitInfo: ChangeSetInfo, checkValidExtension?: Boolean): Boolean {
-        if (!this.data.has(commitInfo.medallion)) {
+    markAsHaving(commitInfo: ChangeSetInfo, checkValidExtension?: Boolean): Boolean {
+        if (!this.data.has(commitInfo.medallion)) 
             this.data.set(commitInfo.medallion, new Map());
-        }
-        if(commitInfo.timestamp != commitInfo.chainStart && !commitInfo.priorTime) {
-            throw new Error(`commitInfo appears to be invalid: ${JSON.stringify(commitInfo)}`);
-        }
         const innerMap = this.data.get(commitInfo.medallion);
         const seenThrough = innerMap.get(commitInfo.chainStart)?.timestamp || 0;
         if (commitInfo.timestamp > seenThrough) {
-            if (checkValidExtension && (commitInfo.priorTime ?? 0) != seenThrough)
-                throw new Error(`proposed commit would be an invalid extension ${JSON.stringify(commitInfo)}`);
+            if (checkValidExtension) { 
+                if(commitInfo.timestamp != commitInfo.chainStart && !commitInfo.priorTime) 
+                    throw new Error(`commitInfo appears to be invalid: ${JSON.stringify(commitInfo)}`);
+                if ((commitInfo.priorTime ?? 0) != seenThrough)
+                    throw new Error(`proposed commit would be an invalid extension ${JSON.stringify(commitInfo)}`);
+            }
             innerMap.set(commitInfo.chainStart, commitInfo);
+            for (const [cb, pair] of this.waiters) {
+                if (pair[0] == commitInfo.medallion && pair[1] >= commitInfo.chainStart && pair[1] <= commitInfo.timestamp) {
+                    this.waiters.delete(cb);
+                    cb();
+                }
+            }
             return true;
         }
         return false;

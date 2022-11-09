@@ -28,7 +28,7 @@ test('pointingTo', async function () {
     ensure(!containers.includes(notPointing.toString()));
 
     const found: string[] = [];
-    for await (const pair of instance.getBackRefs(target)) {
+    for await (const pair of target.getBackRefs()) {
         found.push(pair[1].toString());
     }
     ensure(found.length == 3);

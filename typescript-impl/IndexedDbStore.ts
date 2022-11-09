@@ -135,7 +135,7 @@ export class IndexedDbStore implements Store {
         await this.ready;
         const hasMap: ChainTracker = new ChainTracker({});
         (await this.getChainInfos()).map((value) => {
-            hasMap.markIfNovel(value);
+            hasMap.markAsHaving(value);
         });
         return hasMap;
     }
@@ -164,26 +164,26 @@ export class IndexedDbStore implements Store {
         }
     }
 
-    async addChangeSet(changeSetBytes: ChangeSetBytes): Promise<ChangeSetInfo | undefined> {
+    async addChangeSet(changeSetBytes: ChangeSetBytes): Promise<[ChangeSetInfo, boolean]> {
         await this.ready;
         const changeSetMessage = ChangeSetBuilder.deserializeBinary(changeSetBytes);
-        const commitInfo = IndexedDbStore.extractCommitInfo(changeSetMessage);
-        const { timestamp, medallion, chainStart, priorTime } = commitInfo
+        const changeSetInfo = IndexedDbStore.extractCommitInfo(changeSetMessage);
+        const { timestamp, medallion, chainStart, priorTime } = changeSetInfo
         const wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'containers', 'entries', 'exits'], 'readwrite');
         let oldChainInfo: ChangeSetInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
-                return;
+                return [changeSetInfo, false];
             }
             if (oldChainInfo?.timestamp != priorTime) {
                 //TODO(https://github.com/google/gink/issues/27): Need to explicitly close trxn?
-                throw new Error(`missing prior chain entry for ${commitInfo}, have ${oldChainInfo}`);
+                throw new Error(`missing prior chain entry for ${changeSetInfo}, have ${oldChainInfo}`);
             }
         }
-        await wrappedTransaction.objectStore("chainInfos").put(commitInfo);
+        await wrappedTransaction.objectStore("chainInfos").put(changeSetInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring re-parsing.
-        const commitKey: ChangeSetInfoTuple = IndexedDbStore.commitInfoToKey(commitInfo);
+        const commitKey: ChangeSetInfoTuple = IndexedDbStore.commitInfoToKey(changeSetInfo);
         await wrappedTransaction.objectStore("trxns").add(changeSetBytes, commitKey);
         const changesMap: Map<Offset, ChangeBuilder> = changeSetMessage.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
@@ -200,8 +200,8 @@ export class IndexedDbStore implements Store {
                 const containerId: MuidTuple = [0, 0, 0];
                 if (entryBuilder.hasContainer()) {
                     const srcMuid: MuidBuilder = entryBuilder.getContainer();
-                    containerId[0] = srcMuid.getTimestamp() || commitInfo.timestamp;
-                    containerId[1] = srcMuid.getMedallion() || commitInfo.medallion;
+                    containerId[0] = srcMuid.getTimestamp() || changeSetInfo.timestamp;
+                    containerId[1] = srcMuid.getMedallion() || changeSetInfo.medallion;
                     containerId[2] = srcMuid.getOffset();
                 }
                 const semanticKey = entryBuilder.hasKey() ? [unwrapKey(entryBuilder.getKey())] : [];
@@ -212,8 +212,8 @@ export class IndexedDbStore implements Store {
                 if (entryBuilder.hasPointee()) {
                     const pointeeMuidBuilder: MuidBuilder = entryBuilder.getPointee();
                     const pointee = <MuidTuple>[
-                        pointeeMuidBuilder.getTimestamp() || commitInfo.timestamp,
-                        pointeeMuidBuilder.getMedallion() || commitInfo.medallion,
+                        pointeeMuidBuilder.getTimestamp() || changeSetInfo.timestamp,
+                        pointeeMuidBuilder.getMedallion() || changeSetInfo.medallion,
                         pointeeMuidBuilder.getOffset(),
                     ];
                     pointeeList.push(pointee);
@@ -248,8 +248,8 @@ export class IndexedDbStore implements Store {
                 const containerId: number[] = [0, 0, 0];
                 if (exitBuilder.hasContainer()) {
                     const srcMuid: MuidBuilder = exitBuilder.getContainer();
-                    containerId[0] = srcMuid.getTimestamp() || commitInfo.timestamp;
-                    containerId[1] = srcMuid.getMedallion() || commitInfo.medallion;
+                    containerId[0] = srcMuid.getTimestamp() || changeSetInfo.timestamp;
+                    containerId[1] = srcMuid.getMedallion() || changeSetInfo.medallion;
                     containerId[2] = srcMuid.getOffset();
                 }
                 const exit = {
@@ -267,7 +267,7 @@ export class IndexedDbStore implements Store {
             throw new Error("don't know how to apply this kind of change");
         }
         await wrappedTransaction.done;
-        return commitInfo;
+        return [changeSetInfo, true];
     }
 
     async getContainerBytes(address: Muid): Promise<Bytes | undefined> {

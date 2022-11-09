@@ -27,10 +27,13 @@ package google.gink;
     ^ This representation works for timestamps up to the year 4253, though 
     languages like Javascript that only have doubles may have trouble with
     microseconds timestamps past the year 2255 (2**53).
+
+    The timestamp field and/or the medallion field can be set to -1 to reference
+    "global" objects, mostly to be used for debugging.
 */
 
 message Muid {
-    uint64 timestamp = 1; // microseconds since epoch
-    uint64 medallion = 2; // less than 2**52, version 1 between 2**48 and 2**49, exclusive
+    sint64 timestamp = 1; // microseconds since epoch
+    sint64 medallion = 2; // less than 2**52, version 1 between 2**48 and 2**49, exclusive
     uint32 offset = 3; // less than 2**20 (== 16**5)
 }

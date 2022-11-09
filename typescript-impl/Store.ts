@@ -55,7 +55,7 @@ export interface Store {
      *
      * Implicitly awaits on this.ready;
      */
-    addChangeSet: (changeSetBytes: Bytes) => Promise<ChangeSetInfo | undefined>;
+    addChangeSet(changeSetBytes: Bytes): Promise<[ChangeSetInfo, boolean]>;
 
     /**
      * Get all commits from a store ordered by [timestamp, medallion].

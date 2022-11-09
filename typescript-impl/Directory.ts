@@ -11,11 +11,11 @@ export class Directory extends Container {
 
     constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, containerBuilder);
-        if (this.address.timestamp !== 0) {
-            ensure(this.containerBuilder.getBehavior() == Behavior.SCHEMA);
-        } else {
+        if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
             ensure(address.offset == Behavior.SCHEMA);
+        } else {
+            ensure(this.containerBuilder.getBehavior() == Behavior.SCHEMA);
         }
     }
 
@@ -31,22 +31,22 @@ export class Directory extends Container {
      *      await mySchema.set("foo", "bar");
      * @param key 
      * @param value 
-     * @param changeSet an optional change set to put this in.
+     * @param change an optional change set to put this in.
      * @returns a promise that resolves to the address of the newly created entry  
      */
-    async set(key: KeyType, value: Value | Container, changeSet?: ChangeSet): Promise<Muid> {
-        return await this.addEntry(key, value, changeSet);
+    async set(key: KeyType, value: Value | Container, change?: ChangeSet|string): Promise<Muid> {
+        return await this.addEntry(key, value, change);
     }
 
     /**
      * Adds a deletion marker (tombstone) for a particular key in the schema.
      * The corresponding value will be seen to be unset in the datamodel.
      * @param key 
-     * @param changeSet an optional change set to put this in.
+     * @param change an optional change set to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
-    async delete(key: KeyType, changeSet?: ChangeSet): Promise<Muid> {
-        return await this.addEntry(key, Container.DELETION, changeSet);
+    async delete(key: KeyType, change?: ChangeSet|string): Promise<Muid> {
+        return await this.addEntry(key, Container.DELETION, change);
     }
 
     /**
@@ -69,7 +69,7 @@ export class Directory extends Container {
         return result[1] !== undefined;
     }
 
-    async toMap(asOf?: AsOf): Promise<Map<KeyType, Value|Container>> {
+    async toMap(asOf?: AsOf): Promise<Map<KeyType, Value | Container>> {
         const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
         const resultMap = new Map();
         for (const [key, entry] of entries) {
@@ -87,7 +87,7 @@ export class Directory extends Container {
      * @param seen (internal use only! prevents cycles from breaking things)
      * @returns a JSON string
      */
-    async toJson(indent: number|boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+    async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
         //TODO(https://github.com/google/gink/issues/62): add indentation
         ensure(indent === false, "indent not implemented");
         if (seen === undefined) seen = new Set();

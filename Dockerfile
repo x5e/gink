@@ -18,5 +18,6 @@ RUN make
 COPY typescript-unit-tests ./typescript-unit-tests
 RUN make unit_tests
 COPY functional-tests ./functional-tests
-RUN make node-client-test
-RUN make browser-client-test
+RUN ./functional-tests/node-client-test.js
+RUN ./functional-tests/browser-client-test/browser-test.js
+RUN ./functional-tests/routing-server-test.js

@@ -11,24 +11,23 @@ import { Directory } from "./Directory";
 import { List } from "./List";
 import { Box } from "./Box";
 import { GinkInstance } from "./GinkInstance";
-import { ensure, unwrapValue, builderToMuid, valueToJson } from "./utils";
+import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid } from "./utils";
 import { Entry as EntryBuilder } from "gink/protoc.out/entry_pb";
 import { Behavior } from "gink/protoc.out/behavior_pb";
 
 export async function construct(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
-    if (containerBuilder === undefined && address.timestamp > 0) {
+    if (address.timestamp === -1) {
+        if (address.offset === Behavior.SCHEMA) return new Directory(ginkInstance, address);
+        if (address.offset === Behavior.QUEUE) return new List(ginkInstance, address);
+        if (address.offset === Behavior.BOX) return new Box(ginkInstance, address);
+    }
+    if (containerBuilder === undefined) {
         const containerBytes = ensure(await ginkInstance.store.getContainerBytes(address));
         containerBuilder = ContainerBuilder.deserializeBinary(containerBytes);
     }
-    if (containerBuilder.getBehavior() == Behavior.SCHEMA) {
-        return (new Directory(ginkInstance, address, containerBuilder));
-    }
-    if (containerBuilder.getBehavior() == Behavior.QUEUE) {
-        return (new List(ginkInstance, address, containerBuilder));
-    }
-    if (containerBuilder.getBehavior() == Behavior.BOX) {
-        return (new Box(ginkInstance, address, containerBuilder));
-    }
+    if (containerBuilder.getBehavior() == Behavior.SCHEMA) return (new Directory(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.QUEUE) return (new List(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.BOX) return (new Box(ginkInstance, address, containerBuilder));
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
 }
 
@@ -82,4 +81,40 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
         return undefined;
     }
     throw new Error("unsupported entry type");
+}
+
+
+/**
+ * Starts an async iterator that returns all of the containers pointing to the object in question.
+ * @param pointingTo Object to find things pointing at.
+ * @param asOf Effective time to look at.
+ * @returns an async generator of [key, Container], where key is they Directory key, or List entry muid, or undefined for Box
+ */
+Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Container, asOf?: AsOf): 
+    AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
+    return (async function* () {
+        const entries = await instance.store.getBackRefs(pointingTo.address);
+        for (const entry of entries) {
+            const containerMuid = muidTupleToMuid(entry.containerId);
+            const containerBuilder = containerMuid.timestamp === 0 ? undefined :
+                ContainerBuilder.deserializeBinary(await instance.store.getContainerBytes(containerMuid));
+            if (entry.behavior == Behavior.SCHEMA) {
+                if (instance.store.getEntry(containerMuid, entry.semanticKey[0], asOf)) {
+                    yield <[KeyType | Muid | undefined, Container]>
+                        [entry.semanticKey[0], new Directory(instance, containerMuid, containerBuilder)];
+                }
+            }
+            if (entry.behavior == Behavior.QUEUE) {
+                const entryMuid = muidTupleToMuid(entry.entryId);
+                if (instance.store.getEntry(containerMuid, entryMuid, asOf)) {
+                    yield [entryMuid, new List(instance, containerMuid, containerBuilder)];
+                }
+            }
+            if (entry.behavior == Behavior.BOX) {
+                if (instance.store.getEntry(containerMuid, undefined, asOf)) {
+                    yield [undefined, new Box(instance, containerMuid, containerBuilder)];
+                }
+            }
+        }
+    })();
 }

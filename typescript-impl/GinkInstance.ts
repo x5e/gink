@@ -1,13 +1,12 @@
 import { Peer } from "./Peer";
 import { makeMedallion, ensure, noOp, muidTupleToMuid } from "./utils";
-import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack, AsOf, ChangeSetInfo, Muid, } from "./typedefs";
-import { SyncMessage } from "gink/protoc.out/sync_message_pb";
+import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack, AsOf, ChangeSetInfo, Muid, Bytes, } from "./typedefs";
+import { SyncMessage as SyncMessageBuilder } from "gink/protoc.out/sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
 import { ChangeSet } from "./ChangeSet";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
-import { Container } from "./Container";
 import { Directory } from "./Directory";
 import { Box } from "./Box";
 import { List } from "./List";
@@ -44,41 +43,6 @@ export class GinkInstance {
     }
 
 
-    /**
-     * Starts an async iterator that returns all of the containers pointing to the object in question.
-     * @param pointingTo Object to find things pointing at.
-     * @param asOf Effective time to look at.
-     * @returns an async generator of [key, Container], where key is they Directory key, or List entry muid, or undefined for Box
-     */
-    getBackRefs(pointingTo: Container, asOf?: AsOf): AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
-        const thisInstance = this;
-        return (async function* () {
-            const entries = await thisInstance.store.getBackRefs(pointingTo.address);
-            for (const entry of entries) {
-                const containerMuid = muidTupleToMuid(entry.containerId);
-                const containerBuilder = containerMuid.timestamp === 0 ? undefined : 
-                    ContainerBuilder.deserializeBinary(await thisInstance.store.getContainerBytes(containerMuid));
-                if (entry.behavior == Behavior.SCHEMA) {
-                    if (thisInstance.store.getEntry(containerMuid, entry.semanticKey[0], asOf)) {
-                        yield <[KeyType | Muid | undefined, Container]>
-                            [entry.semanticKey[0], new Directory(thisInstance, containerMuid, containerBuilder)];
-                    }
-                }
-                if (entry.behavior == Behavior.QUEUE) {
-                    const entryMuid = muidTupleToMuid(entry.entryId);
-                    if (thisInstance.store.getEntry(containerMuid, entryMuid, asOf)) {
-                        yield [entryMuid, new List(thisInstance, containerMuid, containerBuilder)];
-                    }
-                }
-                if (entry.behavior == Behavior.BOX) {
-                    if (thisInstance.store.getEntry(containerMuid, undefined, asOf)) {
-                        yield [undefined, new Box(thisInstance, containerMuid, containerBuilder)];
-                    }
-                }
-            }
-        })();
-    }
-
     private async initialize(info?: {
         fullname?: string,
         email?: string,
@@ -93,7 +57,7 @@ export class GinkInstance {
             const chainStart = Date.now() * 1000;
             this.myChain =  [medallion, chainStart];
             const changeSet = new ChangeSet(`start: ${info?.software || "GinkInstance"}`, medallion);
-            const medallionInfo = new Directory(this, {timestamp:0, medallion, offset: Behavior.SCHEMA});
+            const medallionInfo = new Directory(this, {timestamp:-1, medallion, offset: Behavior.SCHEMA});
             if (info?.email) {
                 await medallionInfo.set("email", info.email, changeSet);
             }
@@ -119,7 +83,7 @@ export class GinkInstance {
      * @returns a "magic" global directory that always exists and is accessible by all instances
      */
     getGlobalDirectory(): Directory {
-        return new Directory(this, { timestamp: 0, medallion: 0, offset: Behavior.SCHEMA });
+        return new Directory(this, { timestamp: -1, medallion: -1, offset: Behavior.SCHEMA });
     }
 
     async createBox(changeSet?: ChangeSet): Promise<Box> {
@@ -224,11 +188,15 @@ export class GinkInstance {
      */
     private async receiveCommit(commitBytes: ChangeSetBytes, fromConnectionId?: number): Promise<void> {
         await this.ready;
-        this.logger(`got commit from ${fromConnectionId}`);
-        const changeSetInfo = await this.store.addChangeSet(commitBytes);
-        if (!changeSetInfo) return;
-        this.peers.get(fromConnectionId)?.hasMap?.markIfNovel(changeSetInfo);
-        this.iHave.markIfNovel(changeSetInfo);
+        const [changeSetInfo, novel] = await this.store.addChangeSet(commitBytes);
+        this.iHave.markAsHaving(changeSetInfo);
+        this.logger(`got ${novel} novel commit from ${fromConnectionId}: ${JSON.stringify(changeSetInfo)}`);
+        const peer = this.peers.get(fromConnectionId);
+        if (peer) {
+            peer.hasMap?.markAsHaving(changeSetInfo);
+            peer.sendAck(changeSetInfo);
+        }
+        if (!novel) return;
         for (const [peerId, peer] of this.peers) {
             if (peerId != fromConnectionId)
                 peer.sendIfNeeded(commitBytes, changeSetInfo);
@@ -249,7 +217,7 @@ export class GinkInstance {
         if (!peer) throw Error("Got a message from a peer I don't have a proxy for?")
         const unlockingFunction = await this.processingLock.acquireLock();
         try {
-            const parsed = SyncMessage.deserializeBinary(messageBytes);
+            const parsed = SyncMessageBuilder.deserializeBinary(messageBytes);
             if (parsed.hasCommit()) {
                 const commitBytes: ChangeSetBytes = parsed.getCommit_asU8();
                 await this.receiveCommit(commitBytes, fromConnectionId);
@@ -261,6 +229,16 @@ export class GinkInstance {
                 peer.receiveHasMap(new ChainTracker({ greeting }));
                 await this.store.getCommits(peer.sendIfNeeded.bind(peer));
                 return;
+            }
+            if (parsed.hasAck()) {
+                const ack = parsed.getAck();
+                const info: ChangeSetInfo = {
+                    medallion: ack.getMedallion(),
+                    timestamp: ack.getTimestamp(),
+                    chainStart: ack.getChainStart()
+                }
+                this.logger(`got ack from ${fromConnectionId}: ${JSON.stringify(info)}`);
+                this.peers.get(fromConnectionId)?.hasMap?.markAsHaving(info);
             }
         } catch (e) {
             //TODO: Send some sensible code to the peer to say what went wrong.
@@ -275,13 +253,13 @@ export class GinkInstance {
      * Initiates a websocket connection to a peer.
      * @param target a websocket uri, e.g. "ws://127.0.0.1:8080/"
      * @param onClose optional callback to invoke when the connection is closed
-     * @returns a promise that's resolved once the connection has been established
+     * @param resolveOnOpen if true, resolve when the connection is established, otherwise wait for greeting
+     * @returns a promise to the peer
      */
-    public async connectTo(target: string, onClose: CallBack = noOp): Promise<Peer> {
+    public async connectTo(target: string, onClose: CallBack = noOp, resolveOnOpen?: boolean): Promise<Peer> {
         await this.ready;
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
-            let opened = false;
             const connectionId = this.createConnectionId();
             const websocketClient: WebSocket = new GinkInstance.W3cWebSocket(target, GinkInstance.PROTOCOL);
             websocketClient.binaryType = "arraybuffer";
@@ -292,8 +270,10 @@ export class GinkInstance {
                 // called once the new connection has been established
                 websocketClient.send(thisClient.iHave.getGreetingMessageBytes());
                 thisClient.peers.set(connectionId, peer);
-                opened = true;
-                resolve(peer);
+                if (resolveOnOpen)
+                    resolve(peer);
+                else
+                    peer.ready.then(resolve);
             }
             websocketClient.onerror = function (ev: Event) {
                 // if/when this is called depends on the details of the websocket implementation
@@ -302,13 +282,13 @@ export class GinkInstance {
             websocketClient.onclose = function (ev: CloseEvent) {
                 // this should always be called once the peer disconnects, including in cases of error
                 onClose(`closed connection ${connectionId} to ${target}`);
-                if (opened) {
-                    thisClient.peers.delete(connectionId);
-                } else {
-                    // If the connection was never successfully established, then 
-                    // reject the promise returned from the outer connectTo.
-                    reject(ev);
-                }
+                
+                // If the connection was never successfully established, then 
+                // reject the promise returned from the outer connectTo.
+                reject(ev);
+
+                // I'm intentionally leaving the peer object in the peers map just in case we get data from them.
+                // thisClient.peers.delete(connectionId);  // might still be processing data from peer
             }
             websocketClient.onmessage = function (ev: MessageEvent) {
                 // Called when any protocol messages are received.

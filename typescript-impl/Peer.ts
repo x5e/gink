@@ -1,7 +1,7 @@
 import { ChangeSetInfo, ChangeSetBytes, CallBack } from "./typedefs";
 import { noOp, ensure } from "./utils";
 import { ChainTracker } from "./ChainTracker";
-import { SyncMessage } from "gink/protoc.out/sync_message_pb";
+import { SyncMessage as SyncMessageBuilder } from "gink/protoc.out/sync_message_pb";
 
 
 export class Peer {
@@ -10,7 +10,7 @@ export class Peer {
     private callWhenReady: CallBack;
     private callOnTimeout: CallBack;
     hasMap?: ChainTracker;
-    ready: Promise<void>;
+    ready: Promise<Peer>;
 
     constructor(sendFunc: (msg: Uint8Array) => void, closeFunc: () => void = noOp) {
         this.sendFunc = sendFunc;
@@ -33,7 +33,7 @@ export class Peer {
     receiveHasMap(hasMap: ChainTracker) {
         ensure(!this.hasMap, "Already received a HasMap/Greeting from this Peer!");
         this.hasMap = hasMap;
-        this.callWhenReady();
+        this.callWhenReady(this);
     }
 
     /**
@@ -47,7 +47,7 @@ export class Peer {
      * @returns a serialized "Message" proto
      */
     private static makeCommitMessage(commitBytes: Uint8Array): Uint8Array {
-        const message = new SyncMessage();
+        const message = new SyncMessageBuilder();
         message.setCommit(commitBytes);
         const msgBytes = message.serializeBinary();
         return msgBytes;
@@ -61,8 +61,19 @@ export class Peer {
      * @param commitInfo Metadata about the commit.
      */
     sendIfNeeded(commitBytes: ChangeSetBytes, commitInfo: ChangeSetInfo) {
-        if (this.hasMap?.markIfNovel(commitInfo, true)) {
+        if (this.hasMap?.markAsHaving(commitInfo, true)) {
             this.sendFunc(Peer.makeCommitMessage(commitBytes));
         }
+    }
+
+    sendAck(changeSetInfo: ChangeSetInfo) {
+        const ack = new SyncMessageBuilder.Ack();
+        ack.setMedallion(changeSetInfo.medallion);
+        ack.setChainStart(changeSetInfo.chainStart);
+        ack.setTimestamp(changeSetInfo.timestamp);
+        const syncMessageBuilder = new SyncMessageBuilder();
+        syncMessageBuilder.setAck(ack);
+        const bytes = syncMessageBuilder.serializeBinary();
+        this.sendFunc(bytes);
     }
 }
