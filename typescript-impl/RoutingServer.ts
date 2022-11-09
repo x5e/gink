@@ -24,7 +24,6 @@ export class RoutingServer {
     private logger: CallBack;
     private dataFilesRoot: DirPath | null;
     private authFunc: AuthFunction;
-    private software: string;
     private listener: Listener;
 
     private instances: Map<string, RoutingServerInstance> = new Map();
@@ -36,14 +35,12 @@ export class RoutingServer {
         sslCertFilePath?: FilePath;
         staticContentRoot?: DirPath;
         logger?: CallBack;
-        software?: string;
         authFunction?: AuthFunction;
     }) {
         const logger = this.logger = args.logger || (() => null);
         this.authFunc = args.authFunction || (() => true);
         this.dataFilesRoot = args.dataFilesRoot;
         ensure(existsSync(this.dataFilesRoot), "data root not there");
-        this.software = args.software || "RoutingServer";
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this), logger,
             ...args
@@ -56,7 +53,7 @@ export class RoutingServer {
      * @param path absolute path to the datafile
      * @returns a promise of a instance that will manage that file
      */
-    getInstance(path?: string): RoutingServerInstance {
+    _getInstance(path?: string): RoutingServerInstance {
         // Note: can't afford to await for the instance to be ready or you'll miss the greeing.
         let instance = this.instances.get(path);
         if (!instance) {
@@ -88,7 +85,7 @@ export class RoutingServer {
         }
         const connection: WebSocketConnection = request.accept(protocol, request.origin);
         const instanceKey = join(this.dataFilesRoot, request.resource);
-        const instance = this.getInstance(instanceKey);
+        const instance = this._getInstance(instanceKey);
         instance.onConnection(connection);
     }
 }

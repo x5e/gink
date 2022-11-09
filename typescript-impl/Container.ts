@@ -11,7 +11,7 @@ import { GinkInstance } from "./GinkInstance";
 
 export class Container {
     protected static readonly DELETION = new Deletion();
-    static _getBackRefsFunction: (a: GinkInstance, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown>; 
+    static _getBackRefsFunction: (a: GinkInstance, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown>;
 
     /**
      * 
@@ -23,6 +23,11 @@ export class Container {
         ensure(containerBuilder !== undefined || address.timestamp < 0, "missing container definition");
     }
 
+    /**
+     * Starts an async iterator that returns all of the containers pointing to the object in question..
+     * @param asOf Effective time to look at.
+     * @returns an async generator of [key, Container], where key is they Directory key, or List entry muid, or undefined for Box
+     */
     public getBackRefs(asOf?: AsOf): AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
         return Container._getBackRefsFunction(this.ginkInstance, this, asOf);
     }
@@ -39,7 +44,7 @@ export class Container {
      * @param change Change set to add this change to, or empty to apply immediately.
      * @returns a promise the resolves to the muid of the change
      */
-    protected async addEntry(key?: KeyType | true, value?: Value | Container | Deletion, change?: ChangeSet|string): Promise<Muid> {
+    protected async addEntry(key?: KeyType | true, value?: Value | Container | Deletion, change?: ChangeSet | string): Promise<Muid> {
         let immediate: boolean = false;
         if (!(change instanceof ChangeSet)) {
             immediate = true;

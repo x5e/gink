@@ -69,6 +69,12 @@ export class Directory extends Container {
         return result[1] !== undefined;
     }
 
+    /**
+     * Dumps the contents of this directory into a javascript Map; mostly useful for 
+     * debugging though also could be use to create a backup of a database.
+     * @param asOf effective time to get the dump for, or undefined for the present
+     * @returns a javascript map from keys (numbers or strings) to values or containers
+     */
     async toMap(asOf?: AsOf): Promise<Map<KeyType, Value | Container>> {
         const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
         const resultMap = new Map();

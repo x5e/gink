@@ -34,8 +34,8 @@ export class ChainTracker {
      * @param timeoutMs how long to wait before giving up
      * @returns a promise that resolves when the thing has been marked as seen, or rejects at timeout
      */
-    waitTillHas(what: ChangeSetInfo|Muid, timeoutMs: 1000): Promise<void> {
-        const {medallion, timestamp} = what;
+    waitTillHas(what: ChangeSetInfo | Muid, timeoutMs: 1000): Promise<void> {
+        const { medallion, timestamp } = what;
         const innerMap = this.data.get(medallion);
         if (innerMap) {
             for (const [chainStart, changeSetInfo] of innerMap.entries()) {
@@ -61,13 +61,13 @@ export class ChainTracker {
      * @returns true if the commit represents data not seen before
      */
     markAsHaving(commitInfo: ChangeSetInfo, checkValidExtension?: Boolean): Boolean {
-        if (!this.data.has(commitInfo.medallion)) 
+        if (!this.data.has(commitInfo.medallion))
             this.data.set(commitInfo.medallion, new Map());
         const innerMap = this.data.get(commitInfo.medallion);
         const seenThrough = innerMap.get(commitInfo.chainStart)?.timestamp || 0;
         if (commitInfo.timestamp > seenThrough) {
-            if (checkValidExtension) { 
-                if(commitInfo.timestamp != commitInfo.chainStart && !commitInfo.priorTime) 
+            if (checkValidExtension) {
+                if (commitInfo.timestamp != commitInfo.chainStart && !commitInfo.priorTime)
                     throw new Error(`commitInfo appears to be invalid: ${JSON.stringify(commitInfo)}`);
                 if ((commitInfo.priorTime ?? 0) != seenThrough)
                     throw new Error(`proposed commit would be an invalid extension ${JSON.stringify(commitInfo)}`);
@@ -103,15 +103,15 @@ export class ChainTracker {
         return greeting;
     }
 
-       /**
-     * @returns bytes that can be sent during the initial handshake
-     */
+    /**
+    * @returns bytes that can be sent during the initial handshake
+    */
     getGreetingMessageBytes(): Uint8Array {
-            const greeting = this.constructGreeting();
-            const msg = new SyncMessage();
-            msg.setGreeting(greeting);
-            return msg.serializeBinary();
-        }
+        const greeting = this.constructGreeting();
+        const msg = new SyncMessage();
+        msg.setGreeting(greeting);
+        return msg.serializeBinary();
+    }
 
     /**
      * Returns how far along data is seen for a particular chain.

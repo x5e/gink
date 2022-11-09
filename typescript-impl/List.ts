@@ -106,6 +106,13 @@ export class List extends Container {
         }
     }
 
+    /**
+     * Dumps the contents of this list to a javascript array.
+     * useful for debugging and could also be use to export data by walking the tree
+     * @param through how many elements to get, positive starting from beginning, negative starting from end
+     * @param asOf effective time to get the dump for: leave undefined to get data as of the present
+     * @returns an array containing Values (e.g. numbers, strings) and Containers (e.g. other Lists, Boxes, Directories)
+     */
     async toArray(through: number = Infinity, asOf?: AsOf): Promise<(Container | Value)[]> {
         const thisList = this;
         const entries = await thisList.ginkInstance.store.getOrderedEntries(thisList.address, through, asOf);
@@ -121,6 +128,12 @@ export class List extends Container {
         return entries.length;
     }
 
+    /**
+     * Function to iterate over the contents of the List, showing the address of each entry (which can be used in pop).
+     * @param through count of many things to iterate through, positive starting from front, negative for end
+     * @param asOf effective time to get the contents for
+     * @returns an async iterator across everything in the list, with values returned being pairs of Muid, (Value|Container),
+     */
     entries(through: number=Infinity, asOf?: AsOf): AsyncGenerator<[Muid,Value|Container], void, unknown> {
         const thisList = this;
         return (async function*(){

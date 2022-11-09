@@ -15,7 +15,7 @@ export class ChangeSet {
     constructor(private pendingComment?: string, readonly preAssignedMedallion?: Medallion) { 
     }
 
-    requireNotSealed() {
+    private requireNotSealed() {
         if (this.commitInfo)
             throw new Error("This ChangeSet has already been sealed.");
     }

@@ -30,7 +30,7 @@ export class Peer {
         this.hasMap = undefined;
     }
 
-    receiveHasMap(hasMap: ChainTracker) {
+    _receiveHasMap(hasMap: ChainTracker) {
         ensure(!this.hasMap, "Already received a HasMap/Greeting from this Peer!");
         this.hasMap = hasMap;
         this.callWhenReady(this);
@@ -60,13 +60,13 @@ export class Peer {
      * @param commitBytes The commit to be sent.
      * @param commitInfo Metadata about the commit.
      */
-    sendIfNeeded(commitBytes: ChangeSetBytes, commitInfo: ChangeSetInfo) {
+    _sendIfNeeded(commitBytes: ChangeSetBytes, commitInfo: ChangeSetInfo) {
         if (this.hasMap?.markAsHaving(commitInfo, true)) {
             this.sendFunc(Peer.makeCommitMessage(commitBytes));
         }
     }
 
-    sendAck(changeSetInfo: ChangeSetInfo) {
+    _sendAck(changeSetInfo: ChangeSetInfo) {
         const ack = new SyncMessageBuilder.Ack();
         ack.setMedallion(changeSetInfo.medallion);
         ack.setChainStart(changeSetInfo.chainStart);

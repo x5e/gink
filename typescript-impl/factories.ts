@@ -84,12 +84,6 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
 }
 
 
-/**
- * Starts an async iterator that returns all of the containers pointing to the object in question.
- * @param pointingTo Object to find things pointing at.
- * @param asOf Effective time to look at.
- * @returns an async generator of [key, Container], where key is they Directory key, or List entry muid, or undefined for Box
- */
 Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Container, asOf?: AsOf): 
     AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
     return (async function* () {

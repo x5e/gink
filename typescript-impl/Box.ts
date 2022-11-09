@@ -55,7 +55,7 @@ export class Box extends Container {
     }
 
     /**
-     * 
+     * checks to see see how many things are in the box (will be either 0 or 1)
      * @param asOf Historical time to look
      * @returns 0 or 1 depending on whether or not there's something in the box.
      */
@@ -64,6 +64,11 @@ export class Box extends Container {
         return +!(entry === undefined || entry.deleting)
     }
 
+    /**
+     * checks to see if something is in the box
+     * @param asOf 
+     * @returns true if no value or container is in the box
+     */
     async isEmpty(asOf?: AsOf): Promise<boolean> {
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
         return (entry === undefined || entry.deleting)

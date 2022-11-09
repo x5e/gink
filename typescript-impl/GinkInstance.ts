@@ -86,33 +86,48 @@ export class GinkInstance {
         return new Directory(this, { timestamp: -1, medallion: -1, offset: Behavior.SCHEMA });
     }
 
-    async createBox(changeSet?: ChangeSet): Promise<Box> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.BOX, changeSet);
+    /**
+     * Creates a new box container.
+     * @param change either the change set to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the Box container (immediately if a change set is passed in, otherwise after the commit)
+     */
+    async createBox(change?: ChangeSet|string): Promise<Box> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.BOX, change);
         return new Box(this, muid, containerBuilder);
     }
 
-    async createList(changeSet?: ChangeSet): Promise<List> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.QUEUE, changeSet);
+    /**
+     * Creates a new List container.
+     * @param change either the change set to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the List container (immediately if a change set is passed in, otherwise after the commit)
+     */
+    async createList(change?: ChangeSet|string): Promise<List> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.QUEUE, change);
         return new List(this, muid, containerBuilder);
     }
 
+    /**
+     * Creates a new Directory container (like a javascript map or a python dict).
+     * @param change either the change set to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the List container (immediately if a change set is passed in, otherwise after the commit)
+     */
     // TODO: allow user to specify the types allowed for keys and values
-    async createDirectory(changeSet?: ChangeSet): Promise<Directory> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.SCHEMA, changeSet);
+    async createDirectory(change?: ChangeSet|string): Promise<Directory> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.SCHEMA, change);
         return new Directory(this, muid, containerBuilder);
     }
 
-    protected async createContainer(behavior: Behavior, changeSet?: ChangeSet): Promise<[Muid, ContainerBuilder]> {
+    protected async createContainer(behavior: Behavior, change?: ChangeSet|string): Promise<[Muid, ContainerBuilder]> {
         let immediate: boolean = false;
-        if (!changeSet) {
+        if (!(change instanceof ChangeSet)) {
             immediate = true;
-            changeSet = new ChangeSet();
+            change = new ChangeSet(change);
         }
         const containerBuilder = new ContainerBuilder();
         containerBuilder.setBehavior(behavior);
-        const address = changeSet.addContainer(containerBuilder);
+        const address = change.addContainer(containerBuilder);
         if (immediate) {
-            await this.addChangeSet(changeSet);
+            await this.addChangeSet(change);
         }
         return [address, containerBuilder];
     }
@@ -194,12 +209,12 @@ export class GinkInstance {
         const peer = this.peers.get(fromConnectionId);
         if (peer) {
             peer.hasMap?.markAsHaving(changeSetInfo);
-            peer.sendAck(changeSetInfo);
+            peer._sendAck(changeSetInfo);
         }
         if (!novel) return;
         for (const [peerId, peer] of this.peers) {
             if (peerId != fromConnectionId)
-                peer.sendIfNeeded(commitBytes, changeSetInfo);
+                peer._sendIfNeeded(commitBytes, changeSetInfo);
         }
         for (const listener of this.listeners) {
             await listener(changeSetInfo);
@@ -226,8 +241,8 @@ export class GinkInstance {
             if (parsed.hasGreeting()) {
                 this.logger(`got greeting from ${fromConnectionId}`);
                 const greeting = parsed.getGreeting();
-                peer.receiveHasMap(new ChainTracker({ greeting }));
-                await this.store.getCommits(peer.sendIfNeeded.bind(peer));
+                peer._receiveHasMap(new ChainTracker({ greeting }));
+                await this.store.getCommits(peer._sendIfNeeded.bind(peer));
                 return;
             }
             if (parsed.hasAck()) {
@@ -257,6 +272,7 @@ export class GinkInstance {
      * @returns a promise to the peer
      */
     public async connectTo(target: string, onClose: CallBack = noOp, resolveOnOpen?: boolean): Promise<Peer> {
+        //TODO(https://github.com/google/gink/issues/69): have the default be to wait for databases to sync
         await this.ready;
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {

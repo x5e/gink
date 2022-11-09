@@ -17,7 +17,13 @@ import { Muid as MuidBuilder } from "gink/protoc.out/muid_pb";
 import { Store } from "./Store";
 import { Behavior } from "gink/protoc.out/behavior_pb";
 
-
+/**
+ * Uses an indexedDb to implement the Store interface.  On the server side, this will
+ * be done using a shim that is only an in-memory implementation of the IndexedDb API,
+ * so the LogBackedStore should be used on the server for persistance.  Most of the time
+ * uses of Gink should not need to call methods on the store directly, instead just
+ * pass it into the GinkInstance (or SimpleServer, etc). 
+ */
 export class IndexedDbStore implements Store {
 
     ready: Promise<void>;
