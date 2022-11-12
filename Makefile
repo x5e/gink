@@ -10,6 +10,7 @@ node_modules: package.json
 protoc.out: $(PROTOS) 
 	 mkdir -p protoc.out && protoc \
 	--proto_path=proto \
+	--python_out=protoc.out \
 	--js_out=import_style=commonjs,binary:protoc.out \
 	$(PROTOS)
 
