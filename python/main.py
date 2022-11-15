@@ -1,42 +1,28 @@
 #!/usr/bin/env python3
 import sys
-import lmdb
-from sync_message_pb2 import SyncMessage
-from log_file_pb2 import LogFile
-from change_set_pb2 import ChangeSet
+from LogBackedStore import LogBackedStore
+from LmdbStore import LmdbStore
+from AbstractStore import AbstractStore
+from change_set_pb2 import ChangeSet as ChangeSetBuilder
+from ChangeSetInfo import ChangeSetInfo
 
-def read_log_file(fn):
-    with open(fn, "rb") as handle:
-        logFileBuilder = LogFile()
-        logFileBuilder.ParseFromString(handle.read())
-        print(logFileBuilder)
-        for commit in logFileBuilder.commits:
-            changeSet = ChangeSet()
-            changeSet.ParseFromString(commit)
-            print(changeSet)
-
-class GinkDatabase(object):
-    def __init__(self, fn):
-        self.fn = fn
-        self.env = lmdb.open(fn, max_dbs=2, subdir=False)
+def show(file: str):
+    store: AbstractStore
+    builder = ChangeSetBuilder()
+    if file.endswith(".gink.mdb"):
+        store = LmdbStore(file)
+    else:
+        store = LogBackedStore(file)
+    def dump(data: bytes, info: ChangeSetInfo):
+        builder.ParseFromString(data)  # type: ignore
+        print("=" * 40)
+        print(info)
+        print(builder)
+    store.get_commits(dump)
+    store.close()
     
-    def close(self):
-        self.env.close()
 
-    def add_commit(self, commit: bytes):
-        changeSet = ChangeSet()
-        changeSet.ParseFromString(commit)
-        medallion = changeSet.medallion
-        timestamp = changeSet.timestamp
-        chain_start = changeSet.chain_start
-        if not (isinstance(medallion, int) and medallion > 0):
-            raise ValueError(f'medallion({medallion}) is invalid')
-        if not (isinstance(timestamp, int) and timestamp > 0):
-            raise ValueError(f'timestamp({timestamp}) is invalid')
-        if not (isinstance(chain_start, int) and chain_start > 0 and chain_start <= timestamp):
-            raise ValueError(f'chain_start({chain_start}) is invalid')
-
-        
-
-
-gdb = GinkDatabase('/tmp/gink/python')
+if __name__ == "__main__":
+    func = sys.argv[1]
+    args = sys.argv[2:]
+    globals()[func](*args)

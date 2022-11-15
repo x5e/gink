@@ -7,3 +7,4 @@ package-lock.json
 scratch.*
 *.out
 *.built
+__pycache__
