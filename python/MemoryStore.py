@@ -1,6 +1,6 @@
 from sortedcontainers import SortedDict
 from ChangeSetInfo import ChangeSetInfo
-from typing import Tuple, Dict, Callable
+from typing import Tuple, Dict, Callable, Iterable
 from AbstractStore import AbstractStore
 
 class MemoryStore(AbstractStore):
@@ -29,3 +29,6 @@ class MemoryStore(AbstractStore):
     def get_commits(self, callback: Callable[[bytes, ChangeSetInfo], None]):
         for key, value in self._change_sets.items():
             callback(value, key)
+
+    def get_chain_infos(self) -> Iterable[ChangeSetInfo]:
+         return self._chain_infos.values()
