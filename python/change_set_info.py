@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+from struct import Struct
+from change_set_pb2 import ChangeSet as ChangeSetBuilder
+from typedefs import Chain, Medallion, MuTimestamp, ChainStart
+
+
+class ChangeSetInfo(object):
+    """Metadata about a particular change set."""
+    _qqqq = Struct(">QQQQ")
+    __slots__ = ["timestamp", "medallion", "chain_start", "prior_time", "comment"]
+    medallion: Medallion
+    timestamp: MuTimestamp
+    chain_start: ChainStart
+    prior_time: MuTimestamp
+    comment: str
+
+    def __init__(self, *, change_set_bytes: bytes=b'', encoded: bytes=b'\x00'*32, **kwargs):
+
+        (self.timestamp, self.medallion, self.chain_start, self.prior_time) = self._qqqq.unpack(encoded[0:32])
+        self.comment = encoded[24:].decode()
+
+        if change_set_bytes:
+            change_set_builder = ChangeSetBuilder()
+            change_set_builder.ParseFromString(change_set_bytes)  # type: ignore
+            self.medallion = change_set_builder.medallion  # type: ignore # pylint: disable=maybe-no-member
+            self.timestamp = change_set_builder.timestamp # type: ignore # pylint: disable=maybe-no-member
+            self.chain_start = change_set_builder.chain_start  # type: ignore  # pylint: disable=maybe-no-member
+            self.prior_time = change_set_builder.previous_timestamp # type: ignore  # pylint: disable=maybe-no-member
+            self.comment = change_set_builder.comment  # type: ignore # pylint: disable=maybe-no-member
+
+        if kwargs:
+            for key in self.__slots__:
+                if key in kwargs:
+                    setattr(self, key, kwargs[key])
+
+        if not (isinstance(self.medallion, int) and self.medallion > 0):
+            raise ValueError(f'medallion({self.medallion}) is invalid')
+        if not (isinstance(self.timestamp, int) and self.timestamp > 0):
+            raise ValueError(f'timestamp({self.timestamp}) is invalid')
+        if not (isinstance(self.chain_start, int) and self.chain_start > 0):
+            raise ValueError(f'chain_start({self.chain_start}) is invalid')
+        if self.timestamp < self.chain_start:
+            raise ValueError("timestamp before chain start")
+
+    def get_chain(self) -> Chain:
+        """Gets a Chain tuple saying which chain this change set came from."""
+        return Chain(self.medallion, self.chain_start)
+
+
+    def __bytes__(self) -> bytes:
+        """ Returns: a binary representation that sorts according to (timestamp, medallion)."""
+        numbers = self._qqqq.pack(
+            self.timestamp, self.medallion, self.chain_start, self.prior_time)
+        return numbers + self.comment.encode()
+
+    def __lt__(self, other):
+        return (self.timestamp < other.timestamp or (
+            self.timestamp == other.timestamp and self.medallion < other.medallion))
+
+    def __repr__(self) -> str:
+        contents = [f"{x}={repr(getattr(self,x))}" for x in self.__slots__ if getattr(self,x)]
+        contents = ", ".join(contents)
+        return self.__class__.__name__ + '(' + contents + ')'
+
+    def __eq__(self, other):
+        return bytes(self) == bytes(other)
+
+    def __hash__(self):
+        return hash(bytes(self))

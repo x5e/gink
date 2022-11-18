@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
+""" command line tool to view/maniplulate stores """
 import sys
-from LogBackedStore import LogBackedStore
-from LmdbStore import LmdbStore
-from AbstractStore import AbstractStore
+from log_backed_store import LogBackedStore
+from lmdb_store import LmdbStore
+from abstract_store import AbstractStore
 from change_set_pb2 import ChangeSet as ChangeSetBuilder
-from ChangeSetInfo import ChangeSetInfo
+from change_set_info import ChangeSetInfo
 
 def show(file: str):
+    """ Prints the contents of a store to stdout. """
     store: AbstractStore
     builder = ChangeSetBuilder()
     if file.endswith(".gink.mdb"):
@@ -20,7 +22,6 @@ def show(file: str):
         print(builder)
     store.get_commits(dump)
     store.close()
-    
 
 if __name__ == "__main__":
     func = sys.argv[1]
