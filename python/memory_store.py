@@ -1,23 +1,26 @@
 """ Contains the MemoryStore class. """
-from typing import Tuple, Dict, Callable
+from typing import Tuple, Callable
 from sortedcontainers import SortedDict
 from change_set_info import ChangeSetInfo
 from abstract_store import AbstractStore
-from typedefs import Chain
 from chain_tracker import ChainTracker
+from change_set_pb2 import ChangeSet as ChangeSetBuilder
 
 class MemoryStore(AbstractStore):
     """ "Persists" the data in memory.
         (Primarily for use in testing and to be used as a base clase.) """
-    _change_sets: SortedDict
-    _chain_infos: Dict[Chain, ChangeSetInfo]
+    _change_sets: SortedDict  # ChangeSetInfo => bytes
+    _chain_infos: SortedDict # Chain => ChangeSetInfo
 
     def __init__(self):
         self._change_sets = SortedDict()
-        self._chain_infos = {}
+        self._chain_infos = SortedDict()
 
     def add_commit(self, change_set_bytes: bytes) -> Tuple[ChangeSetInfo, bool]:
-        change_set_info = ChangeSetInfo(change_set_bytes=change_set_bytes)
+        change_set_builder = ChangeSetBuilder()
+        change_set_builder.ParseFromString(change_set_bytes)  # type: ignore
+        change_set_info = ChangeSetInfo(builder=change_set_builder)
+        prior_time = change_set_builder.previous_timestamp  # type: ignore pylint: disable=maybe-no-member
         seen_through = 0
         chain_key = change_set_info.get_chain()
         old_info = self._chain_infos.get(change_set_info.get_chain())
@@ -25,16 +28,18 @@ class MemoryStore(AbstractStore):
             seen_through = old_info.timestamp
         if seen_through >= change_set_info.timestamp:
             return (change_set_info, False)
-        if (change_set_info.prior_time or seen_through):
-            if change_set_info.prior_time != seen_through:
+        if (prior_time or seen_through):
+            if prior_time != seen_through:
                 raise ValueError("change set received without prior link in chain")
         self._change_sets[change_set_info] = change_set_bytes
         self._chain_infos[chain_key] = change_set_info
         return (change_set_info, True)
 
     def get_commits(self, callback: Callable[[bytes, ChangeSetInfo], None]):
-        for key, value in self._change_sets.items():
-            callback(value, key)
+        for change_set_info, data in self._change_sets.items():
+            assert isinstance(change_set_info, ChangeSetInfo)
+            assert isinstance(data, bytes)
+            callback(data, change_set_info)
 
     def get_chain_tracker(self) -> ChainTracker:
         chain_tracker = ChainTracker()

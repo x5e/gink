@@ -10,7 +10,7 @@ from sortedcontainers import SortedDict
 
 class ChainTracker:
     """
-    Keep track of what data a given instance.
+    Keep track of what data a particular instance has.
     """
 
     _acked: SortedDict # [Chain, MuTimestamp]
@@ -41,7 +41,9 @@ class ChainTracker:
         raise ValueError()
 
     def to_greeting_message(self) -> SyncMessage:
-        """Constructs a SyncMessage containing a Greeting with the tracked data."""
+        """ Constructs a SyncMessage containing a Greeting with the tracked data.
+            The entries will be sorted in [medallion, chain_start] order.
+        """
         greeting = SyncMessage.Greeting()  # type: ignore
         for chain, seen_through in self._acked:
             assert isinstance(chain, Chain)

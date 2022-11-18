@@ -1,7 +1,7 @@
 from typing import Tuple
 from fcntl import flock, LOCK_EX, LOCK_NB
 from log_file_pb2 import LogFile
-from MemoryStore import MemoryStore
+from memory_store import MemoryStore
 from change_set_info import ChangeSetInfo
 
 
@@ -19,15 +19,15 @@ class LogBackedStore(MemoryStore):
         self._log_file_builder = LogFile()
         self._log_file_builder.ParseFromString(self._handle.read())  # type: ignore
         for change_set_bytes in self._log_file_builder.commits:  # type: ignore # pylint: disable=maybe-no-member
-            MemoryStore.add_commit(self, changeSetBytes=change_set_bytes)
+            MemoryStore.add_commit(self, change_set_bytes=change_set_bytes)
 
-    def add_commit(self, changeSetBytes: bytes) -> Tuple[ChangeSetInfo, bool]:
+    def add_commit(self, change_set_bytes: bytes) -> Tuple[ChangeSetInfo, bool]:
         if self._handle.closed:
             raise AssertionError("attempt to write to closed LogBackStore")
-        change_set_info, added = MemoryStore.add_commit(self, changeSetBytes=changeSetBytes)
+        change_set_info, added = MemoryStore.add_commit(self, change_set_bytes)
         if added:
             self._log_file_builder.Clear()  # type: ignore
-            self._log_file_builder.commits.push(changeSetBytes)  # type: ignore
+            self._log_file_builder.commits.push(change_set_bytes)  # type: ignore
             data: bytes = self._log_file_builder.SerializeToString()  # type: ignore
             self._handle.write(data)
         return change_set_info, added

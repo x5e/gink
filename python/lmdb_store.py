@@ -5,6 +5,7 @@ import lmdb
 from change_set_info import ChangeSetInfo
 from abstract_store import AbstractStore
 from chain_tracker import ChainTracker
+from change_set_pb2 import ChangeSet as ChangeSetBuilder
 
 class LmdbStore(AbstractStore):
     """ Stores change sets in an lmdb file."""
@@ -20,7 +21,9 @@ class LmdbStore(AbstractStore):
         self.env.close()
 
     def add_commit(self, change_set_bytes: bytes) -> Tuple[ChangeSetInfo, bool]:
-        change_set_info = ChangeSetInfo(change_set_bytes=change_set_bytes)
+        change_set_builder = ChangeSetBuilder()
+        change_set_builder.ParseFromString(change_set_bytes)  # type: ignore
+        change_set_info = ChangeSetInfo(builder=change_set_builder)
         chain_key = self._qq_struct.pack(change_set_info.medallion, change_set_info.chain_start)
         # Note: LMDB supports only one write transaction, so we don't need to explicitly lock.
         with self.env.begin(write=True) as txn:

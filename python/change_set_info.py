@@ -1,32 +1,30 @@
 #!/usr/bin/env python3
+""" Contains the ChangeSetInfo class. """
+from typing import Optional
 from struct import Struct
-from change_set_pb2 import ChangeSet as ChangeSetBuilder
+from change_set_pb2 import ChangeSet
 from typedefs import Chain, Medallion, MuTimestamp, ChainStart
 
-
-class ChangeSetInfo(object):
-    """Metadata about a particular change set."""
-    _qqqq = Struct(">QQQQ")
-    __slots__ = ["timestamp", "medallion", "chain_start", "prior_time", "comment"]
+class ChangeSetInfo:
+    """Metadata about a particular change set relevant for syncing."""
+    _struct = Struct(">QQQ")
+    __slots__ = ["timestamp", "medallion", "chain_start", "comment"]
     medallion: Medallion
     timestamp: MuTimestamp
     chain_start: ChainStart
     prior_time: MuTimestamp
     comment: str
 
-    def __init__(self, *, change_set_bytes: bytes=b'', encoded: bytes=b'\x00'*32, **kwargs):
+    def __init__(self, *, builder: Optional[ChangeSet]=None, encoded: bytes=b'\x00'*24, **kwargs):
 
-        (self.timestamp, self.medallion, self.chain_start, self.prior_time) = self._qqqq.unpack(encoded[0:32])
+        (self.timestamp, self.medallion, self.chain_start) = self._struct.unpack(encoded[0:24])
         self.comment = encoded[24:].decode()
 
-        if change_set_bytes:
-            change_set_builder = ChangeSetBuilder()
-            change_set_builder.ParseFromString(change_set_bytes)  # type: ignore
-            self.medallion = change_set_builder.medallion  # type: ignore # pylint: disable=maybe-no-member
-            self.timestamp = change_set_builder.timestamp # type: ignore # pylint: disable=maybe-no-member
-            self.chain_start = change_set_builder.chain_start  # type: ignore  # pylint: disable=maybe-no-member
-            self.prior_time = change_set_builder.previous_timestamp # type: ignore  # pylint: disable=maybe-no-member
-            self.comment = change_set_builder.comment  # type: ignore # pylint: disable=maybe-no-member
+        if builder:
+            self.medallion = builder.medallion  # type: ignore # pylint: disable=maybe-no-member
+            self.timestamp = builder.timestamp # type: ignore # pylint: disable=maybe-no-member
+            self.chain_start = builder.chain_start  # type: ignore  # pylint: disable=maybe-no-member
+            self.comment = builder.comment  # type: ignore # pylint: disable=maybe-no-member
 
         if kwargs:
             for key in self.__slots__:
@@ -49,8 +47,7 @@ class ChangeSetInfo(object):
 
     def __bytes__(self) -> bytes:
         """ Returns: a binary representation that sorts according to (timestamp, medallion)."""
-        numbers = self._qqqq.pack(
-            self.timestamp, self.medallion, self.chain_start, self.prior_time)
+        numbers = self._struct.pack(self.timestamp, self.medallion, self.chain_start)
         return numbers + self.comment.encode()
 
     def __lt__(self, other):
