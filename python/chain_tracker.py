@@ -45,8 +45,8 @@ class ChainTracker:
             The entries will be sorted in [medallion, chain_start] order.
         """
         greeting = SyncMessage.Greeting()  # type: ignore
-        for chain, seen_through in self._acked:
-            assert isinstance(chain, Chain)
+        for chain, seen_through in self._acked.items():
+            assert isinstance(chain, Chain), repr(self._acked)
             entry = SyncMessage.Greeting.GreetingEntry()  # type: ignore
             entry.medallion = chain.medallion
             entry.chain_start = chain.chain_start
