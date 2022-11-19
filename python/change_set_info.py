@@ -7,24 +7,27 @@ from typedefs import Chain, Medallion, MuTimestamp, ChainStart
 
 class ChangeSetInfo:
     """Metadata about a particular change set relevant for syncing."""
-    _struct = Struct(">QQQ")
-    __slots__ = ["timestamp", "medallion", "chain_start", "comment"]
+    _struct = Struct(">QQQQ")
+    __slots__ = ["timestamp", "medallion", "chain_start", "prior_time", "comment"]
     medallion: Medallion
     timestamp: MuTimestamp
     chain_start: ChainStart
     prior_time: MuTimestamp
     comment: str
 
-    def __init__(self, *, builder: Optional[ChangeSet]=None, encoded: bytes=b'\x00'*24, **kwargs):
+    def __init__(self, *, builder: Optional[ChangeSet]=None, encoded: bytes=b'\x00'*32, **kwargs):
 
-        (self.timestamp, self.medallion, self.chain_start) = self._struct.unpack(encoded[0:24])
-        self.comment = encoded[24:].decode()
+        unpacked = self._struct.unpack(encoded[0:32])
+        (self.timestamp, self.medallion, self.chain_start, self.prior_time) = unpacked
+        self.comment = encoded[32:].decode()
+
 
         if builder:
             self.medallion = builder.medallion  # type: ignore # pylint: disable=maybe-no-member
             self.timestamp = builder.timestamp # type: ignore # pylint: disable=maybe-no-member
             self.chain_start = builder.chain_start  # type: ignore  # pylint: disable=maybe-no-member
-            self.comment = builder.comment  # type: ignore # pylint: disable=maybe-no-member
+            self.comment = builder.comment  # type: ignore # pylint: disable=maybe-no-member\
+            self.prior_time = builder.previous_timestamp  # type: ignore # pylint: disable=maybe-no-member
 
         if kwargs:
             for key in self.__slots__:
@@ -47,8 +50,8 @@ class ChangeSetInfo:
 
     def __bytes__(self) -> bytes:
         """ Returns: a binary representation that sorts according to (timestamp, medallion)."""
-        numbers = self._struct.pack(self.timestamp, self.medallion, self.chain_start)
-        return numbers + self.comment.encode()
+        num = self._struct.pack(self.timestamp, self.medallion, self.chain_start, self.prior_time)
+        return num + self.comment.encode()
 
     def __lt__(self, other):
         return (self.timestamp < other.timestamp or (

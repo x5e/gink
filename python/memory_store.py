@@ -20,20 +20,13 @@ class MemoryStore(AbstractStore):
         change_set_builder = ChangeSetBuilder()
         change_set_builder.ParseFromString(change_set_bytes)  # type: ignore
         change_set_info = ChangeSetInfo(builder=change_set_builder)
-        prior_time = change_set_builder.previous_timestamp  # type: ignore pylint: disable=maybe-no-member
-        seen_through = 0
         chain_key = change_set_info.get_chain()
         old_info = self._chain_infos.get(change_set_info.get_chain())
-        if old_info:
-            seen_through = old_info.timestamp
-        if seen_through >= change_set_info.timestamp:
-            return (change_set_info, False)
-        if (prior_time or seen_through):
-            if prior_time != seen_through:
-                raise ValueError("change set received without prior link in chain")
-        self._change_sets[change_set_info] = change_set_bytes
-        self._chain_infos[chain_key] = change_set_info
-        return (change_set_info, True)
+        needed = AbstractStore._is_needed(change_set_info, old_info)
+        if needed:
+            self._change_sets[change_set_info] = change_set_bytes
+            self._chain_infos[chain_key] = change_set_info
+        return (change_set_info, needed)
 
     def get_commits(self, callback: Callable[[bytes, ChangeSetInfo], None]):
         for change_set_info, data in self._change_sets.items():

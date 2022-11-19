@@ -30,12 +30,12 @@ def test_to_greeting_message():
     assert len(entries) == 3
     assert entries[0].medallion == 123
     assert entries[0].chain_start == 345
-    assert entries[0].timestamp == 789
+    assert entries[0].seen_through == 789
 
     assert entries[1].medallion == 123
     assert entries[1].chain_start == 888
-    assert entries[1].timestamp == 899
+    assert entries[1].seen_through == 899
 
     assert entries[1].medallion == 123
     assert entries[1].chain_start == 888
-    assert entries[1].timestamp == 899
+    assert entries[1].seen_through == 899

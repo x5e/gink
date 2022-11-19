@@ -44,14 +44,13 @@ class ChainTracker:
         """ Constructs a SyncMessage containing a Greeting with the tracked data.
             The entries will be sorted in [medallion, chain_start] order.
         """
-        greeting = SyncMessage.Greeting()  # type: ignore
+        sync_message = SyncMessage()
+        greeting = getattr(sync_message, "greeting")
         for chain, seen_through in self._acked.items():
             assert isinstance(chain, Chain), repr(self._acked)
             entry = SyncMessage.Greeting.GreetingEntry()  # type: ignore
             entry.medallion = chain.medallion
             entry.chain_start = chain.chain_start
             entry.seen_through = seen_through
-            greeting.entries.append(entry)  # pylint: disable=maybe-no-member
-        sync_message = SyncMessage()
-        sync_message.greeting = greeting  # type: ignore
+            greeting.entries.append(entry)  # pylint: disable=maybe-no-member # type: ignore
         return sync_message

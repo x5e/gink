@@ -6,6 +6,10 @@ def test_repr_some():
     info = ChangeSetInfo(timestamp=123, medallion=789, chain_start=123)
     assert repr(info) == "ChangeSetInfo(timestamp=123, medallion=789, chain_start=123)", info
 
+    abc = ChangeSetInfo(timestamp=125, medallion=3, chain_start=123, prior_time=123, comment='x')
+    xyz = "ChangeSetInfo(timestamp=125, medallion=3, chain_start=123, prior_time=123, comment='x')"
+    assert repr(abc) == xyz, repr(abc)
+
 def test_order():
     """ Makes sure that ChangeSetInfo objects get ordered correctly. """
     info1 = ChangeSetInfo(timestamp=123, medallion=789, chain_start=123)
