@@ -83,7 +83,10 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
     throw new Error("unsupported entry type");
 }
 
-
+/*
+* I can't import List, Directory, etc. into this Container.ts because it will cause the inherits clauses to break.
+* So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
+*/
 Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Container, asOf?: AsOf): 
     AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
     return (async function* () {

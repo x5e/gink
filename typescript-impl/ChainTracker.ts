@@ -31,11 +31,10 @@ export class ChainTracker {
     /**
      * Allows you to wait until an instance has seen a particular change set.
      * @param what either a muid address or a change set info (indicates what to watch for)
-     * @param timeoutMs how long to wait before giving up
+     * @param timeoutMs how long to wait before giving up, default of undefined doesn't timeout
      * @returns a promise that resolves when the thing has been marked as seen, or rejects at timeout
      */
-    waitTillHas(what: ChangeSetInfo | Muid, timeoutMs: 1000): Promise<void> {
-        const { medallion, timestamp } = what;
+    waitTillHas({ medallion, timestamp }: ChangeSetInfo | Muid, timeoutMs?: number): Promise<void> {
         const innerMap = this.data.get(medallion);
         if (innerMap) {
             for (const [chainStart, changeSetInfo] of innerMap.entries()) {
@@ -46,7 +45,8 @@ export class ChainTracker {
         const waiters = this.waiters;
         //TODO: prune waiters after their timeout
         return new Promise((resolve, reject) => {
-            setTimeout(reject, timeoutMs);
+            if (timeoutMs)
+                setTimeout(reject, timeoutMs);
             waiters.set(resolve, [medallion, timestamp]);
         });
     }
