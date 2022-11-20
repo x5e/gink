@@ -53,7 +53,7 @@ export class RoutingServer {
      * @param path absolute path to the datafile
      * @returns a promise of a instance that will manage that file
      */
-    _getInstance(path?: string): RoutingServerInstance {
+    private getInstance(path?: string): RoutingServerInstance {
         // Note: can't afford to await for the instance to be ready or you'll miss the greeing.
         let instance = this.instances.get(path);
         if (!instance) {
@@ -85,7 +85,7 @@ export class RoutingServer {
         }
         const connection: WebSocketConnection = request.accept(protocol, request.origin);
         const instanceKey = join(this.dataFilesRoot, request.resource);
-        const instance = this._getInstance(instanceKey);
+        const instance = this.getInstance(instanceKey);
         instance.onConnection(connection);
     }
 }

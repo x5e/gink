@@ -11,6 +11,14 @@ import { GinkInstance } from "./GinkInstance";
 
 export class Container {
     protected static readonly DELETION = new Deletion();
+
+    /**
+     * I can't import List, Directory, etc. into this file because it will cause the inherits clauses to break.
+     * So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
+     * See factories.ts for the actual implementation.
+     * 
+     * The backrefs capability would allow you to find containers pointing to this container as of a particular time.
+     */
     static _getBackRefsFunction: (a: GinkInstance, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown>;
 
     /**
@@ -25,6 +33,8 @@ export class Container {
 
     /**
      * Starts an async iterator that returns all of the containers pointing to the object in question..
+     * Note: the behavior of this method may change to only include backrefs to lists and vertices
+     * (e.g. those connections that are popped rather than overwritten, so I know when they're removed)
      * @param asOf Effective time to look at.
      * @returns an async generator of [key, Container], where key is they Directory key, or List entry muid, or undefined for Box
      */

@@ -262,6 +262,9 @@ export function muidTupleToMuid(tuple: MuidTuple): Muid {
 
 /**
  * Checks the resource path to ensure that it will resolve to a sensible file.
+ * Specifically, it will require that each path component start with [a-zA-Z0-9_],
+ * and only allow [a-zA-Z0-9_.@-] for following characters.  This is to prevent
+ * users from accessing hidden files with a dot prefix and traversing up with ".."
  * @param path resource requested
  * @returns True if the path doesn't look like something we should let users access.
  */
