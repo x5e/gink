@@ -16,10 +16,10 @@ message Entry {
     
     oneof link {
         // For behavior in {BOX, QUEUE, TABLE, BINLOG} there is no link.
-        // This includes when setting the root entry (i.e. no src_node).
         Value key = 2;      // only for src_node behavior in {SCHEMA, SET}
         Muid edge_type = 3; // only when src_node has a node_kind
-        Span span = 4;      // only for src_node behavior = FILE
+        bool boxed = 4;     // only for src_node behavior = BOX
+        Span span = 5;      // only for src_node behavior = FILE
     }
 
     message Row {
@@ -28,15 +28,15 @@ message Entry {
     }
 
     oneof target {
-        Muid pointee = 5;
         bool deleting = 6; // serves as reset when no link is set
         uint64 medallion = 7; // follow the root entry of another db instance
         bytes octects = 8; // for src_node behavior in {FILE, BINLOG} or when encrypted
         Value immediate = 9;
         Row row = 10; // only when source is a TABLE
+        Muid pointee = 11;
     }
 
-    uint64 expiry = 11; // timestamp of expiration in microseconds since epoch, for LIST/QUEUE only
+    uint64 expiry = 12; // timestamp of expiration in microseconds since epoch, for LIST/QUEUE only
     bytes iv = 15; // initialization vector when octects are encrypted
     bytes key_id = 16; // optional hint of which key was used (when encrypted)
 }

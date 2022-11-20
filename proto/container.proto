@@ -3,6 +3,7 @@ package google.gink;
 import "muid.proto";
 import "value.proto";
 import "value_type.proto";
+import "behavior.proto";
 
 /**
     Each new Container message establishes the existance of a mutable data structure.
@@ -17,21 +18,6 @@ message Container {
         bool computed = 4; // when true, values can't be provided, and is defined by expression
         uint32 position = 5; // required when using table inheritance, implied otherwise
         bool drop_column = 6; // specifies that the column should be dropped in an inherited table
-    };
-    enum Behavior {
-        UNKNOWN = 0;
-        BOX = 1; // only holds on entry at a time, only uses value field, not key
-        FILE = 2; // entries contain bytes and specify location in file
-        BINLOG = 3; // entries contain bytes, order is implied by timestamps
-        TABLE = 4; // entries have only value, no explicit key, keyed on index_expressions
-        SET = 5; // entries have only key, no value
-        SUM = 6; // entries combined by adding together values, user only sees total
-        SCHEMA = 7; // entries have key & value and replace matching key
-        QUEUE = 8; // entries only have value, never replace prior entry, but can be popped
-        INDEX = 9; // not changed by entries, instead defines lookup into another container
-        VIEW = 10; // a traditional sql view
-        DERIVED = 11; // a derived table, AKA a materialized view
-        NODE = 12; // entries are edges in a graph
     };
     Behavior behavior = 1;
     Muid extends = 2; // inheritance (an option only for a TABLE, QUEUE, SET, or SCHEMA)
