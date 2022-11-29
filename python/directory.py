@@ -1,3 +1,4 @@
+from typing import Union
 from typedefs import Muid
 from behavior_pb2 import Behavior
 from database import Database
@@ -43,10 +44,7 @@ class Directory(Container):
         raise NotImplementedError()
 
     def set(self, key: Union[str, int], value, change_set=None):
-        immedate = False
-        if change_set is None:
-            immedate = True
-            change_set = ChangeSet()
+        pass
         
 
     def delete(self, key, change_set=None):

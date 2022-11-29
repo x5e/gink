@@ -1,5 +1,6 @@
 """Contains the LmdbStore class."""
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Iterable
+from typedefs import Chain
 from struct import Struct
 import lmdb
 from change_set_info import ChangeSetInfo
@@ -62,3 +63,7 @@ class LmdbStore(AbstractStore):
                 chain_tracker.mark_as_having(change_set_info)
                 data_remaining = infos_cursor.next()
         return chain_tracker
+
+    def get_claimed_chains(self) -> Iterable[Chain]:
+        assert self
+        raise NotImplementedError()

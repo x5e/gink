@@ -6,7 +6,7 @@ from database import Database
 def test_directory():
     store = MemoryStore()
     database = Database(store=store)
-    global_directory = Directory.global_instance()
+    global_directory = Directory.global_instance(database=database)
     global_directory["foo"] = "bar"
     result = global_directory["foo"]
     assert result == "bar"
