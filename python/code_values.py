@@ -3,7 +3,10 @@
 from typing import Union
 from value_pb2 import Value as ValueBuilder
 
+
 def decode_value(value_builder: ValueBuilder):
+    """ decodes a protobuf value into a python value.
+    """
     if value_builder.HasField("special"):
         if value_builder.special == ValueBuilder.Special.NULL:
             return None
@@ -21,17 +24,22 @@ def decode_value(value_builder: ValueBuilder):
         return tuple([decode_value(x) for x in value_builder.tuple.values])
     if value_builder.HasField("document"):
         result = {}
-        for i in range(len(value_builder.document.keys)):
+        for i, _  in enumerate(value_builder.document.keys):
             result[decode_value(value_builder.document.keys[i])] = decode_value(
                 value_builder.document.values[i])
         return result
     raise ValueError("don't know how to decode: %r,%s" % (value_builder, type(value_builder)))
-    
+
 
 def encode_key(value: Union[str, int]) -> ValueBuilder:
+    """ Encodes a valid key (int or str) into a protobuf Value.
+    """
     return encode_value(value)
 
-def encode_value(value = None) -> ValueBuilder:
+
+def encode_value(value) -> ValueBuilder:
+    """ encodes a python value (number, string, etc.) into a protobuf builder
+    """
     value_builder = ValueBuilder()
     if isinstance(value, bytes):
         value_builder.octects = value
@@ -39,23 +47,27 @@ def encode_value(value = None) -> ValueBuilder:
     if isinstance(value, str):
         value_builder.characters = value
         return value_builder
+    if isinstance(value, bool):
+        value_builder.special = ValueBuilder.Special.TRUE if value else ValueBuilder.Special.FALSE
+        return value_builder
     if isinstance(value, (float, int)):
         # TODO: add switch to encoding ints once Javascript implementation supports
         value_builder.number.doubled = float(value)
-        return value_builder
-    if isinstance(value, bool):
-        value_builder.special = ValueBuilder.Special.TRUE if value else ValueBuilder.Special.FALSE
         return value_builder
     if value is None:
         value_builder.special = ValueBuilder.Special.NULL
         return value_builder
     if isinstance(value, (tuple, list)):
         value_builder.tuple
+        if len(value) == 0:
+            value_builder.tuple.values.append(ValueBuilder())
+            value_builder.tuple.values.pop()
         for val in value:
             value_builder.tuple.values.append(encode_value(val))
         return value_builder
     if isinstance(value, dict):
-        value_builder.document
+        value_builder.document.keys.append(ValueBuilder())
+        value_builder.document.keys.pop()
         for key, val in value.items():
             value_builder.document.keys.append(encode_value(key))
             value_builder.document.values.append(encode_value(val))

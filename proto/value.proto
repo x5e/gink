@@ -39,9 +39,10 @@ message Value {
     }
 
     enum Special {
-        NULL = 0;
+        MISSING = 0;
         TRUE = 1;
         FALSE = 2;
+        NULL = 3;
     }
     
     message Timestamp {
