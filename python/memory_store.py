@@ -1,6 +1,6 @@
 """ Contains the MemoryStore class. """
 from typing import Tuple, Callable
-from sortedcontainers import SortedDict
+from sortedcontainers import SortedDict, SortedSet
 from change_set_info import ChangeSetInfo
 from abstract_store import AbstractStore
 from chain_tracker import ChainTracker
@@ -11,10 +11,16 @@ class MemoryStore(AbstractStore):
         (Primarily for use in testing and to be used as a base clase.) """
     _change_sets: SortedDict  # ChangeSetInfo => bytes
     _chain_infos: SortedDict # Chain => ChangeSetInfo
+    _claimed_chains: SortedSet # Chain
 
     def __init__(self):
         self._change_sets = SortedDict()
         self._chain_infos = SortedDict()
+        self._claimed_chains = SortedSet()
+
+    def get_claimed_chains(self):
+        return self._claimed_chains
+    
 
     def add_commit(self, change_set_bytes: bytes) -> Tuple[ChangeSetInfo, bool]:
         change_set_builder = ChangeSetBuilder()

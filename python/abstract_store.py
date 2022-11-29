@@ -1,15 +1,20 @@
 """Contains AbstractStore class."""
-from typing import Tuple, Callable, Optional as O
+from typing import Tuple, Callable, Optional as O, Iterable
 from abc import ABC, abstractmethod
 from change_set_info import ChangeSetInfo
 from chain_tracker import ChainTracker
-
+from typedefs import Chain
 
 class AbstractStore(ABC):
     """abstract base class"""
 
     def close(self):
         """Safely releases resources."""
+
+    @abstractmethod
+    def get_claimed_chains(self) -> Iterable[Chain]:
+        assert self
+        raise NotImplementedError()
 
     @abstractmethod
     def add_commit(self, change_set_bytes: bytes) -> Tuple[ChangeSetInfo, bool]:
