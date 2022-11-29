@@ -4,6 +4,7 @@ from memory_store import MemoryStore
 from database import Database
 
 def test_directory():
+    """ Test basic set/get functionality works. """
     store = MemoryStore()
     database = Database(store=store)
     global_directory = Directory.global_instance(database=database)
