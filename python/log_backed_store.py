@@ -1,3 +1,4 @@
+""" implementation of the LogBackedStore class """
 from typing import Tuple
 from fcntl import flock, LOCK_EX, LOCK_NB
 from log_file_pb2 import LogFile
@@ -31,6 +32,9 @@ class LogBackedStore(MemoryStore):
             data: bytes = self._log_file_builder.SerializeToString()  # type: ignore
             self._handle.write(data)
         return change_set_info, added
+
+    def get_claimed_chains(self):
+        raise NotImplementedError()
 
     def close(self):
         """Closes the underlying file."""

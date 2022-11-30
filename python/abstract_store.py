@@ -13,7 +13,14 @@ class AbstractStore(ABC):
 
     @abstractmethod
     def get_claimed_chains(self) -> Iterable[Chain]:
+        """ Returns the chains that this store as started and can write to. """
         assert self
+        raise NotImplementedError()
+
+    @abstractmethod
+    def claim_chain(self, chain: Chain):
+        """ Marks a chain as being owned by this store for future use. """
+        assert self and chain
         raise NotImplementedError()
 
     @abstractmethod

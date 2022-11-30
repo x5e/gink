@@ -1,5 +1,6 @@
 """ Contains the MemoryStore class. """
 from typing import Tuple, Callable
+from typedefs import Chain
 from sortedcontainers import SortedDict, SortedSet
 from change_set_info import ChangeSetInfo
 from abstract_store import AbstractStore
@@ -20,7 +21,9 @@ class MemoryStore(AbstractStore):
 
     def get_claimed_chains(self):
         return self._claimed_chains
-    
+
+    def claim_chain(self, chain: Chain):
+        self._claimed_chains.add(chain)
 
     def add_commit(self, change_set_bytes: bytes) -> Tuple[ChangeSetInfo, bool]:
         change_set_builder = ChangeSetBuilder()
@@ -43,5 +46,6 @@ class MemoryStore(AbstractStore):
     def get_chain_tracker(self) -> ChainTracker:
         chain_tracker = ChainTracker()
         for change_set_info in self._chain_infos.values():
+            assert isinstance(change_set_info, ChangeSetInfo)
             chain_tracker.mark_as_having(change_set_info)
         return chain_tracker
