@@ -3,7 +3,7 @@
 from typing import Optional
 from struct import Struct
 from change_set_pb2 import ChangeSet
-from typedefs import Chain, Medallion, MuTimestamp, ChainStart
+from typedefs import Chain, Medallion, MuTimestamp
 
 class ChangeSetInfo:
     """Metadata about a particular change set relevant for syncing."""
@@ -11,7 +11,7 @@ class ChangeSetInfo:
     __slots__ = ["timestamp", "medallion", "chain_start", "prior_time", "comment"]
     medallion: Medallion
     timestamp: MuTimestamp
-    chain_start: ChainStart
+    chain_start: MuTimestamp
     prior_time: MuTimestamp
     comment: str
 
@@ -29,10 +29,14 @@ class ChangeSetInfo:
             self.comment = builder.comment  # type: ignore # pylint: disable=maybe-no-member\
             self.prior_time = builder.previous_timestamp  # type: ignore # pylint: disable=maybe-no-member
 
-        if kwargs:
-            for key in self.__slots__:
-                if key in kwargs:
-                    setattr(self, key, kwargs[key])
+        if "chain" in kwargs:
+            chain = kwargs["chain"]
+            assert isinstance(chain, Chain)
+            self.chain_start = chain.chain_start
+            self.medallion = chain.medallion
+        for key in self.__slots__:
+            if key in kwargs:
+                setattr(self, key, kwargs[key])            
 
         if not (isinstance(self.medallion, int) and self.medallion > 0):
             raise ValueError(f'medallion({self.medallion}) is invalid')

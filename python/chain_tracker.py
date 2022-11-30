@@ -2,9 +2,9 @@
 Contains the ChainTracker object.
 """
 
-from typing import Union
+from typing import Union, Optional
 from sync_message_pb2 import SyncMessage
-from typedefs import Muid, Chain, ChainStart, MuTimestamp
+from typedefs import Muid, Chain, MuTimestamp
 from change_set_info import ChangeSetInfo
 from sortedcontainers import SortedDict
 
@@ -17,6 +17,10 @@ class ChainTracker:
 
     def __init__(self):
         self._acked = SortedDict()
+
+    def get_seen_to(self, chain: Chain) -> Optional[MuTimestamp]:
+        """ Says how far along a giving chain the given instance has seen. """
+        return self._acked.get(chain)
 
     def mark_as_having(self, change_set_info: ChangeSetInfo):
         """Indicates has everything along the chain in change_set_info up to its timestamp."""
@@ -31,8 +35,8 @@ class ChainTracker:
             return what.timestamp <= self._acked.get(what.get_chain(), 0)
         if isinstance(what, Muid):
             iterator = self._acked.irange(
-                minimum=Chain(what.medallion, ChainStart(MuTimestamp(0))),
-                maximum=Chain(what.medallion, ChainStart(what.timestamp)))
+                minimum=Chain(what.medallion, (MuTimestamp(0))),
+                maximum=Chain(what.medallion, (what.timestamp)))
             for chain, seen_to in iterator:
                 assert isinstance(chain, Chain)
                 if what.timestamp >= chain.chain_start and what.timestamp <= seen_to:

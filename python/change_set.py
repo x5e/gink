@@ -9,15 +9,16 @@ class ChangeSet:
     """ Manages construction and finalization of a change set. """
 
     def __init__(self, comment: Optional[str]=None):
+        self._sealed: Union[bool, bytes] = False
         self._change_set_builder = ChangeSetBuilder()
         self._count_items = 0
-        self._sealed: Union[bool, bytes] = False
         self._medallion: Optional[int] = None
         self._timestamp: Optional[int] = None
         self._comment = comment
 
     def __setattr__(self, __name: str, __value: Any) -> None:
-        assert not self._sealed, "can't change a sealed change set"
+        if hasattr(self, "_sealed"):
+            assert not self._sealed, "can't change a sealed change set"
         if __name == "comment":
             self._comment = __value
             return
@@ -30,7 +31,9 @@ class ChangeSet:
             return self._timestamp
         if name == "comment":
             return self._comment
-        raise AttributeError(f"not known {name}")
+        if name == "sealed":
+            return self._sealed
+        return object.__getattribute__(self, name)
 
     def add_change(self, change_builder: ChangeBuilder) -> Muid:
         """ adds a single change (in the form of the proto builder) """
@@ -43,6 +46,7 @@ class ChangeSet:
 
     def seal(self, change_set_info: ChangeSetInfo) -> bytes:
         """ Finalizes a change set and serializes it. """
+        self._change_set_builder.chain_start = change_set_info.chain_start # type: ignore # pylint: disable=maybe-no-member
         self._change_set_builder.medallion = change_set_info.medallion # type: ignore # pylint: disable=maybe-no-member
         self._change_set_builder.timestamp = change_set_info.timestamp # type: ignore # pylint: disable=maybe-no-member
         if change_set_info.prior_time:
