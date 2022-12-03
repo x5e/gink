@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-from random import randint  # TODO: use a better RNG
+from random import randint
 from typing import Optional
 import threading
 import time
 import os
 import math
+
+# gink modules
 from abstract_store import AbstractStore
 from chain_tracker import ChainTracker
 from change_set import ChangeSet
 from change_set_info import ChangeSetInfo
-from typedefs import Chain, Medallion, MuTimestamp
+from typedefs import Medallion, MuTimestamp, AsOf
+from tuples import Chain
 
 
 class Database:
@@ -18,11 +21,15 @@ class Database:
 
     def __init__(self, store: AbstractStore):
         self._i_have = store.get_chain_tracker()
-        Database._last = self
+        Database.last = self
         self._store = store
         self._chain: Optional[Chain] = None
         self._lock = threading.Lock()
         self._last_time = None
+
+    def get_store(self):
+        """ returns the store this database is reading/writing to """
+        return self._store
 
     def _add_info(self, change_set: ChangeSet):
         # TODO[P2]: add info about this instance
@@ -41,6 +48,15 @@ class Database:
                 break
         self._last_time = now
         return MuTimestamp(now)
+
+    def as_of_to_mu_ts(self, as_of: AsOf) -> MuTimestamp:
+        """ translates the abstract as of (which can be None or negative) into a real timestamp """
+        # TODO: support negative as_of values
+        if as_of is None:
+            return self.how_soon_is_now()
+        if as_of <= 0:
+            raise NotImplementedError()
+        return as_of
 
     def _get_chain(self) -> Chain:
         if self._chain:
@@ -73,12 +89,8 @@ class Database:
             change_set_bytes = change_set.seal(info)
             info_with_comment, added = self._store.add_commit(change_set_bytes=change_set_bytes)
             assert added, "How did you already have this change set? I just made it !!!"
+            self._i_have.mark_as_having(info_with_comment)
             return info_with_comment
-
-    @staticmethod
-    def last():
-        """ returns the last database created """
-        return Database._last
 
 
 if __name__ == "__main__":

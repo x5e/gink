@@ -3,7 +3,8 @@
 from typing import Optional
 from struct import Struct
 from change_set_pb2 import ChangeSet
-from typedefs import Chain, Medallion, MuTimestamp
+from typedefs import Medallion, MuTimestamp
+from tuples import Chain
 
 class ChangeSetInfo:
     """Metadata about a particular change set relevant for syncing."""
@@ -36,7 +37,7 @@ class ChangeSetInfo:
             self.medallion = chain.medallion
         for key in self.__slots__:
             if key in kwargs:
-                setattr(self, key, kwargs[key])            
+                setattr(self, key, kwargs[key])
 
         if not (isinstance(self.medallion, int) and self.medallion > 0):
             raise ValueError(f'medallion({self.medallion}) is invalid')

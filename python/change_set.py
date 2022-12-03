@@ -1,8 +1,8 @@
 """ the ChangeSet class """
 from typing import Optional, Union, Any
+from muid import Muid
 from change_set_pb2 import ChangeSet as ChangeSetBuilder
 from change_pb2 import Change as ChangeBuilder
-from muid import Muid, Deferred
 from change_set_info import ChangeSetInfo
 
 class ChangeSet:
@@ -12,13 +12,12 @@ class ChangeSet:
         self._sealed: Union[bool, bytes] = False
         self._change_set_builder = ChangeSetBuilder()
         self._count_items = 0
-        self._medallion: Optional[int] = None
-        self._timestamp: Optional[int] = None
         self._comment = comment
+        self._info: Optional[ChangeSetInfo] = None
 
     def __setattr__(self, __name: str, __value: Any) -> None:
-        if hasattr(self, "_sealed"):
-            assert not self._sealed, "can't change a sealed change set"
+        if hasattr(self, "_sealed") and self._sealed:
+            raise AttributeError("can't change a sealed change set")
         if __name == "comment":
             self._comment = __value
             return
@@ -26,9 +25,9 @@ class ChangeSet:
 
     def __getattr__(self, name):
         if name == "medallion":
-            return self._medallion
+            return self._info.medallion if self._info else None
         if name == "timestamp":
-            return self._timestamp
+            return self._info.timestamp if self._info else None
         if name == "comment":
             return self._comment
         if name == "sealed":
@@ -40,8 +39,10 @@ class ChangeSet:
         if self._sealed:
             raise AssertionError("already sealed")
         self._count_items += 1
-        muid = Deferred(offset=self._count_items, change_set=self)
-        self._change_set_builder.changes[self._count_items] = change_builder  # type: ignore # pylint: disable=maybe-no-member
+        muid = self.Deferred(offset=self._count_items, change_set=self)
+        changes = self._change_set_builder.changes # type: ignore # pylint: disable=maybe-no-member
+        changes[self._count_items].ignored = True # have to do this because can't call __setitem__
+        changes[self._count_items].CopyFrom(change_builder) # type: ignore
         return muid
 
     def seal(self, change_set_info: ChangeSetInfo) -> bytes:
@@ -53,5 +54,39 @@ class ChangeSet:
             self._change_set_builder.previous_timestamp = change_set_info.prior_time # type: ignore # pylint: disable=maybe-no-member
         if self._comment:
             self._change_set_builder.comment = self.comment # type: ignore # pylint: disable=maybe-no-member
+        self._info = change_set_info
         self._sealed = self._change_set_builder.SerializeToString() # type: ignore # pylint: disable=maybe-no-member
         return self._sealed
+
+    class Deferred(Muid):
+        """ Version of a muid that references a changeset """
+
+        def __new__(cls, offset: int, change_set: Any):
+            assert change_set
+            return Muid.__new__(cls, None, None, offset)
+
+        def __init__(self, offset: int, change_set: Any):
+            if not offset:
+                Muid.__init__(self, 0, 0, offset)
+            assert offset
+            self._change_set = change_set
+
+        def __getattribute__(self, name) -> int:
+            if name == "_change_set":
+                return object.__getattribute__(self, "_change_set")
+            if name == "offset":
+                return Muid.__getattribute__(self, "offset")
+            if name == "timestamp":
+                return getattr(self._change_set, "timestamp")
+            if name == "medallion":
+                return getattr(self._change_set, "medallion")
+            raise AttributeError("not known")
+
+        def __hash__(self):
+            return hash(tuple(self.offset, self.medallion, self.timestamp))  # type: ignore
+
+        def __eq__(self, other):
+            if not isinstance(other, Muid):
+                return False
+            return (tuple(self.offset, self.medallion, self.timestamp) # type: ignore
+                == tuple(other.offset, other.medallion, other.timestamp)) # type: ignore

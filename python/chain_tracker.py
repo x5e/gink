@@ -4,7 +4,9 @@ Contains the ChainTracker object.
 
 from typing import Union, Optional
 from sync_message_pb2 import SyncMessage
-from typedefs import Muid, Chain, MuTimestamp
+from typedefs import MuTimestamp
+from muid import Muid
+from tuples import Chain
 from change_set_info import ChangeSetInfo
 from sortedcontainers import SortedDict
 
@@ -35,8 +37,8 @@ class ChainTracker:
             return what.timestamp <= self._acked.get(what.get_chain(), 0)
         if isinstance(what, Muid):
             iterator = self._acked.irange(
-                minimum=Chain(what.medallion, (MuTimestamp(0))),
-                maximum=Chain(what.medallion, (what.timestamp)))
+                minimum=Chain(what.medallion, MuTimestamp(0)),
+                maximum=Chain(what.medallion, what.timestamp))
             for chain, seen_to in iterator:
                 assert isinstance(chain, Chain)
                 if what.timestamp >= chain.chain_start and what.timestamp <= seen_to:

@@ -1,12 +1,34 @@
 """Contains AbstractStore class."""
-from typing import Tuple, Callable, Optional as O, Iterable
+
+# standard python modules
+from typing import Tuple, Callable, Optional as O, Iterable, List
 from abc import ABC, abstractmethod
+
+# Gink specific modules
 from change_set_info import ChangeSetInfo
 from chain_tracker import ChainTracker
-from typedefs import Chain
+from typedefs import Key, MuTimestamp
+from tuples import EntryPair, Chain
+from muid import Muid
 
 class AbstractStore(ABC):
-    """abstract base class"""
+    """ abstract base class for the gink data store
+
+        Stores both the change sets received as well as the contents of those
+        change sets unpacked so that you can examine entries, container definitions, etc.
+    """
+
+    @abstractmethod
+    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryPair]:
+        """ Gets all active entries for a given container as of the given time. """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_entry(self, container: Muid, key: Key, as_of: MuTimestamp) -> O[EntryPair]:
+        """ Gets the most recent entry for a given key at as_of (or now if not specified).
+        """
+        assert self and container and key and as_of
+        raise NotImplementedError()
 
     def close(self):
         """Safely releases resources."""
@@ -35,11 +57,19 @@ class AbstractStore(ABC):
     def get_commits(self, callback: Callable[[bytes, ChangeSetInfo], None]):
         """ Calls the callback with each change set, in (timestamp, medallion) order.
 
-            This is done callback style because we don't want to leave dangling transactions 
+            This is done callback style because we don't want to leave dangling transactions
             in the store, which could easily happen if we offered up an iterator interface instead.
         """
         assert callback and self
         raise NotImplementedError()
+
+    def get_commit_infos(self) -> List[ChangeSetInfo]:
+        """ Gets a list of change set infos; mostly for testing. """
+        result = []
+        def callback(_, info: ChangeSetInfo):
+            result.append(info)
+        self.get_commits(callback)
+        return result
 
     @abstractmethod
     def get_chain_tracker(self) -> ChainTracker:
