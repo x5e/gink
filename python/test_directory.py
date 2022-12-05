@@ -51,8 +51,10 @@ def test_delete():
         gdi = Directory.global_instance(database=database)
         gdi["foo"] = "bar"
         assert gdi.has("foo") and gdi["foo"] == "bar"
+        a_time = database.how_soon_is_now()
         del gdi["foo"]
         assert not gdi.has("foo"), store
+        assert gdi.get("foo", as_of=a_time) == "bar"
 
 def test_setdefault():
     """ tests that delete works as expected """
@@ -84,6 +86,27 @@ def test_pop():
         val = gdi.pop("foo", default=7)
         assert val == 7
 
+def test_items_and_keys():
+    """ tests the items and keys """
+    for store in [LmdbStore("/tmp/gink.mdb", reset=True), MemoryStore(),]:
+        database = Database(store=store)
+        gdi = Directory.global_instance(database=database)
+        gdi["foo"] = "bar"
+        gdi["bar"] = "zoo"
+        gdi["zoo"] = 3
+        a_time = database.how_soon_is_now()
+        gdi["foo"] = "baz"
+        del gdi["bar"]
+        sorted_items = sorted(gdi.items())
+        assert sorted_items == [('foo', 'baz'), ('zoo', 3.0)], sorted_items
+        sorted_items = sorted(gdi.items(as_of=a_time))
+        assert sorted_items == [('bar', 'zoo'), ('foo', 'bar'), ('zoo', 3.0)]
+        keys = gdi.keys()
+        assert keys == set(["foo", "zoo"]), keys
+        gdi[3] = True
+        keys = gdi.keys()
+        assert keys == set(["foo", "zoo", 3]), keys
+
 
 if __name__ == "__main__":
-    test_delete()
+    test_items_and_keys()

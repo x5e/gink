@@ -126,7 +126,6 @@ class Directory(Container):
         self._add_entry(key=key, value=self._DELETE, change_set=change_set, comment=comment)
         return self._interpret(found)
 
-    # TODO need to test items and keys
     def items(self, as_of=None):
         """ returns an iterable of key,value pairs, as of the effective time (or now) """
         as_of = self._database.as_of_to_mu_ts(as_of)
@@ -141,7 +140,7 @@ class Directory(Container):
 
     def keys(self, as_of=None):
         """ returns an iterable of all the keys in this direcotry """
-        return [k for k,_ in self.items(as_of=as_of)]
+        return set([k for k,_ in self.items(as_of=as_of)])
 
     def popitem(self):
         raise NotImplementedError()

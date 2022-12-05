@@ -4,6 +4,9 @@
 from typing import Tuple, Callable, Optional as O, Iterable, List
 from abc import ABC, abstractmethod
 
+# protobuf builders
+from entry_pb2 import Entry as EntryBuilder
+
 # Gink specific modules
 from change_set_info import ChangeSetInfo
 from chain_tracker import ChainTracker
@@ -90,3 +93,22 @@ class AbstractStore(ABC):
         if (new_info.prior_time or seen_through) and new_info.prior_time != seen_through:
             raise ValueError("Change set received without prior link in chain!")
         return True
+
+    def get_reset_entries(self, to_time, muid: O[Muid], key: Key,
+            recursive=False, needed_only=True) -> Iterable[EntryBuilder]:
+        """
+        Generates reset entries that will change things back to how they were at given time.
+
+        If muid isn't specified, generates reset entries for all keyed objects in store.
+        If muid is specified, generates reset entries for for that object, for the 
+        specified key if present, otherwise for all keys.
+
+        If needed_only is set to True (the default), then no entry will be generated for a
+        particular muid,key pair if the current value matches the value at the specified time.
+        If needed_only is set to False, generates new entries for everything.
+
+        If recursive is set to true, then will go and recursively update all entries
+        in child objects that were referenced at to_time.
+        """
+        assert to_time and muid and key and recursive and needed_only
+        raise NotImplementedError()

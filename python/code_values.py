@@ -43,9 +43,9 @@ def encode_key(key: Union[str, int], builder: EntryBuilder):
 def decode_key(builder: EntryBuilder):
     """ extracts the key from a proto entry """
     if builder.key.HasField("number"):  # type: ignore
-        return builder.number # type: ignore
+        return builder.key.number # type: ignore
     if builder.key.HasField("characters"):  # type: ignore
-        return builder.characters  # type: ignore
+        return builder.key.characters  # type: ignore
     raise AssertionError("no key?")
 
 

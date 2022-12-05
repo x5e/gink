@@ -2,6 +2,7 @@
 
 # standard python stuff
 from typing import Tuple, Callable, Optional, Iterable
+import json
 from sortedcontainers import SortedDict, SortedSet
 
 # generated protobuf builder
@@ -24,7 +25,7 @@ class MemoryStore(AbstractStore):
     _change_sets: SortedDict  # ChangeSetInfo => bytes
     _chain_infos: SortedDict # Chain => ChangeSetInfo
     _claimed_chains: SortedSet # Chain
-    _entries: SortedDict # (source muid, repr(key), entry muid, expiry) => EntryPair
+    _entries: SortedDict # (source muid, json.dumps(key), entry muid, expiry) => EntryBuilder
     _containers: SortedDict # muid => builder
 
     def __init__(self):
@@ -35,20 +36,35 @@ class MemoryStore(AbstractStore):
         self._containers = SortedDict()
 
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryPair]:
-        raise NotImplementedError()
+        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0).invert()
+        iterator = self._entries.irange(
+            minimum=(container, ''), maximum=(container, chr(127)))
+        last = None
+        result = []
+        for entry_key in iterator:
+            (_, jkey, inverse_entry_muid, expiry) = entry_key
+            if expiry and expiry < as_of:
+                continue
+            if jkey == last:
+                continue
+            if inverse_entry_muid < as_of_muid:
+                continue
+            pair = EntryPair(builder=self._entries[entry_key], address=inverse_entry_muid.invert())
+            result.append(pair)
+            last = jkey
+        return result
 
     def get_entry(self, container: Muid, key: Key, as_of: MuTimestamp) -> Optional[EntryPair]:
-        end_muid = Muid(timestamp=as_of, medallion=0, offset=0)
-        minimum=(container, repr(key))
-        maximum=(container, repr(key), end_muid)
+        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0).invert()
+        epoch_muid = Muid(0, 0, 0).invert()
+        minimum=(container, json.dumps(key), as_of_muid)
+        maximum=(container, json.dumps(key), epoch_muid)
         iterator = self._entries.irange(
             minimum=minimum,
-            maximum=maximum,
-            reverse=True)
+            maximum=maximum)
         for ekey in iterator:
             assert isinstance(ekey, tuple)
-            # if len(key) == 4 and key[3] and key[3] < as_of
-            return EntryPair(builder=self._entries[ekey], address=ekey[2])
+            return EntryPair(builder=self._entries[ekey], address=ekey[2].invert())
         return None
 
     def get_claimed_chains(self):
@@ -82,13 +98,13 @@ class MemoryStore(AbstractStore):
         inner_key = "null"
         if entry_builder.HasField("key"):
             if entry_builder.key.HasField("characters"):
-                inner_key = repr(entry_builder.key.characters)
+                inner_key = json.dumps(entry_builder.key.characters)
             elif entry_builder.key.HasField("number"):
-                inner_key = repr(entry_builder.key.number)
+                inner_key = json.dumps(entry_builder.key.number)
             else:
                 raise ValueError("bad key")
         src_muid = Muid.create(entry_builder.container, context=new_info)
-        entry_muid = Muid.create(context=new_info, offset=offset)
+        entry_muid = Muid.create(context=new_info, offset=offset).invert()
         dict_key = (src_muid, inner_key, entry_muid, entry_builder.expiry)
         self._entries[dict_key] = entry_builder
 
