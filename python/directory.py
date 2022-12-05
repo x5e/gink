@@ -130,17 +130,40 @@ class Directory(Container):
         """ returns an iterable of key,value pairs, as of the effective time (or now) """
         as_of = self._database.as_of_to_mu_ts(as_of)
         store = self._database.get_store()
-        iterator = store.get_keyed_entries(container=self._muid, as_of=as_of)
+        iterable = store.get_keyed_entries(container=self._muid, as_of=as_of)
         result = []
-        for entry_pair in iterator:
+        for entry_pair in iterable:
             if entry_pair.builder.deleting: # type: ignore
                 continue
             result.append((decode_key(entry_pair.builder), self._interpret(entry_pair)))
         return result
 
+    def __len__(self):
+        # probably should come up with a more efficient implementation of this
+        return len(self.items())
+
     def keys(self, as_of=None):
         """ returns an iterable of all the keys in this direcotry """
-        return set([k for k,_ in self.items(as_of=as_of)])
+        return {k for k,_ in self.items(as_of=as_of)}
 
-    def popitem(self):
-        raise NotImplementedError()
+    def values(self, as_of=None):
+        """ returns a list of values in the directory as of the given time """
+        return [v for _,v in self.items(as_of=as_of)]
+
+    def popitem(self, change_set=None, comment=None):
+        """ Remove and return a (key, value) tuple, or raises KeyError if empty.
+
+            Order is determined by implementation of the store.
+            The change_set and comment args work as in directory.set
+        """
+        as_of = self._database.how_soon_is_now()
+        store = self._database.get_store()
+        iterable = store.get_keyed_entries(container=self._muid, as_of=as_of)
+        for entry_pair in iterable:
+            if entry_pair.builder.deleting: # type: ignore
+                continue
+            val = self._interpret(entry_pair)
+            key = decode_key(entry_pair.builder)
+            self._add_entry(key=key, value=self._DELETE, change_set=change_set, comment=comment)
+            return (key, val)
+        raise KeyError("directory is empty")

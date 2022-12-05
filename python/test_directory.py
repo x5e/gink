@@ -113,6 +113,25 @@ def test_items_and_keys():
             keys = gdi.keys()
             assert keys == set(["foo", "zoo", 3]), keys
 
+def test_popitem_and_len():
+    """ ensures popitem works as intended """
+    for store in [LmdbStore("/tmp/gink.mdb", reset=True), MemoryStore(),]:
+        with store:
+            database = Database(store=store)
+            gdi = Directory.global_instance(database=database)
+            gdi["foo"] = "bar"
+            gdi["bar"] = "zoo"
+            assert len(gdi) == 2
+            key1, val1 = gdi.popitem()
+            assert key1 in ("foo", "bar")
+            assert val1 == "bar" if key1 == "foo" else val1 == "zoo"
+            assert len(gdi) == 1
+            key2, val2 = gdi.popitem()
+            assert key2 != key1
+            assert key2 in ("foo", "bar")
+            assert val2 == "bar" if key2 == "foo" else val2 == "zoo"
+            assert len(gdi) == 0
+
 
 if __name__ == "__main__":
     test_items_and_keys()
