@@ -132,6 +132,14 @@ def test_popitem_and_len():
             assert val2 == "bar" if key2 == "foo" else val2 == "zoo"
             assert len(gdi) == 0
 
+def test_update():
+    """ tests both forms of the update method """
+    for store in [LmdbStore("/tmp/gink.mdb", reset=True), MemoryStore(),]:
+        with store:
+            database = Database(store=store)
+            gdi = Directory.global_instance(database=database)
+            gdi.update({"foo": "bar", 99: 100})
+            gdi.update([("zoo", "bear"), (99, 101)])
+            as_dict = dict(gdi.items())
+            assert as_dict == {"foo": "bar", "zoo": "bear", 99: 101}, as_dict
 
-if __name__ == "__main__":
-    test_items_and_keys()

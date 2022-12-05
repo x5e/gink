@@ -10,6 +10,7 @@ from tuples import EntryPair
 from database import Database
 from container import Container
 from code_values import decode_value, decode_key
+from change_set import ChangeSet
 
 class Directory(Container):
     """ the Gink mutable mapping object """
@@ -167,3 +168,25 @@ class Directory(Container):
             self._add_entry(key=key, value=self._DELETE, change_set=change_set, comment=comment)
             return (key, val)
         raise KeyError("directory is empty")
+
+    def update(self, from_what, change_set=None, comment=None):
+        """ Performs a shallow copy of key/value pairs from the argument.
+
+        D.update(E, change_set=None, comment=None)
+        When from_what hasattr "keys", then will try: for k in E: D[k] = E[k]
+        otherwise will try:  for k, v in E: D[k] = v
+
+        The change_set and comment args work as they do in Directory.set.
+        """
+        immediate = False
+        if change_set is None:
+            immediate = True
+            change_set = ChangeSet(comment)
+        if hasattr(from_what, "keys"):
+            for key in from_what:
+                self._add_entry(key, from_what[key], change_set=change_set)
+        else:
+            for key, val in from_what:
+                self._add_entry(key, val, change_set=change_set)
+        if immediate:
+            self._database.add_change_set(change_set)
