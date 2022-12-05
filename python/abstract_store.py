@@ -21,6 +21,12 @@ class AbstractStore(ABC):
         change sets unpacked so that you can examine entries, container definitions, etc.
     """
 
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *_):
+        self.close()
+
     @abstractmethod
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryPair]:
         """ Gets all active entries for a given container as of the given time. """
