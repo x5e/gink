@@ -5,7 +5,7 @@ from typing import Union, Optional
 from behavior_pb2 import Behavior
 
 # gink implementation
-from typedefs import AsOf
+from typedefs import AsOf, EPOCH
 from muid import Muid
 from tuples import EntryPair
 from database import Database
@@ -194,10 +194,10 @@ class Directory(Container):
             self._database.add_change_set(change_set)
 
     # TODO: test this
-    def reset(self, to_time: AsOf, key=None, recursive=True, change_set=None, comment=None):
+    def reset(self, to_time: AsOf=EPOCH, key=None, recursive=False, change_set=None, comment=None):
         """ Resets either a specific key or the whole directory to a particular past time.
 
-            Note that this actually creates new entries to literally set things again.
+            Note that this actually creates new entries to literally "re"-set things again.
             So it'll still be possible to look at before the reset time and see history.
             The change_set and comment args work as they do in Directory.set.
             This function returns the change_set (either passed or created).
@@ -206,6 +206,7 @@ class Directory(Container):
         if change_set is None:
             immediate = True
             change_set = ChangeSet(comment)
+        assert isinstance(change_set, ChangeSet)
         to_time = self._database.as_of_to_mu_ts(to_time)
         for entry in self._database.get_store().get_reset_entries(to_time=to_time, muid=self._muid,
                 user_key=key, recursive=recursive):
