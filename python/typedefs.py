@@ -5,4 +5,4 @@ Medallion = NewType('Medallion', int)
 MuTimestamp = NewType('MuTimestamp', int)
 Offset = NewType('Offset', int)
 AsOf = Union[MuTimestamp, None]
-Key = Union[str, int, None]
+Key = Union[str, int]

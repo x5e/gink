@@ -1,9 +1,12 @@
 """ the ChangeSet class """
 from typing import Optional, Union, Any
-from muid import Muid
+
 from change_set_pb2 import ChangeSet as ChangeSetBuilder
 from change_pb2 import Change as ChangeBuilder
+from entry_pb2 import Entry as EntryBuilder
+
 from change_set_info import ChangeSetInfo
+from muid import Muid
 
 class ChangeSet:
     """ Manages construction and finalization of a change set. """
@@ -34,15 +37,20 @@ class ChangeSet:
             return self._sealed
         return object.__getattribute__(self, name)
 
-    def add_change(self, change_builder: ChangeBuilder) -> Muid:
+    def add_change(self, builder: Union[ChangeBuilder, EntryBuilder]) -> Muid:
         """ adds a single change (in the form of the proto builder) """
         if self._sealed:
             raise AssertionError("already sealed")
         self._count_items += 1
         muid = self.Deferred(offset=self._count_items, change_set=self)
+        if isinstance(builder, EntryBuilder):
+            entry_builder = builder
+            builder = ChangeBuilder()
+            builder.entry.CopyFrom(entry_builder) # type: ignore # pylint: disable=maybe-no-member
+        assert isinstance(builder, ChangeBuilder)
         changes = self._change_set_builder.changes # type: ignore # pylint: disable=maybe-no-member
         changes[self._count_items].ignored = True # have to do this because can't call __setitem__
-        changes[self._count_items].CopyFrom(change_builder) # type: ignore
+        changes[self._count_items].CopyFrom(builder) # type: ignore
         return muid
 
     def seal(self, change_set_info: ChangeSetInfo) -> bytes:

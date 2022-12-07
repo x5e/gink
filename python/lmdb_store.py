@@ -7,7 +7,6 @@ import lmdb
 
 # Protobuf Modules
 from change_set_pb2 import ChangeSet as ChangeSetBuilder
-from key_pb2 import Key as KeyBuilder
 from entry_pb2 import Entry as EntryBuilder
 
 # Gink Implementation
@@ -17,7 +16,8 @@ from muid import Muid
 from change_set_info import ChangeSetInfo
 from abstract_store import AbstractStore
 from chain_tracker import ChainTracker
-
+from code_values import encode_key, create_deleting_entry
+from _entry_key import EntryKey
 
 class LmdbStore(AbstractStore):
     """
@@ -37,9 +37,11 @@ class LmdbStore(AbstractStore):
             key: medallion (packed big endian)
             val: chain_start (packed big endian)
 
-        entries - Entry proto objects from commits, ordered in a way that can be accessed easily.
+        entries_tbl - Entry proto data from commits, ordered in a way that can be accessed easily.
             key: (source-muid, entry-key, entry-muid, expiry), with muids packed into 16 byte form
             val: the binary serialization of the given entry
+
+        container_defs - Map from muid to serialized containers definitions.
     """
     _qq_struct = Struct(">QQ")
     _q_struct = Struct(">Q")
@@ -65,6 +67,77 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._entries_tbl_db, delete=False)
                 txn.drop(self._container_defs, delete=False)
 
+    def get_reset_entries(self, to_time, muid: Optional[Muid],
+            user_key: Optional[Key], recursive=True) -> Iterable[EntryBuilder]:
+        if muid is None and user_key is not None:
+            raise ValueError("can't specify key without muid")
+        if muid is None:
+            recursive = False
+        seen = set() if recursive else None
+        with self.env.begin() as txn:
+            entries_cursor = txn.cursor(self._entries_tbl_db)
+            if muid is None:
+                containers_cursor = txn.cursor(self._container_defs)
+                move_succeeded = containers_cursor.first()
+                while move_succeeded:
+                    muid = Muid.from_bytes(containers_cursor.key())
+                    if muid.timestamp > to_time:
+                        break # don't bother with containers created after to_time
+                    for thing in LmdbStore._helper(muid, seen, user_key, entries_cursor, to_time):
+                        yield thing
+                    move_succeeded = containers_cursor.next()
+            else:
+                for thing in LmdbStore._helper(muid, seen, user_key, entries_cursor, to_time):
+                    yield thing
+
+    @staticmethod
+    def _helper(container: Muid, seen, user_key, entries_cursor, to_time) -> Iterable[EntryBuilder]:
+        if seen is not None:
+            if container in seen:
+                return
+            seen.add(container)
+        serialized_user_key = bytes()
+        if user_key is not None:
+            serialized_user_key = encode_key(user_key).SerializeToString() # type: ignore
+        seek_succeeded = entries_cursor.set_range(bytes(container) + serialized_user_key)
+        while seek_succeeded:
+            bkey_now = entries_cursor.key()
+            ekey_now = EntryKey.from_bytes(bkey_now)
+            assert isinstance(ekey_now, EntryKey)
+            if ekey_now.container != container or (user_key and ekey_now.user_key != user_key):
+                break
+            if ekey_now.entry_muid.timestamp < to_time:
+                # no change in this key since before the desired time
+                if user_key:
+                    break # don't need to look at other keys
+                seek_succeeded = entries_cursor.set_range(bytes(ekey_now.replace_time(0)))
+                continue
+            seek_succeeded = entries_cursor.set_range(bytes(ekey_now.replace_time(to_time)))
+            # we know a change has been made to this key since to_time
+            if not seek_succeeded:
+                # fell off end of table, so nothing existed at to_time
+                yield create_deleting_entry(container, ekey_now.user_key)
+                break # nothing let in table to worry about
+            bkey_then, bval_then = entries_cursor.item()
+            then_key = EntryKey.from_bytes(bkey_then)
+            if then_key.container != container or then_key.user_key != ekey_now.user_key:
+                # on to something different, so nothing existed at to_time
+                yield create_deleting_entry(container, ekey_now.user_key)
+                if then_key.container != container:
+                    break
+                continue
+            builder_then = EntryBuilder()
+            builder_then.ParseFromString(bval_then) # type: ignore
+            # TODO: check to see if contained value/pointee match then and now
+            yield builder_then
+            if seen is not None and builder_then.HasField("pointee"): # type: ignore
+                child_muid = Muid.create(getattr(builder_then, "pointee"), then_key.container)
+                for _ in LmdbStore._helper(child_muid, seen, user_key, entries_cursor, to_time):
+                    yield _
+            seek_succeeded = entries_cursor.set_range(bytes(ekey_now.replace_time(0)))
+
+
+
     def close(self):
         self.env.close()
 
@@ -80,12 +153,7 @@ class LmdbStore(AbstractStore):
 
     def get_entry(self, container: Muid, key: Key, as_of: MuTimestamp) -> Optional[EntryPair]:
         """ Gets the entry for a given containing object with a given key at a given time."""
-        key_builder = KeyBuilder()
-        if isinstance(key, str):
-            key_builder.characters = key  # type: ignore
-        if isinstance(key, int):
-            key_builder.number = key  # type: ignore
-        built = key_builder.SerializeToString()  # type: ignore
+        built = encode_key(key).SerializeToString() if key is not None else b"" # type: ignore
         assert isinstance(key, (int, str)) or built == b""
         prefix = bytes(container) + built
         seek_after = prefix + bytes(Muid(as_of, 0, 0).invert())

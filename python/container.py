@@ -69,7 +69,7 @@ class Container(ABC):
         entry_builder.behavior = self.get_behavior()  # type: ignore # pylint: disable=maybe-no-member
         self._muid.put_into(entry_builder.container) # type: ignore # pylint: disable=maybe-no-member
         if isinstance(key, (str, int)):
-            encode_key(key, entry_builder)
+            encode_key(key, entry_builder.key)  # type: ignore # pylint: disable=maybe-no-member
         if isinstance(value, Container):
             pointee_muid = value.muid()
             if pointee_muid.medallion:
