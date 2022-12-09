@@ -18,6 +18,9 @@ class ChangeSet:
         self._comment = comment
         self._info: Optional[ChangeSetInfo] = None
 
+    def __len__(self):
+        return self._count_items
+
     def __setattr__(self, __name: str, __value: Any) -> None:
         if hasattr(self, "_sealed") and self._sealed:
             raise AttributeError("can't change a sealed change set")
@@ -70,7 +73,7 @@ class ChangeSet:
         """ Version of a muid that references a changeset """
 
         def __new__(cls, offset: int, change_set: Any):
-            assert change_set
+            assert change_set is not None
             return Muid.__new__(cls, None, None, offset)
 
         def __init__(self, offset: int, change_set: Any):

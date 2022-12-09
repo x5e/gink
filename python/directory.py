@@ -19,7 +19,7 @@ class Directory(Container):
     _missing = object()
     BEHAVIOR = Behavior.SCHEMA  # type: ignore
 
-    def __init__(self, *, muid: Optional[Muid]=None, database: Optional[Database]=None):
+    def __init__(self, *, contents=None, muid: Optional[Muid]=None, database=None):
         """
         Constructor for a directory proxy.
 
@@ -27,11 +27,17 @@ class Directory(Container):
         db: database send commits through, or last db instance created if None
         """
         database = database or Database.last
+        change_set = ChangeSet()
         if muid is None:
-            muid = Directory._create(Directory.BEHAVIOR, database=database)
+            muid = Directory._create(Directory.BEHAVIOR, database=database, change_set=change_set)
         Container.__init__(self, muid=muid, database=database)
         self._muid = muid
         self._database = database
+        if contents:
+            # TODO: implement clear and clear the directory if already exists
+            self.update(contents, change_set=change_set)
+        if len(change_set):
+            self._database.add_change_set(change_set)
 
     def __eq__(self, other):
         return repr(self) == repr(other)
@@ -40,7 +46,25 @@ class Directory(Container):
         return hash(repr(self))
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({repr(self._muid)})"
+        return f"{self.__class__.__name__}(muid={repr(self._muid)})"
+
+    def to_pyon(self, indent: Union[bool, int] = True):
+        result = f"""{self.__class__.__name__}(muid={repr(self._muid)}, contents="""
+        items = self.items()
+        if not items:
+            result += "{})"
+            return result
+        result += chr(123) + chr(10)
+        indent_spaces = "    " * indent
+        for key, val in items:
+            result += indent_spaces + repr(key) + ": "
+            if hasattr(val, "to_pyon"):
+                result += val.to_pyon(indent + 1 if indent else False)
+            else:
+                result += repr(val)
+            result += ",\n"
+        result += "    " * (indent - 1 if indent else 0) + chr(125)
+        return result
 
     def __contains__(self, key):
         return self.has(key)
@@ -107,7 +131,7 @@ class Directory(Container):
             if the most recent entry in the directory for the key is a delete entry. In this
             case it will return whatever has been passed into respect_deletion.
         """
-        as_of = self._database.how_soon_is_now()
+        as_of = self._database.get_mu_timestamp()
         found = self._database.get_store().get_entry(self.muid(), key=key, as_of=as_of)
         if found and found.builder.deleting and respect_deletion:  # type: ignore
             return respect_deletion
@@ -122,7 +146,7 @@ class Directory(Container):
             Otherwise returns default.  In the case that the key is found and removed,
             then change_set and comment behave as they do in directory.set().
         """
-        as_of = self._database.how_soon_is_now()
+        as_of = self._database.get_mu_timestamp()
         found = self._database.get_store().get_entry(self.muid(), key=key, as_of=as_of)
         if found is None or found.builder.deleting: # type: ignore
             return default
@@ -159,7 +183,7 @@ class Directory(Container):
             Order is determined by implementation of the store.
             The change_set and comment args work as in directory.set
         """
-        as_of = self._database.how_soon_is_now()
+        as_of = self._database.get_mu_timestamp()
         store = self._database.get_store()
         iterable = store.get_keyed_entries(container=self._muid, as_of=as_of)
         for entry_pair in iterable:

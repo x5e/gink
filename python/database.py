@@ -33,10 +33,10 @@ class Database:
 
     def _add_info(self, change_set: ChangeSet):
         # TODO[P2]: add info about this instance
-        assert change_set
+        assert change_set is not None
         assert os
 
-    def how_soon_is_now(self) -> MuTimestamp:
+    def get_mu_timestamp(self) -> MuTimestamp:
         """ returns the current time in microseconds since epoch
 
             does a busy wait if needed to ensure no duplicate timestamps and
@@ -53,7 +53,7 @@ class Database:
         """ translates the abstract as of (which can be None or negative) into a real timestamp """
         # TODO: support negative as_of values
         if as_of is None:
-            return self.how_soon_is_now()
+            return self.get_mu_timestamp()
         if as_of <= 0:
             raise NotImplementedError()
         return as_of
@@ -64,7 +64,7 @@ class Database:
         # TODO[P2]: implement locks as part of the store interface to prevent races to get chains
         # TODO[P2]: reuse claimed chains
         medallion =  randint((2 ** 48) + 1, (2 ** 49) - 1)
-        chain_start = self.how_soon_is_now()
+        chain_start = self.get_mu_timestamp()
         chain = Chain(medallion=Medallion(medallion), chain_start=MuTimestamp(chain_start))
         starting_change_set = ChangeSet()
         self._add_info(starting_change_set)
@@ -83,7 +83,7 @@ class Database:
             chain = self._get_chain()
             seen_to = self._i_have.get_seen_to(chain)
             assert seen_to is not None
-            timestamp = self.how_soon_is_now()
+            timestamp = self.get_mu_timestamp()
             assert timestamp > seen_to
             info = ChangeSetInfo(chain=chain, timestamp=timestamp, prior_time=seen_to)
             change_set_bytes = change_set.seal(info)

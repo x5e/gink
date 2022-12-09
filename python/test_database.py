@@ -16,7 +16,7 @@ def test_add_commit():
     """ tests that the add_commit works """
     store = MemoryStore()
     database = Database(store=store)
-    started = database.how_soon_is_now()
+    started = database.get_mu_timestamp()
     change_set = ChangeSet("just a test")
     database.add_change_set(change_set)
     commits: List[ChangeSetInfo] = []

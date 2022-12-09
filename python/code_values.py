@@ -18,7 +18,11 @@ def create_deleting_entry(muid: Muid, key: Optional[Key]) -> EntryBuilder:
     """
     if key is None:
         raise ValueError("can't create deleting entries without key")
-    raise NotImplementedError
+    # TODO: add the behavior value appropriately
+    entry_builder = EntryBuilder()
+    muid.put_into(entry_builder.container)
+    entry_builder.deleting = True
+    return entry_builder
 
 def decode_value(value_builder: ValueBuilder): # pylint: disable=too-many-return-statements
     """ decodes a protobuf value into a python value.

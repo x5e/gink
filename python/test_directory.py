@@ -54,7 +54,7 @@ def test_delete():
             gdi = Directory.global_instance(database=database)
             gdi["foo"] = "bar"
             assert gdi.has("foo") and gdi["foo"] == "bar"
-            a_time = database.how_soon_is_now()
+            a_time = database.get_mu_timestamp()
             del gdi["foo"]
             assert not gdi.has("foo"), store
             assert gdi.get("foo", as_of=a_time) == "bar"
@@ -100,7 +100,7 @@ def test_items_and_keys():
             gdi["foo"] = "bar"
             gdi["bar"] = "zoo"
             gdi["zoo"] = 3
-            a_time = database.how_soon_is_now()
+            a_time = database.get_mu_timestamp()
             gdi["foo"] = "baz"
             del gdi["bar"]
             sorted_items = sorted(gdi.items())
@@ -142,4 +142,26 @@ def test_update():
             gdi.update([("zoo", "bear"), (99, 101)])
             as_dict = dict(gdi.items())
             assert as_dict == {"foo": "bar", "zoo": "bear", 99: 101}, as_dict
+
+def test_reset():
+    """ tests that the reset(time) functionality works """
+    raise Exception("doesn't work")
+    for store in [LmdbStore("/tmp/gink.mdb", reset=True), 
+        # MemoryStore(),
+        ]:
+        with store:
+            database = Database(store=store)
+            gdi = Directory.global_instance(database=database)
+            gdi["foo"] = "bar"
+            gdi[7] = {"cheese": "wiz", "foo": [True, False, None]}
+            gdi["nope"] = Directory()
+            gdi["nope"][33] = [1, 2]
+            middle = database.get_mu_timestamp()
+            gdi["foo"] = "zoo"
+            gdi[99] = 30
+            gdi["nope"][44] = "foo"
+            print(gdi.to_pyon())
+            gdi.reset(middle)
+            print(gdi.to_pyon())
+            
 

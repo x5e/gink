@@ -1,5 +1,5 @@
 """ contains the Muid class (basically a way to represent global addresses) """
-from typing import NamedTuple, Any
+from typing import NamedTuple, Any, Union
 from uuid import UUID
 
 from muid_pb2 import Muid as MuidBuilder
@@ -52,7 +52,7 @@ class Muid(NamedTuple):
         builder.medallion= self.medallion if self.medallion else 0 # type: ignore
 
     @classmethod
-    def create(cls, builder: MuidBuilder|Dummy = Dummy(), context: Any=Dummy(), offset=None):
+    def create(cls, builder: Union[MuidBuilder, Dummy] = Dummy(), context: Any=Dummy(), offset=None):
         """ Creates a muid from a builder and optionally a change_set_info context object. """
         timestamp = builder.timestamp or context.timestamp  # type: ignore
         medallion = builder.medallion or context.medallion  # type: ignore
