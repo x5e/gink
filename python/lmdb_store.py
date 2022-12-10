@@ -16,8 +16,7 @@ from muid import Muid
 from change_set_info import ChangeSetInfo
 from abstract_store import AbstractStore
 from chain_tracker import ChainTracker
-from code_values import encode_key, create_deleting_entry
-from _entry_key import EntryKey
+from code_values import encode_key, create_deleting_entry, EntryKeyPair, entries_equiv, EntryKey
 
 class LmdbStore(AbstractStore):
     """
@@ -91,6 +90,16 @@ class LmdbStore(AbstractStore):
                     yield thing
 
     @staticmethod
+    def _grok_entry(entries_cursor) -> EntryKeyPair:
+        key_as_bytes, value_as_bytes = entries_cursor.item()
+        parsed_key = EntryKey.from_bytes(key_as_bytes)
+        entry_builder = EntryBuilder()
+        entry_builder.ParseFromString(value_as_bytes) # type: ignore
+        return EntryKeyPair(parsed_key, entry_builder)
+
+    # TODO: add a seek(lmdb_cursor, minimum, maximum) method to simplify the _helper
+
+    @staticmethod
     def _helper(container: Muid, seen, user_key, entries_cursor, to_time) -> Iterable[EntryBuilder]:
         if seen is not None:
             if container in seen:
@@ -101,40 +110,37 @@ class LmdbStore(AbstractStore):
             serialized_user_key = encode_key(user_key).SerializeToString() # type: ignore
         seek_succeeded = entries_cursor.set_range(bytes(container) + serialized_user_key)
         while seek_succeeded:
-            bkey_now = entries_cursor.key()
-            ekey_now = EntryKey.from_bytes(bkey_now)
-            assert isinstance(ekey_now, EntryKey)
-            if ekey_now.container != container or (user_key and ekey_now.user_key != user_key):
+
+            now = LmdbStore._grok_entry(entries_cursor)
+            if now.key.container != container or (user_key and now.key.user_key != user_key):
                 break
-            if ekey_now.entry_muid.timestamp < to_time:
-                # no change in this key since before the desired time
-                if user_key:
-                    break # don't need to look at other keys
-                seek_succeeded = entries_cursor.set_range(bytes(ekey_now.replace_time(0)))
-                continue
-            seek_succeeded = entries_cursor.set_range(bytes(ekey_now.replace_time(to_time)))
-            # we know a change has been made to this key since to_time
-            if not seek_succeeded:
-                # fell off end of table, so nothing existed at to_time
-                yield create_deleting_entry(container, ekey_now.user_key)
-                break # nothing let in table to worry about
-            bkey_then, bval_then = entries_cursor.item()
-            then_key = EntryKey.from_bytes(bkey_then)
-            if then_key.container != container or then_key.user_key != ekey_now.user_key:
+            entry_since_time_to = False
+            if now.key.entry_muid.timestamp > to_time:
+                entry_since_time_to = True
+                seek_succeeded = entries_cursor.set_range(bytes(now.key.replace_time(to_time)))
+                if not seek_succeeded:
+                    # fell off end of table, so nothing existed at to_time
+                    yield create_deleting_entry(container, now.key.user_key)
+                    # TODO: check if last now.builder is deleting and skip deleting entry if so
+                    break # nothing left in table to worry about
+
+            then = LmdbStore._grok_entry(entries_cursor)
+
+            if then.key.container != container or then.key.user_key != now.key.user_key:
                 # on to something different, so nothing existed at to_time
-                yield create_deleting_entry(container, ekey_now.user_key)
-                if then_key.container != container:
+                yield create_deleting_entry(container, now.key.user_key)
+                # TODO: check if last now.builder is deleting and skip deleting entry if so
+                if then.key.container != container:
                     break
                 continue
-            builder_then = EntryBuilder()
-            builder_then.ParseFromString(bval_then) # type: ignore
-            # TODO: check to see if contained value/pointee match then and now
-            yield builder_then
-            if seen is not None and builder_then.HasField("pointee"): # type: ignore
-                child_muid = Muid.create(getattr(builder_then, "pointee"), then_key.container)
+
+            if entry_since_time_to and not entries_equiv(then, now):
+                yield then.builder
+            if seen is not None and then.builder.HasField("pointee"): # type: ignore
+                child_muid = Muid.create(getattr(then.builder, "pointee"), then.key.container)
                 for _ in LmdbStore._helper(child_muid, seen, user_key, entries_cursor, to_time):
                     yield _
-            seek_succeeded = entries_cursor.set_range(bytes(ekey_now.replace_time(0)))
+            seek_succeeded = entries_cursor.set_range(bytes(now.key.replace_time(0)))
 
 
 

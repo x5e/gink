@@ -49,6 +49,7 @@ class Directory(Container):
         return f"{self.__class__.__name__}(muid={repr(self._muid)})"
 
     def to_pyon(self, indent: Union[bool, int] = True):
+        """ converts to "python object notation", like a customizable repr """
         result = f"""{self.__class__.__name__}(muid={repr(self._muid)}, contents="""
         items = self.items()
         if not items:
@@ -217,7 +218,6 @@ class Directory(Container):
         if immediate:
             self._database.add_change_set(change_set)
 
-    # TODO: test this
     def reset(self, to_time: AsOf=EPOCH, key=None, recursive=False, change_set=None, comment=None):
         """ Resets either a specific key or the whole directory to a particular past time.
 
@@ -235,6 +235,6 @@ class Directory(Container):
         for entry in self._database.get_store().get_reset_entries(to_time=to_time, muid=self._muid,
                 user_key=key, recursive=recursive):
             change_set.add_change(entry)
-        if immediate:
+        if immediate and len(change_set):
             self._database.add_change_set(change_set=change_set)
         return change_set

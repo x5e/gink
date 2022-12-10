@@ -1,14 +1,61 @@
 """ Utility functions for encoding and decoding values, keys, and other binary data
 """
-from typing import Optional, Union
+from typing import Optional, Union, NamedTuple
 from struct import Struct
 
 from value_pb2 import Value as ValueBuilder
 from entry_pb2 import Entry as EntryBuilder
 from key_pb2 import Key as KeyBuilder
+from behavior_pb2 import Behavior
 
-from typedefs import Key
+from typedefs import Key, MuTimestamp
 from muid import Muid
+
+
+class EntryKey(NamedTuple):
+    """ just a class to serialize / deserialize keys used to store entries
+
+        Notably, this will invert the entry muids so that more recent entries
+        for a particular container / user-key come before earlier ones.
+    """
+    container: Muid
+    user_key: Optional[Key]
+    entry_muid: Muid
+    expiry: Optional[MuTimestamp]
+
+    def replace_time(self, timestamp: int):
+        """ create a entry key that can be used for seeking before the given time """
+        return EntryKey(self.container, self.user_key, Muid(timestamp, 0,0,), None)
+
+    def __bytes__(self):
+        serialized_key = encode_key(self.user_key).SerializeToString() # type: ignore
+        return (bytes(self.container) + serialized_key +
+            bytes(self.entry_muid.invert()) + encode_int(self.expiry or 0))
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        """ creates an entry key from its binary format """
+        container_bytes = data[0:16]
+        user_key_bytes = data[16:-24]
+        entry_muid_bytes = data[-24:-8]
+        expiry_bytes = data[-8:]
+        return cls(
+                container=Muid.from_bytes(container_bytes),
+                user_key=decode_key(user_key_bytes),
+                entry_muid=Muid.from_bytes(entry_muid_bytes).invert(),
+                expiry=MuTimestamp(decode_int(expiry_bytes)) or None)
+
+    def __lt__(self, other):
+        # I'm override sort here because I want the same sort order of the binary representation,
+        # which will be a little bit different because of flipping the entry muids.
+        # Also, sorting would break because keys can be either ints or strings
+        return bytes(self) < bytes(other)
+
+
+class EntryKeyPair(NamedTuple):
+    """ Parsed entry data. """
+    key: EntryKey
+    builder: EntryBuilder
 
 def create_deleting_entry(muid: Muid, key: Optional[Key]) -> EntryBuilder:
     """ creates an entry that will delete the given key from the container
@@ -18,11 +65,38 @@ def create_deleting_entry(muid: Muid, key: Optional[Key]) -> EntryBuilder:
     """
     if key is None:
         raise ValueError("can't create deleting entries without key")
-    # TODO: add the behavior value appropriately
+    # pylint: disable=maybe-no-member
     entry_builder = EntryBuilder()
-    muid.put_into(entry_builder.container)
-    entry_builder.deleting = True
+    entry_builder.behavior = Behavior.SCHEMA   # type: ignore
+    muid.put_into(entry_builder.container)  # type: ignore
+    entry_builder.deleting = True  # type: ignore
+    encode_key(key, entry_builder.key) # type: ignore
     return entry_builder
+
+def entries_equiv(pair1: EntryKeyPair, pair2: EntryKeyPair) -> bool:
+    """ Checks the contained value/pointee/whatever to see if the entries are equiv.
+
+        Used to see if the effective value in a container is the same even if it
+        has a new entry.
+    """
+    if pair1.key == pair2.key:
+        return True
+    assert pair1.key.user_key == pair2.key.user_key
+    assert pair1.key.container == pair2.key.container
+    if pair1.builder.HasField("pointee"): # type: ignore
+        if pair2.builder.HasField("pointee"): # type: ignore
+            pointee1 = Muid.create(pair1.builder.pointee, pair1.key) # type: ignore
+            pointee2 = Muid.create(pair2.builder.pointee, pair2.key) # type: ignore
+            return pointee1 == pointee2
+        return False
+    if pair1.builder.HasField("immediate"): # type: ignore
+        if pair2.builder.HasField("immediate"): # type: ignore
+            value1 = decode_value(pair1.builder.immediate) # type: ignore
+            value2 = decode_value(pair2.builder.immediate) # type: ignore
+            return value1 == value2
+        return False
+    raise AssertionError("entry doesn't have pointee or immedate?")
+
 
 def decode_value(value_builder: ValueBuilder): # pylint: disable=too-many-return-statements
     """ decodes a protobuf value into a python value.
@@ -87,7 +161,7 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Ke
         return key_builder.number # type: ignore
     if key_builder.HasField("characters"):  # type: ignore
         return key_builder.characters  # type: ignore
-    return None # None
+    return None
 
 
 def encode_value(value, value_builder: Optional[ValueBuilder] = None) -> ValueBuilder:

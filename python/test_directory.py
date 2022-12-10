@@ -145,23 +145,34 @@ def test_update():
 
 def test_reset():
     """ tests that the reset(time) functionality works """
-    raise Exception("doesn't work")
+
     for store in [LmdbStore("/tmp/gink.mdb", reset=True), 
         # MemoryStore(),
         ]:
         with store:
+            # pylint: disable=unsupported-assignment-operation, unsupported-membership-test
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
             gdi["foo"] = "bar"
+            gdi["bar"] = "foo"
             gdi[7] = {"cheese": "wiz", "foo": [True, False, None]}
             gdi["nope"] = Directory()
-            gdi["nope"][33] = [1, 2]
+            gdi["nope"][33] = [1, 2]  # type: ignore
             middle = database.get_mu_timestamp()
+            gdi["bar"] = "moo"
             gdi["foo"] = "zoo"
             gdi[99] = 30
-            gdi["nope"][44] = "foo"
-            print(gdi.to_pyon())
+            gdi["nope"][44] = "foo"  # type: ignore
             gdi.reset(middle)
-            print(gdi.to_pyon())
-            
+            assert 99 not in gdi
+            assert gdi["foo"] == "bar", gdi["foo"]
+            assert gdi["bar"] == "foo", gdi["bar"]
+            assert 44 in gdi["nope"]  # type: ignore
+            _ = gdi.reset(middle, recursive=True)
+            assert 44 not in gdi["nope"]  # type: ignore
+            # assert len(_) == 1, str(_) # TODO need to fix double deleting entries
+            # _ = gdi.reset(middle, recursive=True)
+            # assert len(_) == 0 # ditto
 
+if __name__ == "__main__":
+    test_reset()

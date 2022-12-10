@@ -18,6 +18,9 @@ class ChangeSet:
         self._comment = comment
         self._info: Optional[ChangeSetInfo] = None
 
+    def __str__(self):
+        return str(self._change_set_builder)
+
     def __len__(self):
         return self._count_items
 
