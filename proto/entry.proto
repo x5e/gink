@@ -3,28 +3,17 @@ package google.gink;
 
 import "value.proto";
 import "muid.proto";
-
+import "behavior.proto";
+import "key.proto";
 
 message Entry {
-    Muid container = 1; // not present for "root" entry
+    Behavior behavior = 1; // should match the behavior of container
+    Muid container = 2;
 
-    message Span {
-        // defines where to put octects in the FILE, may be omitted to place all at start
-        uint64 from=1;
-        uint64 ends=2;
-    }
-    
     oneof link {
-        // For behavior in {BOX, QUEUE, TABLE, BINLOG} there is no link.
-        Value key = 2;      // only for src_node behavior in {SCHEMA, SET}
-        Muid edge_type = 3; // only when src_node has a node_kind
-        bool boxed = 4;     // only for src_node behavior = BOX
+        Key key = 3;        // when container is a SCHEMA or SET
+        Muid edge = 4;      // only for src_node behavior in {Vertex, TAG}
         Span span = 5;      // only for src_node behavior = FILE
-    }
-
-    message Row {
-        bytes bytes_mask = 2; // only for when you have more than 63 columns    
-        repeated Value values = 3;
     }
 
     oneof target {
@@ -39,4 +28,16 @@ message Entry {
     uint64 expiry = 12; // timestamp of expiration in microseconds since epoch, for LIST/QUEUE only
     bytes iv = 15; // initialization vector when octects are encrypted
     bytes key_id = 16; // optional hint of which key was used (when encrypted)
+
+    message Span {
+        // defines where to put octects in the FILE, may be omitted to place all at start
+        uint64 from=1;
+        uint64 ends=2;
+    }
+    
+    message Row {
+        bytes bytes_mask = 2;  
+        repeated Value values = 3;
+    }
+
 }

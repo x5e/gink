@@ -5,7 +5,7 @@ package google.gink;
 message ChangeSet {
     uint64 timestamp = 1;
     uint64 medallion = 2;
-    uint64 previous_timestamp = 3;
+    uint64 previous_timestamp = 3;  // TODO: rename to prior_time or just previous
     string comment = 4;
     uint64 chain_start = 5;
     // key in addressable_objects is offset number (> 0 and < 2**20)

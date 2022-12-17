@@ -13,8 +13,8 @@ import "exit.proto";
 * Any update/change that can be referenced by Gink
 */
 message Change {
+    bool ignored = 1;
     oneof obj {
-        Description description = 1;
         Container container = 2;
         EdgeType edge_type = 3;
         NodeType node_type = 4;
