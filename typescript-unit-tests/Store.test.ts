@@ -10,7 +10,7 @@ import {
     makeChainStart, extendChain, addTrxns,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
 } from "./test_utils";
-import { muidToBuilder, ensure, wrapValue, matches } from "../typescript-impl/utils";
+import { muidToBuilder, ensure, wrapValue, matches, wrapKey } from "../typescript-impl/utils";
 import { ChangeSet } from "../typescript-impl";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
@@ -139,9 +139,10 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sourceAddress = {medallion: 1, timestamp:2, offset: 3};
         const address = changeSet.addEntry(
             (new EntryBuilder())
+                .setBehavior(Behavior.SCHEMA)
                 .setContainer(muidToBuilder(sourceAddress))
-                .setKey(wrapValue("abc"))
-                .setImmediate(wrapValue("xyz"))
+                .setKey(wrapKey("abc"))
+                .setValue(wrapValue("xyz"))
         );
         changeSet.seal({medallion: 4, chainStart: 5, timestamp: 5});
         await store.addChangeSet(changeSet.bytes);
@@ -150,7 +151,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const entry = <Entry> await store.getEntry(sourceAddress, "abc",);
         ensure(matches(entry.containerId, [2,1,3]));
         ensure(matches(entry.entryId, [5,4,1]));
-        ensure(entry.immediate == "xyz");
+        ensure(entry.value == "xyz");
         ensure(entry.semanticKey[0] == "abc");
     });
 }

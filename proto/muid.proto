@@ -29,7 +29,7 @@ package google.gink;
     microseconds timestamps past the year 2255 (2**53).
 
     The timestamp field and/or the medallion field can be set to -1 to reference
-    "global" objects, mostly to be used for debugging.
+    "global" objects, which can be used for testing or bootstrapping.
 */
 
 message Muid {

@@ -3,9 +3,9 @@ import { Entry as EntryBuilder } from "gink/protoc.out/entry_pb";
 import { Value, KeyType, Muid, AsOf } from "./typedefs";
 import { muidToBuilder, wrapValue, wrapKey, ensure } from "./utils";
 import { Change as ChangeBuilder } from "gink/protoc.out/change_pb";
-import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
 import { Deletion } from "./Deletion";
 import { GinkInstance } from "./GinkInstance";
+import { Behavior } from "gink/protoc.out/behavior_pb";
 
 
 
@@ -27,9 +27,10 @@ export class Container {
      * @param address not necessary for root schema
      * @param containerBuilder will try to fetch if not specified
      */
-    protected constructor(readonly ginkInstance: GinkInstance, readonly address: Muid, protected containerBuilder?: ContainerBuilder) {
-        ensure(containerBuilder !== undefined || address.timestamp < 0, "missing container definition");
-    }
+    protected constructor(
+        readonly ginkInstance: GinkInstance, 
+        readonly address: Muid, 
+        readonly behavior: Behavior) {}
 
     /**
      * Starts an async iterator that returns all of the containers pointing to the object in question..
@@ -62,30 +63,30 @@ export class Container {
             change = new ChangeSet(msg);
         }
 
-        const entry = new EntryBuilder();
+        const entryBuilder = new EntryBuilder();
         if (this.address) {
-            entry.setContainer(muidToBuilder(this.address, change.medallion));
+            entryBuilder.setContainer(muidToBuilder(this.address, change.medallion));
         }
 
-        if (key === undefined) {
-            entry.setBoxed(true);
-        } else if (typeof (key) == "number" || typeof (key) == "string") {
-            entry.setKey(wrapKey(key));
+        entryBuilder.setBehavior(this.behavior);        
+
+        if (typeof (key) == "number" || typeof (key) == "string") {
+            entryBuilder.setKey(wrapKey(key));
         }
 
         // TODO: check that the destination/value is compatible with Container
         if (value !== undefined) {
             if (value instanceof Container) {
-                entry.setPointee(muidToBuilder(value.address, change.medallion));
+                entryBuilder.setPointee(muidToBuilder(value.address, change.medallion));
             } else if (value instanceof Deletion) {
-                entry.setDeleting(true);
+                entryBuilder.setDeleting(true);
             } else {
-                entry.setImmediate(wrapValue(value));
+                entryBuilder.setValue(wrapValue(value));
             }
 
         }
         const changeBuilder = new ChangeBuilder();
-        changeBuilder.setEntry(entry);
+        changeBuilder.setEntry(entryBuilder);
         const address = change.addChange(changeBuilder);
         if (immediate) {
             await this.ginkInstance.addChangeSet(change);

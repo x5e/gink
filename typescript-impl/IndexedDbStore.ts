@@ -211,8 +211,7 @@ export class IndexedDbStore implements Store {
                     containerId[2] = srcMuid.getOffset();
                 }
                 const semanticKey = entryBuilder.hasKey() ? [unwrapKey(entryBuilder.getKey())] : [];
-                const behavior: Behavior = entryBuilder.hasKey() ? Behavior.SCHEMA : 
-                    (entryBuilder.hasBoxed() ? Behavior.BOX: Behavior.QUEUE);
+                const behavior: Behavior = entryBuilder.getBehavior();
                 const entryId: MuidTuple = [timestamp, medallion, offset];
                 const pointeeList = <MuidTuple[]>[];
                 if (entryBuilder.hasPointee()) {
@@ -224,16 +223,16 @@ export class IndexedDbStore implements Store {
                     ];
                     pointeeList.push(pointee);
                 }
-                const immediate = entryBuilder.hasImmediate() ? unwrapValue(entryBuilder.getImmediate()) : undefined;
+                const immediate = entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined;
                 const expiry = entryBuilder.getExpiry() || undefined;
-                const deleting = entryBuilder.hasDeleting() ? entryBuilder.getDeleting() : undefined;
+                const deleting = entryBuilder.getDeleting();
                 const entry: Entry = {
                     behavior,
                     containerId,
                     semanticKey,
                     entryId,
                     pointeeList,
-                    immediate,
+                    value: immediate,
                     expiry,
                     deleting,
                 }

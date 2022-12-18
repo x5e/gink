@@ -2,17 +2,17 @@
 PROTOS=$(wildcard proto/*.proto)
 export PATH := ./node_modules/.bin/:$(PATH)
 
-all: node_modules protoc.out tsc.out webpack.out
+all: protoc.out node_modules/gink/protoc.out tsc.out webpack.out 
 
 node_modules: package.json
 	npm install
 
 protoc.out: $(PROTOS) 
-	 mkdir -p protoc.out && protoc \
+	 rm -rf protoc.out && mkdir -p protoc.out.making && protoc \
 	--proto_path=proto \
-	--python_out=protoc.out \
-	--js_out=import_style=commonjs,binary:protoc.out \
-	$(PROTOS)
+	--python_out=protoc.out.making \
+	--js_out=import_style=commonjs,binary:protoc.out.making \
+	$(PROTOS) && mv protoc.out.making protoc.out
 
 node_modules/gink/protoc.out: node_modules protoc.out
 	rm -rf node_modules/gink && mkdir -p node_modules/gink && \

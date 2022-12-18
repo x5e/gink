@@ -16,12 +16,12 @@ import { Behavior } from "gink/protoc.out/behavior_pb";
 export class List extends Container {
 
     constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, containerBuilder);
+        super(ginkInstance, address, Behavior.QUEUE);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
             ensure(address.offset == Behavior.QUEUE, "magic tag not queue");
         } else {
-            ensure(this.containerBuilder.getBehavior() == Behavior.QUEUE, "container not queue");
+            ensure(containerBuilder.getBehavior() == Behavior.QUEUE, "container not queue");
         }
     }
 
@@ -56,7 +56,7 @@ export class List extends Container {
             // Should probably change the implementation to not copy all intermediate entries into memory.
             const entries = await this.ginkInstance.store.getOrderedEntries(this.address, what)
             if (entries.length == 0) return undefined;
-            const entry = entries.at(-1);
+            const entry = entries[entries.length - 1]
             returning = await interpret(entry, this.ginkInstance);
             muid = muidTupleToMuid(entry.entryId);
         }
@@ -97,7 +97,7 @@ export class List extends Container {
             if (entries.length == 0) return undefined;
             if (position >= 0 && position >= entries.length) return undefined;
             if (position < 0 && Math.abs(position) > entries.length) return undefined;
-            const entry = entries.at(-1);
+            const entry = entries[entries.length - 1];
             return await interpret(entry, this.ginkInstance);
         } else {
             const entry = await this.ginkInstance.store.getEntry(this.address, position, asOf);

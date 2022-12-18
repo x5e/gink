@@ -35,8 +35,8 @@ export async function interpret(entry: Entry, ginkInstance: GinkInstance): Promi
     if (entry === undefined || entry.deleting) {
         return undefined;
     }
-    if (entry.immediate !== undefined)
-        return entry.immediate;
+    if (entry.value !== undefined)
+        return entry.value;
     if (entry.pointeeList.length > 0) {
         const muid: Muid = {
             timestamp: entry.pointeeList[0][0],
@@ -77,7 +77,7 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
         const destAddress = builderToMuid(entryBuilder.getPointee(), entryAddress)
         return await construct(ginkInstance, destAddress);
     }
-    if (entryBuilder.hasDeleting() && entryBuilder.getDeleting()) {
+    if (entryBuilder.getDeleting()) {
         return undefined;
     }
     throw new Error("unsupported entry type");

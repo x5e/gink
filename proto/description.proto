@@ -8,7 +8,7 @@ import "muid.proto";
     or just to add a comment on a data structure.
 */
 message Description {
-    Muid updates = 1; // specifies what's being described
-    string value = 2; // specifies the text 
+    Muid describes = 1; // specifies what's being described
+    string caption = 2; // specifies the description
     string language = 3; // optionally specify the language
 }

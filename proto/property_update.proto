@@ -6,8 +6,5 @@ import "value.proto";
 message PropertyUpdate {
     Muid updates_what = 1; // specifies the thing being updated
     Muid property_type = 2; // what property is being updated
-    oneof change {
-        Value new_value = 3; // value it is being set to
-        bool enable = 4; // true to enable (for tags) or off to remove
-    }
+    Value value = 3; // value it is being set to
 }

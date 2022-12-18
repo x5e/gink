@@ -59,7 +59,7 @@ export interface Entry {
     semanticKey: KeyType[]; // use an empty list to denote no semantic key
     entryId: MuidTuple;
     pointeeList: MuidTuple[]; // use an empty list to denote no pointees
-    immediate?: Value;
+    value?: Value;
     expiry?: Timestamp;
     deleting?: boolean;
 }

@@ -6,7 +6,7 @@ import "muid.proto";
 message Value {
     oneof value {
         Special special = 1;
-        sint64 enum_value = 2;
+        EnumValue enum_value = 2;
         string characters = 3;
         Number number = 4;
         Timestamp timestamp = 5;
@@ -17,7 +17,7 @@ message Value {
         Document document = 12;
         string symbol = 13;
         ColumnReference column = 14;
-        Invocation invocation = 15;
+        ProtoData proto_data = 15;
         bytes uuid = 16;
         Muid muid = 17;
         Complex complex = 18;
@@ -25,6 +25,18 @@ message Value {
         DateTime datetime = 20;
         ZonedDateTime zoned = 21;
         Interval interval = 22;
+        Invocation invocation = 23;
+    }
+
+    message ProtoData {
+        bytes binary_proto = 1;
+        Muid proto_definition = 2; // optional, may be inferred
+        string type_url = 3; // optional, for "Any" proto like behavior
+    }
+
+    message EnumValue {
+        sint64 value = 1;
+        Muid defined = 2;  // where this enum is defined, may be omitted if implied by context
     }
 
     message ColumnReference {

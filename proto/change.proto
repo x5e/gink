@@ -2,7 +2,6 @@ syntax = "proto3";
 package google.gink;
 import "description.proto";
 import "container.proto";
-import "node_type.proto";
 import "edge_type.proto";
 import "property_type.proto";
 import "property_update.proto";
@@ -17,7 +16,6 @@ message Change {
     oneof obj {
         Container container = 2;
         EdgeType edge_type = 3;
-        NodeType node_type = 4;
         PropertyType property_type = 5;
         PropertyUpdate property_update = 6;
         Entry entry = 7;

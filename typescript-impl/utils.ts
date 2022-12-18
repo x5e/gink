@@ -6,6 +6,7 @@
 import { Muid, Medallion, Value, MuidTuple, CallBack } from "./typedefs";
 import { Muid as MuidBuilder } from "gink/protoc.out/muid_pb";
 import { Value as ValueBuilder } from "gink/protoc.out/value_pb";
+import { Key as KeyBuilder } from "gink/protoc.out/key_pb";
 
 export function ensure(x: any, msg?: string) {
     if (!x) 
@@ -66,17 +67,15 @@ export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid
  * @param key 
  * @returns 
  */
-export function wrapKey(key: number | string): ValueBuilder {
-    const value = new ValueBuilder();
+export function wrapKey(key: number | string): KeyBuilder {
+    const keyBuilder = new KeyBuilder();
     if (typeof (key) == "string") {
-        value.setCharacters(key);
-        return value;
+        keyBuilder.setCharacters(key);
+        return keyBuilder;
     }
     if (typeof (key) == "number") {
-        const number = new ValueBuilder.Number();
-        number.setDoubled(key);
-        value.setNumber(number);
-        return value;
+        keyBuilder.setNumber(key);
+        return keyBuilder;
     }
     throw new Error(`key not a number or string: ${key}`);
 }
@@ -84,21 +83,16 @@ export function wrapKey(key: number | string): ValueBuilder {
 /**
  * Convert from a Gink Proto known to contain a string or number 
  * into the equiv Javascript object.
- * @param value 
+ * @param keyBuilder 
  * @returns 
  */
-export function unwrapKey(value: ValueBuilder): number | string {
-    ensure(value);
-    if (value.hasCharacters()) {
-        return value.getCharacters();
+export function unwrapKey(keyBuilder: KeyBuilder): number | string {
+    ensure(keyBuilder);
+    if (keyBuilder.hasCharacters()) {
+        return keyBuilder.getCharacters();
     }
-    if (value.hasNumber()) {
-        const number = value.getNumber();
-        if (!number.hasDoubled()) {
-            //TODO
-            throw new Error("haven't implemented unwrapping for non-double encoded numbers");
-        }
-        return number.getDoubled();
+    if (keyBuilder.hasNumber()) {
+        return keyBuilder.getNumber();
     }
     throw new Error("value isn't a number or string!");
 }
