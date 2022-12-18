@@ -9,9 +9,6 @@ import "value_type.proto";
     
 */
 message PropertyType {
-    oneof type {
-        ValueType allowed_values = 1; // limits what values this property can take
-        bool is_tag = 2;
-    };
-    repeated Muid allowed_on = 3; // what type of node/entry to allow this metadata on
+    ValueType allowed_values = 1; // limits what values this property can take
+    Muid extends = 2;
 }

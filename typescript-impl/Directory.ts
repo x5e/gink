@@ -10,12 +10,12 @@ import { Behavior } from "gink/protoc.out/behavior_pb";
 export class Directory extends Container {
 
     constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, containerBuilder);
+        super(ginkInstance, address, Behavior.SCHEMA);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
             ensure(address.offset == Behavior.SCHEMA);
         } else {
-            ensure(this.containerBuilder.getBehavior() == Behavior.SCHEMA);
+            ensure(containerBuilder.getBehavior() == Behavior.SCHEMA);
         }
     }
 

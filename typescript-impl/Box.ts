@@ -9,13 +9,13 @@ import { Behavior } from "gink/protoc.out/behavior_pb";
 
 export class Box extends Container {
 
-    constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, containerBuilder);
+    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
+        super(ginkInstance, address, Behavior.BOX);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
             ensure(address.offset == Behavior.BOX);            
         } else {
-            ensure(this.containerBuilder.getBehavior() == Behavior.BOX);
+            ensure(containerBuilder.getBehavior() == Behavior.BOX);
         }
     }
 

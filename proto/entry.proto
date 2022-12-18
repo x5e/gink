@@ -14,18 +14,19 @@ message Entry {
         Key key = 3;        // when container is a SCHEMA or SET
         Muid edge = 4;      // only for src_node behavior in {Vertex, TAG}
         Span span = 5;      // only for src_node behavior = FILE
+        uint64 effective_time = 6; // optional when behavior = QUEUE
     }
 
-    oneof target {
-        bool deleting = 6; // serves as reset when no link is set
+    oneof enters {
         uint64 medallion = 7; // follow the root entry of another db instance
         bytes octects = 8; // for src_node behavior in {FILE, BINLOG} or when encrypted
-        Value immediate = 9;
+        Value value = 9;
         Row row = 10; // only when source is a TABLE
         Muid pointee = 11;
     }
 
     uint64 expiry = 12; // timestamp of expiration in microseconds since epoch, for LIST/QUEUE only
+    bool deleting = 13; // serves as reset when no link is set
     bytes iv = 15; // initialization vector when octects are encrypted
     bytes key_id = 16; // optional hint of which key was used (when encrypted)
 
@@ -36,8 +37,8 @@ message Entry {
     }
     
     message Row {
-        bytes bytes_mask = 2;  
-        repeated Value values = 3;
+        repeated Value values = 1;
+        bytes bytes_mask = 2; // optional when all columns have values
     }
 
 }
