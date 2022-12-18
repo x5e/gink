@@ -78,7 +78,7 @@ class Container(ABC):
                 entry_builder.pointee.timestamp = pointee_muid.timestamp # type: ignore # pylint: disable=maybe-no-member
             entry_builder.pointee.offset = pointee_muid.offset # type: ignore # pylint: disable=maybe-no-member
         elif isinstance(value, (str, int, float, dict, tuple, list, bool, type(None))):
-            encode_value(value, entry_builder.immediate) # type: ignore # pylint: disable=maybe-no-member
+            encode_value(value, entry_builder.value) # type: ignore # pylint: disable=maybe-no-member
         elif value == self._DELETE:
             entry_builder.deleting = True  # type: ignore # pylint: disable=maybe-no-member
         else:

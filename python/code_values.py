@@ -89,10 +89,10 @@ def entries_equiv(pair1: EntryKeyPair, pair2: EntryKeyPair) -> bool:
             pointee2 = Muid.create(pair2.builder.pointee, pair2.key) # type: ignore
             return pointee1 == pointee2
         return False
-    if pair1.builder.HasField("immediate"): # type: ignore
-        if pair2.builder.HasField("immediate"): # type: ignore
-            value1 = decode_value(pair1.builder.immediate) # type: ignore
-            value2 = decode_value(pair2.builder.immediate) # type: ignore
+    if pair1.builder.HasField("value"): # type: ignore
+        if pair2.builder.HasField("value"): # type: ignore
+            value1 = decode_value(pair1.builder.value) # type: ignore
+            value2 = decode_value(pair2.builder.value) # type: ignore
             return value1 == value2
         return False
     raise AssertionError("entry doesn't have pointee or immedate?")

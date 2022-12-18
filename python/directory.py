@@ -97,8 +97,8 @@ class Directory(Container):
         return self._interpret(found)
 
     def _interpret(self, found: EntryPair):
-        if found.builder.HasField("immediate"): # type: ignore
-            return decode_value(found.builder.immediate) # type: ignore
+        if found.builder.HasField("value"): # type: ignore
+            return decode_value(found.builder.value) # type: ignore
         if found.builder.HasField("pointee"): # type: ignore
             muid = Muid.create(found.builder.pointee, context=found.address)  # type: ignore
             return Directory(muid=muid, database=self._database)
