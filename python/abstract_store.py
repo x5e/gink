@@ -12,7 +12,7 @@ from entry_pb2 import Entry as EntryBuilder
 from change_set_info import ChangeSetInfo
 from chain_tracker import ChainTracker
 from typedefs import UserKey, MuTimestamp
-from tuples import EntryPair, Chain
+from tuples import EntryAddressAndBuilder, Chain
 from muid import Muid
 
 class AbstractStore(ABC):
@@ -29,12 +29,12 @@ class AbstractStore(ABC):
         self.close()
 
     @abstractmethod
-    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryPair]:
+    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryAddressAndBuilder]:
         """ Gets all active entries for a given container as of the given time. """
         raise NotImplementedError()
 
     @abstractmethod
-    def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Opt[EntryPair]:
+    def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Opt[EntryAddressAndBuilder]:
         """ Gets the most recent entry for a given key at as_of
         """
         assert self and container and key and as_of

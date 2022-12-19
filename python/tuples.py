@@ -9,7 +9,7 @@ class Chain(NamedTuple):
     medallion: Medallion
     chain_start: MuTimestamp
 
-class EntryPair(NamedTuple):
+class EntryAddressAndBuilder(NamedTuple):
     """ Result of a successful seek. """
     address: Muid
     builder: EntryBuilder

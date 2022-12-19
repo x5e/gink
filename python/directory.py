@@ -7,7 +7,7 @@ from behavior_pb2 import Behavior
 # gink implementation
 from typedefs import AsOf, EPOCH
 from muid import Muid
-from tuples import EntryPair
+from tuples import EntryAddressAndBuilder
 from database import Database
 from container import Container
 from code_values import decode_value, decode_key
@@ -96,7 +96,7 @@ class Directory(Container):
             return default
         return self._interpret(found)
 
-    def _interpret(self, found: EntryPair):
+    def _interpret(self, found: EntryAddressAndBuilder):
         if found.builder.HasField("value"): # type: ignore
             return decode_value(found.builder.value) # type: ignore
         if found.builder.HasField("pointee"): # type: ignore

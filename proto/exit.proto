@@ -3,17 +3,15 @@ import "muid.proto";
 package google.gink;
 
 /**
-    An "Exit" acts to remove an Entry.  After seeing an Exit pointing to
-    an Entry, the system should act as though that Entry no longer exists.
-    An expiry set on an Exit makes this removal temporary.  One use case is
-    to temporarily remove an item from a work queue to start processing it,
-    then permanently remove it once processing has been completed.
-    To remove keys from a schema, adding a new Entry with deleting=True 
-    is generally better (otherwise prior Entries with earlier timestamps
-    will appear to be in effect).  
+    When dest is unset (=0) then an Exit acts to remove an Entry.  
+
+    When dest is set to a time in the past, effectively moves an entry to another location.
+    When dest is set to a time in the future, hides the entry until that future time arrives.
+
+    When dest is set to -1, hide indefinately (may be visible in queries that show future)
 */
 message Exit {
     Muid container = 1;
     Muid entry = 2;
-    uint64 expiry = 3;
+    sint64 dest = 3;
 }

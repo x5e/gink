@@ -1,6 +1,6 @@
 """ tests the conversion functions in code_values
 """
-from code_values import encode_value, decode_value, EntryKey, QueueKey, Behavior
+from code_values import encode_value, decode_value, EntryStorageKey, QueueMiddleKey, Behavior
 from muid import Muid
 from typedefs import MuTimestamp
 
@@ -55,9 +55,9 @@ def test_entry_key_sorting():
     """ ensures that entry keys sort as expected """
     global_directory = Muid(-1, -1, 7)
 
-    key1 = EntryKey(global_directory, "foo", Muid(1,2,3), None)
-    key2 = EntryKey(global_directory, "foo", Muid(7,8,9), None)
-    key3 = EntryKey(global_directory, 77, Muid(1,2,3), None)
+    key1 = EntryStorageKey(global_directory, "foo", Muid(1,2,3), None)
+    key2 = EntryStorageKey(global_directory, "foo", Muid(7,8,9), None)
+    key3 = EntryStorageKey(global_directory, 77, Muid(1,2,3), None)
     in_list = [key1, key2, key3]
     in_list.sort()
     assert in_list[0] == key3, in_list[0] # numbers come first
@@ -68,12 +68,12 @@ def test_entry_to_from_bytes():
     """ ensures that serialization works as expected """
     global_directory = Muid(-1, -1, 7)
 
-    key1 = EntryKey(global_directory, "foo", Muid(1,2,3), MuTimestamp(99))
+    key1 = EntryStorageKey(global_directory, "foo", Muid(1,2,3), MuTimestamp(99))
     encoded = bytes(key1)
-    key2 = EntryKey.from_bytes(encoded)
+    key2 = EntryStorageKey.from_bytes(encoded)
     assert key1 == key2, key2
 
-    key3 = EntryKey(Muid(123, 77, 1), QueueKey(235, Muid(234, 77, 3)), Muid(234, 77, 2), None)
+    key3 = EntryStorageKey(Muid(123, 77, 1), QueueMiddleKey(235, Muid(234, 77, 3)), Muid(234, 77, 2), None)
     encoded = bytes(key3)
-    key4 = EntryKey.from_bytes(encoded, behavior=Behavior.QUEUE)
+    key4 = EntryStorageKey.from_bytes(encoded, behavior=Behavior.QUEUE)
     assert key4 == key3, key4

@@ -11,35 +11,43 @@ from behavior_pb2 import Behavior
 from typedefs import UserKey, MuTimestamp
 from muid import Muid
 
-class QueueKey(NamedTuple):
+class QueueMiddleKey(NamedTuple):
     effective_time: MuTimestamp
-    movement_muid: Muid
+    movement_muid: Optional[Muid]
 
     def __bytes__(self):
-        return encode_int(self.effective_time) + bytes(self.movement_muid)
+        if self.movement_muid:
+            return encode_int(self.effective_time) + bytes(self.movement_muid.invert())
+        else:
+            return encode_int(self.effective_time)
 
     def from_bytes(data: bytes):
         assert len(data) == 24, len(data)
-        return QueueKey(decode_int(data[0:8]), Muid.from_bytes(data[8:]))
+        if len(data) == 8:
+            return QueueMiddleKey(decode_int(data[0:8]), None)
+        elif len(data) == 24:
+            return QueueMiddleKey(decode_int(data[0:8]), Muid.from_bytes(data[8:]).invert())
+        else:
+            raise AssertionError("expected QueueMiddleKey to be 8 or 24 bytes")
 
 
-class EntryKey(NamedTuple):
+class EntryStorageKey(NamedTuple):
     """ just a class to serialize / deserialize keys used to store entries
 
         Notably, this will invert the entry muids so that more recent entries
         for a particular container / user-key come before earlier ones.
     """
     container: Muid
-    middle_key: Union[UserKey, QueueKey]
+    middle_key: Union[UserKey, QueueMiddleKey]
     entry_muid: Muid
     expiry: Optional[MuTimestamp]
 
     def replace_time(self, timestamp: int):
         """ create a entry key that can be used for seeking before the given time """
-        return EntryKey(self.container, self.middle_key, Muid(timestamp, 0,0,), None)
+        return EntryStorageKey(self.container, self.middle_key, Muid(timestamp, 0,0,), None)
 
     def __bytes__(self):
-        if isinstance(self.middle_key, QueueKey):
+        if isinstance(self.middle_key, QueueMiddleKey):
             serialized_key = bytes(self.middle_key)
         else:
             serialized_key = encode_key(self.middle_key).SerializeToString() # type: ignore
@@ -57,8 +65,8 @@ class EntryKey(NamedTuple):
             middle_key = decode_key(middle_key_bytes)
             assert middle_key is not None, "directory keys must be strings or integers"
         else:
-            middle_key = QueueKey.from_bytes(middle_key_bytes)
-        return EntryKey(
+            middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
+        return EntryStorageKey(
                 container=Muid.from_bytes(container_bytes),
                 middle_key=middle_key,
                 entry_muid=Muid.from_bytes(entry_muid_bytes).invert(),
@@ -71,9 +79,9 @@ class EntryKey(NamedTuple):
         return bytes(self) < bytes(other)
 
 
-class EntryKeyPair(NamedTuple):
+class EntryStorageKeyAndVal(NamedTuple):
     """ Parsed entry data. """
-    key: EntryKey
+    key: EntryStorageKey
     builder: EntryBuilder
 
 def create_deleting_entry(muid: Muid, key: Optional[UserKey]) -> EntryBuilder:
@@ -92,7 +100,7 @@ def create_deleting_entry(muid: Muid, key: Optional[UserKey]) -> EntryBuilder:
     encode_key(key, entry_builder.key) # type: ignore
     return entry_builder
 
-def entries_equiv(pair1: EntryKeyPair, pair2: EntryKeyPair) -> bool:
+def entries_equiv(pair1: EntryStorageKeyAndVal, pair2: EntryStorageKeyAndVal) -> bool:
     """ Checks the contained value/pointee/whatever to see if the entries are equiv.
 
         Used to see if the effective value in a container is the same even if it

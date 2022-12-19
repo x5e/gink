@@ -10,7 +10,7 @@ from change_set_pb2 import ChangeSet as ChangeSetBuilder
 
 # gink modules
 from typedefs import UserKey, MuTimestamp
-from tuples import Chain, EntryPair
+from tuples import Chain, EntryAddressAndBuilder
 from change_set_info import ChangeSetInfo
 from abstract_store import AbstractStore
 from chain_tracker import ChainTracker
@@ -35,7 +35,7 @@ class MemoryStore(AbstractStore):
         self._entries = SortedDict()
         self._containers = SortedDict()
 
-    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryPair]:
+    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryAddressAndBuilder]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0).invert()
         iterator = self._entries.irange(
             minimum=(container, ''), maximum=(container, chr(127)))
@@ -49,12 +49,12 @@ class MemoryStore(AbstractStore):
                 continue
             if inverse_entry_muid < as_of_muid:
                 continue
-            pair = EntryPair(builder=self._entries[entry_key], address=inverse_entry_muid.invert())
+            pair = EntryAddressAndBuilder(builder=self._entries[entry_key], address=inverse_entry_muid.invert())
             result.append(pair)
             last = jkey
         return result
 
-    def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Optional[EntryPair]:
+    def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Optional[EntryAddressAndBuilder]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0).invert()
         epoch_muid = Muid(0, 0, 0).invert()
         minimum=(container, json.dumps(key), as_of_muid)
@@ -64,7 +64,7 @@ class MemoryStore(AbstractStore):
             maximum=maximum)
         for ekey in iterator:
             assert isinstance(ekey, tuple)
-            return EntryPair(builder=self._entries[ekey], address=ekey[2].invert())
+            return EntryAddressAndBuilder(builder=self._entries[ekey], address=ekey[2].invert())
         return None
 
     def get_claimed_chains(self):
