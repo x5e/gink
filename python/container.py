@@ -58,7 +58,7 @@ class Container(ABC):
             database.add_change_set(change_set)  # type: ignore
         return muid
 
-    def _add_entry(self, value, key: U[str, int, None]=None, backdate: Opt[int]=None,
+    def _add_entry(self, *, value, key: U[str, int, None]=None, 
              change_set: Opt[ChangeSet]=None, comment: Opt[str]=None)->Muid:
         immediate = False
         if not isinstance(change_set, ChangeSet):
@@ -70,8 +70,6 @@ class Container(ABC):
         self._muid.put_into(entry_builder.container) # type: ignore # pylint: disable=maybe-no-member
         if isinstance(key, (str, int)):
             encode_key(key, entry_builder.key)  # type: ignore # pylint: disable=maybe-no-member
-        if isinstance(backdate, int):
-            entry_builder.effective_time = backdate
         if isinstance(value, Container):
             pointee_muid = value.muid()
             if pointee_muid.medallion:

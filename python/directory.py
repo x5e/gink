@@ -211,10 +211,10 @@ class Directory(Container):
             change_set = ChangeSet(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
-                self._add_entry(key, from_what[key], change_set=change_set)
+                self._add_entry(key=key, value=from_what[key], change_set=change_set)
         else:
             for key, val in from_what:
-                self._add_entry(key, val, change_set=change_set)
+                self._add_entry(key=key, value=val, change_set=change_set)
         if immediate:
             self._database.add_change_set(change_set)
 

@@ -1,13 +1,15 @@
-
+from typing import Optional
 
 # protobuf builder
 from behavior_pb2 import Behavior
 
 # gink implementation
-from typdefs import AsOf
+from typedefs import AsOf
+from container import Container
+from muid import Muid
 
 class Queue(Container):
-    BEHAVIOR = Behavior.Queue
+    BEHAVIOR = Behavior.QUEUE
 
     def __init__(self, *, contents=None, muid: Optional[Muid]=None, database=None):
         """
@@ -25,13 +27,13 @@ class Queue(Container):
         self._database = database
         if contents:
             # TODO: implement clear, then append all of the items 
+            raise NotImplementedError()
         if len(change_set):
             self._database.add_change_set(change_set)
 
-    def append(self, thing, change_set=None, comment=None, backdate=None):
+    def append(self, thing, change_set=None, comment=None):
         """ Append obect to the end of the queue. """
-        return self._add_entry(key=key, value=value, change_set=change_set, 
-            comment=comment, backdate=backdate)
+        return self._add_entry(key=key, value=value, change_set=change_set, comment=comment)
 
     def pop(self, index=-1, muid=None, change_set=None):
         """ Remove and return an item at index (default last). """
