@@ -1,16 +1,17 @@
 """Contains the LmdbStore class."""
 
 # Standard Python Stuff
-from typing import Tuple, Callable, Iterable, Optional, List
+from typing import Tuple, Callable, Iterable, Optional, List, Union
 from struct import Struct
 import lmdb
 
 # Protobuf Modules
 from change_set_pb2 import ChangeSet as ChangeSetBuilder
+from change_pb2 import Change as ChangeBuilder
 from entry_pb2 import Entry as EntryBuilder
 
 # Gink Implementation
-from typedefs import MuTimestamp, Key
+from typedefs import MuTimestamp, UserKey
 from tuples import Chain, EntryPair
 from muid import Muid
 from change_set_info import ChangeSetInfo
@@ -37,8 +38,12 @@ class LmdbStore(AbstractStore):
             val: chain_start (packed big endian)
 
         entries_tbl - Entry proto data from commits, ordered in a way that can be accessed easily.
-            key: (source-muid, entry-key, entry-muid, expiry), with muids packed into 16 byte form
+            key: (source-muid, middle-key, entry-muid, expiry), with muids packed into 16 bytes
             val: the binary serialization of the given entry
+            A couple of other wrinkles of note:
+                * The entry-key will be the KeyBuilder serialized in the container is a directory.
+                * In the case of a QUEUE, the entry-key will be (effective-time, move-muid), where 
+                  the move-muid starts off as the entry-muid.
 
         container_defs - Map from muid to serialized containers definitions.
     """
@@ -66,27 +71,27 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._entries_tbl_db, delete=False)
                 txn.drop(self._container_defs, delete=False)
 
-    def get_reset_entries(self, to_time, muid: Optional[Muid],
-            user_key: Optional[Key], recursive=True) -> Iterable[EntryBuilder]:
-        if muid is None and user_key is not None:
+    def get_reset_changes(self, to_time, container: Optional[Muid], user_key: Optional[UserKey],
+            recursive=True) -> Iterable[Union[ChangeBuilder, EntryBuilder]]:
+        if container is None and user_key is not None:
             raise ValueError("can't specify key without muid")
-        if muid is None:
+        if container is None:
             recursive = False
         seen = set() if recursive else None
         with self.env.begin() as txn:
             entries_cursor = txn.cursor(self._entries_tbl_db)
-            if muid is None:
+            if container is None:
                 containers_cursor = txn.cursor(self._container_defs)
                 move_succeeded = containers_cursor.first()
                 while move_succeeded:
-                    muid = Muid.from_bytes(containers_cursor.key())
-                    if muid.timestamp > to_time:
+                    container = Muid.from_bytes(containers_cursor.key())
+                    if container.timestamp > to_time:
                         break # don't bother with containers created after to_time
-                    for thing in LmdbStore._helper(muid, seen, user_key, entries_cursor, to_time):
+                    for thing in LmdbStore._helper(container, seen, user_key, entries_cursor, to_time):
                         yield thing
                     move_succeeded = containers_cursor.next()
             else:
-                for thing in LmdbStore._helper(muid, seen, user_key, entries_cursor, to_time):
+                for thing in LmdbStore._helper(container, seen, user_key, entries_cursor, to_time):
                     yield thing
 
     @staticmethod
@@ -112,7 +117,7 @@ class LmdbStore(AbstractStore):
         while seek_succeeded:
 
             now = LmdbStore._grok_entry(entries_cursor)
-            if now.key.container != container or (user_key and now.key.user_key != user_key):
+            if now.key.container != container or (user_key and now.key.middle_key != user_key):
                 break
             entry_since_time_to = False
             if now.key.entry_muid.timestamp > to_time:
@@ -120,15 +125,15 @@ class LmdbStore(AbstractStore):
                 seek_succeeded = entries_cursor.set_range(bytes(now.key.replace_time(to_time)))
                 if not seek_succeeded:
                     # fell off end of table, so nothing existed at to_time
-                    yield create_deleting_entry(container, now.key.user_key)
+                    yield create_deleting_entry(container, now.key.middle_key)
                     # TODO: check if last now.builder is deleting and skip deleting entry if so
                     break # nothing left in table to worry about
 
             then = LmdbStore._grok_entry(entries_cursor)
 
-            if then.key.container != container or then.key.user_key != now.key.user_key:
+            if then.key.container != container or then.key.middle_key != now.key.middle_key:
                 # on to something different, so nothing existed at to_time
-                yield create_deleting_entry(container, now.key.user_key)
+                yield create_deleting_entry(container, now.key.middle_key)
                 # TODO: check if last now.builder is deleting and skip deleting entry if so
                 if then.key.container != container:
                     break
@@ -157,7 +162,7 @@ class LmdbStore(AbstractStore):
         assert self
         raise NotImplementedError()
 
-    def get_entry(self, container: Muid, key: Key, as_of: MuTimestamp) -> Optional[EntryPair]:
+    def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Optional[EntryPair]:
         """ Gets the entry for a given containing object with a given key at a given time."""
         built = encode_key(key).SerializeToString() if key is not None else b"" # type: ignore
         assert isinstance(key, (int, str)) or built == b""

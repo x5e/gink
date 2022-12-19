@@ -8,8 +8,19 @@ from entry_pb2 import Entry as EntryBuilder
 from key_pb2 import Key as KeyBuilder
 from behavior_pb2 import Behavior
 
-from typedefs import Key, MuTimestamp
+from typedefs import UserKey, MuTimestamp
 from muid import Muid
+
+class QueueKey(NamedTuple):
+    effective_time: MuTimestamp
+    movement_muid: Muid
+
+    def __bytes__(self):
+        return encode_int(self.effective_time) + bytes(self.movement_muid)
+
+    def from_bytes(data: bytes):
+        assert len(data) == 24, len(data)
+        return QueueKey(decode_int(data[0:8]), Muid.from_bytes(data[8:]))
 
 
 class EntryKey(NamedTuple):
@@ -19,29 +30,37 @@ class EntryKey(NamedTuple):
         for a particular container / user-key come before earlier ones.
     """
     container: Muid
-    user_key: Optional[Key]
+    middle_key: Union[UserKey, QueueKey]
     entry_muid: Muid
     expiry: Optional[MuTimestamp]
 
     def replace_time(self, timestamp: int):
         """ create a entry key that can be used for seeking before the given time """
-        return EntryKey(self.container, self.user_key, Muid(timestamp, 0,0,), None)
+        return EntryKey(self.container, self.middle_key, Muid(timestamp, 0,0,), None)
 
     def __bytes__(self):
-        serialized_key = encode_key(self.user_key).SerializeToString() # type: ignore
+        if isinstance(self.middle_key, QueueKey):
+            serialized_key = bytes(self.middle_key)
+        else:
+            serialized_key = encode_key(self.middle_key).SerializeToString() # type: ignore
         return (bytes(self.container) + serialized_key +
             bytes(self.entry_muid.invert()) + encode_int(self.expiry or 0))
 
-    @classmethod
-    def from_bytes(cls, data: bytes):
+    @staticmethod
+    def from_bytes(data: bytes, behavior: int=Behavior.SCHEMA):
         """ creates an entry key from its binary format """
         container_bytes = data[0:16]
-        user_key_bytes = data[16:-24]
+        middle_key_bytes = data[16:-24]
         entry_muid_bytes = data[-24:-8]
         expiry_bytes = data[-8:]
-        return cls(
+        if behavior == Behavior.SCHEMA:
+            middle_key = decode_key(middle_key_bytes)
+            assert middle_key is not None, "directory keys must be strings or integers"
+        else:
+            middle_key = QueueKey.from_bytes(middle_key_bytes)
+        return EntryKey(
                 container=Muid.from_bytes(container_bytes),
-                user_key=decode_key(user_key_bytes),
+                middle_key=middle_key,
                 entry_muid=Muid.from_bytes(entry_muid_bytes).invert(),
                 expiry=MuTimestamp(decode_int(expiry_bytes)) or None)
 
@@ -57,7 +76,7 @@ class EntryKeyPair(NamedTuple):
     key: EntryKey
     builder: EntryBuilder
 
-def create_deleting_entry(muid: Muid, key: Optional[Key]) -> EntryBuilder:
+def create_deleting_entry(muid: Muid, key: Optional[UserKey]) -> EntryBuilder:
     """ creates an entry that will delete the given key from the container
 
         I'm allowing a null key in the argument then barfing if it's null
@@ -81,7 +100,7 @@ def entries_equiv(pair1: EntryKeyPair, pair2: EntryKeyPair) -> bool:
     """
     if pair1.key == pair2.key:
         return True
-    assert pair1.key.user_key == pair2.key.user_key
+    assert pair1.key.middle_key == pair2.key.middle_key
     assert pair1.key.container == pair2.key.container
     if pair1.builder.HasField("pointee"): # type: ignore
         if pair2.builder.HasField("pointee"): # type: ignore
@@ -132,7 +151,7 @@ def decode_int(data: bytes, _q_struct=Struct(">Q")) -> int:
     """ unpacks 8 bytes of data into an int by assuming big-endian encoding """
     return _q_struct.unpack(data)[0]
 
-def encode_key(key: Key, builder: Optional[KeyBuilder] = None) -> KeyBuilder:
+def encode_key(key: UserKey, builder: Optional[KeyBuilder] = None) -> KeyBuilder:
     """ Encodes a valid key (int or str) into a protobuf Value.
     """
     if builder is None:
@@ -144,7 +163,7 @@ def encode_key(key: Key, builder: Optional[KeyBuilder] = None) -> KeyBuilder:
     return builder
 
 
-def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Key]:
+def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[UserKey]:
     """ extracts the key from a proto entry """
     if isinstance(from_what, KeyBuilder):
         key_builder = from_what

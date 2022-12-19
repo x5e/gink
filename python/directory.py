@@ -232,8 +232,8 @@ class Directory(Container):
             change_set = ChangeSet(comment)
         assert isinstance(change_set, ChangeSet)
         to_time = self._database.as_of_to_mu_ts(to_time)
-        for entry in self._database.get_store().get_reset_entries(to_time=to_time, muid=self._muid,
-                user_key=key, recursive=recursive):
+        for entry in self._database.get_store().get_reset_changes(to_time=to_time, 
+                container=self._muid, user_key=key, recursive=recursive):
             change_set.add_change(entry)
         if immediate and len(change_set):
             self._database.add_change_set(change_set=change_set)

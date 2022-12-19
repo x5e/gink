@@ -1,16 +1,17 @@
 """Contains AbstractStore class."""
 
 # standard python modules
-from typing import Tuple, Callable, Optional as Opt, Iterable, List
+from typing import Tuple, Callable, Optional as Opt, Iterable, List, Union
 from abc import ABC, abstractmethod
 
 # protobuf builders
+from change_pb2 import Change as ChangeBuilder
 from entry_pb2 import Entry as EntryBuilder
 
 # Gink specific modules
 from change_set_info import ChangeSetInfo
 from chain_tracker import ChainTracker
-from typedefs import Key, MuTimestamp
+from typedefs import UserKey, MuTimestamp
 from tuples import EntryPair, Chain
 from muid import Muid
 
@@ -33,7 +34,7 @@ class AbstractStore(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_entry(self, container: Muid, key: Key, as_of: MuTimestamp) -> Opt[EntryPair]:
+    def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Opt[EntryPair]:
         """ Gets the most recent entry for a given key at as_of
         """
         assert self and container and key and as_of
@@ -100,8 +101,8 @@ class AbstractStore(ABC):
             raise ValueError("Change set received without prior link in chain!")
         return True
 
-    def get_reset_entries(self, to_time, muid: Opt[Muid], user_key: Opt[Key],
-            recursive=False) -> Iterable[EntryBuilder]:
+    def get_reset_changes(self, to_time, container: Opt[Muid], user_key: Opt[UserKey],
+            recursive=False) -> Iterable[Union[ChangeBuilder, EntryBuilder]]:
         """
         Generates reset entries that will change things back to how they were at given time.
 
@@ -116,5 +117,5 @@ class AbstractStore(ABC):
         If recursive is set to true, then will go and recursively update all entries
         in child objects that were referenced at to_time.
         """
-        assert self and to_time and muid and user_key and recursive
+        assert self and to_time and container and user_key and recursive
         raise NotImplementedError()

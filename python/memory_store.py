@@ -9,7 +9,7 @@ from sortedcontainers import SortedDict, SortedSet
 from change_set_pb2 import ChangeSet as ChangeSetBuilder
 
 # gink modules
-from typedefs import Key, MuTimestamp
+from typedefs import UserKey, MuTimestamp
 from tuples import Chain, EntryPair
 from change_set_info import ChangeSetInfo
 from abstract_store import AbstractStore
@@ -54,7 +54,7 @@ class MemoryStore(AbstractStore):
             last = jkey
         return result
 
-    def get_entry(self, container: Muid, key: Key, as_of: MuTimestamp) -> Optional[EntryPair]:
+    def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Optional[EntryPair]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0).invert()
         epoch_muid = Muid(0, 0, 0).invert()
         minimum=(container, json.dumps(key), as_of_muid)
