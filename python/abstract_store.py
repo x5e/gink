@@ -34,7 +34,7 @@ class AbstractStore(ABC):
 
     @abstractmethod
     def get_entry(self, container: Muid, key: Key, as_of: MuTimestamp) -> Opt[EntryPair]:
-        """ Gets the most recent entry for a given key at as_of (or now if not specified).
+        """ Gets the most recent entry for a given key at as_of
         """
         assert self and container and key and as_of
         raise NotImplementedError()

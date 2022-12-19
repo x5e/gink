@@ -33,7 +33,7 @@ class Queue(Container):
 
     def append(self, thing, change_set=None, comment=None):
         """ Append obect to the end of the queue. """
-        return self._add_entry(key=key, value=value, change_set=change_set, comment=comment)
+        return self._add_entry(value=thing, change_set=change_set, comment=comment)
 
     def pop(self, index=-1, muid=None, change_set=None):
         """ Remove and return an item at index (default last). """
