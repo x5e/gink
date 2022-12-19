@@ -14,7 +14,6 @@ message Entry {
         Key key = 3;        // when container is a SCHEMA or SET
         Muid edge = 4;      // only for src_node behavior in {Vertex, TAG}
         Span span = 5;      // only for src_node behavior = FILE
-        uint64 effective_time = 6; // optional when behavior = QUEUE
     }
 
     oneof enters {

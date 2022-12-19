@@ -16,5 +16,4 @@ message Exit {
     Muid container = 1;
     Muid entry = 2;
     uint64 expiry = 3;
-    uint64 entry_effective_time = 4; // when entry has effective_time
 }
