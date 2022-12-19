@@ -1,7 +1,37 @@
-class Queue:
 
-    def append(self, thing, change_set=None):
+
+# protobuf builder
+from behavior_pb2 import Behavior
+
+# gink implementation
+from typdefs import AsOf
+
+class Queue(Container):
+    BEHAVIOR = Behavior.Queue
+
+    def __init__(self, *, contents=None, muid: Optional[Muid]=None, database=None):
+        """
+        Constructor for a queue proxy.
+
+        muid: the global id of this queue, created on the fly if None
+        database: where to send commits through, or last db instance created if None
+        """
+        database = database or Database.last
+        change_set = ChangeSet()
+        if muid is None:
+            muid = Queue._create(Queue.BEHAVIOR, database=database, change_set=change_set)
+        Container.__init__(self, muid=muid, database=database)
+        self._muid = muid
+        self._database = database
+        if contents:
+            # TODO: implement clear, then append all of the items 
+        if len(change_set):
+            self._database.add_change_set(change_set)
+
+    def append(self, thing, change_set=None, comment=None, backdate=None):
         """ Append obect to the end of the queue. """
+        return self._add_entry(key=key, value=value, change_set=change_set, 
+            comment=comment, backdate=backdate)
 
     def pop(self, index=-1, muid=None, change_set=None):
         """ Remove and return an item at index (default last). """
