@@ -8,7 +8,7 @@ from entry_pb2 import Entry as EntryBuilder
 from key_pb2 import Key as KeyBuilder
 from behavior_pb2 import Behavior
 
-from typedefs import UserKey, MuTimestamp
+from typedefs import UserKey, MuTimestamp, ZERO_64, INF
 from muid import Muid
 
 class QueueMiddleKey(NamedTuple):
@@ -17,16 +17,16 @@ class QueueMiddleKey(NamedTuple):
 
     def __bytes__(self):
         if self.movement_muid:
-            return encode_int(self.effective_time) + bytes(self.movement_muid.invert())
+            return encode_muts(self.effective_time) + bytes(self.movement_muid.get_inverse())
         else:
-            return encode_int(self.effective_time)
+            return encode_muts(self.effective_time)
 
     def from_bytes(data: bytes):
         assert len(data) == 24, len(data)
         if len(data) == 8:
-            return QueueMiddleKey(decode_int(data[0:8]), None)
+            return QueueMiddleKey(decode_muts(data[0:8]), None)
         elif len(data) == 24:
-            return QueueMiddleKey(decode_int(data[0:8]), Muid.from_bytes(data[8:]).invert())
+            return QueueMiddleKey(decode_muts(data[0:8]), Muid.from_bytes(data[8:]).get_inverse())
         else:
             raise AssertionError("expected QueueMiddleKey to be 8 or 24 bytes")
 
@@ -52,7 +52,14 @@ class EntryStorageKey(NamedTuple):
         else:
             serialized_key = encode_key(self.middle_key).SerializeToString() # type: ignore
         return (bytes(self.container) + serialized_key +
-            bytes(self.entry_muid.invert()) + encode_int(self.expiry or 0))
+            bytes(self.entry_muid.get_inverse()) + encode_muts(self.expiry or 0))
+
+    def get_placed_time(self) -> MuTimestamp:
+        if isinstance(self.middle_key, QueueMiddleKey) and self.middle_key.movement_muid:
+            return self.middle_key.movement_muid.timestamp
+        else:
+            return self.entry_muid.timestamp
+
 
     @staticmethod
     def from_bytes(data: bytes, behavior: int=Behavior.SCHEMA):
@@ -69,8 +76,8 @@ class EntryStorageKey(NamedTuple):
         return EntryStorageKey(
                 container=Muid.from_bytes(container_bytes),
                 middle_key=middle_key,
-                entry_muid=Muid.from_bytes(entry_muid_bytes).invert(),
-                expiry=MuTimestamp(decode_int(expiry_bytes)) or None)
+                entry_muid=Muid.from_bytes(entry_muid_bytes).get_inverse(),
+                expiry=decode_muts(expiry_bytes) or None)
 
     def __lt__(self, other):
         # I'm override sort here because I want the same sort order of the binary representation,
@@ -151,13 +158,24 @@ def decode_value(value_builder: ValueBuilder): # pylint: disable=too-many-return
         return result
     raise ValueError("don't know how to decode: %r,%s" % (value_builder, type(value_builder))) # pylint: disable=consider-using-f-string
 
-def encode_int(number: int, _q_struct = Struct(">Q")) -> bytes:
-    """ packs an integer into 8 bytes (big-endian) """
+def encode_muts(number: Optional[MuTimestamp], _q_struct = Struct(">q")) -> bytes:
+    """ packs a microsecond timestamp into a big-endian integer, with None=>0 and Inf=>-1 """
+    if not number:
+        return ZERO_64
+    if number == INF:
+        number = -1
+    if isinstance(number, float):
+        assert number.is_integer()
+        number = int(number)
     return _q_struct.pack(number)
 
-def decode_int(data: bytes, _q_struct=Struct(">Q")) -> int:
-    """ unpacks 8 bytes of data into an int by assuming big-endian encoding """
-    return _q_struct.unpack(data)[0]
+def decode_muts(data: bytes, _q_struct=Struct(">q")) -> Optional[MuTimestamp]:
+    """ unpacks 8 bytes of data into a MuTimestamp by assuming big-endian encoding 
+
+        Treats 0 as "None" and -1 as Infinity.
+    """
+    result = _q_struct.unpack(data)[0]
+    return INF if result == -1 else (result or None)
 
 def encode_key(key: UserKey, builder: Optional[KeyBuilder] = None) -> KeyBuilder:
     """ Encodes a valid key (int or str) into a protobuf Value.

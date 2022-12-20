@@ -36,7 +36,7 @@ class MemoryStore(AbstractStore):
         self._containers = SortedDict()
 
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryAddressAndBuilder]:
-        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0).invert()
+        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0).get_inverse()
         iterator = self._entries.irange(
             minimum=(container, ''), maximum=(container, chr(127)))
         last = None
@@ -49,14 +49,15 @@ class MemoryStore(AbstractStore):
                 continue
             if inverse_entry_muid < as_of_muid:
                 continue
-            pair = EntryAddressAndBuilder(builder=self._entries[entry_key], address=inverse_entry_muid.invert())
+            pair = EntryAddressAndBuilder(builder=self._entries[entry_key], 
+                address=inverse_entry_muid.get_inverse())
             result.append(pair)
             last = jkey
         return result
 
     def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Optional[EntryAddressAndBuilder]:
-        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0).invert()
-        epoch_muid = Muid(0, 0, 0).invert()
+        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0).get_inverse()
+        epoch_muid = Muid(0, 0, 0).get_inverse()
         minimum=(container, json.dumps(key), as_of_muid)
         maximum=(container, json.dumps(key), epoch_muid)
         iterator = self._entries.irange(
@@ -64,7 +65,7 @@ class MemoryStore(AbstractStore):
             maximum=maximum)
         for ekey in iterator:
             assert isinstance(ekey, tuple)
-            return EntryAddressAndBuilder(builder=self._entries[ekey], address=ekey[2].invert())
+            return EntryAddressAndBuilder(builder=self._entries[ekey], address=ekey[2].get_inverse())
         return None
 
     def get_claimed_chains(self):
@@ -104,7 +105,7 @@ class MemoryStore(AbstractStore):
             else:
                 raise ValueError("bad key")
         src_muid = Muid.create(entry_builder.container, context=new_info)
-        entry_muid = Muid.create(context=new_info, offset=offset).invert()
+        entry_muid = Muid.create(context=new_info, offset=offset).get_inverse()
         dict_key = (src_muid, inner_key, entry_muid, entry_builder.expiry)
         self._entries[dict_key] = entry_builder
 

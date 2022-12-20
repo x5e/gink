@@ -7,6 +7,8 @@ from behavior_pb2 import Behavior
 from typedefs import AsOf
 from container import Container
 from muid import Muid
+from database import Database
+from change_set import ChangeSet
 
 class Queue(Container):
     BEHAVIOR = Behavior.QUEUE

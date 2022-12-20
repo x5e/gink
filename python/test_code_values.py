@@ -68,7 +68,7 @@ def test_entry_to_from_bytes():
     """ ensures that serialization works as expected """
     global_directory = Muid(-1, -1, 7)
 
-    key1 = EntryStorageKey(global_directory, "foo", Muid(1,2,3), MuTimestamp(99))
+    key1 = EntryStorageKey(global_directory, "foo", Muid(1,2,3), 99)
     encoded = bytes(key1)
     key2 = EntryStorageKey.from_bytes(encoded)
     assert key1 == key2, key2

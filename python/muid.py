@@ -35,13 +35,13 @@ class Muid(NamedTuple):
         assert len(result) == 34, len(result)
         return result
 
-    def invert(self):
+    def get_inverse(self):
         """ Returns a Muid with each component inverted.
 
             Used for reverse sorting.
         """
         return Muid(
-            timestamp=~self.timestamp,
+            timestamp=~int(self.timestamp),
             medallion=~self.medallion,
             offset=~self.offset)
 

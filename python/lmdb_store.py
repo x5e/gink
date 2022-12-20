@@ -2,7 +2,7 @@
 
 # Standard Python Stuff
 from typing import Tuple, Callable, Iterable, Optional, List, Union
-from struct import Struct
+from struct import pack
 import lmdb
 
 # Protobuf Modules
@@ -14,19 +14,19 @@ from behavior_pb2 import Behavior
 
 # Gink Implementation
 from typedefs import MuTimestamp, UserKey
-from tuples import Chain, EntryAddressAndBuilder
+from tuples import Chain, EntryAddressAndBuilder, PositionedEntry
 from muid import Muid
 from change_set_info import ChangeSetInfo
 from abstract_store import AbstractStore
 from chain_tracker import ChainTracker
 from code_values import (encode_key, create_deleting_entry, EntryStorageKeyAndVal, 
-    entries_equiv, EntryStorageKey, encode_int)
+    entries_equiv, EntryStorageKey, encode_muts, QueueMiddleKey)
 
 class LmdbStore(AbstractStore):
     """
-    Uses lightning memory mapped files (lmdb) to implement the Store interface.
+    Uses the Lightning Memory Mapped Database (lmdb) to implement the Store interface.
 
-    Under the hood, each .gink.mdb file stores several b-trees:
+    Under the hood, each gink.mdb file stores several b-trees:
 
         change_sets - Used to keep track of all commits we have seen.
             key: bytes(change_set_info), which forces sorting by (timestamp, medallion)
@@ -41,18 +41,24 @@ class LmdbStore(AbstractStore):
             val: chain_start (packed big endian)
 
         entries_tbl - Entry proto data from commits, ordered in a way that can be accessed easily.
-            key: (source-muid, middle-key, entry-muid, expiry), with muids packed into 16 bytes
+            key: (source-muid, middle-key, inv-entry-muid, expiry), with muids packed into 16 bytes
             val: binaryproto of the entry
             A couple of other wrinkles of note:
                 * The entry-key will be the KeyBuilder serialized in the container is a directory.
                 * In the case of a QUEUE, the entry-key will be (effective-time, move-muid?), where 
                   the move-muid is only present in the case of a move.
 
-        unenter_tbl - Used to move or soft delete things in the entries_tbl
-            key: (container-muid, eff-ts, inv-move/entry-muid, inv-exit-muid, dest-ts)
+        removal_tbl - Used to move or soft delete things in the entries_tbl
+            Designed so that the first 16+8+16=40 bytes matches the first 40 bytes of the entries key.
+            When removed to a different position and retaining history, the old entry stays in place,
+            with the removal signaling a soft delete, and a new entry is added to the entries table.
+            And the entries location table is updated with the new location of that entry.
+            key: (container-muid, eff-ts, inv-move/entry-muid, removal-muid)
             val: binaryproto of the exit
         
-        entries_loc - table used as an index to look-up entries by entry-muid
+        entries_loc - table used as an index to look-up entries by entry-muid for (re)-moving
+            key: entry-muid (always 16 bytes)
+            val: (container-muid, middle-key)
 
         container_defs - Map from muid to serialized containers definitions.
     """
@@ -60,7 +66,8 @@ class LmdbStore(AbstractStore):
     _chain_infos_db_name = "chain_infos".encode()
     _claimed_chains_name = "claimed_map".encode()
     _entries_tbl_db_name = "entries_tbl".encode()
-    _unenter_tbl_db_name = "unenter_tbl".encode()
+    _removal_tbl_db_name = "removal_tbl".encode()
+    _entries_loc_db_name = "entries_loc".encode()
     _container_defs_name = "container_defs".encode()
 
     def __init__(self, file_path, reset=False):
@@ -70,7 +77,8 @@ class LmdbStore(AbstractStore):
         self._chain_infos_db = self.env.open_db(self._change_sets_db_name)
         self._claimed_chains = self.env.open_db(self._claimed_chains_name)
         self._entries_tbl_db = self.env.open_db(self._entries_tbl_db_name)
-        self._unenter_tbl_db = self.env.open_db(self._unenter_tbl_db_name)
+        self._removal_tbl_db = self.env.open_db(self._removal_tbl_db_name)
+        self._entries_loc_db = self.env.open_db(self._entries_loc_db_name)
         self._container_defs = self.env.open_db(self._container_defs_name)
         if reset:
             with self.env.begin(write=True) as txn:
@@ -118,14 +126,12 @@ class LmdbStore(AbstractStore):
 
 
     @staticmethod
-    def _grok_entry(entries_cursor) -> EntryStorageKeyAndVal:
+    def _grok_entry(entries_cursor, behavior: int=Behavior.SCHEMA) -> EntryStorageKeyAndVal:
         key_as_bytes, value_as_bytes = entries_cursor.item()
-        parsed_key = EntryStorageKey.from_bytes(key_as_bytes)
+        parsed_key = EntryStorageKey.from_bytes(key_as_bytes, behavior)
         entry_builder = EntryBuilder()
         entry_builder.ParseFromString(value_as_bytes) # type: ignore
         return EntryStorageKeyAndVal(parsed_key, entry_builder)
-
-    # TODO: add a seek(lmdb_cursor, minimum, maximum) method to simplify the _helper
 
     @staticmethod
     def _get_dir_reset_entries(container: Muid, seen, user_key, entries_cursor, 
@@ -139,7 +145,6 @@ class LmdbStore(AbstractStore):
             serialized_user_key = encode_key(user_key).SerializeToString() # type: ignore
         seek_succeeded = entries_cursor.set_range(bytes(container) + serialized_user_key)
         while seek_succeeded:
-
             now = LmdbStore._grok_entry(entries_cursor)
             if now.key.container != container or (user_key and now.key.middle_key != user_key):
                 break
@@ -152,7 +157,6 @@ class LmdbStore(AbstractStore):
                     yield create_deleting_entry(container, now.key.middle_key)
                     # TODO: check if last now.builder is deleting and skip deleting entry if so
                     break # nothing left in table to worry about
-
             then = LmdbStore._grok_entry(entries_cursor)
 
             if then.key.container != container or then.key.middle_key != now.key.middle_key:
@@ -171,21 +175,18 @@ class LmdbStore(AbstractStore):
                     yield _
             seek_succeeded = entries_cursor.set_range(bytes(now.key.replace_time(0)))
 
-
-
     def close(self):
         self.env.close()
 
     def claim_chain(self, chain: Chain):
         with self.env.begin(write=True) as txn:
-            key = encode_int(chain.medallion)
-            val = encode_int(chain.chain_start)
+            key = encode_muts(chain.medallion)
+            val = encode_muts(chain.chain_start)
             txn.put(key, val, db=self._claimed_chains)
 
     def get_claimed_chains(self) -> Iterable[Chain]:
         assert self
         raise NotImplementedError()
-
     
     @staticmethod
     def _seek(cursor, prefix: Optional[bytes]=None, after: Optional[bytes]=None) -> bool:
@@ -198,14 +199,14 @@ class LmdbStore(AbstractStore):
         if prefix and not key.startswith(prefix):
             return False
         return True
-        
 
-    def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Optional[EntryAddressAndBuilder]:
+    def get_entry(self, container: Muid, key: Optional[UserKey], as_of: MuTimestamp
+            ) -> Optional[EntryAddressAndBuilder]:
         """ Gets the entry for a given containing object with a given key at a given time."""
         built = encode_key(key).SerializeToString() if key is not None else b"" # type: ignore
         assert isinstance(key, (int, str)) or built == b""
         prefix = bytes(container) + built
-        seek_after = prefix + bytes(Muid(as_of, 0, 0).invert())
+        seek_after = prefix + bytes(Muid(as_of, 0, 0).get_inverse())
         with self.env.begin() as txn:
             cursor = txn.cursor(self._entries_tbl_db)
             seek_succeded = LmdbStore._seek(cursor, prefix, after=seek_after)
@@ -215,14 +216,53 @@ class LmdbStore(AbstractStore):
             assert isinstance(bkey, bytes)
             entry_builder = EntryBuilder()
             entry_builder.ParseFromString(bval) # type: ignore
-            entry_muid = Muid.from_bytes(bkey[len(prefix):]).invert()
+            entry_muid = Muid.from_bytes(bkey[len(prefix):]).get_inverse()
             return EntryAddressAndBuilder(address=entry_muid, builder=entry_builder)
+    
+    def get_ordered_entries(self, container: Muid, as_of: MuTimestamp, limit: Optional[int]=None, 
+            offset: int=0, desc: bool=False) -> Iterable[PositionedEntry]:
+        if desc:
+            raise NotImplementedError()
+        prefix = bytes(container)
+        with self.env.begin() as txn:
+            entries_cursor = txn.cursor(self._entries_tbl_db)
+            removal_cursor = txn.cursor(self._removal_tbl_db)
+            seek_succeeded = entries_cursor.seek_range(prefix)
+            while seek_succeeded and (limit is None or limit > 0):
+                entries_key = entries_cursor.key()
+                if not entries_key.startswith(prefix):
+                    break
+                parsed_key = EntryStorageKey.from_bytes(entries_key, Behavior.QUEUE)
+                middle_key = parsed_key.middle_key
+                assert isinstance(middle_key, QueueMiddleKey)
+                if middle_key.effective_time > as_of:
+                    break # times will only increase
+                if parsed_key.expiry and (parsed_key.expiry < as_of):
+                    continue # this entry has expired by the as_of time
+                found_removal = LmdbStore._seek(removal_cursor, prefix=entries_key[0:40])
+                if found_removal and Muid.from_bytes(removal_cursor.key()[40:]).timestamp < as_of:
+                    continue  # this entry at this position was (re)moved by this time
+                # If we got here, then we know the entry is active at the as_of time.
+                if offset > 0:
+                    offset -= 1
+                    seek_succeeded = entries_cursor.next()
+                    continue
+                entry_builder = EntryBuilder()
+                entry_builder.ParseFromString(entries_cursor.value())
+                yield PositionedEntry(
+                    position=middle_key.effective_time, 
+                    positioner=middle_key.movement_muid or parsed_key.entry_muid,
+                    entry_muid=parsed_key.entry_muid,
+                    entry_data=entry_builder)
+                if limit is not None:
+                    limit -= 1
+                seek_succeeded = entries_cursor.next()
 
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryAddressAndBuilder]:
         """ gets all the active entries as of a particular time """
         container_prefix = bytes(container)
-        time_bytes = bytes(Muid(as_of, 0, 0).invert())
-        epoch_bytes = bytes(Muid(0,0,0).invert())
+        time_bytes = bytes(Muid(as_of, 0, 0).get_inverse())
+        epoch_bytes = bytes(Muid(0,0,0).get_inverse())
         result: List[EntryAddressAndBuilder] = []
         with self.env.begin() as txn:
             cursor = txn.cursor(self._entries_tbl_db)
@@ -241,7 +281,7 @@ class LmdbStore(AbstractStore):
                     continue
                 entry_builder = EntryBuilder()
                 entry_builder.ParseFromString(bval)  # type: ignore
-                entry_muid = Muid.from_bytes(bkey[len(key_without_entry_or_expiry):]).invert()
+                entry_muid = Muid.from_bytes(bkey[len(key_without_entry_or_expiry):]).get_inverse()
                 result.append(EntryAddressAndBuilder(address=entry_muid, builder=entry_builder))
                 seek_succeded = cursor.set_range(key_without_entry_or_expiry + epoch_bytes)
         return result
@@ -251,7 +291,7 @@ class LmdbStore(AbstractStore):
         builder = ChangeSetBuilder()
         builder.ParseFromString(change_set_bytes)  # type: ignore
         new_info = ChangeSetInfo(builder=builder)
-        chain_key = encode_int(new_info.medallion) + encode_int(new_info.chain_start)
+        chain_key = pack(">QQ", new_info.medallion, new_info.chain_start)
         # Note: LMDB supports only one write transaction, so we don't need to explicitly lock.
         with self.env.begin(write=True) as txn:
             chain_value_old = txn.get(chain_key, db=self._chain_infos_db)
@@ -271,15 +311,23 @@ class LmdbStore(AbstractStore):
                     raise AssertionError(f"{repr(change.ListFields())} {offset} {new_info}")
         return (new_info, needed)
 
-    def _add_entry(self, new_info, txn, offset, entry):
-        user_key = b""
-        if entry.HasField("key"):
-            user_key = entry.key.SerializeToString()
-        src_muid = Muid.create(entry.container, context=new_info)
+    def _add_entry(self, new_info: ChangeSetInfo, txn, offset: int, entry_builder: EntryBuilder):
+        container_muid = Muid.create(entry_builder.container, context=new_info)
         entry_muid = Muid.create(context=new_info, offset=offset)
-        packed_expiry = encode_int(entry.expiry)
-        bkey = bytes(src_muid) + user_key + bytes(entry_muid.invert()) + packed_expiry
-        txn.put(bkey, entry.SerializeToString(), db=self._entries_tbl_db)
+        middle_bytes = b""
+        if entry_builder.behavior == Behavior.SCHEMA and entry_builder.HasField("key"):
+            middle_bytes = entry_builder.key.SerializeToString()
+        elif entry_builder.behavior == Behavior.QUEUE:
+            assert entry_muid.timestamp > 0
+            middle_bytes = encode_muts(entry_muid.timestamp)
+        else:
+            raise NotImplementedError()
+        packed_expiry = encode_muts(entry_builder.expiry)
+        container_muid_bytes = bytes(container_muid)
+        container_plus_middle = container_muid_bytes + middle_bytes 
+        entries_tbl_key = container_plus_middle + bytes(entry_muid.get_inverse()) + packed_expiry
+        txn.put(entries_tbl_key, entry_builder.SerializeToString(), db=self._entries_tbl_db)
+        txn.put(bytes(entry_muid), container_plus_middle)
 
     def get_commits(self, callback: Callable[[bytes, ChangeSetInfo], None]):
         with self.env.begin() as txn:

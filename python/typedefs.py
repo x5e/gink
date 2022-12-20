@@ -2,8 +2,10 @@
 from typing import NewType, Union
 
 Medallion = NewType('Medallion', int)
-MuTimestamp = NewType('MuTimestamp', int)
+MuTimestamp = Union[int, float]
 Offset = NewType('Offset', int)
 AsOf = Union[MuTimestamp, None]
 UserKey = Union[str, int]
-EPOCH = MuTimestamp(0)
+EPOCH = 0
+INF = float("inf")
+ZERO_64 = b"\x00" * 8

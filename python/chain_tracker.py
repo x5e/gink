@@ -37,8 +37,8 @@ class ChainTracker:
             return what.timestamp <= self._acked.get(what.get_chain(), 0)
         if isinstance(what, Muid):
             iterator = self._acked.irange(
-                minimum=Chain(Medallion(what.medallion), MuTimestamp(0)),
-                maximum=Chain(Medallion(what.medallion), MuTimestamp(what.timestamp)))
+                minimum=Chain(Medallion(what.medallion), 0),
+                maximum=Chain(Medallion(what.medallion), what.timestamp))
             for chain, seen_to in iterator:
                 assert isinstance(chain, Chain)
                 if what.timestamp >= chain.chain_start and what.timestamp <= seen_to:

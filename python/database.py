@@ -47,7 +47,7 @@ class Database:
             if self._last_time is None or now > self._last_time:
                 break
         self._last_time = now
-        return MuTimestamp(now)
+        return now
 
     def as_of_to_mu_ts(self, as_of: AsOf) -> MuTimestamp:
         """ translates the abstract as of (which can be None or negative) into a real timestamp """
@@ -65,7 +65,7 @@ class Database:
         # TODO[P2]: reuse claimed chains
         medallion =  randint((2 ** 48) + 1, (2 ** 49) - 1)
         chain_start = self.get_mu_timestamp()
-        chain = Chain(medallion=Medallion(medallion), chain_start=MuTimestamp(chain_start))
+        chain = Chain(medallion=Medallion(medallion), chain_start=chain_start)
         starting_change_set = ChangeSet()
         self._add_info(starting_change_set)
         info = ChangeSetInfo(medallion=medallion, chain_start=chain_start, timestamp=chain_start)

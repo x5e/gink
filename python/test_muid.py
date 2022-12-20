@@ -30,7 +30,7 @@ def test_invert():
     expected = bytes.fromhex("FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00007".replace("-",""))
     assert as_bytes == expected, muid0
 
-    muidi = muid0.invert()
+    muidi = muid0.get_inverse()
     as_str = str(muidi)
     expected = '00000000000000-0000000000000-FFFF8'
     assert as_str == expected, (as_str, expected)
