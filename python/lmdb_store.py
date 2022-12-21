@@ -272,10 +272,15 @@ class LmdbStore(AbstractStore):
                 assert isinstance(middle_key, QueueMiddleKey)
                 if middle_key.effective_time > as_of:
                     break # times will only increase
+                if parsed_key.get_placed_time() > as_of:
+                    seek_succeeded = entries_cursor.next()
+                    continue # this was put here after when I'm looking
                 if parsed_key.expiry and (parsed_key.expiry < as_of):
+                    seek_succeeded = entries_cursor.next()
                     continue # this entry has expired by the as_of time
                 found_removal = LmdbStore._seek(removal_cursor, prefix=entries_key[0:40])
                 if found_removal and Muid.from_bytes(removal_cursor.key()[40:]).timestamp < as_of:
+                    seek_succeeded = entries_cursor.next()
                     continue  # this entry at this position was (re)moved by this time
                 # If we got here, then we know the entry is active at the as_of time.
                 if offset > 0:

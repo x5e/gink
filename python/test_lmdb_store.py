@@ -110,9 +110,14 @@ def test_get_ordered_entries(store_maker = maker):
         serialized2 = change_set_builder2.SerializeToString() # type: ignore
         store.add_commit(serialized2)
         found = [_ for _ in store.get_ordered_entries(container=Muid(123, 789, 1), as_of=124)]
-        assert found[0].entry_muid == Muid(123, 789, 4)
+        assert len(found) == 3
+        assert found[0].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
+        assert found[2].entry_muid == Muid(123, 789, 4)
+        found = [_ for _ in store.get_ordered_entries(container=Muid(123, 789, 1), as_of=235)]
         assert len(found) == 2
+        assert found[0].entry_muid == Muid(123, 789, 4)
+        assert found[1].entry_muid == Muid(123, 789, 3), found
 
 if __name__ == "__main__":
     test_get_ordered_entries()
