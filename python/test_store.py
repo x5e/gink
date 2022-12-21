@@ -1,9 +1,18 @@
 """ Various tests of Store objects that can be run against any implementation. """
+
+# batteries included python modules
 from typing import Callable
 from contextlib import closing
+
+# things installed via pip
+from google.protobuf.text_format import Parse
+
+# gink generated proto modules
+from change_set_pb2 import ChangeSet as ChangeSetBuilder
+
+# gink stuff
 from abstract_store import AbstractStore
 from change_set_info import ChangeSetInfo
-from change_set_pb2 import ChangeSet as ChangeSetBuilder
 
 StoreMaker = Callable[[], AbstractStore]
 
@@ -164,3 +173,4 @@ def generic_test_tracks(store_maker: StoreMaker):
         assert tracker.has(info3)
         assert tracker.has(info4)
         assert not tracker.has(info5)
+

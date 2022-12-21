@@ -1,6 +1,6 @@
 """ tests the conversion functions in code_values
 """
-from code_values import encode_value, decode_value, EntryStorageKey, QueueMiddleKey, Behavior
+from code_values import encode_value, decode_value, EntryStorageKey, QueueMiddleKey, QUEUE
 from muid import Muid
 from typedefs import MuTimestamp
 
@@ -75,5 +75,5 @@ def test_entry_to_from_bytes():
 
     key3 = EntryStorageKey(Muid(123, 77, 1), QueueMiddleKey(235, Muid(234, 77, 3)), Muid(234, 77, 2), None)
     encoded = bytes(key3)
-    key4 = EntryStorageKey.from_bytes(encoded, behavior=Behavior.QUEUE)
+    key4 = EntryStorageKey.from_bytes(encoded, behavior=QUEUE)
     assert key4 == key3, key4

@@ -1,15 +1,30 @@
 """ Utility functions for encoding and decoding values, keys, and other binary data
 """
-from typing import Optional, Union, NamedTuple
-from struct import Struct
+from typing import Optional, Union, NamedTuple, List, Any
+from struct import Struct, unpack
+from google.protobuf.message import Message
 
 from value_pb2 import Value as ValueBuilder
 from entry_pb2 import Entry as EntryBuilder
 from key_pb2 import Key as KeyBuilder
 from behavior_pb2 import Behavior
 
-from typedefs import UserKey, MuTimestamp, ZERO_64, INF
+from typedefs import UserKey, MuTimestamp, UserKey
 from muid import Muid
+
+UNKNOWN: int = Behavior.UNKNOWN # type: ignore
+QUEUE: int = Behavior.QUEUE # type: ignore
+SCHEMA: int = Behavior.SCHEMA # type: ignore
+FLOAT_INF = float("inf")
+INT_INF = unpack(">Q", b"\xff"*8)[0]
+ZERO_64: bytes = b"\x00" * 8
+
+def serialize(thing) -> bytes:
+    if isinstance(thing, Message):
+        return thing.SerializeToString()
+    if thing is None or isinstance(thing, (int, float)):
+        return encode_muts(thing)
+    return bytes(thing)
 
 class QueueMiddleKey(NamedTuple):
     effective_time: MuTimestamp
@@ -21,12 +36,14 @@ class QueueMiddleKey(NamedTuple):
         else:
             return encode_muts(self.effective_time)
 
+    @staticmethod
     def from_bytes(data: bytes):
-        assert len(data) == 24, len(data)
+        effective_time = decode_muts(data[0:8])
+        assert effective_time is not None
         if len(data) == 8:
-            return QueueMiddleKey(decode_muts(data[0:8]), None)
+            return QueueMiddleKey(effective_time, None)
         elif len(data) == 24:
-            return QueueMiddleKey(decode_muts(data[0:8]), Muid.from_bytes(data[8:]).get_inverse())
+            return QueueMiddleKey(effective_time, Muid.from_bytes(data[8:]).get_inverse())
         else:
             raise AssertionError("expected QueueMiddleKey to be 8 or 24 bytes")
 
@@ -42,42 +59,52 @@ class EntryStorageKey(NamedTuple):
     entry_muid: Muid
     expiry: Optional[MuTimestamp]
 
+    @staticmethod
+    def from_bytes(data: bytes, behavior: int=UNKNOWN):
+        """ creates an entry key from its binary format """
+        container_bytes = data[0:16]
+        middle_key_bytes = data[16:-24]
+        entry_muid_bytes = data[-24:-8]
+        expiry_bytes = data[-8:]
+        entry_muid = Muid.from_bytes(entry_muid_bytes)
+        middle_key: Union[QueueMiddleKey, UserKey, None]
+        if behavior == UNKNOWN:
+            # make a guess
+            behavior = QUEUE if middle_key_bytes[0] == 0 else SCHEMA
+        if behavior == SCHEMA:
+            middle_key = decode_key(middle_key_bytes)
+            entry_muid = entry_muid.get_inverse()
+        elif behavior == QUEUE:
+            middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
+        else:
+            raise AssertionError("unexpected behavior")
+        assert middle_key is not None, "directory keys must be strings or integers"
+        return EntryStorageKey(
+                container=Muid.from_bytes(container_bytes),
+                middle_key=middle_key,
+                entry_muid=entry_muid,
+                expiry=decode_muts(expiry_bytes))
+
     def replace_time(self, timestamp: int):
         """ create a entry key that can be used for seeking before the given time """
         return EntryStorageKey(self.container, self.middle_key, Muid(timestamp, 0,0,), None)
 
     def __bytes__(self):
+        parts: List[Any] = [self.container]
         if isinstance(self.middle_key, QueueMiddleKey):
-            serialized_key = bytes(self.middle_key)
+            parts.append(self.middle_key)
+            parts.append(self.entry_muid)
         else:
-            serialized_key = encode_key(self.middle_key).SerializeToString() # type: ignore
-        return (bytes(self.container) + serialized_key +
-            bytes(self.entry_muid.get_inverse()) + encode_muts(self.expiry or 0))
+            parts.append(encode_key(self.middle_key))
+            parts.append(self.entry_muid.get_inverse())
+        parts.append(self.expiry)
+        return b"".join(map(serialize, parts))
 
     def get_placed_time(self) -> MuTimestamp:
         if isinstance(self.middle_key, QueueMiddleKey) and self.middle_key.movement_muid:
             return self.middle_key.movement_muid.timestamp
         else:
             return self.entry_muid.timestamp
-
-
-    @staticmethod
-    def from_bytes(data: bytes, behavior: int=Behavior.SCHEMA):
-        """ creates an entry key from its binary format """
-        container_bytes = data[0:16]
-        middle_key_bytes = data[16:-24]
-        entry_muid_bytes = data[-24:-8]
-        expiry_bytes = data[-8:]
-        if behavior == Behavior.SCHEMA:
-            middle_key = decode_key(middle_key_bytes)
-            assert middle_key is not None, "directory keys must be strings or integers"
-        else:
-            middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
-        return EntryStorageKey(
-                container=Muid.from_bytes(container_bytes),
-                middle_key=middle_key,
-                entry_muid=Muid.from_bytes(entry_muid_bytes).get_inverse(),
-                expiry=decode_muts(expiry_bytes) or None)
 
     def __lt__(self, other):
         # I'm override sort here because I want the same sort order of the binary representation,
@@ -86,7 +113,7 @@ class EntryStorageKey(NamedTuple):
         return bytes(self) < bytes(other)
 
 
-class EntryStorageKeyAndVal(NamedTuple):
+class EntryStoragePair(NamedTuple):
     """ Parsed entry data. """
     key: EntryStorageKey
     builder: EntryBuilder
@@ -107,7 +134,7 @@ def create_deleting_entry(muid: Muid, key: Optional[UserKey]) -> EntryBuilder:
     encode_key(key, entry_builder.key) # type: ignore
     return entry_builder
 
-def entries_equiv(pair1: EntryStorageKeyAndVal, pair2: EntryStorageKeyAndVal) -> bool:
+def entries_equiv(pair1: EntryStoragePair, pair2: EntryStoragePair) -> bool:
     """ Checks the contained value/pointee/whatever to see if the entries are equiv.
 
         Used to see if the effective value in a container is the same even if it
@@ -158,11 +185,11 @@ def decode_value(value_builder: ValueBuilder): # pylint: disable=too-many-return
         return result
     raise ValueError("don't know how to decode: %r,%s" % (value_builder, type(value_builder))) # pylint: disable=consider-using-f-string
 
-def encode_muts(number: Optional[MuTimestamp], _q_struct = Struct(">q")) -> bytes:
+def encode_muts(number: Union[int, float, None], _q_struct = Struct(">q")) -> bytes:
     """ packs a microsecond timestamp into a big-endian integer, with None=>0 and Inf=>-1 """
     if not number:
         return ZERO_64
-    if number == INF:
+    if number == INT_INF or number == FLOAT_INF:
         number = -1
     if isinstance(number, float):
         assert number.is_integer()
@@ -172,10 +199,10 @@ def encode_muts(number: Optional[MuTimestamp], _q_struct = Struct(">q")) -> byte
 def decode_muts(data: bytes, _q_struct=Struct(">q")) -> Optional[MuTimestamp]:
     """ unpacks 8 bytes of data into a MuTimestamp by assuming big-endian encoding 
 
-        Treats 0 as "None" and -1 as Infinity.
+        Treats 0 as "None" and -1 as "integer infinity" (i.e. highest unsigned 64 bit number)
     """
     result = _q_struct.unpack(data)[0]
-    return INF if result == -1 else (result or None)
+    return INT_INF if result == -1 else (result or None)
 
 def encode_key(key: UserKey, builder: Optional[KeyBuilder] = None) -> KeyBuilder:
     """ Encodes a valid key (int or str) into a protobuf Value.
@@ -187,7 +214,6 @@ def encode_key(key: UserKey, builder: Optional[KeyBuilder] = None) -> KeyBuilder
     if isinstance(key, int):
         builder.number = key # type: ignore # pylint: disable=maybe-no-member
     return builder
-
 
 def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[UserKey]:
     """ extracts the key from a proto entry """
@@ -207,7 +233,6 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Us
     if key_builder.HasField("characters"):  # type: ignore
         return key_builder.characters  # type: ignore
     return None
-
 
 def encode_value(value, value_builder: Optional[ValueBuilder] = None) -> ValueBuilder:
     """ encodes a python value (number, string, etc.) into a protobuf builder

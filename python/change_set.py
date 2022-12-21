@@ -55,7 +55,6 @@ class ChangeSet:
             builder.entry.CopyFrom(entry_builder) # type: ignore # pylint: disable=maybe-no-member
         assert isinstance(builder, ChangeBuilder)
         changes = self._change_set_builder.changes # type: ignore # pylint: disable=maybe-no-member
-        changes[self._count_items].ignored = True # have to do this because can't call __setitem__
         changes[self._count_items].CopyFrom(builder) # type: ignore
         return muid
 

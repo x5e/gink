@@ -1,6 +1,6 @@
 syntax = "proto3";
 package google.gink;
-import "description.proto";
+import "caption.proto";
 import "container.proto";
 import "edge_type.proto";
 import "property_type.proto";
@@ -12,8 +12,8 @@ import "exit.proto";
 * Any update/change that can be referenced by Gink
 */
 message Change {
-    bool ignored = 1;
     oneof obj {
+        Caption caption = 1;
         Container container = 2;
         EdgeType edge_type = 3;
         PropertyType property_type = 5;
