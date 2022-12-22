@@ -34,7 +34,8 @@ class AbstractStore(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Optional[FoundEntry]:
+    def get_entry(self, container: Muid, key: Union[UserKey, Muid, None], 
+            as_of: MuTimestamp) -> Optional[FoundEntry]:
         """ Gets the most recent entry for a given key at as_of
         """
         assert self and container and key and as_of
