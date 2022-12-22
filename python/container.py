@@ -7,7 +7,7 @@ from change_set import ChangeSet
 from database import Database
 from entry_pb2 import Entry as EntryBuilder
 from change_pb2 import Change as ChangeBuilder
-from code_values import encode_key, encode_value
+from coding import encode_key, encode_value
 
 class Container(ABC):
     """ Abstract base class for mutable data types (directories, queues, etc). """

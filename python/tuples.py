@@ -9,7 +9,7 @@ class Chain(NamedTuple):
     medallion: Medallion
     chain_start: MuTimestamp
 
-class EntryAddressAndBuilder(NamedTuple):
+class FoundEntry(NamedTuple):
     """ Entry information returned by the store for keyed containers.
 
     The address is necessary because some muids in the proto may be relative.

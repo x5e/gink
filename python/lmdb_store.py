@@ -15,12 +15,12 @@ from behavior_pb2 import Behavior
 
 # Gink Implementation
 from typedefs import MuTimestamp, UserKey
-from tuples import Chain, EntryAddressAndBuilder, PositionedEntry
+from tuples import Chain, FoundEntry, PositionedEntry
 from muid import Muid
 from change_set_info import ChangeSetInfo
 from abstract_store import AbstractStore
 from chain_tracker import ChainTracker
-from code_values import (encode_key, create_deleting_entry, EntryStoragePair, 
+from coding import (encode_key, create_deleting_entry, EntryStoragePair, 
     entries_equiv, EntryStorageKey, encode_muts, QueueMiddleKey, SCHEMA, QUEUE, serialize)
 
 class LmdbStore(AbstractStore):
@@ -219,7 +219,7 @@ class LmdbStore(AbstractStore):
         return LmdbStore._grok_entry(entries_cursor, QUEUE)
 
     def get_entry(self, container: Muid, key: Union[None, UserKey, Muid],
-            as_of: MuTimestamp=-1) -> Optional[EntryAddressAndBuilder]:
+            as_of: MuTimestamp=-1) -> Optional[FoundEntry]:
         """ Gets a single entry (or none if nothing in the database matches).
 
         When "key" is None, assumes that the container is a box and returns the most
@@ -237,7 +237,7 @@ class LmdbStore(AbstractStore):
                 storage_pair = self._get_queue_entry(txn, key, as_of=as_of)
                 if not storage_pair:
                     return None
-                return EntryAddressAndBuilder(storage_pair.key.entry_muid, storage_pair.builder)
+                return FoundEntry(storage_pair.key.entry_muid, storage_pair.builder)
                 
             built = serialize(encode_key(key)) if isinstance(key, (int, str)) else b""
             assert isinstance(key, (int, str)) or built == b""
@@ -251,7 +251,7 @@ class LmdbStore(AbstractStore):
             entry_builder = EntryBuilder()
             entry_builder.ParseFromString(bval) # type: ignore
             entry_muid = Muid.from_bytes(bkey[len(prefix):]).get_inverse()
-            return EntryAddressAndBuilder(address=entry_muid, builder=entry_builder)
+            return FoundEntry(address=entry_muid, builder=entry_builder)
 
     @staticmethod
     def _last_with_prefix(cursor: Cursor, prefix: bytes, suffix: bytes=b"\xFF"*40)->bool:
@@ -310,12 +310,11 @@ class LmdbStore(AbstractStore):
                     limit -= 1
                 placed = entries_cursor.prev() if desc else entries_cursor.next()
 
-    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryAddressAndBuilder]:
-        """ gets all the active entries as of a particular time """
+    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
+        """ gets all the active entries in a direcotry as of a particular time """
         container_prefix = bytes(container)
         time_bytes = bytes(Muid(int(as_of), 0, 0).get_inverse())
         epoch_bytes = bytes(Muid(0,0,0).get_inverse())
-        result: List[EntryAddressAndBuilder] = []
         with self.env.begin() as txn:
             cursor = txn.cursor(self._entries_tbl_db)
             seek_succeded = cursor.set_range(container_prefix)
@@ -334,9 +333,8 @@ class LmdbStore(AbstractStore):
                 entry_builder = EntryBuilder()
                 entry_builder.ParseFromString(bval)  # type: ignore
                 entry_muid = Muid.from_bytes(bkey[len(key_without_entry_or_expiry):]).get_inverse()
-                result.append(EntryAddressAndBuilder(address=entry_muid, builder=entry_builder))
+                yield FoundEntry(address=entry_muid, builder=entry_builder)
                 seek_succeded = cursor.set_range(key_without_entry_or_expiry + epoch_bytes)
-        return result
 
     def get_all_entry_keys(self):
         print("get_all_entries")
@@ -403,24 +401,12 @@ class LmdbStore(AbstractStore):
             txn.put(new_location_key, b"", db=self._entries_loc_db)
 
     def _add_entry(self, new_info: ChangeSetInfo, txn: Trxn, offset: int, builder: EntryBuilder):
-        container_muid = Muid.create(getattr(builder, "container"), context=new_info)
-        entry_muid = Muid.create(context=new_info, offset=offset)
-        middle_bytes = b""
-        if builder.behavior == SCHEMA and builder.HasField("key"): # type: ignore
-            middle_bytes = builder.key.SerializeToString() # type: ignore
-            entry_muid = entry_muid.get_inverse()
-        elif builder.behavior == QUEUE: # type: ignore
-            assert entry_muid.timestamp > 0
-            middle_bytes = encode_muts(entry_muid.timestamp)
-        else:
-            raise NotImplementedError()
-        packed_expiry = encode_muts(builder.expiry) # type: ignore
-        container_muid_bytes = bytes(container_muid)
-        container_plus_middle = container_muid_bytes + middle_bytes 
-        entries_tbl_key = container_plus_middle + bytes(entry_muid) + packed_expiry
-        txn.put(entries_tbl_key, serialize(builder), db=self._entries_tbl_db)
+        entry_storage_key = EntryStorageKey.from_builder(builder, new_info, offset)
+        serialized_esk = bytes(entry_storage_key)
+        txn.put(serialized_esk, serialize(builder), db=self._entries_tbl_db)
+        entry_muid = entry_storage_key.entry_muid
         entries_loc_key = bytes(entry_muid) + serialize(~entry_muid.timestamp)
-        txn.put(entries_loc_key, entries_tbl_key, db=self._entries_loc_db)
+        txn.put(entries_loc_key, serialized_esk, db=self._entries_loc_db)
 
     def get_commits(self, callback: Callable[[bytes, ChangeSetInfo], None]):
         with self.env.begin() as txn:

@@ -1,8 +1,8 @@
 """ tests the conversion functions in code_values
 """
-from code_values import encode_value, decode_value, EntryStorageKey, QueueMiddleKey, QUEUE
+from coding import encode_value, decode_value, EntryStorageKey, QueueMiddleKey, QUEUE
 from muid import Muid
-from typedefs import MuTimestamp
+
 
 
 def test_encode_decode():

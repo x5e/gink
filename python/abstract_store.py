@@ -1,7 +1,7 @@
 """Contains AbstractStore class."""
 
 # standard python modules
-from typing import Tuple, Callable, Optional as Opt, Iterable, List, Union
+from typing import Tuple, Callable, Optional, Iterable, List, Union
 from abc import ABC, abstractmethod
 
 # protobuf builders
@@ -12,7 +12,7 @@ from entry_pb2 import Entry as EntryBuilder
 from change_set_info import ChangeSetInfo
 from chain_tracker import ChainTracker
 from typedefs import UserKey, MuTimestamp
-from tuples import EntryAddressAndBuilder, Chain
+from tuples import FoundEntry, Chain, PositionedEntry
 from muid import Muid
 
 class AbstractStore(ABC):
@@ -29,15 +29,21 @@ class AbstractStore(ABC):
         self.close()
 
     @abstractmethod
-    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryAddressAndBuilder]:
+    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
         """ Gets all active entries for a given container as of the given time. """
         raise NotImplementedError()
 
     @abstractmethod
-    def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Opt[EntryAddressAndBuilder]:
+    def get_entry(self, container: Muid, key: UserKey, as_of: MuTimestamp) -> Optional[FoundEntry]:
         """ Gets the most recent entry for a given key at as_of
         """
         assert self and container and key and as_of
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def get_ordered_entries(self, container: Muid, as_of: MuTimestamp, limit: Optional[int]=None, 
+            offset: int=0, desc: bool=False) -> Iterable[PositionedEntry]:
+        assert self or container or as_of or limit or offset or desc
         raise NotImplementedError()
 
     def close(self):
@@ -88,7 +94,7 @@ class AbstractStore(ABC):
         raise NotImplementedError()
 
     @staticmethod
-    def _is_needed(new_info: ChangeSetInfo, old_info: Opt[ChangeSetInfo]) -> bool:
+    def _is_needed(new_info: ChangeSetInfo, old_info: Optional[ChangeSetInfo]) -> bool:
         seen_through = 0
         if old_info:
             assert old_info.get_chain() == new_info.get_chain()
@@ -101,7 +107,7 @@ class AbstractStore(ABC):
             raise ValueError("Change set received without prior link in chain!")
         return True
 
-    def get_reset_changes(self, to_time, container: Opt[Muid], user_key: Opt[UserKey],
+    def get_reset_changes(self, to_time, container: Optional[Muid], user_key: Optional[UserKey],
             recursive=False) -> Iterable[Union[ChangeBuilder, EntryBuilder]]:
         """
         Generates reset entries that will change things back to how they were at given time.

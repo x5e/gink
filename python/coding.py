@@ -11,10 +11,12 @@ from behavior_pb2 import Behavior
 
 from typedefs import UserKey, MuTimestamp, UserKey
 from muid import Muid
+from change_set_info import ChangeSetInfo
 
 UNKNOWN: int = Behavior.UNKNOWN # type: ignore
 QUEUE: int = Behavior.QUEUE # type: ignore
 SCHEMA: int = Behavior.SCHEMA # type: ignore
+BOX: int = Behavior.BOX # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = unpack(">Q", b"\xff"*8)[0]
 ZERO_64: bytes = b"\x00" * 8
@@ -55,9 +57,23 @@ class EntryStorageKey(NamedTuple):
         for a particular container / user-key come before earlier ones.
     """
     container: Muid
-    middle_key: Union[UserKey, QueueMiddleKey]
+    middle_key: Union[UserKey, QueueMiddleKey, None]
     entry_muid: Muid
     expiry: Optional[MuTimestamp]
+
+    @staticmethod
+    def from_builder(builder: EntryBuilder, new_info: ChangeSetInfo, offset: int):
+        container = Muid.create(getattr(builder, "container"), context=new_info)
+        entry_muid = Muid.create(context=new_info, offset=offset)
+        behavior = getattr(builder, "behavior")
+        if behavior == SCHEMA or behavior == BOX:
+            middle_key = decode_key(builder)
+        elif behavior == QUEUE:
+            middle_key = QueueMiddleKey(entry_muid.timestamp, None)
+        else:
+            raise AssertionError(f"unexpected behavior: {behavior}")
+        expiry = getattr(builder, "expiry") or None
+        return EntryStorageKey(container, middle_key, entry_muid, expiry)
 
     @staticmethod
     def from_bytes(data: bytes, behavior: int=UNKNOWN):
@@ -95,7 +111,7 @@ class EntryStorageKey(NamedTuple):
             parts.append(self.middle_key)
             parts.append(self.entry_muid)
         else:
-            parts.append(encode_key(self.middle_key))
+            parts.append(encode_key(self.middle_key) if self.middle_key is not None else b"")
             parts.append(self.entry_muid.get_inverse())
         parts.append(self.expiry)
         return b"".join(map(serialize, parts))
@@ -163,7 +179,7 @@ def decode_value(value_builder: ValueBuilder): # pylint: disable=too-many-return
     """ decodes a protobuf value into a python value.
     """
     if value_builder.HasField("special"):  # type: ignore
-        if value_builder.special == ValueBuilder.Special.NULL: # type: ignore # pylint: disable=maybe-no-member
+        if value_builder.special == ValueBuilder.Special.NULL: # type: ignore
             return None
         if value_builder.special == ValueBuilder.Special.TRUE: # type: ignore # pylint: disable=maybe-no-member
             return True

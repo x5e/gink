@@ -9,9 +9,10 @@ from container import Container
 from muid import Muid
 from database import Database
 from change_set import ChangeSet
+from coding import QUEUE
 
 class Queue(Container):
-    BEHAVIOR = Behavior.QUEUE
+    BEHAVIOR = QUEUE
 
     def __init__(self, *, contents=None, muid: Optional[Muid]=None, database=None):
         """
@@ -37,7 +38,7 @@ class Queue(Container):
         """ Append obect to the end of the queue. """
         return self._add_entry(value=thing, change_set=change_set, comment=comment)
 
-    def pop(self, index=-1, muid=None, change_set=None):
+    def pop(self, index=-1, muid=None, change_set=None, comment=None):
         """ Remove and return an item at index (default last). """
 
     def remove(self, value, change_set=None):

@@ -7,10 +7,10 @@ from behavior_pb2 import Behavior
 # gink implementation
 from typedefs import AsOf, EPOCH
 from muid import Muid
-from tuples import EntryAddressAndBuilder
+from tuples import FoundEntry
 from database import Database
 from container import Container
-from code_values import decode_value, decode_key
+from coding import decode_value, decode_key
 from change_set import ChangeSet
 
 
@@ -29,7 +29,7 @@ class Directory(Container):
         database = database or Database.last
         change_set = ChangeSet()
         if muid is None:
-            muid = Directory._create(Directory.BEHAVIOR, database=database, change_set=change_set)
+            muid = Container._create(Directory.BEHAVIOR, database=database, change_set=change_set)
         Container.__init__(self, muid=muid, database=database)
         self._muid = muid
         self._database = database
@@ -96,7 +96,7 @@ class Directory(Container):
             return default
         return self._interpret(found)
 
-    def _interpret(self, found: EntryAddressAndBuilder):
+    def _interpret(self, found: FoundEntry):
         if found.builder.HasField("value"): # type: ignore
             return decode_value(found.builder.value) # type: ignore
         if found.builder.HasField("pointee"): # type: ignore
