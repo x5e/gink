@@ -89,6 +89,16 @@ def test_get_ordered_entries(store_maker = maker):
                 }
             }
         }
+        changes {
+            key: 3
+            value {
+                entry {
+                    behavior: QUEUE
+                    container { timestamp: -1 offset: 8 }
+                    value { characters: "Whatever" }
+                }
+            }
+        }
     """
     with closing(store_maker()) as store:
         change_set_builder = ChangeSetBuilder()
@@ -96,11 +106,12 @@ def test_get_ordered_entries(store_maker = maker):
         serialized = change_set_builder.SerializeToString() # type: ignore
         store.add_commit(serialized)
         assert isinstance(store, LmdbStore)
-        found = [_ for _ in store.get_ordered_entries(container=Muid(123, 789, 1), as_of=124)]
+        queue = Muid(123, 789, 1)
+        found = [_ for _ in store.get_ordered_entries(container=queue, as_of=124)]
         assert found[0].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
         assert found[2].entry_muid == Muid(123, 789, 4)
-        gotten = store.get_entry(Muid(123, 789, 1), Muid(123, 789, 4), as_of=124)
+        gotten = store.get_entry(queue, Muid(123, 789, 4), as_of=124)
         assert gotten is not None
         assert gotten.address == Muid(123, 789, 4)
         assert gotten.builder.value.characters == "Goodbye, World!" # type: ignore
@@ -109,15 +120,28 @@ def test_get_ordered_entries(store_maker = maker):
         Parse(textproto2, change_set_builder2) # type: ignore
         serialized2 = change_set_builder2.SerializeToString() # type: ignore
         store.add_commit(serialized2)
-        found = [_ for _ in store.get_ordered_entries(container=Muid(123, 789, 1), as_of=124)]
+        found = [_ for _ in store.get_ordered_entries(container=queue, as_of=124)]
         assert len(found) == 3
         assert found[0].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
         assert found[2].entry_muid == Muid(123, 789, 4)
-        found = [_ for _ in store.get_ordered_entries(container=Muid(123, 789, 1), as_of=235)]
+        found = [_ for _ in store.get_ordered_entries(container=queue, as_of=235)]
         assert len(found) == 2
         assert found[0].entry_muid == Muid(123, 789, 4)
         assert found[1].entry_muid == Muid(123, 789, 3), found
+
+        found = [_ for _ in store.get_ordered_entries(container=queue, as_of=124, desc=True)]
+        assert len(found) == 3
+        assert found[2].entry_muid == Muid(123, 789, 2)
+        assert found[1].entry_muid == Muid(123, 789, 3)
+        assert found[0].entry_muid == Muid(123, 789, 4)
+
+        found = [_ for _ in store.get_ordered_entries(container=queue, as_of=235, desc=True)]
+        assert len(found) == 2
+        assert found[0].entry_muid == Muid(123, 789, 3)
+        assert found[1].entry_muid == Muid(123, 789, 4)
+
+
 
 if __name__ == "__main__":
     test_get_ordered_entries()

@@ -3,7 +3,7 @@
 # Standard Python Stuff
 from typing import Tuple, Callable, Iterable, Optional, List, Union
 from struct import pack
-from lmdb import open as ldmbopen, Transaction as Trxn
+from lmdb import open as ldmbopen, Transaction as Trxn, Cursor
 
 # Protobuf Modules
 from change_set_pb2 import ChangeSet as ChangeSetBuilder
@@ -21,8 +21,7 @@ from change_set_info import ChangeSetInfo
 from abstract_store import AbstractStore
 from chain_tracker import ChainTracker
 from code_values import (encode_key, create_deleting_entry, EntryStoragePair, 
-    entries_equiv, EntryStorageKey, encode_muts, QueueMiddleKey, SCHEMA, QUEUE, 
-    decode_muts, serialize)
+    entries_equiv, EntryStorageKey, encode_muts, QueueMiddleKey, SCHEMA, QUEUE, serialize)
 
 class LmdbStore(AbstractStore):
     """
@@ -253,17 +252,30 @@ class LmdbStore(AbstractStore):
             entry_builder.ParseFromString(bval) # type: ignore
             entry_muid = Muid.from_bytes(bkey[len(prefix):]).get_inverse()
             return EntryAddressAndBuilder(address=entry_muid, builder=entry_builder)
+
+    @staticmethod
+    def _last_with_prefix(cursor: Cursor, prefix: bytes, suffix: bytes=b"\xFF"*40)->bool:
+        """ Positions the cursor on the last entry with prefix before prefix+suffix.
+            Returns True if it found something, False if there's nothing matching.
+        """
+        boundary = prefix + suffix
+        # first try seeking to an item immediately after prefix+suffix
+        if cursor.set_range(boundary):
+            # then move to the item before that
+            return cursor.prev()
+        return cursor.last() and cursor.key().startswith(prefix)
     
     def get_ordered_entries(self, container: Muid, as_of: MuTimestamp, limit: Optional[int]=None, 
             offset: int=0, desc: bool=False) -> Iterable[PositionedEntry]:
-        if desc:
-            raise NotImplementedError()
         prefix = bytes(container)
         with self.env.begin() as txn:
             entries_cursor = txn.cursor(self._entries_tbl_db)
             removal_cursor = txn.cursor(self._removal_tbl_db)
-            seek_succeeded = entries_cursor.set_range(prefix)
-            while seek_succeeded and (limit is None or limit > 0):
+            if desc:
+                placed = LmdbStore._last_with_prefix(entries_cursor, prefix)
+            else:
+                placed = entries_cursor.set_range(prefix)
+            while placed and (limit is None or limit > 0):
                 entries_key = entries_cursor.key()
                 if not entries_key.startswith(prefix):
                     break # moved onto entries for another container
@@ -273,19 +285,19 @@ class LmdbStore(AbstractStore):
                 if middle_key.effective_time > as_of:
                     break # times will only increase
                 if parsed_key.get_placed_time() > as_of:
-                    seek_succeeded = entries_cursor.next()
+                    placed = entries_cursor.prev() if desc else entries_cursor.next()
                     continue # this was put here after when I'm looking
                 if parsed_key.expiry and (parsed_key.expiry < as_of):
-                    seek_succeeded = entries_cursor.next()
+                    placed = entries_cursor.prev() if desc else entries_cursor.next()
                     continue # this entry has expired by the as_of time
                 found_removal = LmdbStore._seek(removal_cursor, prefix=entries_key[0:40])
                 if found_removal and Muid.from_bytes(removal_cursor.key()[40:]).timestamp < as_of:
-                    seek_succeeded = entries_cursor.next()
+                    placed = entries_cursor.prev() if desc else entries_cursor.next()
                     continue  # this entry at this position was (re)moved by this time
                 # If we got here, then we know the entry is active at the as_of time.
                 if offset > 0:
                     offset -= 1
-                    seek_succeeded = entries_cursor.next()
+                    placed = entries_cursor.prev() if desc else entries_cursor.next()
                     continue
                 entry_builder = EntryBuilder()
                 entry_builder.ParseFromString(entries_cursor.value()) # type: ignore
@@ -296,7 +308,7 @@ class LmdbStore(AbstractStore):
                     entry_data=entry_builder)
                 if limit is not None:
                     limit -= 1
-                seek_succeeded = entries_cursor.next()
+                placed = entries_cursor.prev() if desc else entries_cursor.next()
 
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[EntryAddressAndBuilder]:
         """ gets all the active entries as of a particular time """
