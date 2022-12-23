@@ -96,10 +96,10 @@ class ChangeSet:
             raise AttributeError("not known")
 
         def __hash__(self):
-            return hash(tuple(self.offset, self.medallion, self.timestamp))  # type: ignore
+            return hash((self.offset, self.medallion, self.timestamp))  # type: ignore
 
         def __eq__(self, other):
             if not isinstance(other, Muid):
                 return False
-            return (tuple(self.offset, self.medallion, self.timestamp) # type: ignore
-                == tuple(other.offset, other.medallion, other.timestamp)) # type: ignore
+            return ( (self.offset, self.medallion, self.timestamp) # type: ignore
+                == (other.offset, other.medallion, other.timestamp) ) # type: ignore

@@ -19,6 +19,15 @@ class Container(ABC):
         self._database = database
         self._muid = muid
 
+    def __eq__(self, other):
+        return type(other) == type(self) and other._muid == self._muid
+
+    def __hash__(self):
+        return hash(self._muid)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(muid={repr(self._muid)})"
+
     def _interpret(self, builder: EntryBuilder, address: Optional[Muid] = None):
         if builder.HasField("value"): # type: ignore
             return decode_value(builder.value) # type: ignore

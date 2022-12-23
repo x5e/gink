@@ -1,9 +1,10 @@
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Union
+from random import randint
 
 from change_pb2 import Change as ChangeBuilder
 
 # gink implementation
-from .typedefs import GenericTimestamp
+from .typedefs import GenericTimestamp, MuTimestamp
 from .container import Container
 from .muid import Muid
 from .database import Database
@@ -32,6 +33,10 @@ class Sequence(Container):
             raise NotImplementedError()
         if len(change_set):
             self._database.add_change_set(change_set)
+    
+    def __iter__(self):
+        for thing in self.values():
+            yield thing
 
     def append(self, thing, expiry: GenericTimestamp = None, change_set=None, comment=None):
         """ Append obect to the end of the queue.
@@ -41,8 +46,34 @@ class Sequence(Container):
         expiry = self._database.resolve_timestamp(expiry) if expiry is not None else 0
         return self._add_entry(value=thing, change_set=change_set, comment=comment, expiry=expiry)
 
-    def yank(self, muid: Muid, dest: GenericTimestamp = None, *,
+    def extend(self, iterable, expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]]=None,
              change_set=None, comment=None):
+        """ Adds all of the items in iterable at once to this sequence.
+        
+            expiries, if present, may be either a single expiry to be applied to all new entries,
+            or a iterable of expiries of the same length as the data
+
+            returns the change set (either passed or created on the fly)
+            #DEMO
+        """
+        immediate = not bool(change_set)
+        if immediate:
+            change_set = ChangeSet(comment)
+        items = list(iterable)
+        if hasattr(expiries, "__iter__"):
+            listed_expiries = list(expiries) # type: ignore
+        else:
+            listed_expiries = [expiries for _ in range(len(items))]
+        for i in range(len(items)):
+            expiry: GenericTimestamp = listed_expiries[i] # type: ignore
+            expiry = self._database.resolve_timestamp(expiry) if expiry is not None else 0
+            return self._add_entry(value=items[i], change_set=change_set, expiry=expiry)
+        if immediate:
+            self._database.add_change_set(change_set)
+        return change_set
+
+
+    def yank(self, muid: Muid, dest: GenericTimestamp = None, *, change_set=None, comment=None):
         """ Removes or moves an entry by muid.
 
             muid: what to move
@@ -65,7 +96,6 @@ class Sequence(Container):
         if immediate:
             self._database.add_change_set(change_set)
         return muid
-
 
     def pop(self, index=-1, dest: GenericTimestamp = None, change_set=None, comment=None):
         """ (Re)move and return an item at index (default last). 
@@ -116,7 +146,7 @@ class Sequence(Container):
             zero, or negative number when counting from end,
             or whatever is found at an address in case of muid.
         """
-        return self.at(what)
+        return self.at(what)[1]
 
     def at(self, index: int, as_of: GenericTimestamp = None):
         """ Returns the (muid, value) at the specified index or muid.
@@ -175,3 +205,41 @@ class Sequence(Container):
             return True
         except ValueError:
             return False
+
+    def after(self, index: int) -> MuTimestamp:
+        return self._position(after=index)
+
+    def before(self, index: int) -> MuTimestamp:
+        return self._position(before=index)
+
+    def _position(self, after: Optional[int] = None, before: Optional[int] = None) -> MuTimestamp:
+        """ Gets a new position after or before the index of an existing entry. """
+        if (after is None and before is None):
+            raise ValueError("need to specify at least one index")
+        if before == 0:
+            assert after is None
+            position = self.at(0)[0][0]
+            return position - randint(0, int(1e6))
+        if after == -1:
+            assert before is None
+            position = self.at(-1)[0][0]
+            return position + randint(0, int(1e3))
+        if after is None:
+            assert before is not None
+            after = before - 1
+        if before is None:
+            assert after is not None
+            before = after + 1
+        at1 = self.at(after)
+        at2 = self.at(before)
+        p1 = at1[0].position
+        p2 = at2[0].position
+        assert isinstance(p1, int)
+        assert isinstance(p2, int)
+        if p1 == p2:
+            raise ValueError("positions in terms of time are equal")
+        if p2 < p1:
+            p1, p2 = p2, p1
+        if p2 - p1 < 4:
+            raise ValueError("not enough space between them")
+        return randint(p1 + 1, p2 -1)

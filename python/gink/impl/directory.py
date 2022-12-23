@@ -36,15 +36,6 @@ class Directory(Container):
         if len(change_set):
             self._database.add_change_set(change_set)
 
-    def __eq__(self, other):
-        return repr(self) == repr(other)
-
-    def __hash__(self):
-        return hash(repr(self))
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}(muid={repr(self._muid)})"
-
     def to_pyon(self, indent: Union[bool, int] = True):
         """ converts to "python object notation", like a customizable repr """
         result = f"""{self.__class__.__name__}(muid={repr(self._muid)}, contents="""
