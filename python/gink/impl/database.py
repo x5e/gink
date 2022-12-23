@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from random import randint
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import threading
 import time
 import os
@@ -51,10 +51,14 @@ class Database:
         self._last_time = now
         return now
 
-    def resolve_timestamp(self, as_of: GenericTimestamp) -> MuTimestamp:
+    def resolve_timestamp(self, as_of: GenericTimestamp = None) -> MuTimestamp:
         """ translates the abstract as of (which can be None or negative) into a real timestamp """
         if as_of is None:
             return self.get_now()
+        if isinstance(as_of, timedelta):
+            return self.get_now() + int(as_of.total_seconds() * 1e6)
+        if isinstance(as_of, date):
+            as_of = datetime(as_of.year, as_of.month, as_of.day)
         if isinstance(as_of, datetime):
             as_of = as_of.timestamp()
         if isinstance(as_of, (int, float)):

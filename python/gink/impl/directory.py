@@ -10,13 +10,13 @@ from .typedefs import GenericTimestamp, EPOCH
 from .muid import Muid
 from .database import Database
 from .container import Container
-from .coding import decode_key
+from .coding import decode_key, SCHEMA
 from .change_set import ChangeSet
 
 class Directory(Container):
     """ the Gink mutable mapping object """
     _missing = object()
-    BEHAVIOR = Behavior.SCHEMA  # type: ignore
+    BEHAVIOR = SCHEMA  # type: ignore
 
     def __init__(self, *, contents=None, muid: Optional[Muid]=None, database=None):
         """
@@ -28,10 +28,8 @@ class Directory(Container):
         database = database or Database.last
         change_set = ChangeSet()
         if muid is None:
-            muid = Container._create(self.BEHAVIOR, database=database, change_set=change_set)
+            muid = Container._create(SCHEMA, database=database, change_set=change_set)
         Container.__init__(self, muid=muid, database=database)
-        self._muid = muid
-        self._database = database
         if contents:
             # TODO: implement clear and clear the directory if already exists
             self.update(contents, change_set=change_set)
@@ -93,7 +91,7 @@ class Directory(Container):
         found = self._database._store.get_entry(self._muid, key=key, as_of=as_of)
         if found is None or found.builder.deleting:  # type: ignore
             return default
-        return self._interpret(found)
+        return self._interpret(found.builder, found.address)
 
     def set(self, key: Union[str, int], value, change_set=None, comment=None) -> Muid:
         """ Sets a value in the mapping, returns the muid address of the entry.
@@ -128,7 +126,7 @@ class Directory(Container):
         if found and found.builder.deleting and respect_deletion:  # type: ignore
             return respect_deletion
         if found and not found.builder.deleting:  # type: ignore
-            return self._interpret(found)
+            return self._interpret(found.builder, found.address)
         self._add_entry(key=key, value=default, change_set=change_set)
         return default
 
@@ -143,7 +141,7 @@ class Directory(Container):
         if found is None or found.builder.deleting: # type: ignore
             return default
         self._add_entry(key=key, value=self._DELETE, change_set=change_set, comment=comment)
-        return self._interpret(found)
+        return self._interpret(found.builder, found.address)
 
     def items(self, as_of=None):
         """ returns an iterable of key,value pairs, as of the effective time (or now) """
@@ -154,7 +152,8 @@ class Directory(Container):
         for entry_pair in iterable:
             if entry_pair.builder.deleting: # type: ignore
                 continue
-            result.append((decode_key(entry_pair.builder), self._interpret(entry_pair)))
+            contained = self._interpret(entry_pair.builder, entry_pair.address)
+            result.append((decode_key(entry_pair.builder), contained))
         return result
 
     def __len__(self):
@@ -181,7 +180,7 @@ class Directory(Container):
         for entry_pair in iterable:
             if entry_pair.builder.deleting: # type: ignore
                 continue
-            val = self._interpret(entry_pair)
+            val = self._interpret(entry_pair.builder, entry_pair.address)
             key = decode_key(entry_pair.builder)
             self._add_entry(key=key, value=self._DELETE, change_set=change_set, comment=comment)
             return (key, val)

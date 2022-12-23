@@ -5,7 +5,6 @@ from abc import ABC
 from entry_pb2 import Entry as EntryBuilder
 from change_pb2 import Change as ChangeBuilder
 
-from .tuples import FoundEntry
 from .muid import Muid
 from .change_set import ChangeSet
 from .database import Database
@@ -20,12 +19,12 @@ class Container(ABC):
         self._database = database
         self._muid = muid
 
-    def _interpret(self, found: FoundEntry):
-        builder = found.builder
+    def _interpret(self, builder: EntryBuilder, address: Optional[Muid] = None):
         if builder.HasField("value"): # type: ignore
             return decode_value(builder.value) # type: ignore
         if builder.HasField("pointee"): # type: ignore
-            pointee_muid = Muid.create(getattr(builder, "pointee"), context=found.address)
+            pointee = getattr(builder, "pointee")
+            pointee_muid = Muid.create(pointee, context=address)
             behavior = getattr(builder, "behavior")
             Class = Container._subtypes.get(behavior)
             if not Class:
@@ -73,7 +72,7 @@ class Container(ABC):
             database.add_change_set(change_set)  # type: ignore
         return muid
 
-    def _add_entry(self, *, value, key: Union[str, int, None]=None, 
+    def _add_entry(self, *, value, key: Union[str, int, None]=None, expiry: int=0,
              change_set: Optional[ChangeSet]=None, comment: Optional[str]=None)->Muid:
         immediate = False
         if not isinstance(change_set, ChangeSet):
@@ -82,6 +81,7 @@ class Container(ABC):
         change_builder = ChangeBuilder()
         entry_builder: EntryBuilder = change_builder.entry # type: ignore # pylint: disable=maybe-no-member
         entry_builder.behavior = self.get_behavior()  # type: ignore # pylint: disable=maybe-no-member
+        entry_builder.expiry = expiry # type: ignore
         self._muid.put_into(entry_builder.container) # type: ignore # pylint: disable=maybe-no-member
         if isinstance(key, (str, int)):
             encode_key(key, entry_builder.key)  # type: ignore # pylint: disable=maybe-no-member

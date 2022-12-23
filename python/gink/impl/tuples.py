@@ -1,4 +1,4 @@
-""" a couple of NamedTuple definitions """
+""" a couple of NamedTuple definitions, primarily for internal usage """
 from typing import NamedTuple
 from entry_pb2 import Entry as EntryBuilder
 
@@ -23,3 +23,7 @@ class PositionedEntry(NamedTuple):
     positioner: Muid
     entry_muid: Muid
     entry_data: EntryBuilder
+
+class SequenceKey(NamedTuple):
+    position: MuTimestamp
+    entry_muid: Muid

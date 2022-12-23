@@ -20,6 +20,9 @@ class AbstractStore(ABC):
 
         Stores both the change sets received as well as the contents of those
         change sets unpacked so that you can examine entries, container definitions, etc.
+
+        Warning! Since data stores are viewed as part of the internal implementation,
+        this interface may change at any time without warning on a minor version change.
     """
 
     def __enter__(self):
