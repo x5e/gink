@@ -89,7 +89,6 @@ class EntryStorageKey(NamedTuple):
             behavior = QUEUE if middle_key_bytes[0] == 0 else SCHEMA
         if behavior == SCHEMA:
             middle_key = decode_key(middle_key_bytes)
-            entry_muid = entry_muid.get_inverse()
         elif behavior == QUEUE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
         else:
@@ -106,13 +105,13 @@ class EntryStorageKey(NamedTuple):
         return EntryStorageKey(self.container, self.middle_key, Muid(timestamp, 0,0,), None)
 
     def __bytes__(self):
-        parts: List[Any] = [self.container]
+        parts: List[Any] = []
+        parts.append(self.container)
         if isinstance(self.middle_key, QueueMiddleKey):
             parts.append(self.middle_key)
-            parts.append(self.entry_muid)
-        else:
-            parts.append(encode_key(self.middle_key) if self.middle_key is not None else b"")
-            parts.append(self.entry_muid.get_inverse())
+        elif self.middle_key is not None:
+            parts.append(encode_key(self.middle_key))
+        parts.append(self.entry_muid)
         parts.append(self.expiry)
         return b"".join(map(serialize, parts))
 

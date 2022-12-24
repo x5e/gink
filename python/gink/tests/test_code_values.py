@@ -61,8 +61,8 @@ def test_entry_key_sorting():
     in_list = [key1, key2, key3]
     in_list.sort()
     assert in_list[0] == key3, in_list[0] # numbers come first
-    assert in_list[1] == key2, in_list[1] # higher entries come first
-    assert in_list[2] == key1
+    assert in_list[1] == key1, in_list[1]
+    assert in_list[2] == key2
 
 def test_entry_to_from_bytes():
     """ ensures that serialization works as expected """

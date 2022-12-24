@@ -16,7 +16,7 @@ from .change_set import ChangeSet
 class Directory(Container):
     """ the Gink mutable mapping object """
     _missing = object()
-    BEHAVIOR = SCHEMA  # type: ignore
+    BEHAVIOR = SCHEMA
 
     def __init__(self, *, contents=None, muid: Optional[Muid]=None, database=None):
         """
@@ -199,7 +199,8 @@ class Directory(Container):
         if immediate:
             self._database.add_change_set(change_set)
 
-    def reset(self, to_time: GenericTimestamp=EPOCH, key=None, recursive=False, change_set=None, comment=None):
+    def reset(self, to_time: GenericTimestamp=EPOCH, key=None, recursive=False, 
+            change_set=None, comment=None):
         """ Resets either a specific key or the whole directory to a particular past time.
 
             Note that this actually creates new entries to literally "re"-set things again.

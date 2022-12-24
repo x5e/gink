@@ -24,7 +24,7 @@ def test_creation():
 
 def test_set_get():
     """ Test basic set/get functionality works. """
-    for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
+    for store in [LmdbStore("/tmp/gink.mdb", reset=True), MemoryStore(),]:
         with store:
             database = Database(store=store)
             global_directory = Directory.global_instance(database=database)
@@ -176,6 +176,3 @@ def test_reset():
             # assert len(_) == 1, str(_) # TODO need to fix double deleting entries
             # _ = gdi.reset(middle, recursive=True)
             # assert len(_) == 0 # ditto
-
-if __name__ == "__main__":
-    test_reset()

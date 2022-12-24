@@ -44,7 +44,7 @@ class MemoryStore(AbstractStore):
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
         cont_bytes = bytes(container)
         iterator = self._entries.irange(
-            minimum=cont_bytes, maximum=cont_bytes + b"\xFF")
+            minimum=cont_bytes, maximum=cont_bytes + b"\xFF", reverse=True)
         last = None
         for entry_key in iterator:
             entry_storage_key = EntryStorageKey.from_bytes(entry_key, SCHEMA)
@@ -68,11 +68,11 @@ class MemoryStore(AbstractStore):
             return FoundEntry(entry_storage_key.entry_muid, self._entries[entry_location])
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
         epoch_muid = Muid(0, 0, 0)
-        minimum = bytes(EntryStorageKey(container, key, as_of_muid, None))
-        maximum = bytes(EntryStorageKey(container, key, epoch_muid, None))
+        minimum = bytes(EntryStorageKey(container, key, epoch_muid, None))
+        maximum = bytes(EntryStorageKey(container, key, as_of_muid, None))
         iterator = self._entries.irange(
             minimum=minimum,
-            maximum=maximum)
+            maximum=maximum, reverse=True)
         for encoded_entry_storage_key in iterator:
             entry_storage_key = EntryStorageKey.from_bytes(
                 encoded_entry_storage_key)
