@@ -10,14 +10,14 @@ import math
 # gink modules
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
-from .change_set import ChangeSet
-from .change_set_info import ChangeSetInfo
+from .bundler import Bundler
+from .bundle_info import BundleInfo
 from .typedefs import Medallion, MuTimestamp, GenericTimestamp
 from .tuples import Chain
 
 
 class Database:
-    """ Gink Database that all change sets go through. """
+    """ A class that mediates user interaction with a datastore and peers. """
     _i_have: ChainTracker
 
     def __init__(self, store: AbstractStore):
@@ -32,9 +32,9 @@ class Database:
         """ returns the store this database is reading/writing to """
         return self._store
 
-    def _add_info(self, change_set: ChangeSet):
+    def _add_info(self, bundler: Bundler):
         # TODO[P2]: add info about this instance
-        assert change_set is not None
+        assert bundler is not None
         assert os
 
     def get_now(self) -> MuTimestamp:
@@ -79,28 +79,28 @@ class Database:
         medallion =  randint((2 ** 48) + 1, (2 ** 49) - 1)
         chain_start = self.get_now()
         chain = Chain(medallion=Medallion(medallion), chain_start=chain_start)
-        starting_change_set = ChangeSet()
-        self._add_info(starting_change_set)
-        info = ChangeSetInfo(medallion=medallion, chain_start=chain_start, timestamp=chain_start)
-        change_set_bytes = starting_change_set.seal(info)
-        self._store.add_commit(change_set_bytes=change_set_bytes)
+        starting_bundler = Bundler()
+        self._add_info(starting_bundler)
+        info = BundleInfo(medallion=medallion, chain_start=chain_start, timestamp=chain_start)
+        bundle_bytes = starting_bundler.seal(info)
+        self._store.add_bundle(bundle_bytes=bundle_bytes)
         self._i_have.mark_as_having(info)
         self._store.claim_chain(chain)
         self._chain = chain
         return chain
 
-    def add_change_set(self, change_set: ChangeSet) -> ChangeSetInfo:
-        """ adds an unsealed change set to the local store """
-        assert not change_set.sealed
+    def add_bundle(self, bundler: Bundler) -> BundleInfo:
+        """ seals and bundler and adds the resulting bundle to the local store """
+        assert not bundler.sealed
         with self._lock:
             chain = self._get_chain()
             seen_to = self._i_have.get_seen_to(chain)
             assert seen_to is not None
             timestamp = self.get_now()
             assert timestamp > seen_to
-            info = ChangeSetInfo(chain=chain, timestamp=timestamp, prior_time=seen_to)
-            change_set_bytes = change_set.seal(info)
-            info_with_comment, added = self._store.add_commit(change_set_bytes=change_set_bytes)
-            assert added, "How did you already have this change set? I just made it !!!"
+            info = BundleInfo(chain=chain, timestamp=timestamp, prior_time=seen_to)
+            bundle_bytes = bundler.seal(info)
+            info_with_comment, added = self._store.add_bundle(bundle_bytes=bundle_bytes)
+            assert added, "How did you already have this bundle? I just made it !!!"
             self._i_have.mark_as_having(info_with_comment)
             return info_with_comment

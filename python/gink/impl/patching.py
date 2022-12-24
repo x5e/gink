@@ -1,4 +1,4 @@
-from behavior_pb2 import Behavior
+from ..builders.behavior_pb2 import Behavior
 
 from .container import Container
 from .directory import Directory

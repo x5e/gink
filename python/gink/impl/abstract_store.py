@@ -5,11 +5,11 @@ from typing import Tuple, Callable, Optional, Iterable, List, Union
 from abc import ABC, abstractmethod
 
 # protobuf builders
-from change_pb2 import Change as ChangeBuilder
-from entry_pb2 import Entry as EntryBuilder
+from ..builders.change_pb2 import Change as ChangeBuilder
+from ..builders.entry_pb2 import Entry as EntryBuilder
 
 # Gink specific modules
-from .change_set_info import ChangeSetInfo
+from .bundle_info import BundleInfo
 from .chain_tracker import ChainTracker
 from .typedefs import UserKey, MuTimestamp
 from .tuples import FoundEntry, Chain, PositionedEntry
@@ -18,8 +18,8 @@ from .muid import Muid
 class AbstractStore(ABC):
     """ abstract base class for the gink data store
 
-        Stores both the change sets received as well as the contents of those
-        change sets unpacked so that you can examine entries, container definitions, etc.
+        Stores both the bundles received as well as the contents of those
+        bundles unpacked so that you can examine entries, container definitions, etc.
 
         Warning! Since data stores are viewed as part of the internal implementation,
         this interface may change at any time without warning on a minor version change.
@@ -66,16 +66,17 @@ class AbstractStore(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def add_commit(self, change_set_bytes: bytes) -> Tuple[ChangeSetInfo, bool]:
-        """ Adds data from a particular change set to this store.
-            Returns: a tuple of the change set's info and boolean indicating if it was added
+    def add_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+        """ Tries to add data from a particular bundle to this store.
+
+            Returns: a tuple of the bundle's info and boolean indicating if it was added
         """
-        assert change_set_bytes and self
+        assert bundle_bytes and self
         raise NotImplementedError()
 
     @abstractmethod
-    def get_commits(self, callback: Callable[[bytes, ChangeSetInfo], None]):
-        """ Calls the callback with each change set, in (timestamp, medallion) order.
+    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None]):
+        """ Calls the callback with each bundle, in (timestamp, medallion) order.
 
             This is done callback style because we don't want to leave dangling transactions
             in the store, which could easily happen if we offered up an iterator interface instead.
@@ -83,12 +84,12 @@ class AbstractStore(ABC):
         assert callback and self
         raise NotImplementedError()
 
-    def get_commit_infos(self) -> List[ChangeSetInfo]:
-        """ Gets a list of change set infos; mostly for testing. """
+    def get_bundle_infos(self) -> List[BundleInfo]:
+        """ Gets a list of bundle infos; mostly for testing. """
         result = []
-        def callback(_, info: ChangeSetInfo):
+        def callback(_, info: BundleInfo):
             result.append(info)
-        self.get_commits(callback)
+        self.get_bundles(callback)
         return result
 
     @abstractmethod
@@ -98,7 +99,7 @@ class AbstractStore(ABC):
         raise NotImplementedError()
 
     @staticmethod
-    def _is_needed(new_info: ChangeSetInfo, old_info: Optional[ChangeSetInfo]) -> bool:
+    def _is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:
         seen_through = 0
         if old_info:
             assert old_info.get_chain() == new_info.get_chain()
@@ -106,9 +107,9 @@ class AbstractStore(ABC):
         if seen_through >= new_info.timestamp:
             return False
         if new_info.timestamp != new_info.chain_start and not new_info.prior_time:
-            raise ValueError("Change set isn't the start but has no prior.")
+            raise ValueError("Bundle isn't the start but has no prior.")
         if (new_info.prior_time or seen_through) and new_info.prior_time != seen_through:
-            raise ValueError("Change set received without prior link in chain!")
+            raise ValueError("Bundle received without prior link in chain!")
         return True
 
     def get_reset_changes(self, to_time, container: Optional[Muid], user_key: Optional[UserKey],

@@ -4,14 +4,14 @@ from typing import Optional, Union, NamedTuple, List, Any
 from struct import Struct, unpack
 from google.protobuf.message import Message
 
-from value_pb2 import Value as ValueBuilder
-from entry_pb2 import Entry as EntryBuilder
-from key_pb2 import Key as KeyBuilder
-from behavior_pb2 import Behavior
+from ..builders.value_pb2 import Value as ValueBuilder
+from ..builders.entry_pb2 import Entry as EntryBuilder
+from ..builders.key_pb2 import Key as KeyBuilder
+from ..builders.behavior_pb2 import Behavior
 
 from .typedefs import UserKey, MuTimestamp, UserKey, UserValue
 from .muid import Muid
-from .change_set_info import ChangeSetInfo
+from .bundle_info import BundleInfo
 
 UNKNOWN: int = Behavior.UNKNOWN # type: ignore
 QUEUE: int = Behavior.QUEUE # type: ignore
@@ -62,7 +62,7 @@ class EntryStorageKey(NamedTuple):
     expiry: Optional[MuTimestamp]
 
     @staticmethod
-    def from_builder(builder: EntryBuilder, new_info: ChangeSetInfo, offset: int):
+    def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):
         container = Muid.create(getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")

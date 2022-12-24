@@ -2,11 +2,12 @@
 from typing import Optional, Union, Dict, Type
 from abc import ABC
 
-from entry_pb2 import Entry as EntryBuilder
-from change_pb2 import Change as ChangeBuilder
+from ..builders.entry_pb2 import Entry as EntryBuilder
+from ..builders.change_pb2 import Change as ChangeBuilder
+from ..builders.clearance_pb2 import Clearance as ClearanceBuilder
 
 from .muid import Muid
-from .change_set import ChangeSet
+from .bundler import Bundler
 from .database import Database
 from .coding import encode_key, encode_value, decode_value
 
@@ -51,11 +52,12 @@ class Container(ABC):
         return getattr(cls, "BEHAVIOR")
 
     @classmethod
-    def create(cls, change_set: Optional[ChangeSet]=None, database: Optional[Database]=None):
-        """ Creates an instance of the given class, committing if no change set is provided. """
+    def create(cls, bundler: Optional[Bundler]=None, database: Optional[Database]=None):
+        """ Creates an instance of the given class, adding immediately if no bundler is provided.
+        """
         if database is None:
             database = Database.last
-        muid = Container._create(cls.get_behavior(), change_set=change_set, database=database)
+        muid = Container._create(cls.get_behavior(), bundler=bundler, database=database)
         return cls(muid=muid, database=database)
 
     @classmethod
@@ -68,25 +70,32 @@ class Container(ABC):
         return cls(database=database, muid=muid)
 
     @staticmethod
-    def _create(behavior: int, database: Database, change_set: Optional[ChangeSet]=None) -> Muid:
+    def _create(behavior: int, database: Database, bundler: Optional[Bundler]=None) -> Muid:
         immediate = False
-        if change_set is None:
-            change_set = ChangeSet()
+        if bundler is None:
+            bundler = Bundler()
             immediate = True
         change_builder = ChangeBuilder()
         container_builder = change_builder.container  # type: ignore # pylint: disable=maybe-no-member
         container_builder.behavior = behavior  # type: ignore
-        muid = change_set.add_change(change_builder)
+        muid = bundler.add_change(change_builder)
         if immediate:
-            database.add_change_set(change_set)  # type: ignore
+            database.add_bundle(bundler)  # type: ignore
         return muid
 
+    def clear(self, bundler: Optional[Bundler]=None, comment: Optional[str]=None)->Muid:
+        """ Removes all entries from this container. 
+        
+        """
+        # TODO: implement!!!
+        raise NotImplementedError()
+
     def _add_entry(self, *, value, key: Union[str, int, None]=None, expiry: int=0,
-             change_set: Optional[ChangeSet]=None, comment: Optional[str]=None)->Muid:
+             bundler: Optional[Bundler]=None, comment: Optional[str]=None)->Muid:
         immediate = False
-        if not isinstance(change_set, ChangeSet):
+        if not isinstance(bundler, Bundler):
             immediate = True
-            change_set = ChangeSet(comment)
+            bundler = Bundler(comment)
         change_builder = ChangeBuilder()
         entry_builder: EntryBuilder = change_builder.entry # type: ignore # pylint: disable=maybe-no-member
         entry_builder.behavior = self.get_behavior()  # type: ignore # pylint: disable=maybe-no-member
@@ -107,7 +116,7 @@ class Container(ABC):
             entry_builder.deleting = True  # type: ignore # pylint: disable=maybe-no-member
         else:
             raise ValueError(f"don't know how to add this to gink: {value}")
-        muid = change_set.add_change(change_builder)
+        muid = bundler.add_change(change_builder)
         if immediate:
-            self._database.add_change_set(change_set)
+            self._database.add_bundle(bundler)
         return muid

@@ -1,6 +1,6 @@
 """ a couple of NamedTuple definitions, primarily for internal usage """
 from typing import NamedTuple
-from entry_pb2 import Entry as EntryBuilder
+from ..builders.entry_pb2 import Entry as EntryBuilder
 
 from .muid import Muid
 from .typedefs import Medallion, MuTimestamp

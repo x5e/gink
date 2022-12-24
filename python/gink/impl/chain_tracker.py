@@ -6,12 +6,12 @@ from typing import Union, Optional
 
 from sortedcontainers import SortedDict
 
-from sync_message_pb2 import SyncMessage
+from ..builders.sync_message_pb2 import SyncMessage
 
 from .typedefs import MuTimestamp, Medallion
 from .muid import Muid
 from .tuples import Chain
-from .change_set_info import ChangeSetInfo
+from .bundle_info import BundleInfo
 
 
 class ChainTracker:
@@ -28,16 +28,16 @@ class ChainTracker:
         """ Says how far along a giving chain the given instance has seen. """
         return self._acked.get(chain)
 
-    def mark_as_having(self, change_set_info: ChangeSetInfo):
-        """Indicates has everything along the chain in change_set_info up to its timestamp."""
-        chain = change_set_info.get_chain()
+    def mark_as_having(self, bundle_info: BundleInfo):
+        """ Indicates has everything along the chain in bundle_info up to its timestamp. """
+        chain = bundle_info.get_chain()
         have_so_far = self._acked.get(chain, 0)
-        if have_so_far < change_set_info.timestamp:
-            self._acked[chain] = change_set_info.timestamp
+        if have_so_far < bundle_info.timestamp:
+            self._acked[chain] = bundle_info.timestamp
 
-    def has(self, what: Union[Muid, ChangeSetInfo]) -> bool:
+    def has(self, what: Union[Muid, BundleInfo]) -> bool:
         """Reports if the instance tracked by this object has the given data. """
-        if isinstance(what, ChangeSetInfo):
+        if isinstance(what, BundleInfo):
             return what.timestamp <= self._acked.get(what.get_chain(), 0)
         if isinstance(what, Muid):
             iterator = self._acked.irange(

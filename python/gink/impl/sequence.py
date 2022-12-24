@@ -1,14 +1,14 @@
 from typing import Optional, Iterable, Union
 from random import randint
 
-from change_pb2 import Change as ChangeBuilder
+from ..builders.change_pb2 import Change as ChangeBuilder
 
 # gink implementation
 from .typedefs import GenericTimestamp, MuTimestamp
 from .container import Container
 from .muid import Muid
 from .database import Database
-from .change_set import ChangeSet
+from .bundler import Bundler
 from .coding import QUEUE
 from .tuples import PositionedEntry, SequenceKey
 
@@ -21,44 +21,44 @@ class Sequence(Container):
         database: where to send commits through, or last db instance created if None
         """
         database = database or Database.last
-        change_set = ChangeSet()
+        bundler = Bundler()
         if muid is None:
             muid = Sequence._create(
-                Sequence.BEHAVIOR, database=database, change_set=change_set)
+                Sequence.BEHAVIOR, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         self._muid = muid
         self._database = database
         if contents:
             # TODO: implement clear, then append all of the items
             raise NotImplementedError()
-        if len(change_set):
-            self._database.add_change_set(change_set)
+        if len(bundler):
+            self._database.add_bundle(bundler)
     
     def __iter__(self):
         for thing in self.values():
             yield thing
 
-    def append(self, thing, expiry: GenericTimestamp = None, change_set=None, comment=None):
+    def append(self, thing, expiry: GenericTimestamp = None, bundler=None, comment=None):
         """ Append obect to the end of the queue.
 
             If expiry is set, the added entry will be removed at the specified time.
         """
         expiry = self._database.resolve_timestamp(expiry) if expiry is not None else 0
-        return self._add_entry(value=thing, change_set=change_set, comment=comment, expiry=expiry)
+        return self._add_entry(value=thing, bundler=bundler, comment=comment, expiry=expiry)
 
     def extend(self, iterable, expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]]=None,
-             change_set=None, comment=None):
+             bundler=None, comment=None):
         """ Adds all of the items in iterable at once to this sequence.
         
             expiries, if present, may be either a single expiry to be applied to all new entries,
             or a iterable of expiries of the same length as the data
 
-            returns the change set (either passed or created on the fly)
+            returns the bundler (either passed or created on the fly)
             #DEMO
         """
-        immediate = not bool(change_set)
+        immediate = not bool(bundler)
         if immediate:
-            change_set = ChangeSet(comment)
+            bundler = Bundler(comment)
         items = list(iterable)
         if hasattr(expiries, "__iter__"):
             listed_expiries = list(expiries) # type: ignore
@@ -67,51 +67,51 @@ class Sequence(Container):
         for i in range(len(items)):
             expiry: GenericTimestamp = listed_expiries[i] # type: ignore
             expiry = self._database.resolve_timestamp(expiry) if expiry is not None else 0
-            return self._add_entry(value=items[i], change_set=change_set, expiry=expiry)
+            return self._add_entry(value=items[i], bundler=bundler, expiry=expiry)
         if immediate:
-            self._database.add_change_set(change_set)
-        return change_set
+            self._database.add_bundle(bundler)
+        return bundler
 
 
-    def yank(self, muid: Muid, dest: GenericTimestamp = None, *, change_set=None, comment=None):
+    def yank(self, muid: Muid, dest: GenericTimestamp = None, *, bundler=None, comment=None):
         """ Removes or moves an entry by muid.
 
             muid: what to move
-            change_set: what to add this change to
+            bundler: what to add this change to
             comment: make an immediate change with this comment
             dest: new location in the list or time in the future
 
             returns: the muid of the change
         """
         immediate = False
-        if not isinstance(change_set, ChangeSet):
+        if not isinstance(bundler, Bundler):
             immediate = True
-            change_set = ChangeSet(comment)
+            bundler = Bundler(comment)
         change_builder = ChangeBuilder()
         exit_builder = change_builder.exit  # type: ignore
         self._muid.put_into(exit_builder.container)
         muid.put_into(exit_builder.entry)
         exit_builder.dest = self._database.resolve_timestamp(dest) if dest else 0
-        muid = change_set.add_change(change_builder)
+        muid = bundler.add_change(change_builder)
         if immediate:
-            self._database.add_change_set(change_set)
+            self._database.add_bundle(bundler)
         return muid
 
-    def pop(self, index=-1, dest: GenericTimestamp = None, change_set=None, comment=None):
+    def pop(self, index=-1, dest: GenericTimestamp = None, bundler=None, comment=None):
         """ (Re)move and return an item at index (default last). 
 
             If nothing exists at the specified index will raise an IndexError.
-            If change_set is specified, simply adds the change to that, otherwise applies it.
-            If comment is specified and no change set then will make change with that comment.
+            If bundler is specified, simply adds the change to that, otherwise applies it.
+            If comment is specified and no bundler then will make change with that comment.
             
             If dest is specified, it may be a time to hid the entry until, or a time in the past
             to reposition the entry to (the list is ordered by timestamps).
         """
         sequence_key, entry_value = self.at(index)
-        self.yank(sequence_key.entry_muid, dest=dest, change_set=change_set, comment=comment)
+        self.yank(sequence_key.entry_muid, dest=dest, bundler=bundler, comment=comment)
         return entry_value
 
-    def remove(self, value, dest: GenericTimestamp = None, change_set=None, comment=None):
+    def remove(self, value, dest: GenericTimestamp = None, bundler=None, comment=None):
         """ Remove first occurance of value. 
 
             Raises ValueError if the value is not present.
@@ -121,7 +121,7 @@ class Sequence(Container):
             found = self._interpret(positioned.entry_data, positioned.entry_muid)
             if found == value:
                 return self.yank(positioned.entry_muid, dest=dest, 
-                    change_set=change_set, comment=comment)
+                    bundler=bundler, comment=comment)
         raise ValueError("matching item not found")
             
     def items(self, as_of: GenericTimestamp = None) -> Iterable:

@@ -4,7 +4,6 @@ from contextlib import closing
 
 from google.protobuf.text_format import Parse
 
-from change_set_pb2 import ChangeSet as ChangeSetBuilder
 
 from ..impl.lmdb_store import LmdbStore
 from .test_store import *  # pylint complains about test_store.install_tests

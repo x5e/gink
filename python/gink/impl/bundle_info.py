@@ -2,12 +2,12 @@
 """ Contains the ChangeSetInfo class. """
 from typing import Optional
 from struct import Struct
-from change_set_pb2 import ChangeSet
+from ..builders.bundle_pb2 import Bundle
 from .typedefs import Medallion, MuTimestamp
 from .tuples import Chain
 
-class ChangeSetInfo:
-    """Metadata about a particular change set relevant for syncing."""
+class BundleInfo:
+    """ Metadata about a particular change set relevant for syncing. """
     _struct = Struct(">QQQQ")
     __slots__ = ["timestamp", "medallion", "chain_start", "prior_time", "comment"]
     medallion: Medallion
@@ -16,7 +16,7 @@ class ChangeSetInfo:
     prior_time: MuTimestamp
     comment: str
 
-    def __init__(self, *, builder: Optional[ChangeSet]=None, encoded: bytes=b'\x00'*32, **kwargs):
+    def __init__(self, *, builder: Optional[Bundle]=None, encoded: bytes=b'\x00'*32, **kwargs):
 
         unpacked = self._struct.unpack(encoded[0:32])
         (self.timestamp, self.medallion, self.chain_start, self.prior_time) = unpacked

@@ -6,18 +6,18 @@ from struct import pack
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor
 
 # Protobuf Modules
-from change_set_pb2 import ChangeSet as ChangeSetBuilder
-from change_pb2 import Change as ChangeBuilder
-from entry_pb2 import Entry as EntryBuilder
-from exit_pb2 import Exit as ExitBuilder
-from container_pb2 import Container as ContainerBuilder
-from behavior_pb2 import Behavior
+from ..builders.bundle_pb2 import Bundle as BundleBuilder
+from ..builders.change_pb2 import Change as ChangeBuilder
+from ..builders.entry_pb2 import Entry as EntryBuilder
+from ..builders.exit_pb2 import Exit as ExitBuilder
+from ..builders.container_pb2 import Container as ContainerBuilder
+from ..builders.behavior_pb2 import Behavior
 
 # Gink Implementation
 from .typedefs import MuTimestamp, UserKey
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .muid import Muid
-from .change_set_info import ChangeSetInfo
+from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .coding import (encode_key, create_deleting_entry, EntryStoragePair, 
@@ -29,13 +29,13 @@ class LmdbStore(AbstractStore):
 
     Under the hood, each gink.mdb file stores several b-trees:
 
-        change_sets - Used to keep track of all commits we have seen.
-            key: bytes(change_set_info), which forces sorting by (timestamp, medallion)
-            val: the bytes for the relevant change set when it was sealed
+        bundles - Used to keep track of all commits we have seen.
+            key: bytes(bundle_info), which forces sorting by (timestamp, medallion)
+            val: the bytes for the relevant bundle when it was sealed
 
         chain_infos - Used to keep track of how far along each chain we've seen.
             key: the tuple (medallion, chain_start), packed big endian
-            val: bytes(change_set_info) for the last change set along the given chain
+            val: bytes(bundle_info) for the last bundle along the given chain
 
         claimed_chains - Used to keep track of which chains this store owns and can append to.
             key: medallion (packed big endian)
@@ -63,7 +63,7 @@ class LmdbStore(AbstractStore):
 
         container_defs - Map from muid to serialized containers definitions.
     """
-    _change_sets_db_name = "change_sets".encode()
+    _bundles_table_name = "bundles".encode()
     _chain_infos_db_name = "chain_infos".encode()
     _claimed_chains_name = "claimed_map".encode()
     _entries_tbl_db_name = "entries_tbl".encode()
@@ -74,8 +74,8 @@ class LmdbStore(AbstractStore):
     def __init__(self, file_path, reset=False):
         self.file_path = file_path
         self.env = ldmbopen(file_path, max_dbs=100, subdir=False)
-        self._change_sets_db = self.env.open_db(self._chain_infos_db_name)
-        self._chain_infos_db = self.env.open_db(self._change_sets_db_name)
+        self._bundles_table = self.env.open_db(self._chain_infos_db_name)
+        self._chain_infos_db = self.env.open_db(self._bundles_table_name)
         self._claimed_chains = self.env.open_db(self._claimed_chains_name)
         self._entries_tbl_db = self.env.open_db(self._entries_tbl_db_name)
         self._removal_tbl_db = self.env.open_db(self._removal_tbl_db_name)
@@ -83,8 +83,8 @@ class LmdbStore(AbstractStore):
         self._container_defs = self.env.open_db(self._container_defs_name)
         if reset:
             with self.env.begin(write=True) as txn:
-                txn.drop(self._change_sets_db, delete=False)
-                txn.drop(self._change_sets_db, delete=False)
+                txn.drop(self._bundles_table, delete=False)
+                txn.drop(self._bundles_table, delete=False)
                 txn.drop(self._claimed_chains, delete=False)
                 txn.drop(self._entries_tbl_db, delete=False)
                 txn.drop(self._container_defs, delete=False)
@@ -345,18 +345,18 @@ class LmdbStore(AbstractStore):
                 yield EntryStorageKey.from_bytes(cursor.key())
                 succeeded = cursor.next()
 
-    def add_commit(self, change_set_bytes: bytes) -> Tuple[ChangeSetInfo, bool]:
-        builder = ChangeSetBuilder()
-        builder.ParseFromString(change_set_bytes)  # type: ignore
-        new_info = ChangeSetInfo(builder=builder)
+    def add_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+        builder = BundleBuilder()
+        builder.ParseFromString(bundle_bytes)  # type: ignore
+        new_info = BundleInfo(builder=builder)
         chain_key = pack(">QQ", new_info.medallion, new_info.chain_start)
         # Note: LMDB supports only one write transaction, so we don't need to explicitly lock.
         with self.env.begin(write=True) as trxn:
             chain_value_old = trxn.get(chain_key, db=self._chain_infos_db)
-            old_info = ChangeSetInfo(encoded=chain_value_old) if chain_value_old else None
+            old_info = BundleInfo(encoded=chain_value_old) if chain_value_old else None
             needed = AbstractStore._is_needed(new_info, old_info)
             if needed:
-                trxn.put(bytes(new_info), change_set_bytes, db=self._change_sets_db)
+                trxn.put(bytes(new_info), bundle_bytes, db=self._bundles_table)
                 trxn.put(chain_key, bytes(new_info), db=self._chain_infos_db)
                 for offset, change in builder.changes.items():   # type: ignore
                     if change.HasField("container"):
@@ -372,7 +372,7 @@ class LmdbStore(AbstractStore):
                     raise AssertionError(f"{repr(change.ListFields())} {offset} {new_info}")
         return (new_info, needed)
     
-    def _add_exit(self, new_info: ChangeSetInfo, txn: Trxn, offset: int, builder: ExitBuilder):
+    def _add_exit(self, new_info: BundleInfo, txn: Trxn, offset: int, builder: ExitBuilder):
         container = Muid.create(getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(getattr(builder, "entry"), context=new_info)
         exit_muid = Muid.create(context=new_info, offset=offset)
@@ -400,7 +400,7 @@ class LmdbStore(AbstractStore):
         else:
             txn.put(new_location_key, b"", db=self._entries_loc_db)
 
-    def _add_entry(self, new_info: ChangeSetInfo, txn: Trxn, offset: int, builder: EntryBuilder):
+    def _add_entry(self, new_info: BundleInfo, txn: Trxn, offset: int, builder: EntryBuilder):
         entry_storage_key = EntryStorageKey.from_builder(builder, new_info, offset)
         serialized_esk = bytes(entry_storage_key)
         txn.put(serialized_esk, serialize(builder), db=self._entries_tbl_db)
@@ -408,15 +408,15 @@ class LmdbStore(AbstractStore):
         entries_loc_key = bytes(entry_muid) + serialize(entry_muid.timestamp)
         txn.put(entries_loc_key, serialized_esk, db=self._entries_loc_db)
 
-    def get_commits(self, callback: Callable[[bytes, ChangeSetInfo], None]):
+    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None]):
         with self.env.begin() as txn:
-            change_sets_cursor = txn.cursor(self._change_sets_db)
-            data_remaining = change_sets_cursor.first()
+            bundles_cursor = txn.cursor(self._bundles_table)
+            data_remaining = bundles_cursor.first()
             while data_remaining:
-                info_bytes, change_set_bytes = change_sets_cursor.item()
-                change_set_info = ChangeSetInfo(encoded=info_bytes)
-                callback(change_set_bytes, change_set_info)
-                data_remaining = change_sets_cursor.next()
+                info_bytes, bundle_bytes = bundles_cursor.item()
+                bundle_info = BundleInfo(encoded=info_bytes)
+                callback(bundle_bytes, bundle_info)
+                data_remaining = bundles_cursor.next()
 
     def get_chain_tracker(self) -> ChainTracker:
         chain_tracker = ChainTracker()
@@ -425,7 +425,7 @@ class LmdbStore(AbstractStore):
             data_remaining = infos_cursor.first()
             while data_remaining:
                 info_bytes = infos_cursor.value()
-                change_set_info = ChangeSetInfo(encoded=info_bytes)
-                chain_tracker.mark_as_having(change_set_info)
+                bundle_info = BundleInfo(encoded=info_bytes)
+                chain_tracker.mark_as_having(bundle_info)
                 data_remaining = infos_cursor.next()
         return chain_tracker

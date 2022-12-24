@@ -5,14 +5,14 @@ from typing import Tuple, Callable, Optional, Iterable, Union
 from sortedcontainers import SortedDict
 
 # generated protobuf builder
-from change_set_pb2 import ChangeSet as ChangeSetBuilder
-from entry_pb2 import Entry as EntryBuilder
-from exit_pb2 import Exit as ExitBuilder
+from ..builders.bundle_pb2 import Bundle as BundleBuilder
+from ..builders.entry_pb2 import Entry as EntryBuilder
+from ..builders.exit_pb2 import Exit as ExitBuilder
 
 # gink modules
 from .typedefs import UserKey, MuTimestamp
 from .tuples import Chain, FoundEntry, PositionedEntry
-from .change_set_info import ChangeSetInfo
+from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .muid import Muid
@@ -24,8 +24,8 @@ class MemoryStore(AbstractStore):
 
         (Primarily for use in testing and to be used as a base clase.)
     """
-    _change_sets: SortedDict  # ChangeSetInfo => bytes
-    _chain_infos: SortedDict  # Chain => ChangeSetInfo
+    _bundles: SortedDict  # BundleInfo => bytes
+    _chain_infos: SortedDict  # Chain => BundleInfo
     _claimed_chains: SortedDict  # Chain
     _entries: SortedDict  # bytes(EntryStorageKey) => EntryBuilder
     _entry_locations: SortedDict
@@ -33,7 +33,7 @@ class MemoryStore(AbstractStore):
     _removals: SortedDict 
 
     def __init__(self):
-        self._change_sets = SortedDict()
+        self._bundles = SortedDict()
         self._chain_infos = SortedDict()
         self._claimed_chains = SortedDict()
         self._entries = SortedDict()
@@ -128,17 +128,17 @@ class MemoryStore(AbstractStore):
             if limit is not None:
                 limit -= 1
 
-    def add_commit(self, change_set_bytes: bytes) -> Tuple[ChangeSetInfo, bool]:
-        change_set_builder = ChangeSetBuilder()
-        change_set_builder.ParseFromString(change_set_bytes)  # type: ignore
-        new_info = ChangeSetInfo(builder=change_set_builder)
+    def add_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+        bundle_builder = BundleBuilder()
+        bundle_builder.ParseFromString(bundle_bytes)  # type: ignore
+        new_info = BundleInfo(builder=bundle_builder)
         chain_key = new_info.get_chain()
         old_info = self._chain_infos.get(new_info.get_chain())
         needed = AbstractStore._is_needed(new_info, old_info)
         if needed:
-            self._change_sets[new_info] = change_set_bytes
+            self._bundles[new_info] = bundle_bytes
             self._chain_infos[chain_key] = new_info
-            for offset, change in change_set_builder.changes.items():   # type: ignore
+            for offset, change in bundle_builder.changes.items():   # type: ignore
                 if change.HasField("container"):
                     container_muid = Muid.create(
                         context=new_info, offset=offset)
@@ -154,7 +154,7 @@ class MemoryStore(AbstractStore):
                     f"{repr(change.ListFields())} {offset} {new_info}")
         return (new_info, needed)
     
-    def _add_exit(self, new_info: ChangeSetInfo, offset: int, exit_builder: ExitBuilder):
+    def _add_exit(self, new_info: BundleInfo, offset: int, exit_builder: ExitBuilder):
         container = Muid.create(getattr(exit_builder, "container"), context=new_info)
         entry_muid = Muid.create(getattr(exit_builder, "entry"), context=new_info)
         exit_muid = Muid.create(context=new_info, offset=offset)
@@ -183,7 +183,7 @@ class MemoryStore(AbstractStore):
             self._entry_locations[new_location_key] = None
 
 
-    def _add_entry(self, new_info: ChangeSetInfo, offset: int, entry_builder: EntryBuilder):
+    def _add_entry(self, new_info: BundleInfo, offset: int, entry_builder: EntryBuilder):
         esk = EntryStorageKey.from_builder(entry_builder, new_info, offset)
         encoded_entry_storage_key = bytes(esk)
         self._entries[encoded_entry_storage_key] = entry_builder
@@ -191,17 +191,17 @@ class MemoryStore(AbstractStore):
             esk.entry_muid) + encode_muts(~esk.entry_muid.timestamp)
         self._entry_locations[entries_location_key] = encoded_entry_storage_key
 
-    def get_commits(self, callback: Callable[[bytes, ChangeSetInfo], None]):
-        for change_set_info, data in self._change_sets.items():
-            assert isinstance(change_set_info, ChangeSetInfo)
+    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None]):
+        for bundle_info, data in self._bundles.items():
+            assert isinstance(bundle_info, BundleInfo)
             assert isinstance(data, bytes)
-            callback(data, change_set_info)
+            callback(data, bundle_info)
 
     def get_chain_tracker(self) -> ChainTracker:
         chain_tracker = ChainTracker()
-        for change_set_info in self._chain_infos.values():
-            assert isinstance(change_set_info, ChangeSetInfo)
-            chain_tracker.mark_as_having(change_set_info)
+        for bundle_info in self._chain_infos.values():
+            assert isinstance(bundle_info, BundleInfo)
+            chain_tracker.mark_as_having(bundle_info)
         return chain_tracker
 
     def _get_entry_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:

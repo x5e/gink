@@ -5,7 +5,8 @@ from ..impl.directory import Directory
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
-from ..impl.change_set import ChangeSet
+from ..impl.bundler import Bundler
+from ..impl.abstract_store import AbstractStore
 from ..impl.patching import FINE_STRUCTURE_CONSTANT
 
 assert FINE_STRUCTURE_CONSTANT > 0
@@ -14,12 +15,13 @@ def test_creation():
     """ test that I can create new directories as well as proxies for existing ones """
     for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
         with store:
+            assert isinstance(store, AbstractStore)
             database = Database(store=store)
             directory1 = Directory(muid=Muid(1,2,3), database=database)
-            assert len(store.get_commit_infos()) == 0
+            assert len(store.get_bundle_infos()) == 0
 
             directory2 = Directory()
-            assert len(store.get_commit_infos()) != 0
+            assert len(store.get_bundle_infos()) != 0
             assert directory1 != directory2
 
 def test_set_get():
@@ -29,10 +31,10 @@ def test_set_get():
             database = Database(store=store)
             global_directory = Directory.global_instance(database=database)
 
-            change_set = ChangeSet("testing")
-            global_directory.set("foo", "bar", change_set)
-            database.add_change_set(change_set)
-            infos = store.get_commit_infos()
+            bundler = Bundler("testing")
+            global_directory.set("foo", "bar", bundler)
+            database.add_bundle(bundler)
+            infos = store.get_bundle_infos()
             assert len(infos) == 2, infos
             result = global_directory["foo"]
             assert result == "bar"
@@ -110,10 +112,10 @@ def test_items_and_keys():
             assert sorted_items == [('foo', 'baz'), ('zoo', 3.0)], sorted_items
             sorted_items = sorted(gdi.items(as_of=a_time))
             assert sorted_items == [('bar', 'zoo'), ('foo', 'bar'), ('zoo', 3.0)]
-            keys = gdi.keys()
+            keys = set(gdi.keys())
             assert keys == set(["foo", "zoo"]), keys
             gdi[3] = True
-            keys = gdi.keys()
+            keys = set(gdi.keys())
             assert keys == set(["foo", "zoo", 3]), keys
 
 def test_popitem_and_len():

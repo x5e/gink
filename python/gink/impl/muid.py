@@ -2,7 +2,7 @@
 from typing import NamedTuple, Any, Union
 from uuid import UUID
 
-from muid_pb2 import Muid as MuidBuilder
+from ..builders.muid_pb2 import Muid as MuidBuilder
 
 from .dummy import Dummy
 
@@ -54,7 +54,7 @@ class Muid(NamedTuple):
 
     @classmethod
     def create(cls, builder: Union[MuidBuilder, Dummy] = Dummy(), context: Any=Dummy(), offset=None):
-        """ Creates a muid from a builder and optionally a change_set_info context object. """
+        """ Creates a muid from a builder and optionally a bundle_info context object. """
         timestamp = builder.timestamp or context.timestamp  # type: ignore
         medallion = builder.medallion or context.medallion  # type: ignore
         offset = offset or builder.offset # type: ignore

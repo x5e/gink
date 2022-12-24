@@ -17,10 +17,10 @@ def test_creation():
         with closing(store):
             database = Database(store=store)
             sequence1 = Sequence(muid=Muid(1,2,3), database=database)
-            assert len(store.get_commit_infos()) == 0
+            assert len(store.get_bundle_infos()) == 0
 
             sequence2 = Sequence()
-            assert len(store.get_commit_infos()) != 0
+            assert len(store.get_bundle_infos()) != 0
             assert sequence1 != sequence2
 
 def test_repr():
