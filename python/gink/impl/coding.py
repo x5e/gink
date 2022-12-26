@@ -8,6 +8,7 @@ from ..builders.value_pb2 import Value as ValueBuilder
 from ..builders.entry_pb2 import Entry as EntryBuilder
 from ..builders.key_pb2 import Key as KeyBuilder
 from ..builders.behavior_pb2 import Behavior
+from ..builders.change_pb2 import Change as ChangeBuilder
 
 from .typedefs import UserKey, MuTimestamp, UserKey, UserValue
 from .muid import Muid
@@ -155,8 +156,7 @@ def entries_equiv(pair1: EntryStoragePair, pair2: EntryStoragePair) -> bool:
         Used to see if the effective value in a container is the same even if it
         has a new entry.
     """
-    if pair1.key == pair2.key:
-        return True
+    assert pair1.key != pair2.key, "comparing an entry to itself"
     assert pair1.key.middle_key == pair2.key.middle_key
     assert pair1.key.container == pair2.key.container
     if pair1.builder.HasField("pointee"): # type: ignore
@@ -289,3 +289,8 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
             value_builder.document.values.append(encode_value(val)) # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     raise ValueError("don't know how to encode: %r" % value) # pylint: disable=consider-using-f-string
+
+def wrap_change(builder: EntryBuilder) -> ChangeBuilder:
+    change_builder = ChangeBuilder()
+    change_builder.entry.CopyFrom(builder) # type: ignore
+    return change_builder

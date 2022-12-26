@@ -47,7 +47,9 @@ class Directory(Container):
         for key, val in items:
             result += indent_spaces + repr(key) + ": "
             if hasattr(val, "to_pyon"):
-                result += val.to_pyon(indent + 1 if indent else False)
+                #TODO: FIX ME
+                raise NotImplementedError()
+                #result += val.to_pyon(indent + 1 if indent else False)
             else:
                 result += repr(val)
             result += ",\n"
@@ -211,9 +213,9 @@ class Directory(Container):
             bundler = Bundler(comment)
         assert isinstance(bundler, Bundler)
         to_time = self._database.resolve_timestamp(to_time)
-        for entry in self._database._store.get_reset_changes(to_time=to_time, 
+        for change in self._database._store.get_reset_changes(to_time=to_time, 
                 container=self._muid, user_key=key, recursive=recursive):
-            bundler.add_change(entry)
+            bundler.add_change(change)
         if immediate and len(bundler):
             self._database.add_bundle(bundler=bundler)
         return bundler

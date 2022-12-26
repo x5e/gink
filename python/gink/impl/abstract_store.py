@@ -113,8 +113,8 @@ class AbstractStore(ABC):
             raise ValueError("Bundle received without prior link in chain!")
         return True
 
-    def get_reset_changes(self, to_time, container: Optional[Muid], user_key: Optional[UserKey],
-            recursive=False) -> Iterable[Union[ChangeBuilder, EntryBuilder]]:
+    def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid], 
+        user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
         """
         Generates reset entries that will change things back to how they were at given time.
 

@@ -150,10 +150,8 @@ def test_update():
 
 def test_reset():
     """ tests that the reset(time) functionality works """
-
-    for store in [LmdbStore("/tmp/gink.mdb", reset=True), 
-        # MemoryStore(),
-        ]:
+    for store in [LmdbStore("/tmp/gink.mdb", reset=True),]:
+        # TODO: implement reset in memory store
         with store:
             # pylint: disable=unsupported-assignment-operation, unsupported-membership-test
             database = Database(store=store)
@@ -173,8 +171,8 @@ def test_reset():
             assert gdi["foo"] == "bar", gdi["foo"]
             assert gdi["bar"] == "foo", gdi["bar"]
             assert 44 in gdi["nope"]  # type: ignore
-            _ = gdi.reset(middle, recursive=True)
+            bundle = gdi.reset(middle, recursive=True)
             assert 44 not in gdi["nope"]  # type: ignore
-            # assert len(_) == 1, str(_) # TODO need to fix double deleting entries
-            # _ = gdi.reset(middle, recursive=True)
-            # assert len(_) == 0 # ditto
+            assert len(bundle) == 1
+            bundle = gdi.reset(middle, recursive=True)
+            assert len(bundle) == 0
