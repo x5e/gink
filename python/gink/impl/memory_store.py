@@ -8,6 +8,7 @@ from sortedcontainers import SortedDict
 from ..builders.bundle_pb2 import Bundle as BundleBuilder
 from ..builders.entry_pb2 import Entry as EntryBuilder
 from ..builders.movement_pb2 import Movement as MovementBuilder
+from ..builders.clearance_pb2 import Clearance as ClearanceBuilder
 
 # gink modules
 from .typedefs import UserKey, MuTimestamp
@@ -22,7 +23,7 @@ from .coding import EntryStorageKey, SCHEMA, encode_muts, serialize, QueueMiddle
 class MemoryStore(AbstractStore):
     """ Stores the data for a Gink database in memory.
 
-        (Primarily for use in testing and to be used as a base clase.)
+        (Primarily for use in testing and to be used as a base clase for log-backed store.)
     """
     _bundles: SortedDict  # BundleInfo => bytes
     _chain_infos: SortedDict  # Chain => BundleInfo
@@ -31,6 +32,7 @@ class MemoryStore(AbstractStore):
     _entry_locations: SortedDict
     _containers: SortedDict  # muid => builder
     _removals: SortedDict 
+    _clearances: SortedDict
 
     def __init__(self):
         self._bundles = SortedDict()
@@ -40,19 +42,31 @@ class MemoryStore(AbstractStore):
         self._containers = SortedDict()
         self._entry_locations = SortedDict()
         self._removals = SortedDict()
+        self._clearances = SortedDict()
 
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
+        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
         cont_bytes = bytes(container)
+        clearance_time = None
+        for clearance_key in self._clearances.irange(
+            minimum=cont_bytes, maximum=cont_bytes + bytes(as_of_muid), reverse=True):
+            clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
+
         iterator = self._entries.irange(
             minimum=cont_bytes, maximum=cont_bytes + b"\xFF", reverse=True)
         last = None
+        # TODO this could be more efficient
         for entry_key in iterator:
             entry_storage_key = EntryStorageKey.from_bytes(entry_key, SCHEMA)
-            if entry_storage_key.expiry and entry_storage_key.expiry < as_of:
+            if entry_storage_key.entry_muid.timestamp > as_of:
                 continue
             if entry_storage_key.middle_key == last:
                 continue
-            if entry_storage_key.entry_muid.timestamp > as_of:
+            if clearance_time and entry_storage_key.entry_muid.timestamp < clearance_time:
+                last = entry_storage_key.middle_key
+                continue                
+            if entry_storage_key.expiry and entry_storage_key.expiry < as_of:
+                last = entry_storage_key.middle_key
                 continue
             yield FoundEntry(builder=self._entries[entry_key],
                              address=entry_storage_key.entry_muid)
@@ -60,13 +74,20 @@ class MemoryStore(AbstractStore):
 
     def get_entry(self, container: Muid, key: Union[UserKey, Muid, None], 
             as_of: MuTimestamp) -> Optional[FoundEntry]:
+        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
+        clearance_time = None
+        for clearance_key in self._clearances.irange(
+            minimum=bytes(container), maximum=bytes(container) + bytes(as_of_muid), reverse=True):
+            clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
+
         if isinstance(key, Muid):
+            if clearance_time and clearance_time < key.timestamp:
+                return None
             entry_location = self._get_entry_location(key, as_of=as_of)
             if not entry_location:
                 return None
             entry_storage_key = EntryStorageKey.from_bytes(entry_location)
             return FoundEntry(entry_storage_key.entry_muid, self._entries[entry_location])
-        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
         epoch_muid = Muid(0, 0, 0)
         minimum = bytes(EntryStorageKey(container, key, epoch_muid, None))
         maximum = bytes(EntryStorageKey(container, key, as_of_muid, None))
@@ -76,6 +97,8 @@ class MemoryStore(AbstractStore):
         for encoded_entry_storage_key in iterator:
             entry_storage_key = EntryStorageKey.from_bytes(
                 encoded_entry_storage_key)
+            if clearance_time and entry_storage_key.entry_muid.timestamp < clearance_time:
+                return None
             builder = self._entries[encoded_entry_storage_key]
             return FoundEntry(address=entry_storage_key.entry_muid, builder=builder)
         return None
@@ -150,9 +173,17 @@ class MemoryStore(AbstractStore):
                 if change.HasField("movement"):
                     self._add_movement(new_info=new_info, offset=offset, builder=change.movement)
                     continue
-                raise AssertionError(
-                    f"{repr(change.ListFields())} {offset} {new_info}")
+                if change.HasField("clearance"):
+                    self._add_clearance(new_info=new_info, offset=offset, builder=change.clearance)
+                    continue
+                raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         return (new_info, needed)
+    
+    def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):
+        container_muid = Muid.create(getattr(builder, "container"), context=new_info)
+        clearance_muid = Muid.create(context=new_info, offset=offset)
+        new_key = bytes(container_muid) + bytes(clearance_muid)
+        self._clearances[new_key] = builder
     
     def _add_movement(self, new_info: BundleInfo, offset: int, builder: MovementBuilder):
         container = Muid.create(getattr(builder, "container"), context=new_info)
@@ -181,7 +212,6 @@ class MemoryStore(AbstractStore):
             self._entry_locations[new_location_key] = new_serialized_esk
         else:
             self._entry_locations[new_location_key] = None
-
 
     def _add_entry(self, new_info: BundleInfo, offset: int, entry_builder: EntryBuilder):
         esk = EntryStorageKey.from_builder(entry_builder, new_info, offset)

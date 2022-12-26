@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """ test the directory class """
+from contextlib import closing
+
 from ..impl.muid import Muid
 from ..impl.directory import Directory
 from ..impl.memory_store import MemoryStore
@@ -14,7 +16,7 @@ assert PATCHED
 def test_creation():
     """ test that I can create new directories as well as proxies for existing ones """
     for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
-        with store:
+        with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
             directory1 = Directory(muid=Muid(1,2,3), database=database)
@@ -27,7 +29,7 @@ def test_creation():
 def test_set_get():
     """ Test basic set/get functionality works. """
     for store in [LmdbStore("/tmp/gink.mdb", reset=True), MemoryStore(),]:
-        with store:
+        with closing(store):
             database = Database(store=store)
             global_directory = Directory.global_instance(database=database)
 
@@ -54,7 +56,7 @@ def test_set_get():
 def test_delete():
     """ tests that delete works as expected """
     for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
-        with store:
+        with closing(store):
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
             gdi["foo"] = "bar"
@@ -67,7 +69,7 @@ def test_delete():
 def test_setdefault():
     """ tests that delete works as expected """
     for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
-        with store:
+        with closing(store):
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
             gdi.setdefault("foo", "bar")
@@ -86,7 +88,7 @@ def test_setdefault():
 def test_pop():
     """ tests the pop method """
     for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
-        with store:
+        with closing(store):
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
             gdi["foo"] = "bar"
@@ -176,3 +178,21 @@ def test_reset():
             assert len(bundle) == 1
             bundle = gdi.reset(middle, recursive=True)
             assert len(bundle) == 0
+
+def test_clearance():
+    """ tests the directory.clear method works as expected """
+    for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
+        with closing(store):
+            database = Database(store=store)
+            gdi = Directory.global_instance(database=database)
+            gdi["foo"] = "bar"
+            gdi[99] = "foo"
+            assert gdi["foo"] == "bar"
+            clearance_muid = gdi.clear()
+            assert "foo" not in gdi
+            assert 99 not in gdi
+            previous = gdi.get("foo", as_of=clearance_muid.timestamp)
+            assert previous == "bar", previous
+            gdi["bar"] = "foo"
+            keys = set(gdi.keys())
+            assert keys == set(["bar"]), (keys, store)

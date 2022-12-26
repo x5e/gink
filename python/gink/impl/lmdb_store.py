@@ -12,6 +12,7 @@ from ..builders.entry_pb2 import Entry as EntryBuilder
 from ..builders.movement_pb2 import Movement
 from ..builders.container_pb2 import Container as ContainerBuilder
 from ..builders.behavior_pb2 import Behavior
+from ..builders.clearance_pb2 import Clearance
 
 # Gink Implementation
 from .typedefs import MuTimestamp, UserKey
@@ -69,6 +70,10 @@ class LmdbStore(AbstractStore):
                 0 - No history stored.
                 1 - All history stored.
                 <other microsecond timestamp> - time since when history has been retained
+        
+        clearances - tracks clearance changes (most recent per container if not retaining entries)
+            key: (container-muid, clearance-muid)
+            val: binaryproto of the clearance
     """
 
     def __init__(self, file_path, reset=False, retain_bundles=True, retain_entries=True):
@@ -88,6 +93,7 @@ class LmdbStore(AbstractStore):
         self._containers = self._handle.open_db(b"containers")
         self._locations = self._handle.open_db(b"locations")
         self._retentions = self._handle.open_db(b"retentions")
+        self._clearances = self._handle.open_db(b"clearances")
         if reset:
             with self._handle.begin(write=True) as txn:
                 # The delete=False signals to lmdb to truncate the tables rather than drop them
@@ -99,6 +105,7 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._containers, delete=False)
                 txn.drop(self._locations, delete=False)
                 txn.drop(self._retentions, delete=False)
+                txn.drop(self._clearances, delete=False)
         with self._handle.begin() as txn:
             # I'm checking to see if retentions are set in a read-only transaction, because if
             # they are and another process has this file open I don't want to wait to get a lock.
@@ -111,6 +118,8 @@ class LmdbStore(AbstractStore):
                 if not retentions_set:
                     txn.put(b"bundles", encode_muts(int(retain_bundles)), db=self._retentions)
                     txn.put(b"entries", encode_muts(int(retain_entries)), db=self._retentions)
+            #TODO: add methods to drop out-of-date entries and/or turn off retention
+            #TODO: add purge method to remove particular data even when retention is on
 
     def _get_behavior(self, container: Muid, trxn: Trxn) -> int:
         if container.timestamp == -1:
@@ -264,25 +273,33 @@ class LmdbStore(AbstractStore):
         When "key" is a Muid, assumes that "container" is a queue and that the "key"
         is the muid for the desired entry.
         """
+        as_of_muid = bytes(Muid(as_of, 0, 0))
         with self._handle.begin() as txn:
+            clearances_cursor = txn.cursor(self._clearances)
+            most_recent_clearance = self._to_last(clearances_cursor, bytes(container), as_of_muid)
+            clearance_time = None
+            if most_recent_clearance:
+                clearance_time = Muid.from_bytes(most_recent_clearance[16:32]).timestamp
             entries_cursor = txn.cursor(self._entries)
             if isinstance(key, Muid):
+                if clearance_time and key.timestamp > clearance_time:
+                    return None
                 storage_pair = self._get_queue_entry(txn, key, as_of=as_of)
                 if not storage_pair:
                     return None
                 return FoundEntry(storage_pair.key.entry_muid, storage_pair.builder)
-                
             built = serialize(encode_key(key)) if isinstance(key, (int, str)) else b""
             assert isinstance(key, (int, str)) or built == b""
             prefix = bytes(container) + built
-            seek_succeded = LmdbStore._to_last(entries_cursor, prefix, bytes(Muid(as_of, 0, 0)))
-            if not seek_succeded:
+            entry_key_bytes = self._to_last(entries_cursor, prefix, as_of_muid)
+            if not entry_key_bytes:
                 return None
-            bkey, bval = entries_cursor.item()
-            assert isinstance(bkey, bytes)
+            assert isinstance(entry_key_bytes, bytes)
+            entry_storage_key = EntryStorageKey.from_bytes(entry_key_bytes, SCHEMA)
+            if clearance_time and entry_storage_key.entry_muid.timestamp < clearance_time:
+                return None
             entry_builder = EntryBuilder()
-            entry_builder.ParseFromString(bval) # type: ignore
-            entry_storage_key = EntryStorageKey.from_bytes(bkey, SCHEMA)
+            entry_builder.ParseFromString(entries_cursor.value()) # type: ignore
             return FoundEntry(entry_storage_key.entry_muid, builder=entry_builder)
 
     @staticmethod
@@ -361,6 +378,12 @@ class LmdbStore(AbstractStore):
         container_prefix = bytes(container)
         as_of_bytes = bytes(Muid(as_of, 0, 0))
         with self._handle.begin() as txn:
+            clearances_cursor = txn.cursor(self._clearances)
+            most_recent_clearance = self._to_last(clearances_cursor, container_prefix, as_of_bytes)
+            clearance_time = None
+            if most_recent_clearance:
+                clearance_time = Muid.from_bytes(most_recent_clearance[16:32]).timestamp
+
             cursor = txn.cursor(self._entries)
             cursor_key = self._to_last(cursor, container_prefix)
             while cursor_key:
@@ -375,6 +398,9 @@ class LmdbStore(AbstractStore):
                         # no entries for this key before the as-of time, go to next key
                         cursor_key = self._to_last(cursor, container_prefix, cursor_key[16:-24])
                         continue
+                if clearance_time and entry_storage_key.entry_muid.timestamp < clearance_time:
+                    cursor_key = self._to_last(cursor, container_prefix, cursor_key[16:-24])
+                    continue
                 if entry_storage_key.expiry and entry_storage_key.expiry < as_of:
                     cursor_key = self._to_last(cursor, container_prefix, cursor_key[16:-24])
                     continue
@@ -417,8 +443,25 @@ class LmdbStore(AbstractStore):
                     if change.HasField("movement"):
                         self._apply_movement(new_info, trxn, offset, change.movement)
                         continue
-                    raise AssertionError(f"{repr(change.ListFields())} {offset} {new_info}")
+                    if change.HasField("clearance"):
+                        self._apply_clearance(new_info, trxn, offset, change.clearance)
+                        continue
+                    raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         return (new_info, needed)
+    
+    def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int, builder: Clearance):
+        container_muid = Muid.create(getattr(builder, "container"), context=new_info)
+        clearance_muid = Muid.create(context=new_info, offset=offset)
+        entry_retention = decode_muts(trxn.get(b"entries", db=self._retentions)) # type: ignore
+        if not entry_retention:
+            clearance_cursor = trxn.cursor(db=self._clearances)
+            while self._to_last(clearance_cursor, prefix=bytes(container_muid)):
+                clearance_cursor.delete()
+            entries_cursor = trxn.cursor(db=self._entries)
+            while self._to_last(entries_cursor, prefix=bytes(container_muid)):
+                entries_cursor.delete()
+        new_key = bytes(container_muid) + bytes(clearance_muid)
+        trxn.put(new_key, serialize(builder), db=self._clearances)
     
     def _apply_movement(self, new_info: BundleInfo, txn: Trxn, offset: int, builder: Movement):
         """ (Re)moves an entry from the store.

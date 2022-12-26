@@ -83,12 +83,19 @@ class Container(ABC):
             database.add_bundle(bundler)  # type: ignore
         return muid
 
-    def clear(self, bundler: Optional[Bundler]=None, comment: Optional[str]=None)->Muid:
-        """ Removes all entries from this container. 
-        
+    def clear(self, bundler: Optional[Bundler]=None, comment: Optional[str]=None) -> Muid:
+        """ Removes all entries from this container, returning the muid of the clearance.
         """
-        # TODO: implement!!!
-        raise NotImplementedError()
+        immediate = False
+        if not isinstance(bundler, Bundler):
+            bundler = Bundler(comment)
+            immediate = True
+        change_builder = ChangeBuilder()
+        self._muid.put_into(change_builder.clearance.container) # type: ignore
+        change_muid = bundler.add_change(change_builder)
+        if immediate:
+            self._database.add_bundle(bundler)
+        return change_muid
 
     def _add_entry(self, *, value, key: Union[str, int, None]=None, expiry: int=0,
              bundler: Optional[Bundler]=None, comment: Optional[str]=None)->Muid:
@@ -97,19 +104,20 @@ class Container(ABC):
             immediate = True
             bundler = Bundler(comment)
         change_builder = ChangeBuilder()
-        entry_builder: EntryBuilder = change_builder.entry # type: ignore # pylint: disable=maybe-no-member
-        entry_builder.behavior = self.get_behavior()  # type: ignore # pylint: disable=maybe-no-member
+        # pylint: disable=maybe-no-member
+        entry_builder: EntryBuilder = change_builder.entry # type: ignore
+        entry_builder.behavior = self.get_behavior()  # type: ignore
         entry_builder.expiry = expiry # type: ignore
-        self._muid.put_into(entry_builder.container) # type: ignore # pylint: disable=maybe-no-member
+        self._muid.put_into(entry_builder.container) # type: ignore
         if isinstance(key, (str, int)):
-            encode_key(key, entry_builder.key)  # type: ignore # pylint: disable=maybe-no-member
+            encode_key(key, entry_builder.key)  # type: ignore
         if isinstance(value, Container):
             pointee_muid = value.get_muid()
             if pointee_muid.medallion:
-                entry_builder.pointee.medallion = pointee_muid.medallion # type: ignore # pylint: disable=maybe-no-member
+                entry_builder.pointee.medallion = pointee_muid.medallion # type: ignore
             if pointee_muid.timestamp:
-                entry_builder.pointee.timestamp = pointee_muid.timestamp # type: ignore # pylint: disable=maybe-no-member
-            entry_builder.pointee.offset = pointee_muid.offset # type: ignore # pylint: disable=maybe-no-member
+                entry_builder.pointee.timestamp = pointee_muid.timestamp # type: ignore
+            entry_builder.pointee.offset = pointee_muid.offset # type: ignore
         elif isinstance(value, (str, int, float, dict, tuple, list, bool, type(None))):
             encode_value(value, entry_builder.value) # type: ignore # pylint: disable=maybe-no-member
         elif value == self._DELETE:
