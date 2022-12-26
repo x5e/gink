@@ -7,7 +7,7 @@ from sortedcontainers import SortedDict
 # generated protobuf builder
 from ..builders.bundle_pb2 import Bundle as BundleBuilder
 from ..builders.entry_pb2 import Entry as EntryBuilder
-from ..builders.exit_pb2 import Exit as ExitBuilder
+from ..builders.movement_pb2 import Movement as MovementBuilder
 
 # gink modules
 from .typedefs import UserKey, MuTimestamp
@@ -128,7 +128,7 @@ class MemoryStore(AbstractStore):
             if limit is not None:
                 limit -= 1
 
-    def add_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
         bundle_builder = BundleBuilder()
         bundle_builder.ParseFromString(bundle_bytes)  # type: ignore
         new_info = BundleInfo(builder=bundle_builder)
@@ -147,34 +147,34 @@ class MemoryStore(AbstractStore):
                 if change.HasField("entry"):
                     self._add_entry(new_info=new_info,offset=offset, entry_builder=change.entry)
                     continue
-                if change.HasField("exit"):
-                    self._add_exit(new_info=new_info, offset=offset, exit_builder=change.exit)
+                if change.HasField("movement"):
+                    self._add_movement(new_info=new_info, offset=offset, builder=change.movement)
                     continue
                 raise AssertionError(
                     f"{repr(change.ListFields())} {offset} {new_info}")
         return (new_info, needed)
     
-    def _add_exit(self, new_info: BundleInfo, offset: int, exit_builder: ExitBuilder):
-        container = Muid.create(getattr(exit_builder, "container"), context=new_info)
-        entry_muid = Muid.create(getattr(exit_builder, "entry"), context=new_info)
-        exit_muid = Muid.create(context=new_info, offset=offset)
-        dest = getattr(exit_builder, "dest")
+    def _add_movement(self, new_info: BundleInfo, offset: int, builder: MovementBuilder):
+        container = Muid.create(getattr(builder, "container"), context=new_info)
+        entry_muid = Muid.create(getattr(builder, "entry"), context=new_info)
+        movement_muid = Muid.create(context=new_info, offset=offset)
+        dest = getattr(builder, "dest")
         old_serialized_esk = self._get_entry_location(entry_muid)
         if not old_serialized_esk:
             return
         entry_storage_key = EntryStorageKey.from_bytes(old_serialized_esk)
         entry_expiry = entry_storage_key.expiry
-        if entry_expiry and entry_expiry < exit_muid.timestamp:
+        if entry_expiry and entry_expiry < movement_muid.timestamp:
             return # refuse to move an entry that's expired
-        if exit_muid.timestamp < entry_storage_key.get_placed_time():
+        if movement_muid.timestamp < entry_storage_key.get_placed_time():
             # I'm intentionally ignoring the case where a past (re)move shows up after a later one.
             # This means that while the present state will always converge, the history might not.
             return
-        removal_key = old_serialized_esk[0:40] + bytes(exit_muid)
-        self._removals[removal_key] = exit_builder
-        new_location_key = bytes(entry_muid) + serialize(~exit_muid.timestamp)
+        removal_key = old_serialized_esk[0:40] + bytes(movement_muid)
+        self._removals[removal_key] = builder
+        new_location_key = bytes(entry_muid) + serialize(~movement_muid.timestamp)
         if dest:
-            middle_key = QueueMiddleKey(dest, exit_muid)
+            middle_key = QueueMiddleKey(dest, movement_muid)
             entry_storage_key = EntryStorageKey(container, middle_key, entry_muid, entry_expiry)
             new_serialized_esk = bytes(entry_storage_key)
             self._entries[new_serialized_esk] = self._entries[old_serialized_esk]
@@ -191,9 +191,10 @@ class MemoryStore(AbstractStore):
             esk.entry_muid) + encode_muts(~esk.entry_muid.timestamp)
         self._entry_locations[entries_location_key] = encoded_entry_storage_key
 
-    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None]):
-        for bundle_info, data in self._bundles.items():
+    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp=0):
+        for bundle_info in self._bundles.irange(minimum=BundleInfo(timestamp=since)):
             assert isinstance(bundle_info, BundleInfo)
+            data = self._bundles[bundle_info]
             assert isinstance(data, bytes)
             callback(data, bundle_info)
 

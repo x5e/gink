@@ -20,12 +20,12 @@ class LogBackedStore(MemoryStore):
         self._log_file_builder = LogFile()
         self._log_file_builder.ParseFromString(self._handle.read())  # type: ignore
         for bundle_bytes in self._log_file_builder.commits:  # type: ignore # pylint: disable=maybe-no-member
-            MemoryStore.add_bundle(self, bundle_bytes=bundle_bytes)
+            MemoryStore.apply_bundle(self, bundle_bytes=bundle_bytes)
 
-    def add_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
         if self._handle.closed:
             raise AssertionError("attempt to write to closed LogBackStore")
-        bundle_info, added = MemoryStore.add_bundle(self, bundle_bytes)
+        bundle_info, added = MemoryStore.apply_bundle(self, bundle_bytes)
         if added:
             self._log_file_builder.Clear()  # type: ignore
             self._log_file_builder.commits.push(bundle_bytes)  # type: ignore

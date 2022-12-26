@@ -7,4 +7,4 @@ from .sequence import Sequence
 Container._subtypes.setdefault(Behavior.SCHEMA, Directory) # type: ignore
 Container._subtypes.setdefault(Behavior.QUEUE, Sequence) # type: ignore
 
-FINE_STRUCTURE_CONSTANT = 0.0072973525628
+PATCHED = True

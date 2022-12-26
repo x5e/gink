@@ -6,7 +6,7 @@ import "edge_type.proto";
 import "property_type.proto";
 import "property_update.proto";
 import "entry.proto";
-import "exit.proto";
+import "movement.proto";
 
 /** 
 * Any update/change that can be referenced by Gink
@@ -19,6 +19,6 @@ message Change {
         PropertyType property_type = 5;
         PropertyUpdate property_update = 6;
         Entry entry = 7;
-        Exit exit = 8;
+        Movement movement = 8;
     }
 }

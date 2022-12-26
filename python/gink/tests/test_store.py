@@ -59,11 +59,11 @@ def generic_test_accepts_only_once(store_maker: StoreMaker):
         start_info = BundleInfo(medallion=123, chain_start=456, timestamp=456, comment="start")
         start_bytes = make_empty_bundle(start_info)
 
-        result_starting_first = store.add_bundle(start_bytes)
+        result_starting_first = store.apply_bundle(start_bytes)
         assert result_starting_first[0] == start_info
         assert result_starting_first[1]
 
-        result_starting_repeat = store.add_bundle(start_bytes)
+        result_starting_repeat = store.apply_bundle(start_bytes)
         assert result_starting_repeat[0] == start_info
         assert not result_starting_repeat[1]
 
@@ -71,11 +71,11 @@ def generic_test_accepts_only_once(store_maker: StoreMaker):
             comment="extension", prior_time=456)
         ext_bytes = make_empty_bundle(ext_info)
 
-        result_ext_first = store.add_bundle(ext_bytes)
+        result_ext_first = store.apply_bundle(ext_bytes)
         assert result_ext_first[0] == ext_info
         assert result_ext_first[1]
 
-        result_ext_second = store.add_bundle(ext_bytes)
+        result_ext_second = store.apply_bundle(ext_bytes)
         assert result_ext_second[0] == ext_info
         assert not result_ext_second[1]
     finally:
@@ -87,14 +87,14 @@ def generic_test_rejects_gap(store_maker: StoreMaker):
     with closing(store_maker()) as store:
         start_info = BundleInfo(medallion=123, chain_start=456, timestamp=456, comment="start")
         start_bytes = make_empty_bundle(start_info)
-        store.add_bundle(start_bytes)
+        store.apply_bundle(start_bytes)
 
         gap_info = BundleInfo(medallion=123, chain_start=456, timestamp=789,
             prior_time=777, comment="gap")
         gap_bytes = make_empty_bundle(gap_info)
         thrown = None
         try:
-            store.add_bundle(gap_bytes)
+            store.apply_bundle(gap_bytes)
         except ValueError as exception:
             thrown = exception
         assert thrown
@@ -107,7 +107,7 @@ def generic_test_rejects_missing_start(store_maker: StoreMaker):
         gap_bytes = make_empty_bundle(gap_info)
         thrown = None
         try:
-            store.add_bundle(gap_bytes)
+            store.apply_bundle(gap_bytes)
         except ValueError as exception:
             thrown = exception
         assert thrown
@@ -119,7 +119,7 @@ def generic_test_rejects_bad_commit(store_maker: StoreMaker):
         gap_bytes = make_empty_bundle(gap_info)
         thrown = None
         try:
-            store.add_bundle(gap_bytes)
+            store.apply_bundle(gap_bytes)
         except ValueError as exception:
             thrown = exception
         assert thrown
@@ -139,10 +139,10 @@ def generic_test_orders_commits(store_maker: StoreMaker):
     cs4 = make_empty_bundle(info4)
 
     with closing(store_maker()) as store:
-        store.add_bundle(cs1)
-        store.add_bundle(cs2)
-        store.add_bundle(cs3)
-        store.add_bundle(cs4)
+        store.apply_bundle(cs1)
+        store.apply_bundle(cs2)
+        store.apply_bundle(cs3)
+        store.apply_bundle(cs4)
 
         ordered = []
         def appender(bundle, info):
@@ -170,10 +170,10 @@ def generic_test_tracks(store_maker: StoreMaker):
 
     info5 = BundleInfo(medallion=789, chain_start=555, timestamp=1000, prior_time=999)
     with closing(store_maker()) as store:
-        store.add_bundle(cs1)
-        store.add_bundle(cs2)
-        store.add_bundle(cs3)
-        store.add_bundle(cs4)
+        store.apply_bundle(cs1)
+        store.apply_bundle(cs2)
+        store.apply_bundle(cs3)
+        store.apply_bundle(cs4)
         tracker = store.get_chain_tracker()
         assert tracker.has(info1)
         assert tracker.has(info2)
@@ -234,7 +234,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         changes {
             key: 1
             value {
-                exit {
+                movement {
                     container { timestamp: 123 offset: 1 }
                     entry { timestamp: 123 offset: 2 }
                 }
@@ -243,7 +243,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         changes {
             key: 2
             value {
-                exit {
+                movement {
                     container { timestamp: 123 offset: 1 }
                     entry { timestamp: 123 offset: 4 }
                     dest: 120
@@ -265,7 +265,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         bundle_builder = BundleBuilder()
         Parse(textproto1, bundle_builder) # type: ignore
         serialized = bundle_builder.SerializeToString() # type: ignore
-        store.add_bundle(serialized)
+        store.apply_bundle(serialized)
         queue = Muid(123, 789, 1)
         found = [_ for _ in store.get_ordered_entries(container=queue, as_of=124)]
         assert found[0].entry_muid == Muid(123, 789, 2)
@@ -279,7 +279,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         bundle_builder2 = BundleBuilder()
         Parse(textproto2, bundle_builder2) # type: ignore
         serialized2 = bundle_builder2.SerializeToString() # type: ignore
-        store.add_bundle(serialized2)
+        store.apply_bundle(serialized2)
         found = [_ for _ in store.get_ordered_entries(container=queue, as_of=124)]
         assert len(found) == 3
         assert found[0].entry_muid == Muid(123, 789, 2)

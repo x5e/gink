@@ -88,10 +88,10 @@ class Sequence(Container):
             immediate = True
             bundler = Bundler(comment)
         change_builder = ChangeBuilder()
-        exit_builder = change_builder.exit  # type: ignore
-        self._muid.put_into(exit_builder.container)
-        muid.put_into(exit_builder.entry)
-        exit_builder.dest = self._database.resolve_timestamp(dest) if dest else 0
+        movement_builder = change_builder.movement  # type: ignore
+        self._muid.put_into(movement_builder.container)
+        muid.put_into(movement_builder.entry)
+        movement_builder.dest = self._database.resolve_timestamp(dest) if dest else 0
         muid = bundler.add_change(change_builder)
         if immediate:
             self._database.add_bundle(bundler)

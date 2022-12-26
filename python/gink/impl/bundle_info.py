@@ -10,8 +10,9 @@ class BundleInfo:
     """ Metadata about a particular change set relevant for syncing. """
     _struct = Struct(">QQQQ")
     __slots__ = ["timestamp", "medallion", "chain_start", "prior_time", "comment"]
-    medallion: Medallion
+
     timestamp: MuTimestamp
+    medallion: Medallion
     chain_start: MuTimestamp
     prior_time: MuTimestamp
     comment: str
@@ -21,7 +22,6 @@ class BundleInfo:
         unpacked = self._struct.unpack(encoded[0:32])
         (self.timestamp, self.medallion, self.chain_start, self.prior_time) = unpacked
         self.comment = encoded[32:].decode()
-
 
         if builder:
             self.medallion = builder.medallion  # type: ignore # pylint: disable=maybe-no-member
@@ -39,19 +39,9 @@ class BundleInfo:
             if key in kwargs:
                 setattr(self, key, kwargs[key])
 
-        if not (isinstance(self.medallion, int) and self.medallion > 0):
-            raise ValueError(f'medallion({self.medallion}) is invalid')
-        if not (isinstance(self.timestamp, int) and self.timestamp > 0):
-            raise ValueError(f'timestamp({self.timestamp}) is invalid')
-        if not (isinstance(self.chain_start, int) and self.chain_start > 0):
-            raise ValueError(f'chain_start({self.chain_start}) is invalid')
-        if self.timestamp < self.chain_start:
-            raise ValueError("timestamp before chain start")
-
     def get_chain(self) -> Chain:
         """Gets a Chain tuple saying which chain this change set came from."""
         return Chain(self.medallion, self.chain_start)
-
 
     def __bytes__(self) -> bytes:
         """ Returns: a binary representation that sorts according to (timestamp, medallion)."""

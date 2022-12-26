@@ -83,7 +83,7 @@ class Database:
         self._add_info(starting_bundler)
         info = BundleInfo(medallion=medallion, chain_start=chain_start, timestamp=chain_start)
         bundle_bytes = starting_bundler.seal(info)
-        self._store.add_bundle(bundle_bytes=bundle_bytes)
+        self._store.apply_bundle(bundle_bytes=bundle_bytes)
         self._i_have.mark_as_having(info)
         self._store.claim_chain(chain)
         self._chain = chain
@@ -100,7 +100,7 @@ class Database:
             assert timestamp > seen_to
             info = BundleInfo(chain=chain, timestamp=timestamp, prior_time=seen_to)
             bundle_bytes = bundler.seal(info)
-            info_with_comment, added = self._store.add_bundle(bundle_bytes=bundle_bytes)
+            info_with_comment, added = self._store.apply_bundle(bundle_bytes=bundle_bytes)
             assert added, "How did you already have this bundle? I just made it !!!"
             self._i_have.mark_as_having(info_with_comment)
             return info_with_comment

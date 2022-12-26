@@ -66,16 +66,17 @@ class AbstractStore(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def add_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
         """ Tries to add data from a particular bundle to this store.
 
-            Returns: a tuple of the bundle's info and boolean indicating if it was added
+            Returns: a tuple of the bundle's info and boolean indicating if it was applied
+            Will not be applied if this store has already seen this bundle before.
         """
         assert bundle_bytes and self
         raise NotImplementedError()
 
     @abstractmethod
-    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None]):
+    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp=0):
         """ Calls the callback with each bundle, in (timestamp, medallion) order.
 
             This is done callback style because we don't want to leave dangling transactions
