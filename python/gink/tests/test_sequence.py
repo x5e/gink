@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """ test the sequence class """
 from contextlib import closing
+from time import sleep
 
 from ..impl.muid import Muid
 from ..impl.sequence import Sequence
@@ -70,13 +71,10 @@ def test_reordering():
         with closing(store):
             database = Database(store=store)
             for seq in [Sequence.global_instance(database), Sequence(muid=Muid(1,2,3))]:
-                seq.append("a")
-                seq.append("b")
-                seq.append("c")
-                seq.append("x")
-                seq.append("y")
-                seq.append("z")
-                assert list(seq) == ["a", "b", "c", "x", "y", "z"]
+                for letter in "abcxyz":
+                    sleep(.001)
+                    seq.append(letter)
+                assert list(seq) == ["a", "b", "c", "x", "y", "z"], list(seq)
                 seq.pop(dest=seq.before(1))
                 assert list(seq) == ["a", "z", "b", "c", "x", "y"]
                 seq.pop(2, dest=seq.before(-1))

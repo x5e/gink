@@ -10,7 +10,7 @@ from ..builders.key_pb2 import Key as KeyBuilder
 from ..builders.behavior_pb2 import Behavior
 from ..builders.change_pb2 import Change as ChangeBuilder
 
-from .typedefs import UserKey, MuTimestamp, UserKey, UserValue
+from .typedefs import UserKey, MuTimestamp, UserValue, Deletion
 from .muid import Muid
 from .bundle_info import BundleInfo
 
@@ -21,6 +21,7 @@ BOX: int = Behavior.BOX # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = unpack(">Q", b"\xff"*8)[0]
 ZERO_64: bytes = b"\x00" * 8
+deletion = Deletion()
 
 def serialize(thing) -> bytes:
     if isinstance(thing, Message):
@@ -150,6 +151,21 @@ def create_deleting_entry(muid: Muid, key: Optional[UserKey]) -> EntryBuilder:
     encode_key(key, entry_builder.key) # type: ignore
     return entry_builder
 
+def decode_entry_occupant(entry_storage_pair: EntryStoragePair) -> Union[UserValue, Muid, Deletion]:
+    """ Determines what a container "contains" in a given entry. 
+
+        The full entry storage pair is required because if it points to something that pointer
+        might be relative to the entry address.
+    """
+    builder = entry_storage_pair.builder
+    if builder.deleting: # type: ignore
+        return deletion
+    if builder.HasField("pointee"): # type: ignore
+        return Muid.create(builder.pointee, entry_storage_pair.key) # type: ignore
+    if builder.HasField("value"): # type: ignore
+        return decode_value(entry_storage_pair.builder.value) # type: ignore
+    raise ValueError(f"can't interpret {builder}")
+
 def entries_equiv(pair1: EntryStoragePair, pair2: EntryStoragePair) -> bool:
     """ Checks the contained value/pointee/whatever to see if the entries are equiv.
 
@@ -177,6 +193,7 @@ def entries_equiv(pair1: EntryStoragePair, pair2: EntryStoragePair) -> bool:
 def decode_value(value_builder: ValueBuilder) -> UserValue: 
     """ decodes a protobuf value into a python value.
     """
+    assert isinstance(value_builder, ValueBuilder), f"value_builder is type {type(value_builder)}"
     # pylint: disable=too-many-return-statements
     if value_builder.HasField("special"):  # type: ignore
         if value_builder.special == ValueBuilder.Special.NULL: # type: ignore

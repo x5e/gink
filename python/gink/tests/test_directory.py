@@ -196,3 +196,20 @@ def test_clearance():
             gdi["bar"] = "foo"
             keys = set(gdi.keys())
             assert keys == set(["bar"]), (keys, store)
+
+def test_reset_over_clear():
+    for store in [LmdbStore("/tmp/gink.mdb", reset=True)]:
+        with closing(store):
+            database = Database(store=store)
+            gdi = Directory.global_instance(database=database)
+            gdi["foo"] = "bar"
+            gdi["bar"] = "baz"
+            set_timestamp = database.get_now()
+            gdi.clear()
+            assert "foo" not in gdi
+            assert "bar" not in gdi
+            gdi.reset(set_timestamp, key="foo")
+            assert "bar" not in gdi
+            assert gdi.get("foo") == "bar", gdi.get("foo")
+            gdi.reset(set_timestamp)
+            assert gdi.get("bar") == "baz", gdi.get("bar")

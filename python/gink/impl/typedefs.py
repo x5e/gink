@@ -10,3 +10,4 @@ Destination = GenericTimestamp
 UserKey = Union[str, int]
 UserValue = Union[str, int, float, datetime, bytes, bool, list, tuple, dict, None]
 EPOCH = 0
+class Deletion: pass
