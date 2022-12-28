@@ -1,7 +1,10 @@
 """ some general tests of the Database class """
 from typing import List
+from contextlib import closing
+
 from ..impl.database import Database
 from ..impl.memory_store import MemoryStore
+from ..impl.lmdb_store import LmdbStore
 from ..impl.bundler import Bundler
 from ..impl.bundle_info import BundleInfo
 
@@ -24,3 +27,14 @@ def test_add_commit():
     assert len(commits) == 2
     assert commits[-1].comment == "just a test"
     assert commits[-1].timestamp > started
+
+def test_negative_as_of():
+    for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
+        with closing(store):
+            database = Database(store=store)
+            bundler = Bundler("hello world")
+            assert bundler.timestamp is None
+            database.add_bundle(bundler)
+            assert bundler.timestamp is not None
+            recent = store.get_one(BundleInfo)
+            assert recent.timestamp == bundler.timestamp

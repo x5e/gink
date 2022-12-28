@@ -94,7 +94,7 @@ class AbstractStore(ABC):
         return result
     
     @abstractmethod
-    def get_one(self, index: int=-1, Class=BundleBuilder):
+    def get_one(self, Class, index: int=-1):
         """ Gets one instance of the specified class at "index" location in its respective store.
 
             "Class" may be one of: BundleBuilder, EntryBuilder, MovementBuilder, 

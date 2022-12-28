@@ -45,7 +45,7 @@ class MemoryStore(AbstractStore):
         self._removals = SortedDict()
         self._clearances = SortedDict()
     
-    def get_one(self, index: int = -1, Class=BundleBuilder):
+    def get_one(self, Class, index: int = -1):
         sorted_dict = {
             BundleBuilder: self._bundles,
             EntryBuilder: self._entries,
@@ -57,10 +57,13 @@ class MemoryStore(AbstractStore):
         skip = index if index >= 0 else ~index
         for key in sorted_dict.irange(reverse=index < 0):
             if skip == 0:
+                if isinstance(key, Class):
+                    return key
                 if issubclass(Class, Message):
                     return sorted_dict[key]
-                else:
+                if isinstance(key, bytes):
                     return Class.from_bytes(key) # type: ignore
+                raise ValueError(f"don't know what to do with {key}")
             else:
                 skip -= 1
 
@@ -145,7 +148,7 @@ class MemoryStore(AbstractStore):
             if limit is not None and limit <= 0:
                 break
             parsed_esk = EntryStorageKey.from_bytes(esk_bytes)
-            if parsed_esk.get_placed_time() > as_of:
+            if parsed_esk.get_placed_time() >= as_of:
                 continue
             if parsed_esk.expiry and parsed_esk.expiry < as_of:
                 continue

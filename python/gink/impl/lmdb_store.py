@@ -134,7 +134,7 @@ class LmdbStore(AbstractStore):
                 raise ValueError(f"could not locate: {what} as of {as_of}")
             return EntryStorageKey.from_bytes(cursor.value())
             
-    def get_one(self, index: int = -1, Class=BundleBuilder):
+    def get_one(self, Class, index: int = -1):
         skip = index if index >= 0 else ~index
         with self._handle.begin() as trxn:
             table = {
@@ -385,7 +385,7 @@ class LmdbStore(AbstractStore):
                         continue
                     else:
                         break # times will only increase
-                if parsed_key.get_placed_time() > as_of:
+                if parsed_key.get_placed_time() >= as_of:
                     placed = entries_cursor.prev() if desc else entries_cursor.next()
                     continue # this was put here after when I'm looking
                 if parsed_key.expiry and (parsed_key.expiry < as_of):

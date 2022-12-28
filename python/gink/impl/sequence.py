@@ -69,7 +69,7 @@ class Sequence(Container):
         if expiry and expiry < now:
             raise ValueError("The expiry can't be in the past!")
         entry_muid = self._add_entry(value=object, bundler=bundler, expiry=expiry)
-        self.yank(entry_muid, self.before(index), bundler=bundler)
+        self.yank(entry_muid, dest=self._position(before=index) * 1.0, bundler=bundler)
         if immediate:
             self._database.add_bundle(bundler)
         return bundler
@@ -102,13 +102,14 @@ class Sequence(Container):
             self._database.add_bundle(bundler)
         return bundler
 
-    def yank(self, muid: Muid, dest: GenericTimestamp = None, *, bundler=None, comment=None):
+    def yank(self, muid: Muid, *, dest: GenericTimestamp = None, bundler=None, comment=None):
         """ Removes or moves an entry by muid.
 
             muid: what to move
             bundler: what to add this change to
             comment: make an immediate change with this comment
-            dest: new location in the list or time in the future
+            dest: new location in the list or time in the future; integer values are interpreted 
+                to be before the given index if positive or after the given index if negative
 
             returns: the muid of the change
         """
@@ -120,13 +121,19 @@ class Sequence(Container):
         movement_builder = change_builder.movement  # type: ignore
         self._muid.put_into(movement_builder.container)
         muid.put_into(movement_builder.entry)
-        movement_builder.dest = self._database.resolve_timestamp(dest) if dest else 0
+        if isinstance(dest, int):
+            dest = self._position(before=dest) if dest >= 0 else self._position(after=dest)
+        elif dest is None:
+            dest = 0
+        else:
+            dest = self._database.resolve_timestamp(dest)
+        movement_builder.dest = dest
         muid = bundler.add_change(change_builder)
         if immediate:
             self._database.add_bundle(bundler)
         return muid
 
-    def pop(self, index=-1, dest: GenericTimestamp = None, bundler=None, comment=None):
+    def pop(self, index=-1, *, dest: GenericTimestamp = None, bundler=None, comment=None):
         """ (Re)move and return an item at index (default last). 
 
             If nothing exists at the specified index will raise an IndexError.
@@ -140,7 +147,7 @@ class Sequence(Container):
         self.yank(sequence_key.entry_muid, dest=dest, bundler=bundler, comment=comment)
         return entry_value
 
-    def remove(self, value, dest: GenericTimestamp = None, bundler=None, comment=None):
+    def remove(self, value, *, dest: GenericTimestamp = None, bundler=None, comment=None):
         """ Remove first occurance of value. 
 
             Raises ValueError if the value is not present.
@@ -153,7 +160,7 @@ class Sequence(Container):
                     bundler=bundler, comment=comment)
         raise ValueError("matching item not found")
             
-    def items(self, as_of: GenericTimestamp = None) -> Iterable:
+    def items(self, *, as_of: GenericTimestamp = None) -> Iterable:
         """ Returns pairs of (muid, contents) for the sequence at the given time.
         """
         as_of = self._database.resolve_timestamp(as_of)
@@ -162,12 +169,12 @@ class Sequence(Container):
             sequence_key = SequenceKey(positioned.position, positioned.entry_muid)
             yield (sequence_key, found)
     
-    def keys(self, as_of: GenericTimestamp = None) -> Iterable[SequenceKey]:
-        for key, _ in self.items(as_of):
+    def keys(self, *, as_of: GenericTimestamp = None) -> Iterable[SequenceKey]:
+        for key, _ in self.items(as_of=as_of):
             yield key
 
-    def values(self, as_of: GenericTimestamp = None) -> Iterable:
-        for _, val in self.items(as_of):
+    def values(self, *, as_of: GenericTimestamp = None) -> Iterable:
+        for _, val in self.items(as_of=as_of):
             yield val
 
     def __getitem__(self, what):
@@ -177,7 +184,7 @@ class Sequence(Container):
         """
         return self.at(what)[1]
 
-    def at(self, index: int, as_of: GenericTimestamp = None):
+    def at(self, index: int, *, as_of: GenericTimestamp = None):
         """ Returns the (muid, value) at the specified index or muid.
 
             Index my be negative, in which case starts looking at the end.
@@ -199,7 +206,7 @@ class Sequence(Container):
         """
         return self.size()
 
-    def size(self, as_of: GenericTimestamp = None):
+    def size(self, *, as_of: GenericTimestamp = None):
         """ Tells the size at the specified as_of time.
         """
         as_of = self._database.resolve_timestamp(as_of)
@@ -208,7 +215,7 @@ class Sequence(Container):
             count += 1
         return count
 
-    def index(self, value, start=0, stop=None, as_of: GenericTimestamp = None) -> int:
+    def index(self, value, start=0, stop=None, *, as_of: GenericTimestamp = None) -> int:
         """ Return the first index of the value at the given time (or now).
 
             Raises a ValueError if the value isn't present and raise_if_missing is True,
@@ -235,16 +242,18 @@ class Sequence(Container):
         except ValueError:
             return False
 
-    def after(self, index: int) -> MuTimestamp:
-        return self._position(after=index)
-
-    def before(self, index: int) -> MuTimestamp:
-        return self._position(before=index)
-
     def _position(self, after: Optional[int] = None, before: Optional[int] = None) -> MuTimestamp:
         """ Gets a new position after or before the index of an existing entry. """
         if (after is None and before is None):
             raise ValueError("need to specify at least one index")
+        if before is None:
+            assert after is not None
+            if after >= 0:
+                try:
+                    self.at(after + 1)
+                    before = after + 1
+                except IndexError:
+                    after = -1
         if before == 0:
             assert after is None
             position = self.at(0)[0][0]

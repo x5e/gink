@@ -52,7 +52,17 @@ class Database:
         return now
 
     def resolve_timestamp(self, as_of: GenericTimestamp = None) -> MuTimestamp:
-        """ translates the abstract as of (which can be None or negative) into a real timestamp """
+        """ translates an abstract time into a real timestamp
+
+            date and datetime behave as you might expect (turned into unix time)
+
+            integers and floats that look like timestamps or microsecond timestamps are
+            treated as such.
+
+            integers >= 0 are treated as "right after the <index> commit"
+
+            intergers < 0 are treated as "right before the <index> commit)
+        """
         if as_of is None:
             return self.get_now()
         if isinstance(as_of, timedelta):
@@ -68,8 +78,13 @@ class Database:
             if as_of > 1671697630 and as_of < 2147483648:
                 # appears to be seconds since epoch
                 return int(as_of * 1e6)
-        # TODO: support negative as_of values
-        raise NotImplementedError()
+            if as_of < 1e6 and as_of > -1e6:
+                bundle_info = self._store.get_one(BundleInfo, int(as_of))
+                if bundle_info is None:
+                    raise ValueError("don't have that many bundles")
+                assert isinstance(bundle_info, BundleInfo)
+                return bundle_info.timestamp + int(as_of >= 0)
+        raise ValueError(f"don't know how to resolve {as_of} into a timestamp")
 
     def _get_chain(self) -> Chain:
         if self._chain:

@@ -38,6 +38,11 @@ class BundleInfo:
         for key in self.__slots__:
             if key in kwargs:
                 setattr(self, key, kwargs[key])
+    
+    @staticmethod
+    def from_bytes(data: bytes):
+        assert isinstance(data, bytes) and len(data) >= 32, (type(data), data)
+        return BundleInfo(encoded=data)
 
     def get_chain(self) -> Chain:
         """Gets a Chain tuple saying which chain this change set came from."""
