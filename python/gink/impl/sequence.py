@@ -43,8 +43,36 @@ class Sequence(Container):
 
             If expiry is set, the added entry will be removed at the specified time.
         """
+        now = self._database.get_now()
         expiry = self._database.resolve_timestamp(expiry) if expiry is not None else 0
+        if expiry and expiry < now:
+            raise ValueError("can't set an expiry to be in the past")
         return self._add_entry(value=thing, bundler=bundler, comment=comment, expiry=expiry)
+
+    def insert(self, index: int, object, expiry: GenericTimestamp=None, bundler=None, comment=None):
+        """ Inserts object before index.  
+        
+            The resulting entry expires at expiry time if specified, which must be in the future.
+
+            If no bundler is passed, applies the changes immediately, with comment.
+            Otherwise just appends the necessary changes to the passed bundler.
+
+            Note that this requires two changes under the hood (basically an append then move),
+            so it returns the bundler (either passed or created) rather than a single change muid.
+        """
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
+        now = self._database.get_now()
+        expiry = self._database.resolve_timestamp(expiry) if expiry is not None else 0
+        if expiry and expiry < now:
+            raise ValueError("The expiry can't be in the past!")
+        entry_muid = self._add_entry(value=object, bundler=bundler, expiry=expiry)
+        self.yank(entry_muid, self.before(index), bundler=bundler)
+        if immediate:
+            self._database.add_bundle(bundler)
+        return bundler
 
     def extend(self, iterable, expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]]=None,
              bundler=None, comment=None):
@@ -53,8 +81,10 @@ class Sequence(Container):
             expiries, if present, may be either a single expiry to be applied to all new entries,
             or a iterable of expiries of the same length as the data
 
+            Since all items will be appended to the sequence in the same transaction, they will
+            all have the same timestamp, and so it won't be possible to move anything between them.
+
             returns the bundler (either passed or created on the fly)
-            #DEMO
         """
         immediate = not bool(bundler)
         if immediate:
@@ -71,7 +101,6 @@ class Sequence(Container):
         if immediate:
             self._database.add_bundle(bundler)
         return bundler
-
 
     def yank(self, muid: Muid, dest: GenericTimestamp = None, *, bundler=None, comment=None):
         """ Removes or moves an entry by muid.

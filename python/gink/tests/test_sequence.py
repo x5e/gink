@@ -88,8 +88,19 @@ def test_reordering():
                 seq.pop(1, dest=seq.after(-1))
                 assert list(seq) == ["z", "b", "c", "y", "a"], list(seq)
 
-
-if __name__ == "__main__":
-    print("here")
-    test_reordering()
-    print("done")
+def test_insert():
+    """ makes sure that I can move things around """
+    for store in [LmdbStore("/tmp/gink.mdb", reset=True)]:
+        with closing(store):
+            database = Database(store=store)
+            for seq in [Sequence.global_instance(database), Sequence(muid=Muid(1,2,3))]:
+                for letter in "abc":
+                    seq.append(letter, comment=letter)
+                    sleep(.001)
+                assert list(seq) == ["a", "b", "c"], list(seq)
+                seq.insert(1, "x", comment="x")
+                if list(seq) != ["a", "x", "b", "c"]:
+                    raise AssertionError(list(seq))
+                seq.insert(0, "y", comment="y")
+                if list(seq) != ["y", "a", "x", "b", "c"]:
+                    raise AssertionError(list(seq))

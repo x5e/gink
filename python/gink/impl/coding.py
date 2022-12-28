@@ -30,13 +30,40 @@ def serialize(thing) -> bytes:
         return encode_muts(thing)
     return bytes(thing)
 
+class LocationKey(NamedTuple):
+    entry_muid: Muid
+    placement: Muid
+
+    @staticmethod
+    def from_bytes(data: bytes):
+        return LocationKey(Muid.from_bytes(data[0:16]), Muid.from_bytes(data[16:32]))
+    
+    def __bytes__(self):
+        return bytes(self.entry_muid) + bytes(self.placement)
+
+class MovementKey(NamedTuple):
+    container: Muid
+    effective: MuTimestamp
+    placement: Muid # the entry or movement that placed the entry to be (re)moved
+    removing:  Muid # the muid of the encoded movement
+
+    @staticmethod
+    def from_bytes(data: bytes):
+        return MovementKey(
+            Muid.from_bytes(data[0:16]),
+            decode_muts(data[16:24]) or 0,
+            Muid.from_bytes(data[24:40]),
+            Muid.from_bytes(data[40:])
+        )
+
+
 class QueueMiddleKey(NamedTuple):
     effective_time: MuTimestamp
     movement_muid: Optional[Muid]
 
     def __bytes__(self):
         if self.movement_muid:
-            return encode_muts(self.effective_time) + bytes(self.movement_muid.get_inverse())
+            return encode_muts(self.effective_time) + bytes(self.movement_muid)
         else:
             return encode_muts(self.effective_time)
 
@@ -47,7 +74,7 @@ class QueueMiddleKey(NamedTuple):
         if len(data) == 8:
             return QueueMiddleKey(effective_time, None)
         elif len(data) == 24:
-            return QueueMiddleKey(effective_time, Muid.from_bytes(data[8:]).get_inverse())
+            return QueueMiddleKey(effective_time, Muid.from_bytes(data[8:]))
         else:
             raise AssertionError("expected QueueMiddleKey to be 8 or 24 bytes")
 
@@ -65,7 +92,7 @@ class EntryStorageKey(NamedTuple):
 
     @staticmethod
     def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):
-        container = Muid.create(getattr(builder, "container"), context=new_info)
+        container = Muid.create(builder=getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")
         if behavior == SCHEMA or behavior == BOX:
@@ -161,7 +188,7 @@ def decode_entry_occupant(entry_storage_pair: EntryStoragePair) -> Union[UserVal
     if builder.deleting: # type: ignore
         return deletion
     if builder.HasField("pointee"): # type: ignore
-        return Muid.create(builder.pointee, entry_storage_pair.key) # type: ignore
+        return Muid.create(builder=builder.pointee, context=entry_storage_pair.key) # type: ignore
     if builder.HasField("value"): # type: ignore
         return decode_value(entry_storage_pair.builder.value) # type: ignore
     raise ValueError(f"can't interpret {builder}")
@@ -177,8 +204,8 @@ def entries_equiv(pair1: EntryStoragePair, pair2: EntryStoragePair) -> bool:
     assert pair1.key.container == pair2.key.container
     if pair1.builder.HasField("pointee"): # type: ignore
         if pair2.builder.HasField("pointee"): # type: ignore
-            pointee1 = Muid.create(pair1.builder.pointee, pair1.key) # type: ignore
-            pointee2 = Muid.create(pair2.builder.pointee, pair2.key) # type: ignore
+            pointee1 = Muid.create(builder=pair1.builder.pointee, context=pair1.key) # type: ignore
+            pointee2 = Muid.create(builder=pair2.builder.pointee, context=pair2.key) # type: ignore
             return pointee1 == pointee2
         return False
     if pair1.builder.HasField("value"): # type: ignore

@@ -36,16 +36,6 @@ class Muid(NamedTuple):
         assert len(result) == 34, len(result)
         return result
 
-    def get_inverse(self):
-        """ Returns a Muid with each component inverted.
-
-            Used for reverse sorting.
-        """
-        return Muid(
-            timestamp=~int(self.timestamp),
-            medallion=~self.medallion,
-            offset=~self.offset)
-
     def put_into(self, builder: MuidBuilder):
         """ Puts the data from this muid into the builder. """
         builder.offset = self.offset # type: ignore
@@ -53,7 +43,7 @@ class Muid(NamedTuple):
         builder.medallion= self.medallion if self.medallion else 0 # type: ignore
 
     @classmethod
-    def create(cls, builder: Union[MuidBuilder, Dummy] = Dummy(), context: Any=Dummy(), offset=None):
+    def create(cls, context, builder: Union[MuidBuilder, Dummy] = Dummy(), offset=None):
         """ Creates a muid from a builder and optionally a bundle_info context object. """
         timestamp = builder.timestamp or context.timestamp  # type: ignore
         medallion = builder.medallion or context.medallion  # type: ignore
@@ -67,7 +57,8 @@ class Muid(NamedTuple):
     def from_bytes(cls, data: bytes):
         """ does the inverse of bytes(muid) """
         # there's probably a more efficient way to do this
-        assert len(data) >= 16
+        if len(data) < 16:
+            raise ValueError("can't parse less than 16 bytes into a muid")
         hexed = data.hex()
         time_part = int(hexed[0:14], 16)
         medl_part = int(hexed[14:27], 16)

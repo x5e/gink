@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 
 # protobuf builders
 from ..builders.change_pb2 import Change as ChangeBuilder
-from ..builders.entry_pb2 import Entry as EntryBuilder
+from ..builders.bundle_pb2 import Bundle as BundleBuilder
 
 # Gink specific modules
 from .bundle_info import BundleInfo
@@ -92,6 +92,18 @@ class AbstractStore(ABC):
             result.append(info)
         self.get_bundles(callback)
         return result
+    
+    @abstractmethod
+    def get_one(self, index: int=-1, Class=BundleBuilder):
+        """ Gets one instance of the specified class at "index" location in its respective store.
+
+            "Class" may be one of: BundleBuilder, EntryBuilder, MovementBuilder, 
+            or one of the key classes: BundleInfo, EntryStorageKey, MovementKey
+
+            This method is mostly intended to make debugging easier, but will also be used by
+            the Gink database class to look up the most recent timestamps.
+         """
+        raise NotImplementedError()
 
     @abstractmethod
     def get_chain_tracker(self) -> ChainTracker:

@@ -22,16 +22,3 @@ def test_to_from_bytes():
     assert as_bytes == expected, as_bytes.hex()
     hydrated = Muid.from_bytes(as_bytes)
     assert hydrated == muid, (repr(muid), repr(hydrated))
-
-def test_invert():
-    """ tests to make sure invert and negative numbers works """
-    muid0 = Muid(-1, -1, 7)
-    as_bytes = bytes(muid0)
-    expected = bytes.fromhex("FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00007".replace("-",""))
-    assert as_bytes == expected, muid0
-
-    muidi = muid0.get_inverse()
-    as_str = str(muidi)
-    expected = '00000000000000-0000000000000-FFFF8'
-    assert as_str == expected, (as_str, expected)
-    assert muidi == Muid(0, 0, -8), muidi

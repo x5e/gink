@@ -3,6 +3,7 @@
 # standard python stuff
 from typing import Tuple, Callable, Optional, Iterable, Union
 from sortedcontainers import SortedDict
+from google.protobuf.message import Message
 
 # generated protobuf builder
 from ..builders.bundle_pb2 import Bundle as BundleBuilder
@@ -17,7 +18,7 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .muid import Muid
-from .coding import EntryStorageKey, SCHEMA, encode_muts, serialize, QueueMiddleKey
+from .coding import EntryStorageKey, SCHEMA, encode_muts, serialize, QueueMiddleKey, MovementKey
 
 
 class MemoryStore(AbstractStore):
@@ -43,6 +44,25 @@ class MemoryStore(AbstractStore):
         self._entry_locations = SortedDict()
         self._removals = SortedDict()
         self._clearances = SortedDict()
+    
+    def get_one(self, index: int = -1, Class=BundleBuilder):
+        sorted_dict = {
+            BundleBuilder: self._bundles,
+            EntryBuilder: self._entries,
+            MovementBuilder: self._removals,
+            BundleInfo: self._bundles,
+            EntryStorageKey: self._entries,
+            MovementKey: self._removals,
+        }[Class]
+        skip = index if index >= 0 else ~index
+        for key in sorted_dict.irange(reverse=index < 0):
+            if skip == 0:
+                if issubclass(Class, Message):
+                    return sorted_dict[key]
+                else:
+                    return Class.from_bytes(key) # type: ignore
+            else:
+                skip -= 1
 
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
@@ -180,14 +200,14 @@ class MemoryStore(AbstractStore):
         return (new_info, needed)
     
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):
-        container_muid = Muid.create(getattr(builder, "container"), context=new_info)
+        container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
         clearance_muid = Muid.create(context=new_info, offset=offset)
         new_key = bytes(container_muid) + bytes(clearance_muid)
         self._clearances[new_key] = builder
     
     def _add_movement(self, new_info: BundleInfo, offset: int, builder: MovementBuilder):
-        container = Muid.create(getattr(builder, "container"), context=new_info)
-        entry_muid = Muid.create(getattr(builder, "entry"), context=new_info)
+        container = Muid.create(builder=getattr(builder, "container"), context=new_info)
+        entry_muid = Muid.create(builder=getattr(builder, "entry"), context=new_info)
         movement_muid = Muid.create(context=new_info, offset=offset)
         dest = getattr(builder, "dest")
         old_serialized_esk = self._get_entry_location(entry_muid)

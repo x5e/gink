@@ -91,7 +91,7 @@ class Bundler:
             assert offset
             self._bundler = bundler
 
-        def __getattribute__(self, name) -> int:
+        def __getattribute__(self, name):
             if name == "_bundler":
                 return object.__getattribute__(self, "_bundler")
             if name == "offset":
@@ -100,7 +100,9 @@ class Bundler:
                 return getattr(self._bundler, "timestamp")
             if name == "medallion":
                 return getattr(self._bundler, "medallion")
-            raise AttributeError("not known")
+            if name == "put_into":
+                return lambda x: Muid.put_into(self, x)
+            raise AttributeError(f"unknown attribute: {name}")
 
         def __hash__(self):
             return hash((self.offset, self.medallion, self.timestamp))  # type: ignore

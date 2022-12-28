@@ -34,7 +34,7 @@ class Container(ABC):
             return decode_value(builder.value) # type: ignore
         if builder.HasField("pointee"): # type: ignore
             pointee = getattr(builder, "pointee")
-            pointee_muid = Muid.create(pointee, context=address)
+            pointee_muid = Muid.create(builder=pointee, context=address)
             behavior = getattr(builder, "behavior")
             Class = Container._subtypes.get(behavior)
             if not Class:
