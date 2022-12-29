@@ -159,7 +159,7 @@ def test_as_of():
 
 def test_insert():
     """ makes sure that I insert data at arbitrary location in a sequence """
-    for store in [LmdbStore()]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
             for seq in [Sequence.global_instance(database), Sequence(muid=Muid(1,2,3))]:
