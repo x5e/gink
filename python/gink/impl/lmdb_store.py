@@ -192,9 +192,11 @@ class LmdbStore(AbstractStore):
         if behavior == SCHEMA:
             for change in self._get_directory_reset_changes(container, to_time, trxn, seen, None):
                 yield change
+            return
         if behavior == QUEUE:
             for change in self._get_sequence_reset_changes(container, to_time, trxn, seen):
                 yield change
+            return
         else:
             raise NotImplementedError(f"don't know how to reset container of type {behavior}")
 

@@ -208,6 +208,7 @@ def test_reset():
             seq1.insert(0, 7)
             seq2.append(seq1)
             mark = database.get_now()
+            seq1.remove("foo")
             seq1.clear()
             seq2.pop(0, dest=-1)
             seq1.append("nevermind")
