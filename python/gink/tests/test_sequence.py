@@ -173,3 +173,25 @@ def test_insert():
                 seq.insert(0, "y", comment="y")
                 if list(seq) != ["y", "a", "x", "b", "c"]:
                     raise AssertionError(list(seq))
+
+def test_clear():
+    """ make sure the clear operation behaves as expected """
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            database = Database(store=store)
+            for seq in [Sequence.global_instance(database), Sequence(muid=Muid(1,2,3))]:
+                assert len(seq) == 0, store
+                seq.append(3.7)
+                entry_muid = seq.append(9)
+                assert list(seq) == [3.7, 9], f"{list(seq)}, {store}"
+                assert entry_muid in seq
+                mark = database.get_now()
+                seq.clear()
+                assert len(seq) == 0, store
+                assert entry_muid not in seq, f"{store}"
+                seq.append(True)
+                assert list(seq) == [True]
+                seq.append(False)
+                seq.remove(False, dest=mark)
+                assert list(seq.values(as_of=mark)) == [3.7, 9]
+                assert list(seq) == [False, True]

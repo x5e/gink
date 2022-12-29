@@ -4,7 +4,7 @@ from random import randint
 from ..builders.change_pb2 import Change as ChangeBuilder
 
 # gink implementation
-from .typedefs import GenericTimestamp, MuTimestamp
+from .typedefs import GenericTimestamp, MuTimestamp, UserValue
 from .container import Container
 from .muid import Muid
 from .database import Database
@@ -125,7 +125,7 @@ class Sequence(Container):
         muid.put_into(movement_builder.entry)
         if dest == -1:
             dest = self._database.get_now()
-        elif isinstance(dest, int):
+        elif isinstance(dest, int) and dest < 1e15:
             dest = self._position(before=dest) if dest >= 0 else self._position(after=dest)
         elif dest is None:
             dest = 0
@@ -189,7 +189,7 @@ class Sequence(Container):
         return self.at(what)[1]
 
     def at(self, index: int, *, as_of: GenericTimestamp = None):
-        """ Returns the (muid, value) at the specified index or muid.
+        """ Returns the ((position-ts, entry-muid), value) at the specified index.
 
             Index my be negative, in which case starts looking at the end.
             Raises IndexError if not present.
@@ -237,9 +237,12 @@ class Sequence(Container):
             index += 1
         raise ValueError("matching item not found")
 
-    def __contains__(self, item):
+    def __contains__(self, item: Union[UserValue, Container, Muid]) -> bool:
         """ Returns true if something matching item is in queue.
         """
+        if isinstance(item, Muid):
+            as_of = self._database.resolve_timestamp(None)
+            return bool(self._database._store.get_entry(self._muid, key=item, as_of=as_of))
         try:
             self.index(item)
             return True

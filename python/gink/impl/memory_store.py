@@ -31,18 +31,20 @@ class MemoryStore(AbstractStore):
     _chain_infos: SortedDict  # Chain => BundleInfo
     _claimed_chains: SortedDict  # Chain
     _entries: SortedDict  # bytes(EntryStorageKey) => EntryBuilder
-    _entry_locations: SortedDict
+    _locations: SortedDict
     _containers: SortedDict  # muid => builder
     _removals: SortedDict 
     _clearances: SortedDict
 
     def __init__(self):
+        # TODO: add a "no retention" capability to allow the memory store to be configured to 
+        # drop out of date data like is currently implemented in the LmdbStore.
         self._bundles = SortedDict()
         self._chain_infos = SortedDict()
         self._claimed_chains = SortedDict()
         self._entries = SortedDict()
         self._containers = SortedDict()
-        self._entry_locations = SortedDict()
+        self._locations = SortedDict()
         self._removals = SortedDict()
         self._clearances = SortedDict()
     
@@ -105,13 +107,13 @@ class MemoryStore(AbstractStore):
     def get_entry(self, container: Muid, key: Union[UserKey, Muid, None], 
             as_of: MuTimestamp) -> Optional[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
-        clearance_time = None
+        clearance_time = 0
         for clearance_key in self._clearances.irange(
             minimum=bytes(container), maximum=bytes(container) + bytes(as_of_muid), reverse=True):
             clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
 
         if isinstance(key, Muid):
-            if clearance_time and clearance_time < key.timestamp:
+            if clearance_time and clearance_time > key.timestamp:
                 return None
             entry_location = self._get_entry_location(key, as_of=as_of)
             if not entry_location:
@@ -127,7 +129,7 @@ class MemoryStore(AbstractStore):
         for encoded_entry_storage_key in iterator:
             entry_storage_key = EntryStorageKey.from_bytes(
                 encoded_entry_storage_key)
-            if clearance_time and entry_storage_key.entry_muid.timestamp < clearance_time:
+            if clearance_time > entry_storage_key.entry_muid.timestamp:
                 return None
             builder = self._entries[encoded_entry_storage_key]
             return FoundEntry(address=entry_storage_key.entry_muid, builder=builder)
@@ -150,12 +152,18 @@ class MemoryStore(AbstractStore):
         ) -> Iterable[PositionedEntry]:
 
         prefix = bytes(container)
+        as_of_muid = Muid(as_of, 0, 0)
+        clearance_time = 0
+        for clearance_key in self._clearances.irange(
+            minimum=prefix, maximum=prefix + bytes(as_of_muid), reverse=True):
+            clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
         removals_suffix = b"\xFF" * 16
         for esk_bytes in self._entries.irange(prefix, prefix + encode_muts(as_of), reverse=desc):
             if limit is not None and limit <= 0:
                 break
             parsed_esk = EntryStorageKey.from_bytes(esk_bytes)
-            if parsed_esk.get_placed_time() >= as_of:
+            placed_time = parsed_esk.get_placed_time()
+            if placed_time >= as_of or placed_time < clearance_time:
                 continue
             if parsed_esk.expiry and parsed_esk.expiry < as_of:
                 continue
@@ -244,9 +252,9 @@ class MemoryStore(AbstractStore):
             entry_storage_key = EntryStorageKey(container, middle_key, entry_muid, entry_expiry)
             new_serialized_esk = bytes(entry_storage_key)
             self._entries[new_serialized_esk] = self._entries[old_serialized_esk]
-            self._entry_locations[new_location_key] = new_serialized_esk
+            self._locations[new_location_key] = new_serialized_esk
         else:
-            self._entry_locations[new_location_key] = None
+            self._locations[new_location_key] = None
 
     def _add_entry(self, new_info: BundleInfo, offset: int, entry_builder: EntryBuilder):
         esk = EntryStorageKey.from_builder(entry_builder, new_info, offset)
@@ -254,7 +262,7 @@ class MemoryStore(AbstractStore):
         self._entries[encoded_entry_storage_key] = entry_builder
         entries_location_key = bytes(
             esk.entry_muid) + encode_muts(~esk.entry_muid.timestamp)
-        self._entry_locations[entries_location_key] = encoded_entry_storage_key
+        self._locations[entries_location_key] = encoded_entry_storage_key
 
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp=0):
         for bundle_info in self._bundles.irange(minimum=BundleInfo(timestamp=since)):
@@ -272,7 +280,7 @@ class MemoryStore(AbstractStore):
 
     def _get_entry_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
         bkey = bytes(entry_muid)
-        for location_key in self._entry_locations.irange(
+        for location_key in self._locations.irange(
                 bkey+encode_muts(~as_of), bkey+encode_muts(~0)):
-            return self._entry_locations[location_key]
+            return self._locations[location_key]
         return None

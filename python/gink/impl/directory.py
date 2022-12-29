@@ -71,13 +71,13 @@ class Directory(Container):
     def __delitem__(self, key):
         self.delete(key)
 
-    def has(self, key, as_of=None):
+    def has(self, key, *, as_of=None):
         """ returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database._store.get_entry(self.get_muid(), key=key, as_of=as_of)
         return found is not None and not found.builder.deleting # type: ignore
 
-    def get(self, key, default=None, as_of=None):
+    def get(self, key, default=None, *, as_of=None):
         """ gets the value associate with a key, default if missing, optionally as_of a time """
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database._store.get_entry(self._muid, key=key, as_of=as_of)
@@ -85,7 +85,7 @@ class Directory(Container):
             return default
         return self._interpret(found.builder, found.address)
 
-    def set(self, key: Union[str, int], value, bundler=None, comment=None) -> Muid:
+    def set(self, key: Union[str, int], value, *, bundler=None, comment=None) -> Muid:
         """ Sets a value in the mapping, returns the muid address of the entry.
 
             If bundler is specified, then simply adds an entry to that bundler.
@@ -94,7 +94,7 @@ class Directory(Container):
         """
         return self._add_entry(key=key, value=value, bundler=bundler, comment=comment)
 
-    def delete(self, key, bundler=None, comment=None):
+    def delete(self, key, *, bundler=None, comment=None):
         """ Removes a value from the mapping, returning the muid address of the change.
 
             If bundler is specified, then simply adds an entry to that bundler.
@@ -103,7 +103,7 @@ class Directory(Container):
         """
         return self._add_entry(key=key, value=self._DELETE, bundler=bundler, comment=comment)
 
-    def setdefault(self, key, default=None, bundler=None, respect_deletion=False):
+    def setdefault(self, key, default=None, *, bundler=None, respect_deletion=False):
         """ Insert key with a value of default if key is not in the directory.
 
             Return the value for key if key is in the directory, else default.
@@ -121,7 +121,7 @@ class Directory(Container):
         self._add_entry(key=key, value=default, bundler=bundler)
         return default
 
-    def pop(self, key, default=None, bundler=None, comment=None):
+    def pop(self, key, default=None, *, bundler=None, comment=None):
         """ If key exists in the mapping, returns the corresponding value and removes it.
 
             Otherwise returns default.  In the case that the key is found and removed,
@@ -135,7 +135,7 @@ class Directory(Container):
         self._add_entry(key=key, value=self._DELETE, bundler=bundler, comment=comment)
         return self._interpret(found.builder, found.address)
 
-    def items(self, as_of=None):
+    def items(self, *, as_of=None):
         """ returns an iterable of key,value pairs, as of the effective time (or now) """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database._store.get_keyed_entries(container=self._muid, as_of=as_of)
@@ -152,17 +152,17 @@ class Directory(Container):
             count += 1
         return count
 
-    def keys(self, as_of=None):
+    def keys(self, *, as_of=None):
         """ returns an iterable of all the keys in this direcotry """
         for k,_ in self.items(as_of=as_of):
             yield k
 
-    def values(self, as_of=None):
+    def values(self, *, as_of=None):
         """ returns a list of values in the directory as of the given time """
         for _,v in self.items(as_of=as_of):
             yield v
 
-    def popitem(self, bundler=None, comment=None):
+    def popitem(self, *, bundler=None, comment=None):
         """ Remove and return a (key, value) tuple, or raises KeyError if empty.
 
             Order is determined by implementation of the store.
@@ -178,7 +178,7 @@ class Directory(Container):
             return (key, val)
         raise KeyError("directory is empty")
 
-    def update(self, from_what, bundler=None, comment=None):
+    def update(self, from_what, *, bundler=None, comment=None):
         """ Performs a shallow copy of key/value pairs from the argument.
 
         When from_what hasattr "keys", then will try: for k in E: D[k] = E[k]
@@ -198,7 +198,7 @@ class Directory(Container):
         if immediate:
             self._database.add_bundle(bundler)
 
-    def reset(self, to_time: GenericTimestamp=EPOCH, key=None, recursive=False, 
+    def reset(self, to_time: GenericTimestamp=EPOCH, *, key=None, recursive=False, 
             bundler=None, comment=None):
         """ Resets either a specific key or the whole directory to a particular past time.
 

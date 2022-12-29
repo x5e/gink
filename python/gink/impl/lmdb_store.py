@@ -378,6 +378,7 @@ class LmdbStore(AbstractStore):
             offset: int=0, desc: bool=False) -> Iterable[PositionedEntry]:
         prefix = bytes(container)
         with self._handle.begin() as txn:
+            clearance_time = self._get_time_of_prior_clear(txn, container, as_of)
             entries_cursor = txn.cursor(self._entries)
             removal_cursor = txn.cursor(self._removals)
             if desc:
@@ -397,9 +398,10 @@ class LmdbStore(AbstractStore):
                         continue
                     else:
                         break # times will only increase
-                if parsed_key.get_placed_time() >= as_of:
+                placed_time = parsed_key.get_placed_time()
+                if placed_time >= as_of or placed_time < clearance_time:
                     placed = entries_cursor.prev() if desc else entries_cursor.next()
-                    continue # this was put here after when I'm looking
+                    continue # this was put here after when I'm looking, or a clear happened
                 if parsed_key.expiry and (parsed_key.expiry < as_of):
                     placed = entries_cursor.prev() if desc else entries_cursor.next()
                     continue # this entry has expired by the as_of time
@@ -505,8 +507,15 @@ class LmdbStore(AbstractStore):
             while to_last_with_prefix(clearance_cursor, prefix=bytes(container_muid)):
                 clearance_cursor.delete()
             entries_cursor = trxn.cursor(db=self._entries)
+            locations_cursor = trxn.cursor(db=self._locations)
             while to_last_with_prefix(entries_cursor, prefix=bytes(container_muid)):
+                esk = EntryStorageKey.from_bytes(entries_cursor.key())
+                while to_last_with_prefix(locations_cursor, prefix=bytes(esk.entry_muid)):
+                    locations_cursor.delete()
                 entries_cursor.delete()
+            removals_cursor = trxn.cursor(db=self._removals)
+            while to_last_with_prefix(removals_cursor, prefix=bytes(container_muid)):
+                removals_cursor.delete()
         new_key = bytes(container_muid) + bytes(clearance_muid)
         trxn.put(new_key, serialize(builder), db=self._clearances)
     
