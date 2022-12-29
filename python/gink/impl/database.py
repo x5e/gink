@@ -78,12 +78,14 @@ class Database:
             if as_of > 1671697630 and as_of < 2147483648:
                 # appears to be seconds since epoch
                 return int(as_of * 1e6)
-            if as_of < 1e6 and as_of > -1e6:
+        if isinstance(as_of, int) and as_of < 1e6 and as_of > -1e6:
                 bundle_info = self._store.get_one(BundleInfo, int(as_of))
                 if bundle_info is None:
                     raise ValueError("don't have that many bundles")
                 assert isinstance(bundle_info, BundleInfo)
                 return bundle_info.timestamp + int(as_of >= 0)
+        if isinstance(as_of, float) and as_of < 1e6 and as_of > -1e6:
+            return self.get_now() + int(1e6*as_of)
         raise ValueError(f"don't know how to resolve {as_of} into a timestamp")
 
     def _get_chain(self) -> Chain:

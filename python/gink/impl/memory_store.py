@@ -1,6 +1,7 @@
 """ Contains the MemoryStore class, and implementation of the AbstractStore interface. """
 
 # standard python stuff
+import sys
 from typing import Tuple, Callable, Optional, Iterable, Union
 from sortedcontainers import SortedDict
 from google.protobuf.message import Message
@@ -60,7 +61,13 @@ class MemoryStore(AbstractStore):
                 if isinstance(key, Class):
                     return key
                 if issubclass(Class, Message):
-                    return sorted_dict[key]
+                    val = sorted_dict[key]
+                    if isinstance(val, bytes):
+                        instance = Class()
+                        instance.ParseFromString(val)
+                        return instance
+                    assert isinstance(val, Class)
+                    return val
                 if isinstance(key, bytes):
                     return Class.from_bytes(key) # type: ignore
                 raise ValueError(f"don't know what to do with {key}")
@@ -184,7 +191,9 @@ class MemoryStore(AbstractStore):
         if needed:
             self._bundles[new_info] = bundle_bytes
             self._chain_infos[chain_key] = new_info
-            for offset, change in bundle_builder.changes.items():   # type: ignore
+            change_items = list(bundle_builder.changes.items()) # type: ignore
+            change_items.sort() # the protobuf library doesn't maintain order of maps
+            for offset, change in change_items:   # type: ignore
                 if change.HasField("container"):
                     container_muid = Muid.create(
                         context=new_info, offset=offset)
@@ -215,14 +224,17 @@ class MemoryStore(AbstractStore):
         dest = getattr(builder, "dest")
         old_serialized_esk = self._get_entry_location(entry_muid)
         if not old_serialized_esk:
+            print(f"WARNING: could not find location for {entry_muid}")
             return
         entry_storage_key = EntryStorageKey.from_bytes(old_serialized_esk)
         entry_expiry = entry_storage_key.expiry
         if entry_expiry and entry_expiry < movement_muid.timestamp:
+            print(f"WARNING: won't move exipired entry: {entry_muid}", file=sys.stderr)
             return # refuse to move an entry that's expired
         if movement_muid.timestamp < entry_storage_key.get_placed_time():
             # I'm intentionally ignoring the case where a past (re)move shows up after a later one.
             # This means that while the present state will always converge, the history might not.
+            print(f"WARNING: movement comes after placed time, won't move {entry_muid}")
             return
         removal_key = old_serialized_esk[0:40] + bytes(movement_muid)
         self._removals[removal_key] = builder

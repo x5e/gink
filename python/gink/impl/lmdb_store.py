@@ -2,6 +2,8 @@
 
 # Standard Python Stuff
 import sys
+import os
+import uuid
 from typing import Tuple, Callable, Iterable, Optional, Set, Union
 from struct import pack
 from lmdb import open as ldmbopen, Transaction as Trxn
@@ -80,7 +82,7 @@ class LmdbStore(AbstractStore):
             val: binaryproto of the clearance
     """
 
-    def __init__(self, file_path, reset=False, retain_bundles=True, retain_entries=True):
+    def __init__(self, file_path=None, reset=False, retain_bundles=True, retain_entries=True):
         """ Opens a gink.mdb file for use as a Store.
 
             file_path: where find or place the data file
@@ -88,6 +90,14 @@ class LmdbStore(AbstractStore):
             retain_bundles: if not already set in this file, will specify bundle retention
             retain_entries: if not already set in this file, will specify entry retention
         """
+        self._temporary = False
+        if file_path is None:
+            prefix = "/tmp/temp."
+            if os.path.exists("/dev/shm"):
+                prefix = "/dev/shm/temp."
+            file_path = prefix + str(uuid.uuid4()) + ".gink.mdb"
+            self._temporary = True
+        self._file_path = file_path
         self._handle = ldmbopen(file_path, max_dbs=100, subdir=False)
         self._bundles = self._handle.open_db(b"bundles")
         self._chains = self._handle.open_db(b"chains")
@@ -290,6 +300,8 @@ class LmdbStore(AbstractStore):
 
     def close(self):
         self._handle.close()
+        if self._temporary:
+            os.unlink(self._file_path)
 
     def claim_chain(self, chain: Chain):
         with self._handle.begin(write=True) as txn:

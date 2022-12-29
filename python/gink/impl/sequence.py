@@ -44,7 +44,7 @@ class Sequence(Container):
             If expiry is set, the added entry will be removed at the specified time.
         """
         now = self._database.get_now()
-        expiry = self._database.resolve_timestamp(expiry) if expiry is not None else 0
+        expiry = self._database.resolve_timestamp(expiry) if expiry else 0
         if expiry and expiry < now:
             raise ValueError("can't set an expiry to be in the past")
         return self._add_entry(value=thing, bundler=bundler, comment=comment, expiry=expiry)
@@ -65,7 +65,7 @@ class Sequence(Container):
             immediate = True
             bundler = Bundler(comment)
         now = self._database.get_now()
-        expiry = self._database.resolve_timestamp(expiry) if expiry is not None else 0
+        expiry = self._database.resolve_timestamp(expiry) if expiry else 0
         if expiry and expiry < now:
             raise ValueError("The expiry can't be in the past!")
         entry_muid = self._add_entry(value=object, bundler=bundler, expiry=expiry)
@@ -86,19 +86,21 @@ class Sequence(Container):
 
             returns the bundler (either passed or created on the fly)
         """
-        immediate = not bool(bundler)
-        if immediate:
+        immediate = False
+        if not isinstance(bundler, Bundler):
+            immediate = True
             bundler = Bundler(comment)
         items = list(iterable)
         if hasattr(expiries, "__iter__"):
-            listed_expiries = list(expiries) # type: ignore
-        else:
-            listed_expiries = [expiries for _ in range(len(items))]
+            expiries = list(expiries) # type: ignore
         for i in range(len(items)):
-            expiry: GenericTimestamp = listed_expiries[i] # type: ignore
-            expiry = self._database.resolve_timestamp(expiry) if expiry is not None else 0
-            return self._add_entry(value=items[i], bundler=bundler, expiry=expiry)
-        if immediate:
+            if isinstance(expiries, list):
+                expiry = expiries[i]
+            else:
+                expiry = expiries
+            expiry = self._database.resolve_timestamp(expiry) if expiry else 0 # type: ignore
+            self._add_entry(value=items[i], bundler=bundler, expiry=expiry)
+        if immediate and len(bundler):
             self._database.add_bundle(bundler)
         return bundler
 
@@ -121,7 +123,9 @@ class Sequence(Container):
         movement_builder = change_builder.movement  # type: ignore
         self._muid.put_into(movement_builder.container)
         muid.put_into(movement_builder.entry)
-        if isinstance(dest, int):
+        if dest == -1:
+            dest = self._database.get_now()
+        elif isinstance(dest, int):
             dest = self._position(before=dest) if dest >= 0 else self._position(after=dest)
         elif dest is None:
             dest = 0

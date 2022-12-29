@@ -1,6 +1,7 @@
 """ Defines the Container base class. """
 from typing import Optional, Union, Dict, Type
 from abc import ABC
+from datetime import date, datetime, timedelta
 
 from ..builders.entry_pb2 import Entry as EntryBuilder
 from ..builders.change_pb2 import Change as ChangeBuilder
@@ -9,6 +10,7 @@ from ..builders.clearance_pb2 import Clearance as ClearanceBuilder
 from .muid import Muid
 from .bundler import Bundler
 from .database import Database
+from .typedefs import GenericTimestamp, MuTimestamp
 from .coding import encode_key, encode_value, decode_value
 
 class Container(ABC):
