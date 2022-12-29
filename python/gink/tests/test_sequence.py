@@ -94,6 +94,7 @@ def test_reordering():
 
 def test_expiry():
     """ make sure things expire """
+    # TODO: tests would be more repeatable with a synthetic/injectable time source
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
@@ -105,7 +106,8 @@ def test_expiry():
                 seq_as_list = list(seq)
                 mark = database.get_now()
                 if seq_as_list != ["second", "first"]:
-                    raise AssertionError(f"unexpected: {seq_as_list} in {store}")
+                    elapsed = str(timedelta(microseconds=mark-start))
+                    raise AssertionError(f"{elapsed} unexpected: {seq_as_list} in {store}")
                 seq.extend(["three", "four"])
                 time.sleep(.011)
                 expect_two_three_four = list(seq)
