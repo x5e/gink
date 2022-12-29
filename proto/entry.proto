@@ -16,7 +16,7 @@ message Entry {
         Span span = 5;      // only for src_node behavior = FILE
     }
 
-    oneof enters {
+    oneof contains {
         bytes octects = 8; // for src_node behavior in {FILE, BINLOG} or when encrypted
         Value value = 9;
         Row row = 10; // only when source is a TABLE
@@ -24,7 +24,8 @@ message Entry {
     }
 
     uint64 expiry = 12; // timestamp of expiration in microseconds since epoch, for LIST/QUEUE only
-    bool deleting = 13; 
+    bool deleting = 13;
+    uint64 position = 14; // timestamp of initial position in ordered container, or 0 for entry ts
     bytes iv = 15; // initialization vector when octects are encrypted
     bytes key_id = 16; // optional hint of which key was used (when encrypted)
 

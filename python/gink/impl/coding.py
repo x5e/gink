@@ -90,15 +90,21 @@ class EntryStorageKey(NamedTuple):
     entry_muid: Muid
     expiry: Optional[MuTimestamp]
 
+    def get_queue_position(self) -> MuTimestamp:
+        middle_key = self.middle_key
+        assert isinstance(middle_key, QueueMiddleKey)
+        return middle_key.effective_time
+
     @staticmethod
     def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):
         container = Muid.create(builder=getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")
+        position = getattr(builder, "position")
         if behavior == SCHEMA or behavior == BOX:
             middle_key = decode_key(builder)
         elif behavior == QUEUE:
-            middle_key = QueueMiddleKey(entry_muid.timestamp, None)
+            middle_key = QueueMiddleKey(position or entry_muid.timestamp, None)
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None

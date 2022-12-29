@@ -197,25 +197,3 @@ class Directory(Container):
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
             self._database.add_bundle(bundler)
-
-    def reset(self, to_time: GenericTimestamp=EPOCH, *, key=None, recursive=False, 
-            bundler=None, comment=None):
-        """ Resets either a specific key or the whole directory to a particular past time.
-
-            Note that this actually creates new entries to literally "re"-set things again.
-            So it'll still be possible to look at before the reset time and see history.
-
-            This function returns the bundler (either passed or created).
-        """
-        immediate = False
-        if bundler is None:
-            immediate = True
-            bundler = Bundler(comment)
-        assert isinstance(bundler, Bundler)
-        to_time = self._database.resolve_timestamp(to_time)
-        for change in self._database._store.get_reset_changes(to_time=to_time, 
-                container=self._muid, user_key=key, recursive=recursive):
-            bundler.add_change(change)
-        if immediate and len(bundler):
-            self._database.add_bundle(bundler=bundler)
-        return bundler

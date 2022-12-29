@@ -158,7 +158,7 @@ def test_as_of():
                 assert list(seq.values(as_of=1)) == ["foo"], list(seq.values(as_of=1))
 
 def test_insert():
-    """ makes sure that I insert data at arbitrary location in a sequence """
+    """ makes sure that I can insert data at arbitrary location in a sequence """
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
@@ -169,7 +169,7 @@ def test_insert():
                 assert list(seq) == ["a", "b", "c"], list(seq)
                 seq.insert(1, "x", comment="x")
                 if list(seq) != ["a", "x", "b", "c"]:
-                    raise AssertionError(list(seq))
+                    raise AssertionError(f"{list(seq)} {store}")
                 seq.insert(0, "y", comment="y")
                 if list(seq) != ["y", "a", "x", "b", "c"]:
                     raise AssertionError(list(seq))
@@ -195,3 +195,26 @@ def test_clear():
                 seq.remove(False, dest=mark)
                 assert list(seq.values(as_of=mark)) == [3.7, 9]
                 assert list(seq) == [False, True]
+
+def test_reset():
+    """ make sure that sequence.reset behaves as expected """
+    for store in [LmdbStore()]:
+        with closing(store):
+            database = Database(store=store)
+            seq1 = Sequence.global_instance(database)
+            seq2 = Sequence()
+            seq1.append("foo")
+            seq2.append("bar")
+            seq1.insert(0, 7)
+            seq2.append(seq1)
+            mark = database.get_now()
+            seq1.clear()
+            seq2.pop(0, dest=-1)
+            seq1.append("nevermind")
+            seq1.append(seq2)
+            seq2.pop()
+            seq2.reset(to=mark)
+            assert list(seq2) == ["bar", seq1]
+            assert list(seq1) == ["nevermind", seq2]
+            seq2.reset(to=mark, recursive=True)
+            assert list(seq1) == [7, "foo"]

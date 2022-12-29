@@ -1,16 +1,14 @@
 """ Defines the Container base class. """
 from typing import Optional, Union, Dict, Type
 from abc import ABC
-from datetime import date, datetime, timedelta
 
 from ..builders.entry_pb2 import Entry as EntryBuilder
 from ..builders.change_pb2 import Change as ChangeBuilder
-from ..builders.clearance_pb2 import Clearance as ClearanceBuilder
 
 from .muid import Muid
 from .bundler import Bundler
 from .database import Database
-from .typedefs import GenericTimestamp, MuTimestamp
+from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp
 from .coding import encode_key, encode_value, decode_value
 
 class Container(ABC):
@@ -87,6 +85,9 @@ class Container(ABC):
 
     def clear(self, bundler: Optional[Bundler]=None, comment: Optional[str]=None) -> Muid:
         """ Removes all entries from this container, returning the muid of the clearance.
+
+            Note that this will also remove entries that aren't visible because they've been
+            hidden until some future time with something like .remove(..., dest=10.0).
         """
         immediate = False
         if not isinstance(bundler, Bundler):
@@ -99,8 +100,13 @@ class Container(ABC):
             self._database.add_bundle(bundler)
         return change_muid
 
-    def _add_entry(self, *, value, key: Union[str, int, None]=None, expiry: int=0,
-             bundler: Optional[Bundler]=None, comment: Optional[str]=None)->Muid:
+    def _add_entry(self, *, 
+            value, 
+            key: Union[str, int, None]=None, 
+            position: Optional[MuTimestamp]=None, 
+            bundler: Optional[Bundler]=None, 
+            comment: Optional[str]=None, 
+            expiry: GenericTimestamp=None)->Muid:
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
@@ -109,7 +115,14 @@ class Container(ABC):
         # pylint: disable=maybe-no-member
         entry_builder: EntryBuilder = change_builder.entry # type: ignore
         entry_builder.behavior = self.get_behavior()  # type: ignore
-        entry_builder.expiry = expiry # type: ignore
+        if expiry is not None:
+            now = self._database.get_now()
+            expiry = self._database.resolve_timestamp(expiry)
+            if expiry < now:
+                raise ValueError("can't set an expiry to be in the past")
+            entry_builder.expiry = expiry # type: ignore
+        if position is not None:
+            entry_builder.position = position # type: ignore
         self._muid.put_into(entry_builder.container) # type: ignore
         if isinstance(key, (str, int)):
             encode_key(key, entry_builder.key)  # type: ignore
@@ -130,3 +143,31 @@ class Container(ABC):
         if immediate:
             self._database.add_bundle(bundler)
         return muid
+
+    def reset(self, to: GenericTimestamp=EPOCH, *, key: Optional[UserKey]=None, 
+            recursive: bool=False, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+        """ Resets either a specific key or the whole container to a particular past time.
+            
+            (They optional key argument only makes sense when the container is a directory).
+
+            Note that this actually creates new entries to literally "re"-set items.
+            So it'll still be possible to look at before the reset time and see history.
+            Also that means that unseen changes made before the reset but not received
+            by this node won't be overwritten.  If you want to ensure that all entries
+            written before the current time are removed (even if they're not seen yet),
+            then use a clear operation (possibly followed by a reset to get old values).
+
+            This function returns the bundler (either passed-in or created on the fly).
+        """
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
+        assert isinstance(bundler, Bundler)
+        to = self._database.resolve_timestamp(to)
+        for change in self._database._store.get_reset_changes(to_time=to, 
+                container=self._muid, user_key=key, recursive=recursive):
+            bundler.add_change(change)
+        if immediate and len(bundler):
+            self._database.add_bundle(bundler=bundler)
+        return bundler

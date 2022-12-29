@@ -29,7 +29,7 @@ def test_add_commit():
     assert commits[-1].timestamp > started
 
 def test_negative_as_of():
-    for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
+    for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
             bundler = Bundler("hello world")

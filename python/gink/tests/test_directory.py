@@ -15,7 +15,7 @@ assert PATCHED
 
 def test_creation():
     """ test that I can create new directories as well as proxies for existing ones """
-    for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
+    for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
@@ -28,7 +28,7 @@ def test_creation():
 
 def test_set_get():
     """ Test basic set/get functionality works. """
-    for store in [LmdbStore("/tmp/gink.mdb", reset=True), MemoryStore(),]:
+    for store in [LmdbStore(), MemoryStore(),]:
         with closing(store):
             database = Database(store=store)
             global_directory = Directory.global_instance(database=database)
@@ -55,7 +55,7 @@ def test_set_get():
 
 def test_delete():
     """ tests that delete works as expected """
-    for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
+    for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
@@ -68,7 +68,7 @@ def test_delete():
 
 def test_setdefault():
     """ tests that delete works as expected """
-    for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
+    for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
@@ -87,7 +87,7 @@ def test_setdefault():
 
 def test_pop():
     """ tests the pop method """
-    for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
+    for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
@@ -100,7 +100,7 @@ def test_pop():
 
 def test_items_and_keys():
     """ tests the items and keys """
-    for store in [LmdbStore("/tmp/gink.mdb", reset=True), MemoryStore(),]:
+    for store in [LmdbStore(), MemoryStore(),]:
         with store:
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
@@ -122,7 +122,7 @@ def test_items_and_keys():
 
 def test_popitem_and_len():
     """ ensures popitem works as intended """
-    for store in [LmdbStore("/tmp/gink.mdb", reset=True), MemoryStore(),]:
+    for store in [LmdbStore(), MemoryStore(),]:
         with store:
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
@@ -141,7 +141,7 @@ def test_popitem_and_len():
 
 def test_update():
     """ tests both forms of the update method """
-    for store in [LmdbStore("/tmp/gink.mdb", reset=True), MemoryStore(),]:
+    for store in [LmdbStore(), MemoryStore(),]:
         with store:
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
@@ -152,7 +152,7 @@ def test_update():
 
 def test_reset():
     """ tests that the reset(time) functionality works """
-    for store in [LmdbStore("/tmp/gink.mdb", reset=True),]:
+    for store in [LmdbStore(),]:
         # TODO: implement reset in memory store
         with store:
             # pylint: disable=unsupported-assignment-operation, unsupported-membership-test
@@ -181,7 +181,7 @@ def test_reset():
 
 def test_clearance():
     """ tests the directory.clear method works as expected """
-    for store in [MemoryStore(), LmdbStore("/tmp/gink.mdb", reset=True)]:
+    for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
@@ -198,7 +198,7 @@ def test_clearance():
             assert keys == set(["bar"]), (keys, store)
 
 def test_reset_over_clear():
-    for store in [LmdbStore("/tmp/gink.mdb", reset=True)]:
+    for store in [LmdbStore()]:
         with closing(store):
             database = Database(store=store)
             gdi = Directory.global_instance(database=database)
