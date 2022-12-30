@@ -1,7 +1,7 @@
-import { ChangeSet } from "./ChangeSet";
+import { Bundler } from "./Bundler";
 import { Entry as EntryBuilder } from "gink/protoc.out/entry_pb";
 import { Value, KeyType, Muid, AsOf } from "./typedefs";
-import { muidToBuilder, wrapValue, wrapKey, ensure } from "./utils";
+import { muidToBuilder, wrapValue, wrapKey } from "./utils";
 import { Change as ChangeBuilder } from "gink/protoc.out/change_pb";
 import { Deletion } from "./Deletion";
 import { GinkInstance } from "./GinkInstance";
@@ -52,15 +52,15 @@ export class Container {
      * 
      * @param key If absent, create a boxed entry, if KeyType, set a key in entry, if true, create a list entry
      * @param value What the container ought to contain (an immediate Value, a reference, or a deletion)
-     * @param change Change set to add this change to, or empty to apply immediately.
+     * @param change Bundler to add this change to, or empty to apply immediately.
      * @returns a promise the resolves to the muid of the change
      */
-    protected async addEntry(key?: KeyType | true, value?: Value | Container | Deletion, change?: ChangeSet | string): Promise<Muid> {
+    protected async addEntry(key?: KeyType | true, value?: Value | Container | Deletion, change?: Bundler | string): Promise<Muid> {
         let immediate: boolean = false;
-        if (!(change instanceof ChangeSet)) {
+        if (!(change instanceof Bundler)) {
             immediate = true;
             const msg = change;
-            change = new ChangeSet(msg);
+            change = new Bundler(msg);
         }
 
         const entryBuilder = new EntryBuilder();
@@ -89,7 +89,7 @@ export class Container {
         changeBuilder.setEntry(entryBuilder);
         const address = change.addChange(changeBuilder);
         if (immediate) {
-            await this.ginkInstance.addChangeSet(change);
+            await this.ginkInstance.addBundler(change);
         }
         return address;
     }

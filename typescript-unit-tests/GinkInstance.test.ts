@@ -1,13 +1,13 @@
-import { GinkInstance, IndexedDbStore, ChangeSet, ChangeSetInfo } from "../typescript-impl";
+import { GinkInstance, IndexedDbStore, Bundler, BundleInfo } from "../typescript-impl";
 import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
-import { ChangeSet as ChangeSetMessage } from "gink/protoc.out/change_set_pb";
+import { Bundle as BundleBuilder } from "gink/protoc.out/bundle_pb";
 import { ensure } from "../typescript-impl/utils"
-import { ChangeSetBytes } from "../typescript-impl/typedefs";
+import { BundleBytes } from "../typescript-impl/typedefs";
 
 test('test commit', async () => {
     const store = new IndexedDbStore();
     const instance = new GinkInstance(store);
-    const commitInfo = await instance.addChangeSet(new ChangeSet("hello world"));
+    const commitInfo = await instance.addBundler(new Bundler("hello world"));
     ensure(commitInfo.comment == "hello world");
     const chainTracker = await store.getChainTracker();
     const allChains = chainTracker.getChains();
@@ -21,15 +21,15 @@ test('uses claimed chain', async () => {
     const store = new IndexedDbStore("test", true);
     await store.ready;
     const commitBytes = makeChainStart("chain start comment", MEDALLION1, START_MICROS1);
-    await store.addChangeSet(commitBytes);
+    await store.addBundle(commitBytes);
     await store.claimChain(MEDALLION1, START_MICROS1);
-    store.getCommits((commitBytes: ChangeSetBytes, _commitInfo: ChangeSetInfo) => {
-        const commit = ChangeSetMessage.deserializeBinary(commitBytes);
+    store.getCommits((commitBytes: BundleBytes, _commitInfo: BundleInfo) => {
+        const commit = BundleBuilder.deserializeBinary(commitBytes);
         ensure(commit.getComment() == "chain start comment")
     })
     const instance = new GinkInstance(store);
     await instance.ready;
-    const secondInfo = await instance.addChangeSet(new ChangeSet("Hello, Universe!"));
+    const secondInfo = await instance.addBundler(new Bundler("Hello, Universe!"));
     ensure(
         secondInfo.medallion == MEDALLION1 &&
         secondInfo.priorTime == START_MICROS1 &&

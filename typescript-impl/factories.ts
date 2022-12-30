@@ -8,7 +8,7 @@ import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
 import { Muid, Value, Bytes, AsOf, Entry } from "./typedefs";
 import { Container } from "./Container";
 import { Directory } from "./Directory";
-import { List } from "./List";
+import { Sequence } from "./Sequence";
 import { Box } from "./Box";
 import { GinkInstance } from "./GinkInstance";
 import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid } from "./utils";
@@ -18,7 +18,7 @@ import { Behavior } from "gink/protoc.out/behavior_pb";
 export async function construct(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
     if (address.timestamp === -1) {
         if (address.offset === Behavior.SCHEMA) return new Directory(ginkInstance, address);
-        if (address.offset === Behavior.QUEUE) return new List(ginkInstance, address);
+        if (address.offset === Behavior.QUEUE) return new Sequence(ginkInstance, address);
         if (address.offset === Behavior.BOX) return new Box(ginkInstance, address);
     }
     if (containerBuilder === undefined) {
@@ -26,7 +26,7 @@ export async function construct(ginkInstance: GinkInstance, address: Muid, conta
         containerBuilder = ContainerBuilder.deserializeBinary(containerBytes);
     }
     if (containerBuilder.getBehavior() == Behavior.SCHEMA) return (new Directory(ginkInstance, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.QUEUE) return (new List(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.QUEUE) return (new Sequence(ginkInstance, address, containerBuilder));
     if (containerBuilder.getBehavior() == Behavior.BOX) return (new Box(ginkInstance, address, containerBuilder));
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
 }
@@ -55,7 +55,7 @@ export async function toJson(value: Value | Container, indent: number | boolean 
         if (value instanceof Directory) {
             return await value.toJson(indent, asOf, seen);
         }
-        if (value instanceof List) {
+        if (value instanceof Sequence) {
             return await value.toJson(indent, asOf, seen);
         }
         if (value instanceof Box) {
@@ -104,7 +104,7 @@ Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Co
             if (entry.behavior == Behavior.QUEUE) {
                 const entryMuid = muidTupleToMuid(entry.entryId);
                 if (instance.store.getEntry(containerMuid, entryMuid, asOf)) {
-                    yield [entryMuid, new List(instance, containerMuid, containerBuilder)];
+                    yield [entryMuid, new Sequence(instance, containerMuid, containerBuilder)];
                 }
             }
             if (entry.behavior == Behavior.BOX) {

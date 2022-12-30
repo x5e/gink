@@ -2,7 +2,7 @@
 PROTOS=$(wildcard proto/*.proto)
 export PATH := ./node_modules/.bin/:$(PATH)
 
-all: protoc.out node_modules/gink/protoc.out tsc.out webpack.out 
+all: python/gink/builders node_modules/gink/protoc.out tsc.out webpack.out 
 
 node_modules: package.json
 	npm install
@@ -31,7 +31,7 @@ tsc.out: protoc.out node_modules/gink/protoc.out tsconfig.json typescript-impl/*
 	env tsc && chmod a+x tsc.out/main.js
 
 clean:
-	rm -rf protoc.out webpack.out tsc.out python/gink/builders
+	rm -rf protoc.out webpack.out tsc.out python/gink/builders node_modules/gink/protoc.out
 
 unit_tests:
 	env jest
