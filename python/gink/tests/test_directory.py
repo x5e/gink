@@ -27,7 +27,7 @@ def test_creation():
             assert directory1 != directory2
 
 def test_set_get():
-    """ Test basic set/get functionality works. """
+    """ Test the basic set/get functionality of directories works as expected. """
     for store in [LmdbStore(), MemoryStore(),]:
         with closing(store):
             database = Database(store=store)

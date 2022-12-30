@@ -146,7 +146,7 @@ class Sequence(Container):
         """
         as_of = self._database.resolve_timestamp()
         for positioned in self._database._store.get_ordered_entries(self._muid, as_of):
-            found = self._interpret(positioned.entry_data, positioned.entry_muid)
+            found = self._get_occupant(positioned.builder, positioned.entry_muid)
             if found == value:
                 return self.yank(positioned.entry_muid, dest=dest, 
                     bundler=bundler, comment=comment)
@@ -157,7 +157,7 @@ class Sequence(Container):
         """
         as_of = self._database.resolve_timestamp(as_of)
         for positioned in self._database._store.get_ordered_entries(self._muid, as_of=as_of):
-            found = self._interpret(positioned.entry_data, positioned.entry_muid)
+            found = self._get_occupant(positioned.builder, positioned.entry_muid)
             sequence_key = SequenceKey(positioned.position, positioned.entry_muid)
             yield (sequence_key, found)
     
@@ -188,7 +188,7 @@ class Sequence(Container):
             self._muid, as_of=as_of, limit=1, offset=offset, desc=(index < 0))
         for positioned in iterable:
             assert isinstance(positioned, PositionedEntry)
-            found = self._interpret(positioned.entry_data, positioned.entry_muid)
+            found = self._get_occupant(positioned.builder, positioned.entry_muid)
             sequence_key = SequenceKey(positioned.position, positioned.entry_muid)
             return (sequence_key, found)
         raise IndexError(f"could not find anything at index {index}")
@@ -217,7 +217,7 @@ class Sequence(Container):
         index = start
         iterable = self._database._store.get_ordered_entries(self._muid, as_of, offset=start)
         for positioned in iterable:
-            found = self._interpret(positioned.entry_data, positioned.entry_muid)
+            found = self._get_occupant(positioned.builder, positioned.entry_muid)
             if found == value:
                 return index
             if stop is not None and index >= stop:
@@ -228,9 +228,6 @@ class Sequence(Container):
     def __contains__(self, item: Union[UserValue, Container, Muid]) -> bool:
         """ Returns true if something matching item is in queue.
         """
-        if isinstance(item, Muid):
-            as_of = self._database.resolve_timestamp(None)
-            return bool(self._database._store.get_entry(self._muid, key=item, as_of=as_of))
         try:
             self.index(item)
             return True

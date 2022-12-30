@@ -9,11 +9,10 @@ from .muid import Muid
 from .bundler import Bundler
 from .database import Database
 from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp
-from .coding import encode_key, encode_value, decode_value
+from .coding import encode_key, encode_value, decode_value, deletion
 
 class Container(ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
-    _DELETE = object()
     _subtypes: Dict[int, Type] = {}
 
     def __init__(self, database: Database, muid: Muid):
@@ -29,11 +28,16 @@ class Container(ABC):
     def __repr__(self):
         return f"{self.__class__.__name__}(muid={repr(self._muid)})"
 
-    def _interpret(self, builder: EntryBuilder, address: Optional[Muid] = None):
+    def _get_occupant(self, builder: EntryBuilder, address: Optional[Muid] = None):
+        """ Figures out what the container is containing. 
+        
+            Returns either a Container or a UserValue
+        """
         if builder.HasField("value"): # type: ignore
             return decode_value(builder.value) # type: ignore
         if builder.HasField("pointee"): # type: ignore
             pointee = getattr(builder, "pointee")
+            assert address is not None
             pointee_muid = Muid.create(builder=pointee, context=address)
             behavior = getattr(builder, "behavior")
             Class = Container._subtypes.get(behavior)
@@ -102,7 +106,7 @@ class Container(ABC):
 
     def _add_entry(self, *, 
             value, 
-            key: Union[str, int, None]=None, 
+            key: Union[Muid, str, int, None]=None, 
             position: Optional[MuTimestamp]=None, 
             bundler: Optional[Bundler]=None, 
             comment: Optional[str]=None, 
@@ -126,6 +130,8 @@ class Container(ABC):
         self._muid.put_into(entry_builder.container) # type: ignore
         if isinstance(key, (str, int)):
             encode_key(key, entry_builder.key)  # type: ignore
+        if isinstance(key, Muid):
+            key.put_into(entry_builder.describes) # type: ignore
         if isinstance(value, Container):
             pointee_muid = value.get_muid()
             if pointee_muid.medallion:
@@ -135,7 +141,7 @@ class Container(ABC):
             entry_builder.pointee.offset = pointee_muid.offset # type: ignore
         elif isinstance(value, (str, int, float, dict, tuple, list, bool, type(None))):
             encode_value(value, entry_builder.value) # type: ignore # pylint: disable=maybe-no-member
-        elif value == self._DELETE:
+        elif value == deletion:
             entry_builder.deleting = True  # type: ignore # pylint: disable=maybe-no-member
         else:
             raise ValueError(f"don't know how to add this to gink: {value}")

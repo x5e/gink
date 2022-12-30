@@ -12,7 +12,7 @@ message Entry {
 
     oneof link {
         Key key = 3;        // when container is a SCHEMA or SET
-        Muid edge = 4;      // only for src_node behavior in {Vertex, TAG}
+        Muid describes = 4;      // only for src_node behavior in {Vertex, TAG}
         Span span = 5;      // only for src_node behavior = FILE
     }
 

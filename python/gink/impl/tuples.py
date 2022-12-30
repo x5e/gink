@@ -22,7 +22,7 @@ class PositionedEntry(NamedTuple):
     position: MuTimestamp
     positioner: Muid
     entry_muid: Muid
-    entry_data: EntryBuilder
+    builder: EntryBuilder
 
 class SequenceKey(NamedTuple):
     position: MuTimestamp

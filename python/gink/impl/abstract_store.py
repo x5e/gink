@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 
 # protobuf builders
 from ..builders.change_pb2 import Change as ChangeBuilder
-from ..builders.bundle_pb2 import Bundle as BundleBuilder
 
 # Gink specific modules
 from .bundle_info import BundleInfo
@@ -37,11 +36,17 @@ class AbstractStore(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_entry(self, container: Muid, key: Union[UserKey, Muid, None], 
+    def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None], 
             as_of: MuTimestamp) -> Optional[FoundEntry]:
         """ Gets the most recent entry for a given key at as_of
         """
         assert self and container and key and as_of
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def get_positioned_entry(self, entry: Muid, as_of: MuTimestamp=-1)->Optional[PositionedEntry]:
+        """ Returns the position and contents of a an entry, if available, at as_of time.
+        """
         raise NotImplementedError()
     
     @abstractmethod

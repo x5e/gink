@@ -182,13 +182,11 @@ def test_clear():
             for seq in [Sequence.global_instance(database), Sequence(muid=Muid(1,2,3))]:
                 assert len(seq) == 0, store
                 seq.append(3.7)
-                entry_muid = seq.append(9)
+                seq.append(9)
                 assert list(seq) == [3.7, 9], f"{list(seq)}, {store}"
-                assert entry_muid in seq
                 mark = database.get_now()
                 seq.clear()
                 assert len(seq) == 0, store
-                assert entry_muid not in seq, f"{store}"
                 seq.append(True)
                 assert list(seq) == [True]
                 seq.append(False)

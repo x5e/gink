@@ -28,7 +28,7 @@ from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, EntryStoragePair, decode_muts, wrap_change,
     EntryStorageKey, encode_muts, QueueMiddleKey, SCHEMA, QUEUE, serialize, 
-    deletion, Deletion, decode_entry_occupant, MovementKey, LocationKey)
+    deletion, Deletion, decode_entry_occupant, MovementKey, LocationKey, PROPERTY, BOX)
 
 class LmdbStore(AbstractStore):
     """
@@ -135,14 +135,6 @@ class LmdbStore(AbstractStore):
             #TODO: add methods to drop out-of-date entries and/or turn off retention
             #TODO: add purge method to remove particular data even when retention is on
             #TODO: add expiries table to keep track of when things need to be removed
-
-    def locate(self, what: Union[Muid, LocationKey], as_of: MuTimestamp=-1) -> EntryStorageKey:
-        with self._handle.begin() as trxn:
-            cursor = trxn.cursor(self._locations)
-            hit = to_last_with_prefix(cursor, what, suffix=Muid(as_of, 0, 0))
-            if not hit:
-                raise ValueError(f"could not locate: {what} as of {as_of}")
-            return EntryStorageKey.from_bytes(cursor.value())
             
     def get_one(self, Class, index: int = -1):
         skip = index if index >= 0 else ~index
@@ -161,9 +153,7 @@ class LmdbStore(AbstractStore):
             while placed:
                 if skip == 0:
                     if issubclass(Class, Message):
-                        builder = Class()
-                        builder.ParseFromString(cursor.value()) # type: ignore
-                        return builder
+                        return Class.FromString(cursor.value()) # type: ignore
                     else:
                         return Class.from_bytes(cursor.key()) # type: ignore
                 else:
@@ -269,7 +259,7 @@ class LmdbStore(AbstractStore):
         positioned = entries_cursor.set_range(prefix)
         while positioned and entries_cursor.key().startswith(prefix):
             key_bytes = entries_cursor.key()
-            parsed_key = EntryStorageKey.from_bytes(key_bytes)
+            parsed_key = EntryStorageKey.from_bytes(key_bytes, QUEUE)
             location = self._get_location(trxn, parsed_key.entry_muid)
             previous = self._get_location(trxn, parsed_key.entry_muid, as_of=to_time)
             placed_time = parsed_key.get_placed_time()
@@ -388,6 +378,23 @@ class LmdbStore(AbstractStore):
             return None
         return EntryStorageKey.from_bytes(entries_key_bytes, QUEUE)
     
+    def get_positioned_entry(self, entry: Muid, 
+            as_of: MuTimestamp = -1) -> Optional[PositionedEntry]:
+        with self._handle.begin() as trxn:
+            esk = self._get_location(trxn, entry, as_of=as_of)
+            if not esk:
+                return None
+            middle_key = esk.middle_key
+            assert isinstance(middle_key, QueueMiddleKey)
+            entry_builder = EntryBuilder()
+            assert isinstance(entry_builder, Message)
+            entry_builder.ParseFromString(trxn.get(bytes(esk), db=self._entries))
+            return PositionedEntry(
+                middle_key.effective_time,
+                middle_key.movement_muid or esk.entry_muid,
+                esk.entry_muid,
+                entry_builder)
+
     def _get_time_of_prior_clear(self, trxn: Trxn, container: Muid, 
             as_of: MuTimestamp=-1)->MuTimestamp:
         as_of_muid_bytes = bytes(Muid(as_of, 0, 0))
@@ -398,7 +405,7 @@ class LmdbStore(AbstractStore):
             clearance_time = Muid.from_bytes(most_recent_clear[16:32]).timestamp
         return clearance_time
 
-    def get_entry(self, container: Muid, key: Union[None, UserKey, Muid],
+    def get_entry_by_key(self, container: Muid, key: Union[None, UserKey, Muid],
             as_of: MuTimestamp=-1) -> Optional[FoundEntry]:
         """ Gets a single entry (or none if nothing in the database matches).
 
@@ -411,28 +418,30 @@ class LmdbStore(AbstractStore):
         When "key" is a Muid, assumes that "container" is a queue and that the "key"
         is the muid for the desired entry.
         """
-        as_of_muid = bytes(Muid(as_of, 0, 0))
+
         entry_builder = EntryBuilder()
         assert isinstance(entry_builder, Message)
         with self._handle.begin() as txn:
             clearance_time = self._get_time_of_prior_clear(txn, container, as_of)
             entries_cursor = txn.cursor(self._entries)
             if isinstance(key, Muid):
-                if key.timestamp < clearance_time:
-                    return None # no way to survive a clearance
-                location = self._get_location(txn, key, as_of=as_of)
-                if not location:
-                    return None
-                entry_builder.ParseFromString(txn.get(bytes(location), db=self._entries))
-                return FoundEntry(location.entry_muid, entry_builder)
-            built = serialize(encode_key(key)) if isinstance(key, (int, str)) else b""
-            assert isinstance(key, (int, str)) or built == b""
-            prefix = bytes(container) + built
-            entry_key_bytes = to_last_with_prefix(entries_cursor, prefix, as_of_muid)
+                serialized_key = bytes(key)
+                behavior = PROPERTY
+            elif isinstance(key, (int, str)):
+                serialized_key = serialize(encode_key(key))
+                behavior = SCHEMA
+            elif key is None:
+                serialized_key = b""
+                behavior = BOX
+            else:
+                raise TypeError(f"don't know what to do with key of type {type(key)}")            
+        
+            entry_key_bytes = to_last_with_prefix(entries_cursor, 
+                prefix = bytes(container) + serialized_key, suffix=bytes(Muid(as_of, 0, 0)))
             if not entry_key_bytes:
                 return None
             assert isinstance(entry_key_bytes, bytes)
-            entry_storage_key = EntryStorageKey.from_bytes(entry_key_bytes, SCHEMA)
+            entry_storage_key = EntryStorageKey.from_bytes(entry_key_bytes, behavior)
             if entry_storage_key.entry_muid.timestamp < clearance_time:
                 return None
             entry_builder.ParseFromString(entries_cursor.value())
@@ -484,7 +493,7 @@ class LmdbStore(AbstractStore):
                     position=middle_key.effective_time, 
                     positioner=middle_key.movement_muid or parsed_key.entry_muid,
                     entry_muid=parsed_key.entry_muid,
-                    entry_data=entry_builder)
+                    builder=entry_builder)
                 if limit is not None:
                     limit -= 1
                 placed = entries_cursor.prev() if desc else entries_cursor.next()
@@ -498,13 +507,13 @@ class LmdbStore(AbstractStore):
             cursor = txn.cursor(self._entries)
             ckey = to_last_with_prefix(cursor, container_prefix)
             while ckey:
-                entry_storage_key = EntryStorageKey.from_bytes(ckey)
+                entry_storage_key = EntryStorageKey.from_bytes(ckey, SCHEMA)
                 if entry_storage_key.entry_muid.timestamp > as_of:
                     # we've found a key, but the entry is too new, so look for an older one
                     through_middle = ckey[:-24]
                     ckey = to_last_with_prefix(cursor, through_middle, as_of_bytes)
                     if ckey:
-                        entry_storage_key = EntryStorageKey.from_bytes(ckey)
+                        entry_storage_key = EntryStorageKey.from_bytes(ckey, SCHEMA)
                     else:
                         # no entries for this key before the as-of time, go to next key
                         ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
@@ -519,15 +528,6 @@ class LmdbStore(AbstractStore):
                 entry_builder.ParseFromString(cursor.value())  # type: ignore
                 yield FoundEntry(address=entry_storage_key.entry_muid, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
-
-    def get_all_entry_keys(self):
-        print("get_all_entries")
-        with self._handle.begin() as txn:
-            cursor = txn.cursor(self._entries)
-            succeeded = cursor.first()
-            while succeeded:
-                yield EntryStorageKey.from_bytes(cursor.key())
-                succeeded = cursor.next()
 
     def apply_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
         builder = BundleBuilder()
@@ -573,7 +573,7 @@ class LmdbStore(AbstractStore):
             entries_cursor = trxn.cursor(db=self._entries)
             locations_cursor = trxn.cursor(db=self._locations)
             while to_last_with_prefix(entries_cursor, prefix=bytes(container_muid)):
-                esk = EntryStorageKey.from_bytes(entries_cursor.key())
+                esk = EntryStorageKey.from_bytes(entries_cursor.key(), entries_cursor.value())
                 while to_last_with_prefix(locations_cursor, prefix=bytes(esk.entry_muid)):
                     locations_cursor.delete()
                 entries_cursor.delete()

@@ -8,7 +8,7 @@ from .typedefs import GenericTimestamp, EPOCH
 from .muid import Muid
 from .database import Database
 from .container import Container
-from .coding import decode_key, SCHEMA
+from .coding import decode_key, SCHEMA, deletion
 from .bundler import Bundler
 
 class Directory(Container):
@@ -27,9 +27,12 @@ class Directory(Container):
         bundler = Bundler()
         if muid is None:
             muid = Container._create(SCHEMA, database=database, bundler=bundler)
+        elif muid.timestamp > 0 and contents:
+            # TODO Don't know how to handle this quite yet...
+            raise NotImplementedError()
         Container.__init__(self, muid=muid, database=database)
         if contents:
-            # TODO: implement clear and clear the directory if already exists
+            self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
         if len(bundler):
             self._database.add_bundle(bundler)
@@ -74,16 +77,16 @@ class Directory(Container):
     def has(self, key, *, as_of=None):
         """ returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
-        found = self._database._store.get_entry(self.get_muid(), key=key, as_of=as_of)
+        found = self._database._store.get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         return found is not None and not found.builder.deleting # type: ignore
 
     def get(self, key, default=None, *, as_of=None):
         """ gets the value associate with a key, default if missing, optionally as_of a time """
         as_of = self._database.resolve_timestamp(as_of)
-        found = self._database._store.get_entry(self._muid, key=key, as_of=as_of)
+        found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
         if found is None or found.builder.deleting:  # type: ignore
             return default
-        return self._interpret(found.builder, found.address)
+        return self._get_occupant(found.builder, found.address)
 
     def set(self, key: Union[str, int], value, *, bundler=None, comment=None) -> Muid:
         """ Sets a value in the mapping, returns the muid address of the entry.
@@ -101,7 +104,7 @@ class Directory(Container):
             If no bundler is specified, then creates one just for this entry,
             sets it's comment to the comment arg (if set) then adds it to the database.
         """
-        return self._add_entry(key=key, value=self._DELETE, bundler=bundler, comment=comment)
+        return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
     def setdefault(self, key, default=None, *, bundler=None, respect_deletion=False):
         """ Insert key with a value of default if key is not in the directory.
@@ -113,11 +116,11 @@ class Directory(Container):
             case it will return whatever has been passed into respect_deletion.
         """
         as_of = self._database.get_now()
-        found = self._database._store.get_entry(self.get_muid(), key=key, as_of=as_of)
+        found = self._database._store.get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         if found and found.builder.deleting and respect_deletion:  # type: ignore
             return respect_deletion
         if found and not found.builder.deleting:  # type: ignore
-            return self._interpret(found.builder, found.address)
+            return self._get_occupant(found.builder, found.address)
         self._add_entry(key=key, value=default, bundler=bundler)
         return default
 
@@ -129,11 +132,11 @@ class Directory(Container):
             if no bundler is specified.)
         """
         as_of = self._database.get_now()
-        found = self._database._store.get_entry(self.get_muid(), key=key, as_of=as_of)
+        found = self._database._store.get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         if found is None or found.builder.deleting: # type: ignore
             return default
-        self._add_entry(key=key, value=self._DELETE, bundler=bundler, comment=comment)
-        return self._interpret(found.builder, found.address)
+        self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
+        return self._get_occupant(found.builder, found.address)
 
     def items(self, *, as_of=None):
         """ returns an iterable of key,value pairs, as of the effective time (or now) """
@@ -143,7 +146,7 @@ class Directory(Container):
             if entry_pair.builder.deleting: # type: ignore
                 continue
             key = decode_key(entry_pair.builder)
-            contained = self._interpret(entry_pair.builder, entry_pair.address)
+            contained = self._get_occupant(entry_pair.builder, entry_pair.address)
             yield (key, contained)
 
     def __len__(self):
@@ -172,9 +175,9 @@ class Directory(Container):
         for entry_pair in iterable:
             if entry_pair.builder.deleting: # type: ignore
                 continue
-            val = self._interpret(entry_pair.builder, entry_pair.address)
+            val = self._get_occupant(entry_pair.builder, entry_pair.address)
             key = decode_key(entry_pair.builder)
-            self._add_entry(key=key, value=self._DELETE, bundler=bundler, comment=comment)
+            self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
             return (key, val)
         raise KeyError("directory is empty")
 

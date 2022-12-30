@@ -1,10 +1,6 @@
 syntax = "proto3";
 package google.gink;
-import "caption.proto";
 import "container.proto";
-import "edge_type.proto";
-import "property_type.proto";
-import "property_update.proto";
 import "entry.proto";
 import "movement.proto";
 import "clearance.proto";

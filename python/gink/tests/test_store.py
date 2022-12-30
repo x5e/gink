@@ -271,9 +271,11 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         assert found[0].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
         assert found[2].entry_muid == Muid(123, 789, 4)
-        gotten = store.get_entry(queue, Muid(123, 789, 4), as_of=124)
-        assert gotten is not None
-        assert gotten.address == Muid(123, 789, 4)
+        gotten = store.get_positioned_entry(Muid(123, 789, 4), as_of=124)
+        if gotten is None:
+            raise AssertionError("expected something to be there")
+        assert gotten is not None, store
+        assert gotten.entry_muid == Muid(123, 789, 4)
         assert gotten.builder.value.characters == "Goodbye, World!" # type: ignore
 
         bundle_builder2 = BundleBuilder()

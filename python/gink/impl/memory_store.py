@@ -19,7 +19,8 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .muid import Muid
-from .coding import EntryStorageKey, SCHEMA, encode_muts, serialize, QueueMiddleKey, MovementKey
+from .coding import (EntryStorageKey, SCHEMA, encode_muts, QueueMiddleKey, MovementKey,
+    QUEUE, LocationKey)
 
 
 class MemoryStore(AbstractStore):
@@ -31,7 +32,7 @@ class MemoryStore(AbstractStore):
     _chain_infos: SortedDict  # Chain => BundleInfo
     _claimed_chains: SortedDict  # Chain
     _entries: SortedDict  # bytes(EntryStorageKey) => EntryBuilder
-    _locations: SortedDict
+    _locations: SortedDict # bytes(entry_muid) + bytes(movement_muid or entry_muid) => bytes
     _containers: SortedDict  # muid => builder
     _removals: SortedDict 
     _clearances: SortedDict
@@ -56,6 +57,7 @@ class MemoryStore(AbstractStore):
             BundleInfo: self._bundles,
             EntryStorageKey: self._entries,
             MovementKey: self._removals,
+            LocationKey: self._locations,
         }[Class]
         skip = index if index >= 0 else ~index
         for key in sorted_dict.irange(reverse=index < 0):
@@ -104,22 +106,13 @@ class MemoryStore(AbstractStore):
                              address=entry_storage_key.entry_muid)
             last = entry_storage_key.middle_key
 
-    def get_entry(self, container: Muid, key: Union[UserKey, Muid, None], 
+    def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None], 
             as_of: MuTimestamp) -> Optional[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
         clearance_time = 0
         for clearance_key in self._clearances.irange(
             minimum=bytes(container), maximum=bytes(container) + bytes(as_of_muid), reverse=True):
             clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
-
-        if isinstance(key, Muid):
-            if clearance_time and clearance_time > key.timestamp:
-                return None
-            entry_location = self._get_entry_location(key, as_of=as_of)
-            if not entry_location:
-                return None
-            entry_storage_key = EntryStorageKey.from_bytes(entry_location)
-            return FoundEntry(entry_storage_key.entry_muid, self._entries[entry_location])
         epoch_muid = Muid(0, 0, 0)
         minimum = bytes(EntryStorageKey(container, key, epoch_muid, None))
         maximum = bytes(EntryStorageKey(container, key, as_of_muid, None))
@@ -127,11 +120,11 @@ class MemoryStore(AbstractStore):
             minimum=minimum,
             maximum=maximum, reverse=True)
         for encoded_entry_storage_key in iterator:
+            builder = self._entries[encoded_entry_storage_key]
             entry_storage_key = EntryStorageKey.from_bytes(
-                encoded_entry_storage_key)
+                encoded_entry_storage_key, builder)
             if clearance_time > entry_storage_key.entry_muid.timestamp:
                 return None
-            builder = self._entries[encoded_entry_storage_key]
             return FoundEntry(address=entry_storage_key.entry_muid, builder=builder)
         return None
 
@@ -161,7 +154,7 @@ class MemoryStore(AbstractStore):
         for esk_bytes in self._entries.irange(prefix, prefix + encode_muts(as_of), reverse=desc):
             if limit is not None and limit <= 0:
                 break
-            parsed_esk = EntryStorageKey.from_bytes(esk_bytes)
+            parsed_esk = EntryStorageKey.from_bytes(esk_bytes, QUEUE)
             placed_time = parsed_esk.get_placed_time()
             if placed_time >= as_of or placed_time < clearance_time:
                 continue
@@ -185,7 +178,7 @@ class MemoryStore(AbstractStore):
                     position=middle_key.effective_time, 
                     positioner=middle_key.movement_muid or parsed_esk.entry_muid,
                     entry_muid=parsed_esk.entry_muid,
-                    entry_data=entry_builder)
+                    builder=entry_builder)
             if limit is not None:
                 limit -= 1
 
@@ -234,7 +227,7 @@ class MemoryStore(AbstractStore):
         if not old_serialized_esk:
             print(f"WARNING: could not find location for {entry_muid}")
             return
-        entry_storage_key = EntryStorageKey.from_bytes(old_serialized_esk)
+        entry_storage_key = EntryStorageKey.from_bytes(old_serialized_esk, QUEUE)
         entry_expiry = entry_storage_key.expiry
         if entry_expiry and entry_expiry < movement_muid.timestamp:
             print(f"WARNING: won't move exipired entry: {entry_muid}", file=sys.stderr)
@@ -246,7 +239,7 @@ class MemoryStore(AbstractStore):
             return
         removal_key = old_serialized_esk[0:40] + bytes(movement_muid)
         self._removals[removal_key] = builder
-        new_location_key = bytes(entry_muid) + serialize(~movement_muid.timestamp)
+        new_location_key = bytes(entry_muid) + bytes(movement_muid)
         if dest:
             middle_key = QueueMiddleKey(dest, movement_muid)
             entry_storage_key = EntryStorageKey(container, middle_key, entry_muid, entry_expiry)
@@ -261,7 +254,7 @@ class MemoryStore(AbstractStore):
         encoded_entry_storage_key = bytes(esk)
         self._entries[encoded_entry_storage_key] = entry_builder
         entries_location_key = bytes(
-            esk.entry_muid) + encode_muts(~esk.entry_muid.timestamp)
+            esk.entry_muid) + bytes(esk.entry_muid)
         self._locations[entries_location_key] = encoded_entry_storage_key
 
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp=0):
@@ -281,6 +274,18 @@ class MemoryStore(AbstractStore):
     def _get_entry_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
         bkey = bytes(entry_muid)
         for location_key in self._locations.irange(
-                bkey+encode_muts(~as_of), bkey+encode_muts(~0)):
+                bkey, bkey+bytes(Muid(as_of, 0, 0)), reverse=True):
             return self._locations[location_key]
         return None
+
+    def get_positioned_entry(self, entry: Muid, as_of: MuTimestamp=-1)->Optional[PositionedEntry]:
+        location = self._get_entry_location(entry, as_of)
+        if location is None:
+            return None
+        entry_builder = self._entries[location]
+        esk = EntryStorageKey.from_bytes(location, entry_builder)
+        middle_key = esk.middle_key
+        assert isinstance(middle_key, QueueMiddleKey)
+        return PositionedEntry(middle_key.effective_time,
+            middle_key.movement_muid or esk.entry_muid,
+            esk.entry_muid, entry_builder)

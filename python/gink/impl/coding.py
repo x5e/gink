@@ -17,6 +17,7 @@ from .bundle_info import BundleInfo
 UNKNOWN: int = Behavior.UNKNOWN # type: ignore
 QUEUE: int = Behavior.QUEUE # type: ignore
 SCHEMA: int = Behavior.SCHEMA # type: ignore
+PROPERTY: int = Behavior.PROPERTY # type: ignore
 BOX: int = Behavior.BOX # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = unpack(">Q", b"\xff"*8)[0]
@@ -82,11 +83,9 @@ class QueueMiddleKey(NamedTuple):
 class EntryStorageKey(NamedTuple):
     """ just a class to serialize / deserialize keys used to store entries
 
-        Notably, this will invert the entry muids so that more recent entries
-        for a particular container / user-key come before earlier ones.
     """
     container: Muid
-    middle_key: Union[UserKey, QueueMiddleKey, None]
+    middle_key: Union[UserKey, QueueMiddleKey, Muid, None]
     entry_muid: Muid
     expiry: Optional[MuTimestamp]
 
@@ -105,29 +104,39 @@ class EntryStorageKey(NamedTuple):
             middle_key = decode_key(builder)
         elif behavior == QUEUE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp, None)
+        elif behavior == PROPERTY:
+            middle_key = Muid.create(context=new_info, builder=builder.describes) # type: ignore
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None
         return EntryStorageKey(container, middle_key, entry_muid, expiry)
 
     @staticmethod
-    def from_bytes(data: bytes, behavior: int=UNKNOWN):
-        """ creates an entry key from its binary format """
+    def from_bytes(data: bytes, using: Union[int, bytes, EntryBuilder]):
+        """ creates an entry key from its binary format, using either the entry(bytes) or behavior
+        """
+        if isinstance(using, bytes):
+            using = EntryBuilder.FromString(using) # type: ignore
+        if isinstance(using, EntryBuilder):
+            using = using.behavior # type: ignore
+        if not isinstance(using, int):
+            raise ValueError(f"can't determine behavior from {using}")
         container_bytes = data[0:16]
         middle_key_bytes = data[16:-24]
         entry_muid_bytes = data[-24:-8]
         expiry_bytes = data[-8:]
         entry_muid = Muid.from_bytes(entry_muid_bytes)
-        middle_key: Union[QueueMiddleKey, UserKey, None]
-        if behavior == UNKNOWN:
-            # make a guess
-            behavior = QUEUE if middle_key_bytes[0] == 0 else SCHEMA
-        if behavior == SCHEMA:
+        middle_key: Union[QueueMiddleKey, UserKey, Muid, None]
+        if using == SCHEMA:
             middle_key = decode_key(middle_key_bytes)
-        elif behavior == QUEUE:
+        elif using == QUEUE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
+        elif using == PROPERTY:
+            middle_key = Muid.from_bytes(middle_key_bytes)
+        elif using == BOX:
+            middle_key = None
         else:
-            raise AssertionError("unexpected behavior")
+            raise ValueError(f"unexpected behavior {using}")
         assert middle_key is not None, "directory keys must be strings or integers"
         return EntryStorageKey(
                 container=Muid.from_bytes(container_bytes),
@@ -142,7 +151,7 @@ class EntryStorageKey(NamedTuple):
     def __bytes__(self):
         parts: List[Any] = []
         parts.append(self.container)
-        if isinstance(self.middle_key, QueueMiddleKey):
+        if isinstance(self.middle_key, (QueueMiddleKey, Muid)):
             parts.append(self.middle_key)
         elif self.middle_key is not None:
             parts.append(encode_key(self.middle_key))
@@ -288,8 +297,7 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Us
     elif isinstance(from_what, EntryBuilder):
         key_builder = from_what.key # type: ignore
     elif isinstance(from_what, bytes):
-        key_builder = KeyBuilder()
-        key_builder.ParseFromString(from_what) # type: ignore
+        key_builder = KeyBuilder.FromString(from_what) # type: ignore
     else:
         raise ValueError("not an argument of an expected type")
     assert isinstance(key_builder, KeyBuilder)

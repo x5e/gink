@@ -14,5 +14,6 @@ enum Behavior {
     INDEX = 9; // not changed by entries, instead defines lookup into another container
     VIEW = 10; // a traditional sql view
     DERIVED = 11; // a derived table, AKA a materialized view
-    NODE = 12; // entries are edges in a graph
+    VERTEX = 12; // entries are edges in a graph
+    PROPERTY = 13; // entries set value of this property on an object
 };
