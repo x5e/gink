@@ -3,7 +3,7 @@ package google.gink;
 import "muid.proto";
 
 // TODO(https://github.com/google/gink/issues/53): Add link to design doc here.
-message Value {    
+message Value {
     oneof value {
         Special special = 1;
         EnumValue enum_value = 2;
@@ -17,7 +17,6 @@ message Value {
         Document document = 12;
         string symbol = 13;
         ColumnReference column = 14;
-        ProtoData proto_data = 15;
         bytes uuid = 16;
         Complex complex = 18;
         Zone timezone = 19;
@@ -29,14 +28,8 @@ message Value {
 
     // Allowing muid user values would make questions like "Is <muid> in <sequence>?" ambiguous.
     // But I'm keeping them reserved here for the moment just in case we decide to put it in.
-    reserved 17;
-    reserved "muid";
-
-    message ProtoData {
-        bytes binary_proto = 1;
-        Muid proto_definition = 2; // optional, may be inferred
-        string type_url = 3; // optional, for "Any" proto like behavior
-    }
+    reserved 15, 17;
+    reserved "proto_data", "muid";
 
     message EnumValue {
         sint64 value = 1;
@@ -94,7 +87,7 @@ message Value {
     
     message Number {
         enum Constant {
-            ZERO = 0;
+            UNKNOWN = 0;
             I = 1;
             E = 2;
             PI = 3;

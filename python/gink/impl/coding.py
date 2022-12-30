@@ -14,7 +14,7 @@ from .typedefs import UserKey, MuTimestamp, UserValue, Deletion
 from .muid import Muid
 from .bundle_info import BundleInfo
 
-UNKNOWN: int = Behavior.UNKNOWN # type: ignore
+NONE: int = Behavior.NONE # type: ignore
 QUEUE: int = Behavior.QUEUE # type: ignore
 SCHEMA: int = Behavior.SCHEMA # type: ignore
 PROPERTY: int = Behavior.PROPERTY # type: ignore

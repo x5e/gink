@@ -80,6 +80,11 @@ class LmdbStore(AbstractStore):
         clearances - tracks clearance changes (most recent per container if not retaining entries)
             key: (container-muid, clearance-muid)
             val: binaryproto of the clearance
+        
+        properties - an index to enable looking up all of the properties on an object
+                < NOT YET IMPLEMENTED >
+            key: (describes-muid, property-muid, entry-muid)
+            val: bytes of the corresponding key in the entry table
     """
 
     def __init__(self, file_path=None, reset=False, retain_bundles=True, retain_entries=True):
@@ -108,6 +113,7 @@ class LmdbStore(AbstractStore):
         self._locations = self._handle.open_db(b"locations")
         self._retentions = self._handle.open_db(b"retentions")
         self._clearances = self._handle.open_db(b"clearances")
+        self._properties = self._handle.open_db(b"properties")
         if reset:
             with self._handle.begin(write=True) as txn:
                 # The delete=False signals to lmdb to truncate the tables rather than drop them
@@ -120,6 +126,7 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._locations, delete=False)
                 txn.drop(self._retentions, delete=False)
                 txn.drop(self._clearances, delete=False)
+                txn.drop(self._properties, delete=False)
         with self._handle.begin() as txn:
             # I'm checking to see if retentions are set in a read-only transaction, because if
             # they are and another process has this file open I don't want to wait to get a lock.
