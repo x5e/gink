@@ -225,7 +225,7 @@ export class IndexedDbStore implements Store {
                 }
                 const immediate = entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined;
                 const expiry = entryBuilder.getExpiry() || undefined;
-                const deleting = entryBuilder.getDeleting();
+                const deletion = entryBuilder.getDeletion();
                 const entry: Entry = {
                     behavior,
                     containerId,
@@ -234,7 +234,7 @@ export class IndexedDbStore implements Store {
                     pointeeList,
                     value: immediate,
                     expiry,
-                    deleting,
+                    deletion,
                 }
                 //TODO: add code to add expiries to existing directory entries on insert
                 await wrappedTransaction.objectStore("entries").add(entry);
@@ -314,7 +314,7 @@ export class IndexedDbStore implements Store {
             const entry = <Entry>cursor.value;
             ensure(entry.behavior == Behavior.DIRECTORY && entry.semanticKey.length > 0);
             if (entry.entryId[0] < asOfTs) {
-                if (entry.deleting) {
+                if (entry.deletion) {
                     result.delete(entry.semanticKey[0]);
                 } else {
                     result.set(entry.semanticKey[0], entry);

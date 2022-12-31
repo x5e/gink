@@ -61,7 +61,7 @@ export class Box extends Container {
      */
     async size(asOf?: AsOf): Promise<number> {
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
-        return +!(entry === undefined || entry.deleting)
+        return +!(entry === undefined || entry.deletion)
     }
 
     /**
@@ -71,7 +71,7 @@ export class Box extends Container {
      */
     async isEmpty(asOf?: AsOf): Promise<boolean> {
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
-        return (entry === undefined || entry.deleting)
+        return (entry === undefined || entry.deletion)
     }
 
     /**

@@ -32,7 +32,7 @@ export async function construct(ginkInstance: GinkInstance, address: Muid, conta
 }
 
 export async function interpret(entry: Entry, ginkInstance: GinkInstance): Promise<Container | Value | undefined> {
-    if (entry === undefined || entry.deleting) {
+    if (entry === undefined || entry.deletion) {
         return undefined;
     }
     if (entry.value !== undefined)
@@ -77,7 +77,7 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
         const destAddress = builderToMuid(entryBuilder.getPointee(), entryAddress)
         return await construct(ginkInstance, destAddress);
     }
-    if (entryBuilder.getDeleting()) {
+    if (entryBuilder.getDeletion()) {
         return undefined;
     }
     throw new Error("unsupported entry type");

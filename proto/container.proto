@@ -14,9 +14,9 @@ import "column.proto";
 
 message Container {
     Behavior behavior = 1;
-    repeated Muid extends = 2; // inheritance (an option for TABLE, QUEUE, SET, SCHEMA, LABEL)
-    ValueType key_type = 3; // optional when behavior in (SCHEMA, SET)
+    repeated Muid extends = 2;
+    ValueType key_type = 3;
     ValueType value_type = 4; // optional when behavior in (BOX, SCHEMA, QUEUE, PROPERTY)
     repeated Column columns = 5; // use when behavior is TABLE
-    repeated Value primary_key_expressions = 8; // use when behavior is TABLE
+    repeated Value key_expressions = 6; // use when behavior is KEYED_TABLE
 }
