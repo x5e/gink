@@ -5,10 +5,10 @@ package google.gink;
 message Bundle {
     uint64 timestamp = 1;
     uint64 medallion = 2;
-    uint64 previous_timestamp = 3;  // TODO: rename to prior_time or just previous
+    uint64 previous = 3;
     string comment = 4;
     uint64 chain_start = 5;
-    // key in addressable_objects is offset number (> 0 and < 2**20)
+    // key in changes map is the offset number: > 0 and < 2**20
     map<uint32, Change> changes = 6;
 
     // I'm using a map rather than a simple repeated field of Changes for a couple of reasons:

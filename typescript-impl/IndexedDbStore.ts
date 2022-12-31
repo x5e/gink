@@ -165,7 +165,7 @@ export class IndexedDbStore implements Store {
             timestamp: bundleData.getTimestamp(),
             medallion: bundleData.getMedallion(),
             chainStart: bundleData.getChainStart(),
-            priorTime: bundleData.getPreviousTimestamp() || undefined,
+            priorTime: bundleData.getPrevious() || undefined,
             comment: bundleData.getComment() || undefined,
         }
     }
