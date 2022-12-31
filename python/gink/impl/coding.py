@@ -15,8 +15,8 @@ from .muid import Muid
 from .bundle_info import BundleInfo
 
 NONE: int = Behavior.NONE # type: ignore
-QUEUE: int = Behavior.QUEUE # type: ignore
-SCHEMA: int = Behavior.SCHEMA # type: ignore
+SEQUENCE: int = Behavior.SEQUENCE # type: ignore
+DIRECTORY: int = Behavior.DIRECTORY # type: ignore
 PROPERTY: int = Behavior.PROPERTY # type: ignore
 BOX: int = Behavior.BOX # type: ignore
 FLOAT_INF = float("inf")
@@ -100,9 +100,9 @@ class EntryStorageKey(NamedTuple):
         entry_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")
         position = getattr(builder, "position")
-        if behavior == SCHEMA or behavior == BOX:
+        if behavior == DIRECTORY or behavior == BOX:
             middle_key = decode_key(builder)
-        elif behavior == QUEUE:
+        elif behavior == SEQUENCE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp, None)
         elif behavior == PROPERTY:
             middle_key = Muid.create(context=new_info, builder=builder.describes) # type: ignore
@@ -127,9 +127,9 @@ class EntryStorageKey(NamedTuple):
         expiry_bytes = data[-8:]
         entry_muid = Muid.from_bytes(entry_muid_bytes)
         middle_key: Union[QueueMiddleKey, UserKey, Muid, None]
-        if using == SCHEMA:
+        if using == DIRECTORY:
             middle_key = decode_key(middle_key_bytes)
-        elif using == QUEUE:
+        elif using == SEQUENCE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
         elif using == PROPERTY:
             middle_key = Muid.from_bytes(middle_key_bytes)
@@ -184,12 +184,12 @@ def create_deleting_entry(muid: Muid, key: Optional[UserKey]) -> EntryBuilder:
         inside in part because it results in an easier to use API.
     """
     if key is None:
-        raise ValueError("can't create deleting entries without key")
+        raise ValueError("can't create deletion entries without key")
     # pylint: disable=maybe-no-member
     entry_builder = EntryBuilder()
-    entry_builder.behavior = Behavior.SCHEMA   # type: ignore
+    entry_builder.behavior = Behavior.DIRECTORY   # type: ignore
     muid.put_into(entry_builder.container)  # type: ignore
-    entry_builder.deleting = True  # type: ignore
+    entry_builder.deletion = True  # type: ignore
     encode_key(key, entry_builder.key) # type: ignore
     return entry_builder
 
@@ -200,7 +200,7 @@ def decode_entry_occupant(entry_storage_pair: EntryStoragePair) -> Union[UserVal
         might be relative to the entry address.
     """
     builder = entry_storage_pair.builder
-    if builder.deleting: # type: ignore
+    if builder.deletion: # type: ignore
         return deletion
     if builder.HasField("pointee"): # type: ignore
         return Muid.create(builder=builder.pointee, context=entry_storage_pair.key) # type: ignore
@@ -255,7 +255,7 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
     if value_builder.HasField("document"): # type: ignore # pylint: disable=maybe-no-member
         result = {}
         for i, _  in enumerate(value_builder.document.keys): # type: ignore # pylint: disable=maybe-no-member
-            result[decode_value(value_builder.document.keys[i])] = decode_value( # type: ignore # pylint: disable=maybe-no-member
+            result[decode_key(value_builder.document.keys[i])] = decode_value( # type: ignore # pylint: disable=maybe-no-member
                 value_builder.document.values[i]) # type: ignore # pylint: disable=maybe-no-member
         return result
     raise ValueError("don't know how to decode: %r,%s" % (value_builder, type(value_builder))) # pylint: disable=consider-using-f-string
@@ -288,6 +288,8 @@ def encode_key(key: UserKey, builder: Optional[KeyBuilder] = None) -> KeyBuilder
         builder.characters = key # type: ignore # pylint: disable=maybe-no-member
     if isinstance(key, int):
         builder.number = key # type: ignore # pylint: disable=maybe-no-member
+    if isinstance(key, bytes):
+        builder.octets = key # type: ignore
     return builder
 
 def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[UserKey]:
@@ -306,6 +308,8 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Us
         return key_builder.number # type: ignore
     if key_builder.HasField("characters"):  # type: ignore
         return key_builder.characters  # type: ignore
+    if key_builder.HasField("octets"): # type: ignore
+        return key_builder.octets # type: ignore
     return None
 
 def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None) -> ValueBuilder:
@@ -340,10 +344,10 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
             value_builder.tuple.values.append(encode_value(val)) # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if isinstance(value, dict):
-        value_builder.document.keys.append(ValueBuilder()) # type: ignore # pylint: disable=maybe-no-member
+        value_builder.document.keys.append(KeyBuilder()) # type: ignore # pylint: disable=maybe-no-member
         value_builder.document.keys.pop() # type: ignore # pylint: disable=maybe-no-member
         for key, val in value.items():
-            value_builder.document.keys.append(encode_value(key)) # type: ignore # pylint: disable=maybe-no-member
+            value_builder.document.keys.append(encode_key(key)) # type: ignore # pylint: disable=maybe-no-member
             value_builder.document.values.append(encode_value(val)) # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     raise ValueError("don't know how to encode: %r" % value) # pylint: disable=consider-using-f-string

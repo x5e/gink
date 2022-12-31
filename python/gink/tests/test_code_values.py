@@ -1,6 +1,6 @@
 """ tests the conversion functions in code_values
 """
-from ..impl.coding import encode_value, decode_value, EntryStorageKey, QueueMiddleKey, QUEUE, SCHEMA
+from ..impl.coding import encode_value, decode_value, EntryStorageKey, QueueMiddleKey, SEQUENCE, DIRECTORY
 from ..impl.muid import Muid
 
 
@@ -23,7 +23,7 @@ def test_tuple():
 
 def test_document():
     """ Tests that a document (dict) can be encoded and decoded. """
-    keys = ("foo", 1.5, 137, True, False, None, b"abc")
+    keys = ("foo", 15, b"abc")
     original = {key: key for key in keys}
     encoded = encode_value(original)
     decoded = decode_value(encoded)
@@ -44,7 +44,7 @@ def test_compound():
         "foo": "bar",
         "cheese": (False, 77.0),
         "never": {"back": "together"},
-        1.7: ((), {None: 3}),
+        17: ((), {33: 3}),
     }
     encoded = encode_value(original)
     decoded = decode_value(encoded)
@@ -70,10 +70,10 @@ def test_entry_to_from_bytes():
 
     key1 = EntryStorageKey(global_directory, "foo", Muid(1,2,3), 99)
     encoded = bytes(key1)
-    key2 = EntryStorageKey.from_bytes(encoded, SCHEMA)
+    key2 = EntryStorageKey.from_bytes(encoded, DIRECTORY)
     assert key1 == key2, key2
 
     key3 = EntryStorageKey(Muid(123, 77, 1), QueueMiddleKey(235, Muid(234, 77, 3)), Muid(234, 77, 2), None)
     encoded = bytes(key3)
-    key4 = EntryStorageKey.from_bytes(encoded, QUEUE)
+    key4 = EntryStorageKey.from_bytes(encoded, SEQUENCE)
     assert key4 == key3, key4

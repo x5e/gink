@@ -54,6 +54,6 @@ class Property(Container):
             describing = describing._muid
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database._store.get_entry_by_key(self._muid, key=describing, as_of=as_of)
-        if found is None or found.builder.deleting:  # type: ignore
+        if found is None or found.builder.deletion:  # type: ignore
             return default
         return self._get_occupant(found.builder)

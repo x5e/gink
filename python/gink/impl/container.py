@@ -142,7 +142,7 @@ class Container(ABC):
         elif isinstance(value, (str, int, float, dict, tuple, list, bool, type(None))):
             encode_value(value, entry_builder.value) # type: ignore # pylint: disable=maybe-no-member
         elif value == deletion:
-            entry_builder.deleting = True  # type: ignore # pylint: disable=maybe-no-member
+            entry_builder.deletion = True  # type: ignore # pylint: disable=maybe-no-member
         else:
             raise ValueError(f"don't know how to add this to gink: {value}")
         muid = bundler.add_change(change_builder)

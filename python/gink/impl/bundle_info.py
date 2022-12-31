@@ -28,7 +28,7 @@ class BundleInfo:
             self.timestamp = builder.timestamp # type: ignore # pylint: disable=maybe-no-member
             self.chain_start = builder.chain_start  # type: ignore  # pylint: disable=maybe-no-member
             self.comment = builder.comment  # type: ignore # pylint: disable=maybe-no-member\
-            self.prior_time = builder.previous_timestamp  # type: ignore # pylint: disable=maybe-no-member
+            self.prior_time = builder.previous  # type: ignore # pylint: disable=maybe-no-member
 
         if "chain" in kwargs:
             chain = kwargs["chain"]

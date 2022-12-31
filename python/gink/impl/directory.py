@@ -8,13 +8,13 @@ from .typedefs import GenericTimestamp, EPOCH
 from .muid import Muid
 from .database import Database
 from .container import Container
-from .coding import decode_key, SCHEMA, deletion
+from .coding import decode_key, DIRECTORY, deletion
 from .bundler import Bundler
 
 class Directory(Container):
     """ the Gink mutable mapping object """
     _missing = object()
-    BEHAVIOR = SCHEMA
+    BEHAVIOR = DIRECTORY
 
     def __init__(self, *, contents=None, muid: Optional[Muid]=None, database=None):
         """
@@ -26,7 +26,7 @@ class Directory(Container):
         database = database or Database.last
         bundler = Bundler()
         if muid is None:
-            muid = Container._create(SCHEMA, database=database, bundler=bundler)
+            muid = Container._create(DIRECTORY, database=database, bundler=bundler)
         elif muid.timestamp > 0 and contents:
             # TODO Don't know how to handle this quite yet...
             raise NotImplementedError()
@@ -78,13 +78,13 @@ class Directory(Container):
         """ returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database._store.get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
-        return found is not None and not found.builder.deleting # type: ignore
+        return found is not None and not found.builder.deletion # type: ignore
 
     def get(self, key, default=None, *, as_of=None):
         """ gets the value associate with a key, default if missing, optionally as_of a time """
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
-        if found is None or found.builder.deleting:  # type: ignore
+        if found is None or found.builder.deletion:  # type: ignore
             return default
         return self._get_occupant(found.builder, found.address)
 
@@ -117,9 +117,9 @@ class Directory(Container):
         """
         as_of = self._database.get_now()
         found = self._database._store.get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
-        if found and found.builder.deleting and respect_deletion:  # type: ignore
+        if found and found.builder.deletion and respect_deletion:  # type: ignore
             return respect_deletion
-        if found and not found.builder.deleting:  # type: ignore
+        if found and not found.builder.deletion:  # type: ignore
             return self._get_occupant(found.builder, found.address)
         self._add_entry(key=key, value=default, bundler=bundler)
         return default
@@ -133,7 +133,7 @@ class Directory(Container):
         """
         as_of = self._database.get_now()
         found = self._database._store.get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
-        if found is None or found.builder.deleting: # type: ignore
+        if found is None or found.builder.deletion: # type: ignore
             return default
         self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
         return self._get_occupant(found.builder, found.address)
@@ -143,7 +143,7 @@ class Directory(Container):
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database._store.get_keyed_entries(container=self._muid, as_of=as_of)
         for entry_pair in iterable:
-            if entry_pair.builder.deleting: # type: ignore
+            if entry_pair.builder.deletion: # type: ignore
                 continue
             key = decode_key(entry_pair.builder)
             contained = self._get_occupant(entry_pair.builder, entry_pair.address)
@@ -173,7 +173,7 @@ class Directory(Container):
         as_of = self._database.get_now()
         iterable = self._database._store.get_keyed_entries(container=self._muid, as_of=as_of)
         for entry_pair in iterable:
-            if entry_pair.builder.deleting: # type: ignore
+            if entry_pair.builder.deletion: # type: ignore
                 continue
             val = self._get_occupant(entry_pair.builder, entry_pair.address)
             key = decode_key(entry_pair.builder)

@@ -9,11 +9,11 @@ from .container import Container
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
-from .coding import QUEUE
+from .coding import SEQUENCE
 from .tuples import PositionedEntry, SequenceKey
 
 class Sequence(Container):
-    BEHAVIOR = QUEUE
+    BEHAVIOR = SEQUENCE
 
     def __init__(self, *, contents=None, muid: Optional[Muid] = None, database=None):
         """

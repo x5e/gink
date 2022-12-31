@@ -45,7 +45,7 @@ def make_empty_bundle(bundle_info: BundleInfo) -> bytes:
     builder.medallion = bundle_info.medallion  # type: ignore
     builder.chain_start = bundle_info.chain_start  # type: ignore
     builder.timestamp = bundle_info.timestamp  # type: ignore
-    builder.previous_timestamp = bundle_info.prior_time  # type: ignore
+    builder.previous = bundle_info.prior_time  # type: ignore
     if bundle_info.comment:
         builder.comment = bundle_info.comment  # type: ignore
     return builder.SerializeToString()  # type: ignore
@@ -191,7 +191,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
             key: 1
             value {
                 container {
-                    behavior: QUEUE
+                    behavior: SEQUENCE
                 }
             }
         }
@@ -199,7 +199,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
             key: 2
             value {
                 entry {
-                    behavior: QUEUE
+                    behavior: SEQUENCE
                     container { offset: 1 }
                     pointee { offset: 1 }
                 }
@@ -209,7 +209,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
             key: 3
             value {
                 entry {
-                    behavior: QUEUE
+                    behavior: SEQUENCE
                     container { offset: 1 }
                     value { characters: "Hello, World!" }
                 }
@@ -219,7 +219,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
             key: 4
             value {
                 entry {
-                    behavior: QUEUE
+                    behavior: SEQUENCE
                     container { offset: 1 }
                     value { characters: "Goodbye, World!" }
                 }
@@ -230,7 +230,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         medallion: 789
         chain_start: 123
         timestamp: 234
-        previous_timestamp: 123
+        previous: 123
         changes {
             key: 1
             value {
@@ -254,7 +254,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
             key: 3
             value {
                 entry {
-                    behavior: QUEUE
+                    behavior: SEQUENCE
                     container { timestamp: -1 offset: 8 }
                     value { characters: "Whatever" }
                 }
@@ -266,8 +266,8 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         Parse(textproto1, bundle_builder) # type: ignore
         serialized = bundle_builder.SerializeToString() # type: ignore
         store.apply_bundle(serialized)
-        queue = Muid(123, 789, 1)
-        found = [_ for _ in store.get_ordered_entries(container=queue, as_of=124)]
+        sequence = Muid(123, 789, 1)
+        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124)]
         assert found[0].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
         assert found[2].entry_muid == Muid(123, 789, 4)
@@ -282,23 +282,23 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         Parse(textproto2, bundle_builder2) # type: ignore
         serialized2 = bundle_builder2.SerializeToString() # type: ignore
         store.apply_bundle(serialized2)
-        found = [_ for _ in store.get_ordered_entries(container=queue, as_of=124)]
+        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124)]
         assert len(found) == 3
         assert found[0].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
         assert found[2].entry_muid == Muid(123, 789, 4)
-        found = [_ for _ in store.get_ordered_entries(container=queue, as_of=235)]
+        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=235)]
         assert len(found) == 2
         assert found[0].entry_muid == Muid(123, 789, 4)
         assert found[1].entry_muid == Muid(123, 789, 3), found
 
-        found = [_ for _ in store.get_ordered_entries(container=queue, as_of=124, desc=True)]
+        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124, desc=True)]
         assert len(found) == 3
         assert found[2].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
         assert found[0].entry_muid == Muid(123, 789, 4)
 
-        found = [_ for _ in store.get_ordered_entries(container=queue, as_of=235, desc=True)]
+        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=235, desc=True)]
         assert len(found) == 2
         assert found[0].entry_muid == Muid(123, 789, 3)
         assert found[1].entry_muid == Muid(123, 789, 4)

@@ -19,8 +19,8 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .muid import Muid
-from .coding import (EntryStorageKey, SCHEMA, encode_muts, QueueMiddleKey, MovementKey,
-    QUEUE, LocationKey)
+from .coding import (EntryStorageKey, DIRECTORY, encode_muts, QueueMiddleKey, MovementKey,
+    SEQUENCE, LocationKey)
 
 
 class MemoryStore(AbstractStore):
@@ -91,7 +91,7 @@ class MemoryStore(AbstractStore):
         last = None
         # TODO this could be more efficient
         for entry_key in iterator:
-            entry_storage_key = EntryStorageKey.from_bytes(entry_key, SCHEMA)
+            entry_storage_key = EntryStorageKey.from_bytes(entry_key, DIRECTORY)
             if entry_storage_key.entry_muid.timestamp > as_of:
                 continue
             if entry_storage_key.middle_key == last:
@@ -154,7 +154,7 @@ class MemoryStore(AbstractStore):
         for esk_bytes in self._entries.irange(prefix, prefix + encode_muts(as_of), reverse=desc):
             if limit is not None and limit <= 0:
                 break
-            parsed_esk = EntryStorageKey.from_bytes(esk_bytes, QUEUE)
+            parsed_esk = EntryStorageKey.from_bytes(esk_bytes, SEQUENCE)
             placed_time = parsed_esk.get_placed_time()
             if placed_time >= as_of or placed_time < clearance_time:
                 continue
@@ -227,7 +227,7 @@ class MemoryStore(AbstractStore):
         if not old_serialized_esk:
             print(f"WARNING: could not find location for {entry_muid}")
             return
-        entry_storage_key = EntryStorageKey.from_bytes(old_serialized_esk, QUEUE)
+        entry_storage_key = EntryStorageKey.from_bytes(old_serialized_esk, SEQUENCE)
         entry_expiry = entry_storage_key.expiry
         if entry_expiry and entry_expiry < movement_muid.timestamp:
             print(f"WARNING: won't move exipired entry: {entry_muid}", file=sys.stderr)
