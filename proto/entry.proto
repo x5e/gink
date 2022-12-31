@@ -1,12 +1,32 @@
 syntax = "proto3";
 package google.gink;
-
+import "google/protobuf/any.proto";
 import "value.proto";
 import "muid.proto";
-
+import "behavior.proto";
+import "key.proto";
 
 message Entry {
-    Muid container = 1; // not present for "root" entry
+    Behavior behavior = 1; // should match the behavior of container
+    Muid container = 2;
+
+    oneof link {
+        Key key = 3;
+        Muid describes = 4;
+        Span span = 5;
+    }
+
+    oneof contains {
+        bool deleting = 6; // behavior in {SET, SCHEMA, LABEL, PROPERTY}
+        Value value = 7;
+        bytes octects = 8; // for container behavior in {FILE, BINLOG, PROTO}
+        Row row = 9; // for container behavior = TABLE
+        google.protobuf.Any any = 10; // Here be dragons.
+        Muid pointee = 11;        
+    }
+
+    uint64 expiry = 12; // timestamp of expiration in microseconds since epoch, or 0 for none
+    uint64 position = 13; // timestamp of initial position in ordered container, or 0 for entry ts
 
     message Span {
         // defines where to put octects in the FILE, may be omitted to place all at start
@@ -14,29 +34,8 @@ message Entry {
         uint64 ends=2;
     }
     
-    oneof link {
-        // For behavior in {BOX, QUEUE, TABLE, BINLOG} there is no link.
-        Value key = 2;      // only for src_node behavior in {SCHEMA, SET}
-        Muid edge_type = 3; // only when src_node has a node_kind
-        bool boxed = 4;     // only for src_node behavior = BOX
-        Span span = 5;      // only for src_node behavior = FILE
-    }
-
     message Row {
-        bytes bytes_mask = 2; // only for when you have more than 63 columns    
-        repeated Value values = 3;
+        repeated Value values = 1;
+        bytes bytes_mask = 2; // optional when all columns have values
     }
-
-    oneof target {
-        bool deleting = 6; // serves as reset when no link is set
-        uint64 medallion = 7; // follow the root entry of another db instance
-        bytes octects = 8; // for src_node behavior in {FILE, BINLOG} or when encrypted
-        Value immediate = 9;
-        Row row = 10; // only when source is a TABLE
-        Muid pointee = 11;
-    }
-
-    uint64 expiry = 12; // timestamp of expiration in microseconds since epoch, for LIST/QUEUE only
-    bytes iv = 15; // initialization vector when octects are encrypted
-    bytes key_id = 16; // optional hint of which key was used (when encrypted)
 }

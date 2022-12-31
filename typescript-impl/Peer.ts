@@ -1,4 +1,4 @@
-import { ChangeSetInfo, ChangeSetBytes, CallBack } from "./typedefs";
+import { BundleInfo, BundleBytes, CallBack } from "./typedefs";
 import { noOp, ensure } from "./utils";
 import { ChainTracker } from "./ChainTracker";
 import { SyncMessage as SyncMessageBuilder } from "gink/protoc.out/sync_message_pb";
@@ -60,13 +60,13 @@ export class Peer {
      * @param commitBytes The commit to be sent.
      * @param commitInfo Metadata about the commit.
      */
-    _sendIfNeeded(commitBytes: ChangeSetBytes, commitInfo: ChangeSetInfo) {
+    _sendIfNeeded(commitBytes: BundleBytes, commitInfo: BundleInfo) {
         if (this.hasMap?.markAsHaving(commitInfo, true)) {
             this.sendFunc(Peer.makeCommitMessage(commitBytes));
         }
     }
 
-    _sendAck(changeSetInfo: ChangeSetInfo) {
+    _sendAck(changeSetInfo: BundleInfo) {
         const ack = new SyncMessageBuilder.Ack();
         ack.setMedallion(changeSetInfo.medallion);
         ack.setChainStart(changeSetInfo.chainStart);

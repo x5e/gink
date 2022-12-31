@@ -6,7 +6,7 @@ import "muid.proto";
 message Value {
     oneof value {
         Special special = 1;
-        sint64 enum_value = 2;
+        EnumValue enum_value = 2;
         string characters = 3;
         Number number = 4;
         Timestamp timestamp = 5;
@@ -17,14 +17,23 @@ message Value {
         Document document = 12;
         string symbol = 13;
         ColumnReference column = 14;
-        Invocation invocation = 15;
         bytes uuid = 16;
-        Muid muid = 17;
         Complex complex = 18;
         Zone timezone = 19;
         DateTime datetime = 20;
         ZonedDateTime zoned = 21;
         Interval interval = 22;
+        Invocation invocation = 23;
+    }
+
+    // Allowing muid user values would make questions like "Is <muid> in <sequence>?" ambiguous.
+    // But I'm keeping them reserved here for the moment just in case we decide to put it in.
+    reserved 15, 17;
+    reserved "proto_data", "muid";
+
+    message EnumValue {
+        sint64 value = 1;
+        Muid defined = 2;  // where this enum is defined, may be omitted if implied by context
     }
 
     message ColumnReference {
@@ -39,9 +48,10 @@ message Value {
     }
 
     enum Special {
-        NULL = 0;
+        MISSING = 0;
         TRUE = 1;
         FALSE = 2;
+        NULL = 3;
     }
     
     message Timestamp {
@@ -77,7 +87,7 @@ message Value {
     
     message Number {
         enum Constant {
-            ZERO = 0;
+            UNKNOWN = 0;
             I = 1;
             E = 2;
             PI = 3;

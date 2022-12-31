@@ -1,5 +1,5 @@
 import { sleep } from "./test_utils";
-import { GinkInstance, ChangeSet, IndexedDbStore, List, Muid, Value } from "../typescript-impl";
+import { GinkInstance, Bundler, IndexedDbStore, List, Muid, Value } from "../typescript-impl";
 import { ensure, matches } from "../typescript-impl/utils"
 
 test('push to a queue and peek', async function () {
@@ -119,24 +119,24 @@ test('list-changeset', async function() {
     const store = new IndexedDbStore('list-changeset', true);
     const instance = new GinkInstance(store);
 
-    const changeSet = new ChangeSet();
-    const list: List = await instance.createList(changeSet);
-    await list.push('A', changeSet);
-    await list.push("B", changeSet);
-    await list.push("C", changeSet);
-    await instance.addChangeSet(changeSet);
+    const bundler = new Bundler();
+    const list: List = await instance.createList(bundler);
+    await list.push('A', bundler);
+    await list.push("B", bundler);
+    await list.push("C", bundler);
+    await instance.addBundler(bundler);
 
-    ensure(changeSet.timestamp != undefined && changeSet.timestamp > 0);
-    ensure(list.address.timestamp == changeSet.timestamp);
+    ensure(bundler.timestamp != undefined && bundler.timestamp > 0);
+    ensure(list.address.timestamp == bundler.timestamp);
     for await (const [muid, _] of list.entries()) {
-        ensure(muid.timestamp == changeSet.timestamp);
+        ensure(muid.timestamp == bundler.timestamp);
     }
 
-    const changeSet2 = new ChangeSet();
-    list.shift(changeSet2);
-    list.push("D", changeSet2);
+    const bundler2 = new Bundler();
+    list.shift(bundler2);
+    list.push("D", bundler2);
     ensure(matches(await list.toArray(), ["A", "B", "C"]));
-    await instance.addChangeSet(changeSet2);
+    await instance.addBundler(bundler2);
     ensure(matches(await list.toArray(), ["B", "C", "D"]));
 });
 

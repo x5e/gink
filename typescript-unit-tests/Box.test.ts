@@ -1,4 +1,4 @@
-import { Box, IndexedDbStore, GinkInstance, ChangeSet, Muid } from "../typescript-impl/index"
+import { Box, IndexedDbStore, GinkInstance, Bundler, Muid } from "../typescript-impl/index"
 import { ensure } from "../typescript-impl/utils";
 
 test('create a box; set and get data in it', async function() {
@@ -33,20 +33,20 @@ test('create a box; set and get data in it', async function() {
 });
 
 
-test('set a box in a change set', async function() {
+test('set a box in a bundler', async function() {
     // set up the objects
     const instance = new GinkInstance(new IndexedDbStore('box-test2', true));
     const aBox: Box = await instance.createBox();
 
-    // set the value in a change set
-    const changeSet = new ChangeSet();
-    aBox.set("a value", changeSet);
+    // set the value in a bundler
+    const bundler = new Bundler();
+    aBox.set("a value", bundler);
 
     // confirm that change isn't visible yet
     const size0 = await aBox.size();
     ensure(size0 == 0);
 
-    await instance.addChangeSet(changeSet);
+    await instance.addBundler(bundler);
 
     const size1 = await aBox.size();
     ensure(size1 == 1);
@@ -60,10 +60,10 @@ test('create a box and set in same CS', async function() {
     const instance = new GinkInstance(store);
 
     // create a box and set in on CL
-    const changeSet = new ChangeSet();
-    const box: Box = await instance.createBox(changeSet);
-    const change: Muid = await box.set("a value", changeSet);
-    await instance.addChangeSet(changeSet);
+    const bundler = new Bundler();
+    const box: Box = await instance.createBox(bundler);
+    const change: Muid = await box.set("a value", bundler);
+    await instance.addBundler(bundler);
 
     // make sure the change and the box have the same timestamp
     ensure(box.address?.timestamp);

@@ -1,26 +1,18 @@
 syntax = "proto3";
 package google.gink;
-import "description.proto";
 import "container.proto";
-import "node_type.proto";
-import "edge_type.proto";
-import "property_type.proto";
-import "property_update.proto";
 import "entry.proto";
-import "exit.proto";
+import "movement.proto";
+import "clearance.proto";
 
 /** 
 * Any update/change that can be referenced by Gink
 */
 message Change {
     oneof obj {
-        Description description = 1;
-        Container container = 2;
-        EdgeType edge_type = 3;
-        NodeType node_type = 4;
-        PropertyType property_type = 5;
-        PropertyUpdate property_update = 6;
-        Entry entry = 7;
-        Exit exit = 8;
+        Container container = 1;
+        Entry entry = 2;
+        Movement movement = 3;
+        Clearance clearance = 4;
     }
 }

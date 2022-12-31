@@ -2,9 +2,9 @@ import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
 import { Value, Muid, Entry, AsOf } from "./typedefs";
-import { ChangeSet } from "./ChangeSet";
+import { Bundler } from "./Bundler";
 import { ensure, muidToBuilder, muidToString, muidTupleToMuid } from "./utils";
-import { Exit as ExitBuilder } from "gink/protoc.out/exit_pb";
+import { Movement as MovementBuilder } from "gink/protoc.out/movement_pb";
 import { Change as ChangeBuilder } from "gink/protoc.out/change_pb";
 import { interpret, toJson } from "./factories";
 import { Behavior } from "gink/protoc.out/behavior_pb";
@@ -13,15 +13,15 @@ import { Behavior } from "gink/protoc.out/behavior_pb";
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
  * Doesn't support unshift because order is defined by insertion order.
  */
-export class List extends Container {
+export class Sequence extends Container {
 
     constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, containerBuilder);
+        super(ginkInstance, address, Behavior.QUEUE);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
             ensure(address.offset == Behavior.QUEUE, "magic tag not queue");
         } else {
-            ensure(this.containerBuilder.getBehavior() == Behavior.QUEUE, "container not queue");
+            ensure(containerBuilder.getBehavior() == Behavior.QUEUE, "container not queue");
         }
     }
 
@@ -31,7 +31,7 @@ export class List extends Container {
      * @param change change set to apply the change to or comment to put in
      * @returns 
      */
-    async push(value: Value | Container, change?: ChangeSet|string): Promise<Muid> {
+    async push(value: Value | Container, change?: Bundler|string): Promise<Muid> {
         return await this.addEntry(true, value, change);
     }
 
@@ -42,7 +42,7 @@ export class List extends Container {
      * @param muid 
      * @param change 
      */
-    async pop(what?: Muid | number, change?: ChangeSet|string): Promise<Container | Value | undefined> {
+    async pop(what?: Muid | number, change?: Bundler|string): Promise<Container | Value | undefined> {
         let returning: Container | Value;
         let muid: Muid;
         if (what && typeof (what) == "object") {
@@ -56,23 +56,23 @@ export class List extends Container {
             // Should probably change the implementation to not copy all intermediate entries into memory.
             const entries = await this.ginkInstance.store.getOrderedEntries(this.address, what)
             if (entries.length == 0) return undefined;
-            const entry = entries.at(-1);
+            const entry = entries[entries.length - 1]
             returning = await interpret(entry, this.ginkInstance);
             muid = muidTupleToMuid(entry.entryId);
         }
         let immediate: boolean = false;
-        if (!(change instanceof ChangeSet)) {
+        if (!(change instanceof Bundler)) {
             immediate = true;
-            change = new ChangeSet(change);
+            change = new Bundler(change);
         }
-        const exitBuilder = new ExitBuilder();
-        exitBuilder.setEntry(muidToBuilder(muid));
-        exitBuilder.setContainer(muidToBuilder(this.address));
+        const movementBuilder = new MovementBuilder();
+        movementBuilder.setEntry(muidToBuilder(muid));
+        movementBuilder.setContainer(muidToBuilder(this.address));
         const changeBuilder = new ChangeBuilder();
-        changeBuilder.setExit(exitBuilder);
+        changeBuilder.setMovement(movementBuilder);
         change.addChange(changeBuilder);
         if (immediate) {
-            await this.ginkInstance.addChangeSet(change);
+            await this.ginkInstance.addBundler(change);
         }
         return returning;
     }
@@ -80,7 +80,7 @@ export class List extends Container {
     /**
      * Alias for this.pop(0, changeSet)
      */
-    async shift(change?: ChangeSet|string): Promise<Container | Value | undefined> {
+    async shift(change?: Bundler|string): Promise<Container | Value | undefined> {
         return await this.pop(0, change)
     }
 
@@ -97,7 +97,7 @@ export class List extends Container {
             if (entries.length == 0) return undefined;
             if (position >= 0 && position >= entries.length) return undefined;
             if (position < 0 && Math.abs(position) > entries.length) return undefined;
-            const entry = entries.at(-1);
+            const entry = entries[entries.length - 1];
             return await interpret(entry, this.ginkInstance);
         } else {
             const entry = await this.ginkInstance.store.getEntry(this.address, position, asOf);

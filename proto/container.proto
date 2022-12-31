@@ -4,31 +4,19 @@ import "muid.proto";
 import "value.proto";
 import "value_type.proto";
 import "behavior.proto";
+import "column.proto";
 
 /**
     Each new Container message establishes the existance of a mutable data structure.
     Those containers can have their contents changed with Entry messages,
     but the type ("behavior") of each Container cannot be changed.
 */
+
 message Container {
-    message Column {
-        string name = 1;
-        ValueType type = 2; // might want a type defined even when a expression is provided so you can override
-        Value expression = 3; // default used when no value is provided (and in computed and view columns)
-        bool computed = 4; // when true, values can't be provided, and is defined by expression
-        uint32 position = 5; // required when using table inheritance, implied otherwise
-        bool drop_column = 6; // specifies that the column should be dropped in an inherited table
-    };
     Behavior behavior = 1;
-    Muid extends = 2; // inheritance (an option only for a TABLE, QUEUE, SET, or SCHEMA)
-    ValueType key_type = 3; // only when behavior in  (SCHEMA, SET)
-    ValueType value_type = 4; // only when behavior in (BOX, SCHEMA, QUEUE)
-    repeated Column columns = 5; // use when behavior in (TABLE, VIEW, DERIVED)
-    bool allow_resets = 6; // allow users to clear container, may require storing entries between resets
-    Muid node_type = 7; // only when behavior is NODE
-    repeated Value index_expressions = 8; // expressions to compute the primary key for a TABLE or INDEX
-    Muid index_target = 9; // specifies another Container; used when behavior == INDEX
-    repeated Muid references = 10; // list of containers referenced by a view
-    Value from_clause = 11; // only for behavior in (VIEW, DERIVED), and implied when there's only one reference
-    Value where_clause = 12; // for behavior in (VIEW, DERIVED, INDEX)
+    repeated Muid extends = 2; // inheritance (an option for TABLE, QUEUE, SET, SCHEMA, LABEL)
+    ValueType key_type = 3; // optional when behavior in (SCHEMA, SET)
+    ValueType value_type = 4; // optional when behavior in (BOX, SCHEMA, QUEUE, PROPERTY)
+    repeated Column columns = 5; // use when behavior is TABLE
+    repeated Value primary_key_expressions = 8; // use when behavior is TABLE
 }
