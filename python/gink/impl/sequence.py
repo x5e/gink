@@ -270,6 +270,6 @@ class Sequence(Container):
             raise ValueError("positions in terms of time are equal")
         if p2 < p1:
             p1, p2 = p2, p1
-        if p2 - p1 < 4:
+        if p2 - p1 < 2:
             raise ValueError("not enough space between them")
         return randint(p1 + 1, p2 -1)

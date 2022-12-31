@@ -47,7 +47,7 @@ class Database:
             now = math.floor(time.time() * 1_000_000)
             if self._last_time is None or now > self._last_time:
                 break
-            time.sleep(.0001)
+            time.sleep(1e-5)
         self._last_time = now
         return now
 
