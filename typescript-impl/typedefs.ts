@@ -61,5 +61,5 @@ export interface Entry {
     pointeeList: MuidTuple[]; // use an empty list to denote no pointees
     value?: Value;
     expiry?: Timestamp;
-    deleting?: boolean;
+    deletion?: boolean;
 }

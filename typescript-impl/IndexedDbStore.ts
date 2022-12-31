@@ -165,7 +165,7 @@ export class IndexedDbStore implements Store {
             timestamp: bundleData.getTimestamp(),
             medallion: bundleData.getMedallion(),
             chainStart: bundleData.getChainStart(),
-            priorTime: bundleData.getPreviousTimestamp() || undefined,
+            priorTime: bundleData.getPrevious() || undefined,
             comment: bundleData.getComment() || undefined,
         }
     }
@@ -225,7 +225,7 @@ export class IndexedDbStore implements Store {
                 }
                 const immediate = entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined;
                 const expiry = entryBuilder.getExpiry() || undefined;
-                const deleting = entryBuilder.getDeleting();
+                const deletion = entryBuilder.getDeletion();
                 const entry: Entry = {
                     behavior,
                     containerId,
@@ -234,7 +234,7 @@ export class IndexedDbStore implements Store {
                     pointeeList,
                     value: immediate,
                     expiry,
-                    deleting,
+                    deletion,
                 }
                 //TODO: add code to add expiries to existing directory entries on insert
                 await wrappedTransaction.objectStore("entries").add(entry);
@@ -263,7 +263,7 @@ export class IndexedDbStore implements Store {
                     containerId,
                     expiry,
                     empty: [],
-                    behavior: Behavior.QUEUE,
+                    behavior: Behavior.SEQUENCE,
                 };
                 //TODO: add code to actually delete entries when not keeping full history
                 await wrappedTransaction.objectStore("exits").add(exit);
@@ -285,7 +285,7 @@ export class IndexedDbStore implements Store {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const semanticKey = (typeof (key) == "number" || typeof (key) == "string") ? [key] : [];
-        const behavior = (key === undefined) ? Behavior.BOX : (typeof(key) == "object" ? Behavior.QUEUE : Behavior.SCHEMA);
+        const behavior = (key === undefined) ? Behavior.BOX : (typeof(key) == "object" ? Behavior.SEQUENCE : Behavior.DIRECTORY);
         const lower = [desiredSrc, behavior, semanticKey];
         const upperTuple = (key && typeof (key) == "object") ? [key.timestamp, key.medallion, key.offset] : [asOfTs];
         const upper = [desiredSrc, behavior, semanticKey, upperTuple];
@@ -293,7 +293,7 @@ export class IndexedDbStore implements Store {
         const trxn = this.wrapped.transaction(["entries", "exits"]);
         const entriesCursor = await trxn.objectStore("entries").openCursor(searchRange, "prev");
         if (entriesCursor) {
-            if (behavior == Behavior.QUEUE) {
+            if (behavior == Behavior.SEQUENCE) {
                 const entryKey = <any[]>entriesCursor.key;
                 const exitSearch = IDBKeyRange.bound(entryKey, entryKey.concat([[asOfTs]]));
                 const exitCursor = await trxn.objectStore("exits").openCursor(exitSearch);
@@ -306,15 +306,15 @@ export class IndexedDbStore implements Store {
     async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
-        const lower = [desiredSrc, Behavior.SCHEMA];
+        const lower = [desiredSrc, Behavior.DIRECTORY];
         const searchRange = IDBKeyRange.lowerBound(lower);
         let cursor = await this.wrapped.transaction(["entries"]).objectStore("entries").openCursor(searchRange, "next");
         const result = new Map();
         for (; cursor && matches(cursor.key[0], desiredSrc); cursor = await cursor.continue()) {
             const entry = <Entry>cursor.value;
-            ensure(entry.behavior == Behavior.SCHEMA && entry.semanticKey.length > 0);
+            ensure(entry.behavior == Behavior.DIRECTORY && entry.semanticKey.length > 0);
             if (entry.entryId[0] < asOfTs) {
-                if (entry.deleting) {
+                if (entry.deletion) {
                     result.delete(entry.semanticKey[0]);
                 } else {
                     result.set(entry.semanticKey[0], entry);
@@ -337,8 +337,8 @@ export class IndexedDbStore implements Store {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const after = 0;
         const containerId = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
-        const lower = [containerId, Behavior.QUEUE, [], [after]];
-        const upper = [containerId, Behavior.QUEUE, [], [asOfTs]];
+        const lower = [containerId, Behavior.SEQUENCE, [], [after]];
+        const upper = [containerId, Behavior.SEQUENCE, [], [asOfTs]];
         const range = IDBKeyRange.bound(lower, upper);
         const trxn = this.wrapped.transaction(["entries", "exits"]);
         const entries = trxn.objectStore("entries");

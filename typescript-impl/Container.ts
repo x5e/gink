@@ -79,7 +79,7 @@ export class Container {
             if (value instanceof Container) {
                 entryBuilder.setPointee(muidToBuilder(value.address, change.medallion));
             } else if (value instanceof Deletion) {
-                entryBuilder.setDeleting(true);
+                entryBuilder.setDeletion(true);
             } else {
                 entryBuilder.setValue(wrapValue(value));
             }

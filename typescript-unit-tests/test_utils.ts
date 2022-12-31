@@ -23,7 +23,7 @@ export function extendChain(comment: string, previous: BundleBytes, timestamp: T
     const parsedPrevious = BundleBuilder.deserializeBinary(previous);
     const subsequent = new BundleBuilder();
     subsequent.setMedallion(parsedPrevious.getMedallion());
-    subsequent.setPreviousTimestamp(parsedPrevious.getTimestamp());
+    subsequent.setPrevious(parsedPrevious.getTimestamp());
     subsequent.setChainStart(parsedPrevious.getChainStart());
     subsequent.setTimestamp(timestamp); // one millisecond later
     subsequent.setComment(comment);

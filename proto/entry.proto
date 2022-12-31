@@ -1,6 +1,5 @@
 syntax = "proto3";
 package google.gink;
-import "google/protobuf/any.proto";
 import "value.proto";
 import "muid.proto";
 import "behavior.proto";
@@ -11,18 +10,19 @@ message Entry {
     Muid container = 2;
 
     oneof link {
-        Key key = 3;
-        Muid describes = 4;
-        Span span = 5;
+        Key key = 3;        // KEY_SET, DIRECTORY
+        Muid describes = 4; // RELATION, MEMBERSHIP, PROPERTY
+        Span span = 5;      // FILE
     }
 
     oneof contains {
-        bool deleting = 6; // behavior in {SET, SCHEMA, LABEL, PROPERTY}
-        Value value = 7;
-        bytes octects = 8; // for container behavior in {FILE, BINLOG, PROTO}
-        Row row = 9; // for container behavior = TABLE
-        google.protobuf.Any any = 10; // Here be dragons.
-        Muid pointee = 11;        
+        // some of these only apply to certain container types:
+        bool deletion = 6; // KEY_SET, DIRECTORY, MEMBERSHIP, PROPERTY
+        Value value = 7;   // BOX, DIRECTORY, SEQUENCE, PROPERTY
+        bytes octects = 8; // FILE, PACKET_SEQ
+        Row row = 9;       // BASIC_TABLE, KEYED_TABLE
+        double delta = 10; // SUMMATION
+        Muid pointee = 11; // BOX, DIRECTORY, SEQUENCE, RELATION 
     }
 
     uint64 expiry = 12; // timestamp of expiration in microseconds since epoch, or 0 for none

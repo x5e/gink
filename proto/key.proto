@@ -5,5 +5,6 @@ message Key {
     oneof key {
         sint64 number = 1;
         string characters = 2;
+        bytes octets = 3;
     }
 }

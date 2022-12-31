@@ -121,7 +121,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         bundleBuilder.setMedallion(MEDALLION1);
         const changeBuilder = new ChangeBuilder();
         const containerBuilder = new ContainerBuilder();
-        containerBuilder.setBehavior(Behavior.SCHEMA);
+        containerBuilder.setBehavior(Behavior.DIRECTORY);
         changeBuilder.setContainer(containerBuilder);
         bundleBuilder.getChangesMap().set(7, changeBuilder);
         const BundleBytes = bundleBuilder.serializeBinary();
@@ -131,7 +131,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
         ensure(containerBytes);
         const containerBuilder2 = ContainerBuilder.deserializeBinary(containerBytes);
-        ensure(containerBuilder2.getBehavior() == Behavior.SCHEMA);
+        ensure(containerBuilder2.getBehavior() == Behavior.DIRECTORY);
     });
 
     test(`${implName} create / view Entry`, async () => {
@@ -139,7 +139,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sourceAddress = {medallion: 1, timestamp:2, offset: 3};
         const address = bundler.addEntry(
             (new EntryBuilder())
-                .setBehavior(Behavior.SCHEMA)
+                .setBehavior(Behavior.DIRECTORY)
                 .setContainer(muidToBuilder(sourceAddress))
                 .setKey(wrapKey("abc"))
                 .setValue(wrapValue("xyz"))

@@ -130,7 +130,7 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
         const values = document.getValuesList();
         const result = new Map();
         for (let i=0;i<keys.length;i++) {
-            result.set(unwrapValue(keys[i]), unwrapValue(values[i]));
+            result.set(unwrapKey(keys[i]), unwrapValue(values[i]));
         }
         return result
     }
@@ -193,7 +193,7 @@ export function wrapValue(arg: Value): ValueBuilder {
             if (typeof(key) != "number" && typeof(key) != "string") {
                 throw new Error("keys in documents must be numbers or strings");
             }
-            document.addKeys(wrapValue(key));
+            document.addKeys(wrapKey(key));
             document.addValues(wrapValue(val));
         }
         return valueBuilder.setDocument(document);

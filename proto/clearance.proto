@@ -11,4 +11,5 @@ import "muid.proto";
 */
 message Clearance {
     Muid container = 1;
+    bool purge = 2;
 }

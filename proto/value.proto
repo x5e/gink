@@ -1,8 +1,7 @@
 syntax = "proto3";
 package google.gink;
-import "muid.proto";
+import "key.proto";
 
-// TODO(https://github.com/google/gink/issues/53): Add link to design doc here.
 message Value {
     oneof value {
         Special special = 1;
@@ -27,13 +26,13 @@ message Value {
     }
 
     // Allowing muid user values would make questions like "Is <muid> in <sequence>?" ambiguous.
-    // But I'm keeping them reserved here for the moment just in case we decide to put it in.
+    // But I'm keeping them reserved here for the moment just in case we decide to put it back in.
     reserved 15, 17;
     reserved "proto_data", "muid";
 
     message EnumValue {
         sint64 value = 1;
-        Muid defined = 2;  // where this enum is defined, may be omitted if implied by context
+        // Maybe add a reference to a data structure that defines an enum ???
     }
 
     message ColumnReference {
@@ -64,13 +63,11 @@ message Value {
     
     message Tuple {
         repeated Value values = 1;
-        repeated string names = 2; // optional, doesn't impact comparisons
     }
     
     message Document {
         // keys and values must be the same length
-        // keys should be numbers or strings
-        repeated Value keys = 1;
+        repeated Key keys = 1;
         repeated Value values = 2;
     }
     

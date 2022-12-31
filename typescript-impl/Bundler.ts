@@ -90,7 +90,7 @@ export class Bundler {
         this.commitInfo = {...commitInfo};
         this.commitInfo.comment = this.pendingComment;
         this.bundleBuilder.setTimestamp(commitInfo.timestamp);
-        this.bundleBuilder.setPreviousTimestamp(commitInfo.priorTime);
+        this.bundleBuilder.setPrevious(commitInfo.priorTime);
         this.bundleBuilder.setChainStart(commitInfo.chainStart);
         this.bundleBuilder.setMedallion(commitInfo.medallion);
         this.bundleBuilder.setComment(this.commitInfo.comment);
