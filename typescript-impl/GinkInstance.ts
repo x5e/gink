@@ -57,7 +57,7 @@ export class GinkInstance {
             const chainStart = Date.now() * 1000;
             this.myChain =  [medallion, chainStart];
             const bundler = new Bundler(`start: ${info?.software || "GinkInstance"}`, medallion);
-            const medallionInfo = new Directory(this, {timestamp:-1, medallion, offset: Behavior.SCHEMA});
+            const medallionInfo = new Directory(this, {timestamp:-1, medallion, offset: Behavior.DIRECTORY});
             if (info?.email) {
                 await medallionInfo.set("email", info.email, bundler);
             }
@@ -83,7 +83,7 @@ export class GinkInstance {
      * @returns a "magic" global directory that always exists and is accessible by all instances
      */
     getGlobalDirectory(): Directory {
-        return new Directory(this, { timestamp: -1, medallion: -1, offset: Behavior.SCHEMA });
+        return new Directory(this, { timestamp: -1, medallion: -1, offset: Behavior.DIRECTORY });
     }
 
     /**
@@ -102,7 +102,7 @@ export class GinkInstance {
      * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the commit)
      */
     async createList(change?: Bundler|string): Promise<Sequence> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.QUEUE, change);
+        const [muid, containerBuilder] = await this.createContainer(Behavior.SEQUENCE, change);
         return new Sequence(this, muid, containerBuilder);
     }
 
@@ -113,7 +113,7 @@ export class GinkInstance {
      */
     // TODO: allow user to specify the types allowed for keys and values
     async createDirectory(change?: Bundler|string): Promise<Directory> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.SCHEMA, change);
+        const [muid, containerBuilder] = await this.createContainer(Behavior.DIRECTORY, change);
         return new Directory(this, muid, containerBuilder);
     }
 

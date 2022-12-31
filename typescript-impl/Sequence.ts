@@ -16,12 +16,12 @@ import { Behavior } from "gink/protoc.out/behavior_pb";
 export class Sequence extends Container {
 
     constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, Behavior.QUEUE);
+        super(ginkInstance, address, Behavior.SEQUENCE);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
-            ensure(address.offset == Behavior.QUEUE, "magic tag not queue");
+            ensure(address.offset == Behavior.SEQUENCE, "magic tag not SEQUENCE");
         } else {
-            ensure(containerBuilder.getBehavior() == Behavior.QUEUE, "container not queue");
+            ensure(containerBuilder.getBehavior() == Behavior.SEQUENCE, "container not sequence");
         }
     }
 

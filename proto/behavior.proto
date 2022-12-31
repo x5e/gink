@@ -5,14 +5,14 @@ enum Behavior {
     NONE = 0;
     BOX = 1; // only holds on entry at a time, only uses value field, not key
     FILE = 2; // entries contain bytes and specify location in file
-    BINLOG = 3; // entries contain bytes, order is implied by timestamps
-    LABEL = 4; // puts database objects in a group
-    SET = 5; // entries have only key, no value, but may be removed with a deletion
-    SUM = 6; // entries combined by adding together values, user only sees total
-    SCHEMA = 7; // entries have key & value and replace matching key
-    QUEUE = 8; // entries only have value, never replace prior entry, but can be popped
+    PACKET_SEQ = 3; // entries contain bytes, order is implied by timestamps
+    MEMBERSHIP = 4; // also known as label or tag
+    KEY_SET = 5; // entries have only key, no value, but may be removed with a deletion
+    SUMMATION = 6; // entries combined by adding together values, user only sees total
+    DIRECTORY = 7; // entries have key & value and replace matching key
+    SEQUENCE = 8; // entries only have value, never replace prior entry, but can be popped
     PROPERTY = 9; // entries set value of this property on an object
-    TABLE = 10; // entries have only value, no explicit key, keyed on index_expressions
-    PROTO = 11; // like TABLE but data comes as binaryproto rather than rows
-    RELATION = 12; // has "describes" and "pointee"
+    SQL_TABLE = 10; // each entry has a row, no explicit key
+    PROTO_TABLE = 11; // like TABLE but data comes as binaryproto rather than rows
+    EDGE_TYPE = 12; // has "describes" and "pointee"
 };

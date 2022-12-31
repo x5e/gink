@@ -17,16 +17,16 @@ import { Behavior } from "gink/protoc.out/behavior_pb";
 
 export async function construct(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
     if (address.timestamp === -1) {
-        if (address.offset === Behavior.SCHEMA) return new Directory(ginkInstance, address);
-        if (address.offset === Behavior.QUEUE) return new Sequence(ginkInstance, address);
+        if (address.offset === Behavior.DIRECTORY) return new Directory(ginkInstance, address);
+        if (address.offset === Behavior.SEQUENCE) return new Sequence(ginkInstance, address);
         if (address.offset === Behavior.BOX) return new Box(ginkInstance, address);
     }
     if (containerBuilder === undefined) {
         const containerBytes = ensure(await ginkInstance.store.getContainerBytes(address));
         containerBuilder = ContainerBuilder.deserializeBinary(containerBytes);
     }
-    if (containerBuilder.getBehavior() == Behavior.SCHEMA) return (new Directory(ginkInstance, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.QUEUE) return (new Sequence(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.DIRECTORY) return (new Directory(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.SEQUENCE) return (new Sequence(ginkInstance, address, containerBuilder));
     if (containerBuilder.getBehavior() == Behavior.BOX) return (new Box(ginkInstance, address, containerBuilder));
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
 }
@@ -95,13 +95,13 @@ Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Co
             const containerMuid = muidTupleToMuid(entry.containerId);
             const containerBuilder = containerMuid.timestamp === 0 ? undefined :
                 ContainerBuilder.deserializeBinary(await instance.store.getContainerBytes(containerMuid));
-            if (entry.behavior == Behavior.SCHEMA) {
+            if (entry.behavior == Behavior.DIRECTORY) {
                 if (instance.store.getEntry(containerMuid, entry.semanticKey[0], asOf)) {
                     yield <[KeyType | Muid | undefined, Container]>
                         [entry.semanticKey[0], new Directory(instance, containerMuid, containerBuilder)];
                 }
             }
-            if (entry.behavior == Behavior.QUEUE) {
+            if (entry.behavior == Behavior.SEQUENCE) {
                 const entryMuid = muidTupleToMuid(entry.entryId);
                 if (instance.store.getEntry(containerMuid, entryMuid, asOf)) {
                     yield [entryMuid, new Sequence(instance, containerMuid, containerBuilder)];
