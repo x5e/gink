@@ -1,6 +1,6 @@
 {
-  "name": "gink",
-  "version": "0.0.0",
+  "name": "@darinmcgill/gink",
+  "version": "0.0.20221231",
   "description": "an eventually consistent database",
   "main": "tsc.out/main.js",
   "browser": "webpack.out/packed.js",
@@ -21,6 +21,7 @@
     "url": "https://github.com/google/gink/issues"
   },
   "files": [
+    "package.json",
     "tsc.out/**",
     "protoc.out/**",
     "webpack.out/**"
