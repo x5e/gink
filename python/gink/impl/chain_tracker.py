@@ -1,5 +1,5 @@
 """
-Contains the ChainTracker object.
+Defines the ChainTracker class.
 """
 
 from typing import Union, Optional

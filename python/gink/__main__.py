@@ -14,11 +14,10 @@ if cmd == "get":
     gotten = root.get(key)
     if gotten:
         print(gotten, end="")
-        sys.exit(0)
     else:
         print("key not found", file=sys.stderr)
         sys.exit(1)
-if cmd == "set":
+elif cmd == "set":
     root[key] = sys.stdin.read()
-    sys.exit(0)
-print("command not recognized", file=sys.stderr)
+else:
+    print("command not recognized", file=sys.stderr)
