@@ -43,12 +43,12 @@ export class Peer {
      * (e.g. send time) in the future.
      * Note that the commit is always passed around as bytes and then
      * re-parsed as needed to avoid losing unknown fields.
-     * @param commitBytes: the bytes corresponding to a commit
+     * @param bundleBytes: the bytes corresponding to a commit
      * @returns a serialized "Message" proto
      */
-    private static makeCommitMessage(commitBytes: Uint8Array): Uint8Array {
+    private static makeCommitMessage(bundleBytes: Uint8Array): Uint8Array {
         const message = new SyncMessageBuilder();
-        message.setCommit(commitBytes);
+        message.setBundle(bundleBytes);
         const msgBytes = message.serializeBinary();
         return msgBytes;
     }
@@ -57,12 +57,12 @@ export class Peer {
      * Sends a commit if we've received a greeting and our internal recordkeeping indicates
      * that the peer could use this particular commit (but ensures that we're not sending
      * commits that would cause gaps in the peer's chain.)
-     * @param commitBytes The commit to be sent.
-     * @param commitInfo Metadata about the commit.
+     * @param bundleBytes The commit to be sent.
+     * @param bundleInfo Metadata about the commit.
      */
-    _sendIfNeeded(commitBytes: BundleBytes, commitInfo: BundleInfo) {
-        if (this.hasMap?.markAsHaving(commitInfo, true)) {
-            this.sendFunc(Peer.makeCommitMessage(commitBytes));
+    _sendIfNeeded(bundleBytes: BundleBytes, bundleInfo: BundleInfo) {
+        if (this.hasMap?.markAsHaving(bundleInfo, true)) {
+            this.sendFunc(Peer.makeCommitMessage(bundleBytes));
         }
     }
 

@@ -12,16 +12,16 @@ package google.gink;
     that it doesn't send a commit unless it first sends the one immediately prior in the
     chain or knows from the peer's greeting that it already has the prior commit).
 
-    The commits are passed along as opaque byte blobs.  In theory each will be an instance
-    of the Commit proto, but we want each instance to save and forward along commits exactly
-    as it receives them, so that fields can be added to the Commit proto and we can ensure
+    The bundles are passed along as opaque byte blobs.  In theory each will be an instance
+    of the Bundle proto, but we want each instance to save and forward along commits exactly
+    as it receives them, so that fields can be added to the Bundle proto and we can ensure
     that nodes which haven't seen the expanded proto definition will still forward the full
     message and not drop fields that it doesn't know about.
 */
 message SyncMessage {
 
     oneof contents {
-        bytes commit = 1; // bytes so it's easy to save verbatim.
+        bytes bundle = 1; // bytes so it's easy to save verbatim.
         Greeting greeting = 2;  // sent by each peer when the connection is made
         Ack ack = 3;
     }
