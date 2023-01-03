@@ -22,11 +22,11 @@ class Peer:
         The tracker object keeps track of what we know the peer has received and processed:
         that it, those bundles that it says that it has in its greeting message, those
         bundles that it has sent to us, and those bundles it's acknowledged receving.
-        
+
     """
 
     def __init__(self, websocket: WebSocketCommonProtocol, peer_info=None):
-        self._websocket = websocket
+        self.websocket = websocket
         self.tracker: Optional[ChainTracker] = None
         self.peer_info = peer_info
 
@@ -40,5 +40,5 @@ class Peer:
             sync_message_builder.commit = bundle # type: ignore
             assert isinstance(sync_message_builder, MessageBuilder)
             serialized: bytes = sync_message_builder.SerializeToString()
-            return self._websocket.send(serialized)
+            return self.websocket.send(serialized)
     
