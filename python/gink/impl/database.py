@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 from random import randint
-from typing import Optional, Dict
+from typing import Optional, Set
 from datetime import datetime, date, timedelta
 from threading import Lock
 from websockets import WebSocketCommonProtocol
+from websockets.exceptions import ConnectionClosed
 import time
 import os
 import math
@@ -26,7 +27,7 @@ class Database:
     _lock: Lock
     _last_time: Optional[MuTimestamp]
     _store: AbstractStore
-    _peers: Dict[int, Peer]
+    _peers: Set[Peer]
 
     def __init__(self, store: AbstractStore):
         self._i_have = store.get_chain_tracker()
@@ -35,8 +36,7 @@ class Database:
         self._chain: Optional[Chain] = None
         self._lock = Lock()
         self._last_time = None
-        self._peers = {}
-        self._count_peers = 0
+        self._peers = set()
         self._logger = getLogger(self.__class__.__name__)
 
     def _add_info(self, bundler: Bundler):
@@ -114,7 +114,7 @@ class Database:
         self._chain = chain
         return chain
     
-    def add_bundle(self, bundler: Bundler) -> BundleInfo:
+    def finish_bundle(self, bundler: Bundler) -> BundleInfo:
         """ seals bundler and adds the resulting bundle to the local store """
         assert not bundler.sealed
         with self._lock:
@@ -124,19 +124,81 @@ class Database:
             timestamp = self.get_now()
             assert timestamp > seen_to
             info = BundleInfo(chain=chain, timestamp=timestamp, prior_time=seen_to)
-            info_with_comment, _ = self._store.apply_bundle(bundle_bytes=bundler.seal(info))
+            bundle_bytes = bundler.seal(info)
+            info_with_comment = self._receive_bundle(bundle_bytes, from_peer=None)
+            assert info_with_comment is not None
             return info_with_comment
 
-    async def _on_new_connection(self, connection: WebSocketCommonProtocol, peer_info):
-        self._count_peers += 1
-        peer = self._peers[self._count_peers] = Peer(connection, peer_info)
-        await peer.send_greeting(self._store.get_chain_tracker())
+    def _receive_bundle(self, bundle: bytes, from_peer: Optional[Peer]) -> Optional[BundleInfo]:
+        """ called when either a bundle is received from a remote peer or one is created locally
+        
+            We're assuming that each peer has been sent all data in the local store.
+            In order to maintain that invariant, each peer must be sent each new bundle added.
+
+            Since the invariant is potentially not true while in the process of sending
+            bundles to peers, we need to aquire and hold the lock to call this function.
+
+            The "peer" argument indicates which peer this bundle came from, with 0
+            indicating that it was created locally.  We need to know where it came
+            from so we don't send it back.
+
+            If this bundle has already been processed by the local store, then we know
+            that it's also been sent to each peer and so can be ignored.
+        """
+        info, added = self._store.apply_bundle(bundle)
+        if from_peer is not None and from_peer.tracker is not None:
+            from_peer.tracker.mark_as_having(info)
+        if not added:
+            return None
         sync_message = SyncMessage()
+        sync_message.bundle = bundle # type: ignore
         assert isinstance(sync_message, Message)
-        while True:
-            received = await connection.recv()
-            if isinstance(received, str):
-                self._logger.info("received string message: %s", received)
+        serialized: bytes = sync_message.SerializeToString()
+        promises = []
+        for peer in self._peers:
+            if peer == from_peer:
+                # We got this bundle from this peer, so don't need to send it back to them.
                 continue
-            sync_message.ParseFromString(received)
-            
+            if peer.tracker is None:
+                # In this case we haven't received a greeting from the peer, and so don't want to
+                # send any bundles because it might result in gaps in their chain.
+                continue
+            if peer.tracker.has(info):
+                # In this case the peer has indicated they already have this bundle, probably
+                # via their greeting message, so we don't need to send it to them again.
+                continue
+    
+    async def _on_new_connection(self, connection: WebSocketCommonProtocol, peer_info):
+
+        peer = Peer(connection, peer_info)
+        self._peers.add(peer)
+        try:
+            sync_message = self._store.get_chain_tracker().to_greeting_message()
+            assert isinstance(sync_message, Message)
+            greeting_bytes = sync_message.SerializeToString()
+            await peer.websocket.send(greeting_bytes)
+            while True:
+                received = await connection.recv()
+                if isinstance(received, str):
+                    self._logger.info("received string message: %s", received)
+                    continue
+                with self._lock:
+                    sync_message.ParseFromString(received)
+                    if sync_message.HasField("bundle"):
+                        bundle_bytes = sync_message.bundle # type: ignore
+                        self._receive_bundle(bundle_bytes, peer)
+                    elif sync_message.HasField("greeting"):
+                        raise NotImplementedError()
+                    elif sync_message.HasField("ack"):
+                        self._logger.warning("got ack, not implemeneted !")
+                    else:
+                        self._logger.warning("got binary message without ack, bundle, or greeting")
+        except ConnectionClosed as cc:
+            self._logger.info("connection closed: %s from %s", cc, peer_info)
+        except Exception as exception:
+            self._logger.warning("fell into general exception handler: %s", exception)
+        finally:
+            if not connection.closed:
+                await connection.close()
+            self._peers.remove(peer)
+            self._logger.info("session ended: %s", peer_info)

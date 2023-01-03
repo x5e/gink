@@ -8,25 +8,37 @@ from .chain_tracker import ChainTracker
 from .bundle_info import BundleInfo
 
 class Peer:
-    """ Holds a connection to another gink database along with data about what it has. """
+    """ Holds a connection to another gink database and tracks what data the peer has.
+
+        When the connection is established, we don't know how far along each chain
+        the peer has.  It's only after we receive a greeting message that we can
+        reason about the data that this peer has.
+
+        Once we get a greeting object from the peer, we immediately send everything
+        that this database has that the peer is missing.  This is essentially done
+        atomically so we can assume after that that the peer has been *sent* everything
+        this database has, though we don't know what they've actually received and 
+        processed until we get acknowledgements corresponding to those bundles.
+        The tracker object keeps track of what we know the peer has received and processed:
+        that it, those bundles that it says that it has in its greeting message, those
+        bundles that it has sent to us, and those bundles it's acknowledged receving.
+        
+    """
 
     def __init__(self, websocket: WebSocketCommonProtocol, peer_info=None):
         self._websocket = websocket
-        self._know_peer_has: Optional[ChainTracker] = None
-        self._peer_info = peer_info
+        self.tracker: Optional[ChainTracker] = None
+        self.peer_info = peer_info
 
     async def send_if_needed(self, bundle: bytes, info: BundleInfo):
-        if self._know_peer_has is None:
+        if self.tracker is None:
             # wait until the peer tells us what they have before starting to send bundles
             return
 
-        if not self._know_peer_has.has(info):
+        if not self.tracker.has(info):
             sync_message_builder = SyncMessageBuilder()
             sync_message_builder.commit = bundle # type: ignore
             assert isinstance(sync_message_builder, MessageBuilder)
             serialized: bytes = sync_message_builder.SerializeToString()
             return self._websocket.send(serialized)
     
-    async def send_greeting(self, chain_tracker: ChainTracker):
-        assert chain_tracker
-        raise NotImplementedError()

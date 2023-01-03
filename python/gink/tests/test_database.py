@@ -21,7 +21,7 @@ def test_add_commit():
     database = Database(store=store)
     started = database.get_now()
     bundler = Bundler("just a test")
-    database.add_bundle(bundler)
+    database.finish_bundle(bundler)
     commits: List[BundleInfo] = []
     store.get_bundles(lambda _, info: commits.append(info))
     assert len(commits) == 2
@@ -34,7 +34,7 @@ def test_negative_as_of():
             database = Database(store=store)
             bundler = Bundler("hello world")
             assert bundler.timestamp is None
-            database.add_bundle(bundler)
+            database.finish_bundle(bundler)
             assert bundler.timestamp is not None
             recent = store.get_one(BundleInfo)
             assert recent.timestamp == bundler.timestamp

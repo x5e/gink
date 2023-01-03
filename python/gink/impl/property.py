@@ -26,7 +26,7 @@ class Property(Container):
         if contents:
             raise NotImplementedError()
         if len(bundler):
-            self._database.add_bundle(bundler)
+            self._database.finish_bundle(bundler)
 
     def set(self, describing: Union[Muid, Container], value: UserValue, *, 
                 bundler=None, comment=None) -> Muid:

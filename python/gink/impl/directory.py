@@ -35,7 +35,7 @@ class Directory(Container):
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
         if len(bundler):
-            self._database.add_bundle(bundler)
+            self._database.finish_bundle(bundler)
 
     def to_pyon(self, indent: Union[bool, int] = True):
         """ converts to "python object notation", like a customizable repr """
@@ -199,4 +199,4 @@ class Directory(Container):
             for key, val in from_what:
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
-            self._database.add_bundle(bundler)
+            self._database.finish_bundle(bundler)
