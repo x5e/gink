@@ -63,8 +63,8 @@ class Bundler:
         self._bundle_builder.chain_start = bundle_info.chain_start # type: ignore # pylint: disable=maybe-no-member
         self._bundle_builder.medallion = bundle_info.medallion # type: ignore # pylint: disable=maybe-no-member
         self._bundle_builder.timestamp = bundle_info.timestamp # type: ignore # pylint: disable=maybe-no-member
-        if bundle_info.prior_time:
-            self._bundle_builder.previous = bundle_info.prior_time # type: ignore # pylint: disable=maybe-no-member
+        if bundle_info.previous:
+            self._bundle_builder.previous = bundle_info.previous # type: ignore # pylint: disable=maybe-no-member
         if self._comment:
             self._bundle_builder.comment = self.comment # type: ignore # pylint: disable=maybe-no-member
         self._info = bundle_info

@@ -9,18 +9,18 @@ from .tuples import Chain
 class BundleInfo:
     """ Metadata about a particular change set relevant for syncing. """
     _struct = Struct(">QQQQ")
-    __slots__ = ["timestamp", "medallion", "chain_start", "prior_time", "comment"]
+    __slots__ = ["timestamp", "medallion", "chain_start", "previous", "comment"]
 
     timestamp: MuTimestamp
     medallion: Medallion
     chain_start: MuTimestamp
-    prior_time: MuTimestamp
+    previous: MuTimestamp
     comment: str
 
     def __init__(self, *, builder: Optional[Bundle]=None, encoded: bytes=b'\x00'*32, **kwargs):
 
         unpacked = self._struct.unpack(encoded[0:32])
-        (self.timestamp, self.medallion, self.chain_start, self.prior_time) = unpacked
+        (self.timestamp, self.medallion, self.chain_start, self.previous) = unpacked
         self.comment = encoded[32:].decode()
 
         if builder:
@@ -28,7 +28,7 @@ class BundleInfo:
             self.timestamp = builder.timestamp # type: ignore # pylint: disable=maybe-no-member
             self.chain_start = builder.chain_start  # type: ignore  # pylint: disable=maybe-no-member
             self.comment = builder.comment  # type: ignore # pylint: disable=maybe-no-member\
-            self.prior_time = builder.previous  # type: ignore # pylint: disable=maybe-no-member
+            self.previous = builder.previous  # type: ignore # pylint: disable=maybe-no-member
 
         if "chain" in kwargs:
             chain = kwargs["chain"]
@@ -50,7 +50,7 @@ class BundleInfo:
 
     def __bytes__(self) -> bytes:
         """ Returns: a binary representation that sorts according to (timestamp, medallion)."""
-        num = self._struct.pack(self.timestamp, self.medallion, self.chain_start, self.prior_time)
+        num = self._struct.pack(self.timestamp, self.medallion, self.chain_start, self.previous)
         return num + self.comment.encode()
 
     def __lt__(self, other):

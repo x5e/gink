@@ -1,0 +1,5 @@
+wsproto
+sortedcontainers
+lmdb
+nose2
+protobuf

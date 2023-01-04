@@ -124,9 +124,9 @@ class AbstractStore(ABC):
             seen_through = old_info.timestamp
         if seen_through >= new_info.timestamp:
             return False
-        if new_info.timestamp != new_info.chain_start and not new_info.prior_time:
+        if new_info.timestamp != new_info.chain_start and not new_info.previous:
             raise ValueError("Bundle isn't the start but has no prior.")
-        if (new_info.prior_time or seen_through) and new_info.prior_time != seen_through:
+        if (new_info.previous or seen_through) and new_info.previous != seen_through:
             raise ValueError("Bundle received without prior link in chain!")
         return True
 

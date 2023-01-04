@@ -45,7 +45,7 @@ def make_empty_bundle(bundle_info: BundleInfo) -> bytes:
     builder.medallion = bundle_info.medallion  # type: ignore
     builder.chain_start = bundle_info.chain_start  # type: ignore
     builder.timestamp = bundle_info.timestamp  # type: ignore
-    builder.previous = bundle_info.prior_time  # type: ignore
+    builder.previous = bundle_info.previous  # type: ignore
     if bundle_info.comment:
         builder.comment = bundle_info.comment  # type: ignore
     return builder.SerializeToString()  # type: ignore
@@ -68,7 +68,7 @@ def generic_test_accepts_only_once(store_maker: StoreMaker):
         assert not result_starting_repeat[1]
 
         ext_info = BundleInfo(medallion=123, chain_start=456, timestamp=555,
-            comment="extension", prior_time=456)
+            comment="extension", previous=456)
         ext_bytes = make_empty_bundle(ext_info)
 
         result_ext_first = store.apply_bundle(ext_bytes)
@@ -90,7 +90,7 @@ def generic_test_rejects_gap(store_maker: StoreMaker):
         store.apply_bundle(start_bytes)
 
         gap_info = BundleInfo(medallion=123, chain_start=456, timestamp=789,
-            prior_time=777, comment="gap")
+            previous=777, comment="gap")
         gap_bytes = make_empty_bundle(gap_info)
         thrown = None
         try:
@@ -103,7 +103,7 @@ def generic_test_rejects_missing_start(store_maker: StoreMaker):
     """ Ensures that chains with missing links throw exceptions. """
     with closing(store_maker()) as store:
         gap_info = BundleInfo(medallion=123, chain_start=456, timestamp=789, 
-            prior_time=777, comment="gap")
+            previous=777, comment="gap")
         gap_bytes = make_empty_bundle(gap_info)
         thrown = None
         try:
@@ -129,13 +129,13 @@ def generic_test_orders_commits(store_maker: StoreMaker):
     info1 = BundleInfo(medallion=123, chain_start=456, timestamp=456)
     cs1 = make_empty_bundle(info1)
 
-    info2 = BundleInfo(medallion=123, chain_start=456, timestamp=777, prior_time=456)
+    info2 = BundleInfo(medallion=123, chain_start=456, timestamp=777, previous=456)
     cs2 = make_empty_bundle(info2)
 
     info3 = BundleInfo(medallion=789, chain_start=555, timestamp=555)
     cs3 = make_empty_bundle(info3)
 
-    info4 = BundleInfo(medallion=789, chain_start=555, timestamp=999, prior_time=555)
+    info4 = BundleInfo(medallion=789, chain_start=555, timestamp=999, previous=555)
     cs4 = make_empty_bundle(info4)
 
     with closing(store_maker()) as store:
@@ -159,16 +159,16 @@ def generic_test_tracks(store_maker: StoreMaker):
     info1 = BundleInfo(medallion=123, chain_start=456, timestamp=456)
     cs1 = make_empty_bundle(info1)
 
-    info2 = BundleInfo(medallion=123, chain_start=456, timestamp=777, prior_time=456)
+    info2 = BundleInfo(medallion=123, chain_start=456, timestamp=777, previous=456)
     cs2 = make_empty_bundle(info2)
 
     info3 = BundleInfo(medallion=789, chain_start=555, timestamp=555)
     cs3 = make_empty_bundle(info3)
 
-    info4 = BundleInfo(medallion=789, chain_start=555, timestamp=999, prior_time=555)
+    info4 = BundleInfo(medallion=789, chain_start=555, timestamp=999, previous=555)
     cs4 = make_empty_bundle(info4)
 
-    info5 = BundleInfo(medallion=789, chain_start=555, timestamp=1000, prior_time=999)
+    info5 = BundleInfo(medallion=789, chain_start=555, timestamp=1000, previous=999)
     with closing(store_maker()) as store:
         store.apply_bundle(cs1)
         store.apply_bundle(cs2)

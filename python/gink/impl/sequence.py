@@ -32,7 +32,7 @@ class Sequence(Container):
             # TODO: implement clear, then append all of the items
             raise NotImplementedError()
         if len(bundler):
-            self._database.finish_bundle(bundler)
+            self._database.commit(bundler)
     
     def __iter__(self):
         for thing in self.values():
@@ -89,7 +89,7 @@ class Sequence(Container):
             expiry = self._database.resolve_timestamp(expiry) if expiry else None # type: ignore
             self._add_entry(value=items[i], bundler=bundler, expiry=expiry)
         if immediate and len(bundler):
-            self._database.finish_bundle(bundler)
+            self._database.commit(bundler)
         return bundler
 
     def yank(self, muid: Muid, *, dest: GenericTimestamp = None, bundler=None, comment=None):
@@ -122,7 +122,7 @@ class Sequence(Container):
         movement_builder.dest = dest
         muid = bundler.add_change(change_builder)
         if immediate:
-            self._database.finish_bundle(bundler)
+            self._database.commit(bundler)
         return muid
 
     def pop(self, index=-1, *, dest: GenericTimestamp = None, bundler=None, comment=None):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from random import randint
-from typing import Optional, Set, Union
+from typing import Optional, Set, Union, Iterable, Tuple
 from datetime import datetime, date, timedelta
 from threading import Lock
 import time
@@ -10,8 +10,11 @@ import re
 from logging import getLogger
 from google.protobuf.message import Message
 from select import select
+from pwd import getpwuid
+from socket import gethostname
 
 from ..builders.sync_message_pb2 import SyncMessage
+from ..builders.entry_pb2 import Entry as EntryBuilder
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -22,6 +25,8 @@ from .tuples import Chain
 from .peer import Peer
 from .wspeer import WsPeer
 from .listener import Listener
+from .coding import DIRECTORY, encode_key, encode_value
+from .muid import Muid
 
 class Database:
     """ A class that mediates user interaction with a datastore and peers. """
@@ -33,20 +38,29 @@ class Database:
     _listeners: Set[Listener]
 
     def __init__(self, store: AbstractStore):
-        self._i_have = store.get_chain_tracker()
         Database.last = self
         self._store = store
-        self._chain: Optional[Chain] = None
+        self._last_bundle_info: Optional[BundleInfo] = None
         self._lock = Lock()
         self._last_time = None
         self._peers = set()
         self._logger = getLogger(self.__class__.__name__)
         self._listeners = set()
 
+    def _get_info(self) -> Iterable[Tuple[str, Union[str, int]]]:
+        yield (".process.id", os.getpid())
+        yield (".user.name", getpwuid(os.getuid()))
+        yield (".host.name", gethostname())
+
     def _add_info(self, bundler: Bundler):
-        # TODO[P2]: add info about this instance
-        assert bundler is not None
-        assert os
+        personal_directory = Muid(-1, 0, DIRECTORY)
+        entry_builder = EntryBuilder()
+        for key, val in self._get_info():
+            entry_builder.behavior = DIRECTORY
+            personal_directory.put_into(entry_builder.container)
+            encode_key(key, entry_builder.key)
+            encode_value(val, entry_builder.value)
+            bundler.add_change(entry_builder)
 
     def get_now(self) -> MuTimestamp:
         """ returns the current time in microseconds since epoch
@@ -99,38 +113,37 @@ class Database:
             return self.get_now() + int(1e6*timestamp)
         raise ValueError(f"don't know how to resolve {timestamp} into a timestamp")
 
-    def _get_writable_chain(self) -> Chain:
-        """ returns a chain that this database can append to """
-        if self._chain:
-            return self._chain
-        # TODO[P2]: implement locks as part of the store interface to prevent races to get chains
-        # TODO[P2]: reuse claimed chains
-        medallion =  randint((2 ** 48) + 1, (2 ** 49) - 1)
+    def _start_chain(self) -> BundleInfo:
+        medallion = randint((2 ** 48) + 1, (2 ** 49) - 1)
         chain_start = self.get_now()
         chain = Chain(medallion=Medallion(medallion), chain_start=chain_start)
+        self._store.claim_chain(chain)
         starting_bundler = Bundler()
         self._add_info(starting_bundler)
         info = BundleInfo(medallion=medallion, chain_start=chain_start, timestamp=chain_start)
+        # We can't use Database.commit because Database.commit calls this function.
         bundle_bytes = starting_bundler.seal(info)
-        self._store.apply_bundle(bundle_bytes=bundle_bytes)
-        self._i_have.mark_as_having(info)
-        self._store.claim_chain(chain)
-        self._chain = chain
-        return chain
+        bundle_info = self._receive_bundle(bundle_bytes, from_peer=None)
+        assert bundle_info, "expected a newly created bundle to be added"
+        return bundle_info
     
-    def finish_bundle(self, bundler: Bundler) -> BundleInfo:
+    def commit(self, bundler: Bundler) -> BundleInfo:
         """ seals bundler and adds the resulting bundle to the local store """
         assert not bundler.sealed
         with self._lock:
-            chain = self._get_writable_chain()
-            seen_to = self._i_have.get_seen_to(chain)
+            if not self._last_bundle_info:
+                # TODO[P3]: reuse claimed chains of processes that have exited on this machine
+                self._last_bundle_info = self._start_chain()
+            chain = self._last_bundle_info.get_chain()
+            seen_to = self._last_bundle_info.timestamp
             assert seen_to is not None
             timestamp = self.get_now()
             assert timestamp > seen_to
-            info = BundleInfo(chain=chain, timestamp=timestamp, prior_time=seen_to)
+            info = BundleInfo(chain=chain, timestamp=timestamp, previous=seen_to)
             bundle_bytes = bundler.seal(info)
             info_with_comment = self._receive_bundle(bundle_bytes, from_peer=None)
             assert info_with_comment is not None
+            self._last_bundle_info = info_with_comment
             return info_with_comment
 
     def _receive_bundle(self, bundle: bytes, from_peer: Optional[Peer]) -> Optional[BundleInfo]:
@@ -170,6 +183,7 @@ class Database:
                 # via their greeting message, so we don't need to send it to them again.
                 continue
             peer.send(serialized)
+        return info
     
     def _receive_data(self, received: bytes, from_peer: Peer):
         with self._lock:
