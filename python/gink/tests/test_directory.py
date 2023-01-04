@@ -3,6 +3,7 @@
 from contextlib import closing
 import os
 import socket
+import datetime
 
 from ..impl.muid import Muid
 from ..impl.directory import Directory
@@ -228,13 +229,14 @@ def test_personal_directory():
             database.commit(Bundler("hello world"))
             infos = store.get_bundle_infos()
             assert len(infos) == 2
-            personal_directory = Directory.get_personal_instance()
+            personal_directory = Directory.get_medallion_instance()
             assert personal_directory[".process.id"] == os.getpid()
             assert personal_directory[".host.name"] == socket.gethostname()
             user_name = personal_directory[".user.name"]
             assert isinstance(user_name, str) and user_name != "", user_name
 
 def test_bytes_keys():
+    """ tests that I can use bytestrings as keys for directories """
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
@@ -245,3 +247,14 @@ def test_bytes_keys():
             assert keys == [a_bytestring], keys
             assert root[a_bytestring] == 42
             
+def test_blame():
+    """ makes sure that the directory.get_blame works """
+    for store in [MemoryStore(), LmdbStore()]:
+        with closing(store):
+            database = Database(store=store)
+            for directory in [Directory.get_global_instance(database=database), Directory()]:
+                directory["foo"] = "bar"
+                blame = directory.get_blame("foo")
+                assert blame.hostname == socket.gethostname()
+                assert isinstance(blame.datetime, datetime.datetime)
+                assert isinstance(blame.username, str) and blame.username

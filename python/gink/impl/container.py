@@ -81,7 +81,7 @@ class Container(ABC):
         return cls(database=database, muid=muid)
 
     @classmethod
-    def get_personal_instance(cls, database: Optional[Database]=None):
+    def get_medallion_instance(cls, *, medallion=0, database: Optional[Database]=None):
         """ Gets a proxy to the magic personal instance for this container type.
         
             For each combination of medallion and container type, there's implicitly
@@ -95,10 +95,12 @@ class Container(ABC):
         if database is None:
             database = Database.last
         assert database is not None
-        last_bundle_info = database._last_bundle_info
-        if last_bundle_info is None:
-            raise ValueError("don't have a personal instance until a chain has been claimed by a write")
-        muid = Muid(timestamp=-1, medallion=last_bundle_info.medallion, offset=cls.get_behavior())
+        if not medallion:
+            last_bundle_info = database._last_bundle_info
+            if last_bundle_info is None:
+                raise ValueError("don't have a medallion until on has been claimed by a write")
+            medallion=last_bundle_info.medallion
+        muid = Muid(timestamp=-1, medallion=medallion, offset=cls.get_behavior())
         return cls(database=database, muid=muid)
 
     @staticmethod
