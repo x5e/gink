@@ -233,3 +233,15 @@ def test_personal_directory():
             assert personal_directory[".host.name"] == socket.gethostname()
             user_name = personal_directory[".user.name"]
             assert isinstance(user_name, str) and user_name != "", user_name
+
+def test_bytes_keys():
+    for store in [MemoryStore(), LmdbStore()]:
+        with closing(store):
+            database = Database(store=store)
+            root = Directory.get_global_instance(database=database)
+            a_bytestring = b"\x00\xff\x94"
+            root[a_bytestring] = 42
+            keys = list(root.keys())
+            assert keys == [a_bytestring], keys
+            assert root[a_bytestring] == 42
+            

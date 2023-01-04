@@ -7,7 +7,7 @@ MuTimestamp = int
 Offset = NewType('Offset', int)
 GenericTimestamp = Union[datetime, timedelta, date, int, float, None]
 Destination = GenericTimestamp
-UserKey = Union[str, int]
+UserKey = Union[str, int, bytes]
 UserValue = Union[str, int, float, datetime, bytes, bool, list, tuple, dict, None]
 EPOCH = 0
 class Deletion: pass

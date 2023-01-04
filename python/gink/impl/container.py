@@ -134,7 +134,7 @@ class Container(ABC):
 
     def _add_entry(self, *, 
             value, 
-            key: Union[Muid, str, int, None]=None, 
+            key: Union[Muid, str, int, bytes, None]=None, 
             position: Optional[MuTimestamp]=None, 
             bundler: Optional[Bundler]=None, 
             comment: Optional[str]=None, 
@@ -156,7 +156,7 @@ class Container(ABC):
         if position is not None:
             entry_builder.position = position # type: ignore
         self._muid.put_into(entry_builder.container) # type: ignore
-        if isinstance(key, (str, int)):
+        if isinstance(key, (str, int, bytes)):
             encode_key(key, entry_builder.key)  # type: ignore
         if isinstance(key, Muid):
             key.put_into(entry_builder.describes) # type: ignore

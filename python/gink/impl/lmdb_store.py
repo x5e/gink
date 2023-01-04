@@ -434,7 +434,7 @@ class LmdbStore(AbstractStore):
             if isinstance(key, Muid):
                 serialized_key = bytes(key)
                 behavior = PROPERTY
-            elif isinstance(key, (int, str)):
+            elif isinstance(key, (int, str, bytes)):
                 serialized_key = serialize(encode_key(key))
                 behavior = DIRECTORY
             elif key is None:

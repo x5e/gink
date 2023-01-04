@@ -2,14 +2,13 @@
 ##################################################################################################0
 from typing import Union, Optional
 
-
 # gink implementation
-from .typedefs import GenericTimestamp, EPOCH
 from .muid import Muid
 from .database import Database
 from .container import Container
 from .coding import decode_key, DIRECTORY, deletion
 from .bundler import Bundler
+from .typedefs import UserKey
 
 class Directory(Container):
     """ the Gink mutable mapping object """
@@ -74,7 +73,7 @@ class Directory(Container):
     def __delitem__(self, key):
         self.delete(key)
 
-    def has(self, key, *, as_of=None):
+    def has(self, key: UserKey, *, as_of=None):
         """ returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database._store.get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
@@ -200,3 +199,6 @@ class Directory(Container):
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
             self._database.commit(bundler)
+
+    def get_blame(self, key: UserKey):
+        raise NotImplementedError()
