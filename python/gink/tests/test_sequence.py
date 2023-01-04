@@ -30,7 +30,7 @@ def test_repr():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            sequence = Sequence.global_instance(database)
+            sequence = Sequence.get_global_instance(database)
             sequence.append("Hello, World!")
             assert list(sequence) == ["Hello, World!"]           
             assert repr(sequence) == "Sequence(muid=Muid(-1, -1, 8))"
@@ -43,7 +43,7 @@ def test_basics():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.global_instance(database), Sequence(muid=Muid(1,2,3))]:
+            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1,2,3))]:
                 assert list(seq) == []
                 seq.append("Hello, World!")
                 assert list(seq) == ["Hello, World!"]
@@ -71,7 +71,7 @@ def test_reordering():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.global_instance(database), Sequence(muid=Muid(1,2,3))]:
+            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1,2,3))]:
                 for letter in "abcxyz":
                     seq.append(letter)
                 assert list(seq) == ["a", "b", "c", "x", "y", "z"], list(seq)
@@ -97,7 +97,7 @@ def test_expiry():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.global_instance(database)]:
+            for seq in [Sequence.get_global_instance(database)]:
                 start = database.get_now()
                 seq.append("first", expiry=0.01)
                 assert list(seq) == ["first"], list(seq)
@@ -128,7 +128,7 @@ def test_as_of():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.global_instance(database)]:
+            for seq in [Sequence.get_global_instance(database)]:
                 seq.append("foo")
                 time.sleep(.001)
                 seq.append("bar")
@@ -161,7 +161,7 @@ def test_insert():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.global_instance(database), Sequence(muid=Muid(1,2,3))]:
+            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1,2,3))]:
                 for letter in "abc":
                     seq.append(letter, comment=letter)
                     time.sleep(.001)
@@ -178,7 +178,7 @@ def test_clear():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.global_instance(database), Sequence(muid=Muid(1,2,3))]:
+            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1,2,3))]:
                 assert len(seq) == 0, store
                 seq.append(3.7)
                 seq.append(9)
@@ -198,7 +198,7 @@ def test_reset():
     for store in [LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            seq1 = Sequence.global_instance(database)
+            seq1 = Sequence.get_global_instance(database)
             seq2 = Sequence()
             seq1.append("foo")
             seq2.append("bar")

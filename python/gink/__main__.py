@@ -5,7 +5,7 @@ import copy
 from . import *
 store = LmdbStore("/tmp/gink.mdb")
 database = Database(store)
-root = Directory.global_instance(database=database)
+root = Directory.get_global_instance(database=database)
 args = copy.copy(sys.argv)
 args.pop(0) # remove script
 cmd = args.pop(0)

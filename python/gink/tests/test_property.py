@@ -18,7 +18,7 @@ def test_property_set_get():
     for store in [LmdbStore(), MemoryStore(),]:
         with closing(store):
             database = Database(store=store)
-            namer = Property.global_instance(database=database)
+            namer = Property.get_global_instance(database=database)
             directory = Directory()
             namer.set(directory, "my favorite directory")
             named = namer.get(directory)

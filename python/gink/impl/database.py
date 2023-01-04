@@ -49,7 +49,7 @@ class Database:
 
     def _get_info(self) -> Iterable[Tuple[str, Union[str, int]]]:
         yield (".process.id", os.getpid())
-        yield (".user.name", getpwuid(os.getuid()))
+        yield (".user.name", getpwuid(os.getuid())[0])
         yield (".host.name", gethostname())
 
     def _add_info(self, bundler: Bundler):

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """ test the directory class """
 from contextlib import closing
+import os
+import socket
 
 from ..impl.muid import Muid
 from ..impl.directory import Directory
@@ -31,7 +33,7 @@ def test_set_get():
     for store in [LmdbStore(), MemoryStore(),]:
         with closing(store):
             database = Database(store=store)
-            global_directory = Directory.global_instance(database=database)
+            global_directory = Directory.get_global_instance(database=database)
 
             bundler = Bundler("testing")
             global_directory.set("foo", "bar", bundler=bundler)
@@ -58,7 +60,7 @@ def test_delete():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            gdi = Directory.global_instance(database=database)
+            gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
             assert gdi.has("foo") and gdi["foo"] == "bar"
             a_time = database.get_now()
@@ -71,7 +73,7 @@ def test_setdefault():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            gdi = Directory.global_instance(database=database)
+            gdi = Directory.get_global_instance(database=database)
             gdi.setdefault("foo", "bar")
             assert gdi["foo"] == "bar"
             result = gdi.setdefault("foo", "baz")
@@ -90,7 +92,7 @@ def test_pop():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            gdi = Directory.global_instance(database=database)
+            gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
             val = gdi.pop("foo", default=3)
             assert val == "bar", val
@@ -103,7 +105,7 @@ def test_items_and_keys():
     for store in [LmdbStore(), MemoryStore(),]:
         with store:
             database = Database(store=store)
-            gdi = Directory.global_instance(database=database)
+            gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi["bar"] = "zoo"
             gdi["zoo"] = 3
@@ -125,7 +127,7 @@ def test_popitem_and_len():
     for store in [LmdbStore(), MemoryStore(),]:
         with store:
             database = Database(store=store)
-            gdi = Directory.global_instance(database=database)
+            gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi["bar"] = "zoo"
             assert len(gdi) == 2
@@ -144,7 +146,7 @@ def test_update():
     for store in [LmdbStore(), MemoryStore(),]:
         with store:
             database = Database(store=store)
-            gdi = Directory.global_instance(database=database)
+            gdi = Directory.get_global_instance(database=database)
             gdi.update({"foo": "bar", 99: 100})
             gdi.update([("zoo", "bear"), (99, 101)])
             as_dict = dict(gdi.items())
@@ -157,7 +159,7 @@ def test_reset():
         with store:
             # pylint: disable=unsupported-assignment-operation, unsupported-membership-test
             database = Database(store=store)
-            gdi = Directory.global_instance(database=database)
+            gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi["bar"] = "foo"
             gdi[7] = {"cheese": "wiz", "foo": [True, False, None]}
@@ -184,7 +186,7 @@ def test_clearance():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            gdi = Directory.global_instance(database=database)
+            gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi[99] = "foo"
             assert gdi["foo"] == "bar"
@@ -201,7 +203,7 @@ def test_reset_over_clear():
     for store in [LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            gdi = Directory.global_instance(database=database)
+            gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi["bar"] = "baz"
             set_timestamp = database.get_now()
@@ -213,3 +215,21 @@ def test_reset_over_clear():
             assert gdi.get("foo") == "bar", gdi.get("foo")
             gdi.reset(set_timestamp)
             assert gdi.get("bar") == "baz", gdi.get("bar")
+
+def test_personal_directory():
+    """ tests that ownership metadata is written appropriately """
+    for store in [MemoryStore(), LmdbStore()]:
+        with closing(store):
+            database = Database(store=store)
+            assert database._last_bundle_info is None
+            assert isinstance(store, AbstractStore)
+            infos = store.get_bundle_infos()
+            assert len(infos) == 0
+            database.commit(Bundler("hello world"))
+            infos = store.get_bundle_infos()
+            assert len(infos) == 2
+            personal_directory = Directory.get_personal_instance()
+            assert personal_directory[".process.id"] == os.getpid()
+            assert personal_directory[".host.name"] == socket.gethostname()
+            user_name = personal_directory[".user.name"]
+            assert isinstance(user_name, str) and user_name != "", user_name

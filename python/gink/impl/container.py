@@ -65,12 +65,40 @@ class Container(ABC):
         return cls(muid=muid, database=database)
 
     @classmethod
-    def global_instance(cls, database: Optional[Database]=None):
-        """ Gets a proxy to the "magic" global instance of the given class. """
+    def get_global_instance(cls, database: Optional[Database]=None):
+        """ Gets a proxy to the "magic" global instance of the given class. 
+        
+            For each container type there's a pre-existing global instance
+            with address Muid(timestamp=-1, medallion=-1, offset=<behavior>).
+            This container type can be written to by any instance, and may 
+            be used to coordinate between database instances or just for 
+            testing/demo purposes.
+        """
         if database is None:
             database = Database.last
         assert database is not None
         muid = Muid(timestamp=-1, medallion=-1, offset=cls.get_behavior())
+        return cls(database=database, muid=muid)
+
+    @classmethod
+    def get_personal_instance(cls, database: Optional[Database]=None):
+        """ Gets a proxy to the magic personal instance for this container type.
+        
+            For each combination of medallion and container type, there's implicitly
+            a pre-existing instance: Muid(timestamp=-1, medallion=<medallion>, offset=<behavior>).
+            This instance should only be written to by the owner of the medallion, and may
+            be used to store local configuration state (though note this info is still visible
+            to other instances).  Additionally, ownership metadata such as the username, hostname,
+            and process id will be written to the personal directory for each chain at chain start.
+            This info may then be used for "blame" i.e. to track who made what changes when.
+        """
+        if database is None:
+            database = Database.last
+        assert database is not None
+        last_bundle_info = database._last_bundle_info
+        if last_bundle_info is None:
+            raise ValueError("don't have a personal instance until a chain has been claimed by a write")
+        muid = Muid(timestamp=-1, medallion=last_bundle_info.medallion, offset=cls.get_behavior())
         return cls(database=database, muid=muid)
 
     @staticmethod
