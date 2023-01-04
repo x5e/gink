@@ -38,9 +38,10 @@ class BundleInfo:
         for key in self.__slots__:
             if key in kwargs:
                 setattr(self, key, kwargs[key])
-    
+
     @staticmethod
     def from_bytes(data: bytes):
+        """ the opposite of __bytes__ """
         assert isinstance(data, bytes) and len(data) >= 32, (type(data), data)
         return BundleInfo(encoded=data)
 

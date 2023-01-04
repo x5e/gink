@@ -19,7 +19,7 @@ from ..builders.behavior_pb2 import Behavior
 from ..builders.clearance_pb2 import Clearance
 
 # Gink Implementation
-from .typedefs import MuTimestamp, UserKey
+from .typedefs import MuTimestamp, UserKey, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .muid import Muid
 from .bundle_info import BundleInfo
@@ -27,7 +27,7 @@ from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, EntryStoragePair, decode_muts, wrap_change,
-    EntryStorageKey, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize, 
+    EntryStorageKey, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
     deletion, Deletion, decode_entry_occupant, MovementKey, LocationKey, PROPERTY, BOX)
 
 class LmdbStore(AbstractStore):
@@ -63,7 +63,7 @@ class LmdbStore(AbstractStore):
 
             key: (container-muid, eff-ts, move/entry-muid, removal-muid)
             val: binaryproto of the movement
-        
+
         locations - table used as an index to look-up entries by entry-muid for (re)-moving
             key: (entry-muid, placement-muid)
             val: key from the entries table
@@ -76,11 +76,11 @@ class LmdbStore(AbstractStore):
                 0 - No history stored.
                 1 - All history stored.
                 <other microsecond timestamp> - time since when history has been retained
-        
+
         clearances - tracks clearance changes (most recent per container if not retaining entries)
             key: (container-muid, clearance-muid)
             val: binaryproto of the clearance
-        
+
         properties - an index to enable looking up all of the properties on an object
                 < NOT YET IMPLEMENTED >
             key: (describes-muid, property-muid, entry-muid)
@@ -142,8 +142,18 @@ class LmdbStore(AbstractStore):
             #TODO: add methods to drop out-of-date entries and/or turn off retention
             #TODO: add purge method to remove particular data even when retention is on
             #TODO: add expiries table to keep track of when things need to be removed
-            
-    def get_one(self, Class, index: int = -1):
+
+    def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
+        with self._handle.begin() as trxn:
+            bundles_cursor = trxn.cursor(self._bundles)
+            found = to_last_with_prefix(bundles_cursor, prefix=pack(">QQ", timestamp, medallion))
+            if not found:
+                return None
+            bundle_info = BundleInfo.from_bytes(found)
+            return bundle_info.comment
+
+    def get_one(self, cls, index: int = -1):
+        """ gets one instance of the given class """
         skip = index if index >= 0 else ~index
         with self._handle.begin() as trxn:
             table = {
@@ -154,15 +164,14 @@ class LmdbStore(AbstractStore):
                 EntryStorageKey: self._entries,
                 MovementKey: self._removals,
                 LocationKey: self._locations,
-            }[Class]
+            }[cls]
             cursor = trxn.cursor(table)
             placed = cursor.first() if index >= 0 else cursor.last()
             while placed:
                 if skip == 0:
-                    if issubclass(Class, Message):
-                        return Class.FromString(cursor.value()) # type: ignore
-                    else:
-                        return Class.from_bytes(cursor.key()) # type: ignore
+                    if issubclass(cls, Message):
+                        return cls.FromString(cursor.value()) # type: ignore
+                    return cls.from_bytes(cursor.key()) # type: ignore
                 else:
                     skip -= 1
                     placed = cursor.next() if index >= 0 else cursor.prev()
@@ -171,17 +180,16 @@ class LmdbStore(AbstractStore):
     def _get_behavior(self, container: Muid, trxn: Trxn) -> int:
         if container.timestamp == -1:
             return container.offset
-        else:
-            container_definition_bytes = trxn.get(bytes(container), db=self._containers)
-            assert isinstance(container_definition_bytes, bytes)
-            container_builder = ContainerBuilder()
-            container_builder.ParseFromString(container_definition_bytes) # type: ignore
-            return container_builder.behavior # type: ignore
+        container_definition_bytes = trxn.get(bytes(container), db=self._containers)
+        assert isinstance(container_definition_bytes, bytes)
+        container_builder = ContainerBuilder()
+        container_builder.ParseFromString(container_definition_bytes) # type: ignore
+        return container_builder.behavior # type: ignore pylint: disable=maybe-no-member
 
     def _container_reset_changes(
-            self, 
-            to_time: MuTimestamp, 
-            container: Muid, 
+            self,
+            to_time: MuTimestamp,
+            container: Muid,
             seen: Optional[Set],
             trxn: Trxn) -> Iterable[ChangeBuilder]:
         """ Figures out which specific reset method to call to reset a container. """
@@ -254,6 +262,7 @@ class LmdbStore(AbstractStore):
 
             Assumes that you're retaining entry history.
         """
+        # pylint: disable=maybe-no-member
         if seen is not None:
             if container in seen:
                 return

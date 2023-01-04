@@ -10,7 +10,7 @@ from ..builders.change_pb2 import Change as ChangeBuilder
 # Gink specific modules
 from .bundle_info import BundleInfo
 from .chain_tracker import ChainTracker
-from .typedefs import UserKey, MuTimestamp
+from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import FoundEntry, Chain, PositionedEntry
 from .muid import Muid
 
@@ -31,27 +31,34 @@ class AbstractStore(ABC):
         self.close()
 
     @abstractmethod
+    def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
+        """ Gets the comment associated with a particular bundle/commit, if stored. """
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
         """ Gets all active entries for a given container as of the given time. """
         raise NotImplementedError()
 
     @abstractmethod
-    def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None], 
+    def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None],
             as_of: MuTimestamp) -> Optional[FoundEntry]:
         """ Gets the most recent entry for a given key at as_of
         """
         assert self and container and key and as_of
         raise NotImplementedError()
-    
+
     @abstractmethod
     def get_positioned_entry(self, entry: Muid, as_of: MuTimestamp=-1)->Optional[PositionedEntry]:
         """ Returns the position and contents of a an entry, if available, at as_of time.
         """
         raise NotImplementedError()
-    
+
     @abstractmethod
-    def get_ordered_entries(self, container: Muid, as_of: MuTimestamp, limit: Optional[int]=None, 
+    def get_ordered_entries(self, container: Muid, as_of: MuTimestamp, limit: Optional[int]=None,
             offset: int=0, desc: bool=False) -> Iterable[PositionedEntry]:
+        """ Get data for Sequence and Registry data types.
+        """
         assert self or container or as_of or limit or offset or desc
         raise NotImplementedError()
 
@@ -97,9 +104,9 @@ class AbstractStore(ABC):
             result.append(info)
         self.get_bundles(callback)
         return result
-    
+
     @abstractmethod
-    def get_one(self, Class, index: int=-1):
+    def get_one(self, cls, index: int=-1):
         """ Gets one instance of the specified class at "index" location in its respective store.
 
             "Class" may be one of: BundleBuilder, EntryBuilder, MovementBuilder, 

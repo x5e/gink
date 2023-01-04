@@ -2,9 +2,11 @@
 
 # standard python stuff
 import sys
+import struct
 from typing import Tuple, Callable, Optional, Iterable, Union
 from sortedcontainers import SortedDict
 from google.protobuf.message import Message
+
 
 # generated protobuf builder
 from ..builders.bundle_pb2 import Bundle as BundleBuilder
@@ -13,7 +15,7 @@ from ..builders.movement_pb2 import Movement as MovementBuilder
 from ..builders.clearance_pb2 import Clearance as ClearanceBuilder
 
 # gink modules
-from .typedefs import UserKey, MuTimestamp
+from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
@@ -34,7 +36,7 @@ class MemoryStore(AbstractStore):
     _entries: SortedDict  # bytes(EntryStorageKey) => EntryBuilder
     _locations: SortedDict # bytes(entry_muid) + bytes(movement_muid or entry_muid) => bytes
     _containers: SortedDict  # muid => builder
-    _removals: SortedDict 
+    _removals: SortedDict
     _clearances: SortedDict
 
     def __init__(self):
@@ -49,7 +51,13 @@ class MemoryStore(AbstractStore):
         self._removals = SortedDict()
         self._clearances = SortedDict()
     
-    def get_one(self, Class, index: int = -1):
+    def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
+        look_for = struct.pack(">QQ", timestamp, medallion)
+        for thing in self._bundles.irange(minimum=look_for):
+            if thing.startswith(look_for):
+                pass
+
+    def get_one(self, cls, index: int = -1):
         sorted_dict = {
             BundleBuilder: self._bundles,
             EntryBuilder: self._entries,
@@ -58,25 +66,25 @@ class MemoryStore(AbstractStore):
             EntryStorageKey: self._entries,
             MovementKey: self._removals,
             LocationKey: self._locations,
-        }[Class]
+        }[cls]
         skip = index if index >= 0 else ~index
         for key in sorted_dict.irange(reverse=index < 0):
             if skip == 0:
-                if isinstance(key, Class):
+                if isinstance(key, cls):
                     return key
-                if issubclass(Class, Message):
+                if issubclass(cls, Message):
                     val = sorted_dict[key]
                     if isinstance(val, bytes):
-                        instance = Class()
+                        instance = cls()
                         instance.ParseFromString(val)
                         return instance
-                    assert isinstance(val, Class)
+                    assert isinstance(val, cls)
                     return val
                 if isinstance(key, bytes):
-                    return Class.from_bytes(key) # type: ignore
+                    return cls.from_bytes(key) # type: ignore
                 raise ValueError(f"don't know what to do with {key}")
-            else:
-                skip -= 1
+            skip -= 1
+        raise ValueError("not expected")
 
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
@@ -130,17 +138,19 @@ class MemoryStore(AbstractStore):
 
     def get_claimed_chains(self) -> Iterable[Chain]:
         for key, val in self._claimed_chains.items():
+            assert isinstance(key, Medallion)
+            assert isinstance(val, int)
             yield Chain(key, val)
 
     def claim_chain(self, chain: Chain):
         self._claimed_chains[chain.medallion] = chain.chain_start
 
     def get_ordered_entries(
-        self, 
-        container: Muid, 
+        self,
+        container: Muid,
         as_of: MuTimestamp, 
         limit: Optional[int] = None,
-        offset: int = 0, 
+        offset: int = 0,
         desc: bool = False,
         ) -> Iterable[PositionedEntry]:
 
@@ -190,7 +200,7 @@ class MemoryStore(AbstractStore):
         old_info = self._chain_infos.get(new_info.get_chain())
         needed = AbstractStore._is_needed(new_info, old_info)
         if needed:
-            self._bundles[new_info] = bundle_bytes
+            self._bundles[bytes(new_info)] = bundle_bytes
             self._chain_infos[chain_key] = new_info
             change_items = list(bundle_builder.changes.items()) # type: ignore
             change_items.sort() # the protobuf library doesn't maintain order of maps
@@ -211,13 +221,13 @@ class MemoryStore(AbstractStore):
                     continue
                 raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         return (new_info, needed)
-    
+
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
         clearance_muid = Muid.create(context=new_info, offset=offset)
         new_key = bytes(container_muid) + bytes(clearance_muid)
         self._clearances[new_key] = builder
-    
+
     def _add_movement(self, new_info: BundleInfo, offset: int, builder: MovementBuilder):
         container = Muid.create(builder=getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(builder=getattr(builder, "entry"), context=new_info)
@@ -258,7 +268,8 @@ class MemoryStore(AbstractStore):
         self._locations[entries_location_key] = encoded_entry_storage_key
 
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp=0):
-        for bundle_info in self._bundles.irange(minimum=BundleInfo(timestamp=since)):
+        for bundle_info_key in self._bundles.irange(minimum=encode_muts(since)):
+            bundle_info = BundleInfo.from_bytes(bundle_info_key)
             assert isinstance(bundle_info, BundleInfo)
             data = self._bundles[bundle_info]
             assert isinstance(data, bytes)
