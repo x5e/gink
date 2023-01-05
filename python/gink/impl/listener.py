@@ -1,3 +1,4 @@
+""" contains the Listener class that listens on a port for incomming connections """
 from typing import Union
 from socket import (
     socket as Socket,
@@ -7,21 +8,24 @@ from socket import (
     SO_REUSEADDR,
 )
 
-from .peer import Peer
+from .connection import Connection
+from .websocket_connection import WebsocketConnection
 
 class Listener:
-
-    def __init__(self, peer_class, ip="", port: Union[int, str]=8080):
-        self.peer_class = peer_class
+    """ Listens on a port for incoming connections. """
+    def __init__(self, connection_class=WebsocketConnection, ip_addr:str ="", port: int=8080):
+        self.connection_class = connection_class
         self.socket = Socket(AF_INET, SOCK_STREAM)
         self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        self.socket.bind((ip, int(port)))
+        self.socket.bind((ip_addr, int(port)))
         self.socket.listen(128)
 
     def fileno(self):
+        """ Gives the file descriptor for use in socket.select and similar. """
         return self.socket.fileno()
-    
-    def accept(self) -> Peer:
+
+    def accept(self) -> Connection:
+        """ Method to call when the underlying socket is "ready". """
         (new_socket, addr) = self.socket.accept()
-        peer: Peer = self.peer_class(new_socket, addr)
+        peer: Connection = self.connection_class(socket=new_socket, host=addr)
         return peer

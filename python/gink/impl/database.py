@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+""" contains Database class """
 from random import randint
 from typing import Optional, Set, Union, Iterable, Tuple, Dict
 from datetime import datetime, date, timedelta
@@ -25,10 +26,10 @@ from .bundler import Bundler
 from .bundle_info import BundleInfo
 from .typedefs import Medallion, MuTimestamp, GenericTimestamp
 from .tuples import Chain
-from .peer import Peer
-from .wspeer import WsPeer
+from .connection import Connection
+from .websocket_connection import WebsocketConnection
 from .listener import Listener
-from .coding import DIRECTORY, encode_key, encode_value
+from .coding import DIRECTORY, encode_key, encode_value, serialize
 from .muid import Muid
 from .chain_tracker import ChainTracker
 
@@ -38,9 +39,9 @@ class Database:
     _lock: Lock
     _last_time: Optional[MuTimestamp]
     _store: AbstractStore
-    _peers: Set[Peer]
+    _connections: Set[Connection]
     _listeners: Set[Listener]
-    _trackers: Dict[Peer, ChainTracker]
+    _trackers: Dict[Connection, ChainTracker]
 
     def __init__(self, store: AbstractStore):
         Database.last = self
@@ -48,11 +49,12 @@ class Database:
         self._last_bundle_info: Optional[BundleInfo] = None
         self._lock = Lock()
         self._last_time = None
-        self._peers = set()
+        self._connections = set()
         self._logger = getLogger(self.__class__.__name__)
         self._listeners = set()
 
-    def _get_info(self) -> Iterable[Tuple[str, Union[str, int]]]:
+    @staticmethod
+    def _get_info() -> Iterable[Tuple[str, Union[str, int]]]:
         yield (".process.id", os.getpid())
         user_data = getpwuid(os.getuid())
         yield (".user.name", user_data[0])
@@ -156,7 +158,11 @@ class Database:
             self._last_bundle_info = info_with_comment
             return info_with_comment
 
-    def _receive_bundle(self, bundle: bytes, from_peer: Optional[Peer]) -> Optional[BundleInfo]:
+    def _receive_bundle(
+            self,
+            bundle: bytes,
+            from_peer: Optional[Connection]
+    ) -> Optional[BundleInfo]:
         """ called when either a bundle is received from a remote peer or one is created locally
 
             We're assuming that each peer has been sent all data in the local store.
@@ -182,7 +188,7 @@ class Database:
         sync_message.bundle = bundle # type: ignore
         assert isinstance(sync_message, Message)
         serialized: bytes = sync_message.SerializeToString()
-        for peer in self._peers:
+        for peer in self._connections:
             if peer == from_peer:
                 # We got this bundle from this peer, so don't need to send it back to them.
                 continue
@@ -198,7 +204,7 @@ class Database:
             peer.send(serialized)
         return info
 
-    def _receive_data(self, received: bytes, from_peer: Peer):
+    def _receive_data(self, received: bytes, from_peer: Connection):
         with self._lock:
             sync_message = SyncMessage()
             assert isinstance(sync_message, Message)
@@ -213,12 +219,12 @@ class Database:
             else:
                 self._logger.warning("got binary message without ack, bundle, or greeting")
 
-    def start_listening(self, ip="", port: Union[str, int]="8080"):
+    def start_listening(self, ip_addr="", port: Union[str, int]="8080"):
         """ Listen for incoming connections on the given port.
 
             Note that you'll still need to call "run" to actually accept those connections.
         """
-        self._listeners.add(Listener(WsPeer, ip=ip, port=port))
+        self._listeners.add(Listener(WebsocketConnection, ip_addr=ip_addr, port=int(port)))
 
     def connect_to(self, target: str):
         """ initiate a connection to another gink instance """
@@ -227,25 +233,34 @@ class Database:
         prefix, host, port, path = match.groups()
         if prefix and prefix != "ws://":
             raise NotImplementedError("only vanilla websockets currently supported")
+        port = port or "8080"
+        path = path or "/"
+        greeting = serialize(self._store.get_chain_tracker().to_greeting_message())
+        connection = WebsocketConnection(host=host,  port=int(port), path=path, greeting=greeting)
+        self._connections.add(connection)
 
     def run(self, until: GenericTimestamp=None):
-        readers = []
-        for listener in self._listeners:
-            readers.append(listener)
-        for peer in self._peers:
-            readers.append(peer)
+        """ Waits for activity on ports then exchanges data with peers. """
         if until is not None:
             until = self.resolve_timestamp(until)
         while until is None or self.get_now() < until:
             # TODO: use epoll where supported
+            readers = []
+            for listener in self._listeners:
+                readers.append(listener)
+            for connection in list(self._connections):
+                if connection.is_closed():
+                    self._connections.remove(connection)
+                else:
+                    readers.append(connection)
             ready = select(readers, [], [], 0.01)
             for ready_reader in ready[0]:
-                if isinstance(ready_reader, Peer):
+                if isinstance(ready_reader, Connection):
                     for data in ready_reader.receive():
                         self._receive_data(data, ready_reader)
                 elif isinstance(ready_reader, Listener):
-                    peer: Peer = ready_reader.accept()
-                    self._peers.add(peer)
+                    peer: Connection = ready_reader.accept()
+                    self._connections.add(peer)
                     sync_message = self._store.get_chain_tracker().to_greeting_message()
                     assert isinstance(sync_message, Message)
                     greeting_bytes = sync_message.SerializeToString()
