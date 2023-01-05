@@ -247,14 +247,19 @@ def test_bytes_keys():
             assert keys == [a_bytestring], keys
             assert root[a_bytestring] == 42
             
-def test_blame():
+def test_blame_and_log():
     """ makes sure that the directory.get_blame works """
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
             for directory in [Directory.get_global_instance(database=database), Directory()]:
-                directory["foo"] = "bar"
-                blame = directory.get_blame("foo")
-                assert blame.hostname == socket.gethostname()
-                assert isinstance(blame.datetime, datetime.datetime)
-                assert isinstance(blame.username, str) and blame.username
+                directory.set("foo", "bar", comment="first")
+                directory.set("foo", 123, comment="second")
+                attr1 = directory.blame()["foo"]
+                assert attr1.comment == "second", attr1
+                attr2 = directory.blame(as_of=-1)["foo"]
+                assert attr2.comment == "first", attr2
+
+                as_list = list(directory.log("foo"))
+                assert as_list[0].comment == "second"
+                assert as_list[1].comment == "first"

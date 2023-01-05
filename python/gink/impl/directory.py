@@ -1,7 +1,6 @@
 """ contains the Directory class definition """
 ##################################################################################################0
-from typing import Union, Optional
-from datetime import datetime, timezone
+from typing import Union, Optional, Iterable, Dict
 
 # gink implementation
 from .muid import Muid
@@ -9,8 +8,8 @@ from .database import Database
 from .container import Container
 from .coding import decode_key, DIRECTORY, deletion
 from .bundler import Bundler
-from .typedefs import UserKey, GenericTimestamp
-from .tuples import Blame
+from .typedefs import UserKey, GenericTimestamp, MuTimestamp, Medallion
+from .attribution import Attribution
 
 class Directory(Container):
     """ the Gink mutable mapping object """
@@ -202,16 +201,42 @@ class Directory(Container):
         if immediate:
             self._database.commit(bundler)
 
-    def get_blame(self, key: UserKey, as_of: GenericTimestamp=None) -> Blame:
-        as_of = self._database.resolve_timestamp(as_of)
-        found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
-        if found is None:
-            raise KeyError("no entry or deletion with that key at that time")
-        entry_address: Muid = found.address
+    def _get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
+        """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
+
+            After the timestamp and medallion it will ignore other ordered arguments, so
+            that it can be used via get_attribution(*muid).
+        """
+        # this method/function should probably be moved to a general utilities module or something
         medallion_directory = Directory.get_medallion_instance(
-            medallion=entry_address.medallion, database=self._database)
-        local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
-        return Blame(
-            username=medallion_directory.get(".user.name", as_of=entry_address.timestamp),
-            hostname=medallion_directory.get(".host.name", as_of=entry_address.timestamp),
-            datetime=datetime.fromtimestamp(entry_address.timestamp/1e6, local_timezone))
+            medallion=medallion, database=self._database)
+        comment=self._database._store.get_comment(
+            medallion=medallion, timestamp=timestamp)
+        return Attribution(
+            timestamp=timestamp,
+            medallion=medallion,
+            username=medallion_directory.get(".user.name", as_of=timestamp),
+            hostname=medallion_directory.get(".host.name", as_of=timestamp),
+            fullname=medallion_directory.get(".full.name", as_of=timestamp),
+            software=medallion_directory.get(".software", as_of=timestamp),
+            comment=comment,
+        )
+
+    def blame(self, key: Optional[UserKey]=None, as_of: GenericTimestamp=None
+    ) -> Dict[UserKey, Attribution]:
+        as_of = self._database.resolve_timestamp(as_of)
+        keys = [key] if key is not None else self.keys(as_of=as_of)
+        result: Dict[UserKey, Attribution] = {}
+        for key in keys:
+            found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
+            result[key] = self._get_attribution(*found.address)
+        return result
+
+    def log(self, key: UserKey) -> Iterable[Attribution]:
+        as_of = self._database.get_now()
+        while as_of:
+            found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
+            if not found:
+                break
+            yield self._get_attribution(*found.address)
+            as_of = found.address.timestamp

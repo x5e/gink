@@ -1,6 +1,6 @@
 """ a couple of NamedTuple definitions, primarily for internal usage """
-from typing import NamedTuple
-from datetime import datetime
+from typing import NamedTuple, Optional
+from datetime import datetime, timezone
 from ..builders.entry_pb2 import Entry as EntryBuilder
 
 from .muid import Muid
@@ -28,10 +28,3 @@ class PositionedEntry(NamedTuple):
 class SequenceKey(NamedTuple):
     position: MuTimestamp
     entry_muid: Muid
-
-class Blame(NamedTuple):
-    username: str
-    hostname: str
-    datetime: datetime
-    def __str__(self):
-        return f"{self.username} {self.datetime} {self.hostname}"

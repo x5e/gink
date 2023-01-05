@@ -7,6 +7,7 @@ import time
 import os
 import math
 import re
+import sys
 from logging import getLogger
 from google.protobuf.message import Message
 from select import select
@@ -49,8 +50,12 @@ class Database:
 
     def _get_info(self) -> Iterable[Tuple[str, Union[str, int]]]:
         yield (".process.id", os.getpid())
-        yield (".user.name", getpwuid(os.getuid())[0])
+        user_data = getpwuid(os.getuid())
+        yield (".user.name", user_data[0])
+        yield (".full.name", user_data[4])
         yield (".host.name", gethostname())
+        if sys.argv[0]:
+            yield (".software", sys.argv[0])
 
     def _add_info(self, bundler: Bundler):
         personal_directory = Muid(-1, 0, DIRECTORY)
@@ -209,7 +214,6 @@ class Database:
         prefix, host, port, path = match.groups()
         if prefix and prefix != "ws://":
             raise NotImplementedError("only vanilla websockets currently supported")
-
 
     def run(self, until: GenericTimestamp=None):
         readers = []

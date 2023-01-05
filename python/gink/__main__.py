@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+print("prog:", sys.argv[0])
 import copy
 from . import *
 store = LmdbStore("/tmp/gink.mdb")

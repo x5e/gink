@@ -55,7 +55,9 @@ class MemoryStore(AbstractStore):
         look_for = struct.pack(">QQ", timestamp, medallion)
         for thing in self._bundles.irange(minimum=look_for):
             if thing.startswith(look_for):
-                pass
+                return BundleInfo.from_bytes(thing).comment
+            else:
+                return None
 
     def get_one(self, cls, index: int = -1):
         sorted_dict = {
