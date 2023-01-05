@@ -32,7 +32,7 @@ def test_repr():
             database = Database(store=store)
             sequence = Sequence.get_global_instance(database)
             sequence.append("Hello, World!")
-            assert list(sequence) == ["Hello, World!"]           
+            assert list(sequence) == ["Hello, World!"]
             assert repr(sequence) == "Sequence(muid=Muid(-1, -1, 8))"
             sequence = Sequence(muid=Muid(1,2,3))
             assert repr(sequence) == "Sequence(muid=Muid(1, 2, 3))"
@@ -44,7 +44,7 @@ def test_basics():
         with closing(store):
             database = Database(store=store)
             for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1,2,3))]:
-                assert list(seq) == []
+                assert not list(seq)
                 seq.append("Hello, World!")
                 assert list(seq) == ["Hello, World!"]
                 seq.append(42)
@@ -60,7 +60,7 @@ def test_basics():
                 seq.remove("Hello, World!")
                 found = seq.index(True)
                 assert found == 1
-                assert seq[2] == False, seq[2]
+                assert seq[2] is False, seq[2]
                 assert len(seq) == 3
                 assert 7 not in seq
                 seq.append(7)
@@ -74,6 +74,7 @@ def test_reordering():
             for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1,2,3))]:
                 for letter in "abcxyz":
                     seq.append(letter)
+                    time.sleep(.001)
                 assert list(seq) == ["a", "b", "c", "x", "y", "z"], list(seq)
                 seq.pop(dest=1)
                 assert list(seq) == ["a", "z", "b", "c", "x", "y"]

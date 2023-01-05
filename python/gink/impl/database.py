@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 from random import randint
-from typing import Optional, Set, Union, Iterable, Tuple
+from typing import Optional, Set, Union, Iterable, Tuple, Dict
 from datetime import datetime, date, timedelta
 from threading import Lock
+from select import select
+from pwd import getpwuid
+from socket import gethostname
+
 import time
 import os
 import math
@@ -10,9 +14,7 @@ import re
 import sys
 from logging import getLogger
 from google.protobuf.message import Message
-from select import select
-from pwd import getpwuid
-from socket import gethostname
+
 
 from ..builders.sync_message_pb2 import SyncMessage
 from ..builders.entry_pb2 import Entry as EntryBuilder
@@ -28,6 +30,7 @@ from .wspeer import WsPeer
 from .listener import Listener
 from .coding import DIRECTORY, encode_key, encode_value
 from .muid import Muid
+from .chain_tracker import ChainTracker
 
 class Database:
     """ A class that mediates user interaction with a datastore and peers. """
@@ -37,6 +40,7 @@ class Database:
     _store: AbstractStore
     _peers: Set[Peer]
     _listeners: Set[Listener]
+    _trackers: Dict[Peer, ChainTracker]
 
     def __init__(self, store: AbstractStore):
         Database.last = self
@@ -61,10 +65,11 @@ class Database:
         personal_directory = Muid(-1, 0, DIRECTORY)
         entry_builder = EntryBuilder()
         for key, val in self._get_info():
-            entry_builder.behavior = DIRECTORY
-            personal_directory.put_into(entry_builder.container)
-            encode_key(key, entry_builder.key)
-            encode_value(val, entry_builder.value)
+            # pylint: disable=maybe-no-member
+            setattr(entry_builder, "behavior", DIRECTORY)
+            personal_directory.put_into(getattr(entry_builder, "container"))
+            encode_key(key, getattr(entry_builder, "key"))
+            encode_value(val, getattr(entry_builder, "value"))
             bundler.add_change(entry_builder)
 
     def get_now(self) -> MuTimestamp:
@@ -109,11 +114,11 @@ class Database:
                 # appears to be seconds since epoch
                 return int(timestamp * 1e6)
         if isinstance(timestamp, int) and timestamp < 1e6 and timestamp > -1e6:
-                bundle_info = self._store.get_one(BundleInfo, int(timestamp))
-                if bundle_info is None:
-                    raise ValueError("don't have that many bundles")
-                assert isinstance(bundle_info, BundleInfo)
-                return bundle_info.timestamp + int(timestamp >= 0)
+            bundle_info = self._store.get_one(BundleInfo, int(timestamp))
+            if bundle_info is None:
+                raise ValueError("don't have that many bundles")
+            assert isinstance(bundle_info, BundleInfo)
+            return bundle_info.timestamp + int(timestamp >= 0)
         if isinstance(timestamp, float) and timestamp < 1e6 and timestamp > -1e6:
             return self.get_now() + int(1e6*timestamp)
         raise ValueError(f"don't know how to resolve {timestamp} into a timestamp")
@@ -131,7 +136,7 @@ class Database:
         bundle_info = self._receive_bundle(bundle_bytes, from_peer=None)
         assert bundle_info, "expected a newly created bundle to be added"
         return bundle_info
-    
+
     def commit(self, bundler: Bundler) -> BundleInfo:
         """ seals bundler and adds the resulting bundle to the local store """
         assert not bundler.sealed
@@ -153,22 +158,24 @@ class Database:
 
     def _receive_bundle(self, bundle: bytes, from_peer: Optional[Peer]) -> Optional[BundleInfo]:
         """ called when either a bundle is received from a remote peer or one is created locally
-        
+
             We're assuming that each peer has been sent all data in the local store.
             In order to maintain that invariant, each peer must be sent each new bundle added.
 
             Since the invariant is potentially not true while in the process of sending
             bundles to peers, we need to aquire and hold the lock to call this function.
 
-            The "peer" argument indicates which peer this bundle came from.  We need to know 
+            The "peer" argument indicates which peer this bundle came from.  We need to know
             where it came from so we don't send the same data back.
 
             If this bundle has already been processed by the local store, then we know
             that it's also been sent to each peer and so can be ignored.
         """
         info, added = self._store.apply_bundle(bundle)
-        if from_peer is not None and from_peer.tracker is not None:
-            from_peer.tracker.mark_as_having(info)
+        if from_peer is not None:
+            tracker = self._trackers.get(from_peer)
+            if tracker is not None:
+                tracker.mark_as_having(info)
         if not added:
             return None
         sync_message = SyncMessage()
@@ -179,24 +186,25 @@ class Database:
             if peer == from_peer:
                 # We got this bundle from this peer, so don't need to send it back to them.
                 continue
-            if peer.tracker is None:
+            tracker = self._trackers[peer]
+            if tracker is None:
                 # In this case we haven't received a greeting from the peer, and so don't want to
                 # send any bundles because it might result in gaps in their chain.
                 continue
-            if peer.tracker.has(info):
+            if tracker.has(info):
                 # In this case the peer has indicated they already have this bundle, probably
                 # via their greeting message, so we don't need to send it to them again.
                 continue
             peer.send(serialized)
         return info
-    
+
     def _receive_data(self, received: bytes, from_peer: Peer):
         with self._lock:
             sync_message = SyncMessage()
             assert isinstance(sync_message, Message)
             sync_message.ParseFromString(received)
             if sync_message.HasField("bundle"):
-                bundle_bytes = sync_message.bundle # type: ignore
+                bundle_bytes = sync_message.bundle # type: ignore pylint: disable=maybe-no-member
                 self._receive_bundle(bundle_bytes, from_peer)
             elif sync_message.HasField("greeting"):
                 raise NotImplementedError()
@@ -206,9 +214,14 @@ class Database:
                 self._logger.warning("got binary message without ack, bundle, or greeting")
 
     def start_listening(self, ip="", port: Union[str, int]="8080"):
+        """ Listen for incoming connections on the given port.
+
+            Note that you'll still need to call "run" to actually accept those connections.
+        """
         self._listeners.add(Listener(WsPeer, ip=ip, port=port))
 
     def connect_to(self, target: str):
+        """ initiate a connection to another gink instance """
         match = re.fullmatch(r"(ws+://)?([a-z0-9.-]+)(?:(:\d+))?(?:/+(.*))?$", target, re.I)
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()

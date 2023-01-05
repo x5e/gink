@@ -1,29 +1,43 @@
+""" Contains the WsPeer class to manage a connection to a websocket (gink) peer. """
+
+# batteries included python imports
 from typing import Iterable, Union, Optional
 from socket import (
-    socket as Socket, 
-    SHUT_WR,
-
+    socket as Socket,
 )
 
+# modules from requirements.txt
 from wsproto import WSConnection, ConnectionType
-from wsproto.events import (
-    Request, 
-    AcceptConnection, 
-    CloseConnection, 
-    BytesMessage, 
+from wsproto.events import(
+    Request,
+    AcceptConnection,
+    CloseConnection,
+    BytesMessage,
     TextMessage,
-    Ping, 
+    Ping,
     Pong,
 )
 
+# gink modules
 from .peer import Peer
 
 class WsPeer(Peer):
+    """ Manages the connection to one peer via a websocket connection.
 
-    def __init__(self, host: str, port: int, socket: Optional[Socket]=None):
+        Set is_client to indicate that the provided socket is a client connection.
+        If there's no socket provided then one will be established, and is_client is implied.
+    """
+    def __init__(
+        self,
+        host: Optional[str]=None,
+        port: Optional[int]=None,
+        socket: Optional[Socket]=None,
+        is_client=False
+    ):
         Peer.__init__(self, socket=socket, host=host, port=port)
-        connection_type = ConnectionType.SERVER if socket else ConnectionType.CLIENT
-        self._ws = WSConnection(connection_type)
+        if socket is None:
+            is_client = True
+        self._ws = WSConnection(ConnectionType.CLIENT if is_client else ConnectionType.SERVER)
         self._buffered: bytes = b""
 
     def receive(self) -> Iterable[bytes]:
@@ -33,14 +47,13 @@ class WsPeer(Peer):
             if isinstance(event, Request):
                 self._ws.send(AcceptConnection())
             elif isinstance(event, CloseConnection):
-                self._logger.info(f"got CloseConnection, code={event.code}, reason={event.reason}")
+                self._logger.info("websocket closed, code=%d, reason=%s", event.code, event.reason)
                 self._socket.send(self._ws.send(event.response()))
                 Peer.close(self)
-                raise StopIteration() # probably a better exception than this
             elif isinstance(event, TextMessage):
-                self._logger.info('Text message received:', event.data)
+                self._logger.info('Text message received: %r', event.data)
             elif isinstance(event, BytesMessage):
-                self._logger.debug('We got bytes!', event.data)
+                self._logger.debug('We got %d bytes!', len(event.data))
                 if event.message_finished:
                     if self._buffered:
                         yield self._buffered + event.data
@@ -55,7 +68,7 @@ class WsPeer(Peer):
             elif isinstance(event, Pong):
                 self._logger.debug("received pong")
             else:
-                self._logger.warning(f"got an unexpected event type: {event}")
+                self._logger.warning("got an unexpected event type: %s", event)
 
     def send(self, what: Union[bytes, str]):
         if isinstance(what, str):
@@ -63,3 +76,10 @@ class WsPeer(Peer):
         else:
             data = self._ws.send(BytesMessage(what))
         self._socket.send(data)
+
+    def close(self, reason=None):
+        code = 1000
+        if reason is not None:
+            raise NotImplementedError()
+        self._socket.send(self._ws.send(CloseConnection(code=code)))
+        Peer.close(self)
