@@ -109,7 +109,7 @@ class AbstractStore(ABC):
     def get_one(self, cls, index: int=-1):
         """ Gets one instance of the specified class at "index" location in its respective store.
 
-            "Class" may be one of: BundleBuilder, EntryBuilder, MovementBuilder, 
+            "Class" may be one of: BundleBuilder, EntryBuilder, MovementBuilder,
             or one of the key classes: BundleInfo, EntryStorageKey, MovementKey
 
             This method is mostly intended to make debugging easier, but will also be used by
@@ -137,13 +137,13 @@ class AbstractStore(ABC):
             raise ValueError("Bundle received without prior link in chain!")
         return True
 
-    def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid], 
+    def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
         user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
         """
         Generates reset entries that will change things back to how they were at given time.
 
         If muid isn't specified, generates reset entries for all keyed objects in store.
-        If muid is specified, generates reset entries for for that object, for the 
+        If muid is specified, generates reset entries for for that object, for the
         specified key if present, otherwise for all keys.
 
         If needed_only is set to True (the default), then no entry will be generated for a

@@ -1,4 +1,9 @@
-""" Utility functions for encoding and decoding values, keys, and other binary data
+""" Utility functions for encoding and decoding values, keys, and other binary data.
+
+    Generally the things in this file are intended to help in the implementation, and
+    not be visible to users of the Gink library.  They are *NOT* considered part of the
+    public API and can change at any time without a corresponding increase in the major
+    revision number.
 """
 from typing import Optional, Union, NamedTuple, List, Any
 from struct import Struct, unpack
@@ -25,6 +30,7 @@ ZERO_64: bytes = b"\x00" * 8
 deletion = Deletion()
 
 def serialize(thing) -> bytes:
+    """ Converts a protobuf builder or a timestamp into binary data. """
     if isinstance(thing, Message):
         return thing.SerializeToString()
     if thing is None or isinstance(thing, (int, float)):
@@ -32,17 +38,20 @@ def serialize(thing) -> bytes:
     return bytes(thing)
 
 class LocationKey(NamedTuple):
+    """ Key used in the locations table to track the current location of entries. """
     entry_muid: Muid
     placement: Muid
 
     @staticmethod
     def from_bytes(data: bytes):
+        """ inverse of __bytes__ """
         return LocationKey(Muid.from_bytes(data[0:16]), Muid.from_bytes(data[16:32]))
-    
+
     def __bytes__(self):
         return bytes(self.entry_muid) + bytes(self.placement)
 
 class MovementKey(NamedTuple):
+    """ Key used in the removals table to track soft-deletes of entries. """
     container: Muid
     effective: MuTimestamp
     placement: Muid # the entry or movement that placed the entry to be (re)moved
@@ -50,6 +59,7 @@ class MovementKey(NamedTuple):
 
     @staticmethod
     def from_bytes(data: bytes):
+        """ inverse of __bytes__ """
         return MovementKey(
             Muid.from_bytes(data[0:16]),
             decode_muts(data[16:24]) or 0,
@@ -59,6 +69,7 @@ class MovementKey(NamedTuple):
 
 
 class QueueMiddleKey(NamedTuple):
+    """ Used to order non-keyed entries by timestamp and modification change. """
     effective_time: MuTimestamp
     movement_muid: Optional[Muid]
 
@@ -70,6 +81,7 @@ class QueueMiddleKey(NamedTuple):
 
     @staticmethod
     def from_bytes(data: bytes):
+        """ inverse of __bytes__ """
         effective_time = decode_muts(data[0:8])
         assert effective_time is not None
         if len(data) == 8:
@@ -90,12 +102,14 @@ class EntryStorageKey(NamedTuple):
     expiry: Optional[MuTimestamp]
 
     def get_queue_position(self) -> MuTimestamp:
+        """ Pulls out the effective timestamp (ordering position) from the middle_key. """
         middle_key = self.middle_key
         assert isinstance(middle_key, QueueMiddleKey)
         return middle_key.effective_time
 
     @staticmethod
     def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):
+        """ Create an EntryStorageKey from an Entry itself, plus address information. """
         container = Muid.create(builder=getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")
@@ -115,6 +129,7 @@ class EntryStorageKey(NamedTuple):
     def from_bytes(data: bytes, using: Union[int, bytes, EntryBuilder]):
         """ creates an entry key from its binary format, using either the entry(bytes) or behavior
         """
+        # pylint: disable=maybe-no-member
         if isinstance(using, bytes):
             using = EntryBuilder.FromString(using) # type: ignore
         if isinstance(using, EntryBuilder):
@@ -160,6 +175,13 @@ class EntryStorageKey(NamedTuple):
         return b"".join(map(serialize, parts))
 
     def get_placed_time(self) -> MuTimestamp:
+        """ Gets the time that a specific entry key was inserted into the database.
+
+            This is a little weird because queue entries are sorted by time by default,
+            but that time can overridden by explicity encoding a position.  But even
+            though we know now where we want the entry to be, we still need to know
+            when it was placed there in order to let users ask what the order previously was.
+        """
         if isinstance(self.middle_key, QueueMiddleKey) and self.middle_key.movement_muid:
             return self.middle_key.movement_muid.timestamp
         else:
@@ -194,7 +216,7 @@ def create_deleting_entry(muid: Muid, key: Optional[UserKey]) -> EntryBuilder:
     return entry_builder
 
 def decode_entry_occupant(entry_storage_pair: EntryStoragePair) -> Union[UserValue, Muid, Deletion]:
-    """ Determines what a container "contains" in a given entry. 
+    """ Determines what a container "contains" in a given entry.
 
         The full entry storage pair is required because if it points to something that pointer
         might be relative to the entry address.
@@ -232,15 +254,16 @@ def entries_equiv(pair1: EntryStoragePair, pair2: EntryStoragePair) -> bool:
     raise AssertionError("entry doesn't have pointee or immedate?")
 
 
-def decode_value(value_builder: ValueBuilder) -> UserValue: 
+def decode_value(value_builder: ValueBuilder) -> UserValue:
     """ decodes a protobuf value into a python value.
     """
     assert isinstance(value_builder, ValueBuilder), f"value_builder is type {type(value_builder)}"
     # pylint: disable=too-many-return-statements
+    # pylint: disable=maybe-no-member
     if value_builder.HasField("special"):  # type: ignore
         if value_builder.special == ValueBuilder.Special.NULL: # type: ignore
             return None
-        if value_builder.special == ValueBuilder.Special.TRUE: # type: ignore # pylint: disable=maybe-no-member
+        if value_builder.special == ValueBuilder.Special.TRUE: # type: ignore
             return True
         if value_builder.special == ValueBuilder.Special.FALSE: # type: ignore # pylint: disable=maybe-no-member
             return False
@@ -272,7 +295,7 @@ def encode_muts(number: Union[int, float, None], _q_struct = Struct(">q")) -> by
     return _q_struct.pack(number)
 
 def decode_muts(data: bytes, _q_struct=Struct(">q")) -> Optional[MuTimestamp]:
-    """ unpacks 8 bytes of data into a MuTimestamp by assuming big-endian encoding 
+    """ unpacks 8 bytes of data into a MuTimestamp by assuming big-endian encoding
 
         Treats 0 as "None" and -1 as "integer infinity" (i.e. highest unsigned 64 bit number)
     """
@@ -299,7 +322,7 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Us
     elif isinstance(from_what, EntryBuilder):
         key_builder = from_what.key # type: ignore
     elif isinstance(from_what, bytes):
-        key_builder = KeyBuilder.FromString(from_what) # type: ignore
+        key_builder = KeyBuilder.FromString(from_what) # type: ignore # pylint: disable=maybe-no-member
     else:
         raise ValueError("not an argument of an expected type")
     assert isinstance(key_builder, KeyBuilder)
@@ -353,6 +376,7 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
     raise ValueError("don't know how to encode: %r" % value) # pylint: disable=consider-using-f-string
 
 def wrap_change(builder: EntryBuilder) -> ChangeBuilder:
+    """ A simple utility function to create a change and then copy the provided entry into it. """
     change_builder = ChangeBuilder()
-    change_builder.entry.CopyFrom(builder) # type: ignore
+    change_builder.entry.CopyFrom(builder) # type: ignore # pylint: disable=maybe-no-member
     return change_builder

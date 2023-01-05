@@ -40,7 +40,7 @@ class MemoryStore(AbstractStore):
     _clearances: SortedDict
 
     def __init__(self):
-        # TODO: add a "no retention" capability to allow the memory store to be configured to 
+        # TODO: add a "no retention" capability to allow the memory store to be configured to
         # drop out of date data like is currently implemented in the LmdbStore.
         self._bundles = SortedDict()
         self._chain_infos = SortedDict()
@@ -50,7 +50,7 @@ class MemoryStore(AbstractStore):
         self._locations = SortedDict()
         self._removals = SortedDict()
         self._clearances = SortedDict()
-    
+
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
         look_for = struct.pack(">QQ", timestamp, medallion)
         for thing in self._bundles.irange(minimum=look_for):
@@ -108,7 +108,7 @@ class MemoryStore(AbstractStore):
                 continue
             if clearance_time and entry_storage_key.entry_muid.timestamp < clearance_time:
                 last = entry_storage_key.middle_key
-                continue                
+                continue
             if entry_storage_key.expiry and entry_storage_key.expiry < as_of:
                 last = entry_storage_key.middle_key
                 continue
@@ -116,7 +116,7 @@ class MemoryStore(AbstractStore):
                              address=entry_storage_key.entry_muid)
             last = entry_storage_key.middle_key
 
-    def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None], 
+    def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None],
             as_of: MuTimestamp) -> Optional[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
         clearance_time = 0
@@ -150,7 +150,7 @@ class MemoryStore(AbstractStore):
     def get_ordered_entries(
         self,
         container: Muid,
-        as_of: MuTimestamp, 
+        as_of: MuTimestamp,
         limit: Optional[int] = None,
         offset: int = 0,
         desc: bool = False,
@@ -187,7 +187,7 @@ class MemoryStore(AbstractStore):
             assert isinstance(middle_key, QueueMiddleKey)
             entry_builder = self._entries[esk_bytes]
             yield PositionedEntry(
-                    position=middle_key.effective_time, 
+                    position=middle_key.effective_time,
                     positioner=middle_key.movement_muid or parsed_esk.entry_muid,
                     entry_muid=parsed_esk.entry_muid,
                     builder=entry_builder)
