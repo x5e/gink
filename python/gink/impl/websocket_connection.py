@@ -57,6 +57,9 @@ class WebsocketConnection(Connection):
         self._logger.debug("finished setup")
         self._socket.settimeout(0.2)
         self._greeting = greeting
+    
+    def __repr__(self):
+        return f"{self.__class__.__name__}(host={self._host!r})"
 
     def receive(self) -> Iterable[bytes]:
         if self._closed:
@@ -74,6 +77,9 @@ class WebsocketConnection(Connection):
                     self._logger.debug("got a Request, sending an AcceptConnection")
                     self._socket.send(self._ws.send(AcceptConnection("gink")))
                     self._logger.info("Server connection established!")
+                    if self._greeting is not None:
+                        self._logger.debug("sending greeting of size %d", len(self._greeting))
+                        self._socket.send(self._ws.send(BytesMessage(self._greeting)))
                     self._ready = True
             elif isinstance(event, CloseConnection):
                 self._logger.info("got close msg, code=%d, reason=%s", event.code, event.reason)
@@ -104,7 +110,8 @@ class WebsocketConnection(Connection):
                 self._logger.debug("received pong")
             elif isinstance(event, AcceptConnection):
                 self._logger.info("Client connection established!")
-                if self._greeting:
+                if self._greeting is not None:
+                    self._logger.debug("sending greeting of size %d", len(self._greeting))
                     self._socket.send(self._ws.send(BytesMessage(self._greeting)))
                 self._ready = True
             else:

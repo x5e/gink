@@ -41,7 +41,8 @@ class Database:
     _store: AbstractStore
     _connections: Set[Connection]
     _listeners: Set[Listener]
-    _trackers: Dict[Connection, ChainTracker] # tracks what we know a peer has received
+    _trackers: Dict[Connection, ChainTracker] # tracks what we know a peer has *received*
+    _sent_through: MuTimestamp # data up till this timestamp has been sent to peers
 
     def __init__(self, store: AbstractStore):
         Database.last = self
@@ -52,6 +53,8 @@ class Database:
         self._connections = set()
         self._logger = getLogger(self.__class__.__name__)
         self._listeners = set()
+        self._trackers = {}
+        self._sent_through = self.get_now()
 
     @staticmethod
     def _get_info() -> Iterable[Tuple[str, Union[str, int]]]:
@@ -268,18 +271,19 @@ class Database:
                     self._connections.remove(connection)
                 else:
                     readers.append(connection)
-            ready = select(readers, [], [], 0.01)
+            try:
+                ready = select(readers, [], [], 0.1)
+            except KeyboardInterrupt:
+                return
             for ready_reader in ready[0]:
                 if isinstance(ready_reader, Connection):
                     for data in ready_reader.receive():
                         self._receive_data(data, ready_reader)
                 elif isinstance(ready_reader, Listener):
-                    peer: Connection = ready_reader.accept()
-                    self._connections.add(peer)
                     sync_message = self._store.get_chain_tracker().to_greeting_message()
-                    assert isinstance(sync_message, Message)
-                    greeting_bytes = sync_message.SerializeToString()
-                    peer.send(greeting_bytes)
+                    connection: Connection = ready_reader.accept(sync_message)
+                    self._connections.add(connection)
+                    self._logger.debug("accepted incoming connection from %s", connection._host)
 
     def reset(self, to: GenericTimestamp=EPOCH, bundler=None, comment=None):
         """ Resets the database to a specific point in time. 

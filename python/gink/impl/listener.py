@@ -7,6 +7,9 @@ from socket import (
     SOL_SOCKET,
     SO_REUSEADDR,
 )
+from google.protobuf.message import Message
+
+from ..builders.sync_message_pb2 import SyncMessage
 
 from .connection import Connection
 from .websocket_connection import WebsocketConnection
@@ -24,8 +27,13 @@ class Listener:
         """ Gives the file descriptor for use in socket.select and similar. """
         return self.socket.fileno()
 
-    def accept(self) -> Connection:
+    def accept(self, greeting: SyncMessage) -> Connection:
         """ Method to call when the underlying socket is "ready". """
+        assert isinstance(greeting, Message)
         (new_socket, addr) = self.socket.accept()
-        peer: Connection = self.connection_class(socket=new_socket, host=addr)
+        peer: Connection = self.connection_class(
+            socket=new_socket, 
+            host=addr[0],
+            port=addr[1],
+            greeting=greeting.SerializeToString())
         return peer
