@@ -52,14 +52,10 @@ class Muid(NamedTuple):
         assert medallion, "no medallion"
         assert timestamp, "no timestamp"
         return cls(timestamp, medallion, offset)
-
-    @classmethod
-    def from_bytes(cls, data: bytes):
-        """ does the inverse of bytes(muid) """
-        # there's probably a more efficient way to do this
-        if len(data) < 16:
-            raise ValueError("can't parse less than 16 bytes into a muid")
-        hexed = data.hex()
+    
+    @staticmethod
+    def from_str(hexed: str):
+        hexed = hexed.replace("-", "")
         time_part = int(hexed[0:14], 16)
         medl_part = int(hexed[14:27], 16)
         off_part = int(hexed[27:32], 16)
@@ -67,3 +63,12 @@ class Muid(NamedTuple):
             timestamp=time_part - Muid._TIMESTAMP_MOD * (time_part > (Muid._TIMESTAMP_MOD >> 1)),
             medallion=medl_part - Muid._MEDALLION_MOD * (medl_part > (Muid._MEDALLION_MOD >> 1)),
             offset=off_part - Muid._OFFSET_MOD * (off_part > (Muid._OFFSET_MOD >> 1)))
+
+    @staticmethod
+    def from_bytes(data: bytes):
+        """ does the inverse of bytes(muid) """
+        # there's probably a more efficient way to do this
+        if len(data) < 16:
+            raise ValueError("can't parse less than 16 bytes into a muid")
+        return Muid.from_str(data.hex())
+

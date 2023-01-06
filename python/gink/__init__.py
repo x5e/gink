@@ -1,5 +1,6 @@
 from .impl.lmdb_store import LmdbStore
 from .impl.memory_store import MemoryStore
+from .impl.log_backed_store import LogBackedStore
 from .impl.database import Database
 from .impl.directory import Directory
 from .impl.sequence import Sequence

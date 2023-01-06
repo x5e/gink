@@ -1,24 +1,68 @@
 #!/usr/bin/env python3
 
 import sys
-print("prog:", sys.argv[0])
+import os
 import copy
+import code
+import readline
 from . import *
-store = LmdbStore("/tmp/gink.mdb")
+
+assert readline._READLINE_VERSION > 0
+gink_file = os.environ.get("GINK_FILE", "/tmp/gink.mdb")
+if gink_file.endswith(".mdb"):
+    store = LmdbStore(gink_file)
+elif gink_file.endswith(".binaryproto"):
+    store = LogBackedStore(gink_file)
 database = Database(store)
 root = Directory.get_global_instance(database=database)
 args = copy.copy(sys.argv)
 args.pop(0) # remove script
+if not args:
+    raise SystemExit("Please specify a command (e.g. try: python3 -m gink help).")
+
 cmd = args.pop(0)
-key = args.pop(0)
 if cmd == "get":
-    gotten = root.get(key)
+    if not args:
+        raise SystemExit("Key not specified.")
+    gotten = root.get(args[0])
     if gotten:
         print(gotten, end="")
     else:
-        print("key not found", file=sys.stderr)
-        sys.exit(1)
+        raise SystemExit("No entry under that key.")
 elif cmd == "set":
-    root[key] = sys.stdin.read()
+    if not args:
+        raise SystemExit("Key not specified.")
+    root[args[0]] = sys.stdin.read()
+elif cmd == "shell":
+    code.InteractiveConsole(globals()).interact()
+elif cmd in ("help", "--help", "-h"):
+    print("""
+    Show this help text:
+        python3 -m gink help
+    
+    The remaining commands operate on a gink database file, which defaults
+    to using /tmp/gink.mdb but can be set with GINK_FILE environment variable.
+
+    Set key "foo" to value "bar" in the root directory:
+        python3 -m gink set foo <<< 'bar'
+
+    Get the value stored at key "foo" in the root directory:
+        python3 -m gink get foo
+
+    Dump the contents of the database in a human friendly format:
+        python3 -m gink dump
+
+    Show the contents of the database and update as it changes:
+        python3 -m gink show
+
+    Connect to a remotely running peers (port defaults to 8080):
+        python3 -m gink run 192.168.1.1 example.com:8081
+
+    Listen on port 8080 for incomming connections:
+        GINK_PORT=8080 python3 -m gink run
+
+    Listen on port 8080 for incomming connections and also connect to a peer:
+        GINK_PORT=8080 python3 -m gink run example.com
+    """, file=sys.stderr)
 else:
     print("command not recognized", file=sys.stderr)

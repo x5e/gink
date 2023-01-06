@@ -16,13 +16,16 @@ class Directory(Container):
     _missing = object()
     BEHAVIOR = DIRECTORY
 
-    def __init__(self, *, contents=None, muid: Optional[Muid]=None, database=None):
+    def __init__(self, *ordered, contents=None, muid: Optional[Muid]=None, database=None):
         """
         Constructor for a directory proxy.
 
         muid: the global id of this directory, created on the fly if None
         db: database send commits through, or last db instance created if None
         """
+        if ordered:
+            if isinstance(ordered[0], str):
+                muid = Muid.from_str(ordered[0])
         database = database or Database.last
         bundler = Bundler()
         if muid is None:

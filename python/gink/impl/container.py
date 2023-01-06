@@ -26,7 +26,7 @@ class Container(ABC):
         return hash(self._muid)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(muid={repr(self._muid)})"
+        return f"{self.__class__.__name__}('{self._muid}')"
 
     def _get_occupant(self, builder: EntryBuilder, address: Optional[Muid] = None):
         """ Figures out what the container is containing. 
