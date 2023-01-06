@@ -5,6 +5,7 @@ Defines the ChainTracker class.
 from typing import Union, Optional
 
 from sortedcontainers import SortedDict
+from google.protobuf.message import Message
 
 from ..builders.sync_message_pb2 import SyncMessage
 
@@ -19,28 +20,34 @@ class ChainTracker:
     Keep track of what data a particular instance has.
     """
 
-    _acked: SortedDict # [Chain, MuTimestamp]
+    _data: SortedDict # [Chain, MuTimestamp]
 
-    def __init__(self):
-        self._acked = SortedDict()
+    def __init__(self, sync_message: Optional[SyncMessage]=None):
+        self._data = SortedDict()
+        if isinstance(sync_message, Message):
+            assert sync_message.HasField("greeting")
+            greeting = sync_message.greeting # type: ignore
+            for greeting_entry in greeting.entries:
+                chain = Chain(greeting_entry.medallion, greeting_entry.chain_start)
+                self._data[chain] = greeting_entry.seen_through
 
     def get_seen_to(self, chain: Chain) -> Optional[MuTimestamp]:
         """ Says how far along a giving chain the given instance has seen. """
-        return self._acked.get(chain)
+        return self._data.get(chain)
 
     def mark_as_having(self, bundle_info: BundleInfo):
         """ Indicates has everything along the chain in bundle_info up to its timestamp. """
         chain = bundle_info.get_chain()
-        have_so_far = self._acked.get(chain, 0)
+        have_so_far = self._data.get(chain, 0)
         if have_so_far < bundle_info.timestamp:
-            self._acked[chain] = bundle_info.timestamp
+            self._data[chain] = bundle_info.timestamp
 
     def has(self, what: Union[Muid, BundleInfo]) -> bool:
         """Reports if the instance tracked by this object has the given data. """
         if isinstance(what, BundleInfo):
-            return what.timestamp <= self._acked.get(what.get_chain(), 0)
+            return what.timestamp <= self._data.get(what.get_chain(), 0)
         if isinstance(what, Muid):
-            iterator = self._acked.irange(
+            iterator = self._data.irange(
                 minimum=Chain(Medallion(what.medallion), 0),
                 maximum=Chain(Medallion(what.medallion), what.timestamp))
             for chain, seen_to in iterator:
@@ -56,8 +63,8 @@ class ChainTracker:
         """
         sync_message = SyncMessage()
         greeting = getattr(sync_message, "greeting")
-        for chain, seen_through in self._acked.items():
-            assert isinstance(chain, Chain), repr(self._acked)
+        for chain, seen_through in self._data.items():
+            assert isinstance(chain, Chain), repr(self._data)
             entry = SyncMessage.Greeting.GreetingEntry()  # type: ignore
             entry.medallion = chain.medallion
             entry.chain_start = chain.chain_start

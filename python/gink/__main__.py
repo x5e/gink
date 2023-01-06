@@ -4,9 +4,11 @@ import sys
 import os
 import copy
 import code
+import logging
 import readline
 from . import *
 
+logging.basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "DEBUG"))
 assert readline
 gink_file = os.environ.get("GINK_FILE", "/tmp/gink.mdb")
 if gink_file.endswith(".mdb"):

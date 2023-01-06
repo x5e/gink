@@ -41,7 +41,7 @@ class Database:
     _store: AbstractStore
     _connections: Set[Connection]
     _listeners: Set[Listener]
-    _trackers: Dict[Connection, ChainTracker]
+    _trackers: Dict[Connection, ChainTracker] # tracks what we know a peer has received
 
     def __init__(self, store: AbstractStore):
         Database.last = self
@@ -213,7 +213,15 @@ class Database:
                 bundle_bytes = sync_message.bundle # type: ignore pylint: disable=maybe-no-member
                 self._receive_bundle(bundle_bytes, from_peer)
             elif sync_message.HasField("greeting"):
-                raise NotImplementedError()
+                chain_tracker = ChainTracker(sync_message=sync_message)
+                self._trackers[from_peer] = chain_tracker
+                def callback(bundle_bytes: bytes, info: BundleInfo):
+                    if not chain_tracker.has(info):
+                        outgoing_builder = SyncMessage()
+                        assert isinstance(outgoing_builder, Message)
+                        outgoing_builder.bundle = bundle_bytes; # type: ignore
+                        from_peer.send(outgoing_builder.SerializeToString())
+                self._store.get_bundles(callback=callback)
             elif sync_message.HasField("ack"):
                 self._logger.warning("got ack, not implemeneted !")
             else:
