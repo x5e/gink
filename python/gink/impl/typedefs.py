@@ -2,7 +2,7 @@
 from typing import NewType, Union
 from datetime import datetime, timedelta, date
 
-Medallion = NewType('Medallion', int)
+Medallion = int
 MuTimestamp = int
 Offset = NewType('Offset', int)
 GenericTimestamp = Union[datetime, timedelta, date, int, float, None]

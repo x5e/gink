@@ -5,11 +5,12 @@ from uuid import UUID
 from ..builders.muid_pb2 import Muid as MuidBuilder
 
 from .dummy import Dummy
+from .typedefs import MuTimestamp, Medallion
 
 class Muid(NamedTuple):
     """ Defines a global address of an object in the Gink system. """
-    timestamp: int
-    medallion: int
+    timestamp: MuTimestamp
+    medallion: Medallion
     offset: int
 
     _TIMESTAMP_MOD = 16 ** 14
@@ -71,4 +72,3 @@ class Muid(NamedTuple):
         if len(data) < 16:
             raise ValueError("can't parse less than 16 bytes into a muid")
         return Muid.from_str(data.hex())
-

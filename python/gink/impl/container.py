@@ -1,6 +1,7 @@
 """ Defines the Container base class. """
 from typing import Optional, Union, Dict, Type
-from abc import ABC
+from abc import ABC, abstractmethod
+from sys import stdout
 
 from ..builders.entry_pb2 import Entry as EntryBuilder
 from ..builders.change_pb2 import Change as ChangeBuilder
@@ -26,7 +27,20 @@ class Container(ABC):
         return hash(self._muid)
 
     def __repr__(self):
+        if self._muid.timestamp == -1 and self._muid.medallion == -1:
+            return f"{self.__class__.__name__}(root=True)"    
         return f"{self.__class__.__name__}('{self._muid}')"
+
+    @abstractmethod
+    def dumps(self, as_of: GenericTimestamp=None) -> str:
+        """ return the contents of this container as a string """
+    
+    def dump(self, *, as_of: GenericTimestamp=None, file=stdout):
+        """ Dumps the contents of this container to file (default stdout)."""
+        # probably should stream the contents to the filehandle
+        file.write(self.dumps(as_of=as_of))
+        file.write("\n")
+        file.flush()
 
     def _get_occupant(self, builder: EntryBuilder, address: Optional[Muid] = None):
         """ Figures out what the container is containing. 

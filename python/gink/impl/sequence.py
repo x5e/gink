@@ -15,16 +15,21 @@ from .tuples import PositionedEntry, SequenceKey
 class Sequence(Container):
     BEHAVIOR = SEQUENCE
 
-    def __init__(self, *, contents=None, muid: Optional[Muid] = None, database=None):
+    def __init__(self, *ordered, contents=None, muid=None, database=None, root=False):
         """
         muid: the global id of this sequence, created on the fly if None
         database: where to send commits through, or last db instance created if None
         """
+        if ordered:
+            if isinstance(ordered[0], str):
+                muid = Muid.from_str(ordered[0])
+        if root:
+            muid = Muid(-1, -1, SEQUENCE)
         database = database or Database.last
         bundler = Bundler()
         if muid is None:
-            muid = Sequence._create(
-                Sequence.BEHAVIOR, database=database, bundler=bundler)
+            muid = Container._create(
+                SEQUENCE, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         self._muid = muid
         self._database = database
@@ -37,6 +42,20 @@ class Sequence(Container):
     def __iter__(self):
         for thing in self.values():
             yield thing
+    
+    def dumps(self, as_of: GenericTimestamp = None) -> str:
+        if self._muid.medallion == -1 and self._muid.timestamp == -1:
+            identifier = "root=True"
+        else:
+            identifier = repr(str(self._muid))
+        result = f"""{self.__class__.__name__}({identifier}, contents=["""
+        stuffing = [repr(val) for val in self.values(as_of=as_of)]
+        as_one_line = result + " ".join(stuffing) + "])"
+        if len(as_one_line) < 80:
+            return as_one_line
+        result += "\n\t"
+        result += ",\n\t".join(stuffing) + "])"
+        return result
 
     def append(self, thing, expiry: GenericTimestamp = None, bundler=None, comment=None):
         """ Append obect to the end of the queue.

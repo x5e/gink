@@ -27,6 +27,9 @@ class Property(Container):
             raise NotImplementedError()
         if len(bundler):
             self._database.commit(bundler)
+    
+    def dumps(self, as_of: GenericTimestamp = None) -> str:
+        raise NotImplementedError()
 
     def set(self, describing: Union[Muid, Container], value: UserValue, *, 
                 bundler=None, comment=None) -> Muid:

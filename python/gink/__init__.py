@@ -12,4 +12,4 @@ from .impl.patch import PATCHED
 assert PATCHED
 
 __all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence",
-    "Property", "Container", "Muid"]
+    "Property", "Container", "Muid", "LogBackedStore"]

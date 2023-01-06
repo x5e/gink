@@ -1,6 +1,7 @@
 """ contains the Directory class definition """
 ##################################################################################################0
 from typing import Union, Optional, Iterable, Dict
+from sys import stdout
 
 # gink implementation
 from .muid import Muid
@@ -16,7 +17,8 @@ class Directory(Container):
     _missing = object()
     BEHAVIOR = DIRECTORY
 
-    def __init__(self, *ordered, contents=None, muid: Optional[Muid]=None, database=None):
+    def __init__(self, *ordered, root: Optional[bool] = None,
+        contents=None, muid: Optional[Muid]=None, database=None):
         """
         Constructor for a directory proxy.
 
@@ -26,6 +28,8 @@ class Directory(Container):
         if ordered:
             if isinstance(ordered[0], str):
                 muid = Muid.from_str(ordered[0])
+        if root:
+            muid = Muid(-1, -1, DIRECTORY)
         database = database or Database.last
         bundler = Bundler()
         if muid is None:
@@ -40,28 +44,23 @@ class Directory(Container):
         if len(bundler):
             self._database.commit(bundler)
 
-    def to_pyon(self, indent: Union[bool, int] = True):
-        """ converts to "python object notation", like a customizable repr """
-        #TODO: revisit
-        result = f"""{self.__class__.__name__}(muid={repr(self._muid)}, contents="""
-        items = self.items()
-        if not items:
-            result += "{})"
-            return result
-        result += chr(123) + chr(10)
-        indent_spaces = "    " * indent
-        for key, val in items:
-            result += indent_spaces + repr(key) + ": "
-            if hasattr(val, "to_pyon"):
-                #TODO: FIX ME
-                raise NotImplementedError()
-                #result += val.to_pyon(indent + 1 if indent else False)
-            else:
-                result += repr(val)
-            result += ",\n"
-        result += "    " * (indent - 1 if indent else 0) + chr(125)
+    def dumps(self, as_of: GenericTimestamp=None) -> str:
+        """ Dumps the contents of this directory to a string.
+        """
+        if self._muid.medallion == -1 and self._muid.timestamp == -1:
+            identifier = "root=True"
+        else:
+            identifier = repr(str(self._muid))
+        result = f"""{self.__class__.__name__}({identifier}, contents="""
+        result += "{"
+        stuffing = ["%r: %r" % (key, val) for key, val in self.items(as_of=as_of)]
+        as_one_line = result + " ".join(stuffing) + "})"
+        if len(as_one_line) < 80:
+            return as_one_line
+        result += "\n\t"
+        result += ",\n\t".join(stuffing) + "})"
         return result
-
+         
     def __contains__(self, key):
         return self.has(key)
 
@@ -231,9 +230,16 @@ class Directory(Container):
         keys = [key] if key is not None else self.keys(as_of=as_of)
         result: Dict[UserKey, Attribution] = {}
         for key in keys:
+            # TODO: figure out how to show blame for clear operations
             found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
+            if found is None or not key:
+                continue
             result[key] = self._get_attribution(*found.address)
         return result
+    
+    def show_blame(self, as_of: GenericTimestamp=None, file=stdout):
+        for key, val in self.blame(as_of=as_of).items():
+            print(repr(key), str(val), file=file)
 
     def log(self, key: UserKey) -> Iterable[Attribution]:
         as_of = self._database.get_now()
@@ -243,3 +249,11 @@ class Directory(Container):
                 break
             yield self._get_attribution(*found.address)
             as_of = found.address.timestamp
+
+    def show_log(self, key: UserKey, file=stdout, limit=10):
+        for att in self.log(key):
+            if limit is not None and limit <= 0:
+                break
+            print(str(att), file=file)
+            if isinstance(limit, int):
+                limit -= 1

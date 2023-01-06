@@ -7,21 +7,24 @@ import code
 import readline
 from . import *
 
-assert readline._READLINE_VERSION > 0
+assert readline
 gink_file = os.environ.get("GINK_FILE", "/tmp/gink.mdb")
 if gink_file.endswith(".mdb"):
     store = LmdbStore(gink_file)
 elif gink_file.endswith(".binaryproto"):
     store = LogBackedStore(gink_file)
+else:
+    raise SystemExit(f"don't know file type of: {gink_file}")
 database = Database(store)
 root = Directory.get_global_instance(database=database)
+queue = Sequence.get_global_instance(database=database)
 args = copy.copy(sys.argv)
 args.pop(0) # remove script
-if not args:
-    raise SystemExit("Please specify a command (e.g. try: python3 -m gink help).")
 
-cmd = args.pop(0)
-if cmd == "get":
+cmd = args.pop(0) if args else None
+if cmd == "demo":
+    pass
+elif cmd == "get":
     if not args:
         raise SystemExit("Key not specified.")
     gotten = root.get(args[0])
@@ -61,8 +64,11 @@ elif cmd in ("help", "--help", "-h"):
     Listen on port 8080 for incomming connections:
         GINK_PORT=8080 python3 -m gink run
 
-    Listen on port 8080 for incomming connections and also connect to a peer:
-        GINK_PORT=8080 python3 -m gink run example.com
+    The command 'serve' is an alias to run plus ensure that GINK_PORT is set.
+        python3 -m gink serve
+
+    Listen on port 8080 for incomming connections and also connect to example.com:
+        python3 -m gink serve example.com
     """, file=sys.stderr)
 else:
-    print("command not recognized", file=sys.stderr)
+    raise SystemExit("command not recognized, try --help")
