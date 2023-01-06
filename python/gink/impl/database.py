@@ -24,7 +24,7 @@ from ..builders.entry_pb2 import Entry as EntryBuilder
 from .abstract_store import AbstractStore
 from .bundler import Bundler
 from .bundle_info import BundleInfo
-from .typedefs import Medallion, MuTimestamp, GenericTimestamp
+from .typedefs import Medallion, MuTimestamp, GenericTimestamp, EPOCH
 from .tuples import Chain
 from .connection import Connection
 from .websocket_connection import WebsocketConnection
@@ -265,3 +265,16 @@ class Database:
                     assert isinstance(sync_message, Message)
                     greeting_bytes = sync_message.SerializeToString()
                     peer.send(greeting_bytes)
+
+    def reset(self, to: GenericTimestamp=EPOCH, bundler=None, comment=None):
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
+        assert isinstance(bundler, Bundler)
+        to = self.resolve_timestamp(to)
+        for change in self._store.get_reset_changes(to_time=to, container=None, user_key=None):
+            bundler.add_change(change)
+        if immediate and len(bundler):
+            self.commit(bundler=bundler)
+        return bundler

@@ -7,6 +7,8 @@ from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.bundler import Bundler
 from ..impl.bundle_info import BundleInfo
+from ..impl.directory import Directory
+from ..impl.sequence import Sequence
 
 def test_database():
     """ tests that the last() thing works """
@@ -50,3 +52,28 @@ def test_commit_two():
             database.commit(first)
             second = Bundler("goodbye, world")
             database.commit(second)
+
+def test_reset_everything():
+    """ makes sure the database.reset works """
+    for store in [
+        LmdbStore(),
+    ]:
+        with closing(store):
+            database = Database(store=store)
+            root = Directory.get_global_instance(database=database)
+            queue = Sequence.get_global_instance(database=database)
+            misc = Directory()
+            misc[b"yes"] = False
+            root["foo"] = "bar"
+            queue.append("something")
+            assert len(root) == 1
+            assert len(queue) == 1
+            assert len(misc) == 1
+            database.reset()
+            assert len(root) == 0
+            assert len(queue) == 0
+            assert len(misc) == 0
+            database.reset(to=-1)
+            assert len(root) == 1
+            assert len(queue) == 1
+            assert len(misc) == 1

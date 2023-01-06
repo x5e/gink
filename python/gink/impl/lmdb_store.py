@@ -338,7 +338,7 @@ class LmdbStore(AbstractStore):
             # does one pass through this loop for each distinct user key needed to process
             current = LmdbStore._parse_entry(cursor, DIRECTORY)
             user_key = current.key.middle_key
-            assert isinstance(user_key, (int, str))
+            assert isinstance(user_key, (int, str, bytes))
             if current.key.entry_muid.timestamp < to_time and last_clear_time < to_time:
                 # no updates to this key specifically or clears have happened since to_time
                 recurse_on = decode_entry_occupant(current)
