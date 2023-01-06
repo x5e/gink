@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 
 # protobuf builders
 from ..builders.change_pb2 import Change as ChangeBuilder
+from ..builders.container_pb2 import Container as ContainerBuilder
 
 # Gink specific modules
 from .bundle_info import BundleInfo
@@ -29,6 +30,10 @@ class AbstractStore(ABC):
 
     def __exit__(self, *_):
         self.close()
+    
+    @abstractmethod
+    def get_container(self, container: Muid) -> ContainerBuilder:
+        """ Gets the container definition associated with a particular address. """
 
     @abstractmethod
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:

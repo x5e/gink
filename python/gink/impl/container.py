@@ -53,7 +53,11 @@ class Container(ABC):
             pointee = getattr(builder, "pointee")
             assert address is not None
             pointee_muid = Muid.create(builder=pointee, context=address)
-            behavior = getattr(builder, "behavior")
+            if pointee_muid.timestamp == -1:
+                behavior = pointee_muid.offset
+            else:
+                container_builder = self._database._store.get_container(pointee_muid)
+                behavior = getattr(container_builder, "behavior")
             Class = Container._subtypes.get(behavior)
             if not Class:
                 raise AssertionError(f"behavior not recognized: {behavior}")

@@ -13,6 +13,7 @@ from ..builders.bundle_pb2 import Bundle as BundleBuilder
 from ..builders.entry_pb2 import Entry as EntryBuilder
 from ..builders.movement_pb2 import Movement as MovementBuilder
 from ..builders.clearance_pb2 import Clearance as ClearanceBuilder
+from ..builders.container_pb2 import Container as ContainerBuilder
 
 # gink modules
 from .typedefs import UserKey, MuTimestamp, Medallion
@@ -50,6 +51,9 @@ class MemoryStore(AbstractStore):
         self._locations = SortedDict()
         self._removals = SortedDict()
         self._clearances = SortedDict()
+    
+    def get_container(self, container: Muid) -> ContainerBuilder:
+        return self._containers[container]
 
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
         look_for = struct.pack(">QQ", timestamp, medallion)
