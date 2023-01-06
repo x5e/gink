@@ -178,6 +178,7 @@ class Database:
             that it's also been sent to each peer and so can be ignored.
         """
         info, added = self._store.apply_bundle(bundle)
+        self._logger.debug("received bundle %r from %r", info, from_peer)
         if from_peer is not None:
             tracker = self._trackers.get(from_peer)
             if tracker is not None:
@@ -213,6 +214,7 @@ class Database:
                 bundle_bytes = sync_message.bundle # type: ignore pylint: disable=maybe-no-member
                 self._receive_bundle(bundle_bytes, from_peer)
             elif sync_message.HasField("greeting"):
+                self._logger.debug("received greeting from %s", from_peer)
                 chain_tracker = ChainTracker(sync_message=sync_message)
                 self._trackers[from_peer] = chain_tracker
                 def callback(bundle_bytes: bytes, info: BundleInfo):
@@ -232,11 +234,14 @@ class Database:
 
             Note that you'll still need to call "run" to actually accept those connections.
         """
-        self._listeners.add(Listener(WebsocketConnection, ip_addr=ip_addr, port=int(port)))
+        port = int(port)
+        self._logger.debug("starting to listen on %r:%r", ip_addr, port)
+        self._listeners.add(Listener(WebsocketConnection, ip_addr=ip_addr, port=port))
 
     def connect_to(self, target: str):
         """ initiate a connection to another gink instance """
-        match = re.fullmatch(r"(ws+://)?([a-z0-9.-]+)(?:(:\d+))?(?:/+(.*))?$", target, re.I)
+        self._logger.debug("initating connection to %s", target)
+        match = re.fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, re.I)
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()
         if prefix and prefix != "ws://":
@@ -246,9 +251,11 @@ class Database:
         greeting = serialize(self._store.get_chain_tracker().to_greeting_message())
         connection = WebsocketConnection(host=host,  port=int(port), path=path, greeting=greeting)
         self._connections.add(connection)
+        self._logger.debug("connection added")
 
     def run(self, until: GenericTimestamp=None):
         """ Waits for activity on ports then exchanges data with peers. """
+        self._logger.debug("starting run loop until %r", until)
         if until is not None:
             until = self.resolve_timestamp(until)
         while until is None or self.get_now() < until:

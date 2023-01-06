@@ -40,6 +40,15 @@ elif cmd == "set":
     root[args[0]] = sys.stdin.read()
 elif cmd == "shell":
     code.InteractiveConsole(globals()).interact()
+elif cmd in ("run", "serve"):
+    if cmd == "serve":
+        os.environ.setdefault("GINK_PORT", "8080")
+    port = os.environ.get("GINK_PORT")
+    if port:
+        database.start_listening(port=port)
+    for arg in args:
+        database.connect_to(arg)
+    database.run()
 elif cmd in ("help", "--help", "-h"):
     print("""
     Show this help text:
