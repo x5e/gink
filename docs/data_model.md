@@ -50,10 +50,6 @@ Gink supports several differt kinds of data structures, such as:
 The change message  that created a particular data structure specifies what kind of data structure 
 it will be, it's "Behavior", and that behavior cannot ever be changed.
 
-In addition to specifying the behavior type of a container, the Container message that creates
-a data structure may further limit/define what kind of data it can hold (not currently 
-in the proto definitions, but planned to come soon).
-
 ### Pre-Defined Global Containers
 
 For each container type (behavior), there implicitly exists a global container of that type 
