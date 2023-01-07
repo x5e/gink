@@ -1,6 +1,5 @@
 syntax = "proto3";
 package google.gink;
-import "muid.proto";
 import "behavior.proto";
 
 /**
