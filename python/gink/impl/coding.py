@@ -19,7 +19,7 @@ from .typedefs import UserKey, MuTimestamp, UserValue, Deletion
 from .muid import Muid
 from .bundle_info import BundleInfo
 
-NONE: int = Behavior.NONE # type: ignore
+UNSPECIFIED: int = Behavior.UNSPECIFIED # type: ignore
 SEQUENCE: int = Behavior.SEQUENCE # type: ignore
 DIRECTORY: int = Behavior.DIRECTORY # type: ignore
 PROPERTY: int = Behavior.PROPERTY # type: ignore
@@ -113,13 +113,13 @@ class EntryStorageKey(NamedTuple):
         container = Muid.create(builder=getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")
-        position = getattr(builder, "position")
+        position = getattr(builder, "effective")
         if behavior == DIRECTORY or behavior == BOX:
             middle_key = decode_key(builder)
         elif behavior == SEQUENCE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp, None)
         elif behavior == PROPERTY:
-            middle_key = Muid.create(context=new_info, builder=builder.describes) # type: ignore
+            middle_key = Muid.create(context=new_info, builder=builder.describing) # type: ignore
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None

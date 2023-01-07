@@ -76,7 +76,7 @@ class Sequence(Container):
         """
         return self._add_entry(
             value=thing, 
-            position=self._position(before=index), 
+            effective=self._position(before=index), 
             bundler=bundler, 
             comment=comment, 
             expiry=expiry)

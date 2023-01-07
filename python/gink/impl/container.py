@@ -155,7 +155,7 @@ class Container(ABC):
     def _add_entry(self, *, 
             value, 
             key: Union[Muid, str, int, bytes, None]=None, 
-            position: Optional[MuTimestamp]=None, 
+            effective: Optional[MuTimestamp]=None, 
             bundler: Optional[Bundler]=None, 
             comment: Optional[str]=None, 
             expiry: GenericTimestamp=None)->Muid:
@@ -173,13 +173,13 @@ class Container(ABC):
             if expiry < now:
                 raise ValueError("can't set an expiry to be in the past")
             entry_builder.expiry = expiry # type: ignore
-        if position is not None:
-            entry_builder.position = position # type: ignore
+        if effective is not None:
+            entry_builder.effective = effective # type: ignore
         self._muid.put_into(entry_builder.container) # type: ignore
         if isinstance(key, (str, int, bytes)):
             encode_key(key, entry_builder.key)  # type: ignore
         if isinstance(key, Muid):
-            key.put_into(entry_builder.describes) # type: ignore
+            key.put_into(entry_builder.describing) # type: ignore
         if isinstance(value, Container):
             pointee_muid = value.get_muid()
             if pointee_muid.medallion:

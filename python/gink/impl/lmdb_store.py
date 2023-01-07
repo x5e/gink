@@ -83,7 +83,7 @@ class LmdbStore(AbstractStore):
 
         properties - an index to enable looking up all of the properties on an object
                 < NOT YET IMPLEMENTED >
-            key: (describes-muid, property-muid, entry-muid)
+            key: (describing-muid, property-muid, entry-muid)
             val: bytes of the corresponding key in the entry table
     """
 
@@ -308,7 +308,7 @@ class LmdbStore(AbstractStore):
                         yield change
                 if location != previous or last_clear_time > placed_time:
                     # but isn't there any longer
-                    entry_builder.position = parsed_key.get_queue_position() # type: ignore
+                    entry_builder.effective = parsed_key.get_queue_position() # type: ignore
                     yield wrap_change(entry_builder)
             positioned = entries_cursor.next()
 
