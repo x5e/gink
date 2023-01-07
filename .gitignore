@@ -9,3 +9,4 @@ scratch.*
 *.built
 __pycache__
 builders
+*_pb2.py
