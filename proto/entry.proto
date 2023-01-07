@@ -6,36 +6,35 @@ import "behavior.proto";
 import "key.proto";
 
 message Entry {
-    Behavior behavior = 1; // should match the behavior of container
-    Muid container = 2;
+    Muid container = 1;   // must reference a container
+    Behavior behavior = 2; // required, must match the behavior of corresponding container
 
     oneof link {
-        Key key = 3;        // KEY_SET, DIRECTORY
-        Muid describes = 4; // RELATION, MEMBERSHIP, PROPERTY
-        Span span = 5;      // FILE
+        // some of these only apply to certain container types:
+        Key key = 3;            // KEY_SET, DIRECTORY
+        Pair pair = 4;          // REGISTRY, RELATION
+        Span span = 5;          // FILE
+        Muid describing = 6;     // PROPERTY, MEMBERSHIP
     }
 
     oneof contains {
         // some of these only apply to certain container types:
-        bool deletion = 6; // KEY_SET, DIRECTORY, MEMBERSHIP, PROPERTY
-        Value value = 7;   // BOX, DIRECTORY, SEQUENCE, PROPERTY
-        bytes octects = 8; // FILE, PACKET_SEQ
-        Row row = 9;       // BASIC_TABLE, KEYED_TABLE
-        double delta = 10; // SUMMATION
-        Muid pointee = 11; // BOX, DIRECTORY, SEQUENCE, RELATION 
+        Value value = 7;    // BOX, DIRECTORY, SEQUENCE, PROPERTY
+        bytes octets = 8;   // up to 2**30 bytes, for behaviors in FILE, STREAM
+        bool deletion = 9;  // KEY_SET, DIRECTORY, MEMBERSHIP, PROPERTY, RELATION
+        Muid pointee = 10;   // BOX, DIRECTORY, SEQUENCE, PROPERTY, PAIR_MAP
     }
 
-    uint64 expiry = 12; // timestamp of expiration in microseconds since epoch, or 0 for none
-    uint64 position = 13; // timestamp of initial position in ordered container, or 0 for entry ts
+    uint64 expiry = 11; // timestamp of expiration in microseconds since epoch, or 0 for none
+    sint64 effective = 12; // timestamp of initial position in ordered container, or 0 for entry ts
 
     message Span {
-        // defines where to put octects in the FILE, may be omitted to place all at start
         uint64 from=1;
-        uint64 ends=2;
+        uint64 ends=2;  // set ends to 0 to truncate after "from" position
     }
     
-    message Row {
-        repeated Value values = 1;
-        bytes bytes_mask = 2; // optional when all columns have values
+    message Pair {
+        Muid left = 1;
+        Muid rite = 2;
     }
 }
