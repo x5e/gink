@@ -212,12 +212,7 @@ class Sequence(Container):
             return (sequence_key, found)
         raise IndexError(f"could not find anything at index {index}")
 
-    def __len__(self):
-        """ Returns the current size of the list.
-        """
-        return self.size()
-
-    def size(self, *, as_of: GenericTimestamp = None):
+    def size(self, *, as_of: GenericTimestamp = None) -> int:
         """ Tells the size at the specified as_of time.
         """
         as_of = self._database.resolve_timestamp(as_of)

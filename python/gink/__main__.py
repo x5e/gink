@@ -8,7 +8,7 @@ import logging
 import readline
 from . import *
 
-logging.basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "DEBUG"))
+logging.basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "INFO"))
 assert readline
 gink_file = os.environ.get("GINK_FILE", "/tmp/gink.mdb")
 if gink_file.endswith(".mdb"):

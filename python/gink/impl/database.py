@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ contains Database class """
 from random import randint
-from typing import Optional, Set, Union, Iterable, Tuple, Dict
+from typing import Optional, Set, Union, Iterable, Tuple, Dict, Any
 from datetime import datetime, date, timedelta
 from threading import Lock
 from select import select
@@ -19,6 +19,7 @@ from google.protobuf.message import Message
 
 from ..builders.sync_message_pb2 import SyncMessage
 from ..builders.entry_pb2 import Entry as EntryBuilder
+from ..builders.container_pb2 import Container as ContainerBuilder
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -99,12 +100,15 @@ class Database:
             integers and floats that look like timestamps or microsecond timestamps are
             treated as such.
 
-            integers >= 0 are treated as "right after the <index> commit"
-
-            intergers < 0 are treated as "right before the <index> commit)
+            small intergers are treated as "right before the <index> commit"
         """
         if timestamp is None:
             return self.get_now()
+        if isinstance(timestamp, Muid):
+            muid_timestamp = timestamp.timestamp
+            if not isinstance(muid_timestamp, MuTimestamp):
+                raise ValueError("muid doesn't have a resolved timestamp")
+            return muid_timestamp
         if isinstance(timestamp, timedelta):
             return self.get_now() + int(timestamp.total_seconds() * 1e6)
         if isinstance(timestamp, date):
@@ -118,12 +122,12 @@ class Database:
             if timestamp > 1671697630 and timestamp < 2147483648:
                 # appears to be seconds since epoch
                 return int(timestamp * 1e6)
-        if isinstance(timestamp, int) and timestamp < 1e6 and timestamp > -1e6:
+        if isinstance(timestamp, int) and -1e6 < timestamp < 1e6:
             bundle_info = self._store.get_one(BundleInfo, int(timestamp))
             if bundle_info is None:
                 raise ValueError("don't have that many bundles")
             assert isinstance(bundle_info, BundleInfo)
-            return bundle_info.timestamp + int(timestamp >= 0)
+            return bundle_info.timestamp
         if isinstance(timestamp, float) and timestamp < 1e6 and timestamp > -1e6:
             return self.get_now() + int(1e6*timestamp)
         raise ValueError(f"don't know how to resolve {timestamp} into a timestamp")
@@ -303,3 +307,19 @@ class Database:
         if immediate and len(bundler):
             self.commit(bundler=bundler)
         return bundler
+
+    def get_container(
+        self,
+        muid: Muid,
+        container_builder: Optional[ContainerBuilder]=None,
+    ) -> Any:
+        assert muid or container_builder
+        raise Exception("not patched")
+
+    def dump(self, as_of: GenericTimestamp=None, file=sys.stdout):
+        for muid, container_builder in self._store.get_all_containers():
+            container = self.get_container(muid, container_builder)
+            if container.size(as_of=as_of):
+                file.write("\n")
+                container.dump(as_of=as_of, file=file)
+        file.write("\n")

@@ -70,7 +70,7 @@ def test_reset_everything():
             assert len(queue) == 1
             assert len(misc) == 1
             database.reset()
-            assert len(root) == 0
+            assert len(root) == 0, root.dumps()
             assert len(queue) == 0
             assert len(misc) == 0
             database.reset(to=-1)

@@ -55,6 +55,10 @@ class MemoryStore(AbstractStore):
     def get_container(self, container: Muid) -> ContainerBuilder:
         return self._containers[container]
 
+    def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
+        for key, val in self._containers.items():
+            yield key, val
+
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
         look_for = struct.pack(">QQ", timestamp, medallion)
         for thing in self._bundles.irange(minimum=look_for):
@@ -106,7 +110,7 @@ class MemoryStore(AbstractStore):
         # TODO this could be more efficient
         for entry_key in iterator:
             entry_storage_key = EntryStorageKey.from_bytes(entry_key, DIRECTORY)
-            if entry_storage_key.entry_muid.timestamp > as_of:
+            if entry_storage_key.entry_muid.timestamp >= as_of:
                 continue
             if entry_storage_key.middle_key == last:
                 continue

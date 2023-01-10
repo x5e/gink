@@ -6,7 +6,7 @@ import os
 import uuid
 from typing import Tuple, Callable, Iterable, Optional, Set, Union
 from struct import pack
-from lmdb import open as ldmbopen, Transaction as Trxn
+from lmdb import open as ldmbopen, Transaction as Trxn, Cursor
 from google.protobuf.message import Message
 
 # Generated Protobuf Modules
@@ -142,6 +142,20 @@ class LmdbStore(AbstractStore):
             #TODO: add methods to drop out-of-date entries and/or turn off retention
             #TODO: add purge method to remove particular data even when retention is on
             #TODO: add expiries table to keep track of when things need to be removed
+
+    def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
+        yield Muid(-1, -1, 7), ContainerBuilder()
+        yield Muid(-1, -1, 8), ContainerBuilder()
+        with self._handle.begin() as trxn:
+            container_cursor: Cursor = trxn.cursor(self._containers)
+            positioned = container_cursor.first()
+            while positioned:
+                key, val = container_cursor.item()
+                container_builder = ContainerBuilder()
+                assert isinstance(container_builder, Message)
+                container_builder.ParseFromString(val)
+                yield Muid.from_bytes(key), container_builder
+                positioned = container_cursor.next()
 
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
         with self._handle.begin() as trxn:
@@ -534,12 +548,13 @@ class LmdbStore(AbstractStore):
             ckey = to_last_with_prefix(cursor, container_prefix)
             while ckey:
                 entry_storage_key = EntryStorageKey.from_bytes(ckey, DIRECTORY)
-                if entry_storage_key.entry_muid.timestamp > as_of:
+                if entry_storage_key.entry_muid.timestamp >= as_of:
                     # we've found a key, but the entry is too new, so look for an older one
                     through_middle = ckey[:-24]
-                    ckey = to_last_with_prefix(cursor, through_middle, as_of_bytes)
-                    if ckey:
+                    ckey_as_of = to_last_with_prefix(cursor, through_middle, as_of_bytes)
+                    if ckey_as_of:
                         entry_storage_key = EntryStorageKey.from_bytes(ckey, DIRECTORY)
+                        ckey = ckey_as_of
                     else:
                         # no entries for this key before the as-of time, go to next key
                         ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])

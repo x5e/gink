@@ -14,7 +14,6 @@ from .coding import encode_key, encode_value, decode_value, deletion
 
 class Container(ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
-    _subtypes: Dict[int, Type] = {}
 
     def __init__(self, database: Database, muid: Muid):
         self._database = database
@@ -53,15 +52,7 @@ class Container(ABC):
             pointee = getattr(builder, "pointee")
             assert address is not None
             pointee_muid = Muid.create(builder=pointee, context=address)
-            if pointee_muid.timestamp == -1:
-                behavior = pointee_muid.offset
-            else:
-                container_builder = self._database._store.get_container(pointee_muid)
-                behavior = getattr(container_builder, "behavior")
-            Class = Container._subtypes.get(behavior)
-            if not Class:
-                raise AssertionError(f"behavior not recognized: {behavior}")
-            return Class(muid=pointee_muid, database=self._database)
+            return self._database.get_container(pointee_muid)
 
     def get_muid(self) -> Muid:
         """ returns the global address of this container """
@@ -225,3 +216,10 @@ class Container(ABC):
         if immediate and len(bundler):
             self._database.commit(bundler=bundler)
         return bundler
+
+    @abstractmethod
+    def size(self, *, as_of: GenericTimestamp = None) -> int:
+        """ returns the number of elements contained """
+    
+    def __len__(self):
+        return self.size()

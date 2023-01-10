@@ -79,7 +79,7 @@ class Directory(Container):
     def has(self, key: UserKey, *, as_of=None):
         """ returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
-        found = self._database._store.get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
+        found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
         return found is not None and not found.builder.deletion # type: ignore
 
     def get(self, key, default=None, *, as_of=None):
@@ -151,11 +151,16 @@ class Directory(Container):
             contained = self._get_occupant(entry_pair.builder, entry_pair.address)
             yield (key, contained)
 
-    def __len__(self):
+    def size(self, *, as_of: GenericTimestamp=None) -> int:
+        as_of = self._database.resolve_timestamp(as_of)
+        iterable = self._database._store.get_keyed_entries(container=self._muid, as_of=as_of)
         count = 0
-        for _ in self.items():
+        for entry_pair in iterable:
+            if entry_pair.builder.deletion: # type: ignore
+                continue
             count += 1
         return count
+
 
     def keys(self, *, as_of=None):
         """ returns an iterable of all the keys in this direcotry """

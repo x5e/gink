@@ -109,6 +109,13 @@ class AbstractStore(ABC):
             result.append(info)
         self.get_bundles(callback)
         return result
+    
+    @abstractmethod
+    def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
+        """ Gets the address and definition of each regular container plus the global containers.
+            
+            Does not include the instance/medallion containers.
+        """
 
     @abstractmethod
     def get_one(self, cls, index: int=-1):

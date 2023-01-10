@@ -12,9 +12,9 @@ from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
-from ..impl.patch import PATCHED
+from ..impl.patch import patched
 
-assert PATCHED
+assert patched
 
 def test_creation():
     """ test that I can create new directories as well as proxies for existing ones """

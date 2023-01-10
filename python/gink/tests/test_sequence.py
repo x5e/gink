@@ -9,9 +9,9 @@ from ..impl.sequence import Sequence
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
-from ..impl.patch import PATCHED
+from ..impl.patch import patched
 
-assert PATCHED
+assert patched
 
 def test_creation():
     """ test that I can create new sequences as well as proxies for existing ones """
@@ -132,7 +132,7 @@ def test_as_of():
             for seq in [Sequence.get_global_instance(database)]:
                 seq.append("foo")
                 time.sleep(.001)
-                seq.append("bar")
+                bar_append_change = seq.append("bar")
                 assert list(seq.values()) == ["foo", "bar"], list(seq.values())
                 seq.pop(dest=0)
                 assert list(seq.values()) == ["bar", "foo"], list(seq.values())
@@ -153,9 +153,8 @@ def test_as_of():
                     raise AssertionError(f"{seq_as_list} at {assertion_time}")
                 seq.remove("foo")
                 assert list(seq.values()) == ["bar", "zoo"]
-                # as_of=1 will show things right *after* the second commit
-                # the first commit starts the chain, the second one adds "foo"
-                assert list(seq.values(as_of=1)) == ["foo"], list(seq.values(as_of=1))
+                etc = list(seq.values(as_of=bar_append_change.timestamp))
+                assert etc == ["foo"], etc
 
 def test_insert():
     """ makes sure that I can insert data at arbitrary location in a sequence """

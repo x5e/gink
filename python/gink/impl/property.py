@@ -30,6 +30,9 @@ class Property(Container):
     
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         raise NotImplementedError()
+    
+    def size(self, *, as_of: GenericTimestamp = None) -> int:
+        raise NotImplementedError()
 
     def set(self, describing: Union[Muid, Container], value: UserValue, *, 
                 bundler=None, comment=None) -> Muid:
