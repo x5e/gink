@@ -15,7 +15,15 @@ from .tuples import PositionedEntry, SequenceKey
 class Sequence(Container):
     BEHAVIOR = SEQUENCE
 
-    def __init__(self, *ordered, contents=None, muid=None, database=None, root=False):
+    def __init__(self, 
+        *ordered, 
+        contents: Optional[Iterable]=None, 
+        muid: Optional[Muid]=None, 
+        database: Optional[Database]=None, 
+        root: bool=False,
+        bundler: Optional[Bundler] = None,
+        comment: Optional[str] = None,
+        ):
         """
         muid: the global id of this sequence, created on the fly if None
         database: where to send commits through, or last db instance created if None
@@ -26,17 +34,20 @@ class Sequence(Container):
         if root:
             muid = Muid(-1, -1, SEQUENCE)
         database = database or Database.last
-        bundler = Bundler()
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
         if muid is None:
             muid = Container._create(
                 SEQUENCE, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         self._muid = muid
         self._database = database
-        if contents:
-            # TODO: implement clear, then append all of the items
-            raise NotImplementedError()
-        if len(bundler):
+        if contents is not None:
+            self.clear(bundler=bundler)
+            self.extend(contents, bundler=bundler)
+        if immediate and len(bundler):
             self._database.commit(bundler)
     
     def __iter__(self):

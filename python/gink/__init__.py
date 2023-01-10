@@ -9,9 +9,10 @@ from .impl.property import Property
 from .impl.container import Container
 from .impl.muid import Muid
 from .impl.bundle_info import BundleInfo
+from .impl.bundler import Bundler
 from .impl.patch import patched
 
 assert patched
 
-__all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence",
+__all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence", "Bundler",
     "Property", "Container", "Muid", "LogBackedStore", "BundleInfo", "AbstractStore"]

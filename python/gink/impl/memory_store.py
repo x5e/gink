@@ -66,8 +66,8 @@ class MemoryStore(AbstractStore):
                 return BundleInfo.from_bytes(thing).comment
             else:
                 return None
-
-    def get_one(self, cls, index: int = -1):
+    
+    def get_some(self, cls, last_index: Optional[int] = None):
         sorted_dict = {
             BundleBuilder: self._bundles,
             EntryBuilder: self._entries,
@@ -77,24 +77,29 @@ class MemoryStore(AbstractStore):
             MovementKey: self._removals,
             LocationKey: self._locations,
         }[cls]
-        skip = index if index >= 0 else ~index
-        for key in sorted_dict.irange(reverse=index < 0):
-            if skip == 0:
-                if isinstance(key, cls):
-                    return key
-                if issubclass(cls, Message):
-                    val = sorted_dict[key]
-                    if isinstance(val, bytes):
-                        instance = cls()
-                        instance.ParseFromString(val)
-                        return instance
+        if last_index is None:
+            last_index = 2**52
+        assert isinstance(last_index, int)
+        remaining = (last_index if last_index >= 0 else ~last_index) + 1
+        for key in sorted_dict.irange(reverse=last_index < 0):
+            if remaining == 0:
+                return
+            remaining -= 1
+            if isinstance(key, cls):
+                yield key
+            elif issubclass(cls, Message):
+                val = sorted_dict[key]
+                if isinstance(val, bytes):
+                    instance = cls()
+                    instance.ParseFromString(val)
+                    yield instance
+                else:
                     assert isinstance(val, cls)
-                    return val
-                if isinstance(key, bytes):
-                    return cls.from_bytes(key) # type: ignore
+                    yield val
+            elif isinstance(key, bytes):
+                yield cls.from_bytes(key) # type: ignore
+            else:
                 raise ValueError(f"don't know what to do with {key}")
-            skip -= 1
-        raise ValueError("not expected")
 
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)

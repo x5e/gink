@@ -116,18 +116,31 @@ class AbstractStore(ABC):
             
             Does not include the instance/medallion containers.
         """
-
+    
     @abstractmethod
-    def get_one(self, cls, index: int=-1):
-        """ Gets one instance of the specified class at "index" location in its respective store.
+    def get_some(self, cls, last_index: Optional[int] = None) -> Iterable:
+        """ Gets several indexes of the given class.
 
-            "Class" may be one of: BundleBuilder, EntryBuilder, MovementBuilder,
+            Starts counting from the end if last_index is negative.
+
+            cls may be one of: BundleBuilder, EntryBuilder, MovementBuilder,
             or one of the key classes: BundleInfo, EntryStorageKey, MovementKey
 
-            This method is mostly intended to make debugging easier, but will also be used by
-            the Gink database class to look up the most recent timestamps.
-         """
-        raise NotImplementedError()
+            Used by the database class to show a log of entries.
+        """
+
+    def get_one(self, cls, index: int = -1):
+        """ gets one instance of the given class """
+        returning = None
+        expected = (index if index >= 0 else ~index) + 1
+        actual = 0
+        for thing in self.get_some(cls, last_index=index):
+            actual += 1
+            returning = thing
+        if actual == expected:
+            return returning
+        else:
+            return None
 
     @abstractmethod
     def get_chain_tracker(self) -> ChainTracker:

@@ -33,6 +33,7 @@ from .listener import Listener
 from .coding import DIRECTORY, encode_key, encode_value, serialize
 from .muid import Muid
 from .chain_tracker import ChainTracker
+from .attribution import Attribution
 
 class Database:
     """ A class that mediates user interaction with a datastore and peers. """
@@ -62,7 +63,8 @@ class Database:
         yield (".process.id", os.getpid())
         user_data = getpwuid(os.getuid())
         yield (".user.name", user_data[0])
-        yield (".full.name", user_data[4])
+        if user_data[4] != user_data[0]:
+            yield (".full.name", user_data[4])
         yield (".host.name", gethostname())
         if sys.argv[0]:
             yield (".software", sys.argv[0])
@@ -137,7 +139,7 @@ class Database:
         chain_start = self.get_now()
         chain = Chain(medallion=Medallion(medallion), chain_start=chain_start)
         self._store.claim_chain(chain)
-        starting_bundler = Bundler()
+        starting_bundler = Bundler("(starting chain)")
         self._add_info(starting_bundler)
         info = BundleInfo(medallion=medallion, chain_start=chain_start, timestamp=chain_start)
         # We can't use Database.commit because Database.commit calls this function.
@@ -320,6 +322,21 @@ class Database:
         for muid, container_builder in self._store.get_all_containers():
             container = self.get_container(muid, container_builder)
             if container.size(as_of=as_of):
-                file.write("\n")
                 container.dump(as_of=as_of, file=file)
-        file.write("\n")
+    
+    def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
+        """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
+
+            After the timestamp and medallion it will ignore other ordered arguments, so
+            that it can be used via get_attribution(*muid).
+        """
+        assert timestamp and medallion
+        raise Exception("not patched")
+
+    def log(self, limit: Optional[int]=-10) -> Iterable[Attribution]:
+        for bundle_info in self._store.get_some(BundleInfo, limit):
+            yield self.get_attribution(bundle_info.timestamp, bundle_info.medallion)
+    
+    def show_log(self, limit: Optional[int]=-10, file=sys.stdout):
+        for attribution in self.log(limit=limit):
+            print(attribution, file=file)

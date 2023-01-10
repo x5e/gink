@@ -37,8 +37,9 @@ class Container(ABC):
     def dump(self, *, as_of: GenericTimestamp=None, file=stdout):
         """ Dumps the contents of this container to file (default stdout)."""
         # probably should stream the contents to the filehandle
-        file.write(self.dumps(as_of=as_of))
         file.write("\n")
+        file.write(self.dumps(as_of=as_of))
+        file.write("\n\n")
         file.flush()
 
     def _get_occupant(self, builder: EntryBuilder, address: Optional[Muid] = None):

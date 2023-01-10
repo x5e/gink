@@ -176,9 +176,12 @@ class LmdbStore(AbstractStore):
             container_builder.ParseFromString(container_definition_bytes)
             return container_builder
 
-    def get_one(self, cls, index: int = -1):
-        """ gets one instance of the given class """
-        skip = index if index >= 0 else ~index
+    def get_some(self, cls, last_index: Optional[int] = None):
+        """ gets several instance of the given class """
+        if last_index is None:
+            last_index = 2**52
+        assert isinstance(last_index, int)
+        remaining = (last_index if last_index >= 0 else ~last_index) + 1
         with self._handle.begin() as trxn:
             table = {
                 BundleBuilder: self._bundles,
@@ -190,15 +193,17 @@ class LmdbStore(AbstractStore):
                 LocationKey: self._locations,
             }[cls]
             cursor = trxn.cursor(table)
-            placed = cursor.first() if index >= 0 else cursor.last()
+            placed = cursor.first() if last_index >= 0 else cursor.last()
             while placed:
-                if skip == 0:
-                    if issubclass(cls, Message):
-                        return cls.FromString(cursor.value()) # type: ignore
-                    return cls.from_bytes(cursor.key()) # type: ignore
+                if remaining == 0:
+                    break
                 else:
-                    skip -= 1
-                    placed = cursor.next() if index >= 0 else cursor.prev()
+                    remaining -= 1
+                if issubclass(cls, Message):
+                    yield cls.FromString(cursor.value()) # type: ignore
+                else:
+                    yield cls.from_bytes(cursor.key()) # type: ignore
+                placed = cursor.next() if last_index >= 0 else cursor.prev()
 
 
     def _get_behavior(self, container: Muid, trxn: Trxn) -> int:

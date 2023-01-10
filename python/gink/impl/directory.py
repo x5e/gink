@@ -17,8 +17,8 @@ class Directory(Container):
     _missing = object()
     BEHAVIOR = DIRECTORY
 
-    def __init__(self, *ordered, root: Optional[bool] = None,
-        contents=None, muid: Optional[Muid]=None, database=None):
+    def __init__(self, *ordered, root: Optional[bool] = None, bundler: Optional[Bundler] = None,
+        contents=None, muid: Optional[Muid]=None, database=None, comment: Optional[str]=None):
         """
         Constructor for a directory proxy.
 
@@ -31,17 +31,20 @@ class Directory(Container):
         if root:
             muid = Muid(-1, -1, DIRECTORY)
         database = database or Database.last
-        bundler = Bundler()
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
         if muid is None:
             muid = Container._create(DIRECTORY, database=database, bundler=bundler)
         elif muid.timestamp > 0 and contents:
-            # TODO Don't know how to handle this quite yet...
-            raise NotImplementedError()
+            # TODO check the store to make sure that the container is defined and compatible
+            pass
         Container.__init__(self, muid=muid, database=database)
         if contents:
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
-        if len(bundler):
+        if immediate and len(bundler):
             self._database.commit(bundler)
 
     def dumps(self, as_of: GenericTimestamp=None) -> str:
@@ -208,26 +211,6 @@ class Directory(Container):
         if immediate:
             self._database.commit(bundler)
 
-    def _get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
-        """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
-
-            After the timestamp and medallion it will ignore other ordered arguments, so
-            that it can be used via get_attribution(*muid).
-        """
-        # this method/function should probably be moved to a general utilities module or something
-        medallion_directory = Directory.get_medallion_instance(
-            medallion=medallion, database=self._database)
-        comment=self._database._store.get_comment(
-            medallion=medallion, timestamp=timestamp)
-        return Attribution(
-            timestamp=timestamp,
-            medallion=medallion,
-            username=medallion_directory.get(".user.name", as_of=timestamp),
-            hostname=medallion_directory.get(".host.name", as_of=timestamp),
-            fullname=medallion_directory.get(".full.name", as_of=timestamp),
-            software=medallion_directory.get(".software", as_of=timestamp),
-            comment=comment,
-        )
 
     def blame(self, key: Optional[UserKey]=None, as_of: GenericTimestamp=None
     ) -> Dict[UserKey, Attribution]:
@@ -239,7 +222,7 @@ class Directory(Container):
             found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
             if found is None or not key:
                 continue
-            result[key] = self._get_attribution(*found.address)
+            result[key] = self._database.get_attribution(*found.address)
         return result
     
     def show_blame(self, as_of: GenericTimestamp=None, file=stdout):
@@ -252,7 +235,7 @@ class Directory(Container):
             found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
             if not found:
                 break
-            yield self._get_attribution(*found.address)
+            yield self._database.get_attribution(*found.address)
             as_of = found.address.timestamp
 
     def show_log(self, key: UserKey, file=stdout, limit=10):
