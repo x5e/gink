@@ -9,9 +9,9 @@ from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
-from ..impl.patch import patched
+from ..impl.patch import PATCHED
 
-assert patched
+assert PATCHED
 
 def test_property_set_get():
     """ Test the basic set/get functionality of properties works as expected. """
@@ -31,9 +31,9 @@ def test_property_reset():
     """ ensure that I can reset all of the properties on an object to a point in the past """
 
 def test_property_extension():
-    """ tests that I can create a property that behaves as the extension of one or more others 
+    """ tests that I can create a property that behaves as the extension of one or more others
 
-        Only will be testing inclusions, not transforms (yet)    
+        Only will be testing inclusions, not transforms (yet)
     """
 
 def test_property_removal():

@@ -9,9 +9,9 @@ from ..impl.sequence import Sequence
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
-from ..impl.patch import patched
+from ..impl.patch import PATCHED
 
-assert patched
+assert PATCHED
 
 def test_creation():
     """ test that I can create new sequences as well as proxies for existing ones """

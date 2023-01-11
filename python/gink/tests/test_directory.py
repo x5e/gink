@@ -12,9 +12,9 @@ from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
-from ..impl.patch import patched
+from ..impl.patch import PATCHED
 
-assert patched
+assert PATCHED
 
 def test_creation():
     """ test that I can create new directories as well as proxies for existing ones """
@@ -246,7 +246,7 @@ def test_bytes_keys():
             keys = list(root.keys())
             assert keys == [a_bytestring], keys
             assert root[a_bytestring] == 42
-            
+
 def test_blame_and_log():
     """ makes sure that the directory.get_blame works """
     for store in [MemoryStore(), LmdbStore()]:

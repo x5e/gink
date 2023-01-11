@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" contains Database class """
+""" contains the Database class """
 from random import randint
 from typing import Optional, Set, Union, Iterable, Tuple, Dict, Any
 from datetime import datetime, date, timedelta
@@ -13,6 +13,7 @@ import os
 import math
 import re
 import sys
+from sys import stdout
 from logging import getLogger
 from google.protobuf.message import Message
 
@@ -78,7 +79,7 @@ class Database:
             setattr(entry_builder, "behavior", DIRECTORY)
             personal_directory.put_into(getattr(entry_builder, "container"))
             encode_key(key, getattr(entry_builder, "key"))
-            encode_value(val, getattr(entry_builder, "value"))
+            encode_value(val, entry_builder.value) # type: ignore
             bundler.add_change(entry_builder)
 
     def get_now(self) -> MuTimestamp:
@@ -237,7 +238,7 @@ class Database:
                     if not chain_tracker.has(info):
                         outgoing_builder = SyncMessage()
                         assert isinstance(outgoing_builder, Message)
-                        outgoing_builder.bundle = bundle_bytes; # type: ignore
+                        outgoing_builder.bundle = bundle_bytes # type: ignore
                         from_peer.send(outgoing_builder.SerializeToString())
                 self._store.get_bundles(callback=callback)
             elif sync_message.HasField("ack"):
@@ -296,11 +297,11 @@ class Database:
                     sync_message = self._store.get_chain_tracker().to_greeting_message()
                     connection: Connection = ready_reader.accept(sync_message)
                     self._connections.add(connection)
-                    self._logger.debug("accepted incoming connection from %s", connection._host)
+                    self._logger.debug("accepted incoming connection from %s", connection)
 
-    def reset(self, to: GenericTimestamp=EPOCH, bundler=None, comment=None):
-        """ Resets the database to a specific point in time. 
-        
+    def reset(self, to_time: GenericTimestamp=EPOCH, *, bundler=None, comment=None):
+        """ Resets the database to a specific point in time.
+
             Note that it litterally just "re"-sets everything in one big
             bundle to the values that existed at that time, so you can always
             go and look at the state of the database beforehand.
@@ -310,8 +311,8 @@ class Database:
             immediate = True
             bundler = Bundler(comment)
         assert isinstance(bundler, Bundler)
-        to = self.resolve_timestamp(to)
-        for change in self._store.get_reset_changes(to_time=to, container=None, user_key=None):
+        to_time = self.resolve_timestamp(to_time)
+        for change in self._store.get_reset_changes(to_time=to_time, container=None, user_key=None):
             bundler.add_change(change)
         if immediate and len(bundler):
             self.commit(bundler=bundler)
@@ -322,15 +323,15 @@ class Database:
         muid: Muid,
         container_builder: Optional[ContainerBuilder]=None,
     ) -> Any:
+        """ gets (already created) container associated with a particular muid """
         assert muid or container_builder
         raise Exception("not patched")
 
-    def dump(self, as_of: GenericTimestamp=None, file=sys.stdout):
-        for muid, container_builder in self._store.get_all_containers():
-            container = self.get_container(muid, container_builder)
-            if container.size(as_of=as_of):
-                container.dump(as_of=as_of, file=file)
-    
+    def dump(self, as_of: GenericTimestamp=None, file=stdout) -> None:
+        """ writes to file a pythonic representation of the database contents at the time """
+        assert as_of or file
+        raise Exception("not patched")
+
     def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
         """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
 
@@ -341,9 +342,11 @@ class Database:
         raise Exception("not patched")
 
     def log(self, limit: Optional[int]=-10) -> Iterable[Attribution]:
+        """ Gets a list of attributions representing all bundles stored by the db. """
         for bundle_info in self._store.get_some(BundleInfo, limit):
             yield self.get_attribution(bundle_info.timestamp, bundle_info.medallion)
-    
+
     def show_log(self, limit: Optional[int]=-10, file=sys.stdout):
+        """ Just prints the log to stdout in a human readable format. """
         for attribution in self.log(limit=limit):
             print(attribution, file=file)

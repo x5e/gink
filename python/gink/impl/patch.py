@@ -1,6 +1,8 @@
+""" Shoves a bunch of methods into the Database class which couldn't be previously defined. """
+from sys import stdout
 from typing import Optional
 
-from ..builders.behavior_pb2 import Behavior
+
 from ..builders.container_pb2 import Container as ContainerBuilder
 
 from .container import Container
@@ -9,9 +11,11 @@ from .sequence import Sequence
 from .property import Property
 from .database import Database
 from .muid import Muid
-from .typedefs import MuTimestamp, Medallion
+from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .attribution import Attribution
 from .coding import DIRECTORY, SEQUENCE, PROPERTY
+
+# pylint: disable=dangerous-default-value disable=protected-access
 
 def get_container(
     self: Database,
@@ -29,10 +33,10 @@ def get_container(
     else:
         container_builder = container_builder or self._store.get_container(muid)
         behavior = getattr(container_builder, "behavior")
-    Class = subtypes.get(behavior)
-    if not Class:
+    cls = subtypes.get(behavior)
+    if not cls:
         raise AssertionError(f"behavior not recognized: {behavior}")
-    return Class(muid=muid, database=self)
+    return cls(muid=muid, database=self)
 
 Database.get_container = get_container
 
@@ -60,4 +64,13 @@ def get_attribution(
 
 Database.get_attribution = get_attribution
 
-patched = True
+def dump(self: Database, as_of: GenericTimestamp=None, file=stdout):
+    """ writes the contents of the database to file """
+    for muid, container_builder in self._store.get_all_containers():
+        container = self.get_container(muid, container_builder)
+        if container.size(as_of=as_of):
+            container.dump(as_of=as_of, file=file)
+
+Database.dump = dump
+
+PATCHED = True
