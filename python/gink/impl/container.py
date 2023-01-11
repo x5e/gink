@@ -1,5 +1,5 @@
 """ Defines the Container base class. """
-from typing import Optional, Union, Dict, Type
+from typing import Optional, Union
 from abc import ABC, abstractmethod
 from sys import stdout
 
@@ -14,26 +14,27 @@ from .coding import encode_key, encode_value, decode_value, deletion
 
 class Container(ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
+    _database: Database
 
     def __init__(self, database: Database, muid: Muid):
         self._database = database
         self._muid = muid
 
     def __eq__(self, other):
-        return type(other) == type(self) and other._muid == self._muid
+        return isinstance(other, self.__class__) and other._muid == self._muid
 
     def __hash__(self):
         return hash(self._muid)
 
     def __repr__(self):
         if self._muid.timestamp == -1 and self._muid.medallion == -1:
-            return f"{self.__class__.__name__}(root=True)"    
+            return f"{self.__class__.__name__}(root=True)"
         return f"{self.__class__.__name__}('{self._muid}')"
 
     @abstractmethod
     def dumps(self, as_of: GenericTimestamp=None) -> str:
         """ return the contents of this container as a string """
-    
+
     def dump(self, *, as_of: GenericTimestamp=None, file=stdout):
         """ Dumps the contents of this container to file (default stdout)."""
         # probably should stream the contents to the filehandle
@@ -43,8 +44,8 @@ class Container(ABC):
         file.flush()
 
     def _get_occupant(self, builder: EntryBuilder, address: Optional[Muid] = None):
-        """ Figures out what the container is containing. 
-        
+        """ Figures out what the container is containing.
+
             Returns either a Container or a UserValue
         """
         if builder.HasField("value"): # type: ignore
@@ -76,12 +77,12 @@ class Container(ABC):
 
     @classmethod
     def get_global_instance(cls, database: Optional[Database]=None):
-        """ Gets a proxy to the "magic" global instance of the given class. 
-        
+        """ Gets a proxy to the "magic" global instance of the given class.
+
             For each container type there's a pre-existing global instance
             with address Muid(timestamp=-1, medallion=-1, offset=<behavior>).
-            This container type can be written to by any instance, and may 
-            be used to coordinate between database instances or just for 
+            This container type can be written to by any instance, and may
+            be used to coordinate between database instances or just for
             testing/demo purposes.
         """
         if database is None:
@@ -93,7 +94,7 @@ class Container(ABC):
     @classmethod
     def get_medallion_instance(cls, *, medallion=0, database: Optional[Database]=None):
         """ Gets a proxy to the magic personal instance for this container type.
-        
+
             For each combination of medallion and container type, there's implicitly
             a pre-existing instance: Muid(timestamp=-1, medallion=<medallion>, offset=<behavior>).
             This instance should only be written to by the owner of the medallion, and may
@@ -106,10 +107,10 @@ class Container(ABC):
             database = Database.last
         assert database is not None
         if not medallion:
-            last_bundle_info = database._last_bundle_info
-            if last_bundle_info is None:
+            chain = database.get_chain()
+            if chain is None:
                 raise ValueError("don't have a medallion until on has been claimed by a write")
-            medallion=last_bundle_info.medallion
+            medallion=chain.medallion
         muid = Muid(timestamp=-1, medallion=medallion, offset=cls.get_behavior())
         return cls(database=database, muid=muid)
 
@@ -133,6 +134,7 @@ class Container(ABC):
             Note that this will also remove entries that aren't visible because they've been
             hidden until some future time with something like .remove(..., dest=10.0).
         """
+        # pylint: disable=maybe-no-member
         immediate = False
         if not isinstance(bundler, Bundler):
             bundler = Bundler(comment)
@@ -144,12 +146,12 @@ class Container(ABC):
             self._database.commit(bundler)
         return change_muid
 
-    def _add_entry(self, *, 
-            value, 
-            key: Union[Muid, str, int, bytes, None]=None, 
-            effective: Optional[MuTimestamp]=None, 
-            bundler: Optional[Bundler]=None, 
-            comment: Optional[str]=None, 
+    def _add_entry(self, *,
+            value,
+            key: Union[Muid, str, int, bytes, None]=None,
+            effective: Optional[MuTimestamp]=None,
+            bundler: Optional[Bundler]=None,
+            comment: Optional[str]=None,
             expiry: GenericTimestamp=None)->Muid:
         immediate = False
         if not isinstance(bundler, Bundler):
@@ -190,10 +192,10 @@ class Container(ABC):
             self._database.commit(bundler)
         return muid
 
-    def reset(self, to: GenericTimestamp=EPOCH, *, key: Optional[UserKey]=None, 
+    def reset(self, to_time: GenericTimestamp=EPOCH, *, key: Optional[UserKey]=None,
             recursive: bool=False, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Resets either a specific key or the whole container to a particular past time.
-            
+
             (They optional key argument only makes sense when the container is a directory).
 
             Note that this actually creates new entries to literally "re"-set items.
@@ -210,8 +212,8 @@ class Container(ABC):
             immediate = True
             bundler = Bundler(comment)
         assert isinstance(bundler, Bundler)
-        to = self._database.resolve_timestamp(to)
-        for change in self._database._store.get_reset_changes(to_time=to, 
+        to_time = self._database.resolve_timestamp(to_time)
+        for change in self._database.get_store().get_reset_changes(to_time=to_time,
                 container=self._muid, user_key=key, recursive=recursive):
             bundler.add_change(change)
         if immediate and len(bundler):
@@ -221,6 +223,6 @@ class Container(ABC):
     @abstractmethod
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         """ returns the number of elements contained """
-    
+
     def __len__(self):
         return self.size()

@@ -17,7 +17,6 @@ from sys import stdout
 from logging import getLogger
 from google.protobuf.message import Message
 
-
 from ..builders.sync_message_pb2 import SyncMessage
 from ..builders.entry_pb2 import Entry as EntryBuilder
 from ..builders.container_pb2 import Container as ContainerBuilder
@@ -59,6 +58,15 @@ class Database:
         self._listeners = set()
         self._trackers = {}
         self._sent_but_not_acked = set()
+
+    def get_store(self) -> AbstractStore:
+        """ returns the store managed by this database """
+        return self._store
+
+    def get_chain(self) -> Optional[Chain]:
+        """ gets the this database is appending to (or None if hasn't started writing yet) """
+        if self._last_bundle_info is not None:
+            return self._last_bundle_info.get_chain()
 
     @staticmethod
     def _get_info() -> Iterable[Tuple[str, Union[str, int]]]:
@@ -108,6 +116,8 @@ class Database:
         """
         if timestamp is None:
             return self.get_now()
+        if isinstance(timestamp, str):
+            timestamp = datetime.fromisoformat(timestamp)
         if isinstance(timestamp, Muid):
             muid_timestamp = timestamp.timestamp
             if not isinstance(muid_timestamp, MuTimestamp):
@@ -276,7 +286,7 @@ class Database:
         if until is not None:
             until = self.resolve_timestamp(until)
         while until is None or self.get_now() < until:
-            # TODO: use epoll where supported
+            # eventually will want to support epoll on platforms where its supported
             readers = []
             for listener in self._listeners:
                 readers.append(listener)

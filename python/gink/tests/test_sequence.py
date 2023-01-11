@@ -211,8 +211,8 @@ def test_reset():
             seq1.append("nevermind")
             seq1.append(seq2)
             seq2.pop()
-            seq2.reset(to=mark)
+            seq2.reset(to_time=mark)
             assert list(seq2) == ["bar", seq1]
             assert list(seq1) == ["nevermind", seq2]
-            seq2.reset(to=mark, recursive=True)
+            seq2.reset(to_time=mark, recursive=True)
             assert list(seq1) == [7, "foo"]

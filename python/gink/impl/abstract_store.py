@@ -30,7 +30,7 @@ class AbstractStore(ABC):
 
     def __exit__(self, *_):
         self.close()
-    
+
     @abstractmethod
     def get_container(self, container: Muid) -> ContainerBuilder:
         """ Gets the container definition associated with a particular address. """
@@ -92,11 +92,11 @@ class AbstractStore(ABC):
             Returns: a tuple of the bundle's info and boolean indicating if it was applied
             Will not be applied if this store has already seen this bundle before.
         """
-    
+
     @abstractmethod
     def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
         """ Goes through outbox items in standard order. """
-    
+
     @abstractmethod
     def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
         """ Something to call after receiving an ack from a peer. """
@@ -116,14 +116,14 @@ class AbstractStore(ABC):
             result.append(info)
         self.get_bundles(callback)
         return result
-    
+
     @abstractmethod
     def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
         """ Gets the address and definition of each regular container plus the global containers.
-            
+
             Does not include the instance/medallion containers.
         """
-    
+
     @abstractmethod
     def get_some(self, cls, last_index: Optional[int] = None) -> Iterable:
         """ Gets several indexes of the given class.

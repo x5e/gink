@@ -57,7 +57,7 @@ class WebsocketConnection(Connection):
         self._logger.debug("finished setup")
         self._socket.settimeout(0.2)
         self._greeting = greeting
-    
+
     def __repr__(self):
         return f"{self.__class__.__name__}(host={self._host!r})"
 
