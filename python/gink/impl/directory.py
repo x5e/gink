@@ -38,7 +38,7 @@ class Directory(Container):
         if muid is None:
             muid = Container._create(DIRECTORY, database=database, bundler=bundler)
         elif muid.timestamp > 0 and contents:
-            # TODO check the store to make sure that the container is defined and compatible
+            # TODO [P3] check the store to make sure that the container is defined and compatible
             pass
         Container.__init__(self, muid=muid, database=database)
         if contents:
@@ -219,7 +219,7 @@ class Directory(Container):
         keys = [key] if key is not None else self.keys(as_of=as_of)
         result: Dict[UserKey, Attribution] = {}
         for key in keys:
-            # TODO: figure out how to show blame for clear operations
+            # TODO [P2]: figure out how to show blame for clear operations
             # (have get_entry_by_key return clearances)
             found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
             if found is None or not key:

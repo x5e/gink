@@ -1,7 +1,7 @@
 """ Contains the WsPeer class to manage a connection to a websocket (gink) peer. """
 
 # batteries included python imports
-from typing import Iterable, Union, Optional
+from typing import Iterable, Optional
 from socket import (
     socket as Socket,
     SHUT_WR, SHUT_RDWR
@@ -20,6 +20,10 @@ from wsproto.events import(
     Pong,
     RejectConnection
 )
+from google.protobuf.message import Message
+
+# builders
+from ..builders.sync_message_pb2 import SyncMessage
 
 # gink modules
 from .connection import Connection
@@ -39,7 +43,7 @@ class WebsocketConnection(Connection):
         socket: Optional[Socket]=None,
         force_to_be_client: bool=False,
         path: Optional[str]=None,
-        greeting: Optional[bytes]=None
+        greeting: Optional[SyncMessage]=None
     ):
         Connection.__init__(self, socket=socket, host=host, port=port)
         if socket is None:
@@ -49,10 +53,10 @@ class WebsocketConnection(Connection):
         self._buffered: bytes = b""
         self._ready = False
         if force_to_be_client:
-            # TODO: add cookie auth stuff into extra_headers
+            # TODO [P3]: add cookie auth stuff into extra_headers
             host = host or "localhost"
             path = path or "/"
-            request = Request(host="localhost", target=path, subprotocols=[self.PROTOCOL])
+            request = Request(host=host, target=path, subprotocols=[self.PROTOCOL])
             self._socket.send(self._ws.send(request))
         self._logger.debug("finished setup")
         self._socket.settimeout(0.2)
@@ -61,7 +65,7 @@ class WebsocketConnection(Connection):
     def __repr__(self):
         return f"{self.__class__.__name__}(host={self._host!r})"
 
-    def receive(self) -> Iterable[bytes]:
+    def receive(self) -> Iterable[SyncMessage]:
         if self._closed:
             return
         data = self._socket.recv(2**30)
@@ -77,9 +81,7 @@ class WebsocketConnection(Connection):
                     self._logger.debug("got a Request, sending an AcceptConnection")
                     self._socket.send(self._ws.send(AcceptConnection("gink")))
                     self._logger.info("Server connection established!")
-                    if self._greeting is not None:
-                        self._logger.debug("sending greeting of size %d", len(self._greeting))
-                        self._socket.send(self._ws.send(BytesMessage(self._greeting)))
+                    self._send_greeting()
                     self._ready = True
             elif isinstance(event, CloseConnection):
                 self._logger.info("got close msg, code=%d, reason=%s", event.code, event.reason)
@@ -97,10 +99,14 @@ class WebsocketConnection(Connection):
                 self._logger.debug('We got %d bytes!', len(event.data))
                 if event.message_finished:
                     if self._buffered:
-                        yield self._buffered + event.data
+                        data = self._buffered + event.data
                         self._buffered = b""
                     else:
-                        yield event.data
+                        data = event.data
+                    sync_message = SyncMessage()
+                    assert isinstance(sync_message, Message)
+                    sync_message.ParseFromString(event.data)
+                    yield sync_message
                 else:
                     self._buffered += event.data
             elif isinstance(event, Ping):
@@ -110,20 +116,24 @@ class WebsocketConnection(Connection):
                 self._logger.debug("received pong")
             elif isinstance(event, AcceptConnection):
                 self._logger.info("Client connection established!")
-                if self._greeting is not None:
-                    self._logger.debug("sending greeting of size %d", len(self._greeting))
-                    self._socket.send(self._ws.send(BytesMessage(self._greeting)))
+                self._send_greeting()
                 self._ready = True
             else:
                 self._logger.warning("got an unexpected event type: %s", event)
 
-    def send(self, data: Union[bytes, str]):
+    def _send_greeting(self):
+        if self._greeting is None:
+            self._logger.warning("no greeting message to send")
+            return
+        assert isinstance(self._greeting, Message)
+        sent = self.send(self._greeting)
+        self._logger.debug("sent greeting of %d bytes", sent)
+
+    def send(self, sync_message: SyncMessage) -> int:
         assert not self._closed
-        if isinstance(data, str):
-            data = self._ws.send(TextMessage(data))
-        else:
-            data = self._ws.send(BytesMessage(data))
-        self._socket.send(data)
+        assert isinstance(sync_message, Message)
+        data = self._ws.send(BytesMessage(sync_message.SerializeToString()))
+        return self._socket.send(data)
 
     def close(self, reason=None):
         self._closed = True

@@ -1,5 +1,5 @@
 """ contains the Muid class (basically a way to represent global addresses) """
-from typing import NamedTuple, Any, Union
+from typing import NamedTuple, Union
 from uuid import UUID
 
 from ..builders.muid_pb2 import Muid as MuidBuilder
@@ -53,9 +53,10 @@ class Muid(NamedTuple):
         assert medallion, "no medallion"
         assert timestamp, "no timestamp"
         return cls(timestamp, medallion, offset)
-    
+
     @staticmethod
     def from_str(hexed: str):
+        """ the inverse of str(muid) """
         hexed = hexed.replace("-", "")
         time_part = int(hexed[0:14], 16)
         medl_part = int(hexed[14:27], 16)

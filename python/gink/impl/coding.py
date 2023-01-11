@@ -352,7 +352,7 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
             value_builder.special = ValueBuilder.Special.FALSE # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if isinstance(value, (float, int)):
-        # TODO: add switch to encoding ints once Javascript implementation supports
+        # TODO[P2]: add switch to encoding ints once Javascript implementation supports
         value_builder.number.doubled = float(value) # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if value is None:

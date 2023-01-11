@@ -1,6 +1,14 @@
 """ tests to make sure that websocket connection works as intended """
 import logging
 from socket import socketpair
+
+# things installed via pip
+from google.protobuf.text_format import Parse
+from google.protobuf.message import Message
+
+# builders
+from ..builders.sync_message_pb2 import SyncMessage
+
 from ..impl.websocket_connection import WebsocketConnection
 
 logging.basicConfig(level=logging.DEBUG)
@@ -12,6 +20,7 @@ def test_chit_chat():
     # creating a client connection implicitly sends a request
     server = WebsocketConnection(socket=server_socket)
     client = WebsocketConnection(socket=client_socket, force_to_be_client=True)
+    getattr(client, "_logger").setLevel(logging.ERROR)
 
     # force the server to receive the initial request and send a response
     for incoming in server.receive():
@@ -21,20 +30,31 @@ def test_chit_chat():
     for incoming in client.receive():
         raise Exception("Didn't expect any user messages!")
 
-    for message in ["Hello, World!", b"\x01\x00\x255"]:
+    sync_message = SyncMessage()
+    # pylint: disable=maybe-no-member
+    sync_message.ack.medallion = 1 # type: ignore
+    sync_message.ack.timestamp = 2 # type: ignore
+    sync_message.ack.chain_start = 3 # type: ignore
+
+    # example of to string and back
+    sync_message2 = SyncMessage()
+    assert isinstance(sync_message2, Message)
+    sync_message2 = Parse(str(sync_message), sync_message2)
+    assert sync_message2 == sync_message
+
+    for message in [sync_message]:
         server.send(message)
         for incoming in client.receive():
             assert incoming == message, incoming
 
-    for message in ["Hello, World!", b"\x01\x00\x255"]:
+    for message in [sync_message]:
         client.send(message)
         for incoming in server.receive():
             assert incoming == message, incoming
 
-    getattr(client, "_logger").setLevel(logging.ERROR)
     client.close()
-    for msg in server.receive():
-        print("msg=", msg)
+    for _ in server.receive():
+        raise Exception("not expected")
 
     assert client.is_closed() and server.is_closed()
 

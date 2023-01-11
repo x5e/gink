@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-
+""" command line interface for Gink """
 import sys
 import os
 import copy
 import code
 import logging
 import readline
-#pylint: disable=wildcard-import
-from . import *
+from . import LmdbStore, LogBackedStore, Directory, Database, Sequence
 
 logging.basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "INFO"))
 assert readline

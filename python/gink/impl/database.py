@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """ contains the Database class """
+
+# standard python modules
 from random import randint
 from typing import Optional, Set, Union, Iterable, Tuple, Dict, Any
 from datetime import datetime, date, timedelta
@@ -7,16 +9,17 @@ from threading import Lock
 from select import select
 from pwd import getpwuid
 from socket import gethostname
-
-import time
-import os
-import math
-import re
-import sys
-from sys import stdout
+from os import getuid, getpid
+from time import time, sleep
+from sys import stdout, argv
+from math import floor
 from logging import getLogger
+from re import fullmatch, IGNORECASE
+
+# required python modules
 from google.protobuf.message import Message
 
+# builders
 from ..builders.sync_message_pb2 import SyncMessage
 from ..builders.entry_pb2 import Entry as EntryBuilder
 from ..builders.container_pb2 import Container as ContainerBuilder
@@ -30,7 +33,7 @@ from .tuples import Chain
 from .connection import Connection
 from .websocket_connection import WebsocketConnection
 from .listener import Listener
-from .coding import DIRECTORY, encode_key, encode_value, serialize
+from .coding import DIRECTORY, encode_key, encode_value
 from .muid import Muid
 from .chain_tracker import ChainTracker
 from .attribution import Attribution
@@ -70,14 +73,14 @@ class Database:
 
     @staticmethod
     def _get_info() -> Iterable[Tuple[str, Union[str, int]]]:
-        yield (".process.id", os.getpid())
-        user_data = getpwuid(os.getuid())
+        yield (".process.id", getpid())
+        user_data = getpwuid(getuid())
         yield (".user.name", user_data[0])
         if user_data[4] != user_data[0]:
             yield (".full.name", user_data[4])
         yield (".host.name", gethostname())
-        if sys.argv[0]:
-            yield (".software", sys.argv[0])
+        if argv[0]:
+            yield (".software", argv[0])
 
     def _add_info(self, bundler: Bundler):
         personal_directory = Muid(-1, 0, DIRECTORY)
@@ -97,10 +100,10 @@ class Database:
             that the timestamps returned are monotonically increasing
         """
         while True:
-            now = math.floor(time.time() * 1_000_000)
+            now = floor(time() * 1_000_000)
             if self._last_time is None or now > self._last_time:
                 break
-            time.sleep(1e-5)
+            sleep(1e-5)
         self._last_time = now
         return now
 
@@ -208,14 +211,12 @@ class Database:
             return None
         outbound_message_with_bundle = SyncMessage()
         outbound_message_with_bundle.bundle = bundle # type: ignore
-        assert isinstance(outbound_message_with_bundle, Message)
-        serialized_outbound_with_bundle: bytes = outbound_message_with_bundle.SerializeToString()
         for peer in self._connections:
             tracker = self._trackers.get(peer)
             if peer == from_peer:
                 # We got this bundle from this peer, so don't need to send the bundle back to them.
                 # But we do need to send them an ack confirming that we've received it.
-                peer.send(info.as_acknowledgement().SerializeToString()) # type: ignore
+                peer.send(info.as_acknowledgement()) # type: ignore
                 if tracker:
                     tracker.mark_as_having(info)
                 continue
@@ -227,16 +228,14 @@ class Database:
                 # In this case the peer has indicated they already have this bundle, probably
                 # via their greeting message, so we don't need to send it to them again.
                 continue
-            peer.send(serialized_outbound_with_bundle)
+            peer.send(outbound_message_with_bundle)
         if from_peer is None:
             self._sent_but_not_acked.add(info)
         return info
 
-    def _receive_data(self, received: bytes, from_peer: Connection):
+    def _receive_data(self, sync_message: SyncMessage, from_peer: Connection):
         with self._lock:
-            sync_message = SyncMessage()
             assert isinstance(sync_message, Message)
-            sync_message.ParseFromString(received)
             if sync_message.HasField("bundle"):
                 bundle_bytes = sync_message.bundle # type: ignore pylint: disable=maybe-no-member
                 self._receive_bundle(bundle_bytes, from_peer)
@@ -249,7 +248,7 @@ class Database:
                         outgoing_builder = SyncMessage()
                         assert isinstance(outgoing_builder, Message)
                         outgoing_builder.bundle = bundle_bytes # type: ignore
-                        from_peer.send(outgoing_builder.SerializeToString())
+                        from_peer.send(outgoing_builder)
                 self._store.get_bundles(callback=callback)
             elif sync_message.HasField("ack"):
                 self._logger.warning("got ack, not implemeneted !")
@@ -268,14 +267,14 @@ class Database:
     def connect_to(self, target: str):
         """ initiate a connection to another gink instance """
         self._logger.debug("initating connection to %s", target)
-        match = re.fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, re.I)
+        match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()
         if prefix and prefix != "ws://":
             raise NotImplementedError("only vanilla websockets currently supported")
         port = port or "8080"
         path = path or "/"
-        greeting = serialize(self._store.get_chain_tracker().to_greeting_message())
+        greeting = self._store.get_chain_tracker().to_greeting_message()
         connection = WebsocketConnection(host=host,  port=int(port), path=path, greeting=greeting)
         self._connections.add(connection)
         self._logger.debug("connection added")
@@ -356,7 +355,7 @@ class Database:
         for bundle_info in self._store.get_some(BundleInfo, limit):
             yield self.get_attribution(bundle_info.timestamp, bundle_info.medallion)
 
-    def show_log(self, limit: Optional[int]=-10, file=sys.stdout):
+    def show_log(self, limit: Optional[int]=-10, file=stdout):
         """ Just prints the log to stdout in a human readable format. """
         for attribution in self.log(limit=limit):
             print(attribution, file=file)
