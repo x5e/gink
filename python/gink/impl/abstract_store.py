@@ -50,8 +50,7 @@ class AbstractStore(ABC):
             as_of: MuTimestamp) -> Optional[FoundEntry]:
         """ Gets the most recent entry for a given key at as_of
         """
-        assert self and container and key and as_of
-        raise NotImplementedError()
+        #TODO: change to return FoundEntry or Clearance or None
 
     @abstractmethod
     def get_positioned_entry(self, entry: Muid, as_of: MuTimestamp=-1)->Optional[PositionedEntry]:

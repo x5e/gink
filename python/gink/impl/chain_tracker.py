@@ -62,6 +62,7 @@ class ChainTracker:
             The entries will be sorted in [medallion, chain_start] order.
         """
         sync_message = SyncMessage()
+        # pylint: disable=maybe-no-member
         sync_message.greeting.entries.append(SyncMessage.Greeting.GreetingEntry()) # type: ignore
         del sync_message.greeting.entries[0] # type: ignore
         greeting = sync_message.greeting # type: ignore

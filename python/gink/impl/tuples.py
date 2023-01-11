@@ -1,6 +1,5 @@
 """ a couple of NamedTuple definitions, primarily for internal usage """
-from typing import NamedTuple, Optional
-from datetime import datetime, timezone
+from typing import NamedTuple
 from ..builders.entry_pb2 import Entry as EntryBuilder
 
 from .muid import Muid
@@ -20,11 +19,13 @@ class FoundEntry(NamedTuple):
     builder: EntryBuilder
 
 class PositionedEntry(NamedTuple):
+    """ represents data in a positioned data structure like Sequence """
     position: MuTimestamp
     positioner: Muid
     entry_muid: Muid
     builder: EntryBuilder
 
 class SequenceKey(NamedTuple):
+    """ How data is ordered in a Sequence """
     position: MuTimestamp
     entry_muid: Muid
