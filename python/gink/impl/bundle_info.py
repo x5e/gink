@@ -2,7 +2,11 @@
 """ Contains the ChangeSetInfo class. """
 from typing import Optional
 from struct import Struct
+from google.protobuf.message import Message
+
 from ..builders.bundle_pb2 import Bundle
+from ..builders.sync_message_pb2 import SyncMessage
+
 from .typedefs import Medallion, MuTimestamp
 from .tuples import Chain
 
@@ -39,6 +43,14 @@ class BundleInfo:
             if key in kwargs:
                 setattr(self, key, kwargs[key])
 
+    def as_acknowledgement(self) -> SyncMessage:
+        sync_message = SyncMessage()
+        ack = sync_message.ack # type: ignore
+        ack.medallion = self.medallion
+        ack.chain_start = self.chain_start
+        ack.timestamp = self.timestamp
+        return sync_message
+    
     @staticmethod
     def from_bytes(data: bytes):
         """ the opposite of __bytes__ """

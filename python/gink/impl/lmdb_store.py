@@ -80,6 +80,12 @@ class LmdbStore(AbstractStore):
         clearances - tracks clearance changes (most recent per container if not retaining entries)
             key: (container-muid, clearance-muid)
             val: binaryproto of the clearance
+        
+        outbox - Keeps track of what has been added locally but not sent to peers.
+                 Important to track because if not retaining all bundles locally then need to
+                 send locally created bundles to another node to be saved.
+            key: bytes(BundleInfo)
+            val: bundle bytes (i.e. same as in the bundles table)
 
         properties - an index to enable looking up all of the properties on an object
                 < NOT YET IMPLEMENTED >
@@ -114,6 +120,7 @@ class LmdbStore(AbstractStore):
         self._retentions = self._handle.open_db(b"retentions")
         self._clearances = self._handle.open_db(b"clearances")
         self._properties = self._handle.open_db(b"properties")
+        self._outbox = self._handle.open_db(b"outbox")
         if reset:
             with self._handle.begin(write=True) as txn:
                 # The delete=False signals to lmdb to truncate the tables rather than drop them
@@ -127,6 +134,7 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._retentions, delete=False)
                 txn.drop(self._clearances, delete=False)
                 txn.drop(self._properties, delete=False)
+                txn.drop(self._outbox, delete=False)
         with self._handle.begin() as txn:
             # I'm checking to see if retentions are set in a read-only transaction, because if
             # they are and another process has this file open I don't want to wait to get a lock.
@@ -575,7 +583,8 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=entry_storage_key.entry_muid, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def apply_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool=False
+    ) -> Tuple[BundleInfo, bool]:
         builder = BundleBuilder()
         builder.ParseFromString(bundle_bytes)  # type: ignore
         new_info = BundleInfo(builder=builder)
@@ -588,6 +597,8 @@ class LmdbStore(AbstractStore):
             if needed:
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
                     trxn.put(bytes(new_info), bundle_bytes, db=self._bundles)
+                if push_into_outbox:
+                    trxn.put(bytes(new_info), bundle_bytes, db=self._outbox)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 change_items = list(builder.changes.items()) # type: ignore
                 change_items.sort() # sometimes the protobuf library doesn't maintain order of maps
@@ -607,6 +618,21 @@ class LmdbStore(AbstractStore):
                         continue
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         return (new_info, needed)
+    
+    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
+        with self._handle.begin() as trxn:
+            outbox_cursor = trxn.cursor(self._outbox)
+            positioned = outbox_cursor.first()
+            while positioned:
+                key, val = outbox_cursor.item()
+                yield BundleInfo.from_bytes(key), val
+                positioned = outbox_cursor.next()
+    
+    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
+        with self._handle.begin(write=True) as trxn:
+            assert isinstance(trxn, Trxn)
+            for bundle_info in bundle_infos:
+                trxn.delete(bytes(bundle_info), db=self._outbox)
 
     def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int, builder: Clearance):
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)

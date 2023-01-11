@@ -57,6 +57,8 @@ class MemoryStore(AbstractStore):
 
     def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
         for key, val in self._containers.items():
+            assert isinstance(key, Muid)
+            assert isinstance(val, ContainerBuilder)
             yield key, val
 
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
@@ -206,8 +208,17 @@ class MemoryStore(AbstractStore):
                     builder=entry_builder)
             if limit is not None:
                 limit -= 1
+    
+    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
+        raise NotImplementedError("memorystore doesn't support outbox")
 
-    def apply_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+    def remove_from_outbox(self, _: Iterable[BundleInfo]):
+        raise NotImplementedError("memorystore doesn't support outbox")
+
+    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool=False
+    ) -> Tuple[BundleInfo, bool]:
+        if push_into_outbox:
+            raise NotImplementedError("memorystore doesn't support outbox")
         bundle_builder = BundleBuilder()
         bundle_builder.ParseFromString(bundle_bytes)  # type: ignore
         new_info = BundleInfo(builder=bundle_builder)

@@ -83,14 +83,23 @@ class AbstractStore(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def apply_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool=False
+    ) -> Tuple[BundleInfo, bool]:
         """ Tries to add data from a particular bundle to this store.
+
+            Set push_into_outbox if being added by an instance that isn't syncing.
 
             Returns: a tuple of the bundle's info and boolean indicating if it was applied
             Will not be applied if this store has already seen this bundle before.
         """
-        assert bundle_bytes and self
-        raise NotImplementedError()
+    
+    @abstractmethod
+    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
+        """ Goes through outbox items in standard order. """
+    
+    @abstractmethod
+    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
+        """ Something to call after receiving an ack from a peer. """
 
     @abstractmethod
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp=0):
@@ -99,8 +108,6 @@ class AbstractStore(ABC):
             This is done callback style because we don't want to leave dangling transactions
             in the store, which could easily happen if we offered up an iterator interface instead.
         """
-        assert callback and self
-        raise NotImplementedError()
 
     def get_bundle_infos(self) -> List[BundleInfo]:
         """ Gets a list of bundle infos; mostly for testing. """

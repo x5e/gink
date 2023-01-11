@@ -43,20 +43,21 @@ class Database:
     _store: AbstractStore
     _connections: Set[Connection]
     _listeners: Set[Listener]
+    _sent_but_not_acked: Set[BundleInfo]
     _trackers: Dict[Connection, ChainTracker] # tracks what we know a peer has *received*
-    _sent_through: MuTimestamp # data up till this timestamp has been sent to peers
+    _last_bundle_info: Optional[BundleInfo]
 
     def __init__(self, store: AbstractStore):
         Database.last = self
         self._store = store
-        self._last_bundle_info: Optional[BundleInfo] = None
+        self._last_bundle_info = None
         self._lock = Lock()
         self._last_time = None
         self._connections = set()
         self._logger = getLogger(self.__class__.__name__)
         self._listeners = set()
         self._trackers = {}
-        self._sent_through = self.get_now()
+        self._sent_but_not_acked = set()
 
     @staticmethod
     def _get_info() -> Iterable[Tuple[str, Union[str, int]]]:
@@ -186,23 +187,27 @@ class Database:
             If this bundle has already been processed by the local store, then we know
             that it's also been sent to each peer and so can be ignored.
         """
-        info, added = self._store.apply_bundle(bundle)
+        info, added = self._store.apply_bundle(bundle, False)
         self._logger.debug("received bundle %r from %r", info, from_peer)
         if from_peer is not None:
             tracker = self._trackers.get(from_peer)
             if tracker is not None:
                 tracker.mark_as_having(info)
-        if not added:
+        if from_peer and not added:
             return None
-        sync_message = SyncMessage()
-        sync_message.bundle = bundle # type: ignore
-        assert isinstance(sync_message, Message)
-        serialized: bytes = sync_message.SerializeToString()
+        outbound_message_with_bundle = SyncMessage()
+        outbound_message_with_bundle.bundle = bundle # type: ignore
+        assert isinstance(outbound_message_with_bundle, Message)
+        serialized_outbound_with_bundle: bytes = outbound_message_with_bundle.SerializeToString()
         for peer in self._connections:
+            tracker = self._trackers.get(peer)
             if peer == from_peer:
-                # We got this bundle from this peer, so don't need to send it back to them.
+                # We got this bundle from this peer, so don't need to send the bundle back to them.
+                # But we do need to send them an ack confirming that we've received it.
+                peer.send(info.as_acknowledgement().SerializeToString()) # type: ignore
+                if tracker:
+                    tracker.mark_as_having(info)
                 continue
-            tracker = self._trackers[peer]
             if tracker is None:
                 # In this case we haven't received a greeting from the peer, and so don't want to
                 # send any bundles because it might result in gaps in their chain.
@@ -211,7 +216,9 @@ class Database:
                 # In this case the peer has indicated they already have this bundle, probably
                 # via their greeting message, so we don't need to send it to them again.
                 continue
-            peer.send(serialized)
+            peer.send(serialized_outbound_with_bundle)
+        if from_peer is None:
+            self._sent_but_not_acked.add(info)
         return info
 
     def _receive_data(self, received: bytes, from_peer: Connection):
