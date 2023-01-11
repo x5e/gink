@@ -80,7 +80,7 @@ class LmdbStore(AbstractStore):
         clearances - tracks clearance changes (most recent per container if not retaining entries)
             key: (container-muid, clearance-muid)
             val: binaryproto of the clearance
-        
+
         outbox - Keeps track of what has been added locally but not sent to peers.
                  Important to track because if not retaining all bundles locally then need to
                  send locally created bundles to another node to be saved.
@@ -189,6 +189,7 @@ class LmdbStore(AbstractStore):
         if last_index is None:
             last_index = 2**52
         assert isinstance(last_index, int)
+        # pylint: disable=invalid-unary-operand-type
         remaining = (last_index if last_index >= 0 else ~last_index) + 1
         with self._handle.begin() as trxn:
             table = {
@@ -618,7 +619,7 @@ class LmdbStore(AbstractStore):
                         continue
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         return (new_info, needed)
-    
+
     def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
         with self._handle.begin() as trxn:
             outbox_cursor = trxn.cursor(self._outbox)
@@ -627,7 +628,7 @@ class LmdbStore(AbstractStore):
                 key, val = outbox_cursor.item()
                 yield BundleInfo.from_bytes(key), val
                 positioned = outbox_cursor.next()
-    
+
     def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
         with self._handle.begin(write=True) as trxn:
             assert isinstance(trxn, Trxn)

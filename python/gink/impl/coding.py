@@ -6,7 +6,7 @@
     revision number.
 """
 from typing import Optional, Union, NamedTuple, List, Any
-from struct import Struct, unpack
+from struct import Struct
 from google.protobuf.message import Message
 
 from ..builders.value_pb2 import Value as ValueBuilder
@@ -25,7 +25,7 @@ DIRECTORY: int = Behavior.DIRECTORY # type: ignore
 PROPERTY: int = Behavior.PROPERTY # type: ignore
 BOX: int = Behavior.BOX # type: ignore
 FLOAT_INF = float("inf")
-INT_INF = unpack(">Q", b"\xff"*8)[0]
+INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
 deletion = Deletion()
 

@@ -201,7 +201,8 @@ class Database:
             If this bundle has already been processed by the local store, then we know
             that it's also been sent to each peer and so can be ignored.
         """
-        info, added = self._store.apply_bundle(bundle, False)
+        # TODO[P3]: break out case of applying bundle when running in CLI/lib versus server
+        info, added = self._store.apply_bundle(bundle, True)
         self._logger.debug("received bundle %r from %r", info, from_peer)
         if from_peer is not None:
             tracker = self._trackers.get(from_peer)
@@ -251,7 +252,13 @@ class Database:
                         from_peer.send(outgoing_builder)
                 self._store.get_bundles(callback=callback)
             elif sync_message.HasField("ack"):
-                self._logger.warning("got ack, not implemeneted !")
+                acked_info = BundleInfo.from_ack(sync_message)
+                tracker = self._trackers.get(from_peer)
+                if tracker is not None:
+                    tracker.mark_as_having(acked_info)
+                self._store.remove_from_outbox([acked_info])
+                if acked_info in self._sent_but_not_acked:
+                    self._sent_but_not_acked.remove(acked_info)
             else:
                 self._logger.warning("got binary message without ack, bundle, or greeting")
 
@@ -307,6 +314,9 @@ class Database:
                     connection: Connection = ready_reader.accept(sync_message)
                     self._connections.add(connection)
                     self._logger.debug("accepted incoming connection from %s", connection)
+            for info, bundle_bytes in self._store.read_through_outbox():
+                if info not in self._sent_but_not_acked:
+                    self._receive_bundle(bundle_bytes, None)
 
     def reset(self, to_time: GenericTimestamp=EPOCH, *, bundler=None, comment=None):
         """ Resets the database to a specific point in time.
