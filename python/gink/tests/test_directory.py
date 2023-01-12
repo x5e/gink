@@ -222,7 +222,7 @@ def test_personal_directory():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            assert database._last_bundle_info is None
+            assert database._last_link is None
             assert isinstance(store, AbstractStore)
             infos = store.get_bundle_infos()
             assert len(infos) == 0

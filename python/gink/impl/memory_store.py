@@ -39,6 +39,7 @@ class MemoryStore(AbstractStore):
     _containers: SortedDict  # muid => builder
     _removals: SortedDict
     _clearances: SortedDict
+    _outbox: SortedDict
 
     def __init__(self):
         # TODO: add a "no retention" capability to allow the memory store to be configured to
@@ -51,6 +52,7 @@ class MemoryStore(AbstractStore):
         self._locations = SortedDict()
         self._removals = SortedDict()
         self._clearances = SortedDict()
+        self._outbox = SortedDict()
     
     def get_container(self, container: Muid) -> ContainerBuilder:
         return self._containers[container]
@@ -210,15 +212,17 @@ class MemoryStore(AbstractStore):
                 limit -= 1
     
     def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
-        raise NotImplementedError("memorystore doesn't support outbox")
+        for info_bytes, bundle_bytes in self._outbox.items():
+            assert isinstance(bundle_bytes, bytes)
+            assert isinstance(info_bytes, bytes)
+            yield BundleInfo.from_bytes(info_bytes), bundle_bytes
 
-    def remove_from_outbox(self, _: Iterable[BundleInfo]):
-        raise NotImplementedError("memorystore doesn't support outbox")
+    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
+        for bundle_info in bundle_infos:
+            del self._outbox[bytes(bundle_info)]
 
     def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool=False
     ) -> Tuple[BundleInfo, bool]:
-        if push_into_outbox:
-            raise NotImplementedError("memorystore doesn't support outbox")
         bundle_builder = BundleBuilder()
         bundle_builder.ParseFromString(bundle_bytes)  # type: ignore
         new_info = BundleInfo(builder=bundle_builder)
@@ -226,6 +230,8 @@ class MemoryStore(AbstractStore):
         old_info = self._chain_infos.get(new_info.get_chain())
         needed = AbstractStore._is_needed(new_info, old_info)
         if needed:
+            if push_into_outbox:
+                self._outbox[bytes(new_info)] = bundle_bytes
             self._bundles[bytes(new_info)] = bundle_bytes
             self._chain_infos[chain_key] = new_info
             change_items = list(bundle_builder.changes.items()) # type: ignore

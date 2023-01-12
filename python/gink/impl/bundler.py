@@ -7,16 +7,19 @@ from ..builders.entry_pb2 import Entry as EntryBuilder
 
 from .bundle_info import BundleInfo
 from .muid import Muid
+from .typedefs import MuTimestamp, Medallion
+from .tuples import Chain
 
 class Bundler:
     """ Manages construction and finalization of a change set. """
 
     def __init__(self, comment: Optional[str]=None):
-        self._sealed: Union[bool, bytes] = False
+        self._sealed: Optional[bytes] = None
         self._bundle_builder = BundleBuilder()
         self._count_items = 0
         self._comment = comment
-        self._info: Optional[BundleInfo] = None
+        self._medallion: Optional[Medallion] = None
+        self._timestamp: Optional[MuTimestamp] = None
 
     def __str__(self):
         return str(self._bundle_builder)
@@ -25,7 +28,7 @@ class Bundler:
         return self._count_items
 
     def __setattr__(self, __name: str, __value: Any) -> None:
-        if hasattr(self, "_sealed") and self._sealed:
+        if hasattr(self, "_sealed") and self._sealed is not None:
             raise AttributeError("can't change a sealed change set")
         if __name == "comment":
             self._comment = __value
@@ -34,9 +37,9 @@ class Bundler:
 
     def __getattr__(self, name):
         if name == "medallion":
-            return self._info.medallion if self._info else None
+            return self._medallion
         if name == "timestamp":
-            return self._info.timestamp if self._info else None
+            return self._timestamp
         if name == "comment":
             return self._comment
         if name == "sealed":
@@ -58,17 +61,24 @@ class Bundler:
         changes[self._count_items].CopyFrom(builder) # type: ignore
         return muid
 
-    def seal(self, bundle_info: BundleInfo) -> bytes:
+    def seal(self, 
+        chain: Chain, 
+        timestamp: MuTimestamp,
+        previous: Optional[MuTimestamp]=None
+    ) -> bytes:
         """ Finalizes a bundle and serializes it. """
-        self._bundle_builder.chain_start = bundle_info.chain_start # type: ignore # pylint: disable=maybe-no-member
-        self._bundle_builder.medallion = bundle_info.medallion # type: ignore # pylint: disable=maybe-no-member
-        self._bundle_builder.timestamp = bundle_info.timestamp # type: ignore # pylint: disable=maybe-no-member
-        if bundle_info.previous:
-            self._bundle_builder.previous = bundle_info.previous # type: ignore # pylint: disable=maybe-no-member
+         # pylint: disable=maybe-no-member
+        if previous is None:
+            assert timestamp == chain.chain_start
+        else:
+            assert chain.chain_start <= previous < timestamp
+            self._bundle_builder.previous = previous # type: ignore
+        self._bundle_builder.chain_start = chain.chain_start # type: ignore
+        self._medallion = self._bundle_builder.medallion = chain.medallion # type: ignore
+        self._timestamp = self._bundle_builder.timestamp = timestamp # type: ignore
         if self._comment:
-            self._bundle_builder.comment = self.comment # type: ignore # pylint: disable=maybe-no-member
-        self._info = bundle_info
-        self._sealed = self._bundle_builder.SerializeToString() # type: ignore # pylint: disable=maybe-no-member
+            self._bundle_builder.comment = self.comment # type: ignore
+        self._sealed = self._bundle_builder.SerializeToString() # type: ignore
         return self._sealed
 
     class Deferred(Muid):

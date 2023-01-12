@@ -96,19 +96,19 @@ class WebsocketConnection(Connection):
             elif isinstance(event, TextMessage):
                 self._logger.info('Text message received: %r', event.data)
             elif isinstance(event, BytesMessage):
-                self._logger.debug('We got %d bytes!', len(event.data))
+                received = bytes(event.data) if isinstance(event.data, bytearray) else event.data
+                assert isinstance(received, bytes)
+                self._logger.debug('We got %d bytes!', len(received))
                 if event.message_finished:
                     if self._buffered:
-                        data = self._buffered + event.data
+                        received = self._buffered + received
                         self._buffered = b""
-                    else:
-                        data = event.data
                     sync_message = SyncMessage()
                     assert isinstance(sync_message, Message)
-                    sync_message.ParseFromString(event.data)
+                    sync_message.ParseFromString(received)
                     yield sync_message
                 else:
-                    self._buffered += event.data
+                    self._buffered += bytes(event.data)
             elif isinstance(event, Ping):
                 self._logger.debug("received ping")
                 self._socket.send(self._ws.send(event.response()))
