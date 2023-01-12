@@ -1,0 +1,15 @@
+syntax = "proto3";
+package google.gink;
+
+import "muid.proto";
+
+/**
+    Indicates that all entries from a container should be deleted.
+    Implementations must store at least the last clearance seen for each
+    container, so that any changes received with timestamps before the 
+    most recent clearance can be (soft) deleted.
+*/
+message Clearance {
+    Muid container = 1;
+    bool purge = 2;
+}

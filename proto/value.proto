@@ -1,12 +1,11 @@
 syntax = "proto3";
 package google.gink;
-import "muid.proto";
+import "key.proto";
 
-// TODO(https://github.com/google/gink/issues/53): Add link to design doc here.
 message Value {
     oneof value {
         Special special = 1;
-        sint64 enum_value = 2;
+        EnumValue enum_value = 2;
         string characters = 3;
         Number number = 4;
         Timestamp timestamp = 5;
@@ -17,14 +16,23 @@ message Value {
         Document document = 12;
         string symbol = 13;
         ColumnReference column = 14;
-        Invocation invocation = 15;
         bytes uuid = 16;
-        Muid muid = 17;
         Complex complex = 18;
         Zone timezone = 19;
         DateTime datetime = 20;
         ZonedDateTime zoned = 21;
         Interval interval = 22;
+        Invocation invocation = 23;
+    }
+
+    // Allowing muid user values would make questions like "Is <muid> in <sequence>?" ambiguous.
+    // But I'm keeping them reserved here for the moment just in case we decide to put it back in.
+    reserved 15, 17;
+    reserved "proto_data", "muid";
+
+    message EnumValue {
+        sint64 value = 1;
+        // Maybe add a reference to a data structure that defines an enum ???
     }
 
     message ColumnReference {
@@ -39,9 +47,10 @@ message Value {
     }
 
     enum Special {
-        NULL = 0;
+        MISSING = 0;
         TRUE = 1;
         FALSE = 2;
+        NULL = 3;
     }
     
     message Timestamp {
@@ -54,13 +63,11 @@ message Value {
     
     message Tuple {
         repeated Value values = 1;
-        repeated string names = 2; // optional, doesn't impact comparisons
     }
     
     message Document {
         // keys and values must be the same length
-        // keys should be numbers or strings
-        repeated Value keys = 1;
+        repeated Key keys = 1;
         repeated Value values = 2;
     }
     
@@ -77,7 +84,7 @@ message Value {
     
     message Number {
         enum Constant {
-            ZERO = 0;
+            UNKNOWN = 0;
             I = 1;
             E = 2;
             PI = 3;

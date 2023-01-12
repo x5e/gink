@@ -1,9 +1,9 @@
 export { GinkInstance } from "./GinkInstance";
 export { Box } from "./Box";
 export { Directory } from "./Directory";
-export { List } from "./List";
+export { Sequence as List } from "./Sequence";
 export { IndexedDbStore } from "./IndexedDbStore";
-export { ChangeSet } from "./ChangeSet";
-export { Muid, ChangeSetInfo, Value } from "./typedefs";
+export { Bundler } from "./Bundler";
+export { Muid, BundleInfo, Value } from "./typedefs";
 export { Container } from "./Container";
 export { logToStdErr } from "./utils";

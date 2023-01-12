@@ -1,7 +1,7 @@
 import { Container } from "./Container";
 import { Value, Muid, KeyType, AsOf } from "./typedefs";
 import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
-import { ChangeSet } from "./ChangeSet";
+import { Bundler } from "./Bundler";
 import { ensure, muidToString } from "./utils";
 import { GinkInstance } from "./GinkInstance";
 import { toJson, interpret } from "./factories";
@@ -10,42 +10,42 @@ import { Behavior } from "gink/protoc.out/behavior_pb";
 export class Directory extends Container {
 
     constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, containerBuilder);
+        super(ginkInstance, address, Behavior.DIRECTORY);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
-            ensure(address.offset == Behavior.SCHEMA);
+            ensure(address.offset == Behavior.DIRECTORY);
         } else {
-            ensure(this.containerBuilder.getBehavior() == Behavior.SCHEMA);
+            ensure(containerBuilder.getBehavior() == Behavior.DIRECTORY);
         }
     }
 
     //TODO(https://github.com/google/gink/issues/54): Implement clear().
 
     /**
-     * Sets a key/value association in a Schema.
-     * If a change set is supplied, the function will add the entry to that change set 
+     * Sets a key/value association in a directory.
+     * If a bundler is supplied, the function will add the entry to that bundler 
      * and return immediately (presumably you know what to do with a CS if you passed it in).
-     * If the caller does not supply a change set, then one is created on the fly, and
+     * If the caller does not supply a bundler, then one is created on the fly, and
      * then this method will await on the CS being added to the database instance.
      * This is to allow simple console usage like:
-     *      await mySchema.set("foo", "bar");
+     *      await myDirectory.set("foo", "bar");
      * @param key 
      * @param value 
-     * @param change an optional change set to put this in.
+     * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created entry  
      */
-    async set(key: KeyType, value: Value | Container, change?: ChangeSet|string): Promise<Muid> {
+    async set(key: KeyType, value: Value | Container, change?: Bundler|string): Promise<Muid> {
         return await this.addEntry(key, value, change);
     }
 
     /**
-     * Adds a deletion marker (tombstone) for a particular key in the schema.
+     * Adds a deletion marker (tombstone) for a particular key in the directory.
      * The corresponding value will be seen to be unset in the datamodel.
      * @param key 
-     * @param change an optional change set to put this in.
+     * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
-    async delete(key: KeyType, change?: ChangeSet|string): Promise<Muid> {
+    async delete(key: KeyType, change?: Bundler|string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 

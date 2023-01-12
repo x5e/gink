@@ -93,7 +93,8 @@ timestamp, medallion, offset together produces the cononical string representati
 If the offset is 0 it may be omitted, and if both the offset and medallion are 0
 they may both be omitted.
 
-For example, combining the values from the prior explinations would give a muid who's string representation is `05D5EAC793E61F-1F8CB77AE1EAA-0000B`.
+For example, combining the values from the prior explinations would give a muid who's string 
+representation is `05D5EAC793E61F-1F8CB77AE1EAA-0000B`.
 
 Replacing the offset with 0 (representing the containing transaction) would give
 the muid `05D5EAC793E61F-1F8CB77AE1EAA-00000` that could also be written 

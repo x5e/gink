@@ -1,4 +1,4 @@
-import { ChangeSetInfo, Medallion, ChainStart, SeenThrough, Muid, CallBack, Timestamp } from "./typedefs";
+import { BundleInfo, Medallion, ChainStart, SeenThrough, Muid, CallBack, Timestamp } from "./typedefs";
 import { SyncMessage } from "gink/protoc.out/sync_message_pb";
 
 
@@ -9,7 +9,7 @@ import { SyncMessage } from "gink/protoc.out/sync_message_pb";
  * functionality to convert from/to Greeting objects.
  */
 export class ChainTracker {
-    private readonly data: Map<Medallion, Map<ChainStart, ChangeSetInfo>> = new Map();
+    private readonly data: Map<Medallion, Map<ChainStart, BundleInfo>> = new Map();
     private readonly waiters: Map<CallBack, [Medallion, Timestamp]> = new Map();
 
     constructor({ greetingBytes = null, greeting = null }) {
@@ -29,16 +29,16 @@ export class ChainTracker {
     }
 
     /**
-     * Allows you to wait until an instance has seen a particular change set.
-     * @param what either a muid address or a change set info (indicates what to watch for)
+     * Allows you to wait until an instance has seen a particular bundle.
+     * @param what either a muid address or a bundle info (indicates what to watch for)
      * @param timeoutMs how long to wait before giving up, default of undefined doesn't timeout
      * @returns a promise that resolves when the thing has been marked as seen, or rejects at timeout
      */
-    waitTillHas({ medallion, timestamp }: ChangeSetInfo | Muid, timeoutMs?: number): Promise<void> {
+    waitTillHas({ medallion, timestamp }: BundleInfo | Muid, timeoutMs?: number): Promise<void> {
         const innerMap = this.data.get(medallion);
         if (innerMap) {
-            for (const [chainStart, changeSetInfo] of innerMap.entries()) {
-                if (chainStart <= timestamp && changeSetInfo.timestamp >= timestamp)
+            for (const [chainStart, bundleInfo] of innerMap.entries()) {
+                if (chainStart <= timestamp && bundleInfo.timestamp >= timestamp)
                     return Promise.resolve();
             }
         }
@@ -60,7 +60,7 @@ export class ChainTracker {
      * @param checkValidExtension If true then barfs if this commit isn't a vaild extension.
      * @returns true if the commit represents data not seen before
      */
-    markAsHaving(commitInfo: ChangeSetInfo, checkValidExtension?: Boolean): Boolean {
+    markAsHaving(commitInfo: BundleInfo, checkValidExtension?: Boolean): Boolean {
         if (!this.data.has(commitInfo.medallion))
             this.data.set(commitInfo.medallion, new Map());
         const innerMap = this.data.get(commitInfo.medallion);
@@ -118,7 +118,7 @@ export class ChainTracker {
      * @param key A [Medallion, ChainStart] tuple
      * @returns SeenThrough (a Timestamp) or undefined if not yet seen
      */
-    getCommitInfo(key: [Medallion, ChainStart]): ChangeSetInfo | undefined {
+    getCommitInfo(key: [Medallion, ChainStart]): BundleInfo | undefined {
         const inner = this.data.get(key[0]);
         if (!inner) return undefined;
         return inner.get(key[1]);

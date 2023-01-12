@@ -2,46 +2,46 @@ import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
 import { Value, Muid, AsOf } from "./typedefs";
-import { ChangeSet } from "./ChangeSet";
+import { Bundler } from "./Bundler";
 import { ensure } from "./utils";
 import { toJson, interpret } from "./factories";
 import { Behavior } from "gink/protoc.out/behavior_pb";
 
 export class Box extends Container {
 
-    constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, containerBuilder);
+    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
+        super(ginkInstance, address, Behavior.BOX);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
             ensure(address.offset == Behavior.BOX);            
         } else {
-            ensure(this.containerBuilder.getBehavior() == Behavior.BOX);
+            ensure(containerBuilder.getBehavior() == Behavior.BOX);
         }
     }
 
     /**
      * Puts a value or a reference to another container in this box. 
-     * If a change set is supplied, the function will add the entry to that change set 
+     * If a bundler is supplied, the function will add the entry to that bundler 
      * and return immediately (presumably you know what to do with a CS if you passed it in).
-     * If the caller does not supply a change set, then one is created on the fly, and
+     * If the caller does not supply a bundler, then one is created on the fly, and
      * then this method will await on the CS being added to the database instance.
      * This is to allow simple console usage like:
      *      await myBox.put("some value");
      * @param value 
-     * @param change an optional change set to put this in.
+     * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created entry  
      */
-    async set(value: Value | Container, change?: ChangeSet|string): Promise<Muid> {
+    async set(value: Value | Container, change?: Bundler|string): Promise<Muid> {
         return this.addEntry(undefined, value, change);
     }
 
     /**
      * Adds a deletion marker (tombstone) to the box, effectively clearing it.
      * The corresponding value will be seen to be unset in the data model.
-     * @param change an optional change set to put this in.
+     * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
-    async clear(change?: ChangeSet|string): Promise<Muid> {
+    async clear(change?: Bundler|string): Promise<Muid> {
         return this.addEntry(undefined, Container.DELETION, change);
     }
 
@@ -61,7 +61,7 @@ export class Box extends Container {
      */
     async size(asOf?: AsOf): Promise<number> {
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
-        return +!(entry === undefined || entry.deleting)
+        return +!(entry === undefined || entry.deletion)
     }
 
     /**
@@ -71,7 +71,7 @@ export class Box extends Container {
      */
     async isEmpty(asOf?: AsOf): Promise<boolean> {
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
-        return (entry === undefined || entry.deleting)
+        return (entry === undefined || entry.deletion)
     }
 
     /**

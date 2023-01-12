@@ -2,17 +2,17 @@ syntax = "proto3";
 package google.gink;
 
 enum Behavior {
-    UNKNOWN = 0;
-    BOX = 1; // only holds on entry at a time, only uses value field, not key
-    FILE = 2; // entries contain bytes and specify location in file
-    BINLOG = 3; // entries contain bytes, order is implied by timestamps
-    TABLE = 4; // entries have only value, no explicit key, keyed on index_expressions
-    SET = 5; // entries have only key, no value
-    SUM = 6; // entries combined by adding together values, user only sees total
-    SCHEMA = 7; // entries have key & value and replace matching key
-    QUEUE = 8; // entries only have value, never replace prior entry, but can be popped
-    INDEX = 9; // not changed by entries, instead defines lookup into another container
-    VIEW = 10; // a traditional sql view
-    DERIVED = 11; // a derived table, AKA a materialized view
-    NODE = 12; // entries are edges in a graph
+    UNSPECIFIED = 0; // seeing this behavior usually means there's a bug somewhere
+    BOX = 1; // only holds on entry at a time, only uses a contains, no key or subject
+    FILE = 2; // entries contain bytes and optionally a location to place those bytes in the file
+    STREAM = 3; // entries contain bytes, order is implied by timestamps
+    MEMBERSHIP = 4; // also known as label or tag, has "subject"
+    KEY_SET = 5; // entries have only key, no value, and may be removed with a deletion
+
+    PAIR_MAP = 6; // entries map a pair of muids to a value or reference
+    DIRECTORY = 7; // entries have key and also something contained (value or pointee)
+    SEQUENCE = 8; // entries have a value or pointee but no key, ordered by time
+    PROPERTY = 9; // entries set a property on an object
+    REGISTRY = 11; // aka edge type, entries have left and rite subject address
+    PLACEHOLDER = 13; // no entries for containers of this type
 };

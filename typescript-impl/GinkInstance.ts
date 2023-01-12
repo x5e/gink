@@ -1,15 +1,15 @@
 import { Peer } from "./Peer";
 import { makeMedallion, ensure, noOp, muidTupleToMuid } from "./utils";
-import { ChangeSetBytes, Medallion, ChainStart, CommitListener, CallBack, AsOf, ChangeSetInfo, Muid, Bytes, } from "./typedefs";
+import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, AsOf, BundleInfo, Muid, Bytes, } from "./typedefs";
 import { SyncMessage as SyncMessageBuilder } from "gink/protoc.out/sync_message_pb";
 import { ChainTracker } from "./ChainTracker";
-import { ChangeSet } from "./ChangeSet";
+import { Bundler } from "./Bundler";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
 import { Directory } from "./Directory";
 import { Box } from "./Box";
-import { List } from "./List";
+import { Sequence } from "./Sequence";
 import { Store } from "./Store";
 import { Behavior } from "gink/protoc.out/behavior_pb";
 
@@ -56,22 +56,22 @@ export class GinkInstance {
             const medallion = makeMedallion();
             const chainStart = Date.now() * 1000;
             this.myChain =  [medallion, chainStart];
-            const changeSet = new ChangeSet(`start: ${info?.software || "GinkInstance"}`, medallion);
-            const medallionInfo = new Directory(this, {timestamp:-1, medallion, offset: Behavior.SCHEMA});
+            const bundler = new Bundler(`start: ${info?.software || "GinkInstance"}`, medallion);
+            const medallionInfo = new Directory(this, {timestamp:-1, medallion, offset: Behavior.DIRECTORY});
             if (info?.email) {
-                await medallionInfo.set("email", info.email, changeSet);
+                await medallionInfo.set("email", info.email, bundler);
             }
             if (info?.fullname) {
-                await medallionInfo.set("fullname", info.fullname, changeSet);
+                await medallionInfo.set("fullname", info.fullname, bundler);
             }
             if (info?.software) {
-                await medallionInfo.set("software", info.software, changeSet);
+                await medallionInfo.set("software", info.software, bundler);
             }
-            changeSet.seal({
+            bundler.seal({
                 medallion, timestamp: chainStart, chainStart
             })
-            const commitBytes = changeSet.bytes;
-            await this.store.addChangeSet(commitBytes);
+            const commitBytes = bundler.bytes;
+            await this.store.addBundle(commitBytes);
             await this.store.claimChain(medallion, chainStart);
         }
         this.iHave = await this.store.getChainTracker();
@@ -83,51 +83,51 @@ export class GinkInstance {
      * @returns a "magic" global directory that always exists and is accessible by all instances
      */
     getGlobalDirectory(): Directory {
-        return new Directory(this, { timestamp: -1, medallion: -1, offset: Behavior.SCHEMA });
+        return new Directory(this, { timestamp: -1, medallion: -1, offset: Behavior.DIRECTORY });
     }
 
     /**
      * Creates a new box container.
-     * @param change either the change set to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Box container (immediately if a change set is passed in, otherwise after the commit)
+     * @param change either the bundler to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the Box container (immediately if a bundler is passed in, otherwise after the commit)
      */
-    async createBox(change?: ChangeSet|string): Promise<Box> {
+    async createBox(change?: Bundler|string): Promise<Box> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.BOX, change);
         return new Box(this, muid, containerBuilder);
     }
 
     /**
      * Creates a new List container.
-     * @param change either the change set to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the List container (immediately if a change set is passed in, otherwise after the commit)
+     * @param change either the bundler to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the commit)
      */
-    async createList(change?: ChangeSet|string): Promise<List> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.QUEUE, change);
-        return new List(this, muid, containerBuilder);
+    async createList(change?: Bundler|string): Promise<Sequence> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.SEQUENCE, change);
+        return new Sequence(this, muid, containerBuilder);
     }
 
     /**
      * Creates a new Directory container (like a javascript map or a python dict).
-     * @param change either the change set to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the List container (immediately if a change set is passed in, otherwise after the commit)
+     * @param change either the bundler to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the commit)
      */
     // TODO: allow user to specify the types allowed for keys and values
-    async createDirectory(change?: ChangeSet|string): Promise<Directory> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.SCHEMA, change);
+    async createDirectory(change?: Bundler|string): Promise<Directory> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.DIRECTORY, change);
         return new Directory(this, muid, containerBuilder);
     }
 
-    protected async createContainer(behavior: Behavior, change?: ChangeSet|string): Promise<[Muid, ContainerBuilder]> {
+    protected async createContainer(behavior: Behavior, change?: Bundler|string): Promise<[Muid, ContainerBuilder]> {
         let immediate: boolean = false;
-        if (!(change instanceof ChangeSet)) {
+        if (!(change instanceof Bundler)) {
             immediate = true;
-            change = new ChangeSet(change);
+            change = new Bundler(change);
         }
         const containerBuilder = new ContainerBuilder();
         containerBuilder.setBehavior(behavior);
         const address = change.addContainer(containerBuilder);
         if (immediate) {
-            await this.addChangeSet(change);
+            await this.addBundler(change);
         }
         return [address, containerBuilder];
     }
@@ -143,26 +143,26 @@ export class GinkInstance {
     /**
      * Adds a commit to a chain, setting the medallion and timestamps on the commit in the process.
      * 
-     * @param changeSet a PendingCommit ready to be sealed
+     * @param bundler a PendingCommit ready to be sealed
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
-    public async addChangeSet(changeSet: ChangeSet): Promise<ChangeSetInfo> {
+    public async addBundler(bundler: Bundler): Promise<BundleInfo> {
         var unlockingFunction: CallBack;
-        var resultInfo: ChangeSetInfo;
+        var resultInfo: BundleInfo;
         try {
             unlockingFunction = await this.processingLock.acquireLock();
             await this.ready;
             const nowMicros = Date.now() * 1000;
             const seenThrough = await this.store.getSeenThrough(this.myChain);
             ensure(seenThrough > 0 && (seenThrough < nowMicros + 500));
-            const commitInfo: ChangeSetInfo = {
+            const commitInfo: BundleInfo = {
                 medallion: this.myChain[0],
                 chainStart: this.myChain[1],
                 timestamp: seenThrough >= nowMicros ? seenThrough + 1 : nowMicros,
                 priorTime: seenThrough,
             }
-            resultInfo = changeSet.seal(commitInfo);
-            await this.receiveCommit(changeSet.bytes);
+            resultInfo = bundler.seal(commitInfo);
+            await this.receiveCommit(bundler.bytes);
         } finally {
             unlockingFunction();
         }
@@ -201,23 +201,23 @@ export class GinkInstance {
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns 
      */
-    private async receiveCommit(commitBytes: ChangeSetBytes, fromConnectionId?: number): Promise<void> {
+    private async receiveCommit(commitBytes: BundleBytes, fromConnectionId?: number): Promise<void> {
         await this.ready;
-        const [changeSetInfo, novel] = await this.store.addChangeSet(commitBytes);
-        this.iHave.markAsHaving(changeSetInfo);
-        this.logger(`got ${novel} novel commit from ${fromConnectionId}: ${JSON.stringify(changeSetInfo)}`);
+        const [bundleInfo, novel] = await this.store.addBundle(commitBytes);
+        this.iHave.markAsHaving(bundleInfo);
+        this.logger(`got ${novel} novel commit from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
         const peer = this.peers.get(fromConnectionId);
         if (peer) {
-            peer.hasMap?.markAsHaving(changeSetInfo);
-            peer._sendAck(changeSetInfo);
+            peer.hasMap?.markAsHaving(bundleInfo);
+            peer._sendAck(bundleInfo);
         }
         if (!novel) return;
         for (const [peerId, peer] of this.peers) {
             if (peerId != fromConnectionId)
-                peer._sendIfNeeded(commitBytes, changeSetInfo);
+                peer._sendIfNeeded(commitBytes, bundleInfo);
         }
         for (const listener of this.listeners) {
-            await listener(changeSetInfo);
+            await listener(bundleInfo);
         }
     }
 
@@ -233,8 +233,8 @@ export class GinkInstance {
         const unlockingFunction = await this.processingLock.acquireLock();
         try {
             const parsed = SyncMessageBuilder.deserializeBinary(messageBytes);
-            if (parsed.hasCommit()) {
-                const commitBytes: ChangeSetBytes = parsed.getCommit_asU8();
+            if (parsed.hasBundle()) {
+                const commitBytes: BundleBytes = parsed.getBundle_asU8();
                 await this.receiveCommit(commitBytes, fromConnectionId);
                 return;
             }
@@ -247,7 +247,7 @@ export class GinkInstance {
             }
             if (parsed.hasAck()) {
                 const ack = parsed.getAck();
-                const info: ChangeSetInfo = {
+                const info: BundleInfo = {
                     medallion: ack.getMedallion(),
                     timestamp: ack.getTimestamp(),
                     chainStart: ack.getChainStart()

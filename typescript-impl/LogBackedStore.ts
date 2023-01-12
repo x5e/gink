@@ -1,5 +1,5 @@
-import { ChangeSetBytes, Medallion, ChainStart, SeenThrough, Bytes, AsOf } from "./typedefs";
-import { ChangeSetInfo, Muid, Entry, CallBack } from "./typedefs";
+import { BundleBytes, Medallion, ChainStart, SeenThrough, Bytes, AsOf } from "./typedefs";
+import { BundleInfo, Muid, Entry, CallBack } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 //import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
@@ -66,7 +66,7 @@ export class LogBackedStore implements Store {
                 const logFile = LogFile.deserializeBinary(uint8Array);
                 const commits = logFile.getCommitsList();
                 for (const commit of commits) {
-                    const [_info, added] = await this.indexedDbStore.addChangeSet(commit);
+                    const [_info, added] = await this.indexedDbStore.addBundle(commit);
                     assert(added);
                     this.commitsProcessed += 1;
                 }
@@ -90,9 +90,9 @@ export class LogBackedStore implements Store {
         return this.commitsProcessed;
     }
 
-    async addChangeSet(commitBytes: ChangeSetBytes): Promise<[ChangeSetInfo, boolean]> {
+    async addBundle(commitBytes: BundleBytes): Promise<[BundleInfo, boolean]> {
         await this.ready;
-        const [info, added] = await this.indexedDbStore.addChangeSet(commitBytes);
+        const [info, added] = await this.indexedDbStore.addBundle(commitBytes);
         if (added) {
             const logFragment = new LogFile();
             logFragment.setCommitsList([commitBytes]);
@@ -127,7 +127,7 @@ export class LogBackedStore implements Store {
         return await this.indexedDbStore.getChainTracker();
     }
 
-    async getCommits(callBack: (commitBytes: ChangeSetBytes, commitInfo: ChangeSetInfo) => void): Promise<void> {
+    async getCommits(callBack: (commitBytes: BundleBytes, commitInfo: BundleInfo) => void): Promise<void> {
         await this.ready;
         await this.indexedDbStore.getCommits(callBack);
     }

@@ -1,4 +1,4 @@
-import { ChangeSetInfo } from "../typescript-impl";
+import { BundleInfo } from "../typescript-impl";
 import { ChainTracker } from "../typescript-impl/ChainTracker";
 import { ensure } from "../typescript-impl/utils"
 
@@ -8,10 +8,10 @@ test('track two commits', async () => {
     const chainStart = 1662789574924000;
     const secondTime = 1662789590300000;
 
-    const commitInfo1: ChangeSetInfo = { "timestamp": chainStart, medallion, chainStart, "comment": "node instance" };
+    const commitInfo1: BundleInfo = { "timestamp": chainStart, medallion, chainStart, "comment": "node instance" };
     chainTracker.markAsHaving(commitInfo1, true);
 
-    const commitInfo2: ChangeSetInfo = {
+    const commitInfo2: BundleInfo = {
         "timestamp": secondTime, medallion, chainStart, "priorTime": chainStart, "comment": "hello"
     }
     chainTracker.markAsHaving(commitInfo2, true);

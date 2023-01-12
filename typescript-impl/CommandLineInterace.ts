@@ -2,8 +2,8 @@ import { RoutingServer } from "./RoutingServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { Store } from "./Store";
 import { GinkInstance } from "./GinkInstance";
-import { ChangeSetInfo } from "./typedefs";
-import { ChangeSet } from "./ChangeSet";
+import { BundleInfo } from "./typedefs";
+import { Bundler } from "./Bundler";
 var readline = require('readline');
 import { SimpleServer } from "./SimpleServer";
 import { ensure, logToStdErr } from "./utils";
@@ -65,7 +65,7 @@ export class CommandLineInterface {
         this.targets = process.argv.slice(2);
     }
 
-    static async onCommit(commitInfo: ChangeSetInfo) {
+    static async onCommit(commitInfo: BundleInfo) {
         logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`);
     }
 
@@ -82,7 +82,7 @@ export class CommandLineInterface {
             logToStdErr("ready (type a comment and press enter to create a commit)");
             const readlineInterface = readline.createInterface(process.stdin, process.stdout);
             readlineInterface.on('line', async (comment: string) => {
-                instance.addChangeSet(new ChangeSet(comment));
+                instance.addBundler(new Bundler(comment));
             })
         } else {
             await this.routingServer?.ready;

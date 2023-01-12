@@ -1,0 +1,23 @@
+syntax = "proto3";
+import "muid.proto";
+package google.gink;
+
+/**
+    Acts to (re)move an entry.
+
+    When dest is unset (=0) then a Movement acts to remove an Entry.  
+
+    When dest is set to a time in the past, effectively moves an entry to another location.
+    When dest is set to a time in the future, hides the entry until that future time arrives.
+
+    When dest is set to -1, hide indefinately (may be visible in queries that show future).
+
+    Should only be used for positional containers (i.e. DIRECTORY or REGISTRY).
+    For keyed containers, just add a new entry setting deleting = True.
+*/
+message Movement {
+    Muid container = 1;
+    Muid entry = 2;
+    sint64 dest = 3;
+    bool purge = 4;  // remove even if otherwise maintaining history
+}

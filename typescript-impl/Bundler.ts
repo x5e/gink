@@ -1,15 +1,15 @@
-import { Muid, ChangeSetInfo, Medallion, Timestamp } from "./typedefs";
-import { ChangeSet as ChangeSetBuilder } from "gink/protoc.out/change_set_pb";
+import { Muid, BundleInfo, Medallion, Timestamp } from "./typedefs";
+import { Bundle as BundleBuilder } from "gink/protoc.out/bundle_pb";
 import { Change as ChangeBuilder } from "gink/protoc.out/change_pb";
 import { Entry as EntryBuilder } from "gink/protoc.out/entry_pb";
 import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
 import { ensure } from "./utils";
 
-export class ChangeSet {
+export class Bundler {
     // note: this class is unit tested as part of Store.test.ts
-    private commitInfo: ChangeSetInfo | null = null;
+    private commitInfo: BundleInfo | null = null;
     private serialized: Uint8Array | null = null;
-    private changeSetBuilder = new ChangeSetBuilder();
+    private bundleBuilder = new BundleBuilder();
     private countItems = 0;
  
     constructor(private pendingComment?: string, readonly preAssignedMedallion?: Medallion) { 
@@ -17,7 +17,7 @@ export class ChangeSet {
 
     private requireNotSealed() {
         if (this.commitInfo)
-            throw new Error("This ChangeSet has already been sealed.");
+            throw new Error("This Bundler has already been sealed.");
     }
 
     get bytes() {
@@ -53,26 +53,26 @@ export class ChangeSet {
      * 
      * @param changeBuilder a protobuf Change ready to be serialized
      * @returns an Address who's offset is immediately available and whose medallion and
-     * timestamp become defined when this ChangeSet is sealed.
+     * timestamp become defined when this Bundle is sealed.
      */
     addChange(changeBuilder: ChangeBuilder): Muid {
         this.requireNotSealed();
         const offset = ++this.countItems;
-        this.changeSetBuilder.getChangesMap().set(offset, changeBuilder);
+        this.bundleBuilder.getChangesMap().set(offset, changeBuilder);
         // Using an anonymous class here because I only need the interface of Address
         // but I need some non-trivial behavior: the timestamp and possibly medallion 
-        // are undefined until the associated change set is finalized, then all of the 
+        // are undefined until the associated bundle is finalized, then all of the 
         // components of the address become well defined.
         return new class {
-            constructor(private changeSet: ChangeSet, readonly offset: number) {}
-            get medallion() { return this.changeSet.medallion; }
-            get timestamp() { return this.changeSet.timestamp; }
+            constructor(private bundler: Bundler, readonly offset: number) {}
+            get medallion() { return this.bundler.medallion; }
+            get timestamp() { return this.bundler.timestamp; }
         }(this, offset);
     }
 
     removeChange(address: Muid) {
         this.requireNotSealed();
-        const map = this.changeSetBuilder.getChangesMap();
+        const map = this.bundleBuilder.getChangesMap();
         map.delete(address.offset);
     }
 
@@ -82,19 +82,19 @@ export class ChangeSet {
      * @param commitInfo the commit metadata to add when serializing
      * @returns serialized 
      */
-    seal(commitInfo: ChangeSetInfo): ChangeSetInfo {
+    seal(commitInfo: BundleInfo): BundleInfo {
         this.requireNotSealed();
         if (this.preAssignedMedallion && this.preAssignedMedallion != commitInfo.medallion) {
             throw new Error("specifed commitInfo doesn't match pre-assigned medallion");
         }
         this.commitInfo = {...commitInfo};
         this.commitInfo.comment = this.pendingComment;
-        this.changeSetBuilder.setTimestamp(commitInfo.timestamp);
-        this.changeSetBuilder.setPreviousTimestamp(commitInfo.priorTime);
-        this.changeSetBuilder.setChainStart(commitInfo.chainStart);
-        this.changeSetBuilder.setMedallion(commitInfo.medallion);
-        this.changeSetBuilder.setComment(this.commitInfo.comment);
-        this.serialized = this.changeSetBuilder.serializeBinary();
+        this.bundleBuilder.setTimestamp(commitInfo.timestamp);
+        this.bundleBuilder.setPrevious(commitInfo.priorTime);
+        this.bundleBuilder.setChainStart(commitInfo.chainStart);
+        this.bundleBuilder.setMedallion(commitInfo.medallion);
+        this.bundleBuilder.setComment(this.commitInfo.comment);
+        this.serialized = this.bundleBuilder.serializeBinary();
         return this.commitInfo;
     }
 }

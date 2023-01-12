@@ -1,5 +1,5 @@
 import { sleep } from "./test_utils";
-import { GinkInstance, ChangeSet, IndexedDbStore, Directory } from "../typescript-impl";
+import { GinkInstance, Bundler, IndexedDbStore, Directory } from "../typescript-impl";
 import { ensure } from "../typescript-impl/utils"
 
 test('set and get Basic data', async function() {
@@ -22,11 +22,11 @@ test('set multiple key/value pairs in one change-set', async function() {
     const schema = await instance.createDirectory();
 
     // make multiple changes in a change set
-    const changeSet = new ChangeSet();
-    await schema.set("cheese", "fries", changeSet);
-    await schema.set("foo", "bar", changeSet);
-    changeSet.comment = "Hear me roar!";
-    await instance.addChangeSet(changeSet);
+    const bundler = new Bundler();
+    await schema.set("cheese", "fries", bundler);
+    await schema.set("foo", "bar", bundler);
+    bundler.comment = "Hear me roar!";
+    await instance.addBundler(bundler);
 
     // verify the result
     const result = await schema.get("cheese");
