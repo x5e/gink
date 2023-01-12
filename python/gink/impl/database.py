@@ -193,20 +193,11 @@ class Database:
             bundle: bytes,
             info: BundleInfo,
             from_peer: Optional[Connection]
-    ) -> Optional[BundleInfo]:
-        """ called when either a bundle is received from a remote peer or one is created locally
-
-            We're assuming that each peer has been sent all data in the local store.
-            In order to maintain that invariant, each peer must be sent each new bundle added.
-
-            Since the invariant is potentially not true while in the process of sending
-            bundles to peers, we need to aquire and hold the lock to call this function.
+    ) -> None:
+        """ Sends a bundle either created locally or received from a peer to other peers.
 
             The "peer" argument indicates which peer this bundle came from.  We need to know
             where it came from so we don't send the same data back.
-
-            If this bundle has already been processed by the local store, then we know
-            that it's also been sent to each peer and so can be ignored.
         """
         self._logger.debug("broadcasting bundle %r from %r", info, from_peer)
         outbound_message_with_bundle = SyncMessage()
@@ -228,7 +219,6 @@ class Database:
             peer.send(outbound_message_with_bundle)
         if from_peer is None:
             self._sent_but_not_acked.add(info)
-        return info
 
     def _receive_data(self, sync_message: SyncMessage, from_peer: Connection):
         with self._lock:
@@ -236,10 +226,10 @@ class Database:
             if sync_message.HasField("bundle"):
                 bundle_bytes = sync_message.bundle # type: ignore pylint: disable=maybe-no-member
                 info, added = self._store.apply_bundle(bundle_bytes, False)
+                from_peer.send(info.as_acknowledgement())
                 tracker = self._trackers.get(from_peer)
                 if tracker is not None:
                     tracker.mark_as_having(info)
-                    from_peer.send(info.as_acknowledgement())
                 if added:
                     self._broadcast_bundle(bundle_bytes, info, from_peer)
             elif sync_message.HasField("greeting"):

@@ -5,7 +5,6 @@ from ..builders.bundle_pb2 import Bundle as BundleBuilder
 from ..builders.change_pb2 import Change as ChangeBuilder
 from ..builders.entry_pb2 import Entry as EntryBuilder
 
-from .bundle_info import BundleInfo
 from .muid import Muid
 from .typedefs import MuTimestamp, Medallion
 from .tuples import Chain
