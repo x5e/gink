@@ -199,7 +199,7 @@ class Database:
             The "peer" argument indicates which peer this bundle came from.  We need to know
             where it came from so we don't send the same data back.
         """
-        self._logger.debug("broadcasting bundle %r from %r", info, from_peer)
+        self._logger.debug("broadcasting %r from %r", info, from_peer)
         outbound_message_with_bundle = SyncMessage()
         outbound_message_with_bundle.bundle = bundle # type: ignore
         for peer in self._connections:
@@ -216,6 +216,7 @@ class Database:
                 # In this case the peer has indicated they already have this bundle, probably
                 # via their greeting message, so we don't need to send it to them again.
                 continue
+            self._logger.debug("sending %r to %r", info, peer)
             peer.send(outbound_message_with_bundle)
         if from_peer is None:
             self._sent_but_not_acked.add(info)
