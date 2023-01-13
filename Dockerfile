@@ -21,3 +21,9 @@ COPY functional-tests ./functional-tests
 RUN ./functional-tests/node-client-test.js
 RUN ./functional-tests/browser-client-test/browser-test.js
 RUN ./functional-tests/routing-server-test.js
+RUN apt-get install -y python3-lmdb python3-sortedcontainers \
+    python3-nose2 python3-protobuf python3-wsproto
+COPY python ./python
+ENV PYTHONPATH=/opt/gink/protoc.out
+WORKDIR /opt/gink/python
+RUN python3 -m nose2

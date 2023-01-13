@@ -9,7 +9,7 @@ message Entry {
     Muid container = 1;   // must reference a container
     Behavior behavior = 2; // required, must match the behavior of corresponding container
 
-    oneof link {
+    oneof subject {
         // some of these only apply to certain container types:
         Key key = 3;            // KEY_SET, DIRECTORY
         Pair pair = 4;          // REGISTRY, RELATION

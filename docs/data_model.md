@@ -94,7 +94,7 @@ in case the user wishes to look at the history).
 
 ### User Keys in Entries
 
-Container types such as DIRECTORY, and KEY_SET allow user to add entries with a specific key,
+Container types such as `DIRECTORY`, and `KEY_SET` allow user to add entries with a specific key,
 which will then be used to look up that data in the future.  In order to keep the encoding
 into binaryproto deterministic, and to work with some limitations of data-stores (e.g. IndexedDB),
 only the following data types may be used as keys:
@@ -109,8 +109,8 @@ datetime types, etc.
 
 ### User Values in Entries
 
-Container types such as DIRECTORY, SEQUENCE, PROPERTY, and BOX all have the capability to store
-"value" data in entries.  The value data can encode common data types such as:
+Container types such as `DIRECTORY`, `SEQUENCE`, `PROPERTY`, and `BOX` all have the capability 
+to store "value" data in entries.  The value data can encode common data types such as:
 * character strings
 * byte strings
 * numbers, including integers, floats, doubles, bigints, fractions, etc.
@@ -236,7 +236,7 @@ implementation yet.  When it does the following behavior/limitations should be r
 
 ### STREAM
 
-In the case where of the STREAM behavior, no link is allowed, and the "contains" field
+In the case where of the `STREAM` behavior, no link is allowed, and the "contains" field
 must have octets set with size less than one GiB of data.  Like sequence containers, movements
 are allowed, and the ordering algo is the same.
 
@@ -248,7 +248,65 @@ set the expiry field so logs aren't retained forever.
 
 ### PROPERTY
 
+Typically the way that you'd talk about a property is to say that a particular object has
+a property with a particular value.  In Gink, properties are containers themselves and 
+the objects they describe are the subject.  In other words, in order to set the "height"
+property on an object, you first would have to create the "height" property itself, then
+you would set in the height property what the value associated with a particular object should be.
 
+The reason for this odd inversion is that it allows constraints to be defined on properties
+at property creation time, and separates the property entries from the entries of the data 
+structures themselves.
+
+The pre-existing global property is by convention used to name/describe objects in the system
+(I.e. the value would be a character string), though there are no hard constraints on what
+value this property can take and so it can be used in whatever way the user desires.
+
+Currenly properties may contain either values or references to other entities.  It's expected
+that the most common use case is to only set properties to be values, but it isn't that hard
+to allow the data type type be used for the more general case.
+
+### MEMBERSHIP
+
+Containers with the `MEMBERSHIP` behavior have another change as a key ("describing"), but
+don't have a value or pointee, and essentially just act as a boolean to differentiate 
+things within them and those not in the membership (though deletions are allowe to remove
+something from the membership).
+
+In theory, what you could do with properties you could do with membership, but since the
+membership data type only allows for indication of inclusion or exclusion, it's expected that
+implementations will optimize to allow quick lookups of all items in a given membership set.
+
+Additionally, it's worth noting that membership containers work like sets of entities.  In
+addition to this set type, we also have the "key set" data type which only allows they key
+data types (ints, character strings, and byte strings).  Though in theory they could be combined
+into a single data type, in practice implementation will actually be easier to keep key-sets 
+and value sets as different types (users can always create a data stucture on top of a combination
+of one of each if they desire combined behavior).
+
+### KEY_SET
+
+Containers with the `KEY_SET` behavior must have the `key` field set in their entries,
+but can't contain any value or reference, though may have deletion set to effectively remove
+a item from the set.  The `expiry` field may have a value, though it can be overwritten by 
+re-adding the particular key to the set without an expiry (before or after expiration).
+It cannot use the `effective` field which is only for ordered data types.
+
+### PAIR_MAP
+
+Allows the mapping of a pair of entities to a value or reference.  A typical use case of this
+data type would be to keep track of weights between nodes in something like a neural net.
+The `deletion` and `expiry` fields may be used with their usual meaning.  As in other mapping
+container types, you can't move entries, but you can overwrite them by adding another entry
+with the same subject.
+
+### REGISTRY
+
+A containers with the `REGISTRY` behavior allow links (edges) between database objects to be 
+created.  Multiple links can exist between two objects, and these links are ordered in time
+like sequence entries.  They can be reordered or removed with movement messages.  It's expected
+that this data type will be used to implement edges in for graph database type applications
+(and that entries/edges will be annotated with properties).
 
 ### PLACEHOLDER
 
