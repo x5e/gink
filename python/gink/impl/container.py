@@ -192,8 +192,15 @@ class Container(ABC):
             self._database.commit(bundler)
         return muid
 
-    def reset(self, to_time: GenericTimestamp=EPOCH, *, key: Optional[UserKey]=None,
-            recursive: bool=False, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+    def reset(
+        self, 
+        to_time: GenericTimestamp=EPOCH, 
+        *, 
+        key: Optional[UserKey]=None,
+        recursive: bool=False, 
+        bundler: Optional[Bundler]=None, 
+        comment: Optional[str]=None
+    ) -> Bundler:
         """ Resets either a specific key or the whole container to a particular past time.
 
             (They optional key argument only makes sense when the container is a directory).
@@ -216,11 +223,8 @@ class Container(ABC):
         for change in self._database.get_store().get_reset_changes(to_time=to_time,
                 container=self._muid, user_key=key, recursive=recursive):
             bundler.add_change(change)
-        if immediate:
-            if len(bundler):
-                self._database.commit(bundler=bundler)
-            else:
-                bundler = None
+        if immediate and len(bundler):
+            self._database.commit(bundler=bundler)
         return bundler
 
     @abstractmethod

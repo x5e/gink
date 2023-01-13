@@ -318,7 +318,7 @@ class LmdbStore(AbstractStore):
             location = self._get_location(trxn, parsed_key.entry_muid)
             previous = self._get_location(trxn, parsed_key.entry_muid, as_of=to_time)
             placed_time = parsed_key.get_placed_time()
-            if placed_time > to_time and last_clear_time < placed_time and location == parsed_key:
+            if placed_time >= to_time and last_clear_time < placed_time and location == parsed_key:
                 # this entry was put there recently and it's still there
                 change_builder = ChangeBuilder()
                 container.put_into(change_builder.movement.container) # type: ignore

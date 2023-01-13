@@ -6,10 +6,10 @@ import copy
 import code
 import logging
 import readline
-from . import LmdbStore, LogBackedStore, Directory, Database, Sequence
+from . import LmdbStore, LogBackedStore, Directory, Database, Sequence, Bundler
 
 logging.basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "INFO"))
-assert readline
+assert readline and Bundler
 gink_file = os.environ.get("GINK_FILE", "/tmp/gink.mdb")
 if gink_file.endswith(".mdb"):
     store = LmdbStore(gink_file)

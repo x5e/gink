@@ -223,7 +223,9 @@ def test_simple_reset():
         with closing(store):
             database = Database(store=store)
             queue = Sequence.get_global_instance(database)
-            queue.append("something")
+            change_muid = queue.append("something")
+            assert database.resolve_timestamp(-1) == change_muid.timestamp
             assert queue.dumps() == "Sequence(root=True, contents=['something'])"
-            queue.reset(-1)
+            reset_bundle = queue.reset(-1)
+            assert reset_bundle is not None
             assert queue.dumps() == "Sequence(root=True, contents=[])"
