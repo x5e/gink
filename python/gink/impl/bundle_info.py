@@ -2,7 +2,12 @@
 """ Contains the ChangeSetInfo class. """
 from typing import Optional
 from struct import Struct
+
+from google.protobuf.message import Message
+
 from ..builders.bundle_pb2 import Bundle
+from ..builders.sync_message_pb2 import SyncMessage
+
 from .typedefs import Medallion, MuTimestamp
 from .tuples import Chain
 
@@ -38,6 +43,29 @@ class BundleInfo:
         for key in self.__slots__:
             if key in kwargs:
                 setattr(self, key, kwargs[key])
+
+    def as_acknowledgement(self) -> SyncMessage:
+        """ convert to an ack message that can be sent to a peer """
+        sync_message = SyncMessage()
+        ack = getattr(sync_message, "ack") # type: ignore
+        ack.medallion = self.medallion
+        ack.chain_start = self.chain_start
+        ack.timestamp = self.timestamp
+        ack.previous = self.previous
+        return sync_message
+
+    @staticmethod
+    def from_ack(sync_message: SyncMessage):
+        """ reverse of as_ack """
+        assert isinstance(sync_message, Message)
+        assert sync_message.HasField("ack")
+        ack = sync_message.ack # type: ignore
+        return BundleInfo(
+            chain_start=ack.chain_start,
+            medallion=ack.medallion,
+            timestamp=ack.timestamp,
+            previous=ack.previous,
+        )
 
     @staticmethod
     def from_bytes(data: bytes):

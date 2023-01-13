@@ -15,7 +15,15 @@ from .tuples import PositionedEntry, SequenceKey
 class Sequence(Container):
     BEHAVIOR = SEQUENCE
 
-    def __init__(self, *ordered, contents=None, muid=None, database=None, root=False):
+    def __init__(self, 
+        *ordered, 
+        contents: Optional[Iterable]=None, 
+        muid: Optional[Muid]=None, 
+        database: Optional[Database]=None, 
+        root: bool=False,
+        bundler: Optional[Bundler] = None,
+        comment: Optional[str] = None,
+        ):
         """
         muid: the global id of this sequence, created on the fly if None
         database: where to send commits through, or last db instance created if None
@@ -26,17 +34,20 @@ class Sequence(Container):
         if root:
             muid = Muid(-1, -1, SEQUENCE)
         database = database or Database.last
-        bundler = Bundler()
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
         if muid is None:
             muid = Container._create(
                 SEQUENCE, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         self._muid = muid
         self._database = database
-        if contents:
-            # TODO: implement clear, then append all of the items
-            raise NotImplementedError()
-        if len(bundler):
+        if contents is not None:
+            self.clear(bundler=bundler)
+            self.extend(contents, bundler=bundler)
+        if immediate and len(bundler):
             self._database.commit(bundler)
     
     def __iter__(self):
@@ -50,7 +61,7 @@ class Sequence(Container):
             identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents=["""
         stuffing = [repr(val) for val in self.values(as_of=as_of)]
-        as_one_line = result + " ".join(stuffing) + "])"
+        as_one_line = result + ", ".join(stuffing) + "])"
         if len(as_one_line) < 80:
             return as_one_line
         result += "\n\t"
@@ -212,12 +223,7 @@ class Sequence(Container):
             return (sequence_key, found)
         raise IndexError(f"could not find anything at index {index}")
 
-    def __len__(self):
-        """ Returns the current size of the list.
-        """
-        return self.size()
-
-    def size(self, *, as_of: GenericTimestamp = None):
+    def size(self, *, as_of: GenericTimestamp = None) -> int:
         """ Tells the size at the specified as_of time.
         """
         as_of = self._database.resolve_timestamp(as_of)

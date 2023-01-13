@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-
+""" command line interface for Gink """
 import sys
 import os
 import copy
 import code
 import logging
 import readline
-from . import *
+from . import LmdbStore, LogBackedStore, Directory, Database, Sequence, Bundler
 
-logging.basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "DEBUG"))
-assert readline
+logging.basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "INFO"))
+assert readline and Bundler
 gink_file = os.environ.get("GINK_FILE", "/tmp/gink.mdb")
 if gink_file.endswith(".mdb"):
     store = LmdbStore(gink_file)
@@ -26,18 +26,20 @@ args.pop(0) # remove script
 cmd = args.pop(0) if args else None
 if cmd == "demo":
     pass
+elif cmd == "blame":
+    root.show_blame()
 elif cmd == "get":
     if not args:
         raise SystemExit("Key not specified.")
     gotten = root.get(args[0])
     if gotten:
-        print(gotten, end="")
+        print(gotten)
     else:
         raise SystemExit("No entry under that key.")
 elif cmd == "set":
     if not args:
         raise SystemExit("Key not specified.")
-    root[args[0]] = sys.stdin.read()
+    root[args[0]] = sys.stdin.read().rstrip()
 elif cmd == "shell":
     code.InteractiveConsole(globals()).interact()
 elif cmd in ("run", "serve"):
@@ -49,11 +51,13 @@ elif cmd in ("run", "serve"):
     for arg in args:
         database.connect_to(arg)
     database.run()
+elif cmd == "dump":
+    database.dump()
 elif cmd in ("help", "--help", "-h"):
     print("""
     Show this help text:
         python3 -m gink help
-    
+
     The remaining commands operate on a gink database file, which defaults
     to using /tmp/gink.mdb but can be set with GINK_FILE environment variable.
 
@@ -65,9 +69,6 @@ elif cmd in ("help", "--help", "-h"):
 
     Dump the contents of the database in a human friendly format:
         python3 -m gink dump
-
-    Show the contents of the database and update as it changes:
-        python3 -m gink show
 
     Connect to a remotely running peers (port defaults to 8080):
         python3 -m gink run 192.168.1.1 example.com:8081

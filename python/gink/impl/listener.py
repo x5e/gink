@@ -1,5 +1,4 @@
 """ contains the Listener class that listens on a port for incomming connections """
-from typing import Union
 from socket import (
     socket as Socket,
     AF_INET,
@@ -32,8 +31,8 @@ class Listener:
         assert isinstance(greeting, Message)
         (new_socket, addr) = self.socket.accept()
         peer: Connection = self.connection_class(
-            socket=new_socket, 
+            socket=new_socket,
             host=addr[0],
             port=addr[1],
-            greeting=greeting.SerializeToString())
+            greeting=greeting)
         return peer

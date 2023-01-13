@@ -35,16 +35,16 @@ def test_negative_as_of():
         with closing(store):
             database = Database(store=store)
             bundler = Bundler("hello world")
-            assert bundler.timestamp is None
+            assert bundler._timestamp is None
             database.commit(bundler)
-            assert bundler.timestamp is not None
+            assert bundler._timestamp is not None
             recent = store.get_one(BundleInfo)
-            assert recent.timestamp == bundler.timestamp
+            assert recent.timestamp == bundler._timestamp
 
 def test_commit_two():
     for store in [
         LmdbStore(),
-        MemoryStore(), 
+        MemoryStore(),
     ]:
         with closing(store):
             database = Database(store=store)
@@ -70,10 +70,10 @@ def test_reset_everything():
             assert len(queue) == 1
             assert len(misc) == 1
             database.reset()
-            assert len(root) == 0
+            assert len(root) == 0, root.dumps()
             assert len(queue) == 0
             assert len(misc) == 0
-            database.reset(to=-1)
+            database.reset(to_time=-1)
             assert len(root) == 1
             assert len(queue) == 1
             assert len(misc) == 1

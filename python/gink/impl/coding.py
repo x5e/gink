@@ -6,7 +6,7 @@
     revision number.
 """
 from typing import Optional, Union, NamedTuple, List, Any
-from struct import Struct, unpack
+from struct import Struct
 from google.protobuf.message import Message
 
 from ..builders.value_pb2 import Value as ValueBuilder
@@ -18,6 +18,7 @@ from ..builders.change_pb2 import Change as ChangeBuilder
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion
 from .muid import Muid
 from .bundle_info import BundleInfo
+from .dummy import Dummy
 
 UNSPECIFIED: int = Behavior.UNSPECIFIED # type: ignore
 SEQUENCE: int = Behavior.SEQUENCE # type: ignore
@@ -25,9 +26,20 @@ DIRECTORY: int = Behavior.DIRECTORY # type: ignore
 PROPERTY: int = Behavior.PROPERTY # type: ignore
 BOX: int = Behavior.BOX # type: ignore
 FLOAT_INF = float("inf")
-INT_INF = unpack(">Q", b"\xff"*8)[0]
+INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
 deletion = Deletion()
+
+def ensure_entry_is_valid(builder: EntryBuilder, context: Any=object()):
+    assert isinstance(builder, Message)
+    if getattr(builder, "behavior") == UNSPECIFIED:
+        raise ValueError("entry lacks a behavior")
+    if not builder.HasField("container"):
+        raise ValueError("no container specified in entry")
+    container_muid = Muid.create(context, builder=getattr(builder, "container"))
+    if container_muid.timestamp == -1 and container_muid.medallion > 0:
+        if getattr(context, "medallion") != container_muid.medallion:
+            raise ValueError("attempt to modify instance container from other instance")
 
 def serialize(thing) -> bytes:
     """ Converts a protobuf builder or a timestamp into binary data. """
@@ -352,7 +364,7 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
             value_builder.special = ValueBuilder.Special.FALSE # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if isinstance(value, (float, int)):
-        # TODO: add switch to encoding ints once Javascript implementation supports
+        # TODO[P2]: add switch to encoding ints once Javascript implementation supports
         value_builder.number.doubled = float(value) # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if value is None:

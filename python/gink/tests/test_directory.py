@@ -178,9 +178,9 @@ def test_reset():
             assert 44 in gdi["nope"]  # type: ignore
             bundle = gdi.reset(middle, recursive=True)
             assert 44 not in gdi["nope"]  # type: ignore
-            assert len(bundle) == 1
+            assert bundle is not None and len(bundle) > 0
             bundle = gdi.reset(middle, recursive=True)
-            assert len(bundle) == 0
+            assert not bundle
 
 def test_clearance():
     """ tests the directory.clear method works as expected """
@@ -222,7 +222,7 @@ def test_personal_directory():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            assert database._last_bundle_info is None
+            assert database._last_link is None
             assert isinstance(store, AbstractStore)
             infos = store.get_bundle_infos()
             assert len(infos) == 0
@@ -246,7 +246,7 @@ def test_bytes_keys():
             keys = list(root.keys())
             assert keys == [a_bytestring], keys
             assert root[a_bytestring] == 42
-            
+
 def test_blame_and_log():
     """ makes sure that the directory.get_blame works """
     for store in [MemoryStore(), LmdbStore()]:

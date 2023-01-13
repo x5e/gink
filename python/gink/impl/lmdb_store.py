@@ -6,7 +6,7 @@ import os
 import uuid
 from typing import Tuple, Callable, Iterable, Optional, Set, Union
 from struct import pack
-from lmdb import open as ldmbopen, Transaction as Trxn
+from lmdb import open as ldmbopen, Transaction as Trxn, Cursor
 from google.protobuf.message import Message
 
 # Generated Protobuf Modules
@@ -27,8 +27,9 @@ from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, EntryStoragePair, decode_muts, wrap_change,
-    EntryStorageKey, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
-    deletion, Deletion, decode_entry_occupant, MovementKey, LocationKey, PROPERTY, BOX)
+    EntryStorageKey, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize, 
+    ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, MovementKey, 
+    LocationKey, PROPERTY, BOX)
 
 class LmdbStore(AbstractStore):
     """
@@ -81,6 +82,12 @@ class LmdbStore(AbstractStore):
             key: (container-muid, clearance-muid)
             val: binaryproto of the clearance
 
+        outbox - Keeps track of what has been added locally but not sent to peers.
+                 Important to track because if not retaining all bundles locally then need to
+                 send locally created bundles to another node to be saved.
+            key: bytes(BundleInfo)
+            val: bundle bytes (i.e. same as in the bundles table)
+
         properties - an index to enable looking up all of the properties on an object
                 < NOT YET IMPLEMENTED >
             key: (describing-muid, property-muid, entry-muid)
@@ -114,6 +121,7 @@ class LmdbStore(AbstractStore):
         self._retentions = self._handle.open_db(b"retentions")
         self._clearances = self._handle.open_db(b"clearances")
         self._properties = self._handle.open_db(b"properties")
+        self._outbox = self._handle.open_db(b"outbox")
         if reset:
             with self._handle.begin(write=True) as txn:
                 # The delete=False signals to lmdb to truncate the tables rather than drop them
@@ -127,6 +135,7 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._retentions, delete=False)
                 txn.drop(self._clearances, delete=False)
                 txn.drop(self._properties, delete=False)
+                txn.drop(self._outbox, delete=False)
         with self._handle.begin() as txn:
             # I'm checking to see if retentions are set in a read-only transaction, because if
             # they are and another process has this file open I don't want to wait to get a lock.
@@ -142,6 +151,20 @@ class LmdbStore(AbstractStore):
             #TODO: add methods to drop out-of-date entries and/or turn off retention
             #TODO: add purge method to remove particular data even when retention is on
             #TODO: add expiries table to keep track of when things need to be removed
+
+    def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
+        yield Muid(-1, -1, 7), ContainerBuilder()
+        yield Muid(-1, -1, 8), ContainerBuilder()
+        with self._handle.begin() as trxn:
+            container_cursor: Cursor = trxn.cursor(self._containers)
+            positioned = container_cursor.first()
+            while positioned:
+                key, val = container_cursor.item()
+                container_builder = ContainerBuilder()
+                assert isinstance(container_builder, Message)
+                container_builder.ParseFromString(val)
+                yield Muid.from_bytes(key), container_builder
+                positioned = container_cursor.next()
 
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
         with self._handle.begin() as trxn:
@@ -162,9 +185,13 @@ class LmdbStore(AbstractStore):
             container_builder.ParseFromString(container_definition_bytes)
             return container_builder
 
-    def get_one(self, cls, index: int = -1):
-        """ gets one instance of the given class """
-        skip = index if index >= 0 else ~index
+    def get_some(self, cls, last_index: Optional[int] = None):
+        """ gets several instance of the given class """
+        if last_index is None:
+            last_index = 2**52
+        assert isinstance(last_index, int)
+        # pylint: disable=invalid-unary-operand-type
+        remaining = (last_index if last_index >= 0 else ~last_index) + 1
         with self._handle.begin() as trxn:
             table = {
                 BundleBuilder: self._bundles,
@@ -176,15 +203,17 @@ class LmdbStore(AbstractStore):
                 LocationKey: self._locations,
             }[cls]
             cursor = trxn.cursor(table)
-            placed = cursor.first() if index >= 0 else cursor.last()
+            placed = cursor.first() if last_index >= 0 else cursor.last()
             while placed:
-                if skip == 0:
-                    if issubclass(cls, Message):
-                        return cls.FromString(cursor.value()) # type: ignore
-                    return cls.from_bytes(cursor.key()) # type: ignore
+                if remaining == 0:
+                    break
                 else:
-                    skip -= 1
-                    placed = cursor.next() if index >= 0 else cursor.prev()
+                    remaining -= 1
+                if issubclass(cls, Message):
+                    yield cls.FromString(cursor.value()) # type: ignore
+                else:
+                    yield cls.from_bytes(cursor.key()) # type: ignore
+                placed = cursor.next() if last_index >= 0 else cursor.prev()
 
 
     def _get_behavior(self, container: Muid, trxn: Trxn) -> int:
@@ -289,7 +318,7 @@ class LmdbStore(AbstractStore):
             location = self._get_location(trxn, parsed_key.entry_muid)
             previous = self._get_location(trxn, parsed_key.entry_muid, as_of=to_time)
             placed_time = parsed_key.get_placed_time()
-            if placed_time > to_time and last_clear_time < placed_time and location == parsed_key:
+            if placed_time >= to_time and last_clear_time < placed_time and location == parsed_key:
                 # this entry was put there recently and it's still there
                 change_builder = ChangeBuilder()
                 container.put_into(change_builder.movement.container) # type: ignore
@@ -534,12 +563,13 @@ class LmdbStore(AbstractStore):
             ckey = to_last_with_prefix(cursor, container_prefix)
             while ckey:
                 entry_storage_key = EntryStorageKey.from_bytes(ckey, DIRECTORY)
-                if entry_storage_key.entry_muid.timestamp > as_of:
+                if entry_storage_key.entry_muid.timestamp >= as_of:
                     # we've found a key, but the entry is too new, so look for an older one
                     through_middle = ckey[:-24]
-                    ckey = to_last_with_prefix(cursor, through_middle, as_of_bytes)
-                    if ckey:
+                    ckey_as_of = to_last_with_prefix(cursor, through_middle, as_of_bytes)
+                    if ckey_as_of:
                         entry_storage_key = EntryStorageKey.from_bytes(ckey, DIRECTORY)
+                        ckey = ckey_as_of
                     else:
                         # no entries for this key before the as-of time, go to next key
                         ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
@@ -555,7 +585,8 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=entry_storage_key.entry_muid, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def apply_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool=False
+    ) -> Tuple[BundleInfo, bool]:
         builder = BundleBuilder()
         builder.ParseFromString(bundle_bytes)  # type: ignore
         new_info = BundleInfo(builder=builder)
@@ -568,6 +599,8 @@ class LmdbStore(AbstractStore):
             if needed:
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
                     trxn.put(bytes(new_info), bundle_bytes, db=self._bundles)
+                if push_into_outbox:
+                    trxn.put(bytes(new_info), bundle_bytes, db=self._outbox)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 change_items = list(builder.changes.items()) # type: ignore
                 change_items.sort() # sometimes the protobuf library doesn't maintain order of maps
@@ -587,6 +620,21 @@ class LmdbStore(AbstractStore):
                         continue
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         return (new_info, needed)
+
+    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
+        with self._handle.begin() as trxn:
+            outbox_cursor = trxn.cursor(self._outbox)
+            positioned = outbox_cursor.first()
+            while positioned:
+                key, val = outbox_cursor.item()
+                yield BundleInfo.from_bytes(key), val
+                positioned = outbox_cursor.next()
+
+    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
+        with self._handle.begin(write=True) as trxn:
+            assert isinstance(trxn, Trxn)
+            for bundle_info in bundle_infos:
+                trxn.delete(bytes(bundle_info), db=self._outbox)
 
     def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int, builder: Clearance):
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
@@ -662,6 +710,7 @@ class LmdbStore(AbstractStore):
             txn.delete(existing_location_key, db=self._locations)
 
     def _add_entry(self, new_info: BundleInfo, txn: Trxn, offset: int, builder: EntryBuilder):
+        ensure_entry_is_valid(builder=builder, context=new_info)
         entry_storage_key = EntryStorageKey.from_builder(builder, new_info, offset)
         serialized_esk = bytes(entry_storage_key)
         if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX): # type: ignore

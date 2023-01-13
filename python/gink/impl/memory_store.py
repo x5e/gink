@@ -39,6 +39,7 @@ class MemoryStore(AbstractStore):
     _containers: SortedDict  # muid => builder
     _removals: SortedDict
     _clearances: SortedDict
+    _outbox: SortedDict
 
     def __init__(self):
         # TODO: add a "no retention" capability to allow the memory store to be configured to
@@ -51,9 +52,16 @@ class MemoryStore(AbstractStore):
         self._locations = SortedDict()
         self._removals = SortedDict()
         self._clearances = SortedDict()
+        self._outbox = SortedDict()
     
     def get_container(self, container: Muid) -> ContainerBuilder:
         return self._containers[container]
+
+    def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
+        for key, val in self._containers.items():
+            assert isinstance(key, Muid)
+            assert isinstance(val, ContainerBuilder)
+            yield key, val
 
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
         look_for = struct.pack(">QQ", timestamp, medallion)
@@ -62,8 +70,8 @@ class MemoryStore(AbstractStore):
                 return BundleInfo.from_bytes(thing).comment
             else:
                 return None
-
-    def get_one(self, cls, index: int = -1):
+    
+    def get_some(self, cls, last_index: Optional[int] = None):
         sorted_dict = {
             BundleBuilder: self._bundles,
             EntryBuilder: self._entries,
@@ -73,24 +81,29 @@ class MemoryStore(AbstractStore):
             MovementKey: self._removals,
             LocationKey: self._locations,
         }[cls]
-        skip = index if index >= 0 else ~index
-        for key in sorted_dict.irange(reverse=index < 0):
-            if skip == 0:
-                if isinstance(key, cls):
-                    return key
-                if issubclass(cls, Message):
-                    val = sorted_dict[key]
-                    if isinstance(val, bytes):
-                        instance = cls()
-                        instance.ParseFromString(val)
-                        return instance
+        if last_index is None:
+            last_index = 2**52
+        assert isinstance(last_index, int)
+        remaining = (last_index if last_index >= 0 else ~last_index) + 1
+        for key in sorted_dict.irange(reverse=last_index < 0):
+            if remaining == 0:
+                return
+            remaining -= 1
+            if isinstance(key, cls):
+                yield key
+            elif issubclass(cls, Message):
+                val = sorted_dict[key]
+                if isinstance(val, bytes):
+                    instance = cls()
+                    instance.ParseFromString(val)
+                    yield instance
+                else:
                     assert isinstance(val, cls)
-                    return val
-                if isinstance(key, bytes):
-                    return cls.from_bytes(key) # type: ignore
+                    yield val
+            elif isinstance(key, bytes):
+                yield cls.from_bytes(key) # type: ignore
+            else:
                 raise ValueError(f"don't know what to do with {key}")
-            skip -= 1
-        raise ValueError("not expected")
 
     def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
@@ -106,7 +119,7 @@ class MemoryStore(AbstractStore):
         # TODO this could be more efficient
         for entry_key in iterator:
             entry_storage_key = EntryStorageKey.from_bytes(entry_key, DIRECTORY)
-            if entry_storage_key.entry_muid.timestamp > as_of:
+            if entry_storage_key.entry_muid.timestamp >= as_of:
                 continue
             if entry_storage_key.middle_key == last:
                 continue
@@ -197,8 +210,19 @@ class MemoryStore(AbstractStore):
                     builder=entry_builder)
             if limit is not None:
                 limit -= 1
+    
+    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
+        for info_bytes, bundle_bytes in self._outbox.items():
+            assert isinstance(bundle_bytes, bytes)
+            assert isinstance(info_bytes, bytes)
+            yield BundleInfo.from_bytes(info_bytes), bundle_bytes
 
-    def apply_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
+        for bundle_info in bundle_infos:
+            del self._outbox[bytes(bundle_info)]
+
+    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool=False
+    ) -> Tuple[BundleInfo, bool]:
         bundle_builder = BundleBuilder()
         bundle_builder.ParseFromString(bundle_bytes)  # type: ignore
         new_info = BundleInfo(builder=bundle_builder)
@@ -206,6 +230,8 @@ class MemoryStore(AbstractStore):
         old_info = self._chain_infos.get(new_info.get_chain())
         needed = AbstractStore._is_needed(new_info, old_info)
         if needed:
+            if push_into_outbox:
+                self._outbox[bytes(new_info)] = bundle_bytes
             self._bundles[bytes(new_info)] = bundle_bytes
             self._chain_infos[chain_key] = new_info
             change_items = list(bundle_builder.changes.items()) # type: ignore

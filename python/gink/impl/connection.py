@@ -8,6 +8,8 @@ from socket import (
 from logging import getLogger
 from abc import ABC, abstractmethod
 
+from ..builders.sync_message_pb2 import SyncMessage
+
 class Connection(ABC):
     """ Manages a connection to another gink database.
 
@@ -40,11 +42,11 @@ class Connection(ABC):
         return self._closed
 
     @abstractmethod
-    def receive(self) -> Iterable[bytes]:
+    def receive(self) -> Iterable[SyncMessage]:
         """ receive a (possibly empty) series of encoded SyncMessages from a peer. """
 
     @abstractmethod
-    def send(self, data: bytes):
+    def send(self, sync_message: SyncMessage):
         """ Send an encoded SyncMessage to a peer. """
 
     @abstractmethod

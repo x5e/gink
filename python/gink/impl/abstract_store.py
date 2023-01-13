@@ -30,7 +30,7 @@ class AbstractStore(ABC):
 
     def __exit__(self, *_):
         self.close()
-    
+
     @abstractmethod
     def get_container(self, container: Muid) -> ContainerBuilder:
         """ Gets the container definition associated with a particular address. """
@@ -50,8 +50,7 @@ class AbstractStore(ABC):
             as_of: MuTimestamp) -> Optional[FoundEntry]:
         """ Gets the most recent entry for a given key at as_of
         """
-        assert self and container and key and as_of
-        raise NotImplementedError()
+        #TODO: change to return FoundEntry or Clearance or None
 
     @abstractmethod
     def get_positioned_entry(self, entry: Muid, as_of: MuTimestamp=-1)->Optional[PositionedEntry]:
@@ -83,14 +82,23 @@ class AbstractStore(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def apply_bundle(self, bundle_bytes: bytes) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool=False
+    ) -> Tuple[BundleInfo, bool]:
         """ Tries to add data from a particular bundle to this store.
+
+            Set push_into_outbox if being added by an instance that isn't syncing.
 
             Returns: a tuple of the bundle's info and boolean indicating if it was applied
             Will not be applied if this store has already seen this bundle before.
         """
-        assert bundle_bytes and self
-        raise NotImplementedError()
+
+    @abstractmethod
+    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
+        """ Goes through outbox items in standard order. """
+
+    @abstractmethod
+    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
+        """ Something to call after receiving an ack from a peer. """
 
     @abstractmethod
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp=0):
@@ -99,8 +107,6 @@ class AbstractStore(ABC):
             This is done callback style because we don't want to leave dangling transactions
             in the store, which could easily happen if we offered up an iterator interface instead.
         """
-        assert callback and self
-        raise NotImplementedError()
 
     def get_bundle_infos(self) -> List[BundleInfo]:
         """ Gets a list of bundle infos; mostly for testing. """
@@ -111,16 +117,36 @@ class AbstractStore(ABC):
         return result
 
     @abstractmethod
-    def get_one(self, cls, index: int=-1):
-        """ Gets one instance of the specified class at "index" location in its respective store.
+    def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
+        """ Gets the address and definition of each regular container plus the global containers.
 
-            "Class" may be one of: BundleBuilder, EntryBuilder, MovementBuilder,
+            Does not include the instance/medallion containers.
+        """
+
+    @abstractmethod
+    def get_some(self, cls, last_index: Optional[int] = None) -> Iterable:
+        """ Gets several indexes of the given class.
+
+            Starts counting from the end if last_index is negative.
+
+            cls may be one of: BundleBuilder, EntryBuilder, MovementBuilder,
             or one of the key classes: BundleInfo, EntryStorageKey, MovementKey
 
-            This method is mostly intended to make debugging easier, but will also be used by
-            the Gink database class to look up the most recent timestamps.
-         """
-        raise NotImplementedError()
+            Used by the database class to show a log of entries.
+        """
+
+    def get_one(self, cls, index: int = -1):
+        """ gets one instance of the given class """
+        returning = None
+        expected = (index if index >= 0 else ~index) + 1
+        actual = 0
+        for thing in self.get_some(cls, last_index=index):
+            actual += 1
+            returning = thing
+        if actual == expected:
+            return returning
+        else:
+            return None
 
     @abstractmethod
     def get_chain_tracker(self) -> ChainTracker:

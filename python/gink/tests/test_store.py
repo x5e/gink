@@ -102,7 +102,7 @@ def generic_test_rejects_gap(store_maker: StoreMaker):
 def generic_test_rejects_missing_start(store_maker: StoreMaker):
     """ Ensures that chains with missing links throw exceptions. """
     with closing(store_maker()) as store:
-        gap_info = BundleInfo(medallion=123, chain_start=456, timestamp=789, 
+        gap_info = BundleInfo(medallion=123, chain_start=456, timestamp=789,
             previous=777, comment="gap")
         gap_bytes = make_empty_bundle(gap_info)
         thrown = None
@@ -183,6 +183,7 @@ def generic_test_tracks(store_maker: StoreMaker):
 
 
 def generic_test_get_ordered_entries(store_maker: StoreMaker):
+    """ makes sure that the get_ordered_entries works """
     textproto1 = """
         medallion: 789
         chain_start: 123

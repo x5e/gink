@@ -132,7 +132,7 @@ def test_as_of():
             for seq in [Sequence.get_global_instance(database)]:
                 seq.append("foo")
                 time.sleep(.001)
-                seq.append("bar")
+                bar_append_change = seq.append("bar")
                 assert list(seq.values()) == ["foo", "bar"], list(seq.values())
                 seq.pop(dest=0)
                 assert list(seq.values()) == ["bar", "foo"], list(seq.values())
@@ -153,9 +153,8 @@ def test_as_of():
                     raise AssertionError(f"{seq_as_list} at {assertion_time}")
                 seq.remove("foo")
                 assert list(seq.values()) == ["bar", "zoo"]
-                # as_of=1 will show things right *after* the second commit
-                # the first commit starts the chain, the second one adds "foo"
-                assert list(seq.values(as_of=1)) == ["foo"], list(seq.values(as_of=1))
+                etc = list(seq.values(as_of=bar_append_change.timestamp))
+                assert etc == ["foo"], etc
 
 def test_insert():
     """ makes sure that I can insert data at arbitrary location in a sequence """
@@ -212,8 +211,21 @@ def test_reset():
             seq1.append("nevermind")
             seq1.append(seq2)
             seq2.pop()
-            seq2.reset(to=mark)
+            seq2.reset(to_time=mark)
             assert list(seq2) == ["bar", seq1]
             assert list(seq1) == ["nevermind", seq2]
-            seq2.reset(to=mark, recursive=True)
+            seq2.reset(to_time=mark, recursive=True)
             assert list(seq1) == [7, "foo"]
+
+def test_simple_reset():
+    """ make sure that sequence.reset behaves as expected """
+    for store in [LmdbStore()]:
+        with closing(store):
+            database = Database(store=store)
+            queue = Sequence.get_global_instance(database)
+            change_muid = queue.append("something")
+            assert database.resolve_timestamp(-1) == change_muid.timestamp
+            assert queue.dumps() == "Sequence(root=True, contents=['something'])"
+            reset_bundle = queue.reset(-1)
+            assert reset_bundle is not None
+            assert queue.dumps() == "Sequence(root=True, contents=[])"

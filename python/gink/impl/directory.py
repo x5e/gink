@@ -9,7 +9,7 @@ from .database import Database
 from .container import Container
 from .coding import decode_key, DIRECTORY, deletion
 from .bundler import Bundler
-from .typedefs import UserKey, GenericTimestamp, MuTimestamp, Medallion
+from .typedefs import UserKey, GenericTimestamp
 from .attribution import Attribution
 
 class Directory(Container):
@@ -17,8 +17,8 @@ class Directory(Container):
     _missing = object()
     BEHAVIOR = DIRECTORY
 
-    def __init__(self, *ordered, root: Optional[bool] = None,
-        contents=None, muid: Optional[Muid]=None, database=None):
+    def __init__(self, *ordered, root: Optional[bool] = None, bundler: Optional[Bundler] = None,
+        contents=None, muid: Optional[Muid]=None, database=None, comment: Optional[str]=None):
         """
         Constructor for a directory proxy.
 
@@ -31,17 +31,20 @@ class Directory(Container):
         if root:
             muid = Muid(-1, -1, DIRECTORY)
         database = database or Database.last
-        bundler = Bundler()
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
         if muid is None:
             muid = Container._create(DIRECTORY, database=database, bundler=bundler)
         elif muid.timestamp > 0 and contents:
-            # TODO Don't know how to handle this quite yet...
-            raise NotImplementedError()
+            # TODO [P3] check the store to make sure that the container is defined and compatible
+            pass
         Container.__init__(self, muid=muid, database=database)
         if contents:
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
-        if len(bundler):
+        if immediate and len(bundler):
             self._database.commit(bundler)
 
     def dumps(self, as_of: GenericTimestamp=None) -> str:
@@ -53,14 +56,14 @@ class Directory(Container):
             identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
-        stuffing = ["%r: %r" % (key, val) for key, val in self.items(as_of=as_of)]
+        stuffing = [f"{key!r}: {val!r}" for key, val in self.items(as_of=as_of)]
         as_one_line = result + " ".join(stuffing) + "})"
         if len(as_one_line) < 80:
             return as_one_line
         result += "\n\t"
         result += ",\n\t".join(stuffing) + "})"
         return result
-         
+
     def __contains__(self, key):
         return self.has(key)
 
@@ -79,13 +82,13 @@ class Directory(Container):
     def has(self, key: UserKey, *, as_of=None):
         """ returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
-        found = self._database._store.get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
+        found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
         return found is not None and not found.builder.deletion # type: ignore
 
-    def get(self, key, default=None, *, as_of=None):
+    def get(self, key, default=None, *, as_of: GenericTimestamp=None):
         """ gets the value associate with a key, default if missing, optionally as_of a time """
         as_of = self._database.resolve_timestamp(as_of)
-        found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
+        found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore
             return default
         return self._get_occupant(found.builder, found.address)
@@ -113,12 +116,12 @@ class Directory(Container):
 
             Return the value for key if key is in the directory, else default.
 
-            If respect_deletion is set to something truthy then it won't make any changes 
+            If respect_deletion is set to something truthy then it won't make any changes
             if the most recent entry in the directory for the key is a delete entry. In this
             case it will return whatever has been passed into respect_deletion.
         """
         as_of = self._database.get_now()
-        found = self._database._store.get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
+        found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         if found and found.builder.deletion and respect_deletion:  # type: ignore
             return respect_deletion
         if found and not found.builder.deletion:  # type: ignore
@@ -134,7 +137,7 @@ class Directory(Container):
             if no bundler is specified.)
         """
         as_of = self._database.get_now()
-        found = self._database._store.get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
+        found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         if found is None or found.builder.deletion: # type: ignore
             return default
         self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
@@ -143,7 +146,7 @@ class Directory(Container):
     def items(self, *, as_of=None):
         """ returns an iterable of key,value pairs, as of the effective time (or now) """
         as_of = self._database.resolve_timestamp(as_of)
-        iterable = self._database._store.get_keyed_entries(container=self._muid, as_of=as_of)
+        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of)
         for entry_pair in iterable:
             if entry_pair.builder.deletion: # type: ignore
                 continue
@@ -151,11 +154,16 @@ class Directory(Container):
             contained = self._get_occupant(entry_pair.builder, entry_pair.address)
             yield (key, contained)
 
-    def __len__(self):
+    def size(self, *, as_of: GenericTimestamp=None) -> int:
+        as_of = self._database.resolve_timestamp(as_of)
+        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of)
         count = 0
-        for _ in self.items():
+        for entry_pair in iterable:
+            if entry_pair.builder.deletion: # type: ignore
+                continue
             count += 1
         return count
+
 
     def keys(self, *, as_of=None):
         """ returns an iterable of all the keys in this direcotry """
@@ -164,8 +172,8 @@ class Directory(Container):
 
     def values(self, *, as_of=None):
         """ returns a list of values in the directory as of the given time """
-        for _,v in self.items(as_of=as_of):
-            yield v
+        for _, val in self.items(as_of=as_of):
+            yield val
 
     def popitem(self, *, bundler=None, comment=None):
         """ Remove and return a (key, value) tuple, or raises KeyError if empty.
@@ -173,7 +181,7 @@ class Directory(Container):
             Order is determined by implementation of the store.
         """
         as_of = self._database.get_now()
-        iterable = self._database._store.get_keyed_entries(container=self._muid, as_of=as_of)
+        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of)
         for entry_pair in iterable:
             if entry_pair.builder.deletion: # type: ignore
                 continue
@@ -203,54 +211,39 @@ class Directory(Container):
         if immediate:
             self._database.commit(bundler)
 
-    def _get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
-        """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
-
-            After the timestamp and medallion it will ignore other ordered arguments, so
-            that it can be used via get_attribution(*muid).
-        """
-        # this method/function should probably be moved to a general utilities module or something
-        medallion_directory = Directory.get_medallion_instance(
-            medallion=medallion, database=self._database)
-        comment=self._database._store.get_comment(
-            medallion=medallion, timestamp=timestamp)
-        return Attribution(
-            timestamp=timestamp,
-            medallion=medallion,
-            username=medallion_directory.get(".user.name", as_of=timestamp),
-            hostname=medallion_directory.get(".host.name", as_of=timestamp),
-            fullname=medallion_directory.get(".full.name", as_of=timestamp),
-            software=medallion_directory.get(".software", as_of=timestamp),
-            comment=comment,
-        )
 
     def blame(self, key: Optional[UserKey]=None, as_of: GenericTimestamp=None
     ) -> Dict[UserKey, Attribution]:
+        """ returns a dictionary mapping keys to who's responsible for each change """
         as_of = self._database.resolve_timestamp(as_of)
         keys = [key] if key is not None else self.keys(as_of=as_of)
         result: Dict[UserKey, Attribution] = {}
         for key in keys:
-            # TODO: figure out how to show blame for clear operations
-            found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
+            # TODO [P2]: figure out how to show blame for clear operations
+            # (have get_entry_by_key return clearances)
+            found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
             if found is None or not key:
                 continue
-            result[key] = self._get_attribution(*found.address)
+            result[key] = self._database.get_attribution(*found.address)
         return result
-    
+
     def show_blame(self, as_of: GenericTimestamp=None, file=stdout):
+        """ dumps the blame map to <file> in a human readable format """
         for key, val in self.blame(as_of=as_of).items():
             print(repr(key), str(val), file=file)
 
     def log(self, key: UserKey) -> Iterable[Attribution]:
+        """ Get the history of modifications for a particular key. """
         as_of = self._database.get_now()
         while as_of:
-            found = self._database._store.get_entry_by_key(self._muid, key=key, as_of=as_of)
+            found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
             if not found:
                 break
-            yield self._get_attribution(*found.address)
+            yield self._database.get_attribution(*found.address)
             as_of = found.address.timestamp
 
     def show_log(self, key: UserKey, file=stdout, limit=10):
+        """ writes the history of modifications to <file> in a human readable format """
         for att in self.log(key):
             if limit is not None and limit <= 0:
                 break
