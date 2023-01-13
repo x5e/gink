@@ -216,8 +216,11 @@ class Container(ABC):
         for change in self._database.get_store().get_reset_changes(to_time=to_time,
                 container=self._muid, user_key=key, recursive=recursive):
             bundler.add_change(change)
-        if immediate and len(bundler):
-            self._database.commit(bundler=bundler)
+        if immediate:
+            if len(bundler):
+                self._database.commit(bundler=bundler)
+            else:
+                bundler = None
         return bundler
 
     @abstractmethod

@@ -216,3 +216,14 @@ def test_reset():
             assert list(seq1) == ["nevermind", seq2]
             seq2.reset(to_time=mark, recursive=True)
             assert list(seq1) == [7, "foo"]
+
+def test_simple_reset():
+    """ make sure that sequence.reset behaves as expected """
+    for store in [LmdbStore()]:
+        with closing(store):
+            database = Database(store=store)
+            queue = Sequence.get_global_instance(database)
+            queue.append("something")
+            assert queue.dumps() == "Sequence(root=True, contents=['something'])"
+            queue.reset(-1)
+            assert queue.dumps() == "Sequence(root=True, contents=[])"

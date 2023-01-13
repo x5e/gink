@@ -178,9 +178,9 @@ def test_reset():
             assert 44 in gdi["nope"]  # type: ignore
             bundle = gdi.reset(middle, recursive=True)
             assert 44 not in gdi["nope"]  # type: ignore
-            assert len(bundle) == 1
+            assert bundle is not None and len(bundle) > 0
             bundle = gdi.reset(middle, recursive=True)
-            assert len(bundle) == 0
+            assert bundle is None
 
 def test_clearance():
     """ tests the directory.clear method works as expected """

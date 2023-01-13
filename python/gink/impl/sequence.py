@@ -61,7 +61,7 @@ class Sequence(Container):
             identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents=["""
         stuffing = [repr(val) for val in self.values(as_of=as_of)]
-        as_one_line = result + " ".join(stuffing) + "])"
+        as_one_line = result + ", ".join(stuffing) + "])"
         if len(as_one_line) < 80:
             return as_one_line
         result += "\n\t"
