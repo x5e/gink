@@ -5,7 +5,7 @@ package google.gink;
 
 /**
     These are messages used in the peer to peer connections between gink instances.
-    On connection, each peer sends a SyncMessage containing a Greeting, where the 
+    On connection, each peer sends a SyncMessage containing a Greeting, where the
     GreetingEntries within it communicate how far along each chain that instance has
     data for.  Once a peer has received a greeting from the other, then it can begin
     to send messages it knows that the destination peer doesn't have yet (ensuring though
@@ -28,8 +28,8 @@ message SyncMessage {
 
     message Greeting {
         message GreetingEntry {
-            uint64 medallion = 1; 
-            uint64 chain_start = 2; 
+            uint64 medallion = 1;
+            uint64 chain_start = 2;
             uint64 seen_through = 3;
         }
         repeated GreetingEntry entries = 1; // contains one entry per chain
@@ -40,5 +40,6 @@ message SyncMessage {
         uint64 medallion = 1;
         uint64 chain_start = 2;
         uint64 timestamp = 3;
+        uint64 previous = 4;
     }
 }
