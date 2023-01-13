@@ -7,3 +7,6 @@ package-lock.json
 scratch.*
 *.out
 *.built
+__pycache__
+builders
+*_pb2.py

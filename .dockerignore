@@ -3,3 +3,4 @@ node_modules
 Dockerfile
 *.out
 scratch.*
+__pycache__

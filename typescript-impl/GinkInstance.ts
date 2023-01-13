@@ -233,8 +233,8 @@ export class GinkInstance {
         const unlockingFunction = await this.processingLock.acquireLock();
         try {
             const parsed = SyncMessageBuilder.deserializeBinary(messageBytes);
-            if (parsed.hasCommit()) {
-                const commitBytes: BundleBytes = parsed.getCommit_asU8();
+            if (parsed.hasBundle()) {
+                const commitBytes: BundleBytes = parsed.getBundle_asU8();
                 await this.receiveCommit(commitBytes, fromConnectionId);
                 return;
             }

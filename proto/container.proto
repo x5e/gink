@@ -1,10 +1,6 @@
 syntax = "proto3";
 package google.gink;
-import "muid.proto";
-import "value.proto";
-import "value_type.proto";
 import "behavior.proto";
-import "column.proto";
 
 /**
     Each new Container message establishes the existance of a mutable data structure.
@@ -14,9 +10,4 @@ import "column.proto";
 
 message Container {
     Behavior behavior = 1;
-    repeated Muid extends = 2;
-    ValueType key_type = 3;
-    ValueType value_type = 4; // optional when behavior in (BOX, SCHEMA, QUEUE, PROPERTY)
-    repeated Column columns = 5; // use when behavior is TABLE
-    repeated Value key_expressions = 6; // use when behavior is KEYED_TABLE
 }
