@@ -1,7 +1,8 @@
 FROM node:latest
 RUN apt-get update
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get install -y protobuf-compiler
+RUN apt-get install -y protobuf-compiler python3-lmdb python3-sortedcontainers \
+    python3-nose2 python3-protobuf python3-wsproto
 RUN apt-get install -y chromium-driver
 CMD bash
 ENV WORKING=/opt/gink
@@ -12,6 +13,7 @@ RUN npm install
 RUN npm rebuild
 RUN rm -rf ~/.* || true
 COPY proto ./proto
+COPY python ./python
 COPY typescript-impl ./typescript-impl
 COPY tsconfig.json webpack.config.js web-entry.js Makefile jest.config.js ./
 RUN make
@@ -21,9 +23,5 @@ COPY functional-tests ./functional-tests
 RUN ./functional-tests/node-client-test.js
 RUN ./functional-tests/browser-client-test/browser-test.js
 RUN ./functional-tests/routing-server-test.js
-RUN apt-get install -y python3-lmdb python3-sortedcontainers \
-    python3-nose2 python3-protobuf python3-wsproto
-COPY python ./python
-ENV PYTHONPATH=/opt/gink/protoc.out
 WORKDIR /opt/gink/python
 RUN python3 -m nose2
