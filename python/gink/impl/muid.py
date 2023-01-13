@@ -49,7 +49,8 @@ class Muid(NamedTuple):
         timestamp = builder.timestamp or context.timestamp  # type: ignore
         medallion = builder.medallion or context.medallion  # type: ignore
         offset = offset or builder.offset # type: ignore
-        assert offset, "no offset"
+        if not offset:
+            raise ValueError("no offset specified")
         assert medallion, "no medallion"
         assert timestamp, "no timestamp"
         return cls(timestamp, medallion, offset)

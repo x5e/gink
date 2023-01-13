@@ -18,6 +18,7 @@ from ..builders.change_pb2 import Change as ChangeBuilder
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion
 from .muid import Muid
 from .bundle_info import BundleInfo
+from .dummy import Dummy
 
 UNSPECIFIED: int = Behavior.UNSPECIFIED # type: ignore
 SEQUENCE: int = Behavior.SEQUENCE # type: ignore
@@ -28,6 +29,17 @@ FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
 deletion = Deletion()
+
+def ensure_entry_is_valid(builder: EntryBuilder, context: Any=object()):
+    assert isinstance(builder, Message)
+    if getattr(builder, "behavior") == UNSPECIFIED:
+        raise ValueError("entry lacks a behavior")
+    if not builder.HasField("container"):
+        raise ValueError("no container specified in entry")
+    container_muid = Muid.create(context, builder=getattr(builder, "container"))
+    if container_muid.timestamp == -1 and container_muid.medallion > 0:
+        if getattr(context, "medallion") != container_muid.medallion:
+            raise ValueError("attempt to modify instance container from other instance")
 
 def serialize(thing) -> bytes:
     """ Converts a protobuf builder or a timestamp into binary data. """
