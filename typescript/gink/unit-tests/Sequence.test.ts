@@ -1,6 +1,6 @@
 import { sleep } from "./test_utils";
-import { GinkInstance, Bundler, IndexedDbStore, List, Muid, Value } from "../typescript-impl";
-import { ensure, matches } from "../typescript-impl/utils"
+import { GinkInstance, Bundler, IndexedDbStore, List, Muid, Value } from "../implementation";
+import { ensure, matches } from "../implementation/utils"
 
 test('push to a queue and peek', async function () {
     // set up the objects

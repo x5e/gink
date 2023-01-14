@@ -9,13 +9,13 @@ import {
     BundleInfo, Muid, AsOf, MuidTuple,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
-import { Change as ChangeBuilder } from "gink/protoc.out/change_pb";
-import { Movement as MovementBuilder } from "gink/protoc.out/movement_pb";
-import { Bundle as BundleBuilder } from "gink/protoc.out/bundle_pb";
-import { Entry as EntryBuilder } from "gink/protoc.out/entry_pb";
-import { Muid as MuidBuilder } from "gink/protoc.out/muid_pb";
+import { Change as ChangeBuilder } from "../builders/change_pb";
+import { Movement as MovementBuilder } from "../builders/movement_pb";
+import { Bundle as BundleBuilder } from "../builders/bundle_pb";
+import { Entry as EntryBuilder } from "../builders/entry_pb";
+import { Muid as MuidBuilder } from "../builders/muid_pb";
 import { Store } from "./Store";
-import { Behavior } from "gink/protoc.out/behavior_pb";
+import { Behavior } from "../builders/behavior_pb";
 
 /**
  * Uses an indexedDb to implement the Store interface.  On the server side, this will

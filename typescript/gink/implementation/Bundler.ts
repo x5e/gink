@@ -1,8 +1,8 @@
 import { Muid, BundleInfo, Medallion, Timestamp } from "./typedefs";
-import { Bundle as BundleBuilder } from "gink/protoc.out/bundle_pb";
-import { Change as ChangeBuilder } from "gink/protoc.out/change_pb";
-import { Entry as EntryBuilder } from "gink/protoc.out/entry_pb";
-import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
+import { Bundle as BundleBuilder } from "../builders/bundle_pb";
+import { Change as ChangeBuilder } from "../builders/change_pb";
+import { Entry as EntryBuilder } from "../builders/entry_pb";
+import { Container as ContainerBuilder } from "../builders/container_pb";
 import { ensure } from "./utils";
 
 export class Bundler {

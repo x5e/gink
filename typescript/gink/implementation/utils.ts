@@ -4,9 +4,9 @@
  */
 
 import { Muid, Medallion, Value, MuidTuple, CallBack } from "./typedefs";
-import { Muid as MuidBuilder } from "gink/protoc.out/muid_pb";
-import { Value as ValueBuilder } from "gink/protoc.out/value_pb";
-import { Key as KeyBuilder } from "gink/protoc.out/key_pb";
+import { Muid as MuidBuilder } from "../builders/muid_pb";
+import { Value as ValueBuilder } from "../builders/value_pb";
+import { Key as KeyBuilder } from "../builders/key_pb";
 
 export function ensure(x: any, msg?: string) {
     if (!x) 

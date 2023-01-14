@@ -7,7 +7,7 @@ const promises = require("fs").promises;
 type FileHandle = any;
 const open = promises.open;
 import { flock } from "fs-ext";
-import { LogFile } from "gink/protoc.out/log_file_pb";
+import { LogFile } from "../builders/log_file_pb";
 import { assert } from "console";
 import { ChainTracker } from "./ChainTracker";
 

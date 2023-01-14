@@ -1,4 +1,4 @@
-import { ensure, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous } from "../typescript-impl/utils";
+import { ensure, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous } from "../implementation/utils";
 
 test('document', async function() {
     const wrapped = wrapValue((new Map()).set("fee","parking").set("cost",1000));

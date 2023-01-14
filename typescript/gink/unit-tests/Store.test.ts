@@ -1,17 +1,17 @@
-import { BundleBytes, Entry } from "../typescript-impl/typedefs"
-import { ChainTracker } from "../typescript-impl/ChainTracker"
-import { Store } from "../typescript-impl/Store";
-import { Bundle as BundleBuilder } from "gink/protoc.out/bundle_pb";
-import { Change as ChangeBuilder } from "gink/protoc.out/change_pb";
-import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
-import { Entry as EntryBuilder } from "gink/protoc.out/entry_pb";
-import { Behavior } from "gink/protoc.out/behavior_pb";
+import { BundleBytes, Entry } from "../implementation/typedefs"
+import { ChainTracker } from "../implementation/ChainTracker"
+import { Store } from "../implementation/Store";
+import { Bundle as BundleBuilder } from "../builders/bundle_pb";
+import { Change as ChangeBuilder } from "../builders/change_pb";
+import { Container as ContainerBuilder } from "../builders/container_pb";
+import { Entry as EntryBuilder } from "../builders/entry_pb";
+import { Behavior } from "../builders/behavior_pb";
 import {
     makeChainStart, extendChain, addTrxns,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
 } from "./test_utils";
-import { muidToBuilder, ensure, wrapValue, matches, wrapKey } from "../typescript-impl/utils";
-import { Bundler } from "../typescript-impl";
+import { muidToBuilder, ensure, wrapValue, matches, wrapKey } from "../implementation/utils";
+import { Bundler } from "../implementation";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 

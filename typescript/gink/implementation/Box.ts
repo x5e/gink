@@ -1,11 +1,11 @@
-import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
+import { Container as ContainerBuilder } from "../builders/container_pb";
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
 import { Value, Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure } from "./utils";
 import { toJson, interpret } from "./factories";
-import { Behavior } from "gink/protoc.out/behavior_pb";
+import { Behavior } from "../builders/behavior_pb";
 
 export class Box extends Container {
 

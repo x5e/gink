@@ -8,5 +8,5 @@
     "outDir": "tsc.out",
     "declaration": true
   },
-  "include": ["typescript-impl/*.ts", "web.ts"]
+  "include": ["gink/implementation/*.ts", "gink/unit-tests/*.ts", "web.ts"]
 }

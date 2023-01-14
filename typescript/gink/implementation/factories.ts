@@ -4,7 +4,7 @@
  * imports if two classes depend on each other so these functions have been pulled out into
  * something neither Container nor any of its subclasses need directly.
  */
-import { Container as ContainerBuilder } from "gink/protoc.out/container_pb";
+import { Container as ContainerBuilder } from "../builders/container_pb";
 import { Muid, Value, Bytes, AsOf, Entry } from "./typedefs";
 import { Container } from "./Container";
 import { Directory } from "./Directory";
@@ -12,8 +12,8 @@ import { Sequence } from "./Sequence";
 import { Box } from "./Box";
 import { GinkInstance } from "./GinkInstance";
 import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid } from "./utils";
-import { Entry as EntryBuilder } from "gink/protoc.out/entry_pb";
-import { Behavior } from "gink/protoc.out/behavior_pb";
+import { Entry as EntryBuilder } from "../builders/entry_pb";
+import { Behavior } from "../builders/behavior_pb";
 
 export async function construct(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
     if (address.timestamp === -1) {

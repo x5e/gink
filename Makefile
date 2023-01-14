@@ -1,6 +1,6 @@
 #TODO: maybe switch over to Bazel?
 PROTOS=$(wildcard proto/*.proto)
-export PATH := ./node_modules/.bin/:$(PATH)
+export PATH := ./typescript/node_modules/.bin/:$(PATH)
 
 all: python/gink/builders node_modules/gink/protoc.out tsc.out webpack.out 
 
@@ -13,6 +13,12 @@ python/gink/builders: $(PROTOS)
 	protoc --proto_path=proto --python_out=python/gink/builders.making $(PROTOS) && \
 	sed -i -- 's/^import /import gink.builders./' python/gink/builders.making/* && \
 	mv python/gink/builders.making python/gink/builders
+
+typescript/gink/builders: $(PROTOS)
+	rm -rf typescript/gink/builders* && \
+	mkdir -p typescript/gink/builders.making && \
+	protoc --proto_path=proto --js_out=import_style=commonjs,binary:typescript/gink/builders.making $(PROTOS) && \
+	mv typescript/gink/builders.making typescript/gink/builders
 
 protoc.out: $(PROTOS) 
 	 rm -rf protoc.out && mkdir -p protoc.out.making && protoc \

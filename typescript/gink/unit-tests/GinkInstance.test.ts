@@ -1,8 +1,8 @@
-import { GinkInstance, IndexedDbStore, Bundler, BundleInfo } from "../typescript-impl";
+import { GinkInstance, IndexedDbStore, Bundler, BundleInfo } from "../implementation";
 import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
-import { Bundle as BundleBuilder } from "gink/protoc.out/bundle_pb";
-import { ensure } from "../typescript-impl/utils"
-import { BundleBytes } from "../typescript-impl/typedefs";
+import { Bundle as BundleBuilder } from "../builders/bundle_pb";
+import { ensure } from "../implementation/utils"
+import { BundleBytes } from "../implementation/typedefs";
 
 test('test commit', async () => {
     const store = new IndexedDbStore();

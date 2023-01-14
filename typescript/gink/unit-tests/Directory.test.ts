@@ -1,6 +1,6 @@
 import { sleep } from "./test_utils";
-import { GinkInstance, Bundler, IndexedDbStore, Directory } from "../typescript-impl";
-import { ensure } from "../typescript-impl/utils"
+import { GinkInstance, Bundler, IndexedDbStore, Directory } from "../implementation";
+import { ensure } from "../implementation/utils"
 
 test('set and get Basic data', async function() {
     // set up the objects

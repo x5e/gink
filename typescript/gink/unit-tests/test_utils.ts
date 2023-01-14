@@ -1,6 +1,6 @@
-import { Medallion, ChainStart, BundleBytes, Timestamp } from "../typescript-impl/typedefs";
-import { Bundle as BundleBuilder } from "gink/protoc.out/bundle_pb";
-import { Store } from "../typescript-impl/Store";
+import { Medallion, ChainStart, BundleBytes, Timestamp } from "../implementation/typedefs";
+import { Bundle as BundleBuilder } from "../builders/bundle_pb";
+import { Store } from "../implementation/Store";
 
 export const MEDALLION1 = 425579549941797;
 export const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;

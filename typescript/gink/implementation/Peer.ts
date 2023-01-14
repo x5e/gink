@@ -1,7 +1,7 @@
 import { BundleInfo, BundleBytes, CallBack } from "./typedefs";
 import { noOp, ensure } from "./utils";
 import { ChainTracker } from "./ChainTracker";
-import { SyncMessage as SyncMessageBuilder } from "gink/protoc.out/sync_message_pb";
+import { SyncMessage as SyncMessageBuilder } from "../builders/sync_message_pb";
 
 
 export class Peer {

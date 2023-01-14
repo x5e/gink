@@ -1,5 +1,5 @@
 import { BundleInfo, Medallion, ChainStart, SeenThrough, Muid, CallBack, Timestamp } from "./typedefs";
-import { SyncMessage } from "gink/protoc.out/sync_message_pb";
+import { SyncMessage } from "../builders/sync_message_pb";
 
 
 /**

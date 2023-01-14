@@ -1,6 +1,6 @@
-import { BundleInfo } from "../typescript-impl";
-import { ChainTracker } from "../typescript-impl/ChainTracker";
-import { ensure } from "../typescript-impl/utils"
+import { BundleInfo } from "../implementation";
+import { ChainTracker } from "../implementation/ChainTracker";
+import { ensure } from "../implementation/utils"
 
 test('track two commits', async () => {
     const chainTracker = new ChainTracker({});

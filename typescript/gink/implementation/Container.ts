@@ -1,11 +1,11 @@
 import { Bundler } from "./Bundler";
-import { Entry as EntryBuilder } from "gink/protoc.out/entry_pb";
+import { Entry as EntryBuilder } from "../builders/entry_pb";
 import { Value, KeyType, Muid, AsOf } from "./typedefs";
 import { muidToBuilder, wrapValue, wrapKey } from "./utils";
-import { Change as ChangeBuilder } from "gink/protoc.out/change_pb";
+import { Change as ChangeBuilder } from "../builders/change_pb";
 import { Deletion } from "./Deletion";
 import { GinkInstance } from "./GinkInstance";
-import { Behavior } from "gink/protoc.out/behavior_pb";
+import { Behavior } from "../builders/behavior_pb";
 
 
 

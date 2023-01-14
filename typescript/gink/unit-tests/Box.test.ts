@@ -1,5 +1,5 @@
-import { Box, IndexedDbStore, GinkInstance, Bundler, Muid } from "../typescript-impl/index";
-import { ensure } from "../typescript-impl/utils";
+import { Box, IndexedDbStore, GinkInstance, Bundler, Muid } from "../implementation/index";
+import { ensure } from "../implementation/utils";
 
 test('create a box; set and get data in it', async function() {
     // set up the objects

@@ -1,4 +1,4 @@
-import { Behavior } from "gink/protoc.out/behavior_pb";
+import { Behavior } from "../builders/behavior_pb";
 
 export type Bytes = Uint8Array;
 export type GreetingBytes = Bytes;
