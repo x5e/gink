@@ -6,7 +6,7 @@ import { openDB, deleteDB, IDBPDatabase } from 'idb';
 import {
     BundleBytes, Medallion, ChainStart, BundleInfoTuple, Entry,
     ClaimedChains, SeenThrough, Offset, Bytes, KeyType, Timestamp,
-    BundleInfo, Muid, AsOf, MuidTuple, 
+    BundleInfo, Muid, AsOf, MuidTuple,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Change as ChangeBuilder } from "gink/protoc.out/change_pb";
@@ -175,7 +175,8 @@ export class IndexedDbStore implements Store {
         const bundleBuilder = BundleBuilder.deserializeBinary(bundleBytes);
         const bundleInfo = IndexedDbStore.extractCommitInfo(bundleBuilder);
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo
-        const wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'containers', 'entries', 'exits'], 'readwrite');
+        const objectStores = ['trxns', 'chainInfos', 'containers', 'entries', 'exits'];
+        const wrappedTransaction = this.wrapped.transaction(objectStores, 'readwrite');
         let oldChainInfo: BundleInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
@@ -285,7 +286,7 @@ export class IndexedDbStore implements Store {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const semanticKey = (typeof (key) == "number" || typeof (key) == "string") ? [key] : [];
-        const behavior = (key === undefined) ? Behavior.BOX : (typeof(key) == "object" ? Behavior.SEQUENCE : Behavior.DIRECTORY);
+        const behavior = (key === undefined) ? Behavior.BOX : (typeof (key) == "object" ? Behavior.SEQUENCE : Behavior.DIRECTORY);
         const lower = [desiredSrc, behavior, semanticKey];
         const upperTuple = (key && typeof (key) == "object") ? [key.timestamp, key.medallion, key.offset] : [asOfTs];
         const upper = [desiredSrc, behavior, semanticKey, upperTuple];
