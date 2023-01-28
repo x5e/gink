@@ -27,6 +27,7 @@ message Entry {
 
     uint64 expiry = 11; // timestamp of expiration in microseconds since epoch, or 0 for none
     sint64 effective = 12; // timestamp of initial position in ordered container, or 0 for entry ts
+    bool purge = 13; // remove hidden and/or deleted entries even if otherwise maintaining history
 
     message Span {
         uint64 from=1;
