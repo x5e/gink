@@ -4,3 +4,4 @@ Dockerfile
 *.out
 scratch.*
 __pycache__
+builders
