@@ -5,7 +5,6 @@ import "key.proto";
 message Value {
     oneof value {
         Special special = 1;
-        EnumValue enum_value = 2;
         string characters = 3;
         Number number = 4;
         Timestamp timestamp = 5;
@@ -14,37 +13,17 @@ message Value {
         bytes octects = 8;
         Tuple tuple = 11;
         Document document = 12;
-        string symbol = 13;
-        ColumnReference column = 14;
         bytes uuid = 16;
-        Complex complex = 18;
         Zone timezone = 19;
         DateTime datetime = 20;
         ZonedDateTime zoned = 21;
         Interval interval = 22;
-        Invocation invocation = 23;
     }
 
     // Allowing muid user values would make questions like "Is <muid> in <sequence>?" ambiguous.
     // But I'm keeping them reserved here for the moment just in case we decide to put it back in.
-    reserved 15, 17;
-    reserved "proto_data", "muid";
-
-    message EnumValue {
-        sint64 value = 1;
-        // Maybe add a reference to a data structure that defines an enum ???
-    }
-
-    message ColumnReference {
-        oneof column {
-            string column_name = 1;
-            uint32 column_number = 2;
-        }
-        oneof table {
-            string table_name = 3;
-            uint32 table_number = 4;
-        }
-    }
+    reserved 15, 17, 2, 13;
+    reserved "proto_data", "muid", "enum_value", "symbol";
 
     enum Special {
         MISSING = 0;
@@ -71,17 +50,6 @@ message Value {
         repeated Value values = 2;
     }
     
-    message Invocation {
-        string func = 1;
-        repeated Value ordered = 2;
-        map<string, Value> keyed = 3;
-    }
-    
-    message Complex {
-        Number real = 1;
-        Number imag = 2;
-    }
-    
     message Number {
         enum Constant {
             UNKNOWN = 0;
@@ -95,27 +63,9 @@ message Value {
             float floating = 3;
             double doubled = 4;
             Constant constant = 5;
-            Decimal decimal = 6;
-            Fraction fraction = 7;
-            uint32 uint = 8;
-            uint64 ubig = 9;
-            sint64 billionths = 10;
         }
     }
     
-    message Fraction {
-        bool negative = 1;
-        uint64 int_part = 2;
-        uint64 numerator = 3;
-        uint64 denominator = 4;
-    }
-    
-    message Decimal {
-        sint64 int = 1;
-        // upp is the upper bits for numbers greater than 2**64.
-        uint64 upp = 2;
-        sint32 ee = 10;
-    }
     
     message Date {
         uint32 year = 1;

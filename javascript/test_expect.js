@@ -1,10 +1,16 @@
 #!/usr/bin/node --unhandled-rejections=strict
 const Expector = require("./Expector");
 (async () => {
-    const expector = new Expector("echo one two three");
+    const expector = new Expector("echo one two three", [], { shell: true });
     await expector.expect("two");
-    // await expector.expect("four"); // should throw after timeout
-
+    while (true) {
+        try {
+            await expector.expect("four", 100); // should throw after timeout
+        } catch {
+            break;
+        }
+        throw Error("wtf")
+    }
     const catTest = new Expector("cat");
     catTest.send("hello world");
     await catTest.expect("hello");
