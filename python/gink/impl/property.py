@@ -18,7 +18,7 @@ class Property(Container):
         muid: the global id of this directory, created on the fly if None
         db: database send commits through, or last db instance created if None
         """
-        database = database or Database.last
+        database = database or Database.get_last()
         bundler = Bundler()
         if muid is None:
             muid = Container._create(PROPERTY, database=database, bundler=bundler)
@@ -27,17 +27,17 @@ class Property(Container):
             raise NotImplementedError()
         if len(bundler):
             self._database.commit(bundler)
-    
+
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         raise NotImplementedError()
-    
+
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         raise NotImplementedError()
 
-    def set(self, describing: Union[Muid, Container], value: UserValue, *, 
+    def set(self, describing: Union[Muid, Container], value: UserValue, *,
                 bundler=None, comment=None) -> Muid:
         """ Sets the value of the property on the particular object addressed by describing.
-        
+
             Overwrites the value of this property on this object if previously set.
             Returns the muid of the new entry.
         """
@@ -51,10 +51,10 @@ class Property(Container):
             describing = describing._muid
         return self._add_entry(key=describing, value=deletion, bundler=bundler, comment=comment)
 
-    def get(self, describing: Union[Muid, Container], default: UserValue=None, *, 
+    def get(self, describing: Union[Muid, Container], default: UserValue=None, *,
             as_of: GenericTimestamp=None) -> UserValue:
         """ Gets the value of the property on the object it's describing, optionally in the past.
-        
+
         """
         if isinstance(describing, Container):
             describing = describing._muid

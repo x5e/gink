@@ -23,7 +23,7 @@ from wsproto.events import(
 from google.protobuf.message import Message
 
 # builders
-from ..builders.sync_message_pb2 import SyncMessage
+from .builders import SyncMessage
 
 # gink modules
 from .connection import Connection

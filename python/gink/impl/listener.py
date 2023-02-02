@@ -8,7 +8,7 @@ from socket import (
 )
 from google.protobuf.message import Message
 
-from ..builders.sync_message_pb2 import SyncMessage
+from .builders import SyncMessage
 
 from .connection import Connection
 from .websocket_connection import WebsocketConnection

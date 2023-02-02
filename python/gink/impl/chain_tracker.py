@@ -7,8 +7,7 @@ from typing import Union, Optional
 from sortedcontainers import SortedDict
 from google.protobuf.message import Message
 
-from ..builders.sync_message_pb2 import SyncMessage
-
+from .builders import SyncMessage
 from .typedefs import MuTimestamp, Medallion
 from .muid import Muid
 from .tuples import Chain

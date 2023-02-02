@@ -27,8 +27,8 @@ from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, EntryStoragePair, decode_muts, wrap_change,
-    EntryStorageKey, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize, 
-    ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, MovementKey, 
+    EntryStorageKey, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
+    ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, MovementKey,
     LocationKey, PROPERTY, BOX)
 
 class LmdbStore(AbstractStore):
@@ -223,7 +223,7 @@ class LmdbStore(AbstractStore):
         assert isinstance(container_definition_bytes, bytes)
         container_builder = ContainerBuilder()
         container_builder.ParseFromString(container_definition_bytes) # type: ignore
-        return container_builder.behavior # type: ignore pylint: disable=maybe-no-member
+        return container_builder.behavior # type: ignore # pylint: disable=maybe-no-member
 
     def _container_reset_changes(
             self,

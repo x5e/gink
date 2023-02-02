@@ -8,7 +8,7 @@ from socket import (
 from logging import getLogger
 from abc import ABC, abstractmethod
 
-from ..builders.sync_message_pb2 import SyncMessage
+from .builders import SyncMessage
 
 class Connection(ABC):
     """ Manages a connection to another gink database.

@@ -4,11 +4,8 @@
 from typing import Tuple, Callable, Optional, Iterable, List, Union
 from abc import ABC, abstractmethod
 
-# protobuf builders
-from ..builders.change_pb2 import Change as ChangeBuilder
-from ..builders.container_pb2 import Container as ContainerBuilder
-
 # Gink specific modules
+from .builders import ContainerBuilder, ChangeBuilder
 from .bundle_info import BundleInfo
 from .chain_tracker import ChainTracker
 from .typedefs import UserKey, MuTimestamp, Medallion

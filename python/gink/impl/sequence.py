@@ -1,9 +1,8 @@
 from typing import Optional, Iterable, Union
 from random import randint
 
-from ..builders.change_pb2 import Change as ChangeBuilder
-
 # gink implementation
+from .builders import ChangeBuilder
 from .typedefs import GenericTimestamp, MuTimestamp, UserValue
 from .container import Container
 from .muid import Muid
@@ -15,11 +14,11 @@ from .tuples import PositionedEntry, SequenceKey
 class Sequence(Container):
     BEHAVIOR = SEQUENCE
 
-    def __init__(self, 
-        *ordered, 
-        contents: Optional[Iterable]=None, 
-        muid: Optional[Muid]=None, 
-        database: Optional[Database]=None, 
+    def __init__(self,
+        *ordered,
+        contents: Optional[Iterable]=None,
+        muid: Optional[Muid]=None,
+        database: Optional[Database]=None,
         root: bool=False,
         bundler: Optional[Bundler] = None,
         comment: Optional[str] = None,
@@ -33,7 +32,7 @@ class Sequence(Container):
                 muid = Muid.from_str(ordered[0])
         if root:
             muid = Muid(-1, -1, SEQUENCE)
-        database = database or Database.last
+        database = database or Database.get_last()
         immediate = False
         if bundler is None:
             immediate = True
@@ -49,11 +48,11 @@ class Sequence(Container):
             self.extend(contents, bundler=bundler)
         if immediate and len(bundler):
             self._database.commit(bundler)
-    
+
     def __iter__(self):
         for thing in self.values():
             yield thing
-    
+
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "root=True"
@@ -76,8 +75,8 @@ class Sequence(Container):
         return self._add_entry(value=thing, bundler=bundler, comment=comment, expiry=expiry)
 
     def insert(self, index: int, thing, expiry: GenericTimestamp=None, bundler=None, comment=None):
-        """ Inserts thing before index.  
-        
+        """ Inserts thing before index.
+
             The resulting entry expires at expiry time if specified, which must be in the future.
 
             If no bundler is passed, applies the changes immediately, with comment.
@@ -86,16 +85,16 @@ class Sequence(Container):
             returns the muid of the entry
         """
         return self._add_entry(
-            value=thing, 
-            effective=self._position(before=index), 
-            bundler=bundler, 
-            comment=comment, 
+            value=thing,
+            effective=self._position(before=index),
+            bundler=bundler,
+            comment=comment,
             expiry=expiry)
 
     def extend(self, iterable, expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]]=None,
              bundler=None, comment=None):
         """ Adds all of the items in iterable at once to this sequence.
-        
+
             expiries, if present, may be either a single expiry to be applied to all new entries,
             or a iterable of expiries of the same length as the data
 
@@ -128,7 +127,7 @@ class Sequence(Container):
             muid: what to move
             bundler: what to add this change to
             comment: make an immediate change with this comment
-            dest: new location in the list or time in the future; integer values are interpreted 
+            dest: new location in the list or time in the future; integer values are interpreted
                 to be before the given index if positive or after the given index if negative
 
             returns: the muid of the change
@@ -156,12 +155,12 @@ class Sequence(Container):
         return muid
 
     def pop(self, index=-1, *, dest: GenericTimestamp = None, bundler=None, comment=None):
-        """ (Re)move and return an item at index (default last). 
+        """ (Re)move and return an item at index (default last).
 
             If nothing exists at the specified index will raise an IndexError.
             If bundler is specified, simply adds the change to that, otherwise applies it.
             If comment is specified and no bundler then will make change with that comment.
-            
+
             If dest is specified, it may be a time to hid the entry until, or a time in the past
             to reposition the entry to (the list is ordered by timestamps).
         """
@@ -170,7 +169,7 @@ class Sequence(Container):
         return entry_value
 
     def remove(self, value, *, dest: GenericTimestamp = None, bundler=None, comment=None):
-        """ Remove first occurance of value. 
+        """ Remove first occurance of value.
 
             Raises ValueError if the value is not present.
         """
@@ -178,10 +177,10 @@ class Sequence(Container):
         for positioned in self._database._store.get_ordered_entries(self._muid, as_of):
             found = self._get_occupant(positioned.builder, positioned.entry_muid)
             if found == value:
-                return self.yank(positioned.entry_muid, dest=dest, 
+                return self.yank(positioned.entry_muid, dest=dest,
                     bundler=bundler, comment=comment)
         raise ValueError("matching item not found")
-            
+
     def items(self, *, as_of: GenericTimestamp = None) -> Iterable:
         """ Returns pairs of (muid, contents) for the sequence at the given time.
         """
@@ -190,7 +189,7 @@ class Sequence(Container):
             found = self._get_occupant(positioned.builder, positioned.entry_muid)
             sequence_key = SequenceKey(positioned.position, positioned.entry_muid)
             yield (sequence_key, found)
-    
+
     def keys(self, *, as_of: GenericTimestamp = None) -> Iterable[SequenceKey]:
         for key, _ in self.items(as_of=as_of):
             yield key
@@ -200,7 +199,7 @@ class Sequence(Container):
             yield val
 
     def __getitem__(self, what):
-        """ Gets the specified item, either index counting up from 
+        """ Gets the specified item, either index counting up from
             zero, or negative number when counting from end,
             or whatever is found at an address in case of muid.
         """

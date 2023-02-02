@@ -6,11 +6,12 @@ import copy
 import code
 import logging
 import readline
-from . import LmdbStore, LogBackedStore, Directory, Database, Sequence, Bundler
+from . import LmdbStore, LogBackedStore, Directory, Database, Sequence, Bundler, AbstractStore
 
 logging.basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "INFO"))
 assert readline and Bundler
 gink_file = os.environ.get("GINK_FILE", "/tmp/gink.mdb")
+store: AbstractStore
 if gink_file.endswith(".mdb"):
     store = LmdbStore(gink_file)
 elif gink_file.endswith(".binaryproto"):

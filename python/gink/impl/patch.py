@@ -2,9 +2,7 @@
 from sys import stdout
 from typing import Optional
 
-
-from ..builders.container_pb2 import Container as ContainerBuilder
-
+from .builders import ContainerBuilder
 from .container import Container
 from .directory import Directory
 from .sequence import Sequence
@@ -38,7 +36,7 @@ def get_container(
         raise AssertionError(f"behavior not recognized: {behavior}")
     return cls(muid=muid, database=self)
 
-Database.get_container = get_container
+setattr(Database, "get_container", get_container)
 
 def get_attribution(
     self:Database, timestamp: MuTimestamp, medallion: Medallion, *_
@@ -62,7 +60,7 @@ def get_attribution(
         comment=comment,
     )
 
-Database.get_attribution = get_attribution
+setattr(Database, "get_attribution", get_attribution)
 
 def dump(self: Database, as_of: GenericTimestamp=None, file=stdout):
     """ writes the contents of the database to file """
@@ -71,6 +69,6 @@ def dump(self: Database, as_of: GenericTimestamp=None, file=stdout):
         if container.size(as_of=as_of):
             container.dump(as_of=as_of, file=file)
 
-Database.dump = dump
+setattr(Database, "dump" , dump)
 
 PATCHED = True

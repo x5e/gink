@@ -9,12 +9,8 @@ from typing import Optional, Union, NamedTuple, List, Any
 from struct import Struct
 from google.protobuf.message import Message
 
-from ..builders.value_pb2 import Value as ValueBuilder
-from ..builders.entry_pb2 import Entry as EntryBuilder
-from ..builders.key_pb2 import Key as KeyBuilder
-from ..builders.behavior_pb2 import Behavior
-from ..builders.change_pb2 import Change as ChangeBuilder
 
+from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion
 from .muid import Muid
 from .bundle_info import BundleInfo
@@ -126,6 +122,7 @@ class EntryStorageKey(NamedTuple):
         entry_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")
         position = getattr(builder, "effective")
+        middle_key: Union[QueueMiddleKey, Muid, UserKey, None]
         if behavior == DIRECTORY or behavior == BOX:
             middle_key = decode_key(builder)
         elif behavior == SEQUENCE:
@@ -147,7 +144,7 @@ class EntryStorageKey(NamedTuple):
         if isinstance(using, EntryBuilder):
             using = using.behavior # type: ignore
         if not isinstance(using, int):
-            raise ValueError(f"can't determine behavior from {using}")
+            raise ValueError(f"can't determine behavior from {str(using)}")
         container_bytes = data[0:16]
         middle_key_bytes = data[16:-24]
         entry_muid_bytes = data[-24:-8]

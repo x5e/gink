@@ -7,15 +7,8 @@ from typing import Tuple, Callable, Optional, Iterable, Union
 from sortedcontainers import SortedDict
 from google.protobuf.message import Message
 
-
-# generated protobuf builder
-from ..builders.bundle_pb2 import Bundle as BundleBuilder
-from ..builders.entry_pb2 import Entry as EntryBuilder
-from ..builders.movement_pb2 import Movement as MovementBuilder
-from ..builders.clearance_pb2 import Clearance as ClearanceBuilder
-from ..builders.container_pb2 import Container as ContainerBuilder
-
 # gink modules
+from .builders import BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder
 from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
@@ -53,7 +46,7 @@ class MemoryStore(AbstractStore):
         self._removals = SortedDict()
         self._clearances = SortedDict()
         self._outbox = SortedDict()
-    
+
     def get_container(self, container: Muid) -> ContainerBuilder:
         return self._containers[container]
 
@@ -70,7 +63,8 @@ class MemoryStore(AbstractStore):
                 return BundleInfo.from_bytes(thing).comment
             else:
                 return None
-    
+        raise Exception("unexpected")
+
     def get_some(self, cls, last_index: Optional[int] = None):
         sorted_dict = {
             BundleBuilder: self._bundles,
@@ -210,7 +204,7 @@ class MemoryStore(AbstractStore):
                     builder=entry_builder)
             if limit is not None:
                 limit -= 1
-    
+
     def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
         for info_bytes, bundle_bytes in self._outbox.items():
             assert isinstance(bundle_bytes, bytes)

@@ -1,10 +1,7 @@
 """ the ChangeSet class """
 from typing import Optional, Union, Any
 
-from ..builders.bundle_pb2 import Bundle as BundleBuilder
-from ..builders.change_pb2 import Change as ChangeBuilder
-from ..builders.entry_pb2 import Entry as EntryBuilder
-
+from .builders import BundleBuilder, ChangeBuilder, EntryBuilder
 from .muid import Muid
 from .typedefs import MuTimestamp, Medallion
 from .tuples import Chain
@@ -60,8 +57,8 @@ class Bundler:
         changes[self._count_items].CopyFrom(builder) # type: ignore
         return muid
 
-    def seal(self, 
-        chain: Chain, 
+    def seal(self,
+        chain: Chain,
         timestamp: MuTimestamp,
         previous: Optional[MuTimestamp]=None
     ) -> bytes:
@@ -82,7 +79,7 @@ class Bundler:
 
     class Deferred(Muid):
         """ Version of a muid that references a bundle.
-        
+
             We need a custom subclass here because we want to return something that can
             be used as a muid, but we don't have the timestamp and medallion set until
             the bundle has been sealed.  This class allows us to return an address object
