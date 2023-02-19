@@ -94,7 +94,6 @@ class Bundler:
 
         def __init__(self, offset: int, bundler: Any) -> None:
             assert offset != 0
-            super().__init__(0, 0, offset) # type: ignore
             self._bundler = bundler
 
         def __getattribute__(self, name):

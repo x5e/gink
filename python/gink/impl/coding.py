@@ -9,7 +9,7 @@ from typing import Optional, Union, NamedTuple, List, Any
 from struct import Struct
 
 
-from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message
+from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion
 from .muid import Muid
 from .bundle_info import BundleInfo

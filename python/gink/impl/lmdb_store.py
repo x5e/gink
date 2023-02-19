@@ -10,7 +10,7 @@ from lmdb import open as ldmbopen, Transaction as Trxn, Cursor
 
 # Gink Implementation
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
-    ContainerBuilder, ClearanceBuilder, Message)
+    ContainerBuilder, ClearanceBuilder, Message, Behavior)
 from .typedefs import MuTimestamp, UserKey, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .muid import Muid

@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     class ClearanceBuilder(Message): pass
     class MuidBuilder(Message): pass
     class LogFile(Message): pass
+    class Behavior: pass
 else:
     from ..builders.bundle_pb2 import Bundle
     from ..builders.sync_message_pb2 import SyncMessage
@@ -28,3 +29,5 @@ else:
     from ..builders.movement_pb2 import Movement as MovementBuilder
     from ..builders.clearance_pb2 import Clearance as ClearanceBuilder
     from ..builders.muid_pb2 import Muid as MuidBuilder
+    from ..builders.behavior_pb2 import Behavior
+    from ..builders.log_file_pb2 import LogFile

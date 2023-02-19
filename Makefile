@@ -1,8 +1,11 @@
 #TODO: maybe switch over to Bazel?
 PROTOS=$(wildcard proto/*.proto)
-export PATH := ./typescript/node_modules/.bin/:$(PATH)
+export PATH := ./node_modules/.bin/:$(PATH)
 
 all: python/gink/builders node_modules/gink/protoc.out tsc.out webpack.out
+
+clean:
+	rm -rf protoc.out webpack.out tsc.out python/gink/builders node_modules/gink/protoc.out
 
 node_modules: package.json
 	npm install
@@ -29,16 +32,14 @@ protoc.out: $(PROTOS)
 
 node_modules/gink/protoc.out: node_modules protoc.out
 	rm -rf node_modules/gink && mkdir -p node_modules/gink && \
-	ln -s -r -t node_modules/gink protoc.out
+	cp -r protoc.out node_modules/gink/
+#	ln -s -r -t node_modules/gink protoc.out
 
 webpack.out: tsc.out
 	env webpack
 
 tsc.out: protoc.out node_modules/gink/protoc.out tsconfig.json typescript-impl/*.ts
 	env tsc && chmod a+x tsc.out/main.js
-
-clean:
-	rm -rf protoc.out webpack.out tsc.out python/gink/builders node_modules/gink/protoc.out
 
 unit_tests:
 	env jest
