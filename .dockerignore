@@ -1,7 +1,8 @@
 node_modules
 .git
 Dockerfile
-*.out
-scratch.*
-__pycache__
-builders
+**/*.out
+**/scratch.*
+**/__pycache__
+**/builders
+

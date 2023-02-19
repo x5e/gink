@@ -24,8 +24,10 @@ RUN ./functional-tests/routing-server-test.js
 
 # PYTHON STUFF
 RUN apt-get install -y python3-nose2 python3-protobuf python3-sortedcontainers \
-	python3-lmdb python3-wsproto
+	python3-lmdb python3-wsproto python3-mypy
 COPY python ./python
+COPY .mypy.ini ./.mypy.ini
+RUN python3 -m mypy python/gink
 RUN make python/gink/builders
 WORKDIR /opt/gink/python
 RUN python3 -m nose2
