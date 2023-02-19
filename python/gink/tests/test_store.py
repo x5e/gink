@@ -4,11 +4,8 @@
 from typing import Callable
 from contextlib import closing
 
-# things installed via pip
-from google.protobuf.text_format import Parse
-
 # gink generated proto modules
-from ..builders.bundle_pb2 import Bundle as BundleBuilder
+from ..impl.builders import BundleBuilder, Parse
 
 # gink stuff
 from ..impl.abstract_store import AbstractStore

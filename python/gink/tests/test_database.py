@@ -17,7 +17,7 @@ def test_database():
     last = Database.get_last()
     assert last == database
 
-def test_add_commit():
+def test_add_commit() -> None:
     """ tests that the add_commit works """
     store = MemoryStore()
     database = Database(store=store)
