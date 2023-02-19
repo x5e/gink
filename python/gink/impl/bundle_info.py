@@ -3,8 +3,6 @@
 from typing import Optional
 from struct import Struct
 
-from google.protobuf.message import Message
-
 from .builders import SyncMessage, BundleBuilder
 from .typedefs import Medallion, MuTimestamp
 from .tuples import Chain
@@ -55,7 +53,6 @@ class BundleInfo:
     @staticmethod
     def from_ack(sync_message: SyncMessage):
         """ reverse of as_ack """
-        assert isinstance(sync_message, Message)
         assert sync_message.HasField("ack")
         ack = sync_message.ack # type: ignore
         return BundleInfo(

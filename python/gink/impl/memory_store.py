@@ -5,10 +5,9 @@ import sys
 import struct
 from typing import Tuple, Callable, Optional, Iterable, Union
 from sortedcontainers import SortedDict
-from google.protobuf.message import Message
 
 # gink modules
-from .builders import BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder
+from .builders import BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder, Message
 from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo

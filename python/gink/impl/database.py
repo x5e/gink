@@ -16,9 +16,6 @@ from math import floor
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 
-# required python modules
-from google.protobuf.message import Message
-
 # builders
 from .builders import SyncMessage, EntryBuilder, ContainerBuilder
 
@@ -228,7 +225,6 @@ class Database:
 
     def _receive_data(self, sync_message: SyncMessage, from_peer: Connection):
         with self._lock:
-            assert isinstance(sync_message, Message)
             if sync_message.HasField("bundle"):
                 bundle_bytes = sync_message.bundle # type: ignore # pylint: disable=maybe-no-member
                 info, added = self._store.apply_bundle(bundle_bytes, False)
@@ -245,7 +241,6 @@ class Database:
                 def callback(bundle_bytes: bytes, info: BundleInfo):
                     if not chain_tracker.has(info):
                         outgoing_builder = SyncMessage()
-                        assert isinstance(outgoing_builder, Message)
                         outgoing_builder.bundle = bundle_bytes # type: ignore
                         from_peer.send(outgoing_builder)
                 self._store.get_bundles(callback=callback)

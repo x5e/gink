@@ -6,7 +6,6 @@ from socket import (
     SOL_SOCKET,
     SO_REUSEADDR,
 )
-from google.protobuf.message import Message
 
 from .builders import SyncMessage
 
@@ -28,7 +27,6 @@ class Listener:
 
     def accept(self, greeting: SyncMessage) -> Connection:
         """ Method to call when the underlying socket is "ready". """
-        assert isinstance(greeting, Message)
         (new_socket, addr) = self.socket.accept()
         peer: Connection = self.connection_class(
             socket=new_socket,

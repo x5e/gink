@@ -7,14 +7,10 @@ import uuid
 from typing import Tuple, Callable, Iterable, Optional, Set, Union
 from struct import pack
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor
-from google.protobuf.message import Message
-
-# Generated Protobuf Modules
-from ..builders.behavior_pb2 import Behavior
-
 
 # Gink Implementation
-from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder, ContainerBuilder, ClearanceBuilder
+from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
+    ContainerBuilder, ClearanceBuilder, Message)
 from .typedefs import MuTimestamp, UserKey, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .muid import Muid
@@ -157,7 +153,6 @@ class LmdbStore(AbstractStore):
             while positioned:
                 key, val = container_cursor.item()
                 container_builder = ContainerBuilder()
-                assert isinstance(container_builder, Message)
                 container_builder.ParseFromString(val)
                 yield Muid.from_bytes(key), container_builder
                 positioned = container_cursor.next()
@@ -325,7 +320,6 @@ class LmdbStore(AbstractStore):
             if previous == parsed_key and clear_before_to < placed_time:
                 # this entry existed there at to_time
                 entry_builder = EntryBuilder()
-                assert isinstance(entry_builder, Message)
                 entry_builder.ParseFromString(entries_cursor.value())
                 occupant = decode_entry_occupant(EntryStoragePair(parsed_key, entry_builder))
                 if isinstance(occupant, Muid) and seen is not None:
@@ -439,7 +433,6 @@ class LmdbStore(AbstractStore):
             middle_key = esk.middle_key
             assert isinstance(middle_key, QueueMiddleKey)
             entry_builder = EntryBuilder()
-            assert isinstance(entry_builder, Message)
             entry_builder.ParseFromString(trxn.get(bytes(esk), db=self._entries))
             return PositionedEntry(
                 middle_key.effective_time,
@@ -472,7 +465,6 @@ class LmdbStore(AbstractStore):
         """
 
         entry_builder = EntryBuilder()
-        assert isinstance(entry_builder, Message)
         with self._handle.begin() as txn:
             clearance_time = self._get_time_of_prior_clear(txn, container, as_of)
             entries_cursor = txn.cursor(self._entries)

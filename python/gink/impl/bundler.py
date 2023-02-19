@@ -74,8 +74,9 @@ class Bundler:
         self._timestamp = self._bundle_builder.timestamp = timestamp # type: ignore
         if self._comment:
             self._bundle_builder.comment = self.comment # type: ignore
-        self._sealed = self._bundle_builder.SerializeToString() # type: ignore
-        return self._sealed
+        sealed = self._bundle_builder.SerializeToString()
+        self._sealed = sealed
+        return sealed
 
     class Deferred(Muid):
         """ Version of a muid that references a bundle.
@@ -89,12 +90,11 @@ class Bundler:
 
         def __new__(cls, offset: int, bundler: Any):
             assert bundler is not None
-            return Muid.__new__(cls, None, None, offset)
+            return super().__new__(cls, 0, 0, offset)
 
-        def __init__(self, offset: int, bundler: Any):
-            if not offset:
-                Muid.__init__(self, 0, 0, offset)
-            assert offset
+        def __init__(self, offset: int, bundler: Any) -> None:
+            assert offset != 0
+            super().__init__(0, 0, offset) # type: ignore
             self._bundler = bundler
 
         def __getattribute__(self, name):
@@ -111,7 +111,7 @@ class Bundler:
             raise AttributeError(f"unknown attribute: {name}")
 
         def __hash__(self):
-            return hash((self.offset, self.medallion, self.timestamp))  # type: ignore
+            return hash((self.offset, self.medallion, self.timestamp))
 
         def __eq__(self, other):
             if not isinstance(other, Muid):

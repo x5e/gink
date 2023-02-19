@@ -5,7 +5,6 @@ Defines the ChainTracker class.
 from typing import Union, Optional
 
 from sortedcontainers import SortedDict
-from google.protobuf.message import Message
 
 from .builders import SyncMessage
 from .typedefs import MuTimestamp, Medallion
@@ -23,7 +22,7 @@ class ChainTracker:
 
     def __init__(self, sync_message: Optional[SyncMessage]=None):
         self._data = SortedDict()
-        if isinstance(sync_message, Message):
+        if isinstance(sync_message, SyncMessage):
             assert sync_message.HasField("greeting")
             greeting = sync_message.greeting # type: ignore
             for greeting_entry in greeting.entries:

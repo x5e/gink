@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from google.protobuf.message import Message
+from google.protobuf.message import Message   # type: ignore
 
 if TYPE_CHECKING:
     class BundleBuilder(Message): pass
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     class MovementBuilder(Message): pass
     class ClearanceBuilder(Message): pass
     class MuidBuilder(Message): pass
+    class LogFile(Message): pass
 else:
     from ..builders.bundle_pb2 import Bundle
     from ..builders.sync_message_pb2 import SyncMessage
