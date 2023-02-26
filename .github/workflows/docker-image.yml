@@ -11,4 +11,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker build ./python --file Dockerfile --tag gink:$(date +%s)
+      run: docker build ./python --file python/Dockerfile --tag gink:$(date +%s)
