@@ -30,7 +30,7 @@ class Directory(Container):
                 muid = Muid.from_str(ordered[0])
         if root:
             muid = Muid(-1, -1, DIRECTORY)
-        database = database or Database.last
+        database = database or Database.get_last()
         immediate = False
         if bundler is None:
             immediate = True

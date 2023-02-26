@@ -2,7 +2,7 @@ FROM node:latest
 RUN apt-get update
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get install -y protobuf-compiler
-RUN apt-get install -y chromium-driver
+RUN if [ `uname -m` != aarch64 ]; then apt-get install -y chromium-driver; fi
 CMD bash
 ENV WORKING=/opt/gink
 RUN mkdir -p $WORKING
@@ -14,20 +14,20 @@ RUN rm -rf ~/.* || true
 COPY proto ./proto
 COPY typescript-impl ./typescript-impl
 COPY tsconfig.json webpack.config.js web-entry.js Makefile jest.config.js ./
-RUN make
+RUN make node_modules/gink/protoc.out tsc.out webpack.out
 COPY typescript-unit-tests ./typescript-unit-tests
 RUN make unit_tests
 COPY functional-tests ./functional-tests
 RUN ./functional-tests/node-client-test.js
 RUN if [ `uname -m` != aarch64 ]; then ./functional-tests/browser-client-test/browser-test.js; fi
 RUN ./functional-tests/routing-server-test.js
+
+# PYTHON STUFF
+RUN apt-get install -y python3-nose2 python3-protobuf python3-sortedcontainers \
+	python3-lmdb python3-wsproto python3-mypy
+COPY python ./python
+COPY .mypy.ini ./.mypy.ini
+RUN python3 -m mypy python/gink
+RUN make python/gink/builders
 WORKDIR /opt/gink/python
-ENV PIP_ROOT_USER_ACTION=ignore
-# The most recent python protobuf library isn't compatible with the files generated
-# by the protobuf compiler installed by Debian.
-RUN apt-get install -y python3-pip
-RUN pip3 --no-cache-dir install --upgrade pip
-COPY python/requirements.txt ./requirements.txt
-RUN pip3 --no-cache-dir install -r requirements.txt
-COPY python/gink ./gink
 RUN python3 -m nose2

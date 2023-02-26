@@ -2,8 +2,7 @@
 from typing import NamedTuple, Union
 from uuid import UUID
 
-from ..builders.muid_pb2 import Muid as MuidBuilder
-
+from .builders import MuidBuilder
 from .dummy import Dummy
 from .typedefs import MuTimestamp, Medallion
 
@@ -12,10 +11,6 @@ class Muid(NamedTuple):
     timestamp: MuTimestamp
     medallion: Medallion
     offset: int
-
-    _TIMESTAMP_MOD = 16 ** 14
-    _MEDALLION_MOD = 16 ** 13
-    _OFFSET_MOD = 16 ** 5
 
     def __repr__(self):
         return f"Muid({self.timestamp}, {self.medallion}, {self.offset})"
@@ -28,9 +23,12 @@ class Muid(NamedTuple):
         """ Translates to a format that looks like: 05D5EAC793E61F-1F8CB77AE1EAA-0000B
 
         See docs/muid.md for a description of the format. """
-        time_part = hex(self.timestamp % Muid._TIMESTAMP_MOD)[2:].upper().zfill(14)
-        medallion_part = hex(self.medallion % Muid._MEDALLION_MOD)[2:].upper().zfill(13)
-        offset_part = hex(self.offset % Muid._OFFSET_MOD)[2:].upper().zfill(5)
+        timestamp_mod = 16 ** 14
+        medallion_mod = 16 ** 13
+        offset_mod = 16 ** 5
+        time_part = hex(self.timestamp % timestamp_mod)[2:].upper().zfill(14)
+        medallion_part = hex(self.medallion % medallion_mod)[2:].upper().zfill(13)
+        offset_part = hex(self.offset % offset_mod)[2:].upper().zfill(5)
 
         result = f"{time_part}-{medallion_part}-{offset_part}"
 
@@ -58,14 +56,17 @@ class Muid(NamedTuple):
     @staticmethod
     def from_str(hexed: str):
         """ the inverse of str(muid) """
+        timestamp_mod = 16 ** 14
+        medallion_mod = 16 ** 13
+        offset_mod = 16 ** 5
         hexed = hexed.replace("-", "")
         time_part = int(hexed[0:14], 16)
         medl_part = int(hexed[14:27], 16)
         off_part = int(hexed[27:32], 16)
         return Muid(
-            timestamp=time_part - Muid._TIMESTAMP_MOD * (time_part > (Muid._TIMESTAMP_MOD >> 1)),
-            medallion=medl_part - Muid._MEDALLION_MOD * (medl_part > (Muid._MEDALLION_MOD >> 1)),
-            offset=off_part - Muid._OFFSET_MOD * (off_part > (Muid._OFFSET_MOD >> 1)))
+            timestamp=time_part - timestamp_mod * (time_part > (timestamp_mod >> 1)),
+            medallion=medl_part - medallion_mod * (medl_part > (medallion_mod >> 1)),
+            offset=off_part - offset_mod * (off_part > (offset_mod >> 1)))
 
     @staticmethod
     def from_bytes(data: bytes):

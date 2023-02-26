@@ -1,10 +1,7 @@
 """ the ChangeSet class """
 from typing import Optional, Union, Any
 
-from ..builders.bundle_pb2 import Bundle as BundleBuilder
-from ..builders.change_pb2 import Change as ChangeBuilder
-from ..builders.entry_pb2 import Entry as EntryBuilder
-
+from .builders import BundleBuilder, ChangeBuilder, EntryBuilder
 from .muid import Muid
 from .typedefs import MuTimestamp, Medallion
 from .tuples import Chain
@@ -60,8 +57,8 @@ class Bundler:
         changes[self._count_items].CopyFrom(builder) # type: ignore
         return muid
 
-    def seal(self, 
-        chain: Chain, 
+    def seal(self,
+        chain: Chain,
         timestamp: MuTimestamp,
         previous: Optional[MuTimestamp]=None
     ) -> bytes:
@@ -77,12 +74,13 @@ class Bundler:
         self._timestamp = self._bundle_builder.timestamp = timestamp # type: ignore
         if self._comment:
             self._bundle_builder.comment = self.comment # type: ignore
-        self._sealed = self._bundle_builder.SerializeToString() # type: ignore
-        return self._sealed
+        sealed = self._bundle_builder.SerializeToString()
+        self._sealed = sealed
+        return sealed
 
     class Deferred(Muid):
         """ Version of a muid that references a bundle.
-        
+
             We need a custom subclass here because we want to return something that can
             be used as a muid, but we don't have the timestamp and medallion set until
             the bundle has been sealed.  This class allows us to return an address object
@@ -92,12 +90,10 @@ class Bundler:
 
         def __new__(cls, offset: int, bundler: Any):
             assert bundler is not None
-            return Muid.__new__(cls, None, None, offset)
+            return super().__new__(cls, 0, 0, offset)
 
-        def __init__(self, offset: int, bundler: Any):
-            if not offset:
-                Muid.__init__(self, 0, 0, offset)
-            assert offset
+        def __init__(self, offset: int, bundler: Any) -> None:
+            assert offset != 0
             self._bundler = bundler
 
         def __getattribute__(self, name):
@@ -114,7 +110,7 @@ class Bundler:
             raise AttributeError(f"unknown attribute: {name}")
 
         def __hash__(self):
-            return hash((self.offset, self.medallion, self.timestamp))  # type: ignore
+            return hash((self.offset, self.medallion, self.timestamp))
 
         def __eq__(self, other):
             if not isinstance(other, Muid):
