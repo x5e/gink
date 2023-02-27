@@ -7,18 +7,10 @@ import uuid
 from typing import Tuple, Callable, Iterable, Optional, Set, Union
 from struct import pack
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor
-from google.protobuf.message import Message
-
-# Generated Protobuf Modules
-from ..builders.bundle_pb2 import Bundle as BundleBuilder
-from ..builders.change_pb2 import Change as ChangeBuilder
-from ..builders.entry_pb2 import Entry as EntryBuilder
-from ..builders.movement_pb2 import Movement
-from ..builders.container_pb2 import Container as ContainerBuilder
-from ..builders.behavior_pb2 import Behavior
-from ..builders.clearance_pb2 import Clearance
 
 # Gink Implementation
+from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
+    ContainerBuilder, ClearanceBuilder, Message, Behavior)
 from .typedefs import MuTimestamp, UserKey, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .muid import Muid
@@ -27,8 +19,8 @@ from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, EntryStoragePair, decode_muts, wrap_change,
-    EntryStorageKey, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize, 
-    ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, MovementKey, 
+    EntryStorageKey, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
+    ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, MovementKey,
     LocationKey, PROPERTY, BOX)
 
 class LmdbStore(AbstractStore):
@@ -161,7 +153,6 @@ class LmdbStore(AbstractStore):
             while positioned:
                 key, val = container_cursor.item()
                 container_builder = ContainerBuilder()
-                assert isinstance(container_builder, Message)
                 container_builder.ParseFromString(val)
                 yield Muid.from_bytes(key), container_builder
                 positioned = container_cursor.next()
@@ -196,7 +187,7 @@ class LmdbStore(AbstractStore):
             table = {
                 BundleBuilder: self._bundles,
                 EntryBuilder: self._entries,
-                Movement: self._removals,
+                MovementBuilder: self._removals,
                 BundleInfo: self._bundles,
                 EntryStorageKey: self._entries,
                 MovementKey: self._removals,
@@ -223,7 +214,7 @@ class LmdbStore(AbstractStore):
         assert isinstance(container_definition_bytes, bytes)
         container_builder = ContainerBuilder()
         container_builder.ParseFromString(container_definition_bytes) # type: ignore
-        return container_builder.behavior # type: ignore pylint: disable=maybe-no-member
+        return container_builder.behavior # type: ignore # pylint: disable=maybe-no-member
 
     def _container_reset_changes(
             self,
@@ -250,7 +241,7 @@ class LmdbStore(AbstractStore):
             raise ValueError("can't specify key without specifying container")
         if container is None:
             recursive = False # don't need to recuse if we're going to do everything anyway
-        seen = set() if recursive else None
+        seen: Optional[Set] = set() if recursive else None
         with self._handle.begin() as txn:
             if container is None:
                 # we're resetting everything, so loop over the container definitions
@@ -329,7 +320,6 @@ class LmdbStore(AbstractStore):
             if previous == parsed_key and clear_before_to < placed_time:
                 # this entry existed there at to_time
                 entry_builder = EntryBuilder()
-                assert isinstance(entry_builder, Message)
                 entry_builder.ParseFromString(entries_cursor.value())
                 occupant = decode_entry_occupant(EntryStoragePair(parsed_key, entry_builder))
                 if isinstance(occupant, Muid) and seen is not None:
@@ -373,10 +363,11 @@ class LmdbStore(AbstractStore):
                 recurse_on = decode_entry_occupant(current)
             else:
                 # only here if a clear or change has been made to this key since to_time
-                if last_clear_time > current.key.entry_muid.timestamp:
-                    contained_now = deletion
-                else:
+                if last_clear_time <= current.key.entry_muid.timestamp:
                     contained_now = decode_entry_occupant(current)
+                else:
+                    contained_now = deletion
+
 
                 # we know what's there now, next have to find out what was there at to_time
                 last_clear_before_to_time = self._get_time_of_prior_clear(trxn, container, to_time)
@@ -442,7 +433,6 @@ class LmdbStore(AbstractStore):
             middle_key = esk.middle_key
             assert isinstance(middle_key, QueueMiddleKey)
             entry_builder = EntryBuilder()
-            assert isinstance(entry_builder, Message)
             entry_builder.ParseFromString(trxn.get(bytes(esk), db=self._entries))
             return PositionedEntry(
                 middle_key.effective_time,
@@ -475,7 +465,6 @@ class LmdbStore(AbstractStore):
         """
 
         entry_builder = EntryBuilder()
-        assert isinstance(entry_builder, Message)
         with self._handle.begin() as txn:
             clearance_time = self._get_time_of_prior_clear(txn, container, as_of)
             entries_cursor = txn.cursor(self._entries)
@@ -636,7 +625,8 @@ class LmdbStore(AbstractStore):
             for bundle_info in bundle_infos:
                 trxn.delete(bytes(bundle_info), db=self._outbox)
 
-    def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int, builder: Clearance):
+    def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int,
+        builder: ClearanceBuilder):
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
         clearance_muid = Muid.create(context=new_info, offset=offset)
         entry_retention = decode_muts(trxn.get(b"entries", db=self._retentions)) # type: ignore
@@ -657,7 +647,8 @@ class LmdbStore(AbstractStore):
         new_key = bytes(container_muid) + bytes(clearance_muid)
         trxn.put(new_key, serialize(builder), db=self._clearances)
 
-    def _apply_movement(self, new_info: BundleInfo, txn: Trxn, offset: int, builder: Movement):
+    def _apply_movement(self, new_info: BundleInfo, txn: Trxn, offset: int,
+        builder: MovementBuilder):
         """ (Re)moves an entry from the store.
 
             Will be via a soft delete if retaining entry history or a hard delete if not.

@@ -2,7 +2,7 @@
 """ command line tool to view/maniplulate stores """
 import sys
 
-from ..builders.bundle_pb2 import Bundle as BundleBuilder
+from .builders import BundleBuilder
 from .bundle_info import BundleInfo
 
 from log_backed_store import LogBackedStore

@@ -7,18 +7,13 @@
 """
 from typing import Optional, Union, NamedTuple, List, Any
 from struct import Struct
-from google.protobuf.message import Message
 
-from ..builders.value_pb2 import Value as ValueBuilder
-from ..builders.entry_pb2 import Entry as EntryBuilder
-from ..builders.key_pb2 import Key as KeyBuilder
-from ..builders.behavior_pb2 import Behavior
-from ..builders.change_pb2 import Change as ChangeBuilder
 
+from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion
 from .muid import Muid
 from .bundle_info import BundleInfo
-from .dummy import Dummy
+
 
 UNSPECIFIED: int = Behavior.UNSPECIFIED # type: ignore
 SEQUENCE: int = Behavior.SEQUENCE # type: ignore
@@ -31,7 +26,6 @@ ZERO_64: bytes = b"\x00" * 8
 deletion = Deletion()
 
 def ensure_entry_is_valid(builder: EntryBuilder, context: Any=object()):
-    assert isinstance(builder, Message)
     if getattr(builder, "behavior") == UNSPECIFIED:
         raise ValueError("entry lacks a behavior")
     if not builder.HasField("container"):
@@ -126,6 +120,7 @@ class EntryStorageKey(NamedTuple):
         entry_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")
         position = getattr(builder, "effective")
+        middle_key: Union[QueueMiddleKey, Muid, UserKey, None]
         if behavior == DIRECTORY or behavior == BOX:
             middle_key = decode_key(builder)
         elif behavior == SEQUENCE:
@@ -147,7 +142,7 @@ class EntryStorageKey(NamedTuple):
         if isinstance(using, EntryBuilder):
             using = using.behavior # type: ignore
         if not isinstance(using, int):
-            raise ValueError(f"can't determine behavior from {using}")
+            raise ValueError(f"can't determine behavior from {str(using)}")
         container_bytes = data[0:16]
         middle_key_bytes = data[16:-24]
         entry_muid_bytes = data[-24:-8]
@@ -175,7 +170,7 @@ class EntryStorageKey(NamedTuple):
         """ create a entry key that can be used for seeking before the given time """
         return EntryStorageKey(self.container, self.middle_key, Muid(timestamp, 0,0,), None)
 
-    def __bytes__(self):
+    def __bytes__(self) -> bytes:
         parts: List[Any] = []
         parts.append(self.container)
         if isinstance(self.middle_key, (QueueMiddleKey, Muid)):

@@ -2,12 +2,8 @@
 import logging
 from socket import socketpair
 
-# things installed via pip
-from google.protobuf.text_format import Parse
-from google.protobuf.message import Message
-
 # builders
-from ..builders.sync_message_pb2 import SyncMessage
+from ..impl.builders import SyncMessage, Parse
 
 from ..impl.websocket_connection import WebsocketConnection
 
@@ -38,7 +34,6 @@ def test_chit_chat():
 
     # example of to string and back
     sync_message2 = SyncMessage()
-    assert isinstance(sync_message2, Message)
     sync_message2 = Parse(str(sync_message), sync_message2)
     assert sync_message2 == sync_message
 

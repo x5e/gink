@@ -3,8 +3,7 @@ from typing import Optional, Union
 from abc import ABC, abstractmethod
 from sys import stdout
 
-from ..builders.entry_pb2 import Entry as EntryBuilder
-from ..builders.change_pb2 import Change as ChangeBuilder
+from .builders import ChangeBuilder, EntryBuilder
 
 from .muid import Muid
 from .bundler import Bundler
@@ -71,7 +70,7 @@ class Container(ABC):
         """ Creates an instance of the given class, adding immediately if no bundler is provided.
         """
         if database is None:
-            database = Database.last
+            database = Database.get_last()
         muid = Container._create(cls.get_behavior(), bundler=bundler, database=database)
         return cls(muid=muid, database=database)
 
@@ -86,7 +85,7 @@ class Container(ABC):
             testing/demo purposes.
         """
         if database is None:
-            database = Database.last
+            database = Database.get_last()
         assert database is not None
         muid = Muid(timestamp=-1, medallion=-1, offset=cls.get_behavior())
         return cls(database=database, muid=muid)
@@ -104,7 +103,7 @@ class Container(ABC):
             This info may then be used for "blame" i.e. to track who made what changes when.
         """
         if database is None:
-            database = Database.last
+            database = Database.get_last()
         assert database is not None
         if not medallion:
             chain = database.get_chain()
@@ -193,12 +192,12 @@ class Container(ABC):
         return muid
 
     def reset(
-        self, 
-        to_time: GenericTimestamp=EPOCH, 
-        *, 
+        self,
+        to_time: GenericTimestamp=EPOCH,
+        *,
         key: Optional[UserKey]=None,
-        recursive: bool=False, 
-        bundler: Optional[Bundler]=None, 
+        recursive: bool=False,
+        bundler: Optional[Bundler]=None,
         comment: Optional[str]=None
     ) -> Bundler:
         """ Resets either a specific key or the whole container to a particular past time.

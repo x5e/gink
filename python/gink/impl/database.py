@@ -3,7 +3,7 @@
 
 # standard python modules
 from random import randint
-from typing import Optional, Set, Union, Iterable, Tuple, Dict, Any
+from typing import Optional, Set, Union, Iterable, Tuple, Dict, Any, List
 from datetime import datetime, date, timedelta
 from threading import Lock
 from select import select
@@ -16,13 +16,8 @@ from math import floor
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 
-# required python modules
-from google.protobuf.message import Message
-
 # builders
-from ..builders.sync_message_pb2 import SyncMessage
-from ..builders.entry_pb2 import Entry as EntryBuilder
-from ..builders.container_pb2 import Container as ContainerBuilder
+from .builders import SyncMessage, EntryBuilder, ContainerBuilder
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -51,7 +46,7 @@ class Database:
     _last_link: Optional[BundleInfo]
 
     def __init__(self, store: AbstractStore):
-        Database.last = self
+        setattr(Database, "_last", self)
         self._store = store
         self._last_link = None
         self._lock = Lock()
@@ -62,6 +57,12 @@ class Database:
         self._trackers = {}
         self._sent_but_not_acked = set()
 
+    @staticmethod
+    def get_last():
+        last = getattr(Database, "_last")
+        assert isinstance(last, Database)
+        return last
+
     def get_store(self) -> AbstractStore:
         """ returns the store managed by this database """
         return self._store
@@ -70,6 +71,7 @@ class Database:
         """ gets the this database is appending to (or None if hasn't started writing yet) """
         if self._last_link is not None:
             return self._last_link.get_chain()
+        return None
 
     @staticmethod
     def _get_info() -> Iterable[Tuple[str, Union[str, int]]]:
@@ -223,9 +225,8 @@ class Database:
 
     def _receive_data(self, sync_message: SyncMessage, from_peer: Connection):
         with self._lock:
-            assert isinstance(sync_message, Message)
             if sync_message.HasField("bundle"):
-                bundle_bytes = sync_message.bundle # type: ignore pylint: disable=maybe-no-member
+                bundle_bytes = sync_message.bundle # type: ignore # pylint: disable=maybe-no-member
                 info, added = self._store.apply_bundle(bundle_bytes, False)
                 from_peer.send(info.as_acknowledgement())
                 tracker = self._trackers.get(from_peer)
@@ -240,7 +241,6 @@ class Database:
                 def callback(bundle_bytes: bytes, info: BundleInfo):
                     if not chain_tracker.has(info):
                         outgoing_builder = SyncMessage()
-                        assert isinstance(outgoing_builder, Message)
                         outgoing_builder.bundle = bundle_bytes # type: ignore
                         from_peer.send(outgoing_builder)
                 self._store.get_bundles(callback=callback)
@@ -286,7 +286,7 @@ class Database:
             until = self.resolve_timestamp(until)
         while until is None or self.get_now() < until:
             # eventually will want to support epoll on platforms where its supported
-            readers = []
+            readers: List[Union[Listener, Connection]] = []
             for listener in self._listeners:
                 readers.append(listener)
             for connection in list(self._connections):
@@ -304,9 +304,9 @@ class Database:
                         self._receive_data(data, ready_reader)
                 elif isinstance(ready_reader, Listener):
                     sync_message = self._store.get_chain_tracker().to_greeting_message()
-                    connection: Connection = ready_reader.accept(sync_message)
-                    self._connections.add(connection)
-                    self._logger.debug("accepted incoming connection from %s", connection)
+                    new_connection: Connection = ready_reader.accept(sync_message)
+                    self._connections.add(new_connection)
+                    self._logger.debug("accepted incoming connection from %s", new_connection)
             for info, bundle_bytes in self._store.read_through_outbox():
                 if info not in self._sent_but_not_acked:
                     self._broadcast_bundle(bundle_bytes, info, None)

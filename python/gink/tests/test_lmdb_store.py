@@ -1,9 +1,5 @@
 """ Runs the store tests against the memory store. """
 import os
-from contextlib import closing
-
-from google.protobuf.text_format import Parse
-
 
 from ..impl.lmdb_store import LmdbStore
 from .test_store import *  # pylint complains about test_store.install_tests

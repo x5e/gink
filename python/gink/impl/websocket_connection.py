@@ -20,10 +20,9 @@ from wsproto.events import(
     Pong,
     RejectConnection
 )
-from google.protobuf.message import Message
 
 # builders
-from ..builders.sync_message_pb2 import SyncMessage
+from .builders import SyncMessage
 
 # gink modules
 from .connection import Connection
@@ -104,7 +103,6 @@ class WebsocketConnection(Connection):
                         received = self._buffered + received
                         self._buffered = b""
                     sync_message = SyncMessage()
-                    assert isinstance(sync_message, Message)
                     sync_message.ParseFromString(received)
                     yield sync_message
                 else:
@@ -125,13 +123,11 @@ class WebsocketConnection(Connection):
         if self._greeting is None:
             self._logger.warning("no greeting message to send")
             return
-        assert isinstance(self._greeting, Message)
         sent = self.send(self._greeting)
         self._logger.debug("sent greeting of %d bytes", sent)
 
     def send(self, sync_message: SyncMessage) -> int:
         assert not self._closed
-        assert isinstance(sync_message, Message)
         data = self._ws.send(BytesMessage(sync_message.SerializeToString()))
         return self._socket.send(data)
 

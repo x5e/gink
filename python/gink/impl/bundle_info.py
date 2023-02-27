@@ -3,11 +3,7 @@
 from typing import Optional
 from struct import Struct
 
-from google.protobuf.message import Message
-
-from ..builders.bundle_pb2 import Bundle
-from ..builders.sync_message_pb2 import SyncMessage
-
+from .builders import SyncMessage, BundleBuilder
 from .typedefs import Medallion, MuTimestamp
 from .tuples import Chain
 
@@ -22,7 +18,7 @@ class BundleInfo:
     previous: MuTimestamp
     comment: str
 
-    def __init__(self, *, builder: Optional[Bundle]=None, encoded: bytes=b'\x00'*32, **kwargs):
+    def __init__(self, *, builder: Optional[BundleBuilder]=None, encoded: bytes=b'\x00'*32, **kwargs):
 
         unpacked = self._struct.unpack(encoded[0:32])
         (self.timestamp, self.medallion, self.chain_start, self.previous) = unpacked
@@ -57,7 +53,6 @@ class BundleInfo:
     @staticmethod
     def from_ack(sync_message: SyncMessage):
         """ reverse of as_ack """
-        assert isinstance(sync_message, Message)
         assert sync_message.HasField("ack")
         ack = sync_message.ack # type: ignore
         return BundleInfo(
@@ -88,8 +83,8 @@ class BundleInfo:
 
     def __repr__(self) -> str:
         contents = [f"{x}={repr(getattr(self,x))}" for x in self.__slots__ if getattr(self,x)]
-        contents = ", ".join(contents)
-        return self.__class__.__name__ + '(' + contents + ')'
+        joined = ", ".join(contents)
+        return self.__class__.__name__ + '(' + joined + ')'
 
     def __eq__(self, other):
         return bytes(self) == bytes(other)
