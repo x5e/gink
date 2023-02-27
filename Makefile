@@ -18,11 +18,12 @@ python/gink/builders: $(PROTOS)
 	touch python/gink/builders.making/__init__.py && \
 	mv python/gink/builders.making python/gink/builders
 
-typescript/gink/builders: $(PROTOS)
-	rm -rf typescript/gink/builders* && \
-	mkdir -p typescript/gink/builders.making && \
-	protoc --proto_path=proto --js_out=import_style=commonjs,binary:typescript/gink/builders.making $(PROTOS) && \
-	mv typescript/gink/builders.making typescript/gink/builders
+javascript/builders: $(PROTOS)
+	rm -rf javascript/builders* && \
+	mkdir -p javascript/builders.making && \
+	protoc --proto_path=proto \
+	--js_out=import_style=commonjs,binary:javascript/builders.making $(PROTOS) && \
+	mv javascript/builders.making javascript/builders
 
 protoc.out: $(PROTOS)
 	 rm -rf protoc.out && mkdir -p protoc.out.making && protoc \
