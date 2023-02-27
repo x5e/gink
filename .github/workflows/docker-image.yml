@@ -10,6 +10,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install protoc
+      run: apt-get update && apt-get install -y protobuf-compiler
     - name: Compile Protos
       run: make python/gink/builders
     - name: Build the Docker image
