@@ -1,0 +1,14 @@
+syntax = "proto3";
+package google.gink;
+import "value.proto";
+import "value_type.proto";
+
+
+message Column {
+    string name = 1;
+    ValueType type = 2; // might want a type defined even when a expression is provided so you can override
+    Value expression = 3; // default used when no value is provided (or computed/view columns)
+    bool computed = 4; // when true, values can't be provided, and is defined by expression
+    uint32 position = 5; // required when using table inheritance, implied otherwise
+    bool drop_column = 6; // specifies that the column should be dropped in an inherited table
+};

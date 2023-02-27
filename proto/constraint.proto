@@ -1,0 +1,52 @@
+syntax = "proto3";
+package google.gink;
+import "muid.proto";
+
+message ValueType {
+    bool nullable = 1;
+    bool is_array = 2;
+
+    oneof which_type {
+        BasicType basic_type = 3;
+        Muid enum_type = 4;
+        DocumentType document_type = 5;
+        TupleType tuple_type = 6;
+        UnionType union_type = 7;
+        ExpressionType expression_type = 8;
+        Muid proto_type = 9;
+    }
+    enum BasicType {
+        UNKNOWN = 0; 
+        BOOL = 1;
+        BYTES = 2;
+        ANY_BASIC = 3;
+        JSON = 4;
+        STRING = 5;
+        NUMBER = 6;
+        INTEGER = 7;
+        BIGINT = 8;
+        FLOAT = 9;
+        DOUBLE = 10;
+        DECIMAL = 11;
+        TIMESTAMP = 12;
+        DATE = 13;
+        TIME = 14;
+        DATETIME = 15;
+        ANY_VALUE = 16;
+    }
+    message DocumentType {
+        map <string, ValueType> subtypes = 1;
+        bool is_open = 2; // if true, allow entries not specified in subtypes
+    }
+    message TupleType {
+        repeated ValueType subtypes = 1;
+    }
+    message UnionType {
+        repeated ValueType subtypes = 1;
+    }
+    message ExpressionType {
+        repeated ValueType positional_argument_types = 1;
+        repeated ValueType keyword_argument_types = 2;
+        ValueType result_type = 3;
+    }
+}
