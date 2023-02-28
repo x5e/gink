@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "sourceMap": true,
+    "target": "es2017",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "outDir": "tsc.out",
+    "declaration": true
+  },
+  "include": ["gink/implementation/*.ts", "gink/unit-tests/*.ts", "web.ts"]
+}

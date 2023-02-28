@@ -8,3 +8,4 @@ scratch.*
 *.out
 *.built
 __pycache__
+builders
