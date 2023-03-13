@@ -4,7 +4,7 @@ from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.abstract_store import AbstractStore
 from ..impl.database import Database
-from ..impl.muid import Muid
+
 
 def test_contained():
     """ test that I can create new directories as well as proxies for existing ones """

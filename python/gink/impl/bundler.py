@@ -6,10 +6,11 @@ from .muid import Muid
 from .typedefs import MuTimestamp, Medallion
 from .tuples import Chain
 
+
 class Bundler:
     """ Manages construction and finalization of a change set. """
 
-    def __init__(self, comment: Optional[str]=None):
+    def __init__(self, comment: Optional[str] = None):
         self._sealed: Optional[bytes] = None
         self._bundle_builder = BundleBuilder()
         self._count_items = 0
@@ -51,29 +52,29 @@ class Bundler:
         if isinstance(builder, EntryBuilder):
             entry_builder = builder
             builder = ChangeBuilder()
-            builder.entry.CopyFrom(entry_builder) # type: ignore # pylint: disable=maybe-no-member
+            builder.entry.CopyFrom(entry_builder)  # type: ignore # pylint: disable=maybe-no-member
         assert isinstance(builder, ChangeBuilder)
-        changes = self._bundle_builder.changes # type: ignore # pylint: disable=maybe-no-member
-        changes[self._count_items].CopyFrom(builder) # type: ignore
+        changes = self._bundle_builder.changes  # type: ignore # pylint: disable=maybe-no-member
+        changes[self._count_items].CopyFrom(builder)  # type: ignore
         return muid
 
     def seal(self,
-        chain: Chain,
-        timestamp: MuTimestamp,
-        previous: Optional[MuTimestamp]=None
-    ) -> bytes:
+             chain: Chain,
+             timestamp: MuTimestamp,
+             previous: Optional[MuTimestamp] = None
+             ) -> bytes:
         """ Finalizes a bundle and serializes it. """
-         # pylint: disable=maybe-no-member
+        # pylint: disable=maybe-no-member
         if previous is None:
             assert timestamp == chain.chain_start
         else:
             assert chain.chain_start <= previous < timestamp
-            self._bundle_builder.previous = previous # type: ignore
-        self._bundle_builder.chain_start = chain.chain_start # type: ignore
-        self._medallion = self._bundle_builder.medallion = chain.medallion # type: ignore
-        self._timestamp = self._bundle_builder.timestamp = timestamp # type: ignore
+            self._bundle_builder.previous = previous  # type: ignore
+        self._bundle_builder.chain_start = chain.chain_start  # type: ignore
+        self._medallion = self._bundle_builder.medallion = chain.medallion  # type: ignore
+        self._timestamp = self._bundle_builder.timestamp = timestamp  # type: ignore
         if self._comment:
-            self._bundle_builder.comment = self.comment # type: ignore
+            self._bundle_builder.comment = self.comment  # type: ignore
         sealed = self._bundle_builder.SerializeToString()
         self._sealed = sealed
         return sealed
@@ -93,6 +94,7 @@ class Bundler:
             return super().__new__(cls, 0, 0, offset)
 
         def __init__(self, offset: int, bundler: Any) -> None:
+            super().__init__()
             assert offset != 0
             self._bundler = bundler
 
@@ -115,5 +117,5 @@ class Bundler:
         def __eq__(self, other):
             if not isinstance(other, Muid):
                 return False
-            return ( (self.offset, self.medallion, self.timestamp) # type: ignore
-                == (other.offset, other.medallion, other.timestamp) ) # type: ignore
+            return ((self.offset, self.medallion, self.timestamp)  # type: ignore
+                    == (other.offset, other.medallion, other.timestamp))  # type: ignore

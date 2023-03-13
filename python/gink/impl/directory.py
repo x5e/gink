@@ -12,13 +12,14 @@ from .bundler import Bundler
 from .typedefs import UserKey, GenericTimestamp
 from .attribution import Attribution
 
+
 class Directory(Container):
     """ the Gink mutable mapping object """
     _missing = object()
     BEHAVIOR = DIRECTORY
 
     def __init__(self, *ordered, root: Optional[bool] = None, bundler: Optional[Bundler] = None,
-        contents=None, muid: Optional[Muid]=None, database=None, comment: Optional[str]=None):
+                 contents=None, muid: Optional[Muid] = None, database=None, comment: Optional[str] = None):
         """
         Constructor for a directory proxy.
 
@@ -47,7 +48,7 @@ class Directory(Container):
         if immediate and len(bundler):
             self._database.commit(bundler)
 
-    def dumps(self, as_of: GenericTimestamp=None) -> str:
+    def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this directory to a string.
         """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
@@ -83,9 +84,9 @@ class Directory(Container):
         """ returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
-        return found is not None and not found.builder.deletion # type: ignore
+        return found is not None and not found.builder.deletion  # type: ignore
 
-    def get(self, key, default=None, *, as_of: GenericTimestamp=None):
+    def get(self, key, default=None, *, as_of: GenericTimestamp = None):
         """ gets the value associate with a key, default if missing, optionally as_of a time """
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
@@ -138,7 +139,7 @@ class Directory(Container):
         """
         as_of = self._database.get_now()
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
-        if found is None or found.builder.deletion: # type: ignore
+        if found is None or found.builder.deletion:  # type: ignore
             return default
         self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
         return self._get_occupant(found.builder, found.address)
@@ -148,26 +149,25 @@ class Directory(Container):
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of)
         for entry_pair in iterable:
-            if entry_pair.builder.deletion: # type: ignore
+            if entry_pair.builder.deletion:  # type: ignore
                 continue
             key = decode_key(entry_pair.builder)
             contained = self._get_occupant(entry_pair.builder, entry_pair.address)
             yield (key, contained)
 
-    def size(self, *, as_of: GenericTimestamp=None) -> int:
+    def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of)
         count = 0
         for entry_pair in iterable:
-            if entry_pair.builder.deletion: # type: ignore
+            if entry_pair.builder.deletion:  # type: ignore
                 continue
             count += 1
         return count
 
-
     def keys(self, *, as_of=None):
         """ returns an iterable of all the keys in this direcotry """
-        for k,_ in self.items(as_of=as_of):
+        for k, _ in self.items(as_of=as_of):
             yield k
 
     def values(self, *, as_of=None):
@@ -183,7 +183,7 @@ class Directory(Container):
         as_of = self._database.get_now()
         iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of)
         for entry_pair in iterable:
-            if entry_pair.builder.deletion: # type: ignore
+            if entry_pair.builder.deletion:  # type: ignore
                 continue
             val = self._get_occupant(entry_pair.builder, entry_pair.address)
             key = decode_key(entry_pair.builder)
@@ -211,9 +211,8 @@ class Directory(Container):
         if immediate:
             self._database.commit(bundler)
 
-
-    def blame(self, key: Optional[UserKey]=None, as_of: GenericTimestamp=None
-    ) -> Dict[UserKey, Attribution]:
+    def blame(self, key: Optional[UserKey] = None, as_of: GenericTimestamp = None
+              ) -> Dict[UserKey, Attribution]:
         """ returns a dictionary mapping keys to who's responsible for each change """
         as_of = self._database.resolve_timestamp(as_of)
         keys = [key] if key is not None else self.keys(as_of=as_of)
@@ -227,8 +226,8 @@ class Directory(Container):
             result[key] = self._database.get_attribution(*found.address)
         return result
 
-    def show_blame(self, as_of: GenericTimestamp=None, file=stdout):
-        """ dumps the blame map to <file> in a human readable format """
+    def show_blame(self, as_of: GenericTimestamp = None, file=stdout):
+        """ dumps the blame map to <file> in a human-readable format """
         for key, val in self.blame(as_of=as_of).items():
             print(repr(key), str(val), file=file)
 
@@ -243,7 +242,7 @@ class Directory(Container):
             as_of = found.address.timestamp
 
     def show_log(self, key: UserKey, file=stdout, limit=10):
-        """ writes the history of modifications to <file> in a human readable format """
+        """ writes the history of modifications to <file> in a human-readable format """
         for att in self.log(key):
             if limit is not None and limit <= 0:
                 break

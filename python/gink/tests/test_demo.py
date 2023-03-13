@@ -1,5 +1,6 @@
 from .. import *
 
+
 def test_as_of():
     for store in [MemoryStore(), LmdbStore()]:
         with store:
@@ -10,7 +11,7 @@ def test_as_of():
             root["hello"] = "universe"
             assert root["hello"] == "universe"
             assert root.get("hello", as_of=-1) == "world"
-            assert root.get("hello", as_of=-2) == None
+            assert root.get("hello", as_of=-2) is None
             assert dict(root) == {"hello": "universe"}
             assert dict(root.items(as_of=-1)) == {"hello": "world"}, store
             assert dict(root.items(as_of=0)) == {}

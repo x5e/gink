@@ -1,5 +1,6 @@
 """ defines a dummy class """
 
+
 class Dummy:
     """ a placeholder class """
 

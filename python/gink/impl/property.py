@@ -1,4 +1,4 @@
-""" Contains the `Property' Container class. """
+""" Contains the `Property` Container class. """
 from typing import Optional, Union
 
 from .typedefs import UserValue, GenericTimestamp
@@ -8,10 +8,11 @@ from .muid import Muid
 from .database import Database
 from .bundler import Bundler
 
+
 class Property(Container):
     BEHAVIOR = PROPERTY
 
-    def __init__(self, *, contents=None, muid: Optional[Muid]=None, database=None):
+    def __init__(self, *, contents=None, muid: Optional[Muid] = None, database=None):
         """
         Constructor for a property definition.
 
@@ -35,7 +36,7 @@ class Property(Container):
         raise NotImplementedError()
 
     def set(self, describing: Union[Muid, Container], value: UserValue, *,
-                bundler=None, comment=None) -> Muid:
+            bundler=None, comment=None) -> Muid:
         """ Sets the value of the property on the particular object addressed by describing.
 
             Overwrites the value of this property on this object if previously set.
@@ -51,15 +52,15 @@ class Property(Container):
             describing = describing._muid
         return self._add_entry(key=describing, value=deletion, bundler=bundler, comment=comment)
 
-    def get(self, describing: Union[Muid, Container], default: UserValue=None, *,
-            as_of: GenericTimestamp=None) -> UserValue:
+    def get(self, describing: Union[Muid, Container], default: UserValue = None, *,
+            as_of: GenericTimestamp = None) -> UserValue:
         """ Gets the value of the property on the object it's describing, optionally in the past.
 
         """
         if isinstance(describing, Container):
             describing = describing._muid
         as_of = self._database.resolve_timestamp(as_of)
-        found = self._database._store.get_entry_by_key(self._muid, key=describing, as_of=as_of)
+        found = self._database.get_store().get_entry_by_key(self._muid, key=describing, as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore
             return default
         return self._get_occupant(found.builder)

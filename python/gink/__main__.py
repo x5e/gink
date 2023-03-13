@@ -7,6 +7,7 @@ import code
 import logging
 import readline
 from . import LmdbStore, LogBackedStore, Directory, Database, Sequence, AbstractStore
+
 assert readline
 logging.basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "INFO"))
 gink_file = os.environ.get("GINK_FILE", "/tmp/gink.mdb")
@@ -21,7 +22,7 @@ database = Database(store)
 root = Directory.get_global_instance(database=database)
 queue = Sequence.get_global_instance(database=database)
 args = copy.copy(sys.argv)
-args.pop(0) # remove script
+args.pop(0)  # remove script
 
 cmd = args.pop(0) if args else None
 if cmd == "demo":

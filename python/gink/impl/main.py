@@ -18,13 +18,16 @@ def show(file: str):
         store = LmdbStore(file)
     else:
         store = LogBackedStore(file)
+
     def dump(data: bytes, info: BundleInfo):
         builder.ParseFromString(data)  # type: ignore
         print("=" * 40)
         print(info)
         print(builder)
+
     store.get_bundles(dump)
     store.close()
+
 
 if __name__ == "__main__":
     func = sys.argv[1]

@@ -18,13 +18,13 @@ class ChainTracker:
     Keep track of what data a particular instance has.
     """
 
-    _data: SortedDict # [Chain, MuTimestamp]
+    _data: SortedDict  # [Chain, MuTimestamp]
 
-    def __init__(self, sync_message: Optional[SyncMessage]=None):
+    def __init__(self, sync_message: Optional[SyncMessage] = None):
         self._data = SortedDict()
         if isinstance(sync_message, SyncMessage):
             assert sync_message.HasField("greeting")
-            greeting = sync_message.greeting # type: ignore
+            greeting = sync_message.greeting  # type: ignore
             for greeting_entry in greeting.entries:
                 chain = Chain(greeting_entry.medallion, greeting_entry.chain_start)
                 self._data[chain] = greeting_entry.seen_through
@@ -50,7 +50,7 @@ class ChainTracker:
                 maximum=Chain(Medallion(what.medallion), what.timestamp))
             for chain, seen_to in iterator:
                 assert isinstance(chain, Chain)
-                if what.timestamp >= chain.chain_start and what.timestamp <= seen_to:
+                if chain.chain_start <= what.timestamp <= seen_to:
                     return True
             return False
         raise ValueError()
@@ -61,9 +61,9 @@ class ChainTracker:
         """
         sync_message = SyncMessage()
         # pylint: disable=maybe-no-member
-        sync_message.greeting.entries.append(SyncMessage.Greeting.GreetingEntry()) # type: ignore
-        del sync_message.greeting.entries[0] # type: ignore
-        greeting = sync_message.greeting # type: ignore
+        sync_message.greeting.entries.append(SyncMessage.Greeting.GreetingEntry())  # type: ignore
+        del sync_message.greeting.entries[0]  # type: ignore
+        greeting = sync_message.greeting  # type: ignore
         assert len(greeting.entries) == 0
         for chain, seen_through in self._data.items():
             assert isinstance(chain, Chain), repr(self._data)

@@ -4,7 +4,6 @@ from ..impl.coding import encode_value, decode_value, EntryStorageKey, QueueMidd
 from ..impl.muid import Muid
 
 
-
 def test_encode_decode():
     """ Tests a bunch of basic values. """
     for original in ("foo", 1.5, 137, True, False, None, b"abc"):
@@ -55,20 +54,21 @@ def test_entry_key_sorting():
     """ ensures that entry keys sort as expected """
     global_directory = Muid(-1, -1, 7)
 
-    key1 = EntryStorageKey(global_directory, "foo", Muid(1,2,3), None)
-    key2 = EntryStorageKey(global_directory, "foo", Muid(7,8,9), None)
-    key3 = EntryStorageKey(global_directory, 77, Muid(1,2,3), None)
+    key1 = EntryStorageKey(global_directory, "foo", Muid(1, 2, 3), None)
+    key2 = EntryStorageKey(global_directory, "foo", Muid(7, 8, 9), None)
+    key3 = EntryStorageKey(global_directory, 77, Muid(1, 2, 3), None)
     in_list = [key1, key2, key3]
     in_list.sort()
-    assert in_list[0] == key3, in_list[0] # numbers come first
+    assert in_list[0] == key3, in_list[0]  # numbers come first
     assert in_list[1] == key1, in_list[1]
     assert in_list[2] == key2
+
 
 def test_entry_to_from_bytes():
     """ ensures that serialization works as expected """
     global_directory = Muid(-1, -1, 7)
 
-    key1 = EntryStorageKey(global_directory, "foo", Muid(1,2,3), 99)
+    key1 = EntryStorageKey(global_directory, "foo", Muid(1, 2, 3), 99)
     encoded = bytes(key1)
     key2 = EntryStorageKey.from_bytes(encoded, DIRECTORY)
     assert key1 == key2, key2
