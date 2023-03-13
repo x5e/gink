@@ -6,6 +6,7 @@ from .builders import MuidBuilder
 from .dummy import Dummy
 from .typedefs import MuTimestamp, Medallion
 
+
 class Muid(NamedTuple):
     """ Defines a global address of an object in the Gink system. """
     timestamp: MuTimestamp
@@ -37,16 +38,16 @@ class Muid(NamedTuple):
 
     def put_into(self, builder: MuidBuilder):
         """ Puts the data from this muid into the builder. """
-        builder.offset = self.offset # type: ignore
-        builder.timestamp = self.timestamp if self.timestamp else 0 # type: ignore
-        builder.medallion= self.medallion if self.medallion else 0 # type: ignore
+        builder.offset = self.offset  # type: ignore
+        builder.timestamp = self.timestamp if self.timestamp else 0  # type: ignore
+        builder.medallion = self.medallion if self.medallion else 0  # type: ignore
 
     @classmethod
     def create(cls, context, builder: Union[MuidBuilder, Dummy] = Dummy(), offset=None):
         """ Creates a muid from a builder and optionally a bundle_info context object. """
         timestamp = builder.timestamp or context.timestamp  # type: ignore
         medallion = builder.medallion or context.medallion  # type: ignore
-        offset = offset or builder.offset # type: ignore
+        offset = offset or builder.offset  # type: ignore
         if not offset:
             raise ValueError("no offset specified")
         assert medallion, "no medallion"

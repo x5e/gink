@@ -11,5 +11,6 @@ UserKey = Union[str, int, bytes]
 UserValue = Union[str, int, float, datetime, bytes, bool, list, tuple, dict, None]
 EPOCH = 0
 
+
 class Deletion: # pylint: disable=too-few-public-methods
     """ Used internally to indicate that a key/value assocation has been removed. """

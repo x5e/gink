@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from google.protobuf.message import Message   # type: ignore
-from google.protobuf.text_format import Parse # type: ignore
+from google.protobuf.text_format import Parse  # type: ignore
 
 if TYPE_CHECKING:
     class BundleBuilder(Message): pass

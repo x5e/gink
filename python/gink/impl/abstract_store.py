@@ -12,10 +12,11 @@ from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import FoundEntry, Chain, PositionedEntry
 from .muid import Muid
 
+
 class AbstractStore(ABC):
     """ abstract base class for the gink data store
 
-        Stores both the bundles received as well as the contents of those
+        Stores both the bundles received and the contents of those
         bundles unpacked so that you can examine entries, container definitions, etc.
 
         Warning! Since data stores are viewed as part of the internal implementation,
@@ -44,24 +45,22 @@ class AbstractStore(ABC):
 
     @abstractmethod
     def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None],
-            as_of: MuTimestamp) -> Optional[FoundEntry]:
+                         as_of: MuTimestamp) -> Optional[FoundEntry]:
         """ Gets the most recent entry for a given key at as_of
         """
-        #TODO: change to return FoundEntry or Clearance or None
+        # TODO: change to return FoundEntry or Clearance or None
 
     @abstractmethod
-    def get_positioned_entry(self, entry: Muid, as_of: MuTimestamp=-1)->Optional[PositionedEntry]:
-        """ Returns the position and contents of a an entry, if available, at as_of time.
+    def get_positioned_entry(self, entry: Muid, as_of: MuTimestamp = -1) -> Optional[PositionedEntry]:
+        """ Returns the position and contents of an entry, if available, at as_of time.
         """
         raise NotImplementedError()
 
     @abstractmethod
-    def get_ordered_entries(self, container: Muid, as_of: MuTimestamp, limit: Optional[int]=None,
-            offset: int=0, desc: bool=False) -> Iterable[PositionedEntry]:
+    def get_ordered_entries(self, container: Muid, as_of: MuTimestamp, limit: Optional[int] = None,
+                            offset: int = 0, desc: bool = False) -> Iterable[PositionedEntry]:
         """ Get data for Sequence and Registry data types.
         """
-        assert self or container or as_of or limit or offset or desc
-        raise NotImplementedError()
 
     def close(self):
         """Safely releases resources."""
@@ -69,18 +68,14 @@ class AbstractStore(ABC):
     @abstractmethod
     def get_claimed_chains(self) -> Iterable[Chain]:
         """ Returns the chains that this store as started and can write to. """
-        assert self
-        raise NotImplementedError()
 
     @abstractmethod
     def claim_chain(self, chain: Chain):
         """ Marks a chain as being owned by this store for future use. """
-        assert self and chain
-        raise NotImplementedError()
 
     @abstractmethod
-    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool=False
-    ) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool = False
+                     ) -> Tuple[BundleInfo, bool]:
         """ Tries to add data from a particular bundle to this store.
 
             Set push_into_outbox if being added by an instance that isn't syncing.
@@ -98,7 +93,7 @@ class AbstractStore(ABC):
         """ Something to call after receiving an ack from a peer. """
 
     @abstractmethod
-    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp=0):
+    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
         """ Calls the callback with each bundle, in (timestamp, medallion) order.
 
             This is done callback style because we don't want to leave dangling transactions
@@ -108,8 +103,10 @@ class AbstractStore(ABC):
     def get_bundle_infos(self) -> List[BundleInfo]:
         """ Gets a list of bundle infos; mostly for testing. """
         result = []
+
         def callback(_, info: BundleInfo):
             result.append(info)
+
         self.get_bundles(callback)
         return result
 
@@ -148,8 +145,6 @@ class AbstractStore(ABC):
     @abstractmethod
     def get_chain_tracker(self) -> ChainTracker:
         """Returns a tracker showing what this store has at the time this function is called."""
-        assert self
-        raise NotImplementedError()
 
     @staticmethod
     def _is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:
@@ -165,13 +160,14 @@ class AbstractStore(ABC):
             raise ValueError("Bundle received without prior link in chain!")
         return True
 
+    @abstractmethod
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
-        user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
+                          user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
         """
         Generates reset entries that will change things back to how they were at given time.
 
         If muid isn't specified, generates reset entries for all keyed objects in store.
-        If muid is specified, generates reset entries for for that object, for the
+        If muid is specified, generates reset entries for that object, for the
         specified key if present, otherwise for all keys.
 
         If needed_only is set to True (the default), then no entry will be generated for a
@@ -181,5 +177,3 @@ class AbstractStore(ABC):
         If recursive is set to true, then will go and recursively update all entries
         in child objects that were referenced at to_time.
         """
-        assert self and to_time and container and user_key and recursive
-        raise NotImplementedError()

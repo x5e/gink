@@ -2,6 +2,7 @@
 from ..impl.bundle_info import BundleInfo
 from ..impl.chain_tracker import ChainTracker
 
+
 def test_tracking():
     """ Tests the basic tracking functionality. """
     chain_tracker = ChainTracker()
@@ -14,6 +15,7 @@ def test_tracking():
     assert not chain_tracker.has(info2)
     assert chain_tracker.has(info3)
     assert chain_tracker.has(info4)
+
 
 def test_to_greeting_message():
     """ Tests the too_greeting_message method of ChainTracker. """

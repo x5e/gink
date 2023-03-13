@@ -9,6 +9,7 @@ from ..impl.websocket_connection import WebsocketConnection
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 def test_chit_chat():
     """ ensures that I can send and receive data via a websocket connection """
     server_socket, client_socket = socketpair()
@@ -28,9 +29,9 @@ def test_chit_chat():
 
     sync_message = SyncMessage()
     # pylint: disable=maybe-no-member
-    sync_message.ack.medallion = 1 # type: ignore
-    sync_message.ack.timestamp = 2 # type: ignore
-    sync_message.ack.chain_start = 3 # type: ignore
+    sync_message.ack.medallion = 1  # type: ignore
+    sync_message.ack.timestamp = 2  # type: ignore
+    sync_message.ack.chain_start = 3  # type: ignore
 
     # example of to string and back
     sync_message2 = SyncMessage()
@@ -52,8 +53,6 @@ def test_chit_chat():
         raise Exception("not expected")
 
     assert client.is_closed() and server.is_closed()
-
-
 
 
 if __name__ == "__main__":

@@ -8,24 +8,23 @@
 from typing import Optional, Union, NamedTuple, List, Any
 from struct import Struct
 
-
 from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion
 from .muid import Muid
 from .bundle_info import BundleInfo
 
-
-UNSPECIFIED: int = Behavior.UNSPECIFIED # type: ignore
-SEQUENCE: int = Behavior.SEQUENCE # type: ignore
-DIRECTORY: int = Behavior.DIRECTORY # type: ignore
-PROPERTY: int = Behavior.PROPERTY # type: ignore
-BOX: int = Behavior.BOX # type: ignore
+UNSPECIFIED: int = Behavior.UNSPECIFIED  # type: ignore
+SEQUENCE: int = Behavior.SEQUENCE  # type: ignore
+DIRECTORY: int = Behavior.DIRECTORY  # type: ignore
+PROPERTY: int = Behavior.PROPERTY  # type: ignore
+BOX: int = Behavior.BOX  # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
 deletion = Deletion()
 
-def ensure_entry_is_valid(builder: EntryBuilder, context: Any=object()):
+
+def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object()):
     if getattr(builder, "behavior") == UNSPECIFIED:
         raise ValueError("entry lacks a behavior")
     if not builder.HasField("container"):
@@ -35,6 +34,7 @@ def ensure_entry_is_valid(builder: EntryBuilder, context: Any=object()):
         if getattr(context, "medallion") != container_muid.medallion:
             raise ValueError("attempt to modify instance container from other instance")
 
+
 def serialize(thing) -> bytes:
     """ Converts a protobuf builder or a timestamp into binary data. """
     if isinstance(thing, Message):
@@ -42,6 +42,7 @@ def serialize(thing) -> bytes:
     if thing is None or isinstance(thing, (int, float)):
         return encode_muts(thing)
     return bytes(thing)
+
 
 class LocationKey(NamedTuple):
     """ Key used in the locations table to track the current location of entries. """
@@ -56,12 +57,13 @@ class LocationKey(NamedTuple):
     def __bytes__(self):
         return bytes(self.entry_muid) + bytes(self.placement)
 
+
 class MovementKey(NamedTuple):
     """ Key used in the removals table to track soft-deletes of entries. """
     container: Muid
     effective: MuTimestamp
-    placement: Muid # the entry or movement that placed the entry to be (re)moved
-    removing:  Muid # the muid of the encoded movement
+    placement: Muid  # the entry or movement that placed the entry to be (re)moved
+    removing: Muid  # the muid of the encoded movement
 
     @staticmethod
     def from_bytes(data: bytes):
@@ -126,7 +128,7 @@ class EntryStorageKey(NamedTuple):
         elif behavior == SEQUENCE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp, None)
         elif behavior == PROPERTY:
-            middle_key = Muid.create(context=new_info, builder=builder.describing) # type: ignore
+            middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None
@@ -138,9 +140,9 @@ class EntryStorageKey(NamedTuple):
         """
         # pylint: disable=maybe-no-member
         if isinstance(using, bytes):
-            using = EntryBuilder.FromString(using) # type: ignore
+            using = EntryBuilder.FromString(using)  # type: ignore
         if isinstance(using, EntryBuilder):
-            using = using.behavior # type: ignore
+            using = using.behavior  # type: ignore
         if not isinstance(using, int):
             raise ValueError(f"can't determine behavior from {str(using)}")
         container_bytes = data[0:16]
@@ -161,18 +163,17 @@ class EntryStorageKey(NamedTuple):
             raise ValueError(f"unexpected behavior {using}")
         assert middle_key is not None, "directory keys must be strings or integers"
         return EntryStorageKey(
-                container=Muid.from_bytes(container_bytes),
-                middle_key=middle_key,
-                entry_muid=entry_muid,
-                expiry=decode_muts(expiry_bytes))
+            container=Muid.from_bytes(container_bytes),
+            middle_key=middle_key,
+            entry_muid=entry_muid,
+            expiry=decode_muts(expiry_bytes))
 
     def replace_time(self, timestamp: int):
         """ create a entry key that can be used for seeking before the given time """
-        return EntryStorageKey(self.container, self.middle_key, Muid(timestamp, 0,0,), None)
+        return EntryStorageKey(self.container, self.middle_key, Muid(timestamp, 0, 0, ), None)
 
     def __bytes__(self) -> bytes:
-        parts: List[Any] = []
-        parts.append(self.container)
+        parts: List[Any] = [self.container]
         if isinstance(self.middle_key, (QueueMiddleKey, Muid)):
             parts.append(self.middle_key)
         elif self.middle_key is not None:
@@ -196,7 +197,7 @@ class EntryStorageKey(NamedTuple):
 
     def __lt__(self, other):
         # I'm override sort here because I want the same sort order of the binary representation,
-        # which will be a little bit different because of flipping the entry muids.
+        # which will be a little different because of flipping the entry muids.
         # Also, sorting would break because keys can be either ints or strings
         return bytes(self) < bytes(other)
 
@@ -205,6 +206,7 @@ class EntryStoragePair(NamedTuple):
     """ Parsed entry data. """
     key: EntryStorageKey
     builder: EntryBuilder
+
 
 def create_deleting_entry(muid: Muid, key: Optional[UserKey]) -> EntryBuilder:
     """ creates an entry that will delete the given key from the container
@@ -216,11 +218,12 @@ def create_deleting_entry(muid: Muid, key: Optional[UserKey]) -> EntryBuilder:
         raise ValueError("can't create deletion entries without key")
     # pylint: disable=maybe-no-member
     entry_builder = EntryBuilder()
-    entry_builder.behavior = Behavior.DIRECTORY   # type: ignore
+    entry_builder.behavior = Behavior.DIRECTORY  # type: ignore
     muid.put_into(entry_builder.container)  # type: ignore
     entry_builder.deletion = True  # type: ignore
-    encode_key(key, entry_builder.key) # type: ignore
+    encode_key(key, entry_builder.key)  # type: ignore
     return entry_builder
+
 
 def decode_entry_occupant(entry_storage_pair: EntryStoragePair) -> Union[UserValue, Muid, Deletion]:
     """ Determines what a container "contains" in a given entry.
@@ -229,13 +232,14 @@ def decode_entry_occupant(entry_storage_pair: EntryStoragePair) -> Union[UserVal
         might be relative to the entry address.
     """
     builder = entry_storage_pair.builder
-    if builder.deletion: # type: ignore
+    if builder.deletion:  # type: ignore
         return deletion
-    if builder.HasField("pointee"): # type: ignore
-        return Muid.create(builder=builder.pointee, context=entry_storage_pair.key) # type: ignore
-    if builder.HasField("value"): # type: ignore
-        return decode_value(entry_storage_pair.builder.value) # type: ignore
+    if builder.HasField("pointee"):  # type: ignore
+        return Muid.create(builder=builder.pointee, context=entry_storage_pair.key)  # type: ignore
+    if builder.HasField("value"):  # type: ignore
+        return decode_value(entry_storage_pair.builder.value)  # type: ignore
     raise ValueError(f"can't interpret {builder}")
+
 
 def entries_equiv(pair1: EntryStoragePair, pair2: EntryStoragePair) -> bool:
     """ Checks the contained value/pointee/whatever to see if the entries are equiv.
@@ -246,16 +250,16 @@ def entries_equiv(pair1: EntryStoragePair, pair2: EntryStoragePair) -> bool:
     assert pair1.key != pair2.key, "comparing an entry to itself"
     assert pair1.key.middle_key == pair2.key.middle_key
     assert pair1.key.container == pair2.key.container
-    if pair1.builder.HasField("pointee"): # type: ignore
-        if pair2.builder.HasField("pointee"): # type: ignore
-            pointee1 = Muid.create(builder=pair1.builder.pointee, context=pair1.key) # type: ignore
-            pointee2 = Muid.create(builder=pair2.builder.pointee, context=pair2.key) # type: ignore
+    if pair1.builder.HasField("pointee"):  # type: ignore
+        if pair2.builder.HasField("pointee"):  # type: ignore
+            pointee1 = Muid.create(builder=pair1.builder.pointee, context=pair1.key)  # type: ignore
+            pointee2 = Muid.create(builder=pair2.builder.pointee, context=pair2.key)  # type: ignore
             return pointee1 == pointee2
         return False
-    if pair1.builder.HasField("value"): # type: ignore
-        if pair2.builder.HasField("value"): # type: ignore
-            value1 = decode_value(pair1.builder.value) # type: ignore
-            value2 = decode_value(pair2.builder.value) # type: ignore
+    if pair1.builder.HasField("value"):  # type: ignore
+        if pair2.builder.HasField("value"):  # type: ignore
+            value1 = decode_value(pair1.builder.value)  # type: ignore
+            value2 = decode_value(pair2.builder.value)  # type: ignore
             return value1 == value2
         return False
     raise AssertionError("entry doesn't have pointee or immedate?")
@@ -268,29 +272,34 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
     # pylint: disable=too-many-return-statements
     # pylint: disable=maybe-no-member
     if value_builder.HasField("special"):  # type: ignore
-        if value_builder.special == ValueBuilder.Special.NULL: # type: ignore
+        if value_builder.special == ValueBuilder.Special.NULL:  # type: ignore
             return None
-        if value_builder.special == ValueBuilder.Special.TRUE: # type: ignore
+        if value_builder.special == ValueBuilder.Special.TRUE:  # type: ignore
             return True
-        if value_builder.special == ValueBuilder.Special.FALSE: # type: ignore # pylint: disable=maybe-no-member
+        if value_builder.special == ValueBuilder.Special.FALSE:  # type: ignore # pylint: disable=maybe-no-member
             return False
-    if value_builder.HasField("characters"): # type: ignore
-        return value_builder.characters # type: ignore
-    if value_builder.HasField("octects"): # type: ignore
-        return value_builder.octects # type: ignore
-    if value_builder.HasField("number"): # type: ignore
-        return value_builder.number.doubled # type: ignore
-    if value_builder.HasField("tuple"): # type: ignore
-        return tuple([decode_value(x) for x in value_builder.tuple.values]) # type: ignore
-    if value_builder.HasField("document"): # type: ignore # pylint: disable=maybe-no-member
+    if value_builder.HasField("characters"):  # type: ignore
+        return value_builder.characters  # type: ignore
+    if value_builder.HasField("octects"):  # type: ignore
+        return value_builder.octects  # type: ignore
+    if value_builder.HasField("number"):  # type: ignore
+        return value_builder.number.doubled  # type: ignore
+    if value_builder.HasField("tuple"):  # type: ignore
+        return tuple([decode_value(x) for x in value_builder.tuple.values])  # type: ignore
+    if value_builder.HasField("document"):  # type: ignore # pylint: disable=maybe-no-member
         result = {}
-        for i, _  in enumerate(value_builder.document.keys): # type: ignore # pylint: disable=maybe-no-member
-            result[decode_key(value_builder.document.keys[i])] = decode_value( # type: ignore # pylint: disable=maybe-no-member
-                value_builder.document.values[i]) # type: ignore # pylint: disable=maybe-no-member
+        for i, _ in enumerate(value_builder.document.keys):  # type: ignore # pylint: disable=maybe-no-member
+            result[decode_key(value_builder.document.keys[i])] = decode_value(
+                # type: ignore # pylint: disable=maybe-no-member
+                value_builder.document.values[i])  # type: ignore # pylint: disable=maybe-no-member
         return result
-    raise ValueError("don't know how to decode: %r,%s" % (value_builder, type(value_builder))) # pylint: disable=consider-using-f-string
+    raise ValueError(
+        "don't know how to decode: %r,%s" % (
+            value_builder,
+            type(value_builder)))  # pylint: disable=consider-using-f-string
 
-def encode_muts(number: Union[int, float, None], _q_struct = Struct(">q")) -> bytes:
+
+def encode_muts(number: Union[int, float, None], _q_struct=Struct(">q")) -> bytes:
     """ packs a microsecond timestamp into a big-endian integer, with None=>0 and Inf=>-1 """
     if not number:
         return ZERO_64
@@ -301,6 +310,7 @@ def encode_muts(number: Union[int, float, None], _q_struct = Struct(">q")) -> by
         number = int(number)
     return _q_struct.pack(number)
 
+
 def decode_muts(data: bytes, _q_struct=Struct(">q")) -> Optional[MuTimestamp]:
     """ unpacks 8 bytes of data into a MuTimestamp by assuming big-endian encoding
 
@@ -309,81 +319,85 @@ def decode_muts(data: bytes, _q_struct=Struct(">q")) -> Optional[MuTimestamp]:
     result = _q_struct.unpack(data)[0]
     return INT_INF if result == -1 else (result or None)
 
+
 def encode_key(key: UserKey, builder: Optional[KeyBuilder] = None) -> KeyBuilder:
     """ Encodes a valid key (int or str) into a protobuf Value.
     """
     if builder is None:
         builder = KeyBuilder()
     if isinstance(key, str):
-        builder.characters = key # type: ignore # pylint: disable=maybe-no-member
+        builder.characters = key  # type: ignore # pylint: disable=maybe-no-member
     if isinstance(key, int):
-        builder.number = key # type: ignore # pylint: disable=maybe-no-member
+        builder.number = key  # type: ignore # pylint: disable=maybe-no-member
     if isinstance(key, bytes):
-        builder.octets = key # type: ignore
+        builder.octets = key  # type: ignore
     return builder
+
 
 def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[UserKey]:
     """ extracts the key from a proto entry """
     if isinstance(from_what, KeyBuilder):
         key_builder = from_what
     elif isinstance(from_what, EntryBuilder):
-        key_builder = from_what.key # type: ignore
+        key_builder = from_what.key  # type: ignore
     elif isinstance(from_what, bytes):
-        key_builder = KeyBuilder.FromString(from_what) # type: ignore # pylint: disable=maybe-no-member
+        key_builder = KeyBuilder.FromString(from_what)  # type: ignore # pylint: disable=maybe-no-member
     else:
         raise ValueError("not an argument of an expected type")
     assert isinstance(key_builder, KeyBuilder)
 
     if key_builder.HasField("number"):  # type: ignore
-        return key_builder.number # type: ignore
+        return key_builder.number  # type: ignore
     if key_builder.HasField("characters"):  # type: ignore
         return key_builder.characters  # type: ignore
-    if key_builder.HasField("octets"): # type: ignore
-        return key_builder.octets # type: ignore
+    if key_builder.HasField("octets"):  # type: ignore
+        return key_builder.octets  # type: ignore
     return None
+
 
 def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None) -> ValueBuilder:
     """ encodes a python value (number, string, etc.) into a protobuf builder
     """
     value_builder = value_builder or ValueBuilder()
     if isinstance(value, bytes):
-        value_builder.octects = value # type: ignore # pylint: disable=maybe-no-member
+        value_builder.octects = value  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if isinstance(value, str):
-        value_builder.characters = value # type: ignore # pylint: disable=maybe-no-member
+        value_builder.characters = value  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if isinstance(value, bool):
         if value:
-            value_builder.special = ValueBuilder.Special.TRUE # type: ignore # pylint: disable=maybe-no-member
+            value_builder.special = ValueBuilder.Special.TRUE  # type: ignore # pylint: disable=maybe-no-member
         else:
-            value_builder.special = ValueBuilder.Special.FALSE # type: ignore # pylint: disable=maybe-no-member
+            value_builder.special = ValueBuilder.Special.FALSE  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if isinstance(value, (float, int)):
         # TODO[P2]: add switch to encoding ints once Javascript implementation supports
-        value_builder.number.doubled = float(value) # type: ignore # pylint: disable=maybe-no-member
+        value_builder.number.doubled = float(value)  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if value is None:
-        value_builder.special = ValueBuilder.Special.NULL # type: ignore # pylint: disable=maybe-no-member
+        value_builder.special = ValueBuilder.Special.NULL  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if isinstance(value, (tuple, list)):
-        value_builder.tuple # type: ignore # pylint: disable=maybe-no-member disable=pointless-statement
+        value_builder.tuple  # type: ignore # pylint: disable=maybe-no-member disable=pointless-statement
         if len(value) == 0:
-            value_builder.tuple.values.append(ValueBuilder()) # type: ignore # pylint: disable=maybe-no-member
-            value_builder.tuple.values.pop() # type: ignore # pylint: disable=maybe-no-member
+            value_builder.tuple.values.append(ValueBuilder())  # type: ignore # pylint: disable=maybe-no-member
+            value_builder.tuple.values.pop()  # type: ignore # pylint: disable=maybe-no-member
         for val in value:
-            value_builder.tuple.values.append(encode_value(val)) # type: ignore # pylint: disable=maybe-no-member
+            value_builder.tuple.values.append(encode_value(val))  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if isinstance(value, dict):
-        value_builder.document.keys.append(KeyBuilder()) # type: ignore # pylint: disable=maybe-no-member
-        value_builder.document.keys.pop() # type: ignore # pylint: disable=maybe-no-member
+        value_builder.document.keys.append(KeyBuilder())  # type: ignore # pylint: disable=maybe-no-member
+        value_builder.document.keys.pop()  # type: ignore # pylint: disable=maybe-no-member
         for key, val in value.items():
-            value_builder.document.keys.append(encode_key(key)) # type: ignore # pylint: disable=maybe-no-member
-            value_builder.document.values.append(encode_value(val)) # type: ignore # pylint: disable=maybe-no-member
+            value_builder.document.keys.append(encode_key(key))  # type: ignore # pylint: disable=maybe-no-member
+            value_builder.document.values.append(encode_value(val))  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
-    raise ValueError("don't know how to encode: %r" % value) # pylint: disable=consider-using-f-string
+    raise ValueError("don't know how to encode: %r" % value)  # pylint: disable=consider-using-f-string
+
 
 def wrap_change(builder: EntryBuilder) -> ChangeBuilder:
     """ A simple utility function to create a change and then copy the provided entry into it. """
     change_builder = ChangeBuilder()
-    change_builder.entry.CopyFrom(builder) # type: ignore # pylint: disable=maybe-no-member
+    change_builder.entry.CopyFrom(builder)  # type: ignore # pylint: disable=maybe-no-member
     return change_builder

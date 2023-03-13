@@ -10,17 +10,19 @@ from abc import ABC, abstractmethod
 
 from .builders import SyncMessage
 
+
 class Connection(ABC):
     """ Manages a connection to another gink database.
 
         Eventually there will be two subclasses: one to manage websocket connections,
         and another subclass to manage raw socket connections.
     """
+
     def __init__(
-        self,
-        host: Optional[str]=None,
-        port: Optional[int]=None,
-        socket: Optional[Socket] = None
+            self,
+            host: Optional[str] = None,
+            port: Optional[int] = None,
+            socket: Optional[Socket] = None
     ):
         if socket is None:
             assert host is not None and port is not None

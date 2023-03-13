@@ -13,17 +13,18 @@ from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .attribution import Attribution
 from .coding import DIRECTORY, SEQUENCE, PROPERTY
 
+
 # pylint: disable=dangerous-default-value disable=protected-access
 
 def get_container(
-    self: Database,
-    muid: Muid,
-    container_builder: Optional[ContainerBuilder]=None,
-    subtypes = {
-        DIRECTORY: Directory,
-        SEQUENCE: Sequence,
-        PROPERTY: Property,
-    }
+        self: Database,
+        muid: Muid,
+        container_builder: Optional[ContainerBuilder] = None,
+        subtypes={
+            DIRECTORY: Directory,
+            SEQUENCE: Sequence,
+            PROPERTY: Property,
+        }
 ) -> Container:
     """ Gets a pre-existing container. """
     if muid.timestamp == -1:
@@ -36,10 +37,12 @@ def get_container(
         raise AssertionError(f"behavior not recognized: {behavior}")
     return cls(muid=muid, database=self)
 
+
 setattr(Database, "get_container", get_container)
 
+
 def get_attribution(
-    self:Database, timestamp: MuTimestamp, medallion: Medallion, *_
+        self: Database, timestamp: MuTimestamp, medallion: Medallion, *_
 ) -> Attribution:
     """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
 
@@ -48,7 +51,7 @@ def get_attribution(
     """
     medallion_directory = Directory.get_medallion_instance(
         medallion=medallion, database=self)
-    comment=self._store.get_comment(
+    comment = self._store.get_comment(
         medallion=medallion, timestamp=timestamp)
     return Attribution(
         timestamp=timestamp,
@@ -60,15 +63,18 @@ def get_attribution(
         comment=comment,
     )
 
+
 setattr(Database, "get_attribution", get_attribution)
 
-def dump(self: Database, as_of: GenericTimestamp=None, file=stdout):
+
+def dump(self: Database, as_of: GenericTimestamp = None, file=stdout):
     """ writes the contents of the database to file """
     for muid, container_builder in self._store.get_all_containers():
         container = self.get_container(muid, container_builder)
         if container.size(as_of=as_of):
             container.dump(as_of=as_of, file=file)
 
-setattr(Database, "dump" , dump)
+
+setattr(Database, "dump", dump)
 
 PATCHED = True

@@ -12,9 +12,11 @@ from .builders import SyncMessage
 from .connection import Connection
 from .websocket_connection import WebsocketConnection
 
+
 class Listener:
     """ Listens on a port for incoming connections. """
-    def __init__(self, connection_class=WebsocketConnection, ip_addr:str ="", port: int=8080):
+
+    def __init__(self, connection_class=WebsocketConnection, ip_addr: str = "", port: int = 8080):
         self.connection_class = connection_class
         self.socket = Socket(AF_INET, SOCK_STREAM)
         self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)

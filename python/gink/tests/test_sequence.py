@@ -13,17 +13,19 @@ from ..impl.patch import PATCHED
 
 assert PATCHED
 
+
 def test_creation():
     """ test that I can create new sequences as well as proxies for existing ones """
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            sequence1 = Sequence(muid=Muid(1,2,3), database=database)
+            sequence1 = Sequence(muid=Muid(1, 2, 3), database=database)
             assert len(store.get_bundle_infos()) == 0
 
             sequence2 = Sequence()
             assert len(store.get_bundle_infos()) != 0
             assert sequence1 != sequence2
+
 
 def test_repr():
     """ test that I can create sequences and represent them """
@@ -43,7 +45,7 @@ def test_basics():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1,2,3))]:
+            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
                 assert not list(seq)
                 seq.append("Hello, World!")
                 assert list(seq) == ["Hello, World!"]
@@ -71,7 +73,7 @@ def test_reordering():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1,2,3))]:
+            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
                 for letter in "abcxyz":
                     seq.append(letter)
                     time.sleep(.001)
@@ -106,7 +108,7 @@ def test_expiry():
                 seq_as_list = list(seq)
                 mark = database.get_now()
                 if seq_as_list != ["second", "first"]:
-                    elapsed = str(timedelta(microseconds=mark-start))
+                    elapsed = str(timedelta(microseconds=mark - start))
                     raise AssertionError(f"{elapsed} unexpected: {seq_as_list} in {store}")
                 seq.extend(["three", "four"])
                 time.sleep(.011)
@@ -148,7 +150,7 @@ def test_as_of():
                 assert list(seq.values(as_of=-2)) == ["foo", "bar"]
                 seq.remove("foo", dest=-1)
                 seq_as_list = list(seq.values())
-                if seq_as_list != ["bar", "zoo", "foo",]:
+                if seq_as_list != ["bar", "zoo", "foo", ]:
                     assertion_time = database.get_now()
                     raise AssertionError(f"{seq_as_list} at {assertion_time}")
                 seq.remove("foo")
@@ -156,12 +158,13 @@ def test_as_of():
                 etc = list(seq.values(as_of=bar_append_change.timestamp))
                 assert etc == ["foo"], etc
 
+
 def test_insert():
     """ makes sure that I can insert data at arbitrary location in a sequence """
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1,2,3))]:
+            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
                 for letter in "abc":
                     seq.append(letter, comment=letter)
                     time.sleep(.001)
@@ -173,12 +176,13 @@ def test_insert():
                 if list(seq) != ["y", "a", "x", "b", "c"]:
                     raise AssertionError(list(seq))
 
+
 def test_clear():
     """ make sure the clear operation behaves as expected """
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1,2,3))]:
+            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
                 assert len(seq) == 0, store
                 seq.append(3.7)
                 seq.append(9)
@@ -192,6 +196,7 @@ def test_clear():
                 seq.remove(False, dest=mark)
                 assert list(seq.values(as_of=mark)) == [3.7, 9]
                 assert list(seq) == [False, True]
+
 
 def test_reset():
     """ make sure that sequence.reset behaves as expected """
@@ -216,6 +221,7 @@ def test_reset():
             assert list(seq1) == ["nevermind", seq2]
             seq2.reset(to_time=mark, recursive=True)
             assert list(seq1) == [7, "foo"]
+
 
 def test_simple_reset():
     """ make sure that sequence.reset behaves as expected """

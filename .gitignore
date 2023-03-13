@@ -8,3 +8,5 @@ scratch.*
 *.out
 *.built
 __pycache__
+python/gink/builders
+.idea
