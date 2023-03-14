@@ -10,3 +10,8 @@ scratch.*
 __pycache__
 python/gink/builders
 .idea
+python/build
+python/dist
+*.egg-info
+setup.cfg
+.uploaded
