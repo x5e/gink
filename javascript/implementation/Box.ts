@@ -55,13 +55,13 @@ export class Box extends Container {
     }
 
     /**
-     * checks to see see how many things are in the box (will be either 0 or 1)
+     * checks to see how many things are in the box (will be either 0 or 1)
      * @param asOf Historical time to look
-     * @returns 0 or 1 depending on whether or not there's something in the box.
+     * @returns 0 or 1 depending on whether there's something in the box.
      */
     async size(asOf?: AsOf): Promise<number> {
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
-        return +!(entry === undefined || entry.deletion)
+        return +!(entry === undefined || entry.deletion);
     }
 
     /**
@@ -71,7 +71,7 @@ export class Box extends Container {
      */
     async isEmpty(asOf?: AsOf): Promise<boolean> {
         const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
-        return (entry === undefined || entry.deletion)
+        return (entry === undefined || entry.deletion);
     }
 
     /**
@@ -79,7 +79,7 @@ export class Box extends Container {
      * Mostly intended for demo/debug purposes.
      * @param indent true to pretty print
      * @param asOf effective time
-     * @param seen (internal use only! prevents cycles from breaking things)
+     * @param seen (internal use only! Prevent cycles from breaking things)
      * @returns a JSON string
      */
     async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {

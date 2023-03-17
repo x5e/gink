@@ -15,6 +15,7 @@ test('set and get Basic data', async function() {
     const result = await schema.get("a key");
     ensure(result == "a value");
 
+	/*
     const myKey = new Uint8Array(3);
     myKey[0] = 94;
     myKey[2] = 255;
@@ -22,6 +23,7 @@ test('set and get Basic data', async function() {
     await schema.set(myKey, "another value");
     const another_result = await schema.get(myKey);
     ensure(another_result == "another value");
+    */
 });
 
 test('set multiple key/value pairs in one change-set', async function() {

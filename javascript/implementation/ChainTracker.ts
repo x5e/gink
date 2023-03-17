@@ -5,7 +5,7 @@ import { SyncMessage } from "../builders/sync_message_pb";
 /**
  * A class to keep track of what data a given instance (self or peer) has for each
  * chain.  So it's kind of like Map<[Medallion, ChainStart], SeenThrough>.
- * This is essentially the same data thats in the Greeting message, so I've included
+ * This is essentially the same data that's in the Greeting message, so I've included
  * functionality to convert from/to Greeting objects.
  */
 export class ChainTracker {
@@ -14,7 +14,7 @@ export class ChainTracker {
 
     constructor({ greetingBytes = null, greeting = null }) {
         if (greetingBytes) {
-            greeting = SyncMessage.Greeting.deserializeBinary(greetingBytes)
+            greeting = SyncMessage.Greeting.deserializeBinary(greetingBytes);
         }
         if (!greeting) return;
         for (const entry of greeting.getEntriesList()) {
@@ -31,7 +31,7 @@ export class ChainTracker {
     /**
      * Allows you to wait until an instance has seen a particular bundle.
      * @param what either a muid address or a bundle info (indicates what to watch for)
-     * @param timeoutMs how long to wait before giving up, default of undefined doesn't timeout
+     * @param timeoutMs how long to wait before giving up, default of undefined doesn't time out
      * @returns a promise that resolves when the thing has been marked as seen, or rejects at timeout
      */
     waitTillHas({ medallion, timestamp }: BundleInfo | Muid, timeoutMs?: number): Promise<void> {
@@ -53,14 +53,14 @@ export class ChainTracker {
 
     /**
      * First, determine if the commit is novel (represents data not previously marked),
-     * then second, mark the data in the data structure (possibly checking that its a sensible extension).
+     * then second, mark the data in the data structure (possibly checking that it's a sensible extension).
      * Note that checkValidExtension is used here as a safeguard to make sure we don't
-     * send broken chains to the peer; the store should have its own check for receving.
+     * send broken chains to the peer; the store should have its own check for receiving.
      * @param commitInfo Metadata about a particular commit.
-     * @param checkValidExtension If true then barfs if this commit isn't a vaild extension.
+     * @param checkValidExtension If true then barfs if this commit isn't a valid extension.
      * @returns true if the commit represents data not seen before
      */
-    markAsHaving(commitInfo: BundleInfo, checkValidExtension?: Boolean): Boolean {
+    markAsHaving(commitInfo: BundleInfo, checkValidExtension?: boolean): boolean {
         if (!this.data.has(commitInfo.medallion))
             this.data.set(commitInfo.medallion, new Map());
         const innerMap = this.data.get(commitInfo.medallion);
@@ -86,7 +86,7 @@ export class ChainTracker {
 
     /**
      * Constructs the greeting for use during the initial handshake.  Note that
-     * the priorTimes aren't included, so receipient should not markIfNovel using
+     * the priorTimes aren't included, so recipient should not markIfNovel using
      * @returns 
      */
     private constructGreeting(): SyncMessage.Greeting {
