@@ -8,4 +8,10 @@ scratch.*
 *.out
 *.built
 __pycache__
-builders
+python/gink/builders
+.idea
+python/build
+python/dist
+*.egg-info
+setup.cfg
+.uploaded

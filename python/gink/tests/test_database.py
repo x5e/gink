@@ -10,12 +10,14 @@ from ..impl.bundle_info import BundleInfo
 from ..impl.directory import Directory
 from ..impl.sequence import Sequence
 
+
 def test_database():
     """ tests that the last() thing works """
     store = MemoryStore()
     database = Database(store=store)
     last = Database.get_last()
     assert last == database
+
 
 def test_add_commit() -> None:
     """ tests that the add_commit works """
@@ -30,6 +32,7 @@ def test_add_commit() -> None:
     assert commits[-1].comment == "just a test"
     assert commits[-1].timestamp > started
 
+
 def test_negative_as_of():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
@@ -40,6 +43,7 @@ def test_negative_as_of():
             assert bundler._timestamp is not None
             recent = store.get_one(BundleInfo)
             assert recent.timestamp == bundler._timestamp
+
 
 def test_commit_two():
     for store in [
@@ -52,6 +56,7 @@ def test_commit_two():
             database.commit(first)
             second = Bundler("goodbye, world")
             database.commit(second)
+
 
 def test_reset_everything():
     """ makes sure the database.reset works """

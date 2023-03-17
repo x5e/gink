@@ -7,7 +7,8 @@ from typing import Tuple, Callable, Optional, Iterable, Union
 from sortedcontainers import SortedDict
 
 # gink modules
-from .builders import BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder, Message
+from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder, Message,
+                       ChangeBuilder)
 from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
@@ -15,7 +16,7 @@ from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (EntryStorageKey, DIRECTORY, encode_muts, QueueMiddleKey, MovementKey,
-    SEQUENCE, LocationKey)
+                     SEQUENCE, LocationKey)
 
 
 class MemoryStore(AbstractStore):
@@ -27,7 +28,7 @@ class MemoryStore(AbstractStore):
     _chain_infos: SortedDict  # Chain => BundleInfo
     _claimed_chains: SortedDict  # Chain
     _entries: SortedDict  # bytes(EntryStorageKey) => EntryBuilder
-    _locations: SortedDict # bytes(entry_muid) + bytes(movement_muid or entry_muid) => bytes
+    _locations: SortedDict  # bytes(entry_muid) + bytes(movement_muid or entry_muid) => bytes
     _containers: SortedDict  # muid => builder
     _removals: SortedDict
     _clearances: SortedDict
@@ -75,7 +76,7 @@ class MemoryStore(AbstractStore):
             LocationKey: self._locations,
         }[cls]
         if last_index is None:
-            last_index = 2**52
+            last_index = 2 ** 52
         assert isinstance(last_index, int)
         remaining = (last_index if last_index >= 0 else ~last_index) + 1
         for key in sorted_dict.irange(reverse=last_index < 0):
@@ -94,7 +95,7 @@ class MemoryStore(AbstractStore):
                     assert isinstance(val, cls)
                     yield val
             elif isinstance(key, bytes):
-                yield cls.from_bytes(key) # type: ignore
+                yield cls.from_bytes(key)  # type: ignore
             else:
                 raise ValueError(f"don't know what to do with {key}")
 
@@ -103,7 +104,7 @@ class MemoryStore(AbstractStore):
         cont_bytes = bytes(container)
         clearance_time = None
         for clearance_key in self._clearances.irange(
-            minimum=cont_bytes, maximum=cont_bytes + bytes(as_of_muid), reverse=True):
+                minimum=cont_bytes, maximum=cont_bytes + bytes(as_of_muid), reverse=True):
             clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
 
         iterator = self._entries.irange(
@@ -127,11 +128,11 @@ class MemoryStore(AbstractStore):
             last = entry_storage_key.middle_key
 
     def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None],
-            as_of: MuTimestamp) -> Optional[FoundEntry]:
+                         as_of: MuTimestamp) -> Optional[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
         clearance_time = 0
         for clearance_key in self._clearances.irange(
-            minimum=bytes(container), maximum=bytes(container) + bytes(as_of_muid), reverse=True):
+                minimum=bytes(container), maximum=bytes(container) + bytes(as_of_muid), reverse=True):
             clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
         epoch_muid = Muid(0, 0, 0)
         minimum = bytes(EntryStorageKey(container, key, epoch_muid, None))
@@ -158,19 +159,19 @@ class MemoryStore(AbstractStore):
         self._claimed_chains[chain.medallion] = chain.chain_start
 
     def get_ordered_entries(
-        self,
-        container: Muid,
-        as_of: MuTimestamp,
-        limit: Optional[int] = None,
-        offset: int = 0,
-        desc: bool = False,
-        ) -> Iterable[PositionedEntry]:
+            self,
+            container: Muid,
+            as_of: MuTimestamp,
+            limit: Optional[int] = None,
+            offset: int = 0,
+            desc: bool = False,
+    ) -> Iterable[PositionedEntry]:
 
         prefix = bytes(container)
         as_of_muid = Muid(as_of, 0, 0)
         clearance_time = 0
         for clearance_key in self._clearances.irange(
-            minimum=prefix, maximum=prefix + bytes(as_of_muid), reverse=True):
+                minimum=prefix, maximum=prefix + bytes(as_of_muid), reverse=True):
             clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
         removals_suffix = b"\xFF" * 16
         for esk_bytes in self._entries.irange(prefix, prefix + encode_muts(as_of), reverse=desc):
@@ -197,10 +198,10 @@ class MemoryStore(AbstractStore):
             assert isinstance(middle_key, QueueMiddleKey)
             entry_builder = self._entries[esk_bytes]
             yield PositionedEntry(
-                    position=middle_key.effective_time,
-                    positioner=middle_key.movement_muid or parsed_esk.entry_muid,
-                    entry_muid=parsed_esk.entry_muid,
-                    builder=entry_builder)
+                position=middle_key.effective_time,
+                positioner=middle_key.movement_muid or parsed_esk.entry_muid,
+                entry_muid=parsed_esk.entry_muid,
+                builder=entry_builder)
             if limit is not None:
                 limit -= 1
 
@@ -214,8 +215,8 @@ class MemoryStore(AbstractStore):
         for bundle_info in bundle_infos:
             del self._outbox[bytes(bundle_info)]
 
-    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool=False
-    ) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool = False
+                     ) -> Tuple[BundleInfo, bool]:
         bundle_builder = BundleBuilder()
         bundle_builder.ParseFromString(bundle_bytes)  # type: ignore
         new_info = BundleInfo(builder=bundle_builder)
@@ -227,16 +228,16 @@ class MemoryStore(AbstractStore):
                 self._outbox[bytes(new_info)] = bundle_bytes
             self._bundles[bytes(new_info)] = bundle_bytes
             self._chain_infos[chain_key] = new_info
-            change_items = list(bundle_builder.changes.items()) # type: ignore
-            change_items.sort() # the protobuf library doesn't maintain order of maps
-            for offset, change in change_items:   # type: ignore
+            change_items = list(bundle_builder.changes.items())  # type: ignore
+            change_items.sort()  # the protobuf library doesn't maintain order of maps
+            for offset, change in change_items:  # type: ignore
                 if change.HasField("container"):
                     container_muid = Muid.create(
                         context=new_info, offset=offset)
                     self._containers[container_muid] = change.container
                     continue
                 if change.HasField("entry"):
-                    self._add_entry(new_info=new_info,offset=offset, entry_builder=change.entry)
+                    self._add_entry(new_info=new_info, offset=offset, entry_builder=change.entry)
                     continue
                 if change.HasField("movement"):
                     self._add_movement(new_info=new_info, offset=offset, builder=change.movement)
@@ -245,7 +246,7 @@ class MemoryStore(AbstractStore):
                     self._add_clearance(new_info=new_info, offset=offset, builder=change.clearance)
                     continue
                 raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
-        return (new_info, needed)
+        return new_info, needed
 
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
@@ -266,7 +267,7 @@ class MemoryStore(AbstractStore):
         entry_expiry = entry_storage_key.expiry
         if entry_expiry and entry_expiry < movement_muid.timestamp:
             print(f"WARNING: won't move exipired entry: {entry_muid}", file=sys.stderr)
-            return # refuse to move an entry that's expired
+            return  # refuse to move an entry that's expired
         if movement_muid.timestamp < entry_storage_key.get_placed_time():
             # I'm intentionally ignoring the case where a past (re)move shows up after a later one.
             # This means that while the present state will always converge, the history might not.
@@ -292,7 +293,7 @@ class MemoryStore(AbstractStore):
             esk.entry_muid) + bytes(esk.entry_muid)
         self._locations[entries_location_key] = encoded_entry_storage_key
 
-    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp=0):
+    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
         for bundle_info_key in self._bundles.irange(minimum=encode_muts(since)):
             bundle_info = BundleInfo.from_bytes(bundle_info_key)
             assert isinstance(bundle_info, BundleInfo)
@@ -310,11 +311,11 @@ class MemoryStore(AbstractStore):
     def _get_entry_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
         bkey = bytes(entry_muid)
         for location_key in self._locations.irange(
-                bkey, bkey+bytes(Muid(as_of, 0, 0)), reverse=True):
+                bkey, bkey + bytes(Muid(as_of, 0, 0)), reverse=True):
             return self._locations[location_key]
         return None
 
-    def get_positioned_entry(self, entry: Muid, as_of: MuTimestamp=-1)->Optional[PositionedEntry]:
+    def get_positioned_entry(self, entry: Muid, as_of: MuTimestamp = -1) -> Optional[PositionedEntry]:
         location = self._get_entry_location(entry, as_of)
         if location is None:
             return None
@@ -323,5 +324,9 @@ class MemoryStore(AbstractStore):
         middle_key = esk.middle_key
         assert isinstance(middle_key, QueueMiddleKey)
         return PositionedEntry(middle_key.effective_time,
-            middle_key.movement_muid or esk.entry_muid,
-            esk.entry_muid, entry_builder)
+                               middle_key.movement_muid or esk.entry_muid,
+                               esk.entry_muid, entry_builder)
+
+    def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
+                          user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
+        raise NotImplementedError()

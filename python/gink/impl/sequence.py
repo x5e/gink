@@ -11,18 +11,19 @@ from .bundler import Bundler
 from .coding import SEQUENCE
 from .tuples import PositionedEntry, SequenceKey
 
+
 class Sequence(Container):
     BEHAVIOR = SEQUENCE
 
     def __init__(self,
-        *ordered,
-        contents: Optional[Iterable]=None,
-        muid: Optional[Muid]=None,
-        database: Optional[Database]=None,
-        root: bool=False,
-        bundler: Optional[Bundler] = None,
-        comment: Optional[str] = None,
-        ):
+                 *ordered,
+                 contents: Optional[Iterable] = None,
+                 muid: Optional[Muid] = None,
+                 database: Optional[Database] = None,
+                 root: bool = False,
+                 bundler: Optional[Bundler] = None,
+                 comment: Optional[str] = None,
+                 ):
         """
         muid: the global id of this sequence, created on the fly if None
         database: where to send commits through, or last db instance created if None
@@ -74,7 +75,7 @@ class Sequence(Container):
         """
         return self._add_entry(value=thing, bundler=bundler, comment=comment, expiry=expiry)
 
-    def insert(self, index: int, thing, expiry: GenericTimestamp=None, bundler=None, comment=None):
+    def insert(self, index: int, thing, expiry: GenericTimestamp = None, bundler=None, comment=None):
         """ Inserts thing before index.
 
             The resulting entry expires at expiry time if specified, which must be in the future.
@@ -91,8 +92,8 @@ class Sequence(Container):
             comment=comment,
             expiry=expiry)
 
-    def extend(self, iterable, expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]]=None,
-             bundler=None, comment=None):
+    def extend(self, iterable, expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]] = None,
+               bundler=None, comment=None):
         """ Adds all of the items in iterable at once to this sequence.
 
             expiries, if present, may be either a single expiry to be applied to all new entries,
@@ -109,13 +110,13 @@ class Sequence(Container):
             bundler = Bundler(comment)
         items = list(iterable)
         if hasattr(expiries, "__iter__"):
-            expiries = list(expiries) # type: ignore
+            expiries = list(expiries)  # type: ignore
         for i in range(len(items)):
             if isinstance(expiries, list):
                 expiry = expiries[i]
             else:
                 expiry = expiries
-            expiry = self._database.resolve_timestamp(expiry) if expiry else None # type: ignore
+            expiry = self._database.resolve_timestamp(expiry) if expiry else None  # type: ignore
             self._add_entry(value=items[i], bundler=bundler, expiry=expiry)
         if immediate and len(bundler):
             self._database.commit(bundler)
@@ -174,21 +175,21 @@ class Sequence(Container):
             Raises ValueError if the value is not present.
         """
         as_of = self._database.resolve_timestamp()
-        for positioned in self._database._store.get_ordered_entries(self._muid, as_of):
+        for positioned in self._database.get_store().get_ordered_entries(self._muid, as_of):
             found = self._get_occupant(positioned.builder, positioned.entry_muid)
             if found == value:
                 return self.yank(positioned.entry_muid, dest=dest,
-                    bundler=bundler, comment=comment)
+                                 bundler=bundler, comment=comment)
         raise ValueError("matching item not found")
 
     def items(self, *, as_of: GenericTimestamp = None) -> Iterable:
         """ Returns pairs of (muid, contents) for the sequence at the given time.
         """
         as_of = self._database.resolve_timestamp(as_of)
-        for positioned in self._database._store.get_ordered_entries(self._muid, as_of=as_of):
+        for positioned in self._database.get_store().get_ordered_entries(self._muid, as_of=as_of):
             found = self._get_occupant(positioned.builder, positioned.entry_muid)
             sequence_key = SequenceKey(positioned.position, positioned.entry_muid)
-            yield (sequence_key, found)
+            yield sequence_key, found
 
     def keys(self, *, as_of: GenericTimestamp = None) -> Iterable[SequenceKey]:
         for key, _ in self.items(as_of=as_of):
@@ -213,13 +214,13 @@ class Sequence(Container):
         """
         as_of = self._database.resolve_timestamp(as_of)
         offset = ~index if index < 0 else index
-        iterable = self._database._store.get_ordered_entries(
+        iterable = self._database.get_store().get_ordered_entries(
             self._muid, as_of=as_of, limit=1, offset=offset, desc=(index < 0))
         for positioned in iterable:
             assert isinstance(positioned, PositionedEntry)
             found = self._get_occupant(positioned.builder, positioned.entry_muid)
             sequence_key = SequenceKey(positioned.position, positioned.entry_muid)
-            return (sequence_key, found)
+            return sequence_key, found
         raise IndexError(f"could not find anything at index {index}")
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
@@ -227,7 +228,7 @@ class Sequence(Container):
         """
         as_of = self._database.resolve_timestamp(as_of)
         count = 0
-        for _ in self._database._store.get_ordered_entries(self._muid, as_of=as_of):
+        for _ in self._database.get_store().get_ordered_entries(self._muid, as_of=as_of):
             count += 1
         return count
 
@@ -239,7 +240,7 @@ class Sequence(Container):
         """
         as_of = self._database.resolve_timestamp(as_of)
         index = start
-        iterable = self._database._store.get_ordered_entries(self._muid, as_of, offset=start)
+        iterable = self._database.get_store().get_ordered_entries(self._muid, as_of, offset=start)
         for positioned in iterable:
             found = self._get_occupant(positioned.builder, positioned.entry_muid)
             if found == value:
@@ -260,7 +261,7 @@ class Sequence(Container):
 
     def _position(self, after: Optional[int] = None, before: Optional[int] = None) -> MuTimestamp:
         """ Gets a new position after or before the index of an existing entry. """
-        if (after is None and before is None):
+        if after is None and before is None:
             raise ValueError("need to specify at least one index")
         if before is None:
             assert after is not None
@@ -296,4 +297,4 @@ class Sequence(Container):
             p1, p2 = p2, p1
         if p2 - p1 < 2:
             raise ValueError("not enough space between them")
-        return randint(p1 + 1, p2 -1)
+        return randint(p1 + 1, p2 - 1)

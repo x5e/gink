@@ -16,22 +16,24 @@ from ..impl.patch import PATCHED
 
 assert PATCHED
 
+
 def test_creation():
     """ test that I can create new directories as well as proxies for existing ones """
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
-            directory1 = Directory(muid=Muid(1,2,3), database=database)
+            directory1 = Directory(muid=Muid(1, 2, 3), database=database)
             assert len(store.get_bundle_infos()) == 0
 
             directory2 = Directory()
             assert len(store.get_bundle_infos()) != 0
             assert directory1 != directory2
 
+
 def test_set_get():
     """ Test the basic set/get functionality of directories works as expected. """
-    for store in [LmdbStore(), MemoryStore(),]:
+    for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
             global_directory = Directory.get_global_instance(database=database)
@@ -56,6 +58,7 @@ def test_set_get():
             result = global_directory["foo"]
             assert repr(result) == "{'test': 'document'}"
 
+
 def test_delete():
     """ tests that delete works as expected """
     for store in [MemoryStore(), LmdbStore()]:
@@ -68,6 +71,7 @@ def test_delete():
             del gdi["foo"]
             assert not gdi.has("foo"), store
             assert gdi.get("foo", as_of=a_time) == "bar"
+
 
 def test_setdefault():
     """ tests that delete works as expected """
@@ -88,6 +92,7 @@ def test_setdefault():
             assert "foo" in gdi
             assert gdi["foo"] == "moo"
 
+
 def test_pop():
     """ tests the pop method """
     for store in [MemoryStore(), LmdbStore()]:
@@ -101,9 +106,10 @@ def test_pop():
             val = gdi.pop("foo", default=7)
             assert val == 7
 
+
 def test_items_and_keys():
     """ tests the items and keys """
-    for store in [LmdbStore(), MemoryStore(),]:
+    for store in [LmdbStore(), MemoryStore(), ]:
         with store:
             database = Database(store=store)
             gdi = Directory.get_global_instance(database=database)
@@ -123,9 +129,10 @@ def test_items_and_keys():
             keys = set(gdi.keys())
             assert keys == set(["foo", "zoo", 3]), keys
 
+
 def test_popitem_and_len():
     """ ensures popitem works as intended """
-    for store in [LmdbStore(), MemoryStore(),]:
+    for store in [LmdbStore(), MemoryStore(), ]:
         with store:
             database = Database(store=store)
             gdi = Directory.get_global_instance(database=database)
@@ -142,9 +149,10 @@ def test_popitem_and_len():
             assert val2 == "bar" if key2 == "foo" else val2 == "zoo"
             assert len(gdi) == 0
 
+
 def test_update():
     """ tests both forms of the update method """
-    for store in [LmdbStore(), MemoryStore(),]:
+    for store in [LmdbStore(), MemoryStore(), ]:
         with store:
             database = Database(store=store)
             gdi = Directory.get_global_instance(database=database)
@@ -153,9 +161,10 @@ def test_update():
             as_dict = dict(gdi.items())
             assert as_dict == {"foo": "bar", "zoo": "bear", 99: 101}, as_dict
 
+
 def test_reset():
     """ tests that the reset(time) functionality works """
-    for store in [LmdbStore(),]:
+    for store in [LmdbStore(), ]:
         # TODO: implement reset in memory store
         with store:
             # pylint: disable=unsupported-assignment-operation, unsupported-membership-test
@@ -182,6 +191,7 @@ def test_reset():
             bundle = gdi.reset(middle, recursive=True)
             assert not bundle
 
+
 def test_clearance():
     """ tests the directory.clear method works as expected """
     for store in [MemoryStore(), LmdbStore()]:
@@ -200,6 +210,7 @@ def test_clearance():
             keys = set(gdi.keys())
             assert keys == set(["bar"]), (keys, store)
 
+
 def test_reset_over_clear():
     for store in [LmdbStore()]:
         with closing(store):
@@ -216,6 +227,7 @@ def test_reset_over_clear():
             assert gdi.get("foo") == "bar", gdi.get("foo")
             gdi.reset(set_timestamp)
             assert gdi.get("bar") == "baz", gdi.get("bar")
+
 
 def test_personal_directory():
     """ tests that ownership metadata is written appropriately """
@@ -235,6 +247,7 @@ def test_personal_directory():
             user_name = personal_directory[".user.name"]
             assert isinstance(user_name, str) and user_name != "", user_name
 
+
 def test_bytes_keys():
     """ tests that I can use bytestrings as keys for directories """
     for store in [MemoryStore(), LmdbStore()]:
@@ -246,6 +259,7 @@ def test_bytes_keys():
             keys = list(root.keys())
             assert keys == [a_bytestring], keys
             assert root[a_bytestring] == 42
+
 
 def test_blame_and_log():
     """ makes sure that the directory.get_blame works """

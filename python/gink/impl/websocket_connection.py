@@ -10,7 +10,7 @@ from select import select
 
 # modules from requirements.txt
 from wsproto import WSConnection, ConnectionType
-from wsproto.events import(
+from wsproto.events import (
     Request,
     AcceptConnection,
     CloseConnection,
@@ -27,22 +27,23 @@ from .builders import SyncMessage
 # gink modules
 from .connection import Connection
 
+
 class WebsocketConnection(Connection):
     """ Manages the connection to one peer via a websocket.
 
         Set is_client to indicate that the provided socket is a client connection.
         If there's no socket provided then one will be established, and is_client is implied.
     """
-    PROTOCOL="gink"
+    PROTOCOL = "gink"
 
     def __init__(
-        self,
-        host: Optional[str]=None,
-        port: Optional[int]=None,
-        socket: Optional[Socket]=None,
-        force_to_be_client: bool=False,
-        path: Optional[str]=None,
-        greeting: Optional[SyncMessage]=None
+            self,
+            host: Optional[str] = None,
+            port: Optional[int] = None,
+            socket: Optional[Socket] = None,
+            force_to_be_client: bool = False,
+            path: Optional[str] = None,
+            greeting: Optional[SyncMessage] = None
     ):
         Connection.__init__(self, socket=socket, host=host, port=port)
         if socket is None:
@@ -67,7 +68,7 @@ class WebsocketConnection(Connection):
     def receive(self) -> Iterable[SyncMessage]:
         if self._closed:
             return
-        data = self._socket.recv(2**30)
+        data = self._socket.recv(2 ** 30)
         if not data:
             self._closed = True
         self._ws.receive_data(data)
@@ -145,7 +146,7 @@ class WebsocketConnection(Connection):
                 if not ready[0]:
                     self._logger.warning("timed out waiting for peer to ack my close message")
                     break
-                data = self._socket.recv(2**30)
+                data = self._socket.recv(2 ** 30)
                 self._ws.receive_data(data)
                 for event in self._ws.events():
                     if isinstance(event, CloseConnection):

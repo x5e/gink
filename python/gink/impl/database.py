@@ -33,6 +33,7 @@ from .muid import Muid
 from .chain_tracker import ChainTracker
 from .attribution import Attribution
 
+
 class Database:
     """ A class that mediates user interaction with a datastore and peers. """
     _chain: Optional[Chain]
@@ -42,7 +43,7 @@ class Database:
     _connections: Set[Connection]
     _listeners: Set[Listener]
     _sent_but_not_acked: Set[BundleInfo]
-    _trackers: Dict[Connection, ChainTracker] # tracks what we know a peer has *received*
+    _trackers: Dict[Connection, ChainTracker]  # tracks what we know a peer has *received*
     _last_link: Optional[BundleInfo]
 
     def __init__(self, store: AbstractStore):
@@ -68,21 +69,21 @@ class Database:
         return self._store
 
     def get_chain(self) -> Optional[Chain]:
-        """ gets the this database is appending to (or None if hasn't started writing yet) """
+        """ gets the chain this database is appending to (or None if it hasn't started writing yet) """
         if self._last_link is not None:
             return self._last_link.get_chain()
         return None
 
     @staticmethod
     def _get_info() -> Iterable[Tuple[str, Union[str, int]]]:
-        yield (".process.id", getpid())
+        yield ".process.id", getpid()
         user_data = getpwuid(getuid())
-        yield (".user.name", user_data[0])
+        yield ".user.name", user_data[0]
         if user_data[4] != user_data[0]:
-            yield (".full.name", user_data[4])
-        yield (".host.name", gethostname())
+            yield ".full.name", user_data[4]
+        yield ".host.name", gethostname()
         if argv[0]:
-            yield (".software", argv[0])
+            yield ".software", argv[0]
 
     def _add_info(self, bundler: Bundler):
         personal_directory = Muid(-1, 0, DIRECTORY)
@@ -92,7 +93,7 @@ class Database:
             setattr(entry_builder, "behavior", DIRECTORY)
             personal_directory.put_into(getattr(entry_builder, "container"))
             encode_key(key, getattr(entry_builder, "key"))
-            encode_value(val, entry_builder.value) # type: ignore
+            encode_value(val, entry_builder.value)  # type: ignore
             bundler.add_change(entry_builder)
 
     def get_now(self) -> MuTimestamp:
@@ -135,10 +136,10 @@ class Database:
         if isinstance(timestamp, datetime):
             timestamp = timestamp.timestamp()
         if isinstance(timestamp, (int, float)):
-            if timestamp > 1671697316392367 and timestamp < 2147483648000000:
+            if 1671697316392367 < timestamp < 2147483648000000:
                 # appears to be a microsecond timestamp
                 return int(timestamp)
-            if timestamp > 1671697630 and timestamp < 2147483648:
+            if 1671697630 < timestamp < 2147483648:
                 # appears to be seconds since epoch
                 return int(timestamp * 1e6)
         if isinstance(timestamp, int) and -1e6 < timestamp < 1e6:
@@ -147,8 +148,8 @@ class Database:
                 raise ValueError("don't have that many bundles")
             assert isinstance(bundle_info, BundleInfo)
             return bundle_info.timestamp
-        if isinstance(timestamp, float) and timestamp < 1e6 and timestamp > -1e6:
-            return self.get_now() + int(1e6*timestamp)
+        if isinstance(timestamp, float) and 1e6 > timestamp > -1e6:
+            return self.get_now() + int(1e6 * timestamp)
         raise ValueError(f"don't know how to resolve {timestamp} into a timestamp")
 
     def _start_chain(self):
@@ -170,7 +171,7 @@ class Database:
     def commit(self, bundler: Bundler) -> BundleInfo:
         """ seals bundler and adds the resulting bundle to the local store """
         assert not bundler.sealed
-        with self._lock: # using an exclusive lock to ensure that we don't fork a chain
+        with self._lock:  # using an exclusive lock to ensure that we don't fork a chain
             if not self._last_link:
                 # TODO[P3]: reuse claimed chains of processes that have exited on this machine
                 self._start_chain()
@@ -203,7 +204,7 @@ class Database:
         """
         self._logger.debug("broadcasting %r from %r", info, from_peer)
         outbound_message_with_bundle = SyncMessage()
-        outbound_message_with_bundle.bundle = bundle # type: ignore
+        outbound_message_with_bundle.bundle = bundle  # type: ignore
         for peer in self._connections:
             if peer == from_peer:
                 # We got this bundle from this peer, so don't need to send the bundle back to them.
@@ -226,7 +227,7 @@ class Database:
     def _receive_data(self, sync_message: SyncMessage, from_peer: Connection):
         with self._lock:
             if sync_message.HasField("bundle"):
-                bundle_bytes = sync_message.bundle # type: ignore # pylint: disable=maybe-no-member
+                bundle_bytes = sync_message.bundle  # type: ignore # pylint: disable=maybe-no-member
                 info, added = self._store.apply_bundle(bundle_bytes, False)
                 from_peer.send(info.as_acknowledgement())
                 tracker = self._trackers.get(from_peer)
@@ -238,11 +239,13 @@ class Database:
                 self._logger.debug("received greeting from %s", from_peer)
                 chain_tracker = ChainTracker(sync_message=sync_message)
                 self._trackers[from_peer] = chain_tracker
+
                 def callback(bundle_bytes: bytes, info: BundleInfo):
                     if not chain_tracker.has(info):
                         outgoing_builder = SyncMessage()
-                        outgoing_builder.bundle = bundle_bytes # type: ignore
+                        outgoing_builder.bundle = bundle_bytes  # type: ignore
                         from_peer.send(outgoing_builder)
+
                 self._store.get_bundles(callback=callback)
             elif sync_message.HasField("ack"):
                 acked_info = BundleInfo.from_ack(sync_message)
@@ -255,7 +258,7 @@ class Database:
             else:
                 self._logger.warning("got binary message without ack, bundle, or greeting")
 
-    def start_listening(self, ip_addr="", port: Union[str, int]="8080"):
+    def start_listening(self, ip_addr="", port: Union[str, int] = "8080"):
         """ Listen for incoming connections on the given port.
 
             Note that you'll still need to call "run" to actually accept those connections.
@@ -275,11 +278,11 @@ class Database:
         port = port or "8080"
         path = path or "/"
         greeting = self._store.get_chain_tracker().to_greeting_message()
-        connection = WebsocketConnection(host=host,  port=int(port), path=path, greeting=greeting)
+        connection = WebsocketConnection(host=host, port=int(port), path=path, greeting=greeting)
         self._connections.add(connection)
         self._logger.debug("connection added")
 
-    def run(self, until: GenericTimestamp=None):
+    def run(self, until: GenericTimestamp = None):
         """ Waits for activity on ports then exchanges data with peers. """
         self._logger.debug("starting run loop until %r", until)
         if until is not None:
@@ -311,7 +314,7 @@ class Database:
                 if info not in self._sent_but_not_acked:
                     self._broadcast_bundle(bundle_bytes, info, None)
 
-    def reset(self, to_time: GenericTimestamp=EPOCH, *, bundler=None, comment=None):
+    def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):
         """ Resets the database to a specific point in time.
 
             Note that it litterally just "re"-sets everything in one big
@@ -330,18 +333,14 @@ class Database:
             self.commit(bundler=bundler)
         return bundler
 
-    def get_container(
-        self,
-        muid: Muid,
-        container_builder: Optional[ContainerBuilder]=None,
-    ) -> Any:
+    def get_container(self, muid: Muid, container_builder: Optional[ContainerBuilder] = None) -> Any:
         """ gets (already created) container associated with a particular muid """
-        assert muid or container_builder
+        _ = (self, muid, container_builder)
         raise Exception("not patched")
 
-    def dump(self, as_of: GenericTimestamp=None, file=stdout) -> None:
+    def dump(self, as_of: GenericTimestamp = None, file=stdout) -> None:
         """ writes to file a pythonic representation of the database contents at the time """
-        assert as_of or file
+        _ = (self, as_of, file)
         raise Exception("not patched")
 
     def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
@@ -350,15 +349,15 @@ class Database:
             After the timestamp and medallion it will ignore other ordered arguments, so
             that it can be used via get_attribution(*muid).
         """
-        assert timestamp and medallion
-        raise Exception("not patched")
+        _ = (self, timestamp, medallion)
+        raise NotImplementedError()
 
-    def log(self, limit: Optional[int]=-10) -> Iterable[Attribution]:
+    def log(self, limit: Optional[int] = -10) -> Iterable[Attribution]:
         """ Gets a list of attributions representing all bundles stored by the db. """
         for bundle_info in self._store.get_some(BundleInfo, limit):
             yield self.get_attribution(bundle_info.timestamp, bundle_info.medallion)
 
-    def show_log(self, limit: Optional[int]=-10, file=stdout):
-        """ Just prints the log to stdout in a human readable format. """
+    def show_log(self, limit: Optional[int] = -10, file=stdout):
+        """ Just prints the log to stdout in a human-readable format. """
         for attribution in self.log(limit=limit):
             print(attribution, file=file)

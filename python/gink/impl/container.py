@@ -11,6 +11,7 @@ from .database import Database
 from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp
 from .coding import encode_key, encode_value, decode_value, deletion
 
+
 class Container(ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
     _database: Database
@@ -31,10 +32,10 @@ class Container(ABC):
         return f"{self.__class__.__name__}('{self._muid}')"
 
     @abstractmethod
-    def dumps(self, as_of: GenericTimestamp=None) -> str:
+    def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ return the contents of this container as a string """
 
-    def dump(self, *, as_of: GenericTimestamp=None, file=stdout):
+    def dump(self, *, as_of: GenericTimestamp = None, file=stdout):
         """ Dumps the contents of this container to file (default stdout)."""
         # probably should stream the contents to the filehandle
         file.write("\n")
@@ -47,9 +48,9 @@ class Container(ABC):
 
             Returns either a Container or a UserValue
         """
-        if builder.HasField("value"): # type: ignore
-            return decode_value(builder.value) # type: ignore
-        if builder.HasField("pointee"): # type: ignore
+        if builder.HasField("value"):  # type: ignore
+            return decode_value(builder.value)  # type: ignore
+        if builder.HasField("pointee"):  # type: ignore
             pointee = getattr(builder, "pointee")
             assert address is not None
             pointee_muid = Muid.create(builder=pointee, context=address)
@@ -66,7 +67,7 @@ class Container(ABC):
         return getattr(cls, "BEHAVIOR")
 
     @classmethod
-    def create(cls, bundler: Optional[Bundler]=None, database: Optional[Database]=None):
+    def create(cls, bundler: Optional[Bundler] = None, database: Optional[Database] = None):
         """ Creates an instance of the given class, adding immediately if no bundler is provided.
         """
         if database is None:
@@ -75,7 +76,7 @@ class Container(ABC):
         return cls(muid=muid, database=database)
 
     @classmethod
-    def get_global_instance(cls, database: Optional[Database]=None):
+    def get_global_instance(cls, database: Optional[Database] = None):
         """ Gets a proxy to the "magic" global instance of the given class.
 
             For each container type there's a pre-existing global instance
@@ -91,7 +92,7 @@ class Container(ABC):
         return cls(database=database, muid=muid)
 
     @classmethod
-    def get_medallion_instance(cls, *, medallion=0, database: Optional[Database]=None):
+    def get_medallion_instance(cls, *, medallion=0, database: Optional[Database] = None):
         """ Gets a proxy to the magic personal instance for this container type.
 
             For each combination of medallion and container type, there's implicitly
@@ -109,12 +110,12 @@ class Container(ABC):
             chain = database.get_chain()
             if chain is None:
                 raise ValueError("don't have a medallion until on has been claimed by a write")
-            medallion=chain.medallion
+            medallion = chain.medallion
         muid = Muid(timestamp=-1, medallion=medallion, offset=cls.get_behavior())
         return cls(database=database, muid=muid)
 
     @staticmethod
-    def _create(behavior: int, database: Database, bundler: Optional[Bundler]=None) -> Muid:
+    def _create(behavior: int, database: Database, bundler: Optional[Bundler] = None) -> Muid:
         immediate = False
         if bundler is None:
             bundler = Bundler()
@@ -127,7 +128,7 @@ class Container(ABC):
             database.commit(bundler)  # type: ignore
         return muid
 
-    def clear(self, bundler: Optional[Bundler]=None, comment: Optional[str]=None) -> Muid:
+    def clear(self, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
         """ Removes all entries from this container, returning the muid of the clearance.
 
             Note that this will also remove entries that aren't visible because they've been
@@ -139,49 +140,49 @@ class Container(ABC):
             bundler = Bundler(comment)
             immediate = True
         change_builder = ChangeBuilder()
-        self._muid.put_into(change_builder.clearance.container) # type: ignore
+        self._muid.put_into(change_builder.clearance.container)  # type: ignore
         change_muid = bundler.add_change(change_builder)
         if immediate:
             self._database.commit(bundler)
         return change_muid
 
     def _add_entry(self, *,
-            value,
-            key: Union[Muid, str, int, bytes, None]=None,
-            effective: Optional[MuTimestamp]=None,
-            bundler: Optional[Bundler]=None,
-            comment: Optional[str]=None,
-            expiry: GenericTimestamp=None)->Muid:
+                   value,
+                   key: Union[Muid, str, int, bytes, None] = None,
+                   effective: Optional[MuTimestamp] = None,
+                   bundler: Optional[Bundler] = None,
+                   comment: Optional[str] = None,
+                   expiry: GenericTimestamp = None) -> Muid:
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
             bundler = Bundler(comment)
         change_builder = ChangeBuilder()
         # pylint: disable=maybe-no-member
-        entry_builder: EntryBuilder = change_builder.entry # type: ignore
+        entry_builder: EntryBuilder = change_builder.entry  # type: ignore
         entry_builder.behavior = self.get_behavior()  # type: ignore
         if expiry is not None:
             now = self._database.get_now()
             expiry = self._database.resolve_timestamp(expiry)
             if expiry < now:
                 raise ValueError("can't set an expiry to be in the past")
-            entry_builder.expiry = expiry # type: ignore
+            entry_builder.expiry = expiry  # type: ignore
         if effective is not None:
-            entry_builder.effective = effective # type: ignore
-        self._muid.put_into(entry_builder.container) # type: ignore
+            entry_builder.effective = effective  # type: ignore
+        self._muid.put_into(entry_builder.container)  # type: ignore
         if isinstance(key, (str, int, bytes)):
             encode_key(key, entry_builder.key)  # type: ignore
         if isinstance(key, Muid):
-            key.put_into(entry_builder.describing) # type: ignore
+            key.put_into(entry_builder.describing)  # type: ignore
         if isinstance(value, Container):
             pointee_muid = value.get_muid()
             if pointee_muid.medallion:
-                entry_builder.pointee.medallion = pointee_muid.medallion # type: ignore
+                entry_builder.pointee.medallion = pointee_muid.medallion  # type: ignore
             if pointee_muid.timestamp:
-                entry_builder.pointee.timestamp = pointee_muid.timestamp # type: ignore
-            entry_builder.pointee.offset = pointee_muid.offset # type: ignore
+                entry_builder.pointee.timestamp = pointee_muid.timestamp  # type: ignore
+            entry_builder.pointee.offset = pointee_muid.offset  # type: ignore
         elif isinstance(value, (str, int, float, dict, tuple, list, bool, bytes, type(None))):
-            encode_value(value, entry_builder.value) # type: ignore # pylint: disable=maybe-no-member
+            encode_value(value, entry_builder.value)  # type: ignore # pylint: disable=maybe-no-member
         elif value == deletion:
             entry_builder.deletion = True  # type: ignore # pylint: disable=maybe-no-member
         else:
@@ -192,21 +193,21 @@ class Container(ABC):
         return muid
 
     def reset(
-        self,
-        to_time: GenericTimestamp=EPOCH,
-        *,
-        key: Optional[UserKey]=None,
-        recursive: bool=False,
-        bundler: Optional[Bundler]=None,
-        comment: Optional[str]=None
+            self,
+            to_time: GenericTimestamp = EPOCH,
+            *,
+            key: Optional[UserKey] = None,
+            recursive: bool = False,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None
     ) -> Bundler:
-        """ Resets either a specific key or the whole container to a particular past time.
+        """ Resets either a specific key or the whole container to a particular past timestamp.
 
             (They optional key argument only makes sense when the container is a directory).
 
             Note that this actually creates new entries to literally "re"-set items.
             So it'll still be possible to look at before the reset time and see history.
-            Also that means that unseen changes made before the reset but not received
+            Also, that means that unseen changes made before the reset but not received
             by this node won't be overwritten.  If you want to ensure that all entries
             written before the current time are removed (even if they're not seen yet),
             then use a clear operation (possibly followed by a reset to get old values).
@@ -220,7 +221,8 @@ class Container(ABC):
         assert isinstance(bundler, Bundler)
         to_time = self._database.resolve_timestamp(to_time)
         for change in self._database.get_store().get_reset_changes(to_time=to_time,
-                container=self._muid, user_key=key, recursive=recursive):
+                                                                   container=self._muid, user_key=key,
+                                                                   recursive=recursive):
             bundler.add_change(change)
         if immediate and len(bundler):
             self._database.commit(bundler=bundler)

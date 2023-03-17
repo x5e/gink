@@ -5,10 +5,12 @@ from .builders import EntryBuilder
 from .muid import Muid
 from .typedefs import Medallion, MuTimestamp
 
+
 class Chain(NamedTuple):
-    """ Pair of numbers to identify a block-chain in gink. """
+    """ Pair of numbers to identify a blockchain in gink. """
     medallion: Medallion
     chain_start: MuTimestamp
+
 
 class FoundEntry(NamedTuple):
     """ Entry information returned by the store for keyed containers.
@@ -18,12 +20,14 @@ class FoundEntry(NamedTuple):
     address: Muid
     builder: EntryBuilder
 
+
 class PositionedEntry(NamedTuple):
     """ represents data in a positioned data structure like Sequence """
     position: MuTimestamp
     positioner: Muid
     entry_muid: Muid
     builder: EntryBuilder
+
 
 class SequenceKey(NamedTuple):
     """ How data is ordered in a Sequence """

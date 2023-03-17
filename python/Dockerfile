@@ -1,4 +1,4 @@
-from python:3.8
+FROM python:3.8
 RUN rm -rf ~/.profile ~/.bashrc ~/.wget-hsts
 CMD bash
 ENV WORKING=/opt/gink/python

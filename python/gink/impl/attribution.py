@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 from .typedefs import MuTimestamp, Medallion
 
+
 class Attribution:
     """ An object that encapsulates everything about who's responsible for a bundle. """
     __slots__ = [
@@ -13,17 +14,16 @@ class Attribution:
         "email",
         "software",
         "comment",
-        ]
-
+    ]
 
     def __init__(self, timestamp: MuTimestamp, medallion: Medallion, *,
-            username=None,
-            hostname=None,
-            comment=None,
-            fullname=None,
-            software=None,
-            email=None,
-        ):
+                 username=None,
+                 hostname=None,
+                 comment=None,
+                 fullname=None,
+                 software=None,
+                 email=None,
+                 ):
         self.timestamp = timestamp
         self.medallion = medallion
         self.username = username
@@ -37,13 +37,13 @@ class Attribution:
         result = "Attribution("
         for key in self.__slots__:
             if hasattr(self, key) and getattr(self, key):
-                result += f"\n\t{key}={getattr(self,key)!r},"
+                result += f"\n\t{key}={getattr(self, key)!r},"
         result += ")\n"
         return result
 
     def __str__(self):
         local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
-        as_datetime = datetime.fromtimestamp(self.timestamp/1e6, local_timezone)
+        as_datetime = datetime.fromtimestamp(self.timestamp / 1e6, local_timezone)
 
         returning = ""
         returning += f"{as_datetime} "

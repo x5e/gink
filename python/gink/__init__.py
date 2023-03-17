@@ -15,4 +15,4 @@ from .impl.patch import PATCHED
 assert PATCHED
 
 __all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence", "Bundler",
-    "Property", "Container", "Muid", "LogBackedStore", "BundleInfo", "AbstractStore"]
+           "Property", "Container", "Muid", "LogBackedStore", "BundleInfo", "AbstractStore"]
