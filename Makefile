@@ -1,5 +1,6 @@
 #TODO: maybe switch over to Bazel?
 PROTOS=$(wildcard proto/*.proto)
+PYTHON_CODE=$(wildcard python/*.py python/gink/impl/*.py python/gink/tests/*.py python/gink/*.py)
 export PATH := ./node_modules/.bin/:$(PATH)
 
 all: python/gink/builders node_modules/gink/protoc.out tsc.out webpack.out
@@ -72,3 +73,12 @@ headless_browser:
 decapitate:
 	kill `ps auxe | egrep '(remote-debugging-port)=9222' | awk '{print $2}'` 2>/dev/null \
 	|| echo 'not running'
+
+python/setup.cfg: $(PYTHON_CODE) python/gink/builders
+	date '+[metadata]%nversion=0.%Y%m%d.%s' > python/setup.cfg
+
+python/dist: $(PYTHON_CODE) python/gink/builders python/setup.cfg
+	cd python && rm -rf dist && python3 -m build --wheel --sdist && twine check dist/*
+
+python/dist/.uploaded: python/dist
+	cd python && twine check dist/* && twine upload dist/* && touch dist/.uploaded
