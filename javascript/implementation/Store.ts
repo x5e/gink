@@ -1,7 +1,6 @@
 import { ChainTracker } from "./ChainTracker";
 import { Medallion, ChainStart, SeenThrough, Muid, Bytes, KeyType, BundleInfo,
-    ClaimedChains, Entry, AsOf
-    } from "./typedefs";
+    ClaimedChains, Entry, AsOf} from "./typedefs";
 
 export interface Store {
 

@@ -2,29 +2,29 @@ import { CallBack } from "./typedefs";
 
 export class PromiseChainLock {
 
-    // Chain of promises that allow multiple attempts to aquire to wait their turn for the lock.
+    // Chain of promises that allow multiple attempts to acquire to wait their turn for the lock.
     private queue: Promise<void> = Promise.resolve();
 
     /**
-     * An async function that waits to aquire the lock, then provides a function to unlock.
+     * An async function that waits to acquire the lock, then provides a function to unlock.
      * Use like: 
-     * const unlockingFunction = await promiseChainLock.aquireLock();
+     * const unlockingFunction = await promiseChainLock.acquireLock();
      * try {
      *   // Do some stuff.
      * } finally {
      *   unlockingFunction();
      * }
-     * @returns a promise that resolves when the lock has been aquired, resolving to a cb to unlock it.
+     * @returns a promise that resolves when the lock has been acquired, resolving to a cb to unlock it.
      */
     async acquireLock(): Promise<CallBack> {
-        let calledWhenLockAquired: (cb: CallBack) => void = null;
-        var calledToReleaseLock: CallBack = null;
-        var resolvesWhenLockAquired = new Promise<CallBack>((r) => { calledWhenLockAquired = r; });
+        let calledWhenLockAcquired: (cb: CallBack) => void = null;
+        let calledToReleaseLock: CallBack = null;
+        const resolvesWhenLockAcquired = new Promise<CallBack>((r) => { calledWhenLockAcquired = r; });
         this.queue = this.queue.then(() => {
-            var resolvesWhenLockReleased = new Promise<void>((r) => { calledToReleaseLock = r; });
-            calledWhenLockAquired(calledToReleaseLock);
+            const resolvesWhenLockReleased = new Promise<void>((r) => { calledToReleaseLock = r; });
+            calledWhenLockAcquired(calledToReleaseLock);
             return resolvesWhenLockReleased;
         });
-        return resolvesWhenLockAquired;
+        return resolvesWhenLockAcquired;
     }
 }

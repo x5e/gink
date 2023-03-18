@@ -4,18 +4,19 @@ import { Store } from "./Store";
 import { GinkInstance } from "./GinkInstance";
 import { BundleInfo } from "./typedefs";
 import { Bundler } from "./Bundler";
-var readline = require('readline');
 import { SimpleServer } from "./SimpleServer";
 import { ensure, logToStdErr } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
 
+
+import readline from "readline";
 
 /**
     Intended to manage server side running of Gink.
     Basically it takes some settings in the form of
     environment variables plus a list of peers to
     connect to then starts up the Gink Instance,
-    or Gink Server if port listening is specfied.
+    or Gink Server if port listening is specified.
     TODO(https://github.com/google/gink/issues/43): implement --help
 */
 export class CommandLineInterface {
@@ -50,17 +51,17 @@ export class CommandLineInterface {
                 sslCertFilePath: process.env["GINK_SSL_CERT"],
                 staticContentRoot: process.env["GINK_STATIC_PATH"],
                 logger: logToStdErr,
-            }
+            };
             if (dataRoot) {
                 this.routingServer = new RoutingServer({
                     dataFilesRoot: dataRoot, ...common
                 });
             } else {
-                this.instance = new SimpleServer(this.store!, { software: "SimpleServer", ...common });
+                this.instance = new SimpleServer(this.store, { software: "SimpleServer", ...common });
             }
         } else {
             // GINK_PfORT not set, so don't listen for incoming connections
-            this.instance = new GinkInstance(this.store!, { software: "node instance" });
+            this.instance = new GinkInstance(this.store, { software: "node instance" });
         }
         this.targets = process.argv.slice(2);
     }
@@ -75,15 +76,15 @@ export class CommandLineInterface {
             const instance = this.instance;
             this.instance.addListener(CommandLineInterface.onCommit);
             for (const target of this.targets) {
-                logToStdErr(`connecting to: ${target}`)
+                logToStdErr(`connecting to: ${target}`);
                 await this.instance.connectTo(target, logToStdErr);
-                logToStdErr(`connected!`)
+                logToStdErr(`connected!`);
             }
             logToStdErr("ready (type a comment and press enter to create a commit)");
             const readlineInterface = readline.createInterface(process.stdin, process.stdout);
             readlineInterface.on('line', async (comment: string) => {
                 instance.addBundler(new Bundler(comment));
-            })
+            });
         } else {
             await this.routingServer?.ready;
         }

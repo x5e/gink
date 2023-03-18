@@ -6,7 +6,6 @@ import {
 import { AuthFunction, CallBack, DirPath, NumberStr, FilePath } from "./typedefs";
 import { GinkInstance } from "./GinkInstance";
 import { RoutingServerInstance } from './RoutingServerInstance';
-import { LogBackedStore } from './LogBackedStore';
 import { ensure, isPathDangerous } from './utils';
 import { existsSync } from 'fs';
 import { join } from "path";
@@ -21,9 +20,9 @@ import { Listener } from './Listener';
  */
 export class RoutingServer {
     ready: Promise<void>;
-    private logger: CallBack;
-    private dataFilesRoot: DirPath | null;
-    private authFunc: AuthFunction;
+    readonly logger: CallBack;
+    readonly dataFilesRoot: DirPath | null;
+    readonly authFunc: AuthFunction;
     private listener: Listener;
 
     private instances: Map<string, RoutingServerInstance> = new Map();
@@ -51,10 +50,10 @@ export class RoutingServer {
     /**
      * 
      * @param path absolute path to the datafile
-     * @returns a promise of a instance that will manage that file
+     * @returns a promise of an instance that will manage that file
      */
     private getInstance(path?: string): RoutingServerInstance {
-        // Note: can't afford to await for the instance to be ready or you'll miss the greeing.
+        // Note: can't afford to await for the instance to be ready, or you'll miss the greeting.
         let instance = this.instances.get(path);
         if (!instance) {
             instance = new RoutingServerInstance(path, this.logger);
@@ -64,7 +63,7 @@ export class RoutingServer {
     }
 
     /**
-     * Decides whether or not to accept the request, and if it does, hands it off
+     * Decides whether to accept the request, and if it does, hands it off
      * to a database instance to manage that connection to the specified resource.
      * @param request contains information passed from the websocket server
      */
@@ -86,6 +85,6 @@ export class RoutingServer {
         const connection: WebSocketConnection = request.accept(protocol, request.origin);
         const instanceKey = join(this.dataFilesRoot, request.resource);
         const instance = this.getInstance(instanceKey);
-        instance.onConnection(connection);
+        await instance.onConnection(connection);
     }
 }

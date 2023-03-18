@@ -20,7 +20,7 @@ import { Behavior } from "../builders/behavior_pb";
 /**
  * Uses an indexedDb to implement the Store interface.  On the server side, this will
  * be done using a shim that is only an in-memory implementation of the IndexedDb API,
- * so the LogBackedStore should be used on the server for persistance.  Most of the time
+ * so the LogBackedStore should be used on the server for persistence.  Most of the time
  * uses of Gink should not need to call methods on the store directly, instead just
  * pass it into the GinkInstance (or SimpleServer, etc). 
  */
@@ -62,11 +62,11 @@ export class IndexedDbStore implements Store {
 
                 /*
                     Keep track of active chains this instance can write to.
-                    Stores objects with two keys: "medallion" and "chainStart",
+                    It stores objects with two keys: "medallion" and "chainStart",
                     which have value Medallion and ChainStart respectively.
                     This could alternatively be implemented with a keys being
                     medallions and values being chainStarts, but this is a little
-                    bit easier because the getAll() interface is a bit nicer than
+                    easier because the getAll() interface is a bit nicer than
                     working with the cursor interface.
                 */
                 db.createObjectStore('activeChains', { keyPath: "medallion" });
@@ -108,7 +108,7 @@ export class IndexedDbStore implements Store {
             let commitsToTraverse = -asOf;
             for (; cursor; cursor = await cursor.continue()) {
                 if (--commitsToTraverse == 0) {
-                    const tuple = <BundleInfoTuple>cursor.key
+                    const tuple = <BundleInfoTuple>cursor.key;
                     return tuple[0];
                 }
             }
@@ -167,29 +167,29 @@ export class IndexedDbStore implements Store {
             chainStart: bundleData.getChainStart(),
             priorTime: bundleData.getPrevious() || undefined,
             comment: bundleData.getComment() || undefined,
-        }
+        };
     }
 
     async addBundle(bundleBytes: BundleBytes): Promise<[BundleInfo, boolean]> {
         await this.ready;
         const bundleBuilder = BundleBuilder.deserializeBinary(bundleBytes);
         const bundleInfo = IndexedDbStore.extractCommitInfo(bundleBuilder);
-        const { timestamp, medallion, chainStart, priorTime } = bundleInfo
+        const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const objectStores = ['trxns', 'chainInfos', 'containers', 'entries', 'exits'];
         const wrappedTransaction = this.wrapped.transaction(objectStores, 'readwrite');
-        let oldChainInfo: BundleInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
+        const oldChainInfo: BundleInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
                 return [bundleInfo, false];
             }
             if (oldChainInfo?.timestamp != priorTime) {
-                //TODO(https://github.com/google/gink/issues/27): Need to explicitly close trxn?
+                //TODO(https://github.com/google/gink/issues/27): Need to explicitly close?
                 throw new Error(`missing prior chain entry for ${bundleInfo}, have ${oldChainInfo}`);
             }
         }
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
-        // the getNeededTransactions faster by not requiring re-parsing.
+        // the getNeededTransactions faster by not requiring parsing again.
         const commitKey: BundleInfoTuple = IndexedDbStore.commitInfoToKey(bundleInfo);
         await wrappedTransaction.objectStore("trxns").add(bundleBytes, commitKey);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
@@ -236,8 +236,8 @@ export class IndexedDbStore implements Store {
                     value: immediate,
                     expiry,
                     deletion,
-                }
-                //TODO: add code to add expiries to existing directory entries on insert
+                };
+                //TODO: add code to add expires to existing directory entries on insert
                 await wrappedTransaction.objectStore("entries").add(entry);
                 continue;
             }
@@ -334,7 +334,7 @@ export class IndexedDbStore implements Store {
      * @param asOf show results as of a time in the past
      * @returns a promise of a list of ChangePairs
      */
-    async getOrderedEntries(container: Muid, through: number = Infinity, asOf?: AsOf): Promise<Entry[]> {
+    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const after = 0;
         const containerId = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
@@ -370,12 +370,12 @@ export class IndexedDbStore implements Store {
             chainStart: commitKey[2],
             priorTime: commitKey[3],
             comment: commitKey[4],
-        }
+        };
     }
 
     private static commitInfoToKey(commitInfo: BundleInfo): BundleInfoTuple {
         return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
-        commitInfo.priorTime || 0, commitInfo.comment || ""];
+            commitInfo.priorTime || 0, commitInfo.comment || ""];
     }
 
     // for debugging, not part of the api/interface

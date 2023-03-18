@@ -1,7 +1,6 @@
 import { Behavior } from "../builders/behavior_pb";
 
 export type Bytes = Uint8Array;
-export type GreetingBytes = Bytes;
 export type BundleBytes = Bytes;
 export type Medallion = number;
 export type Timestamp = number;
@@ -26,7 +25,7 @@ export interface CommitListener {
 }
 
 export interface CallBack {
-    (value?: any): void;
+    (value?): void;
 }
 
 export interface AuthFunction {
@@ -39,9 +38,6 @@ export interface Muid {
     offset: number;
 }
 
-export type MuidBytesPair = [Muid, Bytes];
-
-export type MuidContentsPair = [Muid, any];
 
 export interface BundleInfo {
     timestamp: Timestamp;

@@ -14,7 +14,7 @@ import { Store } from "./Store";
 import { Behavior } from "../builders/behavior_pb";
 
 /**
- * This is an instance of the Gink database that can be run inside of a web browser or via
+ * This is an instance of the Gink database that can be run inside a web browser or via
  * ts-node on a server.  Because of the need to work within a browser it doesn't do any port
  * listening (see GinkListener and GinkServerInstance for that capability).
  */
@@ -25,7 +25,7 @@ export class GinkInstance {
     static readonly PROTOCOL = "gink";
 
     private listeners: CommitListener[] = [];
-    private countConnections: number = 0; // Includes disconnected clients.
+    private countConnections = 0; // Includes disconnected clients.
     private myChain: [Medallion, ChainStart];
     private processingLock = new PromiseChainLock();
     protected iHave: ChainTracker;
@@ -35,16 +35,16 @@ export class GinkInstance {
         eval("require('websocket').w3cwebsocket");
 
     constructor(readonly store: Store = new IndexedDbStore(), info?: {
-        fullname?: string,
+        fullName?: string,
         email?: string,
         software?: string,
-    }, readonly logger:CallBack=(()=>{})) {
+    }, readonly logger:CallBack = noOp) {
         this.ready = this.initialize(info);
     }
 
 
     private async initialize(info?: {
-        fullname?: string,
+        fullName?: string,
         email?: string,
         software?: string,
     }) {
@@ -61,15 +61,15 @@ export class GinkInstance {
             if (info?.email) {
                 await medallionInfo.set("email", info.email, bundler);
             }
-            if (info?.fullname) {
-                await medallionInfo.set("fullname", info.fullname, bundler);
+            if (info?.fullName) {
+                await medallionInfo.set("full-name", info.fullName, bundler);
             }
             if (info?.software) {
                 await medallionInfo.set("software", info.software, bundler);
             }
             bundler.seal({
                 medallion, timestamp: chainStart, chainStart
-            })
+            });
             const commitBytes = bundler.bytes;
             await this.store.addBundle(commitBytes);
             await this.store.claimChain(medallion, chainStart);
@@ -118,7 +118,7 @@ export class GinkInstance {
     }
 
     protected async createContainer(behavior: Behavior, change?: Bundler|string): Promise<[Muid, ContainerBuilder]> {
-        let immediate: boolean = false;
+        let immediate = false;
         if (!(change instanceof Bundler)) {
             immediate = true;
             change = new Bundler(change);
@@ -147,8 +147,8 @@ export class GinkInstance {
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
     public async addBundler(bundler: Bundler): Promise<BundleInfo> {
-        var unlockingFunction: CallBack;
-        var resultInfo: BundleInfo;
+        let unlockingFunction: CallBack;
+        let resultInfo: BundleInfo;
         try {
             unlockingFunction = await this.processingLock.acquireLock();
             await this.ready;
@@ -160,7 +160,7 @@ export class GinkInstance {
                 chainStart: this.myChain[1],
                 timestamp: seenThrough >= nowMicros ? seenThrough + 1 : nowMicros,
                 priorTime: seenThrough,
-            }
+            };
             resultInfo = bundler.seal(commitInfo);
             await this.receiveCommit(bundler.bytes);
         } finally {
@@ -177,7 +177,7 @@ export class GinkInstance {
             try {
                 peer.close();
             } catch (problem) {
-                console.error(`problem closing peer: ${problem}`)
+                console.error(`problem closing peer: ${problem}`);
             }
         }
         await this.store.close();
@@ -194,7 +194,7 @@ export class GinkInstance {
      * Tries to add a commit to the local store.  If successful (i.e. it hasn't seen it before)
      * then it will also publish that commit to the connected peers.
      * 
-     * This is called both from addPendingCommit (for locally produced commits) as well as
+     * This is called both from addPendingCommit (for locally produced commits) and
      * being called by receiveMessage.
      * 
      * @param commitBytes The bytes that correspond to this transaction.
@@ -229,7 +229,7 @@ export class GinkInstance {
     protected async receiveMessage(messageBytes: Uint8Array, fromConnectionId: number) {
         await this.ready;
         const peer = this.peers.get(fromConnectionId);
-        if (!peer) throw Error("Got a message from a peer I don't have a proxy for?")
+        if (!peer) throw Error("Got a message from a peer I don't have a proxy for?");
         const unlockingFunction = await this.processingLock.acquireLock();
         try {
             const parsed = SyncMessageBuilder.deserializeBinary(messageBytes);
@@ -251,7 +251,7 @@ export class GinkInstance {
                     medallion: ack.getMedallion(),
                     timestamp: ack.getTimestamp(),
                     chainStart: ack.getChainStart()
-                }
+                };
                 this.logger(`got ack from ${fromConnectionId}: ${JSON.stringify(info)}`);
                 this.peers.get(fromConnectionId)?.hasMap?.markAsHaving(info);
             }
@@ -290,11 +290,11 @@ export class GinkInstance {
                     resolve(peer);
                 else
                     peer.ready.then(resolve);
-            }
+            };
             websocketClient.onerror = function (ev: Event) {
                 // if/when this is called depends on the details of the websocket implementation
-                console.error(`error on connection ${connectionId} to ${target}, ${ev}`)
-            }
+                console.error(`error on connection ${connectionId} to ${target}, ${ev}`);
+            };
             websocketClient.onclose = function (ev: CloseEvent) {
                 // this should always be called once the peer disconnects, including in cases of error
                 onClose(`closed connection ${connectionId} to ${target}`);
@@ -305,7 +305,7 @@ export class GinkInstance {
 
                 // I'm intentionally leaving the peer object in the peers map just in case we get data from them.
                 // thisClient.peers.delete(connectionId);  // might still be processing data from peer
-            }
+            };
             websocketClient.onmessage = function (ev: MessageEvent) {
                 // Called when any protocol messages are received.
                 const data = ev.data;
@@ -314,9 +314,9 @@ export class GinkInstance {
                     thisClient.receiveMessage(uint8View, connectionId);
                 } else {
                     // We don't expect any non-binary text messages.
-                    console.error(`got non-arraybuffer message: ${data}`)
+                    console.error(`got non-arraybuffer message: ${data}`);
                 }
-            }
+            };
         });
     }
 }

@@ -17,7 +17,7 @@ export class Container {
      * So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
      * See factories.ts for the actual implementation.
      * 
-     * The backrefs capability would allow you to find containers pointing to this container as of a particular time.
+     * The backref capability would allow you to find containers pointing to this container as of a particular time.
      */
     static _getBackRefsFunction: (a: GinkInstance, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown>;
 
@@ -25,7 +25,7 @@ export class Container {
      * 
      * @param ginkInstance required
      * @param address not necessary for root schema
-     * @param containerBuilder will try to fetch if not specified
+     * @param behavior
      */
     protected constructor(
         readonly ginkInstance: GinkInstance, 
@@ -33,8 +33,8 @@ export class Container {
         readonly behavior: Behavior) {}
 
     /**
-     * Starts an async iterator that returns all of the containers pointing to the object in question..
-     * Note: the behavior of this method may change to only include backrefs to lists and vertices
+     * Starts an async iterator that returns all the containers pointing to the object in question.
+     * Note: the behavior of this method may change to only include backref to lists and vertices
      * (e.g. those connections that are popped rather than overwritten, so I know when they're removed)
      * @param asOf Effective time to look at.
      * @returns an async generator of [key, Container], where key is they Directory key, or List entry muid, or undefined for Box
@@ -56,7 +56,7 @@ export class Container {
      * @returns a promise the resolves to the muid of the change
      */
     protected async addEntry(key?: KeyType | true, value?: Value | Container | Deletion, change?: Bundler | string): Promise<Muid> {
-        let immediate: boolean = false;
+        let immediate = false;
         if (!(change instanceof Bundler)) {
             immediate = true;
             const msg = change;

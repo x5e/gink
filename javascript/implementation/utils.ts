@@ -14,7 +14,7 @@ export function ensure(x: any, msg?: string) {
     return x;
 }
 
-export function noOp(_?:any) { };
+export function noOp(_?) { ensure(true);}
 
 /**
  * Randomly selects a number that can be used as a medallion.
@@ -132,7 +132,7 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
         for (let i=0;i<keys.length;i++) {
             result.set(unwrapKey(keys[i]), unwrapValue(values[i]));
         }
-        return result
+        return result;
     }
     if (valueBuilder.hasTuple()) {
         const tuple = valueBuilder.getTuple();
@@ -241,9 +241,9 @@ export function valueToJson(value: Value): string {
     if (value instanceof Map) {
         const entries = Array.from(value.entries());
         entries.sort();
-        return "{" + entries.map(function (pair) { return `"${pair[0]}":` + valueToJson(pair[1]) }).join(",") + "}";
+        return "{" + entries.map(function (pair) { return `"${pair[0]}":` + valueToJson(pair[1]); }).join(",") + "}";
     }
-    throw new Error(`value not recognized: ${value}`)
+    throw new Error(`value not recognized: ${value}`);
 }
 
 export function muidTupleToMuid(tuple: MuidTuple): Muid {
@@ -251,14 +251,14 @@ export function muidTupleToMuid(tuple: MuidTuple): Muid {
         timestamp: tuple[0],
         medallion: tuple[1],
         offset: tuple[2],
-    }
+    };
 }
 
 /**
  * Checks the resource path to ensure that it will resolve to a sensible file.
  * Specifically, it will require that each path component start with [a-zA-Z0-9_],
  * and only allow [a-zA-Z0-9_.@-] for following characters.  This is to prevent
- * users from accessing hidden files with a dot prefix and traversing up with ".."
+ * users from accessing hidden files with a dot prefix and traversing up with dot-dot
  * @param path resource requested
  * @returns True if the path doesn't look like something we should let users access.
  */
@@ -268,8 +268,8 @@ export function isPathDangerous(path: string): boolean {
 }
 
 /**
-* Uses console.error to log messages to stderr in a form like:
-* [04:07:03.227Z CommandLineInterace.ts:51] got chain manager, using medallion=383316229311328
+* Uses `console.error` to log messages to stderr in a form like:
+* [04:07:03.227Z CommandLineInterface.ts:51] got chain manager, using medallion=383316229311328
 * That is to say, it's:
 * [<Timestamp> <SourceFileName>:<SourceLine>] <Message>
 * @param msg message to log

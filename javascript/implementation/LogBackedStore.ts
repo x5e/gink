@@ -26,7 +26,7 @@ import { ChainTracker } from "./ChainTracker";
 export class LogBackedStore implements Store {
 
     readonly ready: Promise<void>;
-    private commitsProcessed: number = 0;
+    private commitsProcessed = 0;
     private fileHandle: FileHandle;
     private indexedDbStore: IndexedDbStore;
 
@@ -35,11 +35,13 @@ export class LogBackedStore implements Store {
     }
 
     private async openAndLock(filename: string, truncate?: boolean): Promise<FileHandle> {
-        return new Promise(async (resolve, reject) => {
-            const fh = await open(filename, "a+");
+        const fh = await open(filename, "a+");
+        if (truncate) await fh.truncate();
+        return new Promise( (resolve, reject) => {
+
             // It's better to truncate rather than unlink, because an unlink could result
             // in two instances thinking that they have a lock on the same file.
-            if (truncate) await fh.truncate();
+
             flock(fh.fd, "exnb", async (err) => {
                 if (err) return reject(err);
                 resolve(fh);
@@ -79,7 +81,7 @@ export class LogBackedStore implements Store {
         this.logger(`LogBackedStore.ready for ${this.filename}`);
     }
 
-    async getOrderedEntries(container: Muid, through: number=Infinity, asOf?: AsOf): Promise<Entry[]> {
+    async getOrderedEntries(container: Muid, through=Infinity, asOf?: AsOf): Promise<Entry[]> {
         await this.ready;
         return this.indexedDbStore.getOrderedEntries(container, through, asOf);
     }

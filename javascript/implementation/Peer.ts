@@ -20,7 +20,7 @@ export class Peer {
             thisPeer.callWhenReady = resolve;
             thisPeer.callOnTimeout = reject;
         });
-        setTimeout(()=>{thisPeer.callOnTimeout()}, 1000);
+        setTimeout(()=>{thisPeer.callOnTimeout();}, 1000);
     }
 
     close() {

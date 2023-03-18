@@ -13,11 +13,11 @@ import { ensure } from "./utils";
 export class RoutingServerInstance extends GinkInstance {
 
     constructor(readonly filePath: FilePath, readonly logger: CallBack = console.log) {
-        super(new LogBackedStore(filePath, false, logger), {software: `routing server for ${filePath}`}, logger)
+        super(new LogBackedStore(filePath, false, logger), {software: `routing server for ${filePath}`}, logger);
     }
 
     async onConnection(connection: WebSocketConnection) {
-        // Note: can't await before the connection is accepted or you'll miss the greeting.
+        // Note: can't await before the connection is accepted, or you'll miss the greeting.
         this.logger(`Connection accepted for ${this.filePath}`);
         const sendFunc = (data: Uint8Array) => connection.sendBytes(Buffer.from(data));
         const closeFunc = () => { connection.close(); };

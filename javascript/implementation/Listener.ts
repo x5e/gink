@@ -14,7 +14,7 @@ export class Listener {
 
     ready: Promise<any>;
     private websocketServer: WebSocketServer;
-    private httpServer: HttpServer | HttpsServer;
+    readonly httpServer: HttpServer | HttpsServer;
 
     constructor(args: {
         requestHandler: (request: WebSocketRequest)=>void,
@@ -31,7 +31,7 @@ export class Listener {
             callWhenReady = resolve;
         });
         if (args.sslKeyFilePath && args.sslCertFilePath) {
-            var options = {
+            const options = {
                 key: readFileSync(args.sslKeyFilePath),
                 cert: readFileSync(args.sslCertFilePath),
             };

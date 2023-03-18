@@ -59,10 +59,10 @@ export class Bundler {
         this.requireNotSealed();
         const offset = ++this.countItems;
         this.bundleBuilder.getChangesMap().set(offset, changeBuilder);
-        // Using an anonymous class here because I only need the interface of Address
+        // Using an anonymous class here because I only need the interface of Address,
         // but I need some non-trivial behavior: the timestamp and possibly medallion 
-        // are undefined until the associated bundle is finalized, then all of the 
-        // components of the address become well defined.
+        // are undefined until the associated bundle is finalized, then all the
+        // components of the address become well-defined.
         return new class {
             constructor(private bundler: Bundler, readonly offset: number) {}
             get medallion() { return this.bundler.medallion; }
@@ -85,7 +85,7 @@ export class Bundler {
     seal(commitInfo: BundleInfo): BundleInfo {
         this.requireNotSealed();
         if (this.preAssignedMedallion && this.preAssignedMedallion != commitInfo.medallion) {
-            throw new Error("specifed commitInfo doesn't match pre-assigned medallion");
+            throw new Error("specified commitInfo doesn't match pre-assigned medallion");
         }
         this.commitInfo = {...commitInfo};
         this.commitInfo.comment = this.pendingComment;

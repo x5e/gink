@@ -1,13 +1,13 @@
-import { Container as ContainerBuilder } from "../builders/container_pb";
-import { GinkInstance } from "./GinkInstance";
-import { Container } from "./Container";
-import { Value, Muid, Entry, AsOf } from "./typedefs";
-import { Bundler } from "./Bundler";
-import { ensure, muidToBuilder, muidToString, muidTupleToMuid } from "./utils";
-import { Movement as MovementBuilder } from "../builders/movement_pb";
-import { Change as ChangeBuilder } from "../builders/change_pb";
-import { interpret, toJson } from "./factories";
-import { Behavior } from "../builders/behavior_pb";
+import {Container as ContainerBuilder} from "../builders/container_pb";
+import {GinkInstance} from "./GinkInstance";
+import {Container} from "./Container";
+import {AsOf, Entry, Muid, Value} from "./typedefs";
+import {Bundler} from "./Bundler";
+import {ensure, muidToBuilder, muidToString, muidTupleToMuid} from "./utils";
+import {Movement as MovementBuilder} from "../builders/movement_pb";
+import {Change as ChangeBuilder} from "../builders/change_pb";
+import {interpret, toJson} from "./factories";
+import {Behavior} from "../builders/behavior_pb";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
@@ -37,9 +37,9 @@ export class Sequence extends Container {
 
     /**
      * Removes and returns the specified entry of the list (default last),
-     * in the provided change set or immedately if no CS is supplied.
+     * in the provided change set or immediately if no CS is supplied.
      * Returns undefined when called on an empty list (and no changes are made).
-     * @param muid 
+     * @param what
      * @param change 
      */
     async pop(what?: Muid | number, change?: Bundler|string): Promise<Container | Value | undefined> {
@@ -54,13 +54,13 @@ export class Sequence extends Container {
         } else {
             what = (typeof (what) == "number") ? what : -1;
             // Should probably change the implementation to not copy all intermediate entries into memory.
-            const entries = await this.ginkInstance.store.getOrderedEntries(this.address, what)
+            const entries = await this.ginkInstance.store.getOrderedEntries(this.address, what);
             if (entries.length == 0) return undefined;
-            const entry = entries[entries.length - 1]
+            const entry = entries[entries.length - 1];
             returning = await interpret(entry, this.ginkInstance);
             muid = muidTupleToMuid(entry.entryId);
         }
-        let immediate: boolean = false;
+        let immediate = false;
         if (!(change instanceof Bundler)) {
             immediate = true;
             change = new Bundler(change);
@@ -81,7 +81,7 @@ export class Sequence extends Container {
      * Alias for this.pop(0, changeSet)
      */
     async shift(change?: Bundler|string): Promise<Container | Value | undefined> {
-        return await this.pop(0, change)
+        return await this.pop(0, change);
     }
 
     /**
@@ -108,22 +108,21 @@ export class Sequence extends Container {
 
     /**
      * Dumps the contents of this list to a javascript array.
-     * useful for debugging and could also be use to export data by walking the tree
+     * useful for debugging and could also be used to export data by walking the tree
      * @param through how many elements to get, positive starting from beginning, negative starting from end
      * @param asOf effective time to get the dump for: leave undefined to get data as of the present
      * @returns an array containing Values (e.g. numbers, strings) and Containers (e.g. other Lists, Boxes, Directories)
      */
-    async toArray(through: number = Infinity, asOf?: AsOf): Promise<(Container | Value)[]> {
+    async toArray(through = Infinity, asOf?: AsOf): Promise<(Container | Value)[]> {
         const thisList = this;
         const entries = await thisList.ginkInstance.store.getOrderedEntries(thisList.address, through, asOf);
-        const transformed = await Promise.all(entries.map(async function (entry: Entry): Promise<Container | Value> {
+        return await Promise.all(entries.map(async function (entry: Entry): Promise<Container | Value> {
             return await interpret(entry, thisList.ginkInstance);
         }));
-        return transformed;
     }
 
     async size(asOf?: AsOf): Promise<number> {
-        //TODO(TESTME)
+        //TODO(TEST ME)
         const entries = await this.ginkInstance.store.getOrderedEntries(this.address, Infinity, asOf);
         return entries.length;
     }
@@ -134,7 +133,7 @@ export class Sequence extends Container {
      * @param asOf effective time to get the contents for
      * @returns an async iterator across everything in the list, with values returned being pairs of Muid, (Value|Container),
      */
-    entries(through: number=Infinity, asOf?: AsOf): AsyncGenerator<[Muid,Value|Container], void, unknown> {
+    entries(through=Infinity, asOf?: AsOf): AsyncGenerator<[Muid,Value|Container], void, unknown> {
         const thisList = this;
         return (async function*(){
             // Note: I'm loading all entries memory despite using an async generator due to shitty IndexedDb 
@@ -153,7 +152,7 @@ export class Sequence extends Container {
      * Mostly intended for demo/debug purposes.
      * @param indent true to pretty print
      * @param asOf effective time
-     * @param seen (internal use only! prevents cycles from breaking things)
+     * @param seen (internal use only! This prevents cycles from breaking things)
      * @returns a JSON string
      */
     async toJson(indent: number|boolean=false, asOf?: AsOf, seen?: Set<string>): Promise<string> {

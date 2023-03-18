@@ -40,7 +40,7 @@ export class Directory extends Container {
 
     /**
      * Adds a deletion marker (tombstone) for a particular key in the directory.
-     * The corresponding value will be seen to be unset in the datamodel.
+     * The corresponding value will be seen to be unset in the data model.
      * @param key 
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
@@ -52,6 +52,7 @@ export class Directory extends Container {
     /**
     * Returns a promise that resolves to the most recent value set for the given key, or undefined.
     * @param key
+     * @param asOf
     * @returns undefined, a basic value, or a container
     */
     async get(key: KeyType, asOf?: AsOf): Promise<Container | Value | undefined> {
@@ -71,7 +72,7 @@ export class Directory extends Container {
 
     /**
      * Dumps the contents of this directory into a javascript Map; mostly useful for 
-     * debugging though also could be use to create a backup of a database.
+     * debugging though also could be used to create a backup of a database.
      * @param asOf effective time to get the dump for, or undefined for the present
      * @returns a javascript map from keys (numbers or strings) to values or containers
      */
@@ -90,7 +91,7 @@ export class Directory extends Container {
      * Mostly intended for demo/debug purposes.
      * @param indent true to pretty print
      * @param asOf effective time
-     * @param seen (internal use only! prevents cycles from breaking things)
+     * @param seen (internal use only! This prevents cycles from breaking things)
      * @returns a JSON string
      */
     async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
@@ -109,7 +110,7 @@ export class Directory extends Container {
             } else {
                 returning += ",";
             }
-            returning += `"${key}":`
+            returning += `"${key}":`;
             returning += await toJson(value, indent === false ? false : +indent + 1, asOf, seen);
         }
         returning += "}";

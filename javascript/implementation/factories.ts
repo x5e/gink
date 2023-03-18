@@ -1,5 +1,5 @@
 /**
- * This file contains functions that need to constuct generic Containers or convert from a
+ * This file contains functions that need to construct generic Containers or convert from a
  * container of runtime determined type to something else.  Typescript has problems with
  * imports if two classes depend on each other so these functions have been pulled out into
  * something neither Container nor any of its subclasses need directly.
@@ -42,7 +42,7 @@ export async function interpret(entry: Entry, ginkInstance: GinkInstance): Promi
             timestamp: entry.pointeeList[0][0],
             medallion: entry.pointeeList[0][1],
             offset: entry.pointeeList[0][2],
-        }
+        };
         return construct(ginkInstance, muid);
     }
     throw new Error(`don't know how to interpret entry: ${JSON.stringify(entry)}`);
@@ -61,7 +61,7 @@ export async function toJson(value: Value | Container, indent: number | boolean 
         if (value instanceof Box) {
             return await value.toJson(indent, asOf, seen);
         }
-        throw new Error(`container type not recognized: ${value}`)
+        throw new Error(`container type not recognized: ${value}`);
     } else {
         return valueToJson(value);
     }
@@ -74,7 +74,7 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
         return unwrapValue(entryBuilder.getValue());
     }
     if (entryBuilder.hasPointee()) {
-        const destAddress = builderToMuid(entryBuilder.getPointee(), entryAddress)
+        const destAddress = builderToMuid(entryBuilder.getPointee(), entryAddress);
         return await construct(ginkInstance, destAddress);
     }
     if (entryBuilder.getDeletion()) {
@@ -114,4 +114,4 @@ Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Co
             }
         }
     })();
-}
+};
