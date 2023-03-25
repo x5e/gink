@@ -1,4 +1,4 @@
-import { BundleBytes, Medallion, ChainStart, SeenThrough, Bytes, AsOf } from "./typedefs";
+import { BundleBytes, Medallion, ChainStart, SeenThrough, Bytes, AsOf, KeyType } from "./typedefs";
 import { BundleInfo, Muid, Entry, CallBack } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
@@ -31,9 +31,16 @@ export class LogBackedStore implements Store {
     private indexedDbStore: IndexedDbStore;
 
     constructor(readonly filename: string, reset = false, protected logger: CallBack = (() => null)) {
+        // console.error(`opening ${filename}`);
         this.ready = this.initialize(filename, reset);
     }
 
+    async close() {
+        // console.error(`closing ${this.filename}`);
+        await this.ready;
+        await this.fileHandle.close();
+        await this.indexedDbStore.close();
+    }
     private async openAndLock(filename: string, truncate?: boolean): Promise<FileHandle> {
         const fh = await open(filename, "a+");
         if (truncate) await fh.truncate();
@@ -146,17 +153,11 @@ export class LogBackedStore implements Store {
 
     async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>> {
         await this.ready;
-        return this.getKeyedEntries(container, asOf);
+        return this.indexedDbStore.getKeyedEntries(container, asOf);
     }
 
     async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
         await this.ready;
         return this.indexedDbStore.getBackRefs(pointingTo);
-    }
-
-    async close() {
-        await this.ready;
-        await this.fileHandle.close();
-        await this.indexedDbStore.close();
     }
 }

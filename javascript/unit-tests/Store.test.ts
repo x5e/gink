@@ -25,6 +25,7 @@ test('placeholder', () => {
  * 
  * @param storeMaker must return a fresh (empty) store on each invocation
  * @param implName name of this implementation
+ * @param replacer thing to check when using persistence
  */
 export function testStore(implName: string, storeMaker: StoreMaker, replacer?: StoreMaker) {
     let store: Store;
@@ -137,13 +138,13 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     test(`${implName} create / view Entry`, async () => {
         const bundler = new Bundler();
         const sourceAddress = {medallion: 1, timestamp:2, offset: 3};
-        const address = bundler.addEntry(
-            (new EntryBuilder())
-                .setBehavior(Behavior.DIRECTORY)
-                .setContainer(muidToBuilder(sourceAddress))
-                .setKey(wrapKey("abc"))
-                .setValue(wrapValue("xyz"))
-        );
+        const entryBuilder = new EntryBuilder();
+        entryBuilder
+            .setBehavior(Behavior.DIRECTORY)
+            .setContainer(muidToBuilder(sourceAddress))
+            .setKey(wrapKey("abc"))
+            .setValue(wrapValue("xyz"));
+        const address = bundler.addEntry(entryBuilder);
         bundler.seal({medallion: 4, chainStart: 5, timestamp: 5});
         await store.addBundle(bundler.bytes);
         ensure(address.medallion == 4);

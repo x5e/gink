@@ -232,14 +232,14 @@ export function valueToJson(value: Value): string {
         const hexString = Array.from(value).map(byteToHex).join("");
         return `"${hexString}"`;
     }
-    if (value instanceof Date) {
-        return `"${value.toISOString()}"`;
+    if ("function" === typeof value["toISOString"]) {
+        return `"${(value as Date).toISOString()}"`;
     }
     if (Array.isArray(value)) {
         return "[" + value.map(valueToJson).join(",") + "]";
     }
-    if (value instanceof Map) {
-        const entries = Array.from(value.entries());
+    if (value instanceof Map || value[Symbol.toStringTag] === "Map") {
+        const entries = Array.from((value)["entries"]());
         entries.sort();
         return "{" + entries.map(function (pair) { return `"${pair[0]}":` + valueToJson(pair[1]); }).join(",") + "}";
     }
