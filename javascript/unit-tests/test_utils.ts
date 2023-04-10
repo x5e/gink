@@ -1,6 +1,6 @@
 import { Medallion, ChainStart, BundleBytes, Timestamp } from "../implementation/typedefs";
-import { Bundle as BundleBuilder } from "../builders/bundle_pb";
 import { Store } from "../implementation/Store";
+import { BundleBuilder } from "../implementation/builders";
 
 export const MEDALLION1 = 425579549941797;
 export const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;
@@ -20,7 +20,7 @@ export function makeChainStart(comment: string, medallion: Medallion, chainStart
 }
 
 export function extendChain(comment: string, previous: BundleBytes, timestamp: Timestamp): BundleBytes {
-    const parsedPrevious = BundleBuilder.deserializeBinary(previous);
+    const parsedPrevious = <BundleBuilder> BundleBuilder.deserializeBinary(previous);
     const subsequent = new BundleBuilder();
     subsequent.setMedallion(parsedPrevious.getMedallion());
     subsequent.setPrevious(parsedPrevious.getTimestamp());

@@ -4,4 +4,4 @@ Dockerfile
 **/*.out
 **/scratch.*
 **/__pycache__
-
+package-lock.json

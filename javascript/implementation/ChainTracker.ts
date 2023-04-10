@@ -1,5 +1,5 @@
 import { BundleInfo, Medallion, ChainStart, SeenThrough, Muid, CallBack, Timestamp } from "./typedefs";
-import { SyncMessage } from "../builders/sync_message_pb";
+import { SyncMessageBuilder, GreetingBuilder, GreetingEntryBuilder } from "./builders";
 
 
 /**
@@ -14,7 +14,7 @@ export class ChainTracker {
 
     constructor({ greetingBytes = null, greeting = null }) {
         if (greetingBytes) {
-            greeting = SyncMessage.Greeting.deserializeBinary(greetingBytes);
+            greeting = GreetingBuilder.deserializeBinary(greetingBytes);
         }
         if (!greeting) return;
         for (const entry of greeting.getEntriesList()) {
@@ -89,11 +89,11 @@ export class ChainTracker {
      * the priorTimes aren't included, so recipient should not markIfNovel using
      * @returns 
      */
-    private constructGreeting(): SyncMessage.Greeting {
-        const greeting = new SyncMessage.Greeting();
+    private constructGreeting(): GreetingBuilder {
+        const greeting = new GreetingBuilder();
         for (const [medallion, medallionMap] of this.data) {
             for (const [chainStart, commitInfo] of medallionMap) {
-                const entry = new SyncMessage.Greeting.GreetingEntry();
+                const entry = new GreetingEntryBuilder();
                 entry.setMedallion(medallion);
                 entry.setChainStart(chainStart);
                 entry.setSeenThrough(commitInfo.timestamp);
@@ -108,7 +108,7 @@ export class ChainTracker {
     */
     getGreetingMessageBytes(): Uint8Array {
         const greeting = this.constructGreeting();
-        const msg = new SyncMessage();
+        const msg = new SyncMessageBuilder();
         msg.setGreeting(greeting);
         return msg.serializeBinary();
     }

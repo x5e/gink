@@ -49,8 +49,10 @@ class LmdbStore(AbstractStore):
                 * The middle-key will be binaryproto of the key if the container is a directory.
                 * In the case of a SEQUENCE, the middle-key will be (effective-time, move-muid?),
                   where the move-muid is only present in the case of a move.
+                * In the case of a PROPERTY the middle key will be the muid of the described thing.
+                * In the case of a BOX, the middle key won't be there.
 
-        removals - Used to soft delete items from the entries table.
+        removals - Used to soft-delete items from the entries table.
             Designed so that the first 40 key bytes matches the first 40 bytes of the entries key.
             When removed to a different position and retaining history, the old entry stays,
             with the removal signaling a soft delete, and a new entry is added to the entries table.
@@ -81,7 +83,7 @@ class LmdbStore(AbstractStore):
             key: bytes(BundleInfo)
             val: bundle bytes (i.e. same as in the bundles table)
 
-        properties - an index to enable looking up all of the properties on an object
+        properties - an index to enable looking up all the properties on an object
                 < NOT YET IMPLEMENTED >
             key: (describing-muid, property-muid, entry-muid)
             val: bytes of the corresponding key in the entry table

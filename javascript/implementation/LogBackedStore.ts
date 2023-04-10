@@ -7,9 +7,9 @@ const promises = require("fs").promises;
 type FileHandle = any;
 const open = promises.open;
 import { flock } from "fs-ext";
-import { LogFile } from "../builders/log_file_pb";
 import { assert } from "console";
 import { ChainTracker } from "./ChainTracker";
+import {ChainEntryBuilder, LogFileBuilder} from "./builders";
 
 /*
     At time of writing, there's only an in-memory implementation of 
@@ -72,14 +72,14 @@ export class LogBackedStore implements Store {
             if (size) {
                 const uint8Array = new Uint8Array(size);
                 await this.fileHandle.read(uint8Array, 0, size, 0);
-                const logFile = LogFile.deserializeBinary(uint8Array);
-                const commits = logFile.getCommitsList();
+                const logFileBuilder = <LogFileBuilder> LogFileBuilder.deserializeBinary(uint8Array);
+                const commits = logFileBuilder.getCommitsList();
                 for (const commit of commits) {
                     const [_info, added] = await this.indexedDbStore.addBundle(commit);
                     assert(added);
                     this.commitsProcessed += 1;
                 }
-                const chainEntries = logFile.getChainEntriesList();
+                const chainEntries = logFileBuilder.getChainEntriesList();
                 for (const entry of chainEntries) {
                     await this.indexedDbStore.claimChain(entry.getMedallion(), entry.getChainStart());
                 }
@@ -103,7 +103,7 @@ export class LogBackedStore implements Store {
         await this.ready;
         const [info, added] = await this.indexedDbStore.addBundle(commitBytes);
         if (added) {
-            const logFragment = new LogFile();
+            const logFragment = new LogFileBuilder();
             logFragment.setCommitsList([commitBytes]);
             await this.fileHandle.appendFile(logFragment.serializeBinary());
         }
@@ -122,8 +122,8 @@ export class LogBackedStore implements Store {
 
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
         await this.ready;
-        const fragment = new LogFile();
-        const entry = new LogFile.ChainEntry();
+        const fragment = new LogFileBuilder();
+        const entry = new ChainEntryBuilder();
         entry.setChainStart(chainStart);
         entry.setMedallion(medallion);
         fragment.setChainEntriesList([entry]);
@@ -146,9 +146,9 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getContainerBytes(address);
     }
 
-    async getEntry(container?: Muid, key?: KeyType|Muid, asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: KeyType, asOf?: AsOf): Promise<Entry | undefined> {
         await this.ready;
-        return this.indexedDbStore.getEntry(container, key, asOf);
+        return this.indexedDbStore.getEntryByKey(container, key, asOf);
     }
 
     async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>> {

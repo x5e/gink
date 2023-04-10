@@ -4,7 +4,6 @@
  * imports if two classes depend on each other so these functions have been pulled out into
  * something neither Container nor any of its subclasses need directly.
  */
-import { Container as ContainerBuilder } from "../builders/container_pb";
 import { Muid, Value, Bytes, AsOf, Entry } from "./typedefs";
 import { Container } from "./Container";
 import { Directory } from "./Directory";
@@ -12,8 +11,7 @@ import { Sequence } from "./Sequence";
 import { Box } from "./Box";
 import { GinkInstance } from "./GinkInstance";
 import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid } from "./utils";
-import { Entry as EntryBuilder } from "../builders/entry_pb";
-import { Behavior } from "../builders/behavior_pb";
+import { Behavior, EntryBuilder, ContainerBuilder } from "./builders";
 
 export async function construct(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
     if (address.timestamp === -1) {
@@ -23,7 +21,7 @@ export async function construct(ginkInstance: GinkInstance, address: Muid, conta
     }
     if (containerBuilder === undefined) {
         const containerBytes = ensure(await ginkInstance.store.getContainerBytes(address));
-        containerBuilder = ContainerBuilder.deserializeBinary(containerBytes);
+        containerBuilder = <ContainerBuilder> ContainerBuilder.deserializeBinary(containerBytes);
     }
     if (containerBuilder.getBehavior() == Behavior.DIRECTORY) return (new Directory(ginkInstance, address, containerBuilder));
     if (containerBuilder.getBehavior() == Behavior.SEQUENCE) return (new Sequence(ginkInstance, address, containerBuilder));
@@ -69,7 +67,7 @@ export async function toJson(value: Value | Container, indent: number | boolean 
 
 export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: Bytes, entryAddress?: Muid): Promise<Value | Container | undefined> {
     ensure(entryBytes instanceof Uint8Array);
-    const entryBuilder = EntryBuilder.deserializeBinary(entryBytes);
+    const entryBuilder = <EntryBuilder> EntryBuilder.deserializeBinary(entryBytes);
     if (entryBuilder.hasValue()) {
         return unwrapValue(entryBuilder.getValue());
     }
@@ -86,7 +84,7 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
 /*
 * I can't import List, Directory, etc. into this Container.ts because it will cause the inherits clauses to break.
 * So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
-*/
+
 Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Container, asOf?: AsOf): 
     AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
     return (async function* () {
@@ -96,22 +94,24 @@ Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Co
             const containerBuilder = containerMuid.timestamp === 0 ? undefined :
                 ContainerBuilder.deserializeBinary(await instance.store.getContainerBytes(containerMuid));
             if (entry.behavior == Behavior.DIRECTORY) {
-                if (instance.store.getEntry(containerMuid, entry.semanticKey[0], asOf)) {
+                if (instance.store.getEntryByKey(containerMuid, entry.effectiveKey, asOf)) {
                     yield <[KeyType | Muid | undefined, Container]>
                         [entry.semanticKey[0], new Directory(instance, containerMuid, containerBuilder)];
                 }
             }
             if (entry.behavior == Behavior.SEQUENCE) {
                 const entryMuid = muidTupleToMuid(entry.entryId);
-                if (instance.store.getEntry(containerMuid, entryMuid, asOf)) {
+                if (instance.store.getEntryByKey(containerMuid, entryMuid, asOf)) {
                     yield [entryMuid, new Sequence(instance, containerMuid, containerBuilder)];
                 }
             }
             if (entry.behavior == Behavior.BOX) {
-                if (instance.store.getEntry(containerMuid, undefined, asOf)) {
+                if (instance.store.getEntryByKey(containerMuid, undefined, asOf)) {
                     yield [undefined, new Box(instance, containerMuid, containerBuilder)];
                 }
             }
         }
     })();
 };
+
+ */

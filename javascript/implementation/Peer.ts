@@ -1,12 +1,12 @@
-import { BundleInfo, BundleBytes, CallBack } from "./typedefs";
-import { noOp, ensure } from "./utils";
-import { ChainTracker } from "./ChainTracker";
-import { SyncMessage as SyncMessageBuilder } from "../builders/sync_message_pb";
+import {BundleBytes, BundleInfo, CallBack} from "./typedefs";
+import {ensure, noOp} from "./utils";
+import {ChainTracker} from "./ChainTracker";
+import {AckBuilder, SyncMessageBuilder} from "./builders";
 
 
 export class Peer {
     private sendFunc: (msg: Uint8Array) => void;
-    private closeFunc: () => void;
+    private readonly closeFunc: () => void;
     private callWhenReady: CallBack;
     private callOnTimeout: CallBack;
     hasMap?: ChainTracker;
@@ -37,20 +37,19 @@ export class Peer {
     }
 
     /**
-     * The Message proto contains an embedded oneof.  Essentially this will wrap
+     * The Message proto contains an embedded one-of.  Essentially this will wrap
      * the commit bytes payload in a wrapper by prefixing a few bytes to it.
      * In theory the "Message" proto could be expanded with some extra metadata
      * (e.g. send time) in the future.
      * Note that the commit is always passed around as bytes and then
-     * re-parsed as needed to avoid losing unknown fields.
+     * parsed as needed to avoid losing unknown fields.
      * @param bundleBytes: the bytes corresponding to a commit
      * @returns a serialized "Message" proto
      */
     private static makeCommitMessage(bundleBytes: Uint8Array): Uint8Array {
         const message = new SyncMessageBuilder();
         message.setBundle(bundleBytes);
-        const msgBytes = message.serializeBinary();
-        return msgBytes;
+        return message.serializeBinary();
     }
 
     /**
@@ -67,7 +66,7 @@ export class Peer {
     }
 
     _sendAck(changeSetInfo: BundleInfo) {
-        const ack = new SyncMessageBuilder.Ack();
+        const ack = new AckBuilder();
         ack.setMedallion(changeSetInfo.medallion);
         ack.setChainStart(changeSetInfo.chainStart);
         ack.setTimestamp(changeSetInfo.timestamp);

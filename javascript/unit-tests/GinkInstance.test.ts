@@ -1,8 +1,8 @@
 import { GinkInstance, IndexedDbStore, Bundler, BundleInfo } from "../implementation";
 import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
-import { Bundle as BundleBuilder } from "../builders/bundle_pb";
 import { ensure } from "../implementation/utils"
 import { BundleBytes } from "../implementation/typedefs";
+import { BundleBuilder } from "../implementation/builders";
 
 test('test commit', async () => {
     const store = new IndexedDbStore();
@@ -23,8 +23,8 @@ test('uses claimed chain', async () => {
     const commitBytes = makeChainStart("chain start comment", MEDALLION1, START_MICROS1);
     await store.addBundle(commitBytes);
     await store.claimChain(MEDALLION1, START_MICROS1);
-    store.getCommits((commitBytes: BundleBytes, _commitInfo: BundleInfo) => {
-        const commit = BundleBuilder.deserializeBinary(commitBytes);
+    await store.getCommits((commitBytes: BundleBytes, _commitInfo: BundleInfo) => {
+        const commit = <BundleBuilder> BundleBuilder.deserializeBinary(commitBytes);
         ensure(commit.getComment() == "chain start comment")
     })
     const instance = new GinkInstance(store);

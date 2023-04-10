@@ -1,11 +1,10 @@
-import { Container as ContainerBuilder } from "../builders/container_pb";
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
 import { Value, Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure } from "./utils";
 import { toJson, interpret } from "./factories";
-import { Behavior } from "../builders/behavior_pb";
+import { Behavior, ContainerBuilder} from "./builders";
 
 export class Box extends Container {
 
@@ -50,7 +49,7 @@ export class Box extends Container {
     * @returns undefined, a basic value, or a container
     */
     async get(asOf?: AsOf): Promise<Container | Value | undefined> {
-        const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);
+        const entry = await this.ginkInstance.store.getEntryByKey(this.address, undefined, asOf);
         return interpret(entry, this.ginkInstance);
     }
 
@@ -60,7 +59,7 @@ export class Box extends Container {
      * @returns 0 or 1 depending on whether there's something in the box.
      */
     async size(asOf?: AsOf): Promise<number> {
-        const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
+        const entry = await this.ginkInstance.store.getEntryByKey(this.address, undefined, asOf);
         return +!(entry === undefined || entry.deletion);
     }
 
@@ -70,7 +69,7 @@ export class Box extends Container {
      * @returns true if no value or container is in the box
      */
     async isEmpty(asOf?: AsOf): Promise<boolean> {
-        const entry = await this.ginkInstance.store.getEntry(this.address, undefined, asOf);    
+        const entry = await this.ginkInstance.store.getEntryByKey(this.address, undefined, asOf);
         return (entry === undefined || entry.deletion);
     }
 

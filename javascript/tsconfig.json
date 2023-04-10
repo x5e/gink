@@ -6,7 +6,8 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "outDir": "tsc.out",
-    "declaration": true
+    "declaration": true,
+    "allowJs": true
   },
-  "include": ["implementation/*.ts", "builders/*.js", "unit-tests/*.ts"]
+  "include": ["implementation/*.ts", "implementation/*.js", "builders/*.js", "unit-tests/*.ts"]
 }

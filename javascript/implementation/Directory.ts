@@ -1,11 +1,10 @@
 import { Container } from "./Container";
 import { Value, Muid, KeyType, AsOf } from "./typedefs";
-import { Container as ContainerBuilder } from "../builders/container_pb";
 import { Bundler } from "./Bundler";
 import { ensure, muidToString } from "./utils";
 import { GinkInstance } from "./GinkInstance";
 import { toJson, interpret } from "./factories";
-import { Behavior } from "../builders/behavior_pb";
+import { Behavior, ContainerBuilder } from "./builders";
 
 export class Directory extends Container {
 
@@ -56,7 +55,7 @@ export class Directory extends Container {
     * @returns undefined, a basic value, or a container
     */
     async get(key: KeyType, asOf?: AsOf): Promise<Container | Value | undefined> {
-        const entry = await this.ginkInstance.store.getEntry(this.address, key, asOf);
+        const entry = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
         return interpret(entry, this.ginkInstance);
     }
 
@@ -66,7 +65,7 @@ export class Directory extends Container {
     }
 
     async has(key: KeyType, asOf?: AsOf): Promise<boolean> {
-        const result = await this.ginkInstance.store.getEntry(this.address, key, asOf);
+        const result = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
         return result[1] !== undefined;
     }
 

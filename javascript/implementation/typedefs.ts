@@ -1,4 +1,4 @@
-import { Behavior } from "../builders/behavior_pb";
+import { Behavior } from "./builders";
 
 export type Bytes = Uint8Array;
 export type BundleBytes = Bytes;
@@ -12,7 +12,7 @@ export type Offset = number;
 export type DirPath = string;
 export type FilePath = string;
 export type NumberStr = string;
-export type KeyType = number | string;
+export type KeyType = number | string | Bytes;
 export type Value = number | string | boolean | null | Bytes | Map<KeyType, Value> | Array<Value> | Date;
 export type BundleInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, string];
 export type ChangeSetOffset = number;
@@ -52,10 +52,24 @@ export interface BundleInfo {
 export interface Entry {
     behavior: Behavior,
     containerId: MuidTuple;
-    semanticKey: KeyType[]; // use an empty list to denote no semantic key
+
+    /**
+     * effectiveKey is a KeyType if the entry is for a Directory, a Timestamp if it's for a sequence,
+     * MuidTuple if it's for a property, and empty list for a box.
+     */
+    effectiveKey: KeyType | Timestamp | MuidTuple | [];
     entryId: MuidTuple;
     pointeeList: MuidTuple[]; // use an empty list to denote no pointees
     value?: Value;
     expiry?: Timestamp;
     deletion?: boolean;
+    placementId: MuidTuple;
+}
+
+export interface Removal {
+    removing: MuidTuple;  // describes the placementId of the thing to be removed
+    movementId: MuidTuple; // the ID of the movement doing the removing
+    containerId: MuidTuple;
+    dest: number;
+    entryId: MuidTuple;
 }

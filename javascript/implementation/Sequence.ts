@@ -1,13 +1,10 @@
-import {Container as ContainerBuilder} from "../builders/container_pb";
 import {GinkInstance} from "./GinkInstance";
 import {Container} from "./Container";
 import {AsOf, Entry, Muid, Value} from "./typedefs";
 import {Bundler} from "./Bundler";
 import {ensure, muidToBuilder, muidToString, muidTupleToMuid} from "./utils";
-import {Movement as MovementBuilder} from "../builders/movement_pb";
-import {Change as ChangeBuilder} from "../builders/change_pb";
 import {interpret, toJson} from "./factories";
-import {Behavior} from "../builders/behavior_pb";
+import { Behavior, ChangeBuilder, MovementBuilder, ContainerBuilder } from "./builders";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
@@ -46,8 +43,9 @@ export class Sequence extends Container {
         let returning: Container | Value;
         let muid: Muid;
         if (what && typeof (what) == "object") {
+            if (what["offset"]) throw Error("not implemented");
             muid = what;
-            const entry = await this.ginkInstance.store.getEntry(this.address, muid);
+            const entry = await this.ginkInstance.store.getEntryByKey(this.address, undefined);
             if (!entry) return undefined;
             ensure(entry.entryId[0] == muid.timestamp && entry.entryId[2] == muid.offset);
             returning = await interpret(entry, this.ginkInstance);
@@ -90,7 +88,7 @@ export class Sequence extends Container {
      * @param asOf 
      * @returns value at the position of the list, or undefined if list is too small
      */
-    async at(position: number|Muid, asOf?: AsOf): Promise<Container | Value | undefined> {
+    async at(position: number, asOf?: AsOf): Promise<Container | Value | undefined> {
         if (typeof(position) == "number") {
             //TODO(https://github.com/google/gink/issues/68): fix crummy algo
             const entries = await this.ginkInstance.store.getOrderedEntries(this.address, position, asOf);
@@ -99,11 +97,8 @@ export class Sequence extends Container {
             if (position < 0 && Math.abs(position) > entries.length) return undefined;
             const entry = entries[entries.length - 1];
             return await interpret(entry, this.ginkInstance);
-        } else {
-            const entry = await this.ginkInstance.store.getEntry(this.address, position, asOf);
-            if (!entry) return undefined;
-            return await interpret(entry, this.ginkInstance);
         }
+        throw Error("unexpected")
     }
 
     /**

@@ -1,11 +1,7 @@
 import { BundleBytes, Entry } from "../implementation/typedefs"
 import { ChainTracker } from "../implementation/ChainTracker"
 import { Store } from "../implementation/Store";
-import { Bundle as BundleBuilder } from "../builders/bundle_pb";
-import { Change as ChangeBuilder } from "../builders/change_pb";
-import { Container as ContainerBuilder } from "../builders/container_pb";
-import { Entry as EntryBuilder } from "../builders/entry_pb";
-import { Behavior } from "../builders/behavior_pb";
+import { Behavior, EntryBuilder, ContainerBuilder, ChangeBuilder, BundleBuilder } from "../implementation/builders";
 import {
     makeChainStart, extendChain, addTrxns,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
@@ -96,10 +92,10 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sent: Array<BundleBytes> = [];
         await store.getCommits((x: BundleBytes) => { sent.push(x); });
         expect(sent.length).toBe(4);
-        expect(BundleBuilder.deserializeBinary(sent[0]).getTimestamp()).toBe(START_MICROS1);
-        expect(BundleBuilder.deserializeBinary(sent[1]).getTimestamp()).toBe(START_MICROS2);
-        expect(BundleBuilder.deserializeBinary(sent[2]).getTimestamp()).toBe(NEXT_TS1);
-        expect(BundleBuilder.deserializeBinary(sent[3]).getTimestamp()).toBe(NEXT_TS2);
+        expect((<BundleBuilder> BundleBuilder.deserializeBinary(sent[0])).getTimestamp()).toBe(START_MICROS1);
+        expect((<BundleBuilder> BundleBuilder.deserializeBinary(sent[1])).getTimestamp()).toBe(START_MICROS2);
+        expect((<BundleBuilder> BundleBuilder.deserializeBinary(sent[2])).getTimestamp()).toBe(NEXT_TS1);
+        expect((<BundleBuilder> BundleBuilder.deserializeBinary(sent[3])).getTimestamp()).toBe(NEXT_TS2);
     });
 
     test(`${implName} test claim chains`, async () => {
@@ -131,7 +127,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         ensure(commitInfo.timestamp == START_MICROS1);
         const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
         ensure(containerBytes);
-        const containerBuilder2 = ContainerBuilder.deserializeBinary(containerBytes);
+        const containerBuilder2 = <ContainerBuilder> ContainerBuilder.deserializeBinary(containerBytes);
         ensure(containerBuilder2.getBehavior() == Behavior.DIRECTORY);
     });
 
@@ -149,10 +145,10 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         await store.addBundle(bundler.bytes);
         ensure(address.medallion == 4);
         ensure(address.timestamp == 5);
-        const entry = <Entry> await store.getEntry(sourceAddress, "abc",);
+        const entry = <Entry> await store.getEntryByKey(sourceAddress, "abc",);
         ensure(matches(entry.containerId, [2,1,3]));
         ensure(matches(entry.entryId, [5,4,1]));
         ensure(entry.value == "xyz");
-        ensure(entry.semanticKey[0] == "abc");
+        ensure(entry.effectiveKey == "abc");
     });
 }

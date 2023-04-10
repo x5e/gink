@@ -1,17 +1,16 @@
 import { Peer } from "./Peer";
-import { makeMedallion, ensure, noOp, muidTupleToMuid } from "./utils";
-import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, AsOf, BundleInfo, Muid, Bytes, } from "./typedefs";
-import { SyncMessage as SyncMessageBuilder } from "../builders/sync_message_pb";
+import { makeMedallion, ensure, noOp } from "./utils";
+import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
-import { Container as ContainerBuilder } from "../builders/container_pb";
+
 import { Directory } from "./Directory";
 import { Box } from "./Box";
 import { Sequence } from "./Sequence";
 import { Store } from "./Store";
-import { Behavior } from "../builders/behavior_pb";
+import { Behavior, ContainerBuilder, SyncMessageBuilder } from "./builders";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -232,7 +231,7 @@ export class GinkInstance {
         if (!peer) throw Error("Got a message from a peer I don't have a proxy for?");
         const unlockingFunction = await this.processingLock.acquireLock();
         try {
-            const parsed = SyncMessageBuilder.deserializeBinary(messageBytes);
+            const parsed = <SyncMessageBuilder> SyncMessageBuilder.deserializeBinary(messageBytes);
             if (parsed.hasBundle()) {
                 const commitBytes: BundleBytes = parsed.getBundle_asU8();
                 await this.receiveCommit(commitBytes, fromConnectionId);

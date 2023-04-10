@@ -1,12 +1,9 @@
-import { Bundler } from "./Bundler";
-import { Entry as EntryBuilder } from "../builders/entry_pb";
-import { Value, KeyType, Muid, AsOf } from "./typedefs";
-import { muidToBuilder, wrapValue, wrapKey } from "./utils";
-import { Change as ChangeBuilder } from "../builders/change_pb";
-import { Deletion } from "./Deletion";
-import { GinkInstance } from "./GinkInstance";
-import { Behavior } from "../builders/behavior_pb";
-
+import {Bundler} from "./Bundler";
+import {Value, KeyType, Muid, AsOf} from "./typedefs";
+import {muidToBuilder, wrapValue, wrapKey} from "./utils";
+import {Deletion} from "./Deletion";
+import {GinkInstance} from "./GinkInstance";
+import { EntryBuilder, ChangeBuilder, Behavior } from "./builders";
 
 
 export class Container {
@@ -16,21 +13,22 @@ export class Container {
      * I can't import List, Directory, etc. into this file because it will cause the inherits clauses to break.
      * So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
      * See factories.ts for the actual implementation.
-     * 
+     *
      * The backref capability would allow you to find containers pointing to this container as of a particular time.
      */
     static _getBackRefsFunction: (a: GinkInstance, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown>;
 
     /**
-     * 
+     *
      * @param ginkInstance required
      * @param address not necessary for root schema
      * @param behavior
      */
     protected constructor(
-        readonly ginkInstance: GinkInstance, 
-        readonly address: Muid, 
-        readonly behavior: Behavior) {}
+        readonly ginkInstance: GinkInstance,
+        readonly address: Muid,
+        readonly behavior: Behavior) {
+    }
 
     /**
      * Starts an async iterator that returns all the containers pointing to the object in question.
@@ -49,13 +47,14 @@ export class Container {
     }
 
     /**
-     * 
+     *
      * @param key If absent, create a boxed entry, if KeyType, set a key in entry, if true, create a list entry
      * @param value What the container ought to contain (an immediate Value, a reference, or a deletion)
      * @param change Bundler to add this change to, or empty to apply immediately.
      * @returns a promise the resolves to the muid of the change
      */
-    protected async addEntry(key?: KeyType | true, value?: Value | Container | Deletion, change?: Bundler | string): Promise<Muid> {
+    protected async addEntry(key?: KeyType | true, value?: Value | Container | Deletion, change?: Bundler | string):
+            Promise<Muid> {
         let immediate = false;
         if (!(change instanceof Bundler)) {
             immediate = true;
@@ -68,9 +67,9 @@ export class Container {
             entryBuilder.setContainer(muidToBuilder(this.address, change.medallion));
         }
 
-        entryBuilder.setBehavior(this.behavior);        
+        entryBuilder.setBehavior(this.behavior);
 
-        if (typeof (key) == "number" || typeof (key) == "string") {
+        if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
             entryBuilder.setKey(wrapKey(key));
         }
 

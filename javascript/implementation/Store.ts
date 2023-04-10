@@ -77,12 +77,12 @@ export interface Store {
     // Returns the entries pointing to a particular container/node.
     getBackRefs(pointingTo: Muid): Promise<Entry[]>;
 
-    getEntry(container?: Muid, key?: KeyType|Muid, asOf?: AsOf): Promise<Entry | undefined>;
+    getEntryByKey(container?: Muid, key?: KeyType, asOf?: AsOf): Promise<Entry | undefined>;
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>>;
     getOrderedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Entry[]>
 
     /**
-     * Closes the underlying data store.  Implicitly awaits on the this.ready promise.
+     * Closes the underlying data store.  Implicitly awaits on the `this.ready` promise.
      */
     close: () => Promise<void>;
 }

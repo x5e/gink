@@ -3,15 +3,26 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value, MuidTuple, CallBack } from "./typedefs";
-import { Muid as MuidBuilder } from "../builders/muid_pb";
-import { Value as ValueBuilder } from "../builders/value_pb";
-import { Key as KeyBuilder } from "../builders/key_pb";
+import { Muid, Medallion, Value, MuidTuple, KeyType } from "./typedefs";
+import {
+    MuidBuilder,
+    ValueBuilder,
+    KeyBuilder,
+    Special,
+    TimestampBuilder,
+    NumberBuilder,
+    TupleBuilder, DocumentBuilder
+} from "./builders";
 
 export function ensure(x: any, msg?: string) {
     if (!x) 
         throw new Error(msg ?? "assert failed");
     return x;
+}
+
+export function nowMicroSeconds(): number {
+    // TODO: there's probably a better way ...
+    return Date.now() * 1000;
 }
 
 export function noOp(_?) { ensure(true);}
@@ -67,7 +78,7 @@ export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid
  * @param key 
  * @returns 
  */
-export function wrapKey(key: number | string): KeyBuilder {
+export function wrapKey(key: number | string | Uint8Array): KeyBuilder {
     const keyBuilder = new KeyBuilder();
     if (typeof (key) == "string") {
         keyBuilder.setCharacters(key);
@@ -77,7 +88,11 @@ export function wrapKey(key: number | string): KeyBuilder {
         keyBuilder.setNumber(key);
         return keyBuilder;
     }
-    throw new Error(`key not a number or string: ${key}`);
+    if (key instanceof Uint8Array) {
+        keyBuilder.setOctets(key);
+        return keyBuilder;
+    }
+    throw new Error(`key not a number or string or bytes: ${key}`);
 }
 
 /**
@@ -86,13 +101,16 @@ export function wrapKey(key: number | string): KeyBuilder {
  * @param keyBuilder 
  * @returns 
  */
-export function unwrapKey(keyBuilder: KeyBuilder): number | string {
+export function unwrapKey(keyBuilder: KeyBuilder): KeyType {
     ensure(keyBuilder);
     if (keyBuilder.hasCharacters()) {
         return keyBuilder.getCharacters();
     }
     if (keyBuilder.hasNumber()) {
         return keyBuilder.getNumber();
+    }
+    if (keyBuilder.hasOctets()) {
+        return keyBuilder.getOctets();
     }
     throw new Error("value isn't a number or string!");
 }
@@ -117,12 +135,13 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
     }
     if (valueBuilder.hasSpecial()) {
         const special = valueBuilder.getSpecial();
-        if (special == ValueBuilder.Special.NULL) return null;
-        if (special == ValueBuilder.Special.TRUE) return true;
-        return false;
+        if (special == Special.NULL) return null;
+        if (special == Special.TRUE) return true;
+        if (special == Special.FALSE) return false;
+        throw new Error("bad special");
     }
-    if (valueBuilder.hasOctects()) {
-        return valueBuilder.getOctects();
+    if (valueBuilder.hasOctets()) {
+        return valueBuilder.getOctets();
     }
     if (valueBuilder.hasDocument()) {
         const document = valueBuilder.getDocument();
@@ -156,21 +175,21 @@ export function wrapValue(arg: Value): ValueBuilder {
     ensure(arg !== undefined);
     const valueBuilder = new ValueBuilder();
     if (arg instanceof Uint8Array) {
-        return valueBuilder.setOctects(arg);
+        return valueBuilder.setOctets(arg);
     }
     if (arg instanceof Date) {
-        const timestamp = new ValueBuilder.Timestamp();
+        const timestamp = new TimestampBuilder();
         timestamp.setMillis(arg.valueOf());
         return valueBuilder.setTimestamp(timestamp);
     }
     if (arg === null) {
-        return valueBuilder.setSpecial(ValueBuilder.Special.NULL);
+        return valueBuilder.setSpecial(Special.NULL);
     }
     if (arg === true) {
-        return valueBuilder.setSpecial(ValueBuilder.Special.TRUE);
+        return valueBuilder.setSpecial(Special.TRUE);
     }
     if (arg === false) {
-        return valueBuilder.setSpecial(ValueBuilder.Special.FALSE);
+        return valueBuilder.setSpecial(Special.FALSE);
     }
     const argType = typeof (arg);
     if (argType == "string") {
@@ -178,25 +197,25 @@ export function wrapValue(arg: Value): ValueBuilder {
     }
     if (argType == "number") {
         //TODO: put in special cases for integers etc to increase efficiency
-        const number = new ValueBuilder.Number();
-        number.setDoubled(arg);
-        return valueBuilder.setNumber(number);
+        const numberBuilder = new NumberBuilder();
+        numberBuilder.setDoubled(arg);
+        return valueBuilder.setNumber(numberBuilder);
     }
     if (Array.isArray(arg)) {
-        const tuple = new ValueBuilder.Tuple();
-        tuple.setValuesList(arg.map(wrapValue));
-        return valueBuilder.setTuple(tuple);
+        const tupleBuilder = new TupleBuilder();
+        tupleBuilder.setValuesList(arg.map(wrapValue));
+        return valueBuilder.setTuple(tupleBuilder);
     }
     if (arg instanceof Map) {
-        const document = new ValueBuilder.Document();
+        const documentBuilder = new DocumentBuilder();
         for (const [key, val] of arg.entries()) {
             if (typeof(key) != "number" && typeof(key) != "string") {
                 throw new Error("keys in documents must be numbers or strings");
             }
-            document.addKeys(wrapKey(key));
-            document.addValues(wrapValue(val));
+            documentBuilder.addKeys(wrapKey(key));
+            documentBuilder.addValues(wrapValue(val));
         }
-        return valueBuilder.setDocument(document);
+        return valueBuilder.setDocument(documentBuilder);
     }
     throw new Error(`don't know how to wrap: ${arg}`);
 }
@@ -281,4 +300,25 @@ export function logToStdErr(msg: string) {
     const timestamp = ((new Date()).toISOString()).split("T").pop();
     // using console.error because I want to write to stderr
     console.error(`[${timestamp} ${caller}] ${msg}`);
+}
+
+export function sameData(key1: KeyType | MuidTuple | [], key2: [] | number | string | Uint8Array): boolean {
+    if (key1 instanceof Uint8Array && key2 instanceof Uint8Array) {
+        if (key1.byteLength != key2.byteLength) return false;
+        for (let i =0; i< key1.byteLength; i++) {
+            if (key1[i] != key2[i]) return false;
+        }
+        return true;
+    }
+    if (Array.isArray(key1) && Array.isArray(key2)) {
+        if (key1.length != key2.length) return false;
+        for (let i=0;i<key1.length;i++) {
+            if (key1[i] != key2[i]) return false;
+        }
+        return true;
+    }
+    if (typeof key1 == "number" || typeof key1 == "string") {
+        return key1 == key2;
+    }
+    return false;
 }
