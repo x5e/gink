@@ -288,10 +288,9 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
         return tuple([decode_value(x) for x in value_builder.tuple.values])  # type: ignore
     if value_builder.HasField("document"):  # type: ignore # pylint: disable=maybe-no-member
         result = {}
-        for i, _ in enumerate(value_builder.document.keys):  # type: ignore # pylint: disable=maybe-no-member
-            result[decode_key(value_builder.document.keys[i])] = decode_value(
-                # type: ignore # pylint: disable=maybe-no-member
-                value_builder.document.values[i])  # type: ignore # pylint: disable=maybe-no-member
+        for i, key in enumerate(value_builder.document.keys):  # type: ignore # pylint: disable=maybe-no-member
+            value: ValueBuilder = value_builder.document.values[i] # type: ignore # pylint: disable=maybe-no-member
+            result[decode_key(key)] = decode_value(value)
         return result
     raise ValueError(
         "don't know how to decode: %r,%s" % (
