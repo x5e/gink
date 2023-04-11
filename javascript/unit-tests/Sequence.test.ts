@@ -137,7 +137,8 @@ test('list-changeset', async function() {
     list.push("D", bundler2);
     ensure(matches(await list.toArray(), ["A", "B", "C"]));
     await instance.addBundler(bundler2);
-    ensure(matches(await list.toArray(), ["B", "C", "D"]));
+    const result = await list.toArray();
+    ensure(matches(result, ["B", "C", "D"]));
 });
 
 test('List.toJSON', async function() {

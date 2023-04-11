@@ -160,4 +160,9 @@ export class LogBackedStore implements Store {
         await this.ready;
         return this.indexedDbStore.getBackRefs(pointingTo);
     }
+
+    async getEntryById(container: Muid, entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
+        await this.ready;
+        return this.indexedDbStore.getEntryById(container, entryMuid, asOf);
+    }
 }

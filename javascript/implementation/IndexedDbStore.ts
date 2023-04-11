@@ -1,4 +1,4 @@
-import {ensure, matches, nowMicroSeconds, sameData, unwrapKey, unwrapValue} from "./utils";
+import {ensure, matches, generateTimestamp, sameData, unwrapKey, unwrapValue} from "./utils";
 import {deleteDB, IDBPDatabase, openDB} from 'idb';
 import {
     AsOf,
@@ -83,7 +83,7 @@ export class IndexedDbStore implements Store {
                 db.createObjectStore('containers'); // map from AddressTuple to ContainerBytes
 
                 // the "removals" stores objects of type `Removal`
-                db.createObjectStore('removals', {keyPath: ["placementId", "movementId"]});
+                db.createObjectStore('removals', {keyPath: ["removing", "movementId"]});
 
                 // The "entries" store has objects of type Entry (from typedefs)
                 const entries = db.createObjectStore('entries',
@@ -301,7 +301,6 @@ export class IndexedDbStore implements Store {
                     removing: found.placementId,
                 };
                 //TODO: add code to actually delete entries when not keeping full history
-                console.error(JSON.stringify(removal));
                 await wrappedTransaction.objectStore("removals").add(removal);
                 continue;
             }
@@ -372,35 +371,45 @@ export class IndexedDbStore implements Store {
      * @returns a promise of a list of ChangePairs
      */
     async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
-        const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : nowMicroSeconds();
-        const after = 0;
+        const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp() + 1;
         const containerId = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const lower = [containerId, 0];
         const upper = [containerId, asOfTs];
         const range = IDBKeyRange.bound(lower, upper);
         const trxn = this.wrapped.transaction(["entries", "removals"]);
         const entries = trxn.objectStore("entries");
-        const exits = trxn.objectStore("removals");
+        const removals = trxn.objectStore("removals");
         const returning = <Entry[]>[];
         let entriesCursor = await entries.openCursor(range, through < 0 ? "prev" : "next");
-        let exitsCursor = await exits.openCursor(range, through < 0 ? "prev" : "next");
         const needed = through < 0 ? -through : through + 1;
         while (entriesCursor && returning.length < needed) {
             //TODO(https://github.com/google/gink/issues/58): Handle multi-exit
-            /*
-            const exitKey: any[] = <any[]>exitsCursor?.key;
-            if (exitsCursor && (globalThis.indexedDB.cmp(entriesCursor.key, exitKey.slice(0, 4)) == 0)) {
-                // This entry has been removed and needs to be skipped.
-                entriesCursor = await entriesCursor.continue();
-                exitsCursor = await exitsCursor.continue();
-                continue;
-            }
-
-             */
-            returning.push(entriesCursor.value);
+            const entry: Entry = entriesCursor.value;
+            const removalsBound = IDBKeyRange.bound([entry.placementId], [entry.placementId, [asOfTs]]);
+            // TODO: This seek-per-entry isn't very efficient and should be a replaced with a scan.
+            const removalsCursor = await removals.openCursor(removalsBound);
+            if (! removalsCursor) returning.push(entry);
             entriesCursor = await entriesCursor.continue();
         }
         return returning;
+    }
+
+    async getEntryById(container: Muid, entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
+        const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp();
+        const entryId = [entryMuid.timestamp ?? 0, container.medallion ?? 0, container.offset ?? 0];
+        const entryRange = IDBKeyRange.bound([entryId, [0]], [entryId, [asOfTs]]);
+        const trxn = this.wrapped.transaction(["entries", "removals"]);
+        const entryCursor = await trxn.objectStore("entries").index("locations").openCursor(entryRange, "prev");
+        if (! entryCursor) {
+            return undefined;
+        }
+        const entry: Entry = entryCursor.value;
+        const removalRange = IDBKeyRange.bound([entry.placementId], [entry.placementId, [asOfTs]])
+        const removalCursor = await trxn.objectStore("removals").openCursor(removalRange);
+        if (removalCursor) {
+            return undefined;
+        }
+        return entry;
     }
 
     private static commitKeyToInfo(commitKey: BundleInfoTuple) {

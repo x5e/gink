@@ -84,34 +84,29 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
 /*
 * I can't import List, Directory, etc. into this Container.ts because it will cause the inherits clauses to break.
 * So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
-
+*/
 Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Container, asOf?: AsOf): 
     AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
     return (async function* () {
         const entries = await instance.store.getBackRefs(pointingTo.address);
         for (const entry of entries) {
             const containerMuid = muidTupleToMuid(entry.containerId);
-            const containerBuilder = containerMuid.timestamp === 0 ? undefined :
-                ContainerBuilder.deserializeBinary(await instance.store.getContainerBytes(containerMuid));
+            const entryMuid = muidTupleToMuid(entry.entryId);
+            const there = await instance.store.getEntryById(containerMuid, entryMuid, asOf);
+            if (! there) continue;
+            const containerBytes = await instance.store.getContainerBytes(containerMuid);
+            const containerBuilder = <ContainerBuilder> ContainerBuilder.deserializeBinary(containerBytes);
             if (entry.behavior == Behavior.DIRECTORY) {
-                if (instance.store.getEntryByKey(containerMuid, entry.effectiveKey, asOf)) {
-                    yield <[KeyType | Muid | undefined, Container]>
-                        [entry.semanticKey[0], new Directory(instance, containerMuid, containerBuilder)];
-                }
+                yield <[KeyType | Muid | undefined, Container]>
+                        [entry.effectiveKey, new Directory(instance, containerMuid, containerBuilder)];
             }
             if (entry.behavior == Behavior.SEQUENCE) {
-                const entryMuid = muidTupleToMuid(entry.entryId);
-                if (instance.store.getEntryByKey(containerMuid, entryMuid, asOf)) {
-                    yield [entryMuid, new Sequence(instance, containerMuid, containerBuilder)];
-                }
+                yield [entryMuid, new Sequence(instance, containerMuid, containerBuilder)];
             }
             if (entry.behavior == Behavior.BOX) {
-                if (instance.store.getEntryByKey(containerMuid, undefined, asOf)) {
-                    yield [undefined, new Box(instance, containerMuid, containerBuilder)];
-                }
+                yield [undefined, new Box(instance, containerMuid, containerBuilder)];
             }
         }
     })();
 };
 
- */

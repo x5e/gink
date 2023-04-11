@@ -20,9 +20,15 @@ export function ensure(x: any, msg?: string) {
     return x;
 }
 
-export function nowMicroSeconds(): number {
+let lastTime = 0;
+export function generateTimestamp(): number {
     // TODO: there's probably a better way ...
-    return Date.now() * 1000;
+    let current = Date.now() * 1000;
+    if (lastTime >= current) {
+        current = lastTime + 1;
+    }
+    lastTime = current;
+    return current;
 }
 
 export function noOp(_?) { ensure(true);}

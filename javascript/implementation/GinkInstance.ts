@@ -1,5 +1,5 @@
 import { Peer } from "./Peer";
-import { makeMedallion, ensure, noOp } from "./utils";
+import {makeMedallion, ensure, noOp, generateTimestamp} from "./utils";
 import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
@@ -53,7 +53,7 @@ export class GinkInstance {
             this.myChain = claimedChains.entries().next().value;
         } else {
             const medallion = makeMedallion();
-            const chainStart = Date.now() * 1000;
+            const chainStart = generateTimestamp();
             this.myChain =  [medallion, chainStart];
             const bundler = new Bundler(`start: ${info?.software || "GinkInstance"}`, medallion);
             const medallionInfo = new Directory(this, {timestamp:-1, medallion, offset: Behavior.DIRECTORY});
@@ -151,9 +151,9 @@ export class GinkInstance {
         try {
             unlockingFunction = await this.processingLock.acquireLock();
             await this.ready;
-            const nowMicros = Date.now() * 1000;
+            const nowMicros = generateTimestamp();
             const seenThrough = await this.store.getSeenThrough(this.myChain);
-            ensure(seenThrough > 0 && (seenThrough < nowMicros + 500));
+            ensure(seenThrough > 0 && (seenThrough < nowMicros));
             const commitInfo: BundleInfo = {
                 medallion: this.myChain[0],
                 chainStart: this.myChain[1],
