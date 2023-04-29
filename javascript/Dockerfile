@@ -12,10 +12,6 @@ COPY builders ./builders
 COPY implementation ./implementation
 COPY unit-tests ./unit-tests
 RUN ./node_modules/.bin/jest
-#COPY ./proto ./
-#RUN make node_modules/gink/protoc.out tsc.out webpack.out
-#COPY typescript-unit-tests ./typescript-unit-tests
-#RUN make unit_tests
 #COPY functional-tests ./functional-tests
 #RUN ./functional-tests/node-client-test.js
 #RUN if [ `uname -m` != aarch64 ]; then apt-get install -y chromium-driver; fi
