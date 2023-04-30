@@ -14,7 +14,11 @@ jobs:
       with:
           packages: protobuf-compiler
           version: 1.0
-    - name: Compile Protos
+    - name: Compile protos for the python implementation.
       run: make python/gink/builders
-    - name: Build the Docker image
+    - name: Build the python docker image.
       run: docker build ./python
+    - name: Compile protos for the javascript implementation.
+      run: make javascript/builders
+    - name: Build the javascript docker image.
+      run: docker build ./javascript
