@@ -280,8 +280,8 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
             return False
     if value_builder.HasField("characters"):  # type: ignore
         return value_builder.characters  # type: ignore
-    if value_builder.HasField("octects"):  # type: ignore
-        return value_builder.octects  # type: ignore
+    if value_builder.HasField("octets"):  # type: ignore
+        return value_builder.octets  # type: ignore
     if value_builder.HasField("number"):  # type: ignore
         return value_builder.number.doubled  # type: ignore
     if value_builder.HasField("tuple"):  # type: ignore
@@ -359,7 +359,7 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
     """
     value_builder = value_builder or ValueBuilder()
     if isinstance(value, bytes):
-        value_builder.octects = value  # type: ignore # pylint: disable=maybe-no-member
+        value_builder.octets = value  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if isinstance(value, str):
         value_builder.characters = value  # type: ignore # pylint: disable=maybe-no-member

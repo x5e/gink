@@ -1,0 +1,48 @@
+{
+  "name": "@darinmcgill/gink",
+  "version": "0.20230318.0",
+  "description": "an eventually consistent database",
+  "main": "tsc.out/main.js",
+  "browser": "webpack.out/packed.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/x5e/gink.git"
+  },
+  "keywords": [
+    "database",
+    "browser",
+    "crdt",
+    "crdts",
+    "document-store"
+  ],
+  "author": "Darin McGill",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/x5e/gink/issues"
+  },
+  "files": [
+    "package.json",
+    "tsc.out/**",
+    "protoc.out/**",
+    "webpack.out/**"
+  ],
+  "bin": "./tsc.out/main.js",
+  "scripts": {
+    "serve": "GINK_PORT=8080 ./tsc.out/main.js",
+    "build": "tsc"
+  },
+  "homepage": "https://github.com/x5e/gink#readme",
+  "dependencies": {
+    "fake-indexeddb": "^4.0.1",
+    "fs-ext": "^2.0.0",
+    "google-protobuf": "^3.21.2",
+    "idb": "^7.1.1",
+    "node-static": "^0.7.11",
+    "websocket": "^1.0.34"
+  },
+  "devDependencies": {
+    "@types/google-protobuf": "^3.15.6",
+    "@types/jest": "^29.5.0",
+    "ts-jest": "^29.0.5"
+  }
+}

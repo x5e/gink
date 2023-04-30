@@ -10,7 +10,7 @@ message Value {
         Timestamp timestamp = 5;
         Date date = 6;
         Time time = 7;
-        bytes octects = 8;
+        bytes octets = 8;
         Tuple tuple = 11;
         Document document = 12;
         bytes uuid = 16;
@@ -31,7 +31,7 @@ message Value {
         FALSE = 2;
         NULL = 3;
     }
-    
+
     message Timestamp {
         bool negative = 1;
         uint64 seconds = 2;
@@ -39,17 +39,17 @@ message Value {
         uint64 micros = 4;
         uint64 nanos = 5;
     }
-    
+
     message Tuple {
         repeated Value values = 1;
     }
-    
+
     message Document {
         // keys and values must be the same length
         repeated Key keys = 1;
         repeated Value values = 2;
     }
-    
+
     message Number {
         enum Constant {
             UNKNOWN = 0;
@@ -65,14 +65,14 @@ message Value {
             Constant constant = 5;
         }
     }
-    
-    
+
+
     message Date {
         uint32 year = 1;
         uint32 month = 2;
         uint32 day = 3;
     }
-    
+
     message Time {
         uint32 hour = 1;
         uint32 minute = 2;
@@ -81,7 +81,7 @@ message Value {
         uint32 micro = 5;
         uint32 nano = 6;
     }
-    
+
     message Zone {
         oneof zone {
             ZoneOffset offset = 1;
@@ -89,13 +89,13 @@ message Value {
             string abbreviation = 3; // e.g. "PST"
         }
     }
-    
+
     message ZoneOffset {
         bool minus = 1;
         uint32 hours = 2;
         uint32 minutes = 3;
     }
-    
+
     message Interval {
         bool minus = 1;
         uint64 hours = 2;
@@ -108,12 +108,12 @@ message Value {
         uint64 months = 9;
         uint64 years = 10;
     }
-    
+
     message DateTime {
         Date date = 1;
         Time time = 2;
     }
-    
+
     message ZonedDateTime {
         Date date = 1;
         Time time = 2;

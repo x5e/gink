@@ -8,7 +8,7 @@ scratch.*
 *.out
 *.built
 __pycache__
-python/gink/builders
+builders
 .idea
 python/build
 python/dist
