@@ -29,7 +29,8 @@
   "bin": "./tsc.out/main.js",
   "scripts": {
     "serve": "GINK_PORT=8080 ./tsc.out/main.js",
-    "build": "tsc"
+    "build": "tsc",
+    "test": "jest"
   },
   "homepage": "https://github.com/x5e/gink#readme",
   "dependencies": {

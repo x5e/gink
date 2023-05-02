@@ -1,4 +1,5 @@
 import { Behavior } from "./builders";
+import {DBSchema} from "idb";
 
 export type Bytes = Uint8Array;
 export type BundleBytes = Bytes;
@@ -38,6 +39,11 @@ export interface Muid {
     offset: number;
 }
 
+export interface Chain {
+    medallion: Medallion;
+    chainStart: ChainStart;
+}
+
 
 export interface BundleInfo {
     timestamp: Timestamp;
@@ -72,4 +78,35 @@ export interface Removal {
     containerId: MuidTuple;
     dest: number;
     entryId: MuidTuple;
+}
+
+export interface IndexedDbStoreSchema extends DBSchema {
+    trxns: {
+        key: BundleInfoTuple;
+        value: BundleBytes;
+    };
+    chainInfos: {
+        value: BundleInfo;
+        key: [number, number];
+    };
+    activeChains: {
+        value: Chain;
+        key: number; // medallion
+    };
+    containers: {
+        key: MuidTuple;
+        value: Bytes;
+    };
+    removals: {
+        value: Removal;
+        key: [MuidTuple, MuidTuple]; // ["removing", "movementId"]
+    };
+    entries: {
+      value: Entry;
+      key: [MuidTuple,  KeyType | Timestamp | MuidTuple | [], MuidTuple];
+      indexes: {
+          'pointees': MuidTuple;
+          'locations': [MuidTuple, MuidTuple];
+      };
+    };
 }

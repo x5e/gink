@@ -17,6 +17,7 @@ import {
     SeenThrough,
     Timestamp,
     Removal,
+    IndexedDbStoreSchema,
 } from "./typedefs";
 import {ChainTracker} from "./ChainTracker";
 import {Store} from "./Store";
@@ -36,7 +37,7 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
 export class IndexedDbStore implements Store {
 
     ready: Promise<void>;
-    private wrapped: IDBPDatabase;
+    private wrapped: IDBPDatabase<IndexedDbStoreSchema>;
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
     constructor(indexedDbName = "gink-default", reset = false) {
@@ -52,8 +53,8 @@ export class IndexedDbStore implements Store {
                 }
             });
         }
-        this.wrapped = await openDB(indexedDbName, 1, {
-            upgrade(db: IDBPDatabase, _oldVersion: number, _newVersion: number, _transaction) {
+        this.wrapped = await openDB<IndexedDbStoreSchema>(indexedDbName, 1, {
+            upgrade(db: IDBPDatabase<IndexedDbStoreSchema>, _oldVersion: number, _newVersion: number, _transaction) {
                 // info(`upgrade, oldVersion:${oldVersion}, newVersion:${newVersion}`);
                 /*
                      The object store for transactions will store the raw bytes received 
@@ -191,8 +192,9 @@ export class IndexedDbStore implements Store {
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
         const bundleInfo = IndexedDbStore.extractCommitInfo(bundleBuilder);
         const {timestamp, medallion, chainStart, priorTime} = bundleInfo;
-        const objectStores = ['trxns', 'chainInfos', 'containers', 'entries', 'removals'];
-        const wrappedTransaction = this.wrapped.transaction(objectStores, 'readwrite');
+        const wrappedTransaction = this.wrapped.transaction(
+            ['trxns', 'chainInfos', 'containers', 'entries', 'removals']
+            , 'readwrite');
         const oldChainInfo: BundleInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
@@ -212,7 +214,7 @@ export class IndexedDbStore implements Store {
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
             if (changeBuilder.hasContainer()) {
-                const addressTuple = [timestamp, medallion, offset];
+                const addressTuple: MuidTuple = [timestamp, medallion, offset];
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
                 await wrappedTransaction.objectStore("containers").add(containerBytes, addressTuple);
                 continue;
