@@ -13,6 +13,7 @@ const MovementBuilder = require("../builders/movement_pb")["Movement"];
 const MuidBuilder = require("../builders/muid_pb")["Muid"];
 const KeyBuilder = require("../builders/key_pb")["Key"];
 const ValueBuilder = require("../builders/value_pb")["Value"];
+const ClearanceBuilder = require("../builders/clearance_pb")["Clearance"];
 const Special = ValueBuilder.Special;
 const NumberBuilder = ValueBuilder.Number;
 const TimestampBuilder = ValueBuilder.Timestamp;
@@ -39,4 +40,5 @@ module.exports = {
     TimestampBuilder,
     DocumentBuilder,
     TupleBuilder,
+    ClearanceBuilder,
 }

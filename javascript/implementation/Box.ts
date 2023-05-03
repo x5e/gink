@@ -35,16 +35,6 @@ export class Box extends Container {
     }
 
     /**
-     * Adds a deletion marker (tombstone) to the box, effectively clearing it.
-     * The corresponding value will be seen to be unset in the data model.
-     * @param change an optional bundler to put this in.
-     * @returns a promise that resolves to the address of the newly created deletion entry
-     */
-    async clear(change?: Bundler|string): Promise<Muid> {
-        return this.addEntry(undefined, Container.DELETION, change);
-    }
-
-    /**
     * Returns a promise that resolves to the most recent value put in the box, or undefined.
     * @returns undefined, a basic value, or a container
     */

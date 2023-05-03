@@ -59,7 +59,7 @@ export class Directory extends Container {
         return interpret(entry, this.ginkInstance);
     }
 
-    async size(asOf: AsOf): Promise<number> {
+    async size(asOf?: AsOf): Promise<number> {
         const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
         return entries.size;
     }

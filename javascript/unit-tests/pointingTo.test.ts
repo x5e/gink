@@ -10,7 +10,7 @@ test('pointingTo', async function () {
     const directory = await instance.createDirectory();
     await directory.set("foo", target);
 
-    const list = await instance.createList();
+    const list = await instance.createSequence();
     await list.push(target);
 
     const box = await instance.createBox();
