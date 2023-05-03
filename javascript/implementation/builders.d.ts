@@ -21,6 +21,13 @@ export class ContainerBuilder extends ImplementedMessage {
     setBehavior(Behavior);
 }
 
+export class ClearanceBuilder extends ImplementedMessage {
+    setContainer(MuidBuilder);
+    getContainer(): MuidBuilder;
+    getPurge(): boolean;
+    setPurge(boolean);
+}
+
 export class ChangeBuilder extends ImplementedMessage {
     setEntry(entryBuilder: EntryBuilder);
     setContainer(ContainerBuilder);
@@ -31,6 +38,9 @@ export class ChangeBuilder extends ImplementedMessage {
     hasMovement(): boolean;
     getMovement(): MovementBuilder;
     setMovement(MovementBuilder);
+    hasClearance(): boolean;
+    getClearance(): ClearanceBuilder;
+    setClearance(ClearanceBuilder);
 }
 
 export class BundleBuilder extends ImplementedMessage {

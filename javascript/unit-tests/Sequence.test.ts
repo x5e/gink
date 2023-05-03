@@ -1,5 +1,5 @@
 import { sleep } from "./test_utils";
-import { GinkInstance, Bundler, IndexedDbStore, List, Muid, Value } from "../implementation";
+import { GinkInstance, Bundler, IndexedDbStore, Sequence, Muid, Value } from "../implementation";
 import { ensure, matches } from "../implementation/utils"
 
 test('push to a queue and peek', async function () {
@@ -7,7 +7,7 @@ test('push to a queue and peek', async function () {
     const store = new IndexedDbStore('list-test1', true);
     const instance = new GinkInstance(store);
 
-    const queue: List = await instance.createList();
+    const queue: Sequence = await instance.createSequence();
     await queue.push('dummy');
     const muid: Muid = await queue.push("Hello, World!");
     ensure(muid.timestamp! > 0);
@@ -22,7 +22,7 @@ test('push and pop', async function () {
     const store = new IndexedDbStore('list-test2', true);
     const instance = new GinkInstance(store);
 
-    const list: List = await instance.createList();
+    const list: Sequence = await instance.createSequence();
     await list.push('A');
     await list.push("B");
     await list.push("C");
@@ -64,7 +64,7 @@ test('size and at', async function () {
     const store = new IndexedDbStore('list-test3', true);
     const instance = new GinkInstance(store);
 
-    const list: List = await instance.createList();
+    const list: Sequence = await instance.createSequence();
     await list.push('A');
     await list.push("B");
     await list.push("C");
@@ -101,7 +101,7 @@ test('entries', async function () {
     const store = new IndexedDbStore('list-entries-test', true);
     const instance = new GinkInstance(store);
 
-    const list: List = await instance.createList();
+    const list: Sequence = await instance.createSequence();
     await list.push('A');
     await list.push("B");
     await list.push("C");
@@ -120,7 +120,7 @@ test('list-changeset', async function() {
     const instance = new GinkInstance(store);
 
     const bundler = new Bundler();
-    const list: List = await instance.createList(bundler);
+    const list: Sequence = await instance.createSequence(bundler);
     await list.push('A', bundler);
     await list.push("B", bundler);
     await list.push("C", bundler);
@@ -146,12 +146,12 @@ test('List.toJSON', async function() {
     const store = new IndexedDbStore('List.toJSON', true);
     const instance = new GinkInstance(store);
 
-    const list: List = await instance.createList();
+    const list: Sequence = await instance.createSequence();
     await list.push('A');
     await list.push(true);
     await list.push(false);
 
-    const subList = await instance.createList();
+    const subList = await instance.createSequence();
     await subList.push(33);
     await list.push(subList);
 
@@ -176,7 +176,7 @@ test('List.asOf', async function() {
     const store = new IndexedDbStore('List.asOf', true);
     const instance = new GinkInstance(store);
 
-    const list: List = await instance.createList();
+    const list: Sequence = await instance.createSequence();
     const time0 = Date.now() * 1000;
     await sleep(10);
     await list.push('A');
@@ -201,3 +201,18 @@ test('List.asOf', async function() {
     ensure(matches(await list.toArray(Infinity, -3), []));
 
 });
+
+test('List.clear', async function () {
+    const store = new IndexedDbStore('List.clear', true);
+    const instance = new GinkInstance(store);
+    const list: Sequence = await instance.createSequence();
+    await list.push("hello");
+    let size = await list.size();
+    ensure(size == 1);
+    await list.clear();
+    size = await list.size();
+    ensure(size == 0);
+    await list.push("world");
+    size = await list.size();
+    ensure(size == 1);
+})

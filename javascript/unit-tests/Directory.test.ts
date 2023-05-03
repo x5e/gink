@@ -125,4 +125,31 @@ test('Directory.asOf', async function () {
     ensure(asJsonBack==`{"A":"B"}`);
     ensure((await directory.get('cheese', -1)) === undefined);
     ensure((await directory.get('A', -1)) === 'B');
+});
+
+test('Directory.purge', async function () {
+    const instance = new GinkInstance(new IndexedDbStore('Directory.purge', true));
+    const directory = await instance.createDirectory();
+    await directory.set('A', 99);
+    await directory.set('B', false);
+    let size = await directory.size();
+    ensure(size == 2);
+    await directory.clear(true);
+    size = await directory.size();
+    ensure(size == 0);
+});
+
+test('Directory.clear', async function() {
+    const instance = new GinkInstance(new IndexedDbStore('Directory.clear', true));
+    const directory = await instance.createDirectory();
+    await directory.set('A', 99);
+    const clearMuid = await directory.clear();
+    await directory.set('B', false);
+    const asMap = await directory.toMap();
+    ensure(asMap.has("B") && ! asMap.has("A"), "did not clear");
+    const asMapBeforeClear = await directory.toMap(clearMuid.timestamp);
+    if (asMapBeforeClear.has("B") || !asMapBeforeClear.has("A")) {
+        console.log(asMapBeforeClear);
+        throw new Error("busted");
+    }
 })

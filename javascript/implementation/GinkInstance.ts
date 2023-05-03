@@ -100,7 +100,7 @@ export class GinkInstance {
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
      * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the commit)
      */
-    async createList(change?: Bundler|string): Promise<Sequence> {
+    async createSequence(change?: Bundler|string): Promise<Sequence> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.SEQUENCE, change);
         return new Sequence(this, muid, containerBuilder);
     }

@@ -80,6 +80,12 @@ export interface Removal {
     entryId: MuidTuple;
 }
 
+export interface Clearance {
+    containerId: MuidTuple;
+    clearanceId: MuidTuple;
+    purging: boolean;
+}
+
 export interface IndexedDbStoreSchema extends DBSchema {
     trxns: {
         key: BundleInfoTuple;
@@ -100,6 +106,13 @@ export interface IndexedDbStoreSchema extends DBSchema {
     removals: {
         value: Removal;
         key: [MuidTuple, MuidTuple]; // ["removing", "movementId"]
+        indexes: {
+            'by-container': MuidTuple;
+        }
+    };
+    clearances: {
+        value: Clearance;
+        key: [MuidTuple, MuidTuple]; // ["containerId", "clearanceId"]
     };
     entries: {
       value: Entry;
