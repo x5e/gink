@@ -77,7 +77,10 @@ export class Container {
      * @param bundlerOrComment Bundler to add this change to, or empty to apply immediately.
      * @returns a promise the resolves to the muid of the change
      */
-    protected async addEntry(key?: KeyType | true, value?: Value | Container | Deletion, bundlerOrComment?: Bundler | string):
+    protected async addEntry(
+        key?: KeyType | true | Container,
+        value?: Value | Container | Deletion,
+        bundlerOrComment?: Bundler | string):
             Promise<Muid> {
         let immediate = false;
         let bundler: Bundler;
@@ -98,6 +101,10 @@ export class Container {
 
         if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
             entryBuilder.setKey(wrapKey(key));
+        }
+
+        if (key instanceof Container) {
+            entryBuilder.setDescribing(muidToBuilder(key.address));
         }
 
         // TODO: check that the destination/value is compatible with Container

@@ -308,7 +308,7 @@ export function logToStdErr(msg: string) {
     console.error(`[${timestamp} ${caller}] ${msg}`);
 }
 
-export function sameData(key1: KeyType | MuidTuple | [], key2: [] | number | string | Uint8Array): boolean {
+export function sameData(key1: any, key2: any): boolean {
     if (key1 instanceof Uint8Array && key2 instanceof Uint8Array) {
         if (key1.byteLength != key2.byteLength) return false;
         for (let i =0; i< key1.byteLength; i++) {

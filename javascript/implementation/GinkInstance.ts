@@ -11,6 +11,7 @@ import { Box } from "./Box";
 import { Sequence } from "./Sequence";
 import { Store } from "./Store";
 import { Behavior, ContainerBuilder, SyncMessageBuilder } from "./builders";
+import {Property} from "./Property";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -85,6 +86,10 @@ export class GinkInstance {
         return new Directory(this, { timestamp: -1, medallion: -1, offset: Behavior.DIRECTORY });
     }
 
+    getGlobalProperty(): Property {
+        return new Property(this, {timestamp: -1, medallion: -1, offset: Behavior.PROPERTY});
+    }
+
     /**
      * Creates a new box container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
@@ -114,6 +119,11 @@ export class GinkInstance {
     async createDirectory(change?: Bundler|string): Promise<Directory> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.DIRECTORY, change);
         return new Directory(this, muid, containerBuilder);
+    }
+
+    async createProperty(bundlerOrComment?: Bundler|string): Promise<Property> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.PROPERTY, bundlerOrComment);
+        return new Property(this, muid, containerBuilder);
     }
 
     protected async createContainer(behavior: Behavior, change?: Bundler|string): Promise<[Muid, ContainerBuilder]> {
