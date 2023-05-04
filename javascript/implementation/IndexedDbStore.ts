@@ -1,4 +1,4 @@
-import {ensure, matches, generateTimestamp, sameData, unwrapKey, unwrapValue, builderToMuid} from "./utils";
+import {builderToMuid, ensure, generateTimestamp, matches, sameData, unwrapKey, unwrapValue} from "./utils";
 import {deleteDB, IDBPDatabase, openDB} from 'idb';
 import {
     AsOf,
@@ -8,28 +8,21 @@ import {
     Bytes,
     ChainStart,
     ClaimedChains,
+    Clearance,
     Entry,
+    IndexedDbStoreSchema,
     KeyType,
     Medallion,
     Muid,
     MuidTuple,
     Offset,
+    Removal,
     SeenThrough,
     Timestamp,
-    Removal,
-    IndexedDbStoreSchema,
-    Clearance,
 } from "./typedefs";
 import {ChainTracker} from "./ChainTracker";
 import {Store} from "./Store";
-import {
-    Behavior,
-    BundleBuilder,
-    ChangeBuilder,
-    EntryBuilder,
-    MovementBuilder,
-    MuidBuilder,
-    } from "./builders";
+import {Behavior, BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder, MuidBuilder,} from "./builders";
 
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
@@ -249,6 +242,10 @@ export class IndexedDbStore implements Store {
                     effectiveKey = entryBuilder.getEffective()  ||  timestamp;
                 } else if (behavior == Behavior.BOX) {
                     effectiveKey = [];
+                } else if (behavior == Behavior.PROPERTY) {
+                    ensure(entryBuilder.hasDescribing());
+                    const describing = builderToMuid(entryBuilder.getDescribing());
+                    effectiveKey = <MuidTuple> [describing.timestamp, describing.medallion, describing.offset];
                 } else {
                     throw new Error(`unexpected behavior: ${behavior}`)
                 }
@@ -362,7 +359,7 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction(['containers']).objectStore('containers').get(<MuidTuple>addressTuple);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType, asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: KeyType | Muid, asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.wrapped.transaction(["entries", "clearances"]);
@@ -376,10 +373,13 @@ export class IndexedDbStore implements Store {
         }
 
 
-        let semanticKey: KeyType | [] = [];
+        let semanticKey: KeyType | MuidTuple | [] = [];
         let upperTuple = [asOfTs];
         if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
             semanticKey = key;
+        } else if (key) {
+            const muidKey = <Muid> key;
+            semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];
         }
         const lower = [desiredSrc];
         const upper = [desiredSrc, semanticKey, upperTuple];

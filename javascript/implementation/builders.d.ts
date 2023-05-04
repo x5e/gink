@@ -77,6 +77,9 @@ export class EntryBuilder extends ImplementedMessage {
     hasEffective(): boolean;
     getEffective(): number;
     getExpiry(): number;
+    setDescribing(MuidBuilder);
+    getDescribing(): MuidBuilder;
+    hasDescribing(): boolean;
 }
 
 export class GreetingBuilder extends ImplementedMessage {
