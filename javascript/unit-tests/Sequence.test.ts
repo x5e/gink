@@ -1,6 +1,6 @@
 import { sleep } from "./test_utils";
 import { GinkInstance, Bundler, IndexedDbStore, Sequence, Muid, Value } from "../implementation";
-import { ensure, matches } from "../implementation/utils"
+import { ensure, matches, generateTimestamp } from "../implementation/utils"
 
 test('push to a queue and peek', async function () {
     // set up the objects
@@ -133,8 +133,8 @@ test('list-changeset', async function() {
     }
 
     const bundler2 = new Bundler();
-    list.shift(bundler2);
-    list.push("D", bundler2);
+    await list.shift(false, bundler2);
+    await list.push("D", bundler2);
     ensure(matches(await list.toArray(), ["A", "B", "C"]));
     await instance.addBundler(bundler2);
     const result = await list.toArray();
@@ -207,12 +207,35 @@ test('List.clear', async function () {
     const instance = new GinkInstance(store);
     const list: Sequence = await instance.createSequence();
     await list.push("hello");
+    await list.push("world");
     let size = await list.size();
-    ensure(size == 1);
-    await list.clear();
+    ensure(size == 2);
+    const clearMuid = await list.clear();
     size = await list.size();
     ensure(size == 0);
-    await list.push("world");
+    await list.push("goodbye");
     size = await list.size();
     ensure(size == 1);
-})
+    size = await list.size(clearMuid.timestamp);
+    ensure(size == 2);
+    await list.clear(true);
+    size = await list.size(clearMuid.timestamp);
+    ensure(size == 0);
+});
+
+test('List.purge_pop', async function () {
+    const store = new IndexedDbStore('List.purge_pop', true);
+    const instance = new GinkInstance(store);
+    const seq = await instance.createSequence();
+    await seq.push("foo");
+    await seq.push("bar");
+    const beforeFirstPop = generateTimestamp();
+    const popped = await seq.pop();
+    ensure(popped == "bar", `popped=${popped}`);
+    ensure(matches(["foo"], await seq.toArray()), (await seq.toArray()).toString());
+    const previous = await seq.toArray(Infinity, beforeFirstPop);
+    ensure(matches(["foo", "bar"], previous), "previous=" + previous.toString());
+    const shifted = await seq.shift(true);
+    ensure(shifted == "foo");
+    ensure(matches(["bar"], await seq.toArray(Infinity, beforeFirstPop)));
+});

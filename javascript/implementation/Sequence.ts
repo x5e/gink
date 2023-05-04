@@ -36,10 +36,11 @@ export class Sequence extends Container {
      * Removes and returns the specified entry of the list (default last),
      * in the provided change set or immediately if no CS is supplied.
      * Returns undefined when called on an empty list (and no changes are made).
-     * @param what
-     * @param change 
+     * @param what - position or Muid, defaults to last
+     * @param purge - If true, removes so data cannot be recovered with "asOf" query
+     * @param bundlerOrComment
      */
-    async pop(what?: Muid | number, change?: Bundler|string): Promise<Container | Value | undefined> {
+    async pop(what?: Muid | number, purge?: boolean, bundlerOrComment?: Bundler|string): Promise<Container | Value | undefined> {
         let returning: Container | Value;
         let muid: Muid;
         if (what && typeof (what) == "object") {
@@ -58,27 +59,31 @@ export class Sequence extends Container {
             muid = muidTupleToMuid(entry.entryId);
         }
         let immediate = false;
-        if (!(change instanceof Bundler)) {
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
             immediate = true;
-            change = new Bundler(change);
+            bundler = new Bundler(bundlerOrComment);
         }
         const movementBuilder = new MovementBuilder();
         movementBuilder.setEntry(muidToBuilder(muid));
         movementBuilder.setContainer(muidToBuilder(this.address));
+        if (purge) movementBuilder.setPurge(true);
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setMovement(movementBuilder);
-        change.addChange(changeBuilder);
+        bundler.addChange(changeBuilder);
         if (immediate) {
-            await this.ginkInstance.addBundler(change);
+            await this.ginkInstance.addBundler(bundler);
         }
         return returning;
     }
 
     /**
-     * Alias for this.pop(0, changeSet)
+     * Alias for this.pop(0, purge, bundlerOrComment)
      */
-    async shift(change?: Bundler|string): Promise<Container | Value | undefined> {
-        return await this.pop(0, change);
+    async shift(purge?: boolean, bundlerOrComment?: Bundler|string): Promise<Container | Value | undefined> {
+        return await this.pop(0, purge, bundlerOrComment);
     }
 
     /**
