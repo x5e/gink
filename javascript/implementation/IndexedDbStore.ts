@@ -41,7 +41,7 @@ export class IndexedDbStore implements Store {
     private wrapped: IDBPDatabase<IndexedDbStoreSchema>;
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
-    constructor(indexedDbName = "gink-default", reset = false) {
+    constructor(indexedDbName = "gink-default", reset = false, readonly keepingHistory = true) {
         this.ready = this.initialize(indexedDbName, reset);
     }
 
@@ -288,7 +288,6 @@ export class IndexedDbStore implements Store {
                     entryMuid.getMedallion() || medallion,
                     entryMuid.getOffset()];
                 const movementId: MuidTuple = [timestamp, medallion, offset];
-                const dest = movementBuilder.getDest();
                 const containerId: MuidTuple = [0, 0, 0];
                 if (movementBuilder.hasContainer()) {
                     const srcMuid: MuidBuilder = movementBuilder.getContainer();
@@ -303,15 +302,33 @@ export class IndexedDbStore implements Store {
                     continue; // Nothing found to remove.
                 }
                 const found: Entry = search.value;
-                const removal: Removal = {
-                    containerId,
-                    movementId,
-                    dest,
-                    entryId,
-                    removing: found.placementId,
-                };
-                //TODO: add code to actually delete entries when not keeping full history
-                await wrappedTransaction.objectStore("removals").add(removal);
+                const dest = movementBuilder.getDest();
+                if (dest != 0) {
+                    const destEntry: Entry = {
+                        behavior: found.behavior,
+                        containerId: found.containerId,
+                        effectiveKey: dest,
+                        entryId: found.entryId,
+                        pointeeList: found.pointeeList,
+                        value: found.value,
+                        expiry: found.expiry,
+                        deletion: found.deletion,
+                        placementId: movementId,
+                    }
+                    await wrappedTransaction.objectStore("entries").add(destEntry);
+                }
+                if (movementBuilder.getPurge() || !this.keepingHistory) {
+                    search.delete();
+                } else {
+                    const removal: Removal = {
+                        containerId,
+                        movementId,
+                        dest,
+                        entryId,
+                        removing: found.placementId,
+                    };
+                    await wrappedTransaction.objectStore("removals").add(removal);
+                }
                 continue;
             }
             if (changeBuilder.hasClearance()) {

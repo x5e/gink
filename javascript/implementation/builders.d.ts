@@ -200,8 +200,11 @@ export class LogFileBuilder extends ImplementedMessage {
 export class MovementBuilder extends ImplementedMessage {
     getEntry(): MuidBuilder;
     getDest(): number;
+    setDest(number);
     hasContainer(): boolean;
     getContainer(): MuidBuilder;
     setEntry(MuidBuilder);
     setContainer(MuidBuilder);
+    getPurge(): boolean;
+    setPurge(boolean);
 }
