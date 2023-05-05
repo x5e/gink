@@ -1,5 +1,4 @@
-import { sleep } from "./test_utils";
-import { GinkInstance, Bundler, IndexedDbStore, Directory } from "../implementation";
+import { GinkInstance, IndexedDbStore } from "../implementation";
 import { ensure, sameData } from "../implementation/utils"
 
 test('Property.basics', async function () {
@@ -8,7 +7,7 @@ test('Property.basics', async function () {
     const property = await instance.createProperty();
     await property.set(gd, "foobar");
     const gotten = await property.get(gd);
-    ensure(gotten == "foobar");
+    ensure(gotten == "foobar", `gotten=${gotten}`);
     const gp = instance.getGlobalProperty();
     await property.set(gp, [1, 2, 3]);
     const gotten2 = await property.get(gp);

@@ -220,7 +220,7 @@ test('List.clear', async function () {
     ensure(size == 2);
     await list.clear(true);
     size = await list.size(clearMuid.timestamp);
-    ensure(size == 0);
+    ensure(size == 0, `size=${size}`);
 });
 
 test('List.purge_pop', async function () {
