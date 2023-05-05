@@ -74,7 +74,7 @@ export interface Entry {
 
 export interface Removal {
     removing: MuidTuple;  // describes the placementId of the thing to be removed
-    movementId: MuidTuple; // the ID of the movement doing the removing
+    removalId: MuidTuple; // the ID of the movement or entry doing the removing
     containerId: MuidTuple;
     dest: number;
     entryId: MuidTuple;
@@ -105,9 +105,10 @@ export interface IndexedDbStoreSchema extends DBSchema {
     };
     removals: {
         value: Removal;
-        key: [MuidTuple, MuidTuple]; // ["removing", "movementId"]
+        key: MuidTuple // movementId
         indexes: {
-            'by-container': MuidTuple;
+            'by-container-movement': [MuidTuple, MuidTuple]; // containerId, movementId
+            'by-removing': [MuidTuple, MuidTuple]; // removing, removalId
         }
     };
     clearances: {
@@ -116,8 +117,9 @@ export interface IndexedDbStoreSchema extends DBSchema {
     };
     entries: {
       value: Entry;
-      key: [MuidTuple,  KeyType | Timestamp | MuidTuple | [], MuidTuple];
+      key: MuidTuple;
       indexes: {
+          "by-container-key-placement": [MuidTuple,  KeyType | Timestamp | MuidTuple | [], MuidTuple];
           'pointees': MuidTuple;
           'locations': [MuidTuple, MuidTuple];
       };

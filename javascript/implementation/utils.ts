@@ -271,6 +271,10 @@ export function valueToJson(value: Value): string {
     throw new Error(`value not recognized: ${value}`);
 }
 
+export function muidToTuple(muid: Muid): MuidTuple {
+    return [muid.timestamp, muid.medallion, muid.offset];
+}
+
 export function muidTupleToMuid(tuple: MuidTuple): Muid {
     return {
         timestamp: tuple[0],
