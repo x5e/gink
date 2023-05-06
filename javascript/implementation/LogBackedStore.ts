@@ -12,13 +12,13 @@ import { ChainTracker } from "./ChainTracker";
 import {ChainEntryBuilder, LogFileBuilder} from "./builders";
 
 /*
-    At time of writing, there's only an in-memory implementation of 
+    At time of writing, there's only an in-memory implementation of
     IndexedDB available for Node.js.  This subclass will append all
     transactions it receives to a log file, making it possible to
     recreate the same in-memory database in the future by simply
     replaying the receipt of each commit.
 
-    This is obviously not ideal; eventually want to move to either 
+    This is obviously not ideal; eventually want to move to either
     a durable server side indexedDB implementation or create an
     implementation of Store using some other system (e.g. LMDB).
 */
@@ -37,9 +37,9 @@ export class LogBackedStore implements Store {
 
     async close() {
         // console.error(`closing ${this.filename}`);
-        await this.ready;
-        await this.fileHandle.close();
-        await this.indexedDbStore.close();
+        await this.fileHandle.close().catch();
+        await this.ready.catch();
+        await this.indexedDbStore.close().catch();
     }
     private async openAndLock(filename: string, truncate?: boolean): Promise<FileHandle> {
         const fh = await open(filename, "a+");
@@ -50,7 +50,10 @@ export class LogBackedStore implements Store {
             // in two instances thinking that they have a lock on the same file.
 
             flock(fh.fd, "exnb", async (err) => {
-                if (err) return reject(err);
+                if (err) {
+                    await fh.close();
+                    return reject(err);
+                }
                 resolve(fh);
             });
         });

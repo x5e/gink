@@ -23,4 +23,5 @@ test('test locks', async () => {
     if (result != "barfed") {
         throw new Error("locking broken");
     }
+    await lbs1.close();
 })
