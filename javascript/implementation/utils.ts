@@ -1,5 +1,5 @@
 /**
- * Herein lay a bunch of utility functions, mostly for creating and 
+ * Herein lay a bunch of utility functions, mostly for creating and
  * manipulating the types defined in typedefs.ts.
  */
 
@@ -10,12 +10,11 @@ import {
     KeyBuilder,
     Special,
     TimestampBuilder,
-    NumberBuilder,
     TupleBuilder, DocumentBuilder
 } from "./builders";
 
 export function ensure(x: any, msg?: string) {
-    if (!x) 
+    if (!x)
         throw new Error(msg ?? "assert failed");
     return x;
 }
@@ -70,7 +69,7 @@ export function muidToBuilder(address: Muid, relativeTo?: Medallion): MuidBuilde
 }
 
 export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid {
-    // If a MuidBuilder in a message has a zero medallion and/or timestamp, it should be 
+    // If a MuidBuilder in a message has a zero medallion and/or timestamp, it should be
     // interpreted that those values are the same as the trxn it comes from.
     return {
         timestamp: muidBuilder.getTimestamp() || relativeTo.timestamp,
@@ -81,8 +80,8 @@ export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid
 
 /**
  * Converts from a KeyType (number or string) to a Gink Proto
- * @param key 
- * @returns 
+ * @param key
+ * @returns
  */
 export function wrapKey(key: number | string | Uint8Array): KeyBuilder {
     const keyBuilder = new KeyBuilder();
@@ -102,10 +101,10 @@ export function wrapKey(key: number | string | Uint8Array): KeyBuilder {
 }
 
 /**
- * Convert from a Gink Proto known to contain a string or number 
+ * Convert from a Gink Proto known to contain a string or number
  * into the equiv Javascript object.
- * @param keyBuilder 
- * @returns 
+ * @param keyBuilder
+ * @returns
  */
 export function unwrapKey(keyBuilder: KeyBuilder): KeyType {
     ensure(keyBuilder);
@@ -124,20 +123,18 @@ export function unwrapKey(keyBuilder: KeyBuilder): KeyType {
 /**
  * Convert from a Gink Proto (Builder) for a Value to the corresponding JS object.
  * @param valueBuilder Gink Proto for Value
- * @returns 
+ * @returns
  */
 export function unwrapValue(valueBuilder: ValueBuilder): Value {
     ensure(valueBuilder instanceof ValueBuilder);
     if (valueBuilder.hasCharacters()) {
         return valueBuilder.getCharacters();
     }
-    if (valueBuilder.hasNumber()) {
-        const number = valueBuilder.getNumber();
-        if (!number.hasDoubled()) {
-            //TODO
-            throw new Error("haven't implemented unwrapping for non-double encoded numbers");
-        }
-        return number.getDoubled();
+    if (valueBuilder.hasDoubled()) {
+        return valueBuilder.getDoubled();
+    }
+    if (valueBuilder.hasInteger()) {
+        return valueBuilder.getInteger();
     }
     if (valueBuilder.hasSpecial()) {
         const special = valueBuilder.getSpecial();
@@ -175,7 +172,7 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
 /**
  * Converts from any javascript value Gink can store into the corresponding proto builder.
  * @param arg Any Javascript value Gink can store
- * @returns 
+ * @returns
  */
 export function wrapValue(arg: Value): ValueBuilder {
     ensure(arg !== undefined);
@@ -197,15 +194,17 @@ export function wrapValue(arg: Value): ValueBuilder {
     if (arg === false) {
         return valueBuilder.setSpecial(Special.FALSE);
     }
-    const argType = typeof (arg);
-    if (argType == "string") {
+    if (typeof(arg) == "string") {
         return valueBuilder.setCharacters(arg);
     }
-    if (argType == "number") {
-        //TODO: put in special cases for integers etc to increase efficiency
-        const numberBuilder = new NumberBuilder();
-        numberBuilder.setDoubled(arg);
-        return valueBuilder.setNumber(numberBuilder);
+    if (typeof (arg) == "number") {
+        if (Number.isInteger(arg) && arg <= 2147483647 && arg >= -2147483648) {
+            return valueBuilder.setInteger(arg);
+        }
+        return valueBuilder.setDoubled(arg);
+    }
+    if (typeof(arg) == "bigint") {
+        throw new Error("encoding bigints not implemented right now");
     }
     if (Array.isArray(arg)) {
         const tupleBuilder = new TupleBuilder();

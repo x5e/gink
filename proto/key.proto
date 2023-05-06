@@ -3,7 +3,7 @@ package google.gink;
 
 message Key {
     oneof key {
-        sint64 number = 1;
+        sint32 number = 1;
         bytes octets = 2;
         string characters = 3;
     }

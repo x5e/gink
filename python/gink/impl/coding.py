@@ -282,8 +282,12 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
         return value_builder.characters  # type: ignore
     if value_builder.HasField("octets"):  # type: ignore
         return value_builder.octets  # type: ignore
-    if value_builder.HasField("number"):  # type: ignore
-        return value_builder.number.doubled  # type: ignore
+    if value_builder.HasField("doubled"):  # type: ignore
+        return value_builder.doubled  # type: ignore
+    if value_builder.HasField("integer"):
+        return value_builder.integer
+    if value_builder.HasField("bigint"):
+        return value_builder.bigint
     if value_builder.HasField("tuple"):  # type: ignore
         return tuple([decode_value(x) for x in value_builder.tuple.values])  # type: ignore
     if value_builder.HasField("document"):  # type: ignore # pylint: disable=maybe-no-member
@@ -320,16 +324,20 @@ def decode_muts(data: bytes, _q_struct=Struct(">q")) -> Optional[MuTimestamp]:
 
 
 def encode_key(key: UserKey, builder: Optional[KeyBuilder] = None) -> KeyBuilder:
-    """ Encodes a valid key (int or str) into a protobuf Value.
+    """ Encodes a valid key (int or str or bytes) into a protobuf Value.
     """
     if builder is None:
         builder = KeyBuilder()
     if isinstance(key, str):
         builder.characters = key  # type: ignore # pylint: disable=maybe-no-member
-    if isinstance(key, int):
+    elif isinstance(key, int):
+        if key >  2_147_483_647 or key < -2_147_483_648:
+            raise ValueError(f"integer {key} outside of int32 range; use bytes if necessary")
         builder.number = key  # type: ignore # pylint: disable=maybe-no-member
-    if isinstance(key, bytes):
+    elif isinstance(key, bytes):
         builder.octets = key  # type: ignore
+    else:
+        raise ValueError(f"can't use as key: {key}")
     return builder
 
 
@@ -370,9 +378,14 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
         else:
             value_builder.special = ValueBuilder.Special.FALSE  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
-    if isinstance(value, (float, int)):
-        # TODO[P2]: add switch to encoding ints once Javascript implementation supports
-        value_builder.number.doubled = float(value)  # type: ignore # pylint: disable=maybe-no-member
+    if isinstance(value, float):
+        value_builder.doubled = value  # type: ignore # pylint: disable=maybe-no-member
+        return value_builder
+    if isinstance(value, int):
+        if value >  2_147_483_647 or value < 2_147_483_648:
+            value_builder.bigint = value
+        else:
+            value_builder.integer = value
         return value_builder
     if value is None:
         value_builder.special = ValueBuilder.Special.NULL  # type: ignore # pylint: disable=maybe-no-member
