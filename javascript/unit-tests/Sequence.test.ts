@@ -245,7 +245,9 @@ test('Sequence.reorder', async function() {
     const instance = new GinkInstance(store);
     const seq = await instance.createSequence();
     const fooMuid = await seq.push("foo");
+    await sleep(9);
     const barMuid = await seq.push("bar");
+    await sleep(9);
     const bazMuid = await seq.push("baz");
     await seq.move(bazMuid, 1)
     await seq.move(fooMuid, -1);
@@ -259,7 +261,9 @@ test('Sequence.reorder.by_position', async function() {
     const instance = new GinkInstance(store);
     const seq = await instance.createSequence();
     await seq.push("foo");
+    await sleep(9);
     await seq.push("bar");
+    await sleep(9);
     await seq.push("baz");
     await seq.move(-1, 1)
     await seq.move(0, -1);
