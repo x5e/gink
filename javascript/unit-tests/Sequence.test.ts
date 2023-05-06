@@ -239,3 +239,31 @@ test('List.purge_pop', async function () {
     ensure(shifted == "foo");
     ensure(matches(["bar"], await seq.toArray(Infinity, beforeFirstPop)));
 });
+
+test('Sequence.reorder', async function() {
+    const store = new IndexedDbStore('Sequence.reorder');
+    const instance = new GinkInstance(store);
+    const seq = await instance.createSequence();
+    const fooMuid = await seq.push("foo");
+    const barMuid = await seq.push("bar");
+    const bazMuid = await seq.push("baz");
+    await seq.move(bazMuid, 1)
+    await seq.move(fooMuid, -1);
+    await seq.move(barMuid, 0);
+    const asArray = await seq.toArray();
+    ensure(matches(asArray, ["bar", "baz", "foo"]), JSON.stringify(asArray));
+});
+
+test('Sequence.reorder.by_position', async function() {
+    const store = new IndexedDbStore('Sequence.reorder.by_position');
+    const instance = new GinkInstance(store);
+    const seq = await instance.createSequence();
+    await seq.push("foo");
+    await seq.push("bar");
+    await seq.push("baz");
+    await seq.move(-1, 1)
+    await seq.move(0, -1);
+    await seq.move(1, 0);
+    const asArray = await seq.toArray();
+    ensure(matches(asArray, ["bar", "baz", "foo"]), JSON.stringify(asArray));
+});

@@ -2,7 +2,7 @@ import {GinkInstance} from "./GinkInstance";
 import {Container} from "./Container";
 import {AsOf, Entry, Muid, Value} from "./typedefs";
 import {Bundler} from "./Bundler";
-import {ensure, muidToBuilder, muidToString, muidTupleToMuid} from "./utils";
+import {ensure, generateTimestamp, muidToBuilder, muidToString, muidTupleToMuid} from "./utils";
 import {interpret, toJson} from "./factories";
 import { Behavior, ChangeBuilder, MovementBuilder, ContainerBuilder } from "./builders";
 
@@ -24,12 +24,46 @@ export class Sequence extends Container {
 
     /**
      * Adds an element to the end of the list.
-     * @param value 
+     * @param value
      * @param change change set to apply the change to or comment to put in
-     * @returns 
+     * @returns
      */
     async push(value: Value | Container, change?: Bundler|string): Promise<Muid> {
         return await this.addEntry(true, value, change);
+    }
+
+    async move(
+        muidOrPosition: Muid | number,
+        dest: number,
+        purge?: boolean,
+        bundlerOrComment?: Bundler | string) {
+            const store = this.ginkInstance.store;
+            const muid = (typeof(muidOrPosition) == "object") ? muidOrPosition :
+                muidTupleToMuid((await store.getOrderedEntries(this.address, muidOrPosition)).pop().entryId);
+            ensure(muid.timestamp && muid.medallion && muid.offset);
+            return this.movementHelper(muid, await this.findDest(dest), purge, bundlerOrComment);
+    }
+
+    private async findDest(dest: number): Promise<number> {
+        if (dest > +1e6) return dest;
+        if (dest < -1e6) return generateTimestamp() + dest;
+        while (dest > 0) { // I'm using while/break to get go-to like behavior.
+            const thereNow = await this.getEntryAt(dest);
+            if (!thereNow) { dest = -1; break; } // move to end
+            const before = await this.getEntryAt(dest - 1);
+            const nowTs = <number> thereNow.effectiveKey;
+            const beforeTs = <number> before.effectiveKey;
+            if (nowTs - beforeTs < 2)
+                throw new Error("no space between entries");
+            const intended = beforeTs + Math.floor(1 + Math.random() * (nowTs - beforeTs));
+            ensure(intended > beforeTs && intended < nowTs, "can't find place to put entry");
+            return intended;
+        }
+        if (dest == 0 || dest == -1) {
+            const currentFrontOrBack = <number>(await this.getEntryAt(dest)).effectiveKey;
+            return currentFrontOrBack - Math.sign(dest + .5) * Math.floor(1e3 * Math.random());
+        }
+        throw new Error("not implemented");
     }
 
     /**
@@ -58,6 +92,11 @@ export class Sequence extends Container {
             returning = await interpret(entry, this.ginkInstance);
             muid = muidTupleToMuid(entry.entryId);
         }
+        await this.movementHelper(muid, undefined, purge, bundlerOrComment);
+        return returning;
+    }
+
+    private async movementHelper(muid: Muid, dest?: number, purge?: boolean, bundlerOrComment?: string | Bundler) {
         let immediate = false;
         let bundler: Bundler;
         if (bundlerOrComment instanceof Bundler) {
@@ -68,15 +107,17 @@ export class Sequence extends Container {
         }
         const movementBuilder = new MovementBuilder();
         movementBuilder.setEntry(muidToBuilder(muid));
+        if (dest)
+            movementBuilder.setDest(dest);
         movementBuilder.setContainer(muidToBuilder(this.address));
-        if (purge) movementBuilder.setPurge(true);
+        if (purge)
+            movementBuilder.setPurge(true);
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setMovement(movementBuilder);
         bundler.addChange(changeBuilder);
         if (immediate) {
             await this.ginkInstance.addBundler(bundler);
         }
-        return returning;
     }
 
     /**
@@ -86,20 +127,24 @@ export class Sequence extends Container {
         return await this.pop(0, purge, bundlerOrComment);
     }
 
+    private async getEntryAt(position: number, asOf?: AsOf): Promise<Entry | undefined> {
+        //TODO(https://github.com/google/gink/issues/68): fix crummy algo
+        const entries = await this.ginkInstance.store.getOrderedEntries(this.address, position, asOf);
+        if (entries.length == 0) return undefined;
+        if (position >= 0 && position >= entries.length) return undefined;
+        if (position < 0 && Math.abs(position) > entries.length) return undefined;
+        return entries[entries.length - 1];
+    }
+
     /**
-     * 
+     *
      * @param position Index to look for the thing, negative counts from end, or muid of entry
-     * @param asOf 
+     * @param asOf
      * @returns value at the position of the list, or undefined if list is too small
      */
     async at(position: number, asOf?: AsOf): Promise<Container | Value | undefined> {
         if (typeof(position) == "number") {
-            //TODO(https://github.com/google/gink/issues/68): fix crummy algo
-            const entries = await this.ginkInstance.store.getOrderedEntries(this.address, position, asOf);
-            if (entries.length == 0) return undefined;
-            if (position >= 0 && position >= entries.length) return undefined;
-            if (position < 0 && Math.abs(position) > entries.length) return undefined;
-            const entry = entries[entries.length - 1];
+            const entry = await this.getEntryAt(position, asOf);
             return await interpret(entry, this.ginkInstance);
         }
         throw Error("unexpected")
@@ -135,7 +180,7 @@ export class Sequence extends Container {
     entries(through=Infinity, asOf?: AsOf): AsyncGenerator<[Muid,Value|Container], void, unknown> {
         const thisList = this;
         return (async function*(){
-            // Note: I'm loading all entries memory despite using an async generator due to shitty IndexedDb 
+            // Note: I'm loading all entries memory despite using an async generator due to shitty IndexedDb
             // behavior of closing transactions when you await on something else.  Hopefully they'll fix that in
             // the future and I can improve this.  Alternative, it might make sense to hydrate everything in a single pass.
             const entries = await thisList.ginkInstance.store.getOrderedEntries(thisList.address, through, asOf);
