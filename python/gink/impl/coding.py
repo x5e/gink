@@ -21,6 +21,7 @@ BOX: int = Behavior.BOX  # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
+KEY_MAX: int = 2**53 - 1
 deletion = Deletion()
 
 
@@ -331,8 +332,8 @@ def encode_key(key: UserKey, builder: Optional[KeyBuilder] = None) -> KeyBuilder
     if isinstance(key, str):
         builder.characters = key  # type: ignore # pylint: disable=maybe-no-member
     elif isinstance(key, int):
-        if key >  2_147_483_647 or key < -2_147_483_648:
-            raise ValueError(f"integer {key} outside of int32 range; use bytes if necessary")
+        if abs(key) > KEY_MAX:
+            raise ValueError("integer key outside of allowed range")
         builder.number = key  # type: ignore # pylint: disable=maybe-no-member
     elif isinstance(key, bytes):
         builder.octets = key  # type: ignore

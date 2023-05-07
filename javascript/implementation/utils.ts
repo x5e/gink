@@ -90,6 +90,7 @@ export function wrapKey(key: number | string | Uint8Array): KeyBuilder {
         return keyBuilder;
     }
     if (typeof (key) == "number") {
+        ensure(Number.isSafeInteger(key), `key=${key} not a safe integer`);
         keyBuilder.setNumber(key);
         return keyBuilder;
     }
@@ -165,7 +166,6 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
         // (not critical while typescript is the only implementation)
         return new Date(valueBuilder.getTimestamp().getMillis());
     }
-
     throw new Error("haven't implemented unwrap for this Value");
 }
 
