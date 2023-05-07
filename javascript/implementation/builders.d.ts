@@ -150,8 +150,9 @@ export class ValueBuilder extends ImplementedMessage {
     getCharacters(): string;
     asOctets(): boolean;
     getOctets(): Uint8Array;
-    hasNumber(): boolean;
-    getNumber(): NumberBuilder;
+    hasInteger(): boolean;
+    hasBigInt(): boolean;
+    getInteger(): number;
     hasSpecial(): boolean;
     getSpecial(): number;
     hasOctets(): boolean;
@@ -166,9 +167,12 @@ export class ValueBuilder extends ImplementedMessage {
     setTimestamp(TimestampBuilder);
     setSpecial(Special);
     setCharacters(string);
-    setNumber(NumberBuilder);
+    setInteger(NumberBuilder);
     setTuple(TupleBuilder);
     setDocument(DocumentBuilder);
+    hasDoubled(): boolean;
+    getDoubled(): number;
+    setDoubled(number);
 }
 
 export class KeyBuilder extends ImplementedMessage {

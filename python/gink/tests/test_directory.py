@@ -277,3 +277,15 @@ def test_blame_and_log():
                 as_list = list(directory.log("foo"))
                 assert as_list[0].comment == "second"
                 assert as_list[1].comment == "first"
+
+
+def test_float_int():
+    """ makes sure that the directory.get_blame works """
+    for store in [MemoryStore(), LmdbStore()]:
+        with closing(store):
+            database = Database(store=store)
+            for directory in [Directory.get_global_instance(database=database), Directory()]:
+                directory["foo"] = 1
+                directory[0] = 1.0
+                assert isinstance(directory["foo"], int)
+                assert isinstance(directory[0], float)

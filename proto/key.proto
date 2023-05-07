@@ -3,7 +3,7 @@ package google.gink;
 
 message Key {
     oneof key {
-        sint64 number = 1;
+        sint64 number = 1; // only when abs(number) < 2**53
         bytes octets = 2;
         string characters = 3;
     }
