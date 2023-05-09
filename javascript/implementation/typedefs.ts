@@ -122,6 +122,7 @@ export interface IndexedDbStoreSchema extends DBSchema {
           "by-container-key-placement": [MuidTuple,  KeyType | Timestamp | MuidTuple | [], MuidTuple];
           'pointees': MuidTuple;
           'locations': [MuidTuple, MuidTuple];
+          "by-behavior-key-placement": [Behavior, KeyType | Timestamp | MuidTuple | [], MuidTuple];
       };
     };
 }

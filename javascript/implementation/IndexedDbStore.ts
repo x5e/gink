@@ -119,11 +119,36 @@ export class IndexedDbStore implements Store {
 
                 // The "entries" store has objects of type Entry (from typedefs)
                 const entries = db.createObjectStore('entries', {keyPath: "placementId"});
-                entries.createIndex("by-container-key-placement", ["containerId", "effectiveKey", "placementId"]);
+                entries.createIndex("by-container-key-placement",
+                    ["containerId", "effectiveKey", "placementId"]);
                 entries.createIndex("pointees", "pointeeList", {multiEntry: true, unique: false});
                 entries.createIndex("locations", ["entryId", "placementId"]);
+                entries.createIndex("by-behavior-key-placement", ["behavior", "effectiveKey", "placementId"]);
             },
         });
+    }
+
+    async getBySubject(behavior: Behavior, muid: Muid, asOf?: AsOf): Promise<Entry[]> {
+        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
+        const muidTuple: MuidTuple = [muid.timestamp, muid.medallion, muid.offset];
+        const lower = [behavior, muidTuple];
+        const upper = [behavior, muidTuple, [asOfTs]];
+        const range = IDBKeyRange.bound(lower, upper);
+        const trxn = this.wrapped.transaction(["entries", "clearances"]);
+        const map = new Map<string, Entry>();
+        let cursor = await trxn.objectStore("entries").index("by-behavior-key-placement").openCursor(range, "next");
+        while (cursor) {
+            const entry: Entry = cursor.value;
+            const containerTuple: MuidTuple = entry.containerId;
+            const containerStr = containerTuple.join(",");
+            if (entry.deletion) {
+                map.delete(containerStr);
+            } else {
+                map.set(containerStr, entry);
+            }
+            cursor = await cursor.continue();
+        }
+        return Array.from(map.values());
     }
 
     async getBackRefs(pointingTo: Muid): Promise<Entry[]> {

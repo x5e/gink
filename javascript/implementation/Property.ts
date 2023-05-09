@@ -35,5 +35,4 @@ export class Property extends Container {
         return result !== undefined;
     }
 
-
 }
