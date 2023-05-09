@@ -52,11 +52,11 @@ def test_set_get():
 
             global_box.set({"test": "document"})
             result = global_box.get()
-            assert repr(result) == "{'test': 'document'}"
+            assert result == {'test': 'document'}
 
             global_box.set([1, 'test', 99.9])
             result = global_box.get()
-            assert repr(result) == "(1, 'test', 99.9)" # This fails because 1 is converted to floating point, leaving it as is
+            assert result == (1, 'test', 99.9)
 
 def test_dumps():
     """ tests dumps method of Box class """

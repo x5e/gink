@@ -162,8 +162,6 @@ class EntryStorageKey(NamedTuple):
         else:
             raise ValueError(f"unexpected behavior {using}")
         
-        # This caused an error when using get_entry_by_key() on a box. Not sure if that is intended or not.
-        # assert middle_key is not None, "directory keys must be strings or integers"
         return EntryStorageKey(
             container=Muid.from_bytes(container_bytes),
             middle_key=middle_key,
