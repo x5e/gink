@@ -65,7 +65,7 @@ export interface Entry {
      */
     effectiveKey: KeyType | Timestamp | MuidTuple | [];
     entryId: MuidTuple;
-    pointeeList: MuidTuple[]; // use an empty list to denote no pointees
+    pointee: MuidTuple | [];
     value?: Value;
     expiry?: Timestamp;
     deletion?: boolean;
@@ -120,9 +120,10 @@ export interface IndexedDbStoreSchema extends DBSchema {
       key: MuidTuple;
       indexes: {
           "by-container-key-placement": [MuidTuple,  KeyType | Timestamp | MuidTuple | [], MuidTuple];
-          'pointees': MuidTuple;
+          "pointee-behavior-placement": [MuidTuple | [], Behavior, MuidTuple];
           'locations': [MuidTuple, MuidTuple];
-          "by-behavior-key-placement": [Behavior, KeyType | Timestamp | MuidTuple | [], MuidTuple];
+          "by-behavior-key-container-placement": [
+                Behavior, KeyType | Timestamp | MuidTuple | [], MuidTuple, MuidTuple];
       };
     };
 }

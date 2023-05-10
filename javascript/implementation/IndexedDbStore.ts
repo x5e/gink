@@ -121,9 +121,11 @@ export class IndexedDbStore implements Store {
                 const entries = db.createObjectStore('entries', {keyPath: "placementId"});
                 entries.createIndex("by-container-key-placement",
                     ["containerId", "effectiveKey", "placementId"]);
-                entries.createIndex("pointees", "pointeeList", {multiEntry: true, unique: false});
+                entries.createIndex("pointee-behavior-placement",
+                    ["pointee", "behavior", "placementId"])
                 entries.createIndex("locations", ["entryId", "placementId"]);
-                entries.createIndex("by-behavior-key-placement", ["behavior", "effectiveKey", "placementId"]);
+                entries.createIndex("by-behavior-key-container-placement",
+                    ["behavior", "effectiveKey", "containerId", "placementId"]);
             },
         });
     }
@@ -136,7 +138,8 @@ export class IndexedDbStore implements Store {
         const range = IDBKeyRange.bound(lower, upper);
         const trxn = this.wrapped.transaction(["entries", "clearances"]);
         const map = new Map<string, Entry>();
-        let cursor = await trxn.objectStore("entries").index("by-behavior-key-placement").openCursor(range, "next");
+        let cursor = await trxn.objectStore("entries").index("by-behavior-key-container-placement").openCursor(range, "next");
+        // TODO: change to just look at previous container rather than using the map
         while (cursor) {
             const entry: Entry = cursor.value;
             const containerTuple: MuidTuple = entry.containerId;
@@ -151,10 +154,23 @@ export class IndexedDbStore implements Store {
         return Array.from(map.values());
     }
 
-    async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
+    async getBackRefs(pointingTo: Muid, behavior?: Behavior, asOf?: AsOf): Promise<Entry[]> {
         await this.ready;
+        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const asTuple = <MuidTuple>[pointingTo.timestamp, pointingTo.medallion, pointingTo.offset];
-        return this.wrapped.getAllFromIndex("entries", "pointees", asTuple);
+        const lower = [asTuple, behavior || 0];
+        const upper = [asTuple, (behavior || Infinity) + 1];
+        const range = IDBKeyRange.bound(lower, upper);
+        const trxn = this.wrapped.transaction(["entries", "removals"]);
+        let entriesCursor = await trxn.objectStore("entries").index("pointee-behavior-placement").openCursor(range);
+        while (entriesCursor) {
+            const entry: Entry = entriesCursor.value;
+            if (entry.placementId[0] < asOfTs) {
+                // TODO: Check for Removal of the Entry
+                // TODO: Check for Clearance of the Entry
+
+            }
+        }
     }
 
     async close() {
@@ -304,15 +320,14 @@ export class IndexedDbStore implements Store {
                 }
                 const entryId: MuidTuple = [timestamp, medallion, offset];
                 const placementId: MuidTuple = entryId;
-                const pointeeList = <MuidTuple[]>[];
+                let pointee: MuidTuple|[] = [];
                 if (entryBuilder.hasPointee()) {
                     const pointeeMuidBuilder: MuidBuilder = entryBuilder.getPointee();
-                    const pointee = <MuidTuple>[
+                    pointee = <MuidTuple>[
                         pointeeMuidBuilder.getTimestamp() || bundleInfo.timestamp,
                         pointeeMuidBuilder.getMedallion() || bundleInfo.medallion,
                         pointeeMuidBuilder.getOffset(),
                     ];
-                    pointeeList.push(pointee);
                 }
                 const value = entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined;
                 const expiry = entryBuilder.getExpiry() || undefined;
@@ -322,7 +337,7 @@ export class IndexedDbStore implements Store {
                     containerId,
                     effectiveKey,
                     entryId,
-                    pointeeList,
+                    pointee,
                     value,
                     expiry,
                     deletion,
@@ -379,7 +394,7 @@ export class IndexedDbStore implements Store {
                         containerId: found.containerId,
                         effectiveKey: dest,
                         entryId: found.entryId,
-                        pointeeList: found.pointeeList,
+                        pointee: found.pointee,
                         value: found.value,
                         expiry: found.expiry,
                         deletion: found.deletion,
