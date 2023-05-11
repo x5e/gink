@@ -5,6 +5,7 @@ from .impl.log_backed_store import LogBackedStore
 from .impl.database import Database
 from .impl.directory import Directory
 from .impl.sequence import Sequence
+from .impl.box import Box
 from .impl.property import Property
 from .impl.container import Container
 from .impl.muid import Muid
@@ -14,5 +15,5 @@ from .impl.patch import PATCHED
 
 assert PATCHED
 
-__all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence", "Bundler",
+__all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence", "Box", "Bundler",
            "Property", "Container", "Muid", "LogBackedStore", "BundleInfo", "AbstractStore"]

@@ -40,7 +40,7 @@ gink calls a Muid (see also the Muid document). Each change can be one of:
 
 ## Containers and Behaviors
 
-Gink supports several differt kinds of data structures, such as:
+Gink supports several different kinds of data structures, such as:
 
 * A mapping data type, called a Directory, which is similar to a Python dict or a Javascript Map.
 * An ordered data type, called a Sequence, similar to a Python list or a Javascript Array.
@@ -332,7 +332,7 @@ by something that can be put into a Change message then they'll still be address
 
 Like a view, these don't fit into the existing data model because they're not directly 
 mutable themselves, but typically are data structures for accessing data in already existing
-structures.  Until formally added to the data model, users can approxiate them by explicitly
+structures.  Until formally added to the data model, users can approximate them by explicitly
 using a directory to map from keys to keys in other tables or entries in a sequence.
 
 ### Homogeneous Array / Vector / Matrix / Tensor Data Type
