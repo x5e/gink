@@ -1,6 +1,7 @@
 #!.usr/bin/env python3
 """ test the box class """
 from contextlib import closing
+import time
 
 from ..impl.muid import Muid
 from ..impl.box import Box
@@ -107,3 +108,24 @@ def test_isEmpty():
             global_box.set("test value")
             result = global_box.isEmpty()
             assert result == False
+
+def test_as_of():
+    """ make sure that historical queries work as intended """
+    for store in [LmdbStore(), MemoryStore(), ]:
+        with closing(store):
+            database = Database(store=store)
+            box1 = Box.get_global_instance(database)
+
+            box1.set("first")
+            time.sleep(.001)
+            assert box1.get() == "first"
+
+            box1.set("second")
+            if box1.get(as_of=-1) == box1.get():
+                raise AssertionError(str(box1.get(as_of=-1)))
+
+            box1.set("third")
+            assert box1.get(as_of=-2) == "first"
+            assert box1.get(as_of=-1) == "second"
+            assert box1.get() == "third"
+            
