@@ -56,9 +56,12 @@ class Box(Container):
         """ gets the value in the box, optionally as_of a time """
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(container=self._muid, key=None, as_of=as_of)
-        contents = self._get_occupant(found.builder, found.address)
+        
         if found is None or found.builder.deletion: #type: ignore
-            return default
+                    return default
+
+        contents = self._get_occupant(found.builder, found.address)
+        
         return contents
     
     def dumps(self, as_of: GenericTimestamp = None) -> str:
@@ -70,6 +73,11 @@ class Box(Container):
         
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(container=self._muid, key=None, as_of=as_of)
+
+        if found is None or found.builder.deletion: #type: ignore
+                    result = f"""{self.__class__.__name__}({identifier}, contents={None})"""
+                    return result
+
         contents = self._get_occupant(found.builder, found.address)
 
         result = f"""{self.__class__.__name__}({identifier}, contents={contents})"""
