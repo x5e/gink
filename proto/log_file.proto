@@ -1,6 +1,6 @@
 
 syntax = "proto3";
-package google.gink;
+package gink;
 
 /**
     This proto is only used in the typescript/javascript implementation.

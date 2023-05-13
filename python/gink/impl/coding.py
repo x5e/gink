@@ -284,9 +284,9 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
     if value_builder.HasField("doubled"):  # type: ignore
         return value_builder.doubled  # type: ignore
     if value_builder.HasField("integer"):
-        return value_builder.integer
+        return value_builder.integer # type: ignore
     if value_builder.HasField("bigint"):
-        return value_builder.bigint
+        return value_builder.bigint # type: ignore
     if value_builder.HasField("tuple"):  # type: ignore
         return tuple([decode_value(x) for x in value_builder.tuple.values])  # type: ignore
     if value_builder.HasField("document"):  # type: ignore # pylint: disable=maybe-no-member

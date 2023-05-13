@@ -1,11 +1,11 @@
 syntax = "proto3";
-import "muid.proto";
-package google.gink;
+import "proto/muid.proto";
+package gink;
 
 /**
     Acts to (re)move an entry.
 
-    When dest is unset (=0) then a Movement acts to remove an Entry.  
+    When dest is unset (=0) then a Movement acts to remove an Entry.
 
     When dest is set to a time in the past, effectively moves an entry to another location.
     When dest is set to a time in the future, hides the entry until that future time arrives.

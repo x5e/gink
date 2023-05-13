@@ -14,11 +14,10 @@ node_modules: package.json
 
 python/gink/builders: $(PROTOS)
 	rm -rf python/gink/builders* && \
-	mkdir -p python/gink/builders.making && \
-	protoc --proto_path=proto --python_out=python/gink/builders.making $(PROTOS) && \
-	sed -i -- 's/^import /from . import /' python/gink/builders.making/* && \
-	touch python/gink/builders.making/__init__.py && \
-	mv python/gink/builders.making python/gink/builders
+	protoc --proto_path=. --python_out=python/gink/ $(PROTOS) && \
+	sed -i -- 's/^import /from . import /' python/gink/proto/* && \
+	touch python/gink/proto/__init__.py && \
+	mv python/gink/proto python/gink/builders
 
 javascript/builders: $(PROTOS)
 	rm -rf javascript/builders* && \

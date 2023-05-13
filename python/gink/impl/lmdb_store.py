@@ -47,13 +47,12 @@ class LmdbStore(AbstractStore):
             val: entry binary proto
 
         placements - Entry proto data from commits, ordered in a way that can be accessed easily.
-            key: (container-muid, middle-key, placement-muid), with muids packed into 16 bytes
+            key: (container-muid, subject, placement-muid), with muids packed into 16 bytes
             val: entry-id
             A couple of other wrinkles of note:
                 * In the case of a DIRECTORY, the middle-key will be binaryproto of the key.
                 * In the case of a SEQUENCE the middle-key will be (effective-time, expiry)
-                * In the case of a PROPERTY/LABEL the middle key will be the muid of the described thing.
-                * In the case of a REGISTRY, the middle key will be (from-muid, effective-time)
+                * In the case of a PROPERTY/LABEL/REGISTRY the middle key will be subject muid
                 * In the case of a BOX, the middle key will be a zero-length byte sequence.
 
         removals - Used to soft-delete items from the entries table.
@@ -83,10 +82,17 @@ class LmdbStore(AbstractStore):
             key: bytes(BundleInfo)
             val: bundle bytes (i.e. same as in the bundles table)
 
-        descriptions - an index to enable looking up all the properties/edges on an object
-                < NOT YET IMPLEMENTED >
-            key: (subject-muid, container-muid, placement-muid, value-or-pointee)
+        by_key - an index to enable looking up all the properties/edges on an object
+            key: (entry-key, container-muid, placement-muid, value-or-pointee)
             val: entry-muid
+
+        by_val - an index for looking at entries by what they point-to
+            key: (pointee-muid, container-muid, placement-muid, pointer-muid)
+            val: <none>
+
+        by_name - a special case index for names (global default property)
+            key: (name string, named-muid, placement-muid)
+            val: <none>
 
     """
 

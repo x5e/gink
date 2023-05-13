@@ -1,9 +1,9 @@
 syntax = "proto3";
-package google.gink;
-import "value.proto";
-import "muid.proto";
-import "behavior.proto";
-import "key.proto";
+package gink;
+import "proto/value.proto";
+import "proto/muid.proto";
+import "proto/behavior.proto";
+import "proto/key.proto";
 
 message Entry {
     Muid container = 1;   // must reference a container
@@ -12,7 +12,8 @@ message Entry {
     oneof subject {
         // some of these only apply to certain container types:
         Key key = 3;            // KEY_SET, DIRECTORY
-        Muid describing = 6;    // PROPERTY, LABEL
+        sint64 location = 4;    // FILE
+        Muid describing = 6;    // PROPERTY, LABEL, REGISTRY
     }
 
     oneof contains {
@@ -24,5 +25,6 @@ message Entry {
     }
 
     uint64 expiry = 11; // timestamp of expiration in microseconds since epoch, or 0 for none
-    bool purge = 12; // when replacing, remove relaced entries even if otherwise maintaining history
+    sint64 effective = 12;  // timestamp of initial position in ordered container, or 0 for entry ts
+    bool purge = 13; // when replacing, remove relaced entries even if otherwise maintaining history
 }

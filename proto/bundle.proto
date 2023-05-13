@@ -1,6 +1,6 @@
 syntax = "proto3";
-import "change.proto";
-package google.gink;
+import "proto/change.proto";
+package gink;
 
 message Bundle {
     uint64 timestamp = 1;
@@ -18,8 +18,8 @@ message Bundle {
     //   if part way through creating a commit you decide you don't need an object, using a map allows
     //   you to just exclude it (and have non-sequential keys).  If the items were in a repeated field
     //   with the index being the implied offset, then removing an object from the middle of the list
-    //   would effectively change the muid of every object after it, which would cause problems when 
-    //   objects within that commit reference each other.  An alternative approach would be to use a 
-    //   repeated field with implied offsets and use a tombstone (no-op) object in cases where the 
+    //   would effectively change the muid of every object after it, which would cause problems when
+    //   objects within that commit reference each other.  An alternative approach would be to use a
+    //   repeated field with implied offsets and use a tombstone (no-op) object in cases where the
     //   creator of a commit changes their mind and decides not to include a particular object.
 }

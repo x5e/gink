@@ -1,5 +1,5 @@
 syntax = "proto3";
-package google.gink;
+package gink;
 
 /**
     Muid: globally unique object-id in the Gink system.
@@ -21,10 +21,10 @@ package google.gink;
     corresponds to (timestamp << 72) + (medallion << 20) + offset,
     encoded big-endian.
 
-    14 hex-digit time,  13 hex-digit medallion, 5 hex-digit offset  
+    14 hex-digit time,  13 hex-digit medallion, 5 hex-digit offset
     TTTTTTTTTTTTTTMMMMMMMMMMMMMOOOOO
 
-    ^ This representation works for timestamps up to the year 4253, though 
+    ^ This representation works for timestamps up to the year 4253, though
     languages like Javascript that only have doubles may have trouble with
     microseconds timestamps past the year 2255 (2**53).
 
