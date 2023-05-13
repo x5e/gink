@@ -62,19 +62,17 @@ class LocationKey(NamedTuple):
 class MovementKey(NamedTuple):
     """ Key used in the removals table to track soft-deletes of entries. """
     container: Muid
-    effective: MuTimestamp
-    placement: Muid  # the entry or movement that placed the entry to be (re)moved
-    removing: Muid  # the muid of the encoded movement
+    removing: Muid  # the entry or movement that placed the entry to be (re)moved
+    movement: Muid  # the muid of the encoded movement
 
     @staticmethod
     def from_bytes(data: bytes):
         """ inverse of __bytes__ """
         return MovementKey(
             Muid.from_bytes(data[0:16]),
-            decode_muts(data[16:24]) or 0,
             Muid.from_bytes(data[24:40]),
-            Muid.from_bytes(data[40:])
-        )
+            Muid.from_bytes(data[40:]))
+
 
 
 class QueueMiddleKey(NamedTuple):

@@ -6,7 +6,7 @@ import os
 import uuid
 from typing import Tuple, Callable, Iterable, Optional, Set, Union
 from struct import pack
-from lmdb import open as ldmbopen, Transaction as Trxn, Cursor
+from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
 
 # Gink Implementation
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
@@ -42,26 +42,26 @@ class LmdbStore(AbstractStore):
             key: medallion (packed big endian)
             val: chain_start (packed big endian)
 
-        entries - Entry proto data from commits, ordered in a way that can be accessed easily.
-            key: (source-muid, middle-key, entry-muid, expiry), with muids packed into 16 bytes
-            val: binaryproto of the entry
+        entries - Stores entry payload.
+            key: contain-muid, entry-muid
+            val: entry binary proto
+
+        placements - Entry proto data from commits, ordered in a way that can be accessed easily.
+            key: (container-muid, middle-key, placement-muid), with muids packed into 16 bytes
+            val: entry-id
             A couple of other wrinkles of note:
-                * The middle-key will be binaryproto of the key if the container is a directory.
-                * In the case of a SEQUENCE, the middle-key will be (effective-time, move-muid?),
-                  where the move-muid is only present in the case of a move.
-                * In the case of a PROPERTY the middle key will be the muid of the described thing.
-                * In the case of a BOX, the middle key won't be there.
+                * In the case of a DIRECTORY, the middle-key will be binaryproto of the key.
+                * In the case of a SEQUENCE the middle-key will be (effective-time, expiry)
+                * In the case of a PROPERTY/LABEL the middle key will be the muid of the described thing.
+                * In the case of a REGISTRY, the middle key will be (from-muid, effective-time)
+                * In the case of a BOX, the middle key will be a zero-length byte sequence.
 
         removals - Used to soft-delete items from the entries table.
-            Designed so that the first 40 key bytes matches the first 40 bytes of the entries key.
-            When removed to a different position and retaining history, the old entry stays,
-            with the removal signaling a soft delete, and a new entry is added to the entries table.
-
-            key: (container-muid, eff-ts, move/entry-muid, removal-muid)
+            key: (container-muid, placement-muid you're removing, movement-muid)
             val: binaryproto of the movement
 
         locations - table used as an index to look-up entries by entry-muid for (re)-moving
-            key: (entry-muid, placement-muid)
+            key: (container-muid, entry-muid, placement-muid)
             val: key from the entries table
 
         containers - Map from muid to serialized containers definitions.
@@ -83,10 +83,11 @@ class LmdbStore(AbstractStore):
             key: bytes(BundleInfo)
             val: bundle bytes (i.e. same as in the bundles table)
 
-        properties - an index to enable looking up all the properties on an object
+        descriptions - an index to enable looking up all the properties/edges on an object
                 < NOT YET IMPLEMENTED >
-            key: (describing-muid, property-muid, entry-muid)
-            val: bytes of the corresponding key in the entry table
+            key: (subject-muid, container-muid, placement-muid, value-or-pointee)
+            val: entry-muid
+
     """
 
     def __init__(self, file_path=None, reset=False, retain_bundles=True, retain_entries=True):

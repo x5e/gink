@@ -4,7 +4,7 @@
 import sys
 import struct
 from typing import Tuple, Callable, Optional, Iterable, Union
-from sortedcontainers import SortedDict
+from sortedcontainers import SortedDict  # type: ignore
 
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder, Message,

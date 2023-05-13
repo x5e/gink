@@ -12,30 +12,17 @@ message Entry {
     oneof subject {
         // some of these only apply to certain container types:
         Key key = 3;            // KEY_SET, DIRECTORY
-        Pair pair = 4;          // REGISTRY, RELATION
-        Span span = 5;          // FILE
-        Muid describing = 6;     // PROPERTY, MEMBERSHIP
+        Muid describing = 6;    // PROPERTY, LABEL
     }
 
     oneof contains {
         // some of these only apply to certain container types:
         Value value = 7;    // BOX, DIRECTORY, SEQUENCE, PROPERTY
         bytes octets = 8;   // up to 2**30 bytes, for behaviors in FILE, STREAM
-        bool deletion = 9;  // KEY_SET, DIRECTORY, MEMBERSHIP, PROPERTY, RELATION
-        Muid pointee = 10;   // BOX, DIRECTORY, SEQUENCE, PROPERTY, PAIR_MAP
+        bool deletion = 9;  // KEY_SET, DIRECTORY, LABEL, PROPERTY
+        Muid pointee = 10;   // BOX, DIRECTORY, SEQUENCE, PROPERTY
     }
 
     uint64 expiry = 11; // timestamp of expiration in microseconds since epoch, or 0 for none
-    sint64 effective = 12; // timestamp of initial position in ordered container, or 0 for entry ts
-    bool purge = 13; // remove hidden and/or deleted entries even if otherwise maintaining history
-
-    message Span {
-        uint64 from=1;
-        uint64 ends=2;  // set ends to 0 to truncate after "from" position
-    }
-    
-    message Pair {
-        Muid left = 1;
-        Muid rite = 2;
-    }
+    bool purge = 12; // when replacing, remove relaced entries even if otherwise maintaining history
 }
