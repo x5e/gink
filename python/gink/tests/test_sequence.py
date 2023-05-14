@@ -70,7 +70,7 @@ def test_basics():
 
 def test_reordering():
     """ makes sure that I can move things around """
-    for store in [LmdbStore(), MemoryStore(), ]:
+    for store in [MemoryStore(), LmdbStore(), ]:
         with closing(store):
             database = Database(store=store)
             for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
@@ -88,7 +88,8 @@ def test_reordering():
                 assert list(seq) == ["z", "c", "a", "b", "y"]
                 seq.remove("c", dest=seq.index("y"))
                 assert list(seq) == ["z", "a", "b", "c", "y"]
-                seq.pop(1, dest=-1)
+                popped = seq.pop(1, dest=-1)
+                assert popped == "a", popped
                 assert list(seq) == ["z", "b", "c", "y", "a"], list(seq)
                 previously = list(seq.values(as_of=-1))
                 assert previously == ["z", "a", "b", "c", "y"], (store, previously)
@@ -154,7 +155,8 @@ def test_as_of():
                     assertion_time = database.get_now()
                     raise AssertionError(f"{seq_as_list} at {assertion_time}")
                 seq.remove("foo")
-                assert list(seq.values()) == ["bar", "zoo"]
+                xxx = list(seq.values())
+                assert xxx == ["bar", "zoo"], xxx
                 etc = list(seq.values(as_of=bar_append_change.timestamp))
                 assert etc == ["foo"], etc
 

@@ -3,7 +3,6 @@
 from contextlib import closing
 import os
 import socket
-import datetime
 
 from ..impl.muid import Muid
 from ..impl.directory import Directory
@@ -132,7 +131,7 @@ def test_items_and_keys():
 
 def test_popitem_and_len():
     """ ensures popitem works as intended """
-    for store in [LmdbStore(), MemoryStore(), ]:
+    for store in [MemoryStore(), LmdbStore(),  ]:
         with store:
             database = Database(store=store)
             gdi = Directory.get_global_instance(database=database)

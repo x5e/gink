@@ -1,19 +1,20 @@
 syntax = "proto3";
-package google.gink;
-import "key.proto";
+import "proto/key.proto";
+package gink;
+
 
 message Value {
     oneof value {
-        Special special = 1;
-        double doubled = 2;
+        sint64 bigint = 1;
+        bytes octets = 2;
         string characters = 3;
         sint32 integer = 4;
         Timestamp timestamp = 5;
         Date date = 6;
         Time time = 7;
-        bytes octets = 8;
+        double doubled = 8;
         string symbol = 9;
-        sint64 bigint = 10;
+        Special special = 10;
         Tuple tuple = 11;
         Document document = 12;
         bytes uuid = 16;

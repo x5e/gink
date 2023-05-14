@@ -1,18 +1,22 @@
 syntax = "proto3";
-package google.gink;
+package gink;
 
 enum Behavior {
     UNSPECIFIED = 0; // seeing this behavior usually means there's a bug somewhere
-    BOX = 1; // only holds on entry at a time, only uses a contains, no key or subject
-    FILE = 2; // entries contain bytes and optionally a location to place those bytes in the file
-    STREAM = 3; // entries contain bytes, order is implied by timestamps
-    MEMBERSHIP = 4; // also known as label or tag, has "subject"
-    KEY_SET = 5; // entries have only key, no value, and may be removed with a deletion
 
-    PAIR_MAP = 6; // entries map a pair of muids to a value or reference
-    DIRECTORY = 7; // entries have key and also something contained (value or pointee)
-    SEQUENCE = 8; // entries have a value or pointee but no key, ordered by time
-    PROPERTY = 9; // entries set a property on an object
-    REGISTRY = 11; // aka edge type, entries have left and rite subject address
-    PLACEHOLDER = 13; // no entries for containers of this type
+    BOX = 1; // only holds on entry at a time, only uses a contains, no key or subject
+    SEQUENCE = 2; // entries have a value or pointee but no key, ordered by time
+    SET = 3; // entries have only key, no value, and may be removed with a deletion
+    DIRECTORY = 4; // entries have key and also something contained (value or pointee)
+
+    STREAM = 5; // entries contain bytes, order is implied by timestamps
+    FILE = 6; // entries contain bytes and optionally a location to place those bytes in the file
+
+    TABLE = 7;
+
+    NODE = 8; // no entries for containers of this type
+    PROPERTY = 9; // entries have a subject and value
+    LABEL = 10; // denotes membership
+    RELATIONSHIP = 11; // aka edge type
+
 };

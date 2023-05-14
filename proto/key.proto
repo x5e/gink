@@ -1,5 +1,5 @@
 syntax = "proto3";
-package google.gink;
+package gink;
 
 message Key {
     oneof key {

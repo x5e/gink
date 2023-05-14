@@ -18,6 +18,9 @@ SEQUENCE: int = Behavior.SEQUENCE  # type: ignore
 DIRECTORY: int = Behavior.DIRECTORY  # type: ignore
 PROPERTY: int = Behavior.PROPERTY  # type: ignore
 BOX: int = Behavior.BOX  # type: ignore
+NODE: int = Behavior.NODE  # type: ignore
+LABEL: int = Behavior.LABEL # type: ignore
+RELATIONSHIP: int = Behavior.RELATIONSHIP # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
@@ -59,22 +62,22 @@ class LocationKey(NamedTuple):
         return bytes(self.entry_muid) + bytes(self.placement)
 
 
-class MovementKey(NamedTuple):
+class RemovalKey(NamedTuple):
     """ Key used in the removals table to track soft-deletes of entries. """
     container: Muid
-    effective: MuTimestamp
-    placement: Muid  # the entry or movement that placed the entry to be (re)moved
-    removing: Muid  # the muid of the encoded movement
+    removing: Muid  # the entry or movement that placed the entry to be (re)moved
+    movement: Muid  # the muid of the encoded movement
 
     @staticmethod
     def from_bytes(data: bytes):
         """ inverse of __bytes__ """
-        return MovementKey(
+        return RemovalKey(
             Muid.from_bytes(data[0:16]),
-            decode_muts(data[16:24]) or 0,
             Muid.from_bytes(data[24:40]),
-            Muid.from_bytes(data[40:])
-        )
+            Muid.from_bytes(data[40:]))
+
+    def __bytes__(self) -> bytes:
+        return bytes(self.container) + bytes(self.removing) + bytes(self.movement)
 
 
 class QueueMiddleKey(NamedTuple):
@@ -101,7 +104,7 @@ class QueueMiddleKey(NamedTuple):
             raise AssertionError("expected QueueMiddleKey to be 8 or 24 bytes")
 
 
-class EntryStorageKey(NamedTuple):
+class PlacementKey(NamedTuple):
     """ just a class to serialize / deserialize keys used to store entries
 
     """
@@ -110,11 +113,15 @@ class EntryStorageKey(NamedTuple):
     entry_muid: Muid
     expiry: Optional[MuTimestamp]
 
+    def get_positioner(self) -> Muid:
+        queue_middle_key = self.middle_key
+        assert isinstance(queue_middle_key, QueueMiddleKey)
+        return queue_middle_key.movement_muid or self.entry_muid
+
     def get_queue_position(self) -> MuTimestamp:
         """ Pulls out the effective timestamp (ordering position) from the middle_key. """
-        middle_key = self.middle_key
-        assert isinstance(middle_key, QueueMiddleKey)
-        return middle_key.effective_time
+        assert isinstance(self.middle_key, QueueMiddleKey)
+        return self.middle_key.effective_time
 
     @staticmethod
     def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):
@@ -124,16 +131,18 @@ class EntryStorageKey(NamedTuple):
         behavior = getattr(builder, "behavior")
         position = getattr(builder, "effective")
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None]
-        if behavior == DIRECTORY or behavior == BOX:
+        if behavior == DIRECTORY:
             middle_key = decode_key(builder)
+        elif behavior == BOX:
+            middle_key = None
         elif behavior == SEQUENCE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp, None)
-        elif behavior == PROPERTY:
+        elif behavior in (PROPERTY, RELATIONSHIP, LABEL):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None
-        return EntryStorageKey(container, middle_key, entry_muid, expiry)
+        return PlacementKey(container, middle_key, entry_muid, expiry)
 
     @staticmethod
     def from_bytes(data: bytes, using: Union[int, bytes, EntryBuilder]):
@@ -151,19 +160,19 @@ class EntryStorageKey(NamedTuple):
         entry_muid_bytes = data[-24:-8]
         expiry_bytes = data[-8:]
         entry_muid = Muid.from_bytes(entry_muid_bytes)
-        middle_key: Union[QueueMiddleKey, UserKey, Muid, None]
+        middle_key: Union[MuTimestamp, UserKey, Muid, None]
         if using == DIRECTORY:
             middle_key = decode_key(middle_key_bytes)
         elif using == SEQUENCE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
-        elif using == PROPERTY:
+        elif using in (PROPERTY, RELATIONSHIP, LABEL):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using == BOX:
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")
         assert middle_key is not None, "directory keys must be strings or integers"
-        return EntryStorageKey(
+        return PlacementKey(
             container=Muid.from_bytes(container_bytes),
             middle_key=middle_key,
             entry_muid=entry_muid,
@@ -171,7 +180,7 @@ class EntryStorageKey(NamedTuple):
 
     def replace_time(self, timestamp: int):
         """ create a entry key that can be used for seeking before the given time """
-        return EntryStorageKey(self.container, self.middle_key, Muid(timestamp, 0, 0, ), None)
+        return PlacementKey(self.container, self.middle_key, Muid(timestamp, 0, 0, ), None)
 
     def __bytes__(self) -> bytes:
         parts: List[Any] = [self.container]
@@ -191,10 +200,7 @@ class EntryStorageKey(NamedTuple):
             though we know now where we want the entry to be, we still need to know
             when it was placed there in order to let users ask what the order previously was.
         """
-        if isinstance(self.middle_key, QueueMiddleKey) and self.middle_key.movement_muid:
-            return self.middle_key.movement_muid.timestamp
-        else:
-            return self.entry_muid.timestamp
+        return self.get_positioner().timestamp
 
     def __lt__(self, other):
         # I'm override sort here because I want the same sort order of the binary representation,
@@ -205,7 +211,7 @@ class EntryStorageKey(NamedTuple):
 
 class EntryStoragePair(NamedTuple):
     """ Parsed entry data. """
-    key: EntryStorageKey
+    key: PlacementKey
     builder: EntryBuilder
 
 
@@ -286,9 +292,9 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
     if value_builder.HasField("doubled"):  # type: ignore
         return value_builder.doubled  # type: ignore
     if value_builder.HasField("integer"):
-        return value_builder.integer
+        return value_builder.integer # type: ignore
     if value_builder.HasField("bigint"):
-        return value_builder.bigint
+        return value_builder.bigint # type: ignore
     if value_builder.HasField("tuple"):  # type: ignore
         return tuple([decode_value(x) for x in value_builder.tuple.values])  # type: ignore
     if value_builder.HasField("document"):  # type: ignore # pylint: disable=maybe-no-member
