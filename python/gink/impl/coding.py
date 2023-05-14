@@ -120,8 +120,8 @@ class PlacementKey(NamedTuple):
 
     def get_queue_position(self) -> MuTimestamp:
         """ Pulls out the effective timestamp (ordering position) from the middle_key. """
-        assert isinstance(self.middle_key, MuTimestamp)
-        return self.middle_key
+        assert isinstance(self.middle_key, QueueMiddleKey)
+        return self.middle_key.effective_time
 
     @staticmethod
     def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):

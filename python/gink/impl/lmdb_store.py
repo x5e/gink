@@ -313,10 +313,10 @@ class LmdbStore(AbstractStore):
         clear_before_to = self._get_time_of_prior_clear(trxn, container, as_of=to_time)
         prefix = bytes(container)
         # Sequence entries can be repositioned, but they can't be re-added once removed or expired.
-        entries_cursor = trxn.cursor(self._entries)
-        positioned = entries_cursor.set_range(prefix)
-        while positioned and entries_cursor.key().startswith(prefix):
-            key_bytes = entries_cursor.key()
+        placements_cursor = trxn.cursor(self._placements)
+        positioned = placements_cursor.set_range(prefix)
+        while positioned and placements_cursor.key().startswith(prefix):
+            key_bytes = placements_cursor.key()
             parsed_key = PlacementKey.from_bytes(key_bytes, SEQUENCE)
             location = self._get_location(trxn, parsed_key.entry_muid)
             previous = self._get_location(trxn, parsed_key.entry_muid, as_of=to_time)
@@ -332,7 +332,7 @@ class LmdbStore(AbstractStore):
             if previous == parsed_key and clear_before_to < placed_time:
                 # this entry existed there at to_time
                 entry_builder = EntryBuilder()
-                entry_builder.ParseFromString(entries_cursor.value())
+                entry_builder.ParseFromString(trxn.get(placements_cursor.value(), db=self._entries))
                 occupant = decode_entry_occupant(EntryStoragePair(parsed_key, entry_builder))
                 if isinstance(occupant, Muid) and seen is not None:
                     for change in self._container_reset_changes(to_time, occupant, seen, trxn):
@@ -341,7 +341,7 @@ class LmdbStore(AbstractStore):
                     # but isn't there any longer
                     entry_builder.effective = parsed_key.get_queue_position()  # type: ignore
                     yield wrap_change(entry_builder)
-            positioned = entries_cursor.next()
+            positioned = placements_cursor.next()
 
     def _get_directory_reset_changes(
             self,
@@ -447,7 +447,7 @@ class LmdbStore(AbstractStore):
             entry_builder.ParseFromString(trxn.get(bytes(entry), db=self._entries))
             return PositionedEntry(
                 middle_key.effective_time,
-                placement.entry_muid,
+                placement.get_positioner(),
                 entry,
                 entry_builder)
 
@@ -692,7 +692,7 @@ class LmdbStore(AbstractStore):
             return  # refuse to move a entry that's already expired
         if retaining:
             # only keep the removal info if doing a soft delete, otherwise just nuke the entry
-            removal_key = RemovalKey(container, existing_placement.entry_muid, movement_muid)
+            removal_key = RemovalKey(container, existing_placement.get_positioner(), movement_muid)
             removal_val = serialize(builder)
             txn.put(bytes(removal_key), removal_val, db=self._removals)
         new_location_key = bytes(LocationKey(entry_muid, movement_muid))
