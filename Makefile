@@ -15,7 +15,7 @@ node_modules: package.json
 python/gink/builders: $(PROTOS)
 	rm -rf python/gink/builders* && \
 	protoc --proto_path=. --python_out=python/gink/ $(PROTOS) && \
-	sed -i -- 's/^import /from . import /' python/gink/proto/* && \
+	sed -i -- 's/^from proto import /from . import /' python/gink/proto/* && \
 	touch python/gink/proto/__init__.py && \
 	mv python/gink/proto python/gink/builders
 
