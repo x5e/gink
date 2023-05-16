@@ -19,6 +19,6 @@ jobs:
     - name: Build the python docker image.
       run: docker build ./python
     - name: Compile protos for the javascript implementation.
-      run: make javascript/builders
+      run: make javascript/proto
     - name: Build the javascript docker image.
       run: docker build ./javascript

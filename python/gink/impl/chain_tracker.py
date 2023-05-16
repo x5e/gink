@@ -4,7 +4,7 @@ Defines the ChainTracker class.
 
 from typing import Union, Optional
 
-from sortedcontainers import SortedDict
+from sortedcontainers import SortedDict  # type: ignore
 
 from .builders import SyncMessage
 from .typedefs import MuTimestamp, Medallion

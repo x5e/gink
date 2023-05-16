@@ -8,7 +8,7 @@ COPY package.json ./
 RUN npm install
 RUN npm rebuild
 COPY *.js* ./
-COPY builders ./builders
+COPY proto ./proto
 COPY implementation ./implementation
 COPY unit-tests ./unit-tests
 RUN ./node_modules/.bin/jest

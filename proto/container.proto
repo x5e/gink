@@ -1,6 +1,6 @@
 syntax = "proto3";
-package google.gink;
-import "behavior.proto";
+package gink;
+import "proto/behavior.proto";
 
 /**
     Each new Container message establishes the existance of a mutable data structure.
