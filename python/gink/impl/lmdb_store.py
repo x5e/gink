@@ -245,6 +245,9 @@ class LmdbStore(AbstractStore):
             for change in self._get_sequence_reset_changes(container, to_time, trxn, seen):
                 yield change
             return
+        if behavior == BOX:
+            for change in self._get_box_reset_changes(container, to_time, trxn, seen):
+                yield change
         else:
             raise NotImplementedError(f"don't know how to reset container of type {behavior}")
 
@@ -266,7 +269,7 @@ class LmdbStore(AbstractStore):
                         yield change
                     cursor_placed = containers_cursor.next()
                 # then loop over the "magic" pre-defined
-                for behavior in [DIRECTORY, SEQUENCE]:
+                for behavior in [DIRECTORY, SEQUENCE, BOX]:
                     muid = Muid(-1, -1, behavior)
                     for change in self._container_reset_changes(to_time, muid, seen, txn):
                         yield change
@@ -285,6 +288,72 @@ class LmdbStore(AbstractStore):
         entry_builder = EntryBuilder()
         entry_builder.ParseFromString(trxn.get(value_as_bytes, db=self._entries))  # type: ignore
         return EntryStoragePair(parsed_key, entry_builder)
+    
+    def _get_box_reset_changes(
+            self,
+            container: Muid,
+            to_time: MuTimestamp,
+            trxn: Trxn,
+            seen: Optional[Set[Muid]],
+    ) -> Iterable[ChangeBuilder]:
+        """ Gets all of the changes needed to reset a specific Gink box to a past time.
+
+            If the `seen` argument is not None, then we're making the changes recursively.
+            The `trxn` argument should be a lmdb read transaction.
+
+            Note that this only makes changes to undo anything that actively happened since
+            the specified time.  If the entry expired on its own since to_time then this won't
+            resurrect it.
+
+            Assumes that you're retaining entry history.
+        """
+        if seen is not None:
+            if container in seen:
+                return
+            seen.add(container)
+        last_clear_time = self._get_time_of_prior_clear(trxn, container)
+        cursor = trxn.cursor(db=self._placements)
+
+        to_process = to_last_with_prefix(cursor, bytes(container))
+
+        while to_process:
+            current = self._parse_entry(cursor, BOX, trxn=trxn)
+            if current.key.entry_muid.timestamp < to_time and last_clear_time < to_time:
+                # no updates or clears have happened since to_time
+                recurse_on = decode_entry_occupant(current)
+            else:
+                #only here if a clear or change has been made since to_time
+                if last_clear_time <= current.key.entry_muid.timestamp:
+                    contained_now = decode_entry_occupant(current)
+                else:
+                    contained_now = deletion
+
+            # we know what's there now, next have to find out what was there at to_time
+            last_clear_before_to_time = self._get_time_of_prior_clear(trxn, container, to_time)
+            limit = PlacementKey(container, None, Muid(to_time, 0, 0), None)
+            assert isinstance(to_process, bytes)
+            through_middle = to_process[:-24]
+            assert bytes(limit)[:-24] == through_middle
+            found = to_last_with_prefix(cursor, through_middle, boundary=bytes(limit))
+            data_then = self._parse_entry(cursor, BOX, trxn) if found else None
+            if data_then and data_then.key.entry_muid.timestamp > last_clear_before_to_time:
+                contained_then = decode_entry_occupant(data_then)
+            else:
+                contained_then = deletion
+
+            # now we know what was contained then, we just have to decide what to do with it
+            if contained_then != contained_now:
+                if isinstance(contained_then, Deletion):
+                    yield wrap_change(create_deleting_entry(container, None))
+                else:
+                    yield wrap_change(data_then.builder) # type: ignore
+            recurse_on = contained_then
+
+            if seen is not None and isinstance(recurse_on, Muid):
+                for change in self._container_reset_changes(to_time, recurse_on, seen, trxn):
+                    yield change
+            limit = PlacementKey(container, None, Muid(0, 0, 0), None)
+            to_process = to_last_with_prefix(cursor, container, boundary=limit)
 
     def _get_sequence_reset_changes(
             self,
