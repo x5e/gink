@@ -171,7 +171,6 @@ class PlacementKey(NamedTuple):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")
-        assert middle_key is not None, "directory keys must be strings or integers"
         return PlacementKey(
             container=Muid.from_bytes(container_bytes),
             middle_key=middle_key,
