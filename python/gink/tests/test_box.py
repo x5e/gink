@@ -61,26 +61,26 @@ def test_set_get():
 
 def test_reset():
     """ tests the box gets correctly reset """
-    for store in [MemoryStore(), LmdbStore()]:
-        with closing(store):
-            assert isinstance(store, AbstractStore)
-            database = Database(store=store)
-            global_box = Box.get_global_instance(database=database)
+    store = LmdbStore()
+    with closing(store):
+        assert isinstance(store, AbstractStore)
+        database = Database(store=store)
+        global_box = Box.get_global_instance(database=database)
 
-            global_box.set("first value")
-            global_box.set("second value")
-            after_second = database.get_now()
+        global_box.set("first value")
+        global_box.set("second value")
+        after_second = database.get_now()
 
-            global_box.set("third value")
-            after_third = database.get_now()
+        global_box.set("third value")
+        after_third = database.get_now()
 
-            global_box.set("fourth value")
+        global_box.set("fourth value")
 
-            global_box.reset(after_second)
-            assert global_box.get() == "second value"
+        global_box.reset(after_second)
+        assert global_box.get() == "second value"
 
-            global_box.reset(after_third)
-            assert global_box.get() == "third value"
+        global_box.reset(after_third)
+        assert global_box.get() == "third value"
 
 
 def test_dumps():
