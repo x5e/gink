@@ -5,6 +5,7 @@
     public API and can change at any time without a corresponding increase in the major
     revision number.
 """
+from __future__ import annotations
 from typing import Optional, Union, NamedTuple, List, Any
 from struct import Struct
 

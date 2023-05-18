@@ -21,79 +21,11 @@ from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, EntryStoragePair, decode_muts, wrap_change,
                      PlacementKey, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
-                     LocationKey, PROPERTY, BOX)
+                     LocationKey, PROPERTY, BOX, decode_value)
 
 
 class LmdbStore(AbstractStore):
     """
-    Uses the Lightning Memory Mapped Database (lmdb) to implement the Store interface.
-
-    Under the hood, each gink.mdb file stores several "databases" (tables/b-trees):
-
-        bundles - Used to keep track of all commits we have seen.
-            key: bytes(bundle_info), which forces sorting by (timestamp, medallion)
-            val: the bytes for the relevant bundle when it was sealed
-
-        chains - Used to keep track of how far along each chain we've seen.
-            key: the tuple (medallion, chain_start), packed big endian
-            val: bytes(bundle_info) for the last bundle along the given chain
-
-        claims - Used to keep track of which chains this store owns and can append to.
-            key: medallion (packed big endian)
-            val: chain_start (packed big endian)
-
-        entries - Stores entry payload.
-            key: entry-muid
-            val: entry binary proto
-
-        placements - Entry proto data from commits, ordered in a way that can be accessed easily.
-            key: (container-muid, subject, placement-muid, expiry), with muids packed into 16 bytes
-            val: entry-id
-            A couple of other wrinkles of note:
-                * In the case of a DIRECTORY, the middle-key will be binaryproto of the key.
-                * In the case of a SEQUENCE the middle-key will be effective-time
-                * In the case of a PROPERTY/LABEL/REGISTRY the middle key will be subject muid
-                * In the case of a BOX, the middle key will be a zero-length byte sequence.
-
-        removals - Used to soft-delete items from the entries table.
-            key: (container-muid, placement-muid you're removing, movement-muid)
-            val: binaryproto of the movement
-
-        locations - table used as an index to look-up entries by entry-muid for (re)-moving
-            key: (entry-muid, placement-muid)
-            val: key from the entries table
-
-        containers - Map from muid to serialized containers definitions.
-
-        retentions - Keeps track of what history is being stored.
-            key: one of b"bundles", b"entries"
-            val: Big endian encoded int64.
-                0 - No history stored.
-                1 - All history stored.
-                <other microsecond timestamp> - time since when history has been retained
-
-        clearances - tracks clearance changes (most recent per container if not retaining entries)
-            key: (container-muid, clearance-muid)
-            val: binaryproto of the clearance
-
-        outbox - Keeps track of what has been added locally but not sent to peers.
-                 Important to track because if not retaining all bundles locally then need to
-                 send locally created bundles to another node to be saved.
-            key: bytes(BundleInfo)
-            val: bundle bytes (i.e. same as in the bundles table)
-
-        by_source - an index to enable looking up all the properties/edges on an object
-            key: (entry-key, container-muid, placement-muid, value-or-pointee)
-            val: entry-muid
-
-        by_pointee - an index for looking at entries by what they point-to
-            key: (pointee-muid, container-muid, placement-muid, pointer-muid)
-            val: <none>
-
-        by_name - a special case index for names (global default property)
-            key: (name string, named-muid, placement-muid)
-            val: <none>
-
     """
 
     def __init__(self, file_path=None, reset=False, retain_bundles=True, retain_entries=True):
@@ -124,13 +56,13 @@ class LmdbStore(AbstractStore):
         self._clearances = self._handle.open_db(b"clearances")
         self._properties = self._handle.open_db(b"properties")
         self._placements = self._handle.open_db(b"placements")
-        self._by_source = self._handle.open_db(b"by_source")
+        self._by_describing = self._handle.open_db(b"by_describing")
         self._by_pointee = self._handle.open_db(b"by_pointee")
         self._by_name = self._handle.open_db(b"by_name")
         self._outbox = self._handle.open_db(b"outbox")
         if reset:
             with self._handle.begin(write=True) as txn:
-                # The delete=False signals to lmdb to truncate the tables rather than drop them
+                # Setting delete=False signals to lmdb to truncate the tables rather than drop them
                 txn.drop(self._bundles, delete=False)
                 txn.drop(self._chains, delete=False)
                 txn.drop(self._claims, delete=False)
@@ -149,7 +81,7 @@ class LmdbStore(AbstractStore):
             retentions_set = txn.get(b"bundles", db=self._retentions) is not None
         if not retentions_set:
             with self._handle.begin(write=True) as txn:
-                # check again now that I have the write lock to avoid a race condition
+                # check again now that I have the write-lock to avoid a race condition
                 retentions_set = txn.get(b"bundles", db=self._retentions) is not None
                 if not retentions_set:
                     txn.put(b"bundles", encode_muts(int(retain_bundles)), db=self._retentions)
@@ -259,14 +191,14 @@ class LmdbStore(AbstractStore):
             if container is None:
                 # we're resetting everything, so loop over the container definitions
                 containers_cursor = txn.cursor(self._containers)
-                cursor_placed = containers_cursor.first()
+                cursor_placed: bool = containers_cursor.first()
                 while cursor_placed:
                     muid = Muid.from_bytes(containers_cursor.key())
                     for change in self._container_reset_changes(to_time, muid, seen, txn):
                         yield change
                     cursor_placed = containers_cursor.next()
                 # then loop over the "magic" pre-defined
-                for behavior in [DIRECTORY, SEQUENCE]:
+                for behavior in [DIRECTORY, SEQUENCE, BOX]:
                     muid = Muid(-1, -1, behavior)
                     for change in self._container_reset_changes(to_time, muid, seen, txn):
                         yield change
@@ -712,18 +644,74 @@ class LmdbStore(AbstractStore):
                 txn.delete(bytes(entry_muid), db=self._entries)
 
     def _add_entry(self, new_info: BundleInfo, txn: Trxn, offset: int, builder: EntryBuilder):
+        retaining = decode_muts(bytes(txn.get(b"entries", db=self._retentions)))
         ensure_entry_is_valid(builder=builder, context=new_info)
         placement_key = PlacementKey.from_builder(builder, new_info, offset)
         serialized_placement_key = bytes(placement_key)
         if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX):  # type: ignore
-            if not decode_muts(bytes(txn.get(b"entries", db=self._retentions))):  # type: ignore
+            if not retaining:  # type: ignore
                 raise NotImplementedError("need to implement deleting old entries")
         entry_muid = placement_key.entry_muid
+        container_muid = placement_key.container
         entry_key = bytes(entry_muid)
         txn.put(entry_key, serialize(builder), db=self._entries)
         txn.put(serialized_placement_key, entry_key, db=self._placements)
         entries_loc_key = bytes(LocationKey(entry_muid, entry_muid))
         txn.put(entries_loc_key, serialized_placement_key, db=self._locations)
+        if builder.HasField("describing"):
+            describing_muid = Muid.create(new_info, builder.describing)
+            descriptor_key = bytes(describing_muid) + bytes(container_muid) + bytes(entry_muid)
+            txn.put(descriptor_key, pack("b", builder.behavior), db=self._by_describing)
+            if not retaining:
+                raise NotImplementedError("need to implement overwriting of properties etc.")
+                # TODO: also implement deleting these things when an edge is removed
+        if builder.HasField("pointee"):
+            pointee_muid = Muid.create(new_info, builder.pointee)
+            pointee_key = bytes(pointee_muid) + bytes(container_muid) + bytes(entry_muid)
+            txn.put(pointee_key, pack("b", builder.behavior), db=self._by_pointee)
+        if container_muid == Muid(-1, -1, Behavior.PROPERTY):
+            if builder.HasField("value") and builder.HasField("describing"):
+                describing_muid = Muid.create(new_info, builder.describing)
+                name = decode_value(builder.value)
+                if isinstance(name, str):
+                    by_name_key = name.encode() + b"\x00" + bytes(describing_muid) + bytes(entry_muid)
+                    txn.put(by_name_key, b"", db=self._by_name)
+
+    def _remove_entry(self, entry_muid: Muid, trxn: Trxn):
+        entry_muid_bytes = bytes(entry_muid)
+        entry_payload = trxn.pop(entry_muid_bytes, db=self._entries)
+        if entry_payload is None:
+            print(f"entry already gone? {entry_muid}", file=sys.stderr)
+            return
+        loc_cursor = trxn.cursor(self._locations)
+        placed = loc_cursor.set_range(entry_muid_bytes)
+        while placed:
+            location_key, placement_key = loc_cursor.item()
+            if not location_key.startswith(entry_muid_bytes):
+                break
+            trxn.delete(placement_key, db=self._placements)
+            loc_cursor.delete()
+            placed = loc_cursor.next()
+        entry_builder = EntryBuilder()
+        entry_builder.ParseFromString(entry_payload)
+        container_muid = Muid.create(entry_muid, entry_builder.container)
+        if entry_builder.HasField("describing"):
+            describing_muid = Muid.create(entry_muid, entry_builder.describing)
+            descriptor_key = bytes(describing_muid) + bytes(container_muid) + bytes(entry_muid)
+            trxn.delete(descriptor_key, db=self._by_describing)
+        if entry_builder.HasField("pointee"):
+            pointee_muid = Muid.create(entry_muid, entry_builder.pointee)
+            pointee_key = bytes(pointee_muid) + bytes(container_muid) + bytes(entry_muid)
+            trxn.delete(pointee_key, db=self._by_pointee)
+        if container_muid == Muid(-1, -1, Behavior.PROPERTY):
+            if entry_builder.HasField("value") and entry_builder.HasField("describing"):
+                describing_muid = Muid.create(entry_muid, entry_builder.describing)
+                name = decode_value(entry_builder.value)
+                if isinstance(name, str):
+                    by_name_key = name.encode() + b"\x00" + bytes(describing_muid) + bytes(entry_muid)
+                    trxn.delete(by_name_key, db=self._by_name)
+
+
 
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
         with self._handle.begin() as txn:
