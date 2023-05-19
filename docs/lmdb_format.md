@@ -28,8 +28,8 @@
                 * In the case of a BOX, the middle key will be a zero-length byte sequence.
 
         removals - Used to soft-delete items from the entries table.
-            key: (container-muid, placement-muid you're removing, movement-muid)
-            val: binaryproto of the movement
+            key: (container-muid, placement-muid you're removing, removing-muid)
+            val: binaryproto of the movement, or nothing if removal was a replacement entry
 
         locations - table used as an index to look-up entries by entry-muid for (re)-moving
             key: (entry-muid, placement-muid)

@@ -1,7 +1,7 @@
 """ a couple of NamedTuple definitions, primarily for internal usage """
 from typing import NamedTuple
 
-from .builders import EntryBuilder
+from .builders import EntryBuilder, ContainerBuilder
 from .muid import Muid
 from .typedefs import Medallion, MuTimestamp
 
@@ -19,6 +19,11 @@ class FoundEntry(NamedTuple):
     """
     address: Muid
     builder: EntryBuilder
+
+
+class FoundContainer(NamedTuple):
+    address: Muid
+    builder: ContainerBuilder
 
 
 class PositionedEntry(NamedTuple):

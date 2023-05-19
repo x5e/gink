@@ -29,7 +29,13 @@ if TYPE_CHECKING:
 
 
     class Behavior(IntEnum):
+        # Note: these are placeholders for typechecking, look at proto def
+        BOX = 1
+        SEQUENCE = 2
+        SET = 3
+        DIRECTORY = 4
         PROPERTY = 9
+        LABEL = 10
 else:
     from ..builders.bundle_pb2 import Bundle
     from ..builders.sync_message_pb2 import SyncMessage

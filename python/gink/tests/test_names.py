@@ -1,0 +1,41 @@
+from contextlib import closing
+
+from ..impl.muid import Muid
+from ..impl.directory import Directory
+from ..impl.sequence import Sequence
+from ..impl.box import Box
+from ..impl.memory_store import MemoryStore
+from ..impl.lmdb_store import LmdbStore
+from ..impl.database import Database
+from ..impl.bundler import Bundler
+from ..impl.abstract_store import AbstractStore
+from ..impl.patch import PATCHED
+
+assert PATCHED
+
+
+def test_set_get():
+    """ Test the basic set/get functionality of directories works as expected. """
+    for store in [LmdbStore(), MemoryStore(), ]:
+        with closing(store):
+            database = Database(store=store)
+            global_directory = Directory.get_global_instance(database=database)
+            for directory in [global_directory, Directory()]:
+                assert directory.get_name() is None
+                directory.set_name("fred")
+                assert directory.get_name() == "fred"
+
+def test_get_by_name():
+    for store in [LmdbStore(), ]:
+        with closing(store):
+            database = Database(store=store)
+            d = Directory()
+            d.set_name("fred")
+            s = Sequence()
+            s.set_name("bob")
+            b = Box()
+            b.set_name("bob")
+            freds = database.get_by_name("fred")
+            assert len(freds) == 1 and freds[0] == d
+            bobs = database.get_by_name("bob")
+            assert len(bobs) == 2 and b in bobs and s in bobs

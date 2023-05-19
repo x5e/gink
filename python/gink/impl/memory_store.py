@@ -10,7 +10,7 @@ from sortedcontainers import SortedDict  # type: ignore
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder, Message,
                        ChangeBuilder)
 from .typedefs import UserKey, MuTimestamp, Medallion
-from .tuples import Chain, FoundEntry, PositionedEntry
+from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
@@ -328,4 +328,11 @@ class MemoryStore(AbstractStore):
 
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
-        raise NotImplementedError()
+        _ = (to_time, container, user_key, recursive)
+        raise NotImplemented
+
+    def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+        """ Returns info about all things with the given name.
+        """
+        _ = (name, as_of)
+        raise NotImplemented

@@ -1,9 +1,10 @@
 """ Defines the Container base class. """
-from typing import Optional, Union
+from __future__ import annotations
+from typing import Optional, Union, List
 from abc import ABC, abstractmethod
 from sys import stdout
 
-from .builders import ChangeBuilder, EntryBuilder
+from .builders import ChangeBuilder, EntryBuilder, Behavior
 
 from .muid import Muid
 from .bundler import Bundler
@@ -14,11 +15,10 @@ from .coding import encode_key, encode_value, decode_value, deletion
 
 class Container(ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
-    _database: Database
 
     def __init__(self, database: Database, muid: Muid):
-        self._database = database
-        self._muid = muid
+        self._database: Database = database
+        self._muid: Muid = muid
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and other._muid == self._muid
@@ -42,6 +42,27 @@ class Container(ABC):
         file.write(self.dumps(as_of=as_of))
         file.write("\n\n")
         file.flush()
+
+    def set_name(self, name: str, *,
+            bundler=None, comment=None) -> Muid:
+        """ Sets the name of the container, overwriting any previous value.
+
+            Giving multiple things the same name is not recommended.
+        """
+        name_property = Muid(-1, -1, Behavior.PROPERTY)
+        assert isinstance(name, str), "names must be strings"
+        return self._add_entry(
+            key=self._muid, value=name, on_muid=name_property, behavior=Behavior.PROPERTY,
+            bundler=bundler, comment=comment)
+
+    def get_name(self, as_of: GenericTimestamp = None) -> Optional[str]:
+        as_of = self._database.resolve_timestamp(as_of)
+        name_property = Muid(-1, -1, Behavior.PROPERTY)
+        found = self._database.get_store().get_entry_by_key(name_property, key=self._muid, as_of=as_of)
+        if found is None or found.builder.deletion:  # type: ignore
+            return None
+        return self._get_occupant(found.builder)
+
 
     def _get_occupant(self, builder: EntryBuilder, address: Optional[Muid] = None):
         """ Figures out what the container is containing.
@@ -152,7 +173,10 @@ class Container(ABC):
                    effective: Optional[MuTimestamp] = None,
                    bundler: Optional[Bundler] = None,
                    comment: Optional[str] = None,
-                   expiry: GenericTimestamp = None) -> Muid:
+                   expiry: GenericTimestamp = None,
+                   behavior: Optional[int] = None, # defaults to behavior of current container
+                   on_muid: Optional[Muid] = None, # defaults to current container
+                   ) -> Muid:
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
@@ -160,7 +184,7 @@ class Container(ABC):
         change_builder = ChangeBuilder()
         # pylint: disable=maybe-no-member
         entry_builder: EntryBuilder = change_builder.entry  # type: ignore
-        entry_builder.behavior = self.get_behavior()  # type: ignore
+        entry_builder.behavior = behavior or self.get_behavior()  # type: ignore
         if expiry is not None:
             now = self._database.get_now()
             expiry = self._database.resolve_timestamp(expiry)
@@ -169,7 +193,9 @@ class Container(ABC):
             entry_builder.expiry = expiry  # type: ignore
         if effective is not None:
             entry_builder.effective = effective  # type: ignore
-        self._muid.put_into(entry_builder.container)  # type: ignore
+        if on_muid is None:
+            on_muid = self._muid
+        on_muid.put_into(entry_builder.container)  # type: ignore
         if isinstance(key, (str, int, bytes)):
             encode_key(key, entry_builder.key)  # type: ignore
         if isinstance(key, Muid):

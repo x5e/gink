@@ -12,7 +12,7 @@ from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
                        ContainerBuilder, ClearanceBuilder, Message, Behavior)
 from .typedefs import MuTimestamp, UserKey, Medallion
-from .tuples import Chain, FoundEntry, PositionedEntry
+from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
@@ -220,7 +220,7 @@ class LmdbStore(AbstractStore):
         entry_builder = EntryBuilder()
         entry_builder.ParseFromString(trxn.get(value_as_bytes, db=self._entries))  # type: ignore
         return EntryStoragePair(parsed_key, entry_builder)
-    
+
     def _get_box_reset_changes(
             self,
             container: Muid,
@@ -713,15 +713,20 @@ class LmdbStore(AbstractStore):
                 txn.delete(bytes(entry_muid), db=self._entries)
 
     def _add_entry(self, new_info: BundleInfo, txn: Trxn, offset: int, builder: EntryBuilder):
-        retaining = decode_muts(bytes(txn.get(b"entries", db=self._retentions)))
+        retaining = bool(decode_muts(bytes(txn.get(b"entries", db=self._retentions))))
         ensure_entry_is_valid(builder=builder, context=new_info)
         placement_key = PlacementKey.from_builder(builder, new_info, offset)
-        serialized_placement_key = bytes(placement_key)
-        if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX):  # type: ignore
-            if not retaining:  # type: ignore
-                raise NotImplementedError("need to implement deleting old entries")
         entry_muid = placement_key.entry_muid
         container_muid = placement_key.container
+        serialized_placement_key = bytes(placement_key)
+        if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX, Behavior.PROPERTY, Behavior.LABEL):
+            found_entry = self.get_entry_by_key(container_muid, placement_key.middle_key)
+            if found_entry:
+                if retaining:
+                    removal_key = bytes(container_muid) + bytes(found_entry.address) + bytes(entry_muid)
+                    txn.put(removal_key, b"", db=self._removals)
+                else:
+                    self._remove_entry(found_entry.address, txn)
         entry_key = bytes(entry_muid)
         txn.put(entry_key, serialize(builder), db=self._entries)
         txn.put(serialized_placement_key, entry_key, db=self._placements)
@@ -731,9 +736,6 @@ class LmdbStore(AbstractStore):
             describing_muid = Muid.create(new_info, builder.describing)
             descriptor_key = bytes(describing_muid) + bytes(container_muid) + bytes(entry_muid)
             txn.put(descriptor_key, pack("b", builder.behavior), db=self._by_describing)
-            if not retaining:
-                raise NotImplementedError("need to implement overwriting of properties etc.")
-                # TODO: also implement deleting these things when an edge is removed
         if builder.HasField("pointee"):
             pointee_muid = Muid.create(new_info, builder.pointee)
             pointee_key = bytes(pointee_muid) + bytes(container_muid) + bytes(entry_muid)
@@ -780,8 +782,6 @@ class LmdbStore(AbstractStore):
                     by_name_key = name.encode() + b"\x00" + bytes(describing_muid) + bytes(entry_muid)
                     trxn.delete(by_name_key, db=self._by_name)
 
-
-
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
         with self._handle.begin() as txn:
             retention = decode_muts(txn.get(b"bundles", db=self._retentions))
@@ -806,3 +806,32 @@ class LmdbStore(AbstractStore):
                 chain_tracker.mark_as_having(bundle_info)
                 data_remaining = infos_cursor.next()
         return chain_tracker
+
+    def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+        prefix = name.encode() + b"\x00"
+        name_property_bytes = bytes(Muid(-1, -1, Behavior.PROPERTY))
+        with self._handle.begin() as trxn:
+            retaining_entries = decode_muts(trxn.get(b"entries", db=self._retentions))  # type: ignore
+            by_name_cursor = trxn.cursor(self._by_name)
+            removals_cursor = trxn.cursor(self._removals)
+            placed = by_name_cursor.set_range(prefix)
+            while placed:
+                key = by_name_cursor.key()
+                if not key.startswith(prefix):
+                    break
+                named_muid_bytes = key[-32:-16]
+                entry_muid_bytes = key[-16:]
+                entry_muid = Muid.from_bytes(entry_muid_bytes)
+                if retaining_entries:
+                    removed = to_last_with_prefix(
+                        removals_cursor,
+                        prefix=name_property_bytes + entry_muid_bytes,
+                        suffix=bytes(Muid(as_of, 0, 0)))
+                else:
+                    removed = None
+                if (not removed) and (as_of == -1 or entry_muid.timestamp < as_of):
+                    proto_bytes = trxn.get(named_muid_bytes, db=self._containers)
+                    container_builder = ContainerBuilder()
+                    container_builder.ParseFromString(proto_bytes)
+                    yield FoundContainer(Muid.from_bytes(named_muid_bytes), container_builder)
+                placed = by_name_cursor.next()
