@@ -63,5 +63,5 @@
             val: behavior of container (as a byte)
 
         by_name - a special case index for names (global default property)
-            key: (name string, null-byte, named-muid, entry-muid)
+            key: (name string, null-byte, entry-muid, named-muid)
             val: <none>

@@ -1,7 +1,7 @@
 """ the ChangeSet class """
 from typing import Optional, Union, Any
 
-from .builders import BundleBuilder, ChangeBuilder, EntryBuilder
+from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
 from .muid import Muid
 from .typedefs import MuTimestamp, Medallion
 from .tuples import Chain
@@ -43,7 +43,7 @@ class Bundler:
             return self._sealed
         return object.__getattribute__(self, name)
 
-    def add_change(self, builder: Union[ChangeBuilder, EntryBuilder]) -> Muid:
+    def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Muid:
         """ adds a single change (in the form of the proto builder) """
         if self._sealed:
             raise AssertionError("already sealed")

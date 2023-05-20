@@ -4,6 +4,7 @@ from ..impl.muid import Muid
 from ..impl.directory import Directory
 from ..impl.sequence import Sequence
 from ..impl.box import Box
+from ..impl.property import Property
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
@@ -39,3 +40,17 @@ def test_get_by_name():
             assert len(freds) == 1 and freds[0] == d
             bobs = database.get_by_name("bob")
             assert len(bobs) == 2 and b in bobs and s in bobs
+
+def test_properties_on_containers():
+    for store in [LmdbStore(), ]:
+        with closing(store):
+            database = Database(store=store)
+            d = Directory()
+            d.set_property_value_by_name("foo", 33)
+            there = d.get_property_value_by_name("foo")
+            assert there == 33
+            foo_property = database.get_by_name("foo")[0]
+            assert isinstance(foo_property, Property)
+            foo_property.set_name("bar")
+            after_rename = d.get_property_value_by_name("bar")
+            assert after_rename == 33

@@ -8,7 +8,9 @@ from enum import IntEnum
 if TYPE_CHECKING:
     class BundleBuilder(Message): pass
     class SyncMessage(Message): pass
-    class ChangeBuilder(Message): pass
+    class ChangeBuilder(Message):
+        entry: EntryBuilder
+        container: ContainerBuilder
 
 
     class EntryBuilder(Message):
@@ -21,7 +23,8 @@ if TYPE_CHECKING:
 
     class ValueBuilder(Message): pass
     class KeyBuilder(Message): pass
-    class ContainerBuilder(Message): pass
+    class ContainerBuilder(Message):
+        behavior: int
     class MovementBuilder(Message): pass
     class ClearanceBuilder(Message): pass
     class MuidBuilder(Message): pass

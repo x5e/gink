@@ -745,7 +745,7 @@ class LmdbStore(AbstractStore):
                 describing_muid = Muid.create(new_info, builder.describing)
                 name = decode_value(builder.value)
                 if isinstance(name, str):
-                    by_name_key = name.encode() + b"\x00" + bytes(describing_muid) + bytes(entry_muid)
+                    by_name_key = name.encode() + b"\x00" + bytes(entry_muid) + bytes(describing_muid)
                     txn.put(by_name_key, b"", db=self._by_name)
 
     def _remove_entry(self, entry_muid: Muid, trxn: Trxn):
@@ -819,8 +819,8 @@ class LmdbStore(AbstractStore):
                 key = by_name_cursor.key()
                 if not key.startswith(prefix):
                     break
-                named_muid_bytes = key[-32:-16]
-                entry_muid_bytes = key[-16:]
+                entry_muid_bytes = key[-32:-16]
+                named_muid_bytes = key[-16:]
                 entry_muid = Muid.from_bytes(entry_muid_bytes)
                 if retaining_entries:
                     removed = to_last_with_prefix(

@@ -4,12 +4,12 @@ from typing import Optional, Union, List
 from abc import ABC, abstractmethod
 from sys import stdout
 
-from .builders import ChangeBuilder, EntryBuilder, Behavior
+from .builders import ChangeBuilder, EntryBuilder, Behavior, ContainerBuilder
 
 from .muid import Muid
 from .bundler import Bundler
 from .database import Database
-from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp
+from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue
 from .coding import encode_key, encode_value, decode_value, deletion
 
 
@@ -43,9 +43,61 @@ class Container(ABC):
         file.write("\n\n")
         file.flush()
 
+    def get_property_value_by_name(self, name: str, *, default=None, as_of: GenericTimestamp=None) -> UserValue:
+        """ Returns the value of the property with the given name on this container.
+
+            Raises an error if more or less than one property exists for the given name.
+        """
+        ts = self._database.resolve_timestamp(as_of)
+        store = self._database.get_store()
+        hits = [fc for fc in store.get_by_name(name, ts) if fc.builder.behavior == Behavior.PROPERTY]
+        if len(hits) > 1:
+            raise ValueError("More than one property has that name!")
+        if len(hits) < 1:
+            raise ValueError("No property has that name!")
+        found = self._database.get_store().get_entry_by_key(hits[0].address, key=self._muid, as_of=ts)
+        if found is None or found.builder.deletion:  # type: ignore
+            return default
+        return self._get_occupant(found.builder)
+
+    def set_property_value_by_name(self, name: str, value: UserValue, *,
+                                   create=True, bundler=None, comment=None):
+        immediate = False
+        if not isinstance(bundler, Bundler):
+            immediate = True
+            bundler = Bundler(comment)
+        store = self._database.get_store()
+        hits = [fc for fc in store.get_by_name(name) if fc.builder.behavior == Behavior.PROPERTY]
+        if len(hits) > 1:
+            raise ValueError("More than one property has that name!")
+        if len(hits) == 0:
+            if create:
+                creating_change = ChangeBuilder()
+                creating_change.container.behavior = Behavior.PROPERTY
+                property_muid = bundler.add_change(creating_change)
+                naming_change = ChangeBuilder()
+                Muid(-1, -1, Behavior.PROPERTY).put_into(naming_change.entry.container)
+                property_muid.put_into(naming_change.entry.describing)
+                naming_change.entry.behavior = Behavior.PROPERTY
+                encode_value(name, naming_change.entry.value)
+                bundler.add_change(naming_change)
+            else:
+                raise ValueError("no property with that name exists and create is not true")
+        else:
+            property_muid = hits[0].address
+        setting_change = ChangeBuilder()
+        setting_change.entry.behavior = Behavior.PROPERTY
+        property_muid.put_into(setting_change.entry.container)
+        self._muid.put_into(setting_change.entry.describing)
+        encode_value(value, setting_change.entry.value)
+        muid = bundler.add_change(setting_change)
+        if immediate:
+            self._database.commit(bundler)
+        return muid
+
     def set_name(self, name: str, *,
             bundler=None, comment=None) -> Muid:
-        """ Sets the name of the container, overwriting any previous value.
+        """ Sets the name of the container, overwriting any previous name for this container.
 
             Giving multiple things the same name is not recommended.
         """
