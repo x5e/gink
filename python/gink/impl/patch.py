@@ -5,13 +5,14 @@ from typing import Optional
 from .builders import ContainerBuilder
 from .container import Container
 from .directory import Directory
+from .box import Box
 from .sequence import Sequence
 from .property import Property
 from .database import Database
 from .muid import Muid
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .attribution import Attribution
-from .coding import DIRECTORY, SEQUENCE, PROPERTY
+from .coding import DIRECTORY, SEQUENCE, PROPERTY, BOX
 
 
 # pylint: disable=dangerous-default-value disable=protected-access
@@ -24,6 +25,7 @@ def get_container(
             DIRECTORY: Directory,
             SEQUENCE: Sequence,
             PROPERTY: Property,
+            BOX: Box,
         }
 ) -> Container:
     """ Gets a pre-existing container. """

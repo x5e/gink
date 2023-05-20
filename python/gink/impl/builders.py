@@ -1,21 +1,44 @@
+from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from google.protobuf.message import Message   # type: ignore
 from google.protobuf.text_format import Parse  # type: ignore
+from enum import IntEnum
 
 if TYPE_CHECKING:
     class BundleBuilder(Message): pass
     class SyncMessage(Message): pass
-    class ChangeBuilder(Message): pass
-    class EntryBuilder(Message): pass
+    class ChangeBuilder(Message):
+        entry: EntryBuilder
+        container: ContainerBuilder
+
+
+    class EntryBuilder(Message):
+        describing: MuidBuilder
+        pointee: MuidBuilder
+        behavior: int
+        value: ValueBuilder
+        container: MuidBuilder
+
+
     class ValueBuilder(Message): pass
     class KeyBuilder(Message): pass
-    class ContainerBuilder(Message): pass
+    class ContainerBuilder(Message):
+        behavior: int
     class MovementBuilder(Message): pass
     class ClearanceBuilder(Message): pass
     class MuidBuilder(Message): pass
     class LogFile(Message): pass
-    class Behavior: pass
+
+
+    class Behavior(IntEnum):
+        # Note: these are placeholders for typechecking, look at proto def
+        BOX = 1
+        SEQUENCE = 2
+        SET = 3
+        DIRECTORY = 4
+        PROPERTY = 9
+        LABEL = 10
 else:
     from ..builders.bundle_pb2 import Bundle
     from ..builders.sync_message_pb2 import SyncMessage

@@ -1,24 +1,24 @@
 """ Defines the Container base class. """
-from typing import Optional, Union
+from __future__ import annotations
+from typing import Optional, Union, Iterable
 from abc import ABC, abstractmethod
 from sys import stdout
 
-from .builders import ChangeBuilder, EntryBuilder
+from .builders import ChangeBuilder, EntryBuilder, Behavior, ContainerBuilder
 
 from .muid import Muid
 from .bundler import Bundler
 from .database import Database
-from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp
+from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue
 from .coding import encode_key, encode_value, decode_value, deletion
 
 
 class Container(ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
-    _database: Database
 
     def __init__(self, database: Database, muid: Muid):
-        self._database = database
-        self._muid = muid
+        self._database: Database = database
+        self._muid: Muid = muid
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and other._muid == self._muid
@@ -42,6 +42,79 @@ class Container(ABC):
         file.write(self.dumps(as_of=as_of))
         file.write("\n\n")
         file.flush()
+
+    def get_property_value_by_name(self, name: str, *, default=None, as_of: GenericTimestamp=None) -> UserValue:
+        """ Returns the value of the property with the given name on this container.
+
+            Raises an error if more or less than one property exists for the given name.
+        """
+        ts = self._database.resolve_timestamp(as_of)
+        store = self._database.get_store()
+        hits = [fc for fc in store.get_by_name(name, ts) if fc.builder.behavior == Behavior.PROPERTY]
+        if len(hits) > 1:
+            raise ValueError("More than one property has that name!")
+        if len(hits) < 1:
+            raise ValueError("No property has that name!")
+        found = self._database.get_store().get_entry_by_key(hits[0].address, key=self._muid, as_of=ts)
+        if found is None or found.builder.deletion:  # type: ignore
+            return default
+        return self._get_occupant(found.builder)
+
+    def set_property_value_by_name(self, name: str, value: UserValue, *,
+                                   create=True, bundler=None, comment=None):
+        immediate = False
+        if not isinstance(bundler, Bundler):
+            immediate = True
+            bundler = Bundler(comment)
+        store = self._database.get_store()
+        hits = [fc for fc in store.get_by_name(name) if fc.builder.behavior == Behavior.PROPERTY]
+        if len(hits) > 1:
+            raise ValueError("More than one property has that name!")
+        if len(hits) == 0:
+            if create:
+                creating_change = ChangeBuilder()
+                creating_change.container.behavior = Behavior.PROPERTY
+                property_muid = bundler.add_change(creating_change)
+                naming_change = ChangeBuilder()
+                Muid(-1, -1, Behavior.PROPERTY).put_into(naming_change.entry.container)
+                property_muid.put_into(naming_change.entry.describing)
+                naming_change.entry.behavior = Behavior.PROPERTY
+                encode_value(name, naming_change.entry.value)
+                bundler.add_change(naming_change)
+            else:
+                raise ValueError("no property with that name exists and create is not true")
+        else:
+            property_muid = hits[0].address
+        setting_change = ChangeBuilder()
+        setting_change.entry.behavior = Behavior.PROPERTY
+        property_muid.put_into(setting_change.entry.container)
+        self._muid.put_into(setting_change.entry.describing)
+        encode_value(value, setting_change.entry.value)
+        muid = bundler.add_change(setting_change)
+        if immediate:
+            self._database.commit(bundler)
+        return muid
+
+    def set_name(self, name: str, *,
+            bundler=None, comment=None) -> Muid:
+        """ Sets the name of the container, overwriting any previous name for this container.
+
+            Giving multiple things the same name is not recommended.
+        """
+        name_property = Muid(-1, -1, Behavior.PROPERTY)
+        assert isinstance(name, str), "names must be strings"
+        return self._add_entry(
+            key=self._muid, value=name, on_muid=name_property, behavior=Behavior.PROPERTY,
+            bundler=bundler, comment=comment)
+
+    def get_name(self, as_of: GenericTimestamp = None) -> Optional[str]:
+        as_of = self._database.resolve_timestamp(as_of)
+        name_property = Muid(-1, -1, Behavior.PROPERTY)
+        found = self._database.get_store().get_entry_by_key(name_property, key=self._muid, as_of=as_of)
+        if found is None or found.builder.deletion:  # type: ignore
+            return None
+        return self._get_occupant(found.builder)
+
 
     def _get_occupant(self, builder: EntryBuilder, address: Optional[Muid] = None):
         """ Figures out what the container is containing.
@@ -152,7 +225,10 @@ class Container(ABC):
                    effective: Optional[MuTimestamp] = None,
                    bundler: Optional[Bundler] = None,
                    comment: Optional[str] = None,
-                   expiry: GenericTimestamp = None) -> Muid:
+                   expiry: GenericTimestamp = None,
+                   behavior: Optional[int] = None, # defaults to behavior of current container
+                   on_muid: Optional[Muid] = None, # defaults to current container
+                   ) -> Muid:
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
@@ -160,7 +236,7 @@ class Container(ABC):
         change_builder = ChangeBuilder()
         # pylint: disable=maybe-no-member
         entry_builder: EntryBuilder = change_builder.entry  # type: ignore
-        entry_builder.behavior = self.get_behavior()  # type: ignore
+        entry_builder.behavior = behavior or self.get_behavior()  # type: ignore
         if expiry is not None:
             now = self._database.get_now()
             expiry = self._database.resolve_timestamp(expiry)
@@ -169,7 +245,9 @@ class Container(ABC):
             entry_builder.expiry = expiry  # type: ignore
         if effective is not None:
             entry_builder.effective = effective  # type: ignore
-        self._muid.put_into(entry_builder.container)  # type: ignore
+        if on_muid is None:
+            on_muid = self._muid
+        on_muid.put_into(entry_builder.container)  # type: ignore
         if isinstance(key, (str, int, bytes)):
             encode_key(key, entry_builder.key)  # type: ignore
         if isinstance(key, Muid):
@@ -234,3 +312,8 @@ class Container(ABC):
 
     def __len__(self):
         return self.size()
+
+    def get_describing(self, as_of: GenericTimestamp=None) -> Iterable[Container]:
+        as_of = self._database.resolve_timestamp(as_of)
+        for found in self._database.get_store().get_by_describing(self._muid, as_of):
+            yield self._database.get_container(found.address, found.builder)

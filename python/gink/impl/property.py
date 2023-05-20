@@ -1,5 +1,6 @@
 """ Contains the `Property` Container class. """
-from typing import Optional, Union
+from __future__ import annotations
+from typing import Optional, Union, Dict, Iterable
 
 from .typedefs import UserValue, GenericTimestamp
 from .container import Container
@@ -12,7 +13,7 @@ from .bundler import Bundler
 class Property(Container):
     BEHAVIOR = PROPERTY
 
-    def __init__(self, *, contents=None, muid: Optional[Muid] = None, database=None):
+    def __init__(self, *, contents: Optional[Dict[Muid, UserValue]]=None, muid: Optional[Muid] = None, database=None):
         """
         Constructor for a property definition.
 

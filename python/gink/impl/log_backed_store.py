@@ -31,6 +31,7 @@ class LogBackedStore(MemoryStore):
             self._log_file_builder.commits.push(bundle_bytes)  # type: ignore
             data: bytes = self._log_file_builder.SerializeToString()  # type: ignore
             self._handle.write(data)
+            self._handle.flush()
         return bundle_info, added
 
     def get_claimed_chains(self):

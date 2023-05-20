@@ -361,3 +361,12 @@ class Database:
         """ Just prints the log to stdout in a human-readable format. """
         for attribution in self.log(limit=limit):
             print(attribution, file=file)
+
+    def get_by_name(self, name: str, as_of: GenericTimestamp = None) -> List:
+        """ Returns all containers of the given type with the given name.
+        """
+        returning = list()
+        as_of_ts = self.resolve_timestamp(as_of)
+        for found_container in self._store.get_by_name(name, as_of=as_of_ts):
+            returning.append(self.get_container(found_container.address))
+        return returning

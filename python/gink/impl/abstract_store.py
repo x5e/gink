@@ -9,7 +9,7 @@ from .builders import ContainerBuilder, ChangeBuilder
 from .bundle_info import BundleInfo
 from .chain_tracker import ChainTracker
 from .typedefs import UserKey, MuTimestamp, Medallion
-from .tuples import FoundEntry, Chain, PositionedEntry
+from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
 
 
@@ -176,4 +176,14 @@ class AbstractStore(ABC):
 
         If recursive is set to true, then will go and recursively update all entries
         in child objects that were referenced at to_time.
+        """
+
+    @abstractmethod
+    def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+        """ Returns info about all things with the given name.
+        """
+
+    @abstractmethod
+    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+        """ Returns all the containers (properties) that describe desc.
         """
