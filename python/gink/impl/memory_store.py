@@ -336,3 +336,7 @@ class MemoryStore(AbstractStore):
         """
         _ = (name, as_of)
         raise NotImplemented
+
+    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+        _ = (desc, as_of)
+        raise NotImplemented

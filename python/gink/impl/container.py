@@ -1,6 +1,6 @@
 """ Defines the Container base class. """
 from __future__ import annotations
-from typing import Optional, Union, List
+from typing import Optional, Union, Iterable
 from abc import ABC, abstractmethod
 from sys import stdout
 
@@ -312,3 +312,8 @@ class Container(ABC):
 
     def __len__(self):
         return self.size()
+
+    def get_describing(self, as_of: GenericTimestamp=None) -> Iterable[Container]:
+        as_of = self._database.resolve_timestamp(as_of)
+        for found in self._database.get_store().get_by_describing(self._muid, as_of):
+            yield self._database.get_container(found.address, found.builder)

@@ -55,13 +55,13 @@
             val: bundle bytes (i.e. same as in the bundles table)
 
         by_describing - an index to enable looking up all the properties/edges on an object
-            key: (describing-muid, container-muid, entry-muid)
-            val: behavior of container (as a byte)
+            key: (describing-muid, entry-muid)
+            val: container-muid
 
         by_pointee - an index for looking at entries by what they point-to
-            key: (pointee-muid, container-muid, entry-muid)
-            val: behavior of container (as a byte)
+            key: (pointee-muid, entry-muid)
+            val: container-muid
 
         by_name - a special case index for names (global default property)
-            key: (name string, null-byte, entry-muid, named-muid)
-            val: <none>
+            key: (name string, null-byte, entry-muid)
+            val: named_muid

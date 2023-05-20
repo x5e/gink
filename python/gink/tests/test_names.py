@@ -54,3 +54,8 @@ def test_properties_on_containers():
             foo_property.set_name("bar")
             after_rename = d.get_property_value_by_name("bar")
             assert after_rename == 33
+            d.set_property_value_by_name("foo", 99)
+            properties_names = {p.get_name() for p in d.get_describing()}
+            assert properties_names == {"foo", "bar"}
+            properties_values = {p.get(d) for p in d.get_describing()}
+            assert properties_values == {33, 99}

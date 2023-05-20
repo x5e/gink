@@ -1,5 +1,6 @@
 """ Contains the `Property` Container class. """
-from typing import Optional, Union, Dict
+from __future__ import annotations
+from typing import Optional, Union, Dict, Iterable
 
 from .typedefs import UserValue, GenericTimestamp
 from .container import Container

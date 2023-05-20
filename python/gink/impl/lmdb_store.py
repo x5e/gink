@@ -734,19 +734,19 @@ class LmdbStore(AbstractStore):
         txn.put(entries_loc_key, serialized_placement_key, db=self._locations)
         if builder.HasField("describing"):
             describing_muid = Muid.create(new_info, builder.describing)
-            descriptor_key = bytes(describing_muid) + bytes(container_muid) + bytes(entry_muid)
-            txn.put(descriptor_key, pack("b", builder.behavior), db=self._by_describing)
+            descriptor_key = bytes(describing_muid)  + bytes(entry_muid)
+            txn.put(descriptor_key, bytes(container_muid), db=self._by_describing)
         if builder.HasField("pointee"):
             pointee_muid = Muid.create(new_info, builder.pointee)
-            pointee_key = bytes(pointee_muid) + bytes(container_muid) + bytes(entry_muid)
-            txn.put(pointee_key, pack("b", builder.behavior), db=self._by_pointee)
+            pointee_key = bytes(pointee_muid) + bytes(entry_muid)
+            txn.put(pointee_key, bytes(container_muid), db=self._by_pointee)
         if container_muid == Muid(-1, -1, Behavior.PROPERTY):
             if builder.HasField("value") and builder.HasField("describing"):
                 describing_muid = Muid.create(new_info, builder.describing)
                 name = decode_value(builder.value)
                 if isinstance(name, str):
-                    by_name_key = name.encode() + b"\x00" + bytes(entry_muid) + bytes(describing_muid)
-                    txn.put(by_name_key, b"", db=self._by_name)
+                    by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
+                    txn.put(by_name_key, bytes(describing_muid), db=self._by_name)
 
     def _remove_entry(self, entry_muid: Muid, trxn: Trxn):
         entry_muid_bytes = bytes(entry_muid)
@@ -768,18 +768,18 @@ class LmdbStore(AbstractStore):
         container_muid = Muid.create(entry_muid, entry_builder.container)
         if entry_builder.HasField("describing"):
             describing_muid = Muid.create(entry_muid, entry_builder.describing)
-            descriptor_key = bytes(describing_muid) + bytes(container_muid) + bytes(entry_muid)
+            descriptor_key = bytes(describing_muid)+ bytes(entry_muid)
             trxn.delete(descriptor_key, db=self._by_describing)
         if entry_builder.HasField("pointee"):
             pointee_muid = Muid.create(entry_muid, entry_builder.pointee)
-            pointee_key = bytes(pointee_muid) + bytes(container_muid) + bytes(entry_muid)
+            pointee_key = bytes(pointee_muid) + bytes(entry_muid)
             trxn.delete(pointee_key, db=self._by_pointee)
         if container_muid == Muid(-1, -1, Behavior.PROPERTY):
             if entry_builder.HasField("value") and entry_builder.HasField("describing"):
                 describing_muid = Muid.create(entry_muid, entry_builder.describing)
                 name = decode_value(entry_builder.value)
                 if isinstance(name, str):
-                    by_name_key = name.encode() + b"\x00" + bytes(describing_muid) + bytes(entry_muid)
+                    by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
                     trxn.delete(by_name_key, db=self._by_name)
 
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
@@ -807,6 +807,34 @@ class LmdbStore(AbstractStore):
                 data_remaining = infos_cursor.next()
         return chain_tracker
 
+    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+        prefix = bytes(desc)
+        with self._handle.begin() as trxn:
+            retaining_entries = decode_muts(trxn.get(b"entries", db=self._retentions))  # type: ignore
+            by_describing_cursor = trxn.cursor(self._by_describing)
+            removals_cursor = trxn.cursor(self._removals)
+            placed = by_describing_cursor.set_range(prefix)
+            while placed:
+                key, val = by_describing_cursor.item()
+                if not key.startswith(prefix):
+                    break
+                entry_muid_bytes = key[-16:]
+                container_muid_bytes = val
+                entry_muid = Muid.from_bytes(entry_muid_bytes)
+                if retaining_entries:
+                    removed = to_last_with_prefix(
+                        removals_cursor,
+                        prefix=container_muid_bytes + entry_muid_bytes,
+                        suffix=bytes(Muid(as_of, 0, 0)))
+                else:
+                    removed = None
+                if (not removed) and (as_of == -1 or entry_muid.timestamp < as_of):
+                    proto_bytes = trxn.get(container_muid_bytes, db=self._containers)
+                    container_builder = ContainerBuilder()
+                    container_builder.ParseFromString(proto_bytes)
+                    yield FoundContainer(Muid.from_bytes(container_muid_bytes), container_builder)
+                placed = by_describing_cursor.next()
+
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
         prefix = name.encode() + b"\x00"
         name_property_bytes = bytes(Muid(-1, -1, Behavior.PROPERTY))
@@ -816,11 +844,11 @@ class LmdbStore(AbstractStore):
             removals_cursor = trxn.cursor(self._removals)
             placed = by_name_cursor.set_range(prefix)
             while placed:
-                key = by_name_cursor.key()
+                key, val = by_name_cursor.item()
                 if not key.startswith(prefix):
                     break
-                entry_muid_bytes = key[-32:-16]
-                named_muid_bytes = key[-16:]
+                entry_muid_bytes = key[-16:]
+                named_muid_bytes = val
                 entry_muid = Muid.from_bytes(entry_muid_bytes)
                 if retaining_entries:
                     removed = to_last_with_prefix(
