@@ -1,10 +1,12 @@
 """ the ChangeSet class """
+from __future__ import annotations
 from typing import Optional, Union, Any
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
 from .muid import Muid
 from .typedefs import MuTimestamp, Medallion
 from .tuples import Chain
+from .deferred import Deferred
 
 
 class Bundler:
@@ -48,7 +50,7 @@ class Bundler:
         if self._sealed:
             raise AssertionError("already sealed")
         self._count_items += 1
-        muid = self.Deferred(offset=self._count_items, bundler=self)
+        muid = Deferred(offset=self._count_items, bundler=self)
         if isinstance(builder, EntryBuilder):
             entry_builder = builder
             builder = ChangeBuilder()
@@ -78,44 +80,3 @@ class Bundler:
         sealed = self._bundle_builder.SerializeToString()
         self._sealed = sealed
         return sealed
-
-    class Deferred(Muid):
-        """ Version of a muid that references a bundle.
-
-            We need a custom subclass here because we want to return something that can
-            be used as a muid, but we don't have the timestamp and medallion set until
-            the bundle has been sealed.  This class allows us to return an address object
-            that will give "None" when asked for timestamp/medallion before the bundle
-            has been sealed, and the appropriate values after sealing.
-        """
-
-        def __new__(cls, offset: int, bundler: Any):
-            assert bundler is not None
-            return super().__new__(cls, 0, 0, offset)
-
-        def __init__(self, offset: int, bundler: Any) -> None:
-            super().__init__()
-            assert offset != 0
-            self._bundler = bundler
-
-        def __getattribute__(self, name):
-            if name == "_bundler":
-                return object.__getattribute__(self, "_bundler")
-            if name == "offset":
-                return Muid.__getattribute__(self, "offset")
-            if name == "timestamp":
-                return getattr(self._bundler, "timestamp")
-            if name == "medallion":
-                return getattr(self._bundler, "medallion")
-            if name == "put_into":
-                return lambda x: Muid.put_into(self, x)
-            raise AttributeError(f"unknown attribute: {name}")
-
-        def __hash__(self):
-            return hash((self.offset, self.medallion, self.timestamp))
-
-        def __eq__(self, other):
-            if not isinstance(other, Muid):
-                return False
-            return ((self.offset, self.medallion, self.timestamp)  # type: ignore
-                    == (other.offset, other.medallion, other.timestamp))  # type: ignore

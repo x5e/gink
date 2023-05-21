@@ -10,7 +10,7 @@ from typing import Optional, Union, NamedTuple, List, Any
 from struct import Struct
 
 from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
-from .typedefs import UserKey, MuTimestamp, UserValue, Deletion
+from .typedefs import UserKey, MuTimestamp, UserValue, Deletion, Inclusion
 from .muid import Muid
 from .bundle_info import BundleInfo
 
@@ -20,13 +20,14 @@ DIRECTORY: int = Behavior.DIRECTORY  # type: ignore
 PROPERTY: int = Behavior.PROPERTY  # type: ignore
 BOX: int = Behavior.BOX  # type: ignore
 NODE: int = Behavior.NODE  # type: ignore
-LABEL: int = Behavior.LABEL # type: ignore
+MEMBERSHIP: int = Behavior.MEMBERSHIP # type: ignore
 RELATIONSHIP: int = Behavior.RELATIONSHIP # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
 KEY_MAX: int = 2**53 - 1
 deletion = Deletion()
+inclusion = Inclusion()
 
 
 def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object()):
@@ -138,7 +139,7 @@ class PlacementKey(NamedTuple):
             middle_key = None
         elif behavior == SEQUENCE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp, None)
-        elif behavior in (PROPERTY, RELATIONSHIP, LABEL):
+        elif behavior in (PROPERTY, RELATIONSHIP, MEMBERSHIP):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
@@ -166,7 +167,7 @@ class PlacementKey(NamedTuple):
             middle_key = decode_key(middle_key_bytes)
         elif using == SEQUENCE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
-        elif using in (PROPERTY, RELATIONSHIP, LABEL):
+        elif using in (PROPERTY, RELATIONSHIP, MEMBERSHIP):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using == BOX:
             middle_key = None

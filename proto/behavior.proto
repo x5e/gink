@@ -16,7 +16,7 @@ enum Behavior {
 
     NODE = 8; // no entries for containers of this type
     PROPERTY = 9; // entries have a subject and value
-    LABEL = 10; // denotes membership
+    MEMBERSHIP = 10; // entries have a subject and optionally deleting
     RELATIONSHIP = 11; // aka edge type
 
 };

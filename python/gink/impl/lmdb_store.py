@@ -555,7 +555,7 @@ class LmdbStore(AbstractStore):
                     limit -= 1
                 placed = placements_cursor.prev() if desc else placements_cursor.next()
 
-    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
+    def get_keyed_entries(self, container: Muid, behavior: int, as_of: MuTimestamp) -> Iterable[FoundEntry]:
         """ gets all the active entries in a direcotry as of a particular time """
         container_prefix = bytes(container)
         as_of_bytes = bytes(Muid(as_of, 0, 0))
@@ -564,13 +564,13 @@ class LmdbStore(AbstractStore):
             cursor = txn.cursor(self._placements)
             ckey = to_last_with_prefix(cursor, container_prefix)
             while ckey:
-                placement_key = PlacementKey.from_bytes(ckey, DIRECTORY)
+                placement_key = PlacementKey.from_bytes(ckey, behavior)
                 if placement_key.entry_muid.timestamp >= as_of:
                     # we've found a key, but the entry is too new, so look for an older one
                     through_middle = ckey[:-24]
                     ckey_as_of = to_last_with_prefix(cursor, through_middle, as_of_bytes)
                     if ckey_as_of:
-                        placement_key = PlacementKey.from_bytes(ckey, DIRECTORY)
+                        placement_key = PlacementKey.from_bytes(ckey, behavior)
                         ckey = ckey_as_of
                     else:
                         # no entries for this key before the as-of time, go to next key
@@ -719,7 +719,7 @@ class LmdbStore(AbstractStore):
         entry_muid = placement_key.entry_muid
         container_muid = placement_key.container
         serialized_placement_key = bytes(placement_key)
-        if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX, Behavior.PROPERTY, Behavior.LABEL):
+        if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX, Behavior.PROPERTY, Behavior.MEMBERSHIP):
             found_entry = self.get_entry_by_key(container_muid, placement_key.middle_key)
             if found_entry:
                 if retaining:

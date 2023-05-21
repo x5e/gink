@@ -32,6 +32,8 @@ from .coding import DIRECTORY, encode_key, encode_value
 from .muid import Muid
 from .chain_tracker import ChainTracker
 from .attribution import Attribution
+from .lmdb_store import LmdbStore
+from .memory_store import MemoryStore
 
 
 class Database:
@@ -46,8 +48,13 @@ class Database:
     _trackers: Dict[Connection, ChainTracker]  # tracks what we know a peer has *received*
     _last_link: Optional[BundleInfo]
 
-    def __init__(self, store: AbstractStore):
+    def __init__(self, store: Union[AbstractStore, str, None] = None):
         setattr(Database, "_last", self)
+        if isinstance(store, str):
+            store = LmdbStore(store)
+        if isinstance(store, type(None)):
+            store = MemoryStore()
+        assert isinstance(store, AbstractStore)
         self._store = store
         self._last_link = None
         self._lock = Lock()

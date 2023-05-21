@@ -2,13 +2,14 @@
 from sys import stdout
 from typing import Optional
 
-from .builders import ContainerBuilder
+from .builders import ContainerBuilder, Behavior
 from .container import Container
 from .directory import Directory
 from .box import Box
 from .sequence import Sequence
 from .property import Property
 from .database import Database
+from .membership import Membership
 from .muid import Muid
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .attribution import Attribution
@@ -22,10 +23,11 @@ def get_container(
         muid: Muid,
         container_builder: Optional[ContainerBuilder] = None,
         subtypes={
-            DIRECTORY: Directory,
-            SEQUENCE: Sequence,
-            PROPERTY: Property,
-            BOX: Box,
+            Behavior.DIRECTORY: Directory,
+            Behavior.SEQUENCE: Sequence,
+            Behavior.PROPERTY: Property,
+            Behavior.BOX: Box,
+            Behavior.MEMBERSHIP: Membership,
         }
 ) -> Container:
     """ Gets a pre-existing container. """

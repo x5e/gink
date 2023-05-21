@@ -14,3 +14,6 @@ EPOCH = 0
 
 class Deletion: # pylint: disable=too-few-public-methods
     """ Used internally to indicate that a key/value assocation has been removed. """
+
+class Inclusion:
+    """ Used to indicate adding something to a set or membership. """

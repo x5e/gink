@@ -19,6 +19,7 @@ if TYPE_CHECKING:
         behavior: int
         value: ValueBuilder
         container: MuidBuilder
+        deletion: bool
 
 
     class ValueBuilder(Message): pass
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
         SET = 3
         DIRECTORY = 4
         PROPERTY = 9
-        LABEL = 10
+        MEMBERSHIP = 10
 else:
     from ..builders.bundle_pb2 import Bundle
     from ..builders.sync_message_pb2 import SyncMessage

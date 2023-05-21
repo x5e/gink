@@ -99,7 +99,7 @@ class MemoryStore(AbstractStore):
             else:
                 raise ValueError(f"don't know what to do with {key}")
 
-    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
+    def get_keyed_entries(self, container: Muid, behavior: int, as_of: MuTimestamp) -> Iterable[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
         cont_bytes = bytes(container)
         clearance_time = None
@@ -112,7 +112,7 @@ class MemoryStore(AbstractStore):
         last = None
         # TODO this could be more efficient
         for entry_key in iterator:
-            entry_storage_key = PlacementKey.from_bytes(entry_key, DIRECTORY)
+            entry_storage_key = PlacementKey.from_bytes(entry_key, behavior)
             if entry_storage_key.entry_muid.timestamp >= as_of:
                 continue
             if entry_storage_key.middle_key == last:

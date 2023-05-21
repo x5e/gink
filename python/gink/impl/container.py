@@ -4,13 +4,13 @@ from typing import Optional, Union, Iterable
 from abc import ABC, abstractmethod
 from sys import stdout
 
-from .builders import ChangeBuilder, EntryBuilder, Behavior, ContainerBuilder
+from .builders import ChangeBuilder, EntryBuilder, Behavior
 
 from .muid import Muid
 from .bundler import Bundler
 from .database import Database
-from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue
-from .coding import encode_key, encode_value, decode_value, deletion
+from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, Deletion, Inclusion
+from .coding import encode_key, encode_value, decode_value, deletion, inclusion
 
 
 class Container(ABC):
@@ -220,7 +220,7 @@ class Container(ABC):
         return change_muid
 
     def _add_entry(self, *,
-                   value,
+                   value: Union[UserValue, Deletion, Inclusion],
                    key: Union[Muid, str, int, bytes, None] = None,
                    effective: Optional[MuTimestamp] = None,
                    bundler: Optional[Bundler] = None,
@@ -263,6 +263,8 @@ class Container(ABC):
             encode_value(value, entry_builder.value)  # type: ignore # pylint: disable=maybe-no-member
         elif value == deletion:
             entry_builder.deletion = True  # type: ignore # pylint: disable=maybe-no-member
+        elif value == inclusion:
+            pass
         else:
             raise ValueError(f"don't know how to add this to gink: {value}")
         muid = bundler.add_change(change_builder)
