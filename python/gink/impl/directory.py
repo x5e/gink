@@ -58,7 +58,7 @@ class Directory(Container):
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         stuffing = [f"{key!r}: {val!r}" for key, val in self.items(as_of=as_of)]
-        as_one_line = result + " ".join(stuffing) + "})"
+        as_one_line = result + ", ".join(stuffing) + "})"
         if len(as_one_line) < 80:
             return as_one_line
         result += "\n\t"
@@ -147,7 +147,7 @@ class Directory(Container):
     def items(self, *, as_of=None):
         """ returns an iterable of key,value pairs, as of the effective time (or now) """
         as_of = self._database.resolve_timestamp(as_of)
-        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of)
+        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=DIRECTORY)
         for entry_pair in iterable:
             if entry_pair.builder.deletion:  # type: ignore
                 continue
@@ -157,7 +157,7 @@ class Directory(Container):
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)
-        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of)
+        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=DIRECTORY)
         count = 0
         for entry_pair in iterable:
             if entry_pair.builder.deletion:  # type: ignore
@@ -181,7 +181,7 @@ class Directory(Container):
             Order is determined by implementation of the store.
         """
         as_of = self._database.get_now()
-        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of)
+        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=DIRECTORY)
         for entry_pair in iterable:
             if entry_pair.builder.deletion:  # type: ignore
                 continue

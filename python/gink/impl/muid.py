@@ -20,6 +20,9 @@ class Muid(NamedTuple):
         # There's probably a better way to do this...
         return UUID(str(self)).bytes
 
+    def __hash__(self):
+        return hash((self.offset, self.medallion, self.timestamp))
+
     def __str__(self):
         """ Translates to a format that looks like: 05D5EAC793E61F-1F8CB77AE1EAA-0000B
 

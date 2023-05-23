@@ -15,7 +15,7 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .muid import Muid
-from .coding import (PlacementKey, DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
+from .coding import (Placement, DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey)
 
 
@@ -71,7 +71,7 @@ class MemoryStore(AbstractStore):
             EntryBuilder: self._placements,
             MovementBuilder: self._removals,
             BundleInfo: self._bundles,
-            PlacementKey: self._placements,
+            Placement: self._placements,
             RemovalKey: self._removals,
             LocationKey: self._locations,
         }[cls]
@@ -99,7 +99,7 @@ class MemoryStore(AbstractStore):
             else:
                 raise ValueError(f"don't know what to do with {key}")
 
-    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
+    def get_keyed_entries(self, container: Muid, behavior: int, as_of: MuTimestamp) -> Iterable[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
         cont_bytes = bytes(container)
         clearance_time = None
@@ -112,7 +112,7 @@ class MemoryStore(AbstractStore):
         last = None
         # TODO this could be more efficient
         for entry_key in iterator:
-            entry_storage_key = PlacementKey.from_bytes(entry_key, DIRECTORY)
+            entry_storage_key = Placement.from_bytes(entry_key, behavior)
             if entry_storage_key.entry_muid.timestamp >= as_of:
                 continue
             if entry_storage_key.middle_key == last:
@@ -135,14 +135,14 @@ class MemoryStore(AbstractStore):
                 minimum=bytes(container), maximum=bytes(container) + bytes(as_of_muid), reverse=True):
             clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
         epoch_muid = Muid(0, 0, 0)
-        minimum = bytes(PlacementKey(container, key, epoch_muid, None))
-        maximum = bytes(PlacementKey(container, key, as_of_muid, None))
+        minimum = bytes(Placement(container, key, epoch_muid, None))
+        maximum = bytes(Placement(container, key, as_of_muid, None))
         iterator = self._placements.irange(
             minimum=minimum,
             maximum=maximum, reverse=True)
         for encoded_entry_storage_key in iterator:
             builder = self._placements[encoded_entry_storage_key]
-            entry_storage_key = PlacementKey.from_bytes(
+            entry_storage_key = Placement.from_bytes(
                 encoded_entry_storage_key, builder)
             if clearance_time > entry_storage_key.entry_muid.timestamp:
                 return None
@@ -178,7 +178,7 @@ class MemoryStore(AbstractStore):
             if limit is not None and limit <= 0:
                 break
             entry_builder = self._placements.get(placement_bytes)
-            placement_key = PlacementKey.from_bytes(placement_bytes, SEQUENCE)
+            placement_key = Placement.from_bytes(placement_bytes, SEQUENCE)
             placed_time = placement_key.get_placed_time()
             if placed_time >= as_of or placed_time < clearance_time:
                 continue
@@ -263,7 +263,7 @@ class MemoryStore(AbstractStore):
         if not old_serialized_placement:
             print(f"WARNING: could not find location for {entry_muid}")
             return
-        old_placement_key = PlacementKey.from_bytes(old_serialized_placement, SEQUENCE)
+        old_placement_key = Placement.from_bytes(old_serialized_placement, SEQUENCE)
         entry_expiry = old_placement_key.expiry
         if entry_expiry and entry_expiry < movement_muid.timestamp:
             print(f"WARNING: won't move exipired entry: {entry_muid}", file=sys.stderr)
@@ -278,7 +278,7 @@ class MemoryStore(AbstractStore):
         new_location_key = bytes(entry_muid) + bytes(movement_muid)
         if dest:
             middle_key = QueueMiddleKey(dest, movement_muid)
-            new_placement_key = PlacementKey(container, middle_key, entry_muid, entry_expiry)
+            new_placement_key = Placement(container, middle_key, entry_muid, entry_expiry)
             new_serialized_esk = bytes(new_placement_key)
             self._placements[new_serialized_esk] = self._placements[old_serialized_placement]
             self._locations[new_location_key] = new_serialized_esk
@@ -286,7 +286,7 @@ class MemoryStore(AbstractStore):
             self._locations[new_location_key] = None
 
     def _add_entry(self, new_info: BundleInfo, offset: int, entry_builder: EntryBuilder):
-        placement_key = PlacementKey.from_builder(entry_builder, new_info, offset)
+        placement_key = Placement.from_builder(entry_builder, new_info, offset)
         encoded_placement_key = bytes(placement_key)
         self._placements[encoded_placement_key] = entry_builder
         entries_location_key = bytes(placement_key.entry_muid) + bytes(placement_key.entry_muid)
@@ -319,7 +319,7 @@ class MemoryStore(AbstractStore):
         if location is None:
             return None
         entry_builder = self._placements[location]
-        placement_key = PlacementKey.from_bytes(location, entry_builder)
+        placement_key = Placement.from_bytes(location, entry_builder)
         middle_key = placement_key.middle_key
         assert isinstance(middle_key, QueueMiddleKey)
         return PositionedEntry(middle_key.effective_time,

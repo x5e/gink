@@ -10,7 +10,7 @@ from typing import Optional, Union, NamedTuple, List, Any
 from struct import Struct
 
 from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
-from .typedefs import UserKey, MuTimestamp, UserValue, Deletion
+from .typedefs import UserKey, MuTimestamp, UserValue, Deletion, Inclusion
 from .muid import Muid
 from .bundle_info import BundleInfo
 
@@ -19,14 +19,15 @@ SEQUENCE: int = Behavior.SEQUENCE  # type: ignore
 DIRECTORY: int = Behavior.DIRECTORY  # type: ignore
 PROPERTY: int = Behavior.PROPERTY  # type: ignore
 BOX: int = Behavior.BOX  # type: ignore
-NODE: int = Behavior.NODE  # type: ignore
-LABEL: int = Behavior.LABEL # type: ignore
-RELATIONSHIP: int = Behavior.RELATIONSHIP # type: ignore
+NOUN: int = Behavior.NOUN  # type: ignore
+ROLE: int = Behavior.ROLE # type: ignore
+VERB: int = Behavior.VERB # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
 KEY_MAX: int = 2**53 - 1
 deletion = Deletion()
+inclusion = Inclusion()
 
 
 def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object()):
@@ -105,7 +106,7 @@ class QueueMiddleKey(NamedTuple):
             raise AssertionError("expected QueueMiddleKey to be 8 or 24 bytes")
 
 
-class PlacementKey(NamedTuple):
+class Placement(NamedTuple):
     """ just a class to serialize / deserialize keys used to store entries
 
     """
@@ -124,6 +125,11 @@ class PlacementKey(NamedTuple):
         assert isinstance(self.middle_key, QueueMiddleKey)
         return self.middle_key.effective_time
 
+    def get_key(self) -> Union[UserKey, Muid, None]:
+        assert not isinstance(self.middle_key, QueueMiddleKey)
+        return self.middle_key
+
+
     @staticmethod
     def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):
         """ Create an EntryStorageKey from an Entry itself, plus address information. """
@@ -138,15 +144,15 @@ class PlacementKey(NamedTuple):
             middle_key = None
         elif behavior == SEQUENCE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp, None)
-        elif behavior in (PROPERTY, RELATIONSHIP, LABEL):
+        elif behavior in (PROPERTY, VERB, ROLE):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None
-        return PlacementKey(container, middle_key, entry_muid, expiry)
+        return Placement(container, middle_key, entry_muid, expiry)
 
     @staticmethod
-    def from_bytes(data: bytes, using: Union[int, bytes, EntryBuilder]):
+    def from_bytes(data: bytes, using: Union[int, bytes, EntryBuilder]=DIRECTORY):
         """ creates an entry key from its binary format, using either the entry(bytes) or behavior
         """
         # pylint: disable=maybe-no-member
@@ -166,13 +172,13 @@ class PlacementKey(NamedTuple):
             middle_key = decode_key(middle_key_bytes)
         elif using == SEQUENCE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
-        elif using in (PROPERTY, RELATIONSHIP, LABEL):
+        elif using in (PROPERTY, VERB, ROLE):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using == BOX:
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")
-        return PlacementKey(
+        return Placement(
             container=Muid.from_bytes(container_bytes),
             middle_key=middle_key,
             entry_muid=entry_muid,
@@ -180,7 +186,7 @@ class PlacementKey(NamedTuple):
 
     def replace_time(self, timestamp: int):
         """ create a entry key that can be used for seeking before the given time """
-        return PlacementKey(self.container, self.middle_key, Muid(timestamp, 0, 0, ), None)
+        return Placement(self.container, self.middle_key, Muid(timestamp, 0, 0, ), None)
 
     def __bytes__(self) -> bytes:
         parts: List[Any] = [self.container]
@@ -209,30 +215,38 @@ class PlacementKey(NamedTuple):
         return bytes(self) < bytes(other)
 
 
-class EntryStoragePair(NamedTuple):
+class PlacementBuilderPair(NamedTuple):
     """ Parsed entry data. """
-    key: PlacementKey
+    placement: Placement
     builder: EntryBuilder
 
 
-def create_deleting_entry(muid: Muid, key: Optional[UserKey]) -> EntryBuilder:
+def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid], behavior: int) -> EntryBuilder:
     """ creates an entry that will delete the given key from the container
 
         I'm allowing a null key in the argument then barfing if it's null
         inside in part because it results in an easier to use API.
     """
-    if key is None:
-        raise ValueError("can't create deletion entries without key")
     # pylint: disable=maybe-no-member
     entry_builder = EntryBuilder()
-    entry_builder.behavior = Behavior.DIRECTORY  # type: ignore
+    entry_builder.behavior = behavior
     muid.put_into(entry_builder.container)  # type: ignore
     entry_builder.deletion = True  # type: ignore
-    encode_key(key, entry_builder.key)  # type: ignore
+    if behavior == DIRECTORY:
+        assert isinstance(key, (int, str, bytes))
+        encode_key(key, entry_builder.key)  # type: ignore
+    elif behavior == BOX:
+        assert key is None
+    elif behavior in (PROPERTY, ROLE):
+        assert isinstance(key, Muid)
+        key.put_into(entry_builder.describing)
+    else:
+        raise Exception(f"don't know how to creating a deleting entry for behavior {behavior}")
     return entry_builder
 
 
-def decode_entry_occupant(entry_storage_pair: EntryStoragePair) -> Union[UserValue, Muid, Deletion]:
+def decode_entry_occupant(entry_storage_pair: PlacementBuilderPair
+                          ) -> Union[UserValue, Muid, Deletion, Inclusion]:
     """ Determines what a container "contains" in a given entry.
 
         The full entry storage pair is required because if it points to something that pointer
@@ -242,25 +256,27 @@ def decode_entry_occupant(entry_storage_pair: EntryStoragePair) -> Union[UserVal
     if builder.deletion:  # type: ignore
         return deletion
     if builder.HasField("pointee"):  # type: ignore
-        return Muid.create(builder=builder.pointee, context=entry_storage_pair.key)  # type: ignore
+        return Muid.create(builder=builder.pointee, context=entry_storage_pair.placement)  # type: ignore
     if builder.HasField("value"):  # type: ignore
         return decode_value(entry_storage_pair.builder.value)  # type: ignore
+    if builder.behavior == ROLE:
+        return inclusion
     raise ValueError(f"can't interpret {builder}")
 
 
-def entries_equiv(pair1: EntryStoragePair, pair2: EntryStoragePair) -> bool:
+def entries_equiv(pair1: PlacementBuilderPair, pair2: PlacementBuilderPair) -> bool:
     """ Checks the contained value/pointee/whatever to see if the entries are equiv.
 
         Used to see if the effective value in a container is the same even if it
         has a new entry.
     """
-    assert pair1.key != pair2.key, "comparing an entry to itself"
-    assert pair1.key.middle_key == pair2.key.middle_key
-    assert pair1.key.container == pair2.key.container
+    assert pair1.placement != pair2.placement, "comparing an entry to itself"
+    assert pair1.placement.middle_key == pair2.placement.middle_key
+    assert pair1.placement.container == pair2.placement.container
     if pair1.builder.HasField("pointee"):  # type: ignore
         if pair2.builder.HasField("pointee"):  # type: ignore
-            pointee1 = Muid.create(builder=pair1.builder.pointee, context=pair1.key)  # type: ignore
-            pointee2 = Muid.create(builder=pair2.builder.pointee, context=pair2.key)  # type: ignore
+            pointee1 = Muid.create(builder=pair1.builder.pointee, context=pair1.placement)  # type: ignore
+            pointee2 = Muid.create(builder=pair2.builder.pointee, context=pair2.placement)  # type: ignore
             return pointee1 == pointee2
         return False
     if pair1.builder.HasField("value"):  # type: ignore

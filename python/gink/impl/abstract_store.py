@@ -39,7 +39,7 @@ class AbstractStore(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_keyed_entries(self, container: Muid, as_of: MuTimestamp) -> Iterable[FoundEntry]:
+    def get_keyed_entries(self, container: Muid, behavior: int, as_of: MuTimestamp) -> Iterable[FoundEntry]:
         """ Gets all active entries for a given container as of the given time. """
         raise NotImplementedError()
 
