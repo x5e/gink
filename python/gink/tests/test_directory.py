@@ -166,7 +166,7 @@ def test_reset():
     for store in [LmdbStore(), ]:
         # TODO: implement reset in memory store
         with store:
-            # pylint: disable=unsupported-assignment-operation, unsupported-membership-test
+            # pylint: disable=unsupported-assignment-operation, unsupported-role-test
             database = Database(store=store)
             gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"

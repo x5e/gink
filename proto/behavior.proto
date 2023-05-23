@@ -14,9 +14,8 @@ enum Behavior {
 
     TABLE = 7;
 
-    NODE = 8; // no entries for containers of this type
+    NOUN = 8; // no entries for containers of this type
     PROPERTY = 9; // entries have a subject and value
-    MEMBERSHIP = 10; // entries have a subject and optionally deleting
-    RELATIONSHIP = 11; // aka edge type
-
+    ROLE = 10; // entries have a subject and optionally deleting
+    VERB = 11; // aka edge type
 };

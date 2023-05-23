@@ -11,8 +11,8 @@ from .bundler import Bundler
 from .builders import Behavior
 
 
-class Membership(Container):
-    BEHAVIOR = Behavior.MEMBERSHIP
+class Role(Container):
+    BEHAVIOR = Behavior.ROLE
 
     def __init__(self, *, contents: Optional[Set[Union[Muid, Container]]]=None,
                  muid: Optional[Muid] = None, database=None):
@@ -25,7 +25,7 @@ class Membership(Container):
         database = database or Database.get_last()
         bundler = Bundler()
         if muid is None:
-            muid = Container._create(Behavior.MEMBERSHIP, database=database, bundler=bundler)
+            muid = Container._create(Behavior.ROLE, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         if contents:
             raise NotImplementedError()
@@ -45,7 +45,7 @@ class Membership(Container):
         return self._add_entry(key=what, value=deletion, bundler=bundler, comment=comment)
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        """ Dumps the contents of this membership to a string.
+        """ Dumps the contents of this role to a string.
         """
         identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents="""
@@ -61,7 +61,7 @@ class Membership(Container):
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         ts = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self._muid, as_of=ts, behavior=Behavior.MEMBERSHIP)
+            container=self._muid, as_of=ts, behavior=Behavior.ROLE)
         count = 0
         for entry_pair in iterable:
             if not entry_pair.builder.deletion:
@@ -81,7 +81,7 @@ class Membership(Container):
     def get_member_ids(self, *, as_of: GenericTimestamp = None) -> Iterable[Muid]:
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self._muid, as_of=as_of, behavior=Behavior.MEMBERSHIP)
+            container=self._muid, as_of=as_of, behavior=Behavior.ROLE)
         for entry_pair in iterable:
             if entry_pair.builder.deletion:  # type: ignore
                 continue

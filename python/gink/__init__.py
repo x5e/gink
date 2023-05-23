@@ -11,10 +11,10 @@ from .impl.container import Container
 from .impl.muid import Muid
 from .impl.bundle_info import BundleInfo
 from .impl.bundler import Bundler
-from .impl.membership import Membership
+from .impl.role import Role
 from .impl.patch import PATCHED
 
 assert PATCHED
 
 __all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence", "Box", "Bundler",
-           "Property", "Container", "Muid", "LogBackedStore", "BundleInfo", "AbstractStore", "Membership"]
+           "Property", "Container", "Muid", "LogBackedStore", "BundleInfo", "AbstractStore", "Role"]

@@ -38,8 +38,10 @@ if TYPE_CHECKING:
         SEQUENCE = 2
         SET = 3
         DIRECTORY = 4
+        NOUN = 8
         PROPERTY = 9
-        MEMBERSHIP = 10
+        ROLE = 10
+        VERB = 11
 else:
     from ..builders.bundle_pb2 import Bundle
     from ..builders.sync_message_pb2 import SyncMessage
