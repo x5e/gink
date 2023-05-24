@@ -329,11 +329,34 @@ class MemoryStore(AbstractStore):
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
         _ = (to_time, container, user_key, recursive)
-        raise NotImplemented
+
+        if container is None and user_key is not None:
+            raise ValueError("Can't specify key without specifying container.")
+        if container is None:
+            recursive = False
+
+        if user_key is not None:
+            entry_now = self.get_entry_by_key(container=container, key=user_key, as_of=0)
+            entry_then = self.get_entry_by_key(container=container, key=user_key, as_of=to_time)
+
+            if entry_now != entry_then:
+                print("values are different")
+            else:
+                return "No changes made"
+        
+        else:
+            container_now = self.get_keyed_entries(container=container, behavior=4, as_of=0)
+            container_then = self.get_keyed_entries(container=container, behavior=4, as_of=to_time)
+
+            if container_now != container_then:
+                raise NotImplementedError()
+            else:
+                return "No changes made"
+
+
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
-        """ Returns info about all things with the given name.
-        """
+        """ Returns info about all things with the given name. """
         _ = (name, as_of)
         raise NotImplemented
 
