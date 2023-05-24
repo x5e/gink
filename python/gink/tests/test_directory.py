@@ -13,6 +13,8 @@ from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
 from ..impl.patch import PATCHED
 
+from ..impl.coding import Deletion
+
 assert PATCHED
 
 
@@ -189,6 +191,26 @@ def test_reset():
             assert bundle is not None and len(bundle) > 0
             bundle = gdi.reset(middle, recursive=True)
             assert not bundle
+
+def test_mem_reset():
+    # temporary test for resetting through memory store
+    store = MemoryStore()
+    with store:
+        database = Database(store)
+        gdi = Directory.get_global_instance(database)
+
+        # did reset return to an empty value
+        gdi["key1"] = "entry1"
+        gdi.delete("key1")
+        gdi.set("key1", "entry2")
+        gdi.reset(to_time=-1, key="key1")
+        assert gdi.size() == 0
+
+        # did reset correctly reset the key to previous value 
+        gdi.set("key1", "entry3")
+        gdi.set("key1", "entry4")
+        gdi.reset(to_time=-1, key="key1")
+        assert gdi["key1"] == "entry3"
 
 
 def test_clearance():

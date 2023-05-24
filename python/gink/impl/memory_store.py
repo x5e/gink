@@ -9,14 +9,14 @@ from sortedcontainers import SortedDict  # type: ignore
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder, Message,
                        ChangeBuilder)
-from .typedefs import UserKey, MuTimestamp, Medallion
+from .typedefs import UserKey, MuTimestamp, Medallion, Deletion
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (Placement, DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
-                     SEQUENCE, LocationKey)
+                     SEQUENCE, LocationKey, create_deleting_entry, wrap_change)
 
 
 class MemoryStore(AbstractStore):
@@ -336,22 +336,33 @@ class MemoryStore(AbstractStore):
             recursive = False
 
         if user_key is not None:
+            # Handles reset for a specific key, presumably in a directory
             entry_now = self.get_entry_by_key(container=container, key=user_key, as_of=0)
             entry_then = self.get_entry_by_key(container=container, key=user_key, as_of=to_time)
 
             if entry_now != entry_then:
-                print("values are different")
+                # If there is an entry, but it is different from current
+                if isinstance(entry_then, Deletion):
+                    # Handles entry that was deleted
+                    yield wrap_change(create_deleting_entry(container, key=user_key, behavior=4))
+                else:
+                    yield wrap_change(entry_then.builder) # type: ignore
             else:
-                return "No changes made"
+                # No changes to key since to_time
+                return
         
         else:
+            # No key specified, so all different entries in the container (directory, for now) should be reset.
+            recursive = True # Not implementing recursive just yet.
+
             container_now = self.get_keyed_entries(container=container, behavior=4, as_of=0)
             container_then = self.get_keyed_entries(container=container, behavior=4, as_of=to_time)
 
             if container_now != container_then:
                 raise NotImplementedError()
             else:
-                return "No changes made"
+                # Container has not changed since to_time
+                return
 
 
 
