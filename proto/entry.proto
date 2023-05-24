@@ -13,15 +13,15 @@ message Entry {
         // some of these only apply to certain container types:
         Key key = 3;            // KEY_SET, DIRECTORY
         sint64 location = 4;    // FILE
-        Muid describing = 6;    // PROPERTY, LABEL, REGISTRY
+        Muid describing = 6;    // PROPERTY, ROLE, REGISTRY
     }
 
     oneof contains {
         // some of these only apply to certain container types:
         Value value = 7;    // BOX, DIRECTORY, SEQUENCE, PROPERTY
         bytes octets = 8;   // up to 2**30 bytes, for behaviors in FILE, STREAM
-        bool deletion = 9;  // KEY_SET, DIRECTORY, LABEL, PROPERTY
-        Muid pointee = 10;   // BOX, DIRECTORY, SEQUENCE, PROPERTY
+        bool deletion = 9;  // KEY_SET, DIRECTORY, ROLE, PROPERTY
+        Muid pointee = 10;   // BOX, DIRECTORY, SEQUENCE
     }
 
     uint64 expiry = 11; // timestamp of expiration in microseconds since epoch, or 0 for none

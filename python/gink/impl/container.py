@@ -58,7 +58,9 @@ class Container(ABC):
         found = self._database.get_store().get_entry_by_key(hits[0].address, key=self._muid, as_of=ts)
         if found is None or found.builder.deletion:  # type: ignore
             return default
-        return self._get_occupant(found.builder)
+        result = self._get_occupant(found.builder)
+        assert not isinstance(result, Container)
+        return result
 
     def set_property_value_by_name(self, name: str, value: UserValue, *,
                                    create=True, bundler=None, comment=None):
@@ -113,10 +115,12 @@ class Container(ABC):
         found = self._database.get_store().get_entry_by_key(name_property, key=self._muid, as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore
             return None
-        return self._get_occupant(found.builder)
+        name = self._get_occupant(found.builder)
+        assert isinstance(name, str)
+        return name
 
 
-    def _get_occupant(self, builder: EntryBuilder, address: Optional[Muid] = None):
+    def _get_occupant(self, builder: EntryBuilder, address: Optional[Muid] = None) -> Union[UserValue, Container]:
         """ Figures out what the container is containing.
 
             Returns either a Container or a UserValue
@@ -128,6 +132,7 @@ class Container(ABC):
             assert address is not None
             pointee_muid = Muid.create(builder=pointee, context=address)
             return self._database.get_container(pointee_muid)
+        raise Exception("unexpected")
 
     def get_muid(self) -> Muid:
         """ returns the global address of this container """
