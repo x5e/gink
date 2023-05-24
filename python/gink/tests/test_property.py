@@ -30,16 +30,36 @@ def test_property_listing():
     """ makes sure that I can get a list of all properties of an object """
 
 
-def test_property_reset():
+def test_property_dump():
     """ ensure that I can reset all of the properties on an object to a point in the past """
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            database = Database(store=store)
+            namer = Property.get_global_instance(database=database)
+            directory = Directory.get_global_instance()
+            namer.set(directory, "fred")
+            named = namer.get(directory)
+            assert named == "fred", named
+            assert namer.size() == 1, store
+            dumped = namer.dumps()
+            assert dumped == "Property(root=True, contents={Muid(-1, -1, 4):'fred'})", dumped
+            namer.set(directory, "joe")
+            assert namer.get(directory) == "joe"
+            eval(dumped)
+            assert namer.get(directory) == "fred"
+            namer.delete(directory)
+            assert namer.size() ==  0
 
 
-def test_property_extension():
-    """ tests that I can create a property that behaves as the extension of one or more others
-
-        Only will be testing inclusions, not transforms (yet)
-    """
-
-
-def test_property_removal():
+def test_property_reset():
     """ ensures that I can remove properties on objects """
+    for store in [LmdbStore(),]:
+        with closing(store):
+            database = Database(store=store)
+            namer = Property.get_global_instance(database=database)
+            directory = Directory.get_global_instance()
+            namer.set(directory, "fred")
+            mark = database.get_now()
+            namer.set(directory, "joe")
+            namer.reset(to_time=mark)
+            assert namer.get(directory) == "fred"
