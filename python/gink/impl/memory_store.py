@@ -108,7 +108,7 @@ class MemoryStore(AbstractStore):
             clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
 
         iterator = self._placements.irange(
-            minimum=cont_bytes, maximum=cont_bytes + b"\xFF", reverse=True)
+            minimum=cont_bytes, maximum=cont_bytes + b"\xFF"*16, reverse=True)
         last = None
         # TODO this could be more efficient
         for entry_key in iterator:
