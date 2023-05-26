@@ -16,7 +16,7 @@ from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (Placement, DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
-                     SEQUENCE, LocationKey, create_deleting_entry, wrap_change)
+                     SEQUENCE, LocationKey, create_deleting_entry, wrap_change, decode_key)
 
 
 class MemoryStore(AbstractStore):
@@ -326,7 +326,7 @@ class MemoryStore(AbstractStore):
                                placement_key.entry_muid,
                                placement_key.entry_muid, entry_builder)
 
-    def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
+    def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid], # change to keyed reset changes
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
         _ = (to_time, container, user_key, recursive)
 
@@ -335,35 +335,30 @@ class MemoryStore(AbstractStore):
         if container is None:
             recursive = False
 
-        if user_key is not None:
-            # Handles reset for a specific key, presumably in a directory
-            entry_now = self.get_entry_by_key(container=container, key=user_key, as_of=0)
-            entry_then = self.get_entry_by_key(container=container, key=user_key, as_of=to_time)
+        if user_key is not None and container is not None: # Reset specific key for directory
+            now_entry = self.get_entry_by_key(container=container, key=user_key, as_of=0)
+            then_entry = self.get_entry_by_key(container=container, key=user_key, as_of=to_time)
 
-            if entry_now != entry_then:
+            if now_entry != then_entry:
                 # If there is an entry, but it is different from current
-                if isinstance(entry_then, Deletion):
+                if isinstance(then_entry, Deletion):
                     # Handles entry that was deleted
-                    yield wrap_change(create_deleting_entry(container, key=user_key, behavior=4))
+                    yield wrap_change(create_deleting_entry(container, key=user_key, behavior=4)) # Hard coded directory for now
                 else:
-                    yield wrap_change(entry_then.builder) # type: ignore
-            else:
-                # No changes to key since to_time
-                return
+                    yield wrap_change(then_entry.builder) # type: ignore
         
-        else:
-            # No key specified, so all different entries in the container (directory, for now) should be reset.
-            recursive = True # Not implementing recursive just yet.
+        elif user_key is None and container is not None: # Reset whole container
+            then_iterable = self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY)
+            now_iterable = self.get_keyed_entries(container=container, as_of=0, behavior=DIRECTORY)
 
-            container_now = self.get_keyed_entries(container=container, behavior=4, as_of=0)
-            container_then = self.get_keyed_entries(container=container, behavior=4, as_of=to_time)
+            for then_entry in then_iterable:
+                for now_entry in now_iterable:
+                    if then_entry.builder != now_entry.builder:
+                        # There has been a change since to_time
+                        yield wrap_change(then_entry.builder)
 
-            if container_now != container_then:
-                raise NotImplementedError()
-            else:
-                # Container has not changed since to_time
-                return
-
+        else: # Reset whole database
+            raise NotImplementedError()
 
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
