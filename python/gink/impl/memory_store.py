@@ -100,7 +100,7 @@ class MemoryStore(AbstractStore):
                 raise ValueError(f"don't know what to do with {key}")
 
     def get_keyed_entries(self, container: Muid, behavior: int, as_of: MuTimestamp) -> Iterable[FoundEntry]:
-        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
+        as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
         cont_bytes = bytes(container)
         clearance_time = None
         for clearance_key in self._clearances.irange(
@@ -113,7 +113,7 @@ class MemoryStore(AbstractStore):
         # TODO this could be more efficient
         for entry_key in iterator:
             entry_storage_key = Placement.from_bytes(entry_key, behavior)
-            if entry_storage_key.entry_muid.timestamp >= as_of:
+            if entry_storage_key.entry_muid.timestamp >= as_of and as_of > 0:
                 continue
             if entry_storage_key.middle_key == last:
                 continue
@@ -328,8 +328,6 @@ class MemoryStore(AbstractStore):
 
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid], # change to keyed reset changes
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
-        _ = (to_time, container, user_key, recursive)
-
         if container is None and user_key is not None:
             raise ValueError("Can't specify key without specifying container.")
         if container is None:
@@ -351,15 +349,21 @@ class MemoryStore(AbstractStore):
             then_iterable = self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY)
             now_iterable = self.get_keyed_entries(container=container, as_of=0, behavior=DIRECTORY)
 
+            # for entry in then_iterable:
+            #     print(entry.builder)
+            # print("------------NOW---------------")
+            # for entry in now_iterable:
+            #     print(entry.builder)
+
             for then_entry in then_iterable:
+                print(then_entry.builder)
+                print("THEN")
                 for now_entry in now_iterable:
+                    print(now_entry.builder)
+                    print("NOW")
                     if then_entry.builder != now_entry.builder:
                         # There has been a change since to_time
                         yield wrap_change(then_entry.builder)
-
-        else: # Reset whole database
-            raise NotImplementedError()
-
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
         """ Returns info about all things with the given name. """
