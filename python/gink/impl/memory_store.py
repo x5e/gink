@@ -326,8 +326,8 @@ class MemoryStore(AbstractStore):
                                placement_key.entry_muid,
                                placement_key.entry_muid, entry_builder)
 
-    def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid], # change to keyed reset changes
-                          user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
+    def get_reset_changes(self, container: Optional[Muid], user_key: Optional[UserKey], 
+                          to_time: MuTimestamp = -1, recursive=False) -> Iterable[ChangeBuilder]:
         if container is None and user_key is not None:
             raise ValueError("Can't specify key without specifying container.")
         if container is None:
@@ -341,29 +341,26 @@ class MemoryStore(AbstractStore):
                 # If there is an entry, but it is different from current
                 if isinstance(then_entry, Deletion):
                     # Handles entry that was deleted
-                    yield wrap_change(create_deleting_entry(container, key=user_key, behavior=4)) # Hard coded directory for now
+                    yield wrap_change(create_deleting_entry(container, key=user_key, behavior=DIRECTORY)) # Hard coded directory for now
                 else:
                     yield wrap_change(then_entry.builder) # type: ignore
         
         elif user_key is None and container is not None: # Reset whole container
-            then_iterable = self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY)
-            now_iterable = self.get_keyed_entries(container=container, as_of=0, behavior=DIRECTORY)
+            then_iterable = list(self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY))
+            now_iterable = list(self.get_keyed_entries(container=container, as_of=0, behavior=DIRECTORY))
+            changed_keys = []
+            
+            for entry in then_iterable:
+                if entry not in now_iterable:
+                    # Adds all data present then and not now
+                    changed_keys.append(entry.builder.key)
+                    yield wrap_change(entry.builder)
 
-            # for entry in then_iterable:
-            #     print(entry.builder)
-            # print("------------NOW---------------")
-            # for entry in now_iterable:
-            #     print(entry.builder)
+            for entry in now_iterable:
+                if entry not in then_iterable and entry.builder.key not in changed_keys:
+                    # Deletes entries that were not present then
+                    yield wrap_change(create_deleting_entry(container, key=entry.builder.key.characters, behavior=DIRECTORY))
 
-            for then_entry in then_iterable:
-                print(then_entry.builder)
-                print("THEN")
-                for now_entry in now_iterable:
-                    print(now_entry.builder)
-                    print("NOW")
-                    if then_entry.builder != now_entry.builder:
-                        # There has been a change since to_time
-                        yield wrap_change(then_entry.builder)
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
         """ Returns info about all things with the given name. """
