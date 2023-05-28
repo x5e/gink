@@ -5,7 +5,7 @@ from typing import Tuple, Callable, Optional, Iterable, List, Union
 from abc import ABC, abstractmethod
 
 # Gink specific modules
-from .builders import ContainerBuilder, ChangeBuilder
+from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder
 from .bundle_info import BundleInfo
 from .chain_tracker import ChainTracker
 from .typedefs import UserKey, MuTimestamp, Medallion
@@ -61,6 +61,16 @@ class AbstractStore(ABC):
                             offset: int = 0, desc: bool = False) -> Iterable[PositionedEntry]:
         """ Get data for Sequence and Registry data types.
         """
+
+    @abstractmethod
+    def get_edge_entries(
+        self, as_of: MuTimestamp, limit: Optional[int] = None, offset: int = 0,
+        verb: Optional[Muid] = None, sub: Optional[Muid] = None, obj: Optional[Muid] = None) -> Iterable[FoundEntry]:
+        """ Returns all of the edge entries with specified verb and/or subject and/or object. """
+
+    @abstractmethod
+    def get_entry(self, muid: Muid, as_of: MuTimestamp) -> EntryBuilder:
+        """ Return the entry builder for a entry if it's visible in the store. """
 
     def close(self):
         """Safely releases resources."""

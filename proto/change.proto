@@ -5,6 +5,7 @@ import "proto/entry.proto";
 import "proto/movement.proto";
 import "proto/clearance.proto";
 import "proto/detachment.proto";
+import "proto/muid.proto";
 
 /**
 * Any update/change that can be referenced by Gink
@@ -17,4 +18,5 @@ message Change {
         Clearance clearance = 4;
         Detachment detachment = 5;
     }
+    Muid restore = 15;  // only for restore operations
 }

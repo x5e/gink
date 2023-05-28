@@ -42,7 +42,7 @@ def test_property_dump():
             assert named == "fred", named
             assert namer.size() == 1, store
             dumped = namer.dumps()
-            assert dumped == "Property(root=True, contents={Muid(-1, -1, 4):'fred'})", dumped
+            assert dumped == "Property(root=True, contents={Directory(root=True):'fred'})", dumped
             namer.set(directory, "joe")
             assert namer.get(directory) == "joe"
             eval(dumped)
@@ -63,3 +63,14 @@ def test_property_reset():
             namer.set(directory, "joe")
             namer.reset(to_time=mark)
             assert namer.get(directory) == "fred"
+
+
+def test_property_ref():
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            database = Database(store=store)
+            directory = Directory.get_global_instance(database=database)
+            property = Property()
+            property.set(directory, directory)
+            val = property.get(directory)
+            assert val == directory, val

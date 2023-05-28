@@ -224,8 +224,8 @@ class Container(ABC):
             self._database.commit(bundler)
         return change_muid
 
-    def _add_entry(self, *,
-                   value: Union[UserValue, Deletion, Inclusion],
+    def  _add_entry(self, *,
+                   value: Union[UserValue, Deletion, Inclusion, Container],
                    key: Union[Muid, str, int, bytes, None] = None,
                    effective: Optional[MuTimestamp] = None,
                    bundler: Optional[Bundler] = None,

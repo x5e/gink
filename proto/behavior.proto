@@ -3,19 +3,14 @@ package gink;
 
 enum Behavior {
     UNSPECIFIED = 0; // seeing this behavior usually means there's a bug somewhere
-
     BOX = 1; // only holds on entry at a time, only uses a contains, no key or subject
     SEQUENCE = 2; // entries have a value or pointee but no key, ordered by time
-    SET = 3; // entries have only key, no value, and may be removed with a deletion
+    KEY_SET = 3; // entries have only key, no value, and may be removed with a deletion
     DIRECTORY = 4; // entries have key and also something contained (value or pointee)
-
-    STREAM = 5; // entries contain bytes, order is implied by timestamps
-    FILE = 6; // entries contain bytes and optionally a location to place those bytes in the file
-
-    TABLE = 7;
-
-    NOUN = 8; // no entries for containers of this type
+    PAIR_SET = 5;
+    PAIR_MAP = 6;
+    NOUN = 7;
+    VERB = 8;
     PROPERTY = 9; // entries have a subject and value
-    ROLE = 10; // entries have a subject and optionally deleting
-    VERB = 11; // aka edge type
+    ROLE = 10; // entries have describing and optionally deleting
 };
