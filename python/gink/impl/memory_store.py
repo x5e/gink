@@ -325,13 +325,20 @@ class MemoryStore(AbstractStore):
         return PositionedEntry(middle_key.effective_time,
                                placement_key.entry_muid,
                                placement_key.entry_muid, entry_builder)
+    
+    def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
+                          user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
+        return self.get_directory_reset_changes(to_time=to_time, container=container, user_key=user_key, recursive=recursive)
 
-    def get_reset_changes(self, container: Optional[Muid], user_key: Optional[UserKey], 
-                          to_time: MuTimestamp = -1, recursive=False) -> Iterable[ChangeBuilder]:
+
+    def get_directory_reset_changes(self, container: Optional[Muid], user_key: Optional[UserKey], 
+                          to_time: MuTimestamp = -1, recursive: Union[bool, set] = False) -> Iterable[ChangeBuilder]:
         if container is None and user_key is not None:
             raise ValueError("Can't specify key without specifying container.")
         if container is None:
             recursive = False
+        if recursive is True:
+            recursive = set()
 
         if user_key is not None and container is not None: # Reset specific key for directory
             now_entry = self.get_entry_by_key(container=container, key=user_key, as_of=0)
@@ -346,19 +353,17 @@ class MemoryStore(AbstractStore):
                     yield wrap_change(then_entry.builder) # type: ignore
         
         elif user_key is None and container is not None: # Reset whole container
-            then_iterable = list(self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY))
-            now_iterable = list(self.get_keyed_entries(container=container, as_of=0, behavior=DIRECTORY))
-            changed = []
+            then_set = set(self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY))
+            now_set = set(self.get_keyed_entries(container=container, as_of=-1, behavior=DIRECTORY))
 
-            for entry in now_iterable:
-                if entry not in then_iterable and entry.builder not in changed:
+            for entry in now_set:
+                if entry not in then_set:
                     # Deletes entries that were not present then
                     yield wrap_change(create_deleting_entry(container, key=decode_key(entry.builder.key), behavior=DIRECTORY))
             
-            for entry in then_iterable:
-                if entry not in now_iterable:
+            for entry in then_set:
+                if entry not in now_set:
                     # Adds all data present then and not now
-                    changed.append(entry.builder)
                     yield wrap_change(entry.builder)
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
