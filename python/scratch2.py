@@ -1,29 +1,26 @@
 from gink import *
 from sortedcontainers import SortedDict
 store = MemoryStore()
-database = Database(store)
-dir(store)
-store._bundles
-gd = Directory.get_global_instance()
-gd["hello"] = "world"
-store._bundles
-len(store._bundles)
-store._bundles.keys()
-list(store._bundles.keys())
-BundleInfo.from_bytes(list(store._bundles.keys())[0])
-BundleInfo.from_bytes(list(store._bundles.keys())[1])
-from gink.builders import *
-from gink.impl.builders import *
-bundle_builder = BundleBuilder()
-bundle_builder.ParseFromString(list(store._bundles.values())[0])
-bundle_builder
-bundle_builder.ParseFromString(list(store._bundles.values())[1])
-bundle_builder
-gd["hello"] = "universe"
-BundleInfo.from_bytes(list(store._bundles.keys())[2])
-bundle_builder.ParseFromString(list(store._bundles.values())[2])
-bundle_builder
-print(len(store._placements))
-# from gink.impl.coding import *
-# store.get_some(PlacementKey)
-# list(store.get_some(PlacementKey))
+database = Database(store=store)
+gdi = Directory.get_global_instance(database=database)
+gdi["foo"] = "bar"
+gdi["bar"] = "foo"
+gdi[7] = {"cheese": "wiz", "foo": [True, False, None]}
+gdi["nope"] = Directory()
+gdi["nope"][33] = [1, 2]  # type: ignore # SHOULD GO BACK TO THIS ENTRY, INCLUDING
+middle = database.get_now()
+
+gdi["bar"] = "moo" 
+gdi["foo"] = "zoo"
+gdi[99] = 30
+gdi["nope"][44] = "foo"  # type: ignore
+
+
+# print("_________BEFORE RESET____________")
+# print(list(store.get_keyed_entries(container=gdi._muid, as_of=middle, behavior=4)))
+# print(list(store.get_reset_changes(to_time=middle, container=gdi._muid, user_key=None)))
+gdi.reset(middle)
+print(list(gdi.items()))
+
+# print("_________AFTER RESET____________")
+# print(list(store.get_keyed_entries(container=gdi._muid, as_of=0, behavior=4)))

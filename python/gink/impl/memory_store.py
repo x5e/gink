@@ -348,19 +348,18 @@ class MemoryStore(AbstractStore):
         elif user_key is None and container is not None: # Reset whole container
             then_iterable = list(self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY))
             now_iterable = list(self.get_keyed_entries(container=container, as_of=0, behavior=DIRECTORY))
-            changed_keys = []
+            changed = []
+
+            for entry in now_iterable:
+                if entry not in then_iterable and entry.builder not in changed:
+                    # Deletes entries that were not present then
+                    yield wrap_change(create_deleting_entry(container, key=decode_key(entry.builder.key), behavior=DIRECTORY))
             
             for entry in then_iterable:
                 if entry not in now_iterable:
                     # Adds all data present then and not now
-                    changed_keys.append(entry.builder.key)
+                    changed.append(entry.builder)
                     yield wrap_change(entry.builder)
-
-            for entry in now_iterable:
-                if entry not in then_iterable and entry.builder.key not in changed_keys:
-                    # Deletes entries that were not present then
-                    yield wrap_change(create_deleting_entry(container, key=entry.builder.key.characters, behavior=DIRECTORY))
-
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
         """ Returns info about all things with the given name. """
