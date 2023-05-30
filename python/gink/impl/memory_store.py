@@ -348,7 +348,7 @@ class MemoryStore(AbstractStore):
                 # If there is an entry, but it is different from current
                 if isinstance(then_entry, Deletion):
                     # Handles entry that was deleted
-                    yield wrap_change(create_deleting_entry(container, key=user_key, behavior=DIRECTORY)) # Hard coded directory for now
+                    yield wrap_change(create_deleting_entry(container, key=user_key, behavior=DIRECTORY))
                 else:
                     yield wrap_change(then_entry.builder) # type: ignore
         
@@ -356,15 +356,30 @@ class MemoryStore(AbstractStore):
             then_set = set(self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY))
             now_set = set(self.get_keyed_entries(container=container, as_of=-1, behavior=DIRECTORY))
 
-            for entry in now_set:
-                if entry not in then_set:
+            for now_entry in now_set:
+                if now_entry not in then_set:
                     # Deletes entries that were not present then
-                    yield wrap_change(create_deleting_entry(container, key=decode_key(entry.builder.key), behavior=DIRECTORY))
+                    yield wrap_change(create_deleting_entry(container, key=decode_key(now_entry.builder.key), behavior=DIRECTORY))
             
-            for entry in then_set:
-                if entry not in now_set:
+            for then_entry in then_set:
+                if then_entry not in now_set:
                     # Adds all data present then and not now
-                    yield wrap_change(entry.builder)
+                    if isinstance(then_entry, Deletion):
+                        # Handles entry that was deleted
+                        yield wrap_change(create_deleting_entry(container, key=decode_key(then_entry.builder.key), behavior=DIRECTORY))
+                    else:
+                        yield wrap_change(then_entry.builder) # type: ignore
+
+                elif str(then_entry.builder.pointee) != "" and recursive is not False:
+                        pointee_muid = Muid(then_entry.builder.pointee.timestamp, then_entry.builder.pointee.medallion, then_entry.builder.pointee.offset)
+                        if pointee_muid in recursive:
+                            break
+                        recursive.add(pointee_muid)
+                        for change in self.get_directory_reset_changes(container=pointee_muid, user_key=None, to_time=to_time, recursive=recursive):
+                            yield change
+
+        else:
+            raise NotImplementedError()
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
         """ Returns info about all things with the given name. """

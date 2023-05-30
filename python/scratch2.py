@@ -14,11 +14,17 @@ gdi["bar"] = "moo"
 gdi["foo"] = "zoo"
 gdi[99] = 30
 gdi["nope"][44] = "foo"  # type: ignore
+bundle = gdi.reset(middle, recursive=True)
+assert 44 not in gdi["nope"]  # type: ignore
+assert bundle is not None and len(bundle) > 0
+bundle = gdi.reset(middle, recursive=True)
+print(bundle._count_items)
+# assert not bundle
 
 
+print(type(bundle))
 
 
-
-gdi.reset(middle)
+# gdi.reset(middle)
 print(list(gdi.items()))
 print(list(gdi.get("nope").items()))
