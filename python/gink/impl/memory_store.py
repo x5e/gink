@@ -65,6 +65,15 @@ class MemoryStore(AbstractStore):
                 return None
         raise Exception("unexpected")
 
+    def get_edge_entries(
+            self, as_of: MuTimestamp, limit: Optional[int] = None, offset: int = 0,
+            verb: Optional[Muid] = None, sub: Optional[Muid] = None,
+            obj: Optional[Muid] = None) -> Iterable[FoundEntry]:
+        raise NotImplementedError()
+
+    def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:
+        raise NotImplementedError()
+
     def get_some(self, cls, last_index: Optional[int] = None):
         sorted_dict = {
             BundleBuilder: self._bundles,

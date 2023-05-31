@@ -90,6 +90,46 @@ class LmdbStore(AbstractStore):
             # TODO: add purge method to remove particular data even when retention is on
             # TODO: add expiries table to keep track of when things need to be removed
 
+    def get_edge_entries(
+            self, as_of: MuTimestamp, limit: Optional[int] = None, skip: int = 0,
+            verb: Optional[Muid] = None, source: Optional[Muid] = None,
+            target: Optional[Muid] = None) -> Iterable[FoundEntry]:
+        if verb is None:
+            raise NotImplementedError()
+        # TODO: add support for lookups by source and/or target
+        # TODO: add support for clear operation on verbs.
+        verb_bytes = bytes(verb)
+        asof_bytes = bytes(Muid(as_of, -1, -1))
+        with self._handle.begin() as trxn:
+            placement_cursor = trxn.cursor(self._placements)
+            placed = placement_cursor.set_range(verb_bytes)
+            while placed:
+                key, val = placement_cursor.item()
+                if not key.startswith(verb_bytes):
+                    break
+                if not key < verb_bytes + asof_bytes:
+                    break
+                entry_builder = EntryBuilder.FromString(trxn.get(val, db=self._entries))
+                entry_muid = Muid.from_bytes(val)
+                include = True
+                if source is not None and Muid.create(context=entry_muid, builder=entry_builder.pair.left) != source:
+                    include = False
+                if target is not None and Muid.create(context=entry_muid, builder=entry_builder.pair.rite) != target:
+                    include = False
+                if include:
+                    yield FoundEntry(entry_muid, entry_builder)
+                placed = placement_cursor.next()
+
+
+    def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:
+        with self._handle.begin() as trxn:
+            found = trxn.get(bytes(muid), db=self._entries)
+            if not found:
+                return None
+            entry_builder = EntryBuilder()
+            entry_builder.ParseFromString(found)
+            return entry_builder
+
     def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
         yield Muid(-1, -1, 7), ContainerBuilder()
         yield Muid(-1, -1, 8), ContainerBuilder()

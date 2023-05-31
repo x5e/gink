@@ -144,8 +144,10 @@ class Placement(NamedTuple):
             middle_key = None
         elif behavior == SEQUENCE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp, None)
-        elif behavior in (PROPERTY, VERB, ROLE):
+        elif behavior in (PROPERTY, ROLE):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
+        elif behavior == VERB:
+            middle_key = None
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None

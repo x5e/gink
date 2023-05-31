@@ -65,11 +65,11 @@ class AbstractStore(ABC):
     @abstractmethod
     def get_edge_entries(
         self, as_of: MuTimestamp, limit: Optional[int] = None, offset: int = 0,
-        verb: Optional[Muid] = None, sub: Optional[Muid] = None, obj: Optional[Muid] = None) -> Iterable[FoundEntry]:
+        verb: Optional[Muid] = None, source: Optional[Muid] = None, target: Optional[Muid] = None) -> Iterable[FoundEntry]:
         """ Returns all of the edge entries with specified verb and/or subject and/or object. """
 
     @abstractmethod
-    def get_entry(self, muid: Muid, as_of: MuTimestamp) -> EntryBuilder:
+    def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:
         """ Return the entry builder for a entry if it's visible in the store. """
 
     def close(self):

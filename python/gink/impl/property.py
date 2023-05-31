@@ -8,13 +8,14 @@ from .coding import PROPERTY, deletion
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
+from .graph import Edge
 
 
 class Property(Container):
     BEHAVIOR = PROPERTY
 
     def __init__(self, *, root: bool=False, muid: Optional[Muid] = None, database: Optional[Database]=None,
-                 contents: Optional[Dict[Container, Union[UserValue, Container]]]=None):
+                 contents: Optional[Dict[Union[Container, Edge], Union[UserValue, Container]]]=None):
         """
         Constructor for a property definition.
 
@@ -72,7 +73,7 @@ class Property(Container):
                 count += 1
         return count
 
-    def set(self, describing: Container, value: Union[UserValue, Container], *,
+    def set(self, describing: Union[Container, Edge], value: Union[UserValue, Container], *,
             bundler=None, comment=None) -> Muid:
         """ Sets the value of the property on the particular object addressed by describing.
 
@@ -81,11 +82,11 @@ class Property(Container):
         """
         return self._add_entry(key=describing._muid, value=value, bundler=bundler, comment=comment)
 
-    def delete(self, describing: Container, *, bundler=None, comment=None) -> Muid:
+    def delete(self, describing: Union[Container, Edge], *, bundler=None, comment=None) -> Muid:
         """ Removes the value (if any) of this property on object pointed to by `describing`. """
         return self._add_entry(key=describing._muid, value=deletion, bundler=bundler, comment=comment)
 
-    def get(self, describing: Container, default: Union[UserValue, Container] = None, *,
+    def get(self, describing: Union[Container, Edge], default: Union[UserValue, Container] = None, *,
             as_of: GenericTimestamp = None) -> Union[UserValue, Container]:
         """ Gets the value of the property on the object it's describing, optionally in the past.
 
