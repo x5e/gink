@@ -54,9 +54,9 @@
             key: bytes(BundleInfo)
             val: bundle bytes (i.e. same as in the bundles table)
 
-        by_describing - an index to enable looking up all the properties/edges on an object
+        by_describing - an index to enable looking up all the properties on an object/edge
             key: (describing-muid, entry-muid)
-            val: container-muid
+            val: edge-muid
 
         by_pointee - an index for looking at entries by what they point-to
             key: (pointee-muid, entry-muid)

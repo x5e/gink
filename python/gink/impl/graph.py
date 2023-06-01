@@ -2,6 +2,8 @@
 from __future__ import annotations
 from typing import Optional, Union, Iterable
 
+from python.gink.impl.muid import Muid
+
 from .typedefs import GenericTimestamp, UserValue, Inclusion
 from .container import Container
 from .coding import VERB, NOUN, inclusion, encode_value, decode_value
@@ -9,7 +11,7 @@ from .muid import Muid
 from .database import Database
 from .bundler import Bundler
 from .builders import EntryBuilder, ChangeBuilder
-
+from .addressable import Addressable
 
 class Noun(Container):
     BEHAVIOR = NOUN
@@ -43,7 +45,10 @@ class Noun(Container):
 class Verb(Container):
     BEHAVIOR = VERB
 
-    def __init__(self, *, root=False, muid: Optional[Muid] = None, database: Optional[Database]=None,
+    def __init__(self, *,
+                 root=False,
+                 muid: Optional[Muid] = None,
+                 database: Optional[Database]=None,
                  contents: Optional[Iterable[Edge]] = None):
         database = database or Database.get_last()
         bundler = Bundler()
@@ -104,7 +109,7 @@ class Verb(Container):
         return result
 
 
-class Edge:
+class Edge(Addressable):
 
     def dumps(self, indent=1) -> str:
         contents = []
@@ -128,8 +133,8 @@ class Edge:
     def get_target(self) -> Noun:
         return Noun(muid=self._target, database=self._database)
 
-    def delete(self, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
-
+    def _get_container(self) -> Muid:
+        return self._action
 
     def __init__(self, muid: Union[Muid, None] = None, *,
                  action: Union[Muid, Verb, None] = None,
@@ -184,3 +189,23 @@ class Edge:
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}('{self._muid}')"
+
+    def remove(self, *,
+               purge: bool = False,
+               bundler: Optional[Bundler] = None,
+               comment: Optional[str] = None) -> Muid:
+        immediate = False
+        if not isinstance(bundler, Bundler):
+            bundler = Bundler(comment=comment)
+            immediate = True
+        change_builder = ChangeBuilder()
+        movement_builder = change_builder.movement
+        container_muid = self._action
+        container_muid.put_into(movement_builder.container)
+        self._muid.put_into(movement_builder.entry)
+        if purge is True:
+            movement_builder.purge = purge
+        change_muid = bundler.add_change(change_builder)
+        if immediate:
+            self._database.commit(bundler)
+        return change_muid

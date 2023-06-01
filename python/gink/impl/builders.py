@@ -12,6 +12,7 @@ if TYPE_CHECKING:
         entry: EntryBuilder
         container: ContainerBuilder
         restore: MuidBuilder
+        movement: MovementBuilder
 
     class Pair:
         left: MuidBuilder
@@ -29,12 +30,28 @@ if TYPE_CHECKING:
 
 
     class ValueBuilder(Message): pass
+
+
     class KeyBuilder(Message): pass
+
+
     class ContainerBuilder(Message):
         behavior: int
-    class MovementBuilder(Message): pass
+
+
+    class MovementBuilder(Message):
+        container: MuidBuilder
+        entry: MuidBuilder
+        dest: int
+        purge: bool
+
+
     class ClearanceBuilder(Message): pass
+
+
     class MuidBuilder(Message): pass
+
+
     class LogFile(Message): pass
 
 

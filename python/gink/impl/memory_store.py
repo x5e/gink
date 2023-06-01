@@ -338,14 +338,14 @@ class MemoryStore(AbstractStore):
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
         _ = (to_time, container, user_key, recursive)
-        raise NotImplemented
+        raise NotImplementedError()
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
         """ Returns info about all things with the given name.
         """
         _ = (name, as_of)
-        raise NotImplemented
+        raise NotImplementedError()
 
-    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:
         _ = (desc, as_of)
-        raise NotImplemented
+        raise NotImplementedError()

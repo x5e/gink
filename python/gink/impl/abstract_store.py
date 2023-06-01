@@ -194,6 +194,6 @@ class AbstractStore(ABC):
         """
 
     @abstractmethod
-    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:
         """ Returns all the containers (properties) that describe desc.
         """

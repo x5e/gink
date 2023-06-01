@@ -15,7 +15,7 @@ message Entry {
         // some of these only apply to certain container types:
         Key key = 3;            // KEY_SET, DIRECTORY
         Pair pair = 4;          // PAIR_SET, PAIR_MAP, VERB
-        Muid describing = 6;    // PROPERTY, ROLE, ADVERB
+        Muid describing = 6;    // PROPERTY, ROLE, VERB
     }
 
     oneof contains {

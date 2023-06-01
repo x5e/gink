@@ -778,7 +778,7 @@ class LmdbStore(AbstractStore):
                 data_remaining = infos_cursor.next()
         return chain_tracker
 
-    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:
         prefix = bytes(desc)
         with self._handle.begin() as trxn:
             retaining_entries = decode_muts(trxn.get(b"entries", db=self._retentions))  # type: ignore
@@ -800,10 +800,9 @@ class LmdbStore(AbstractStore):
                 else:
                     removed = None
                 if (not removed) and (as_of == -1 or entry_muid.timestamp < as_of):
-                    proto_bytes = trxn.get(container_muid_bytes, db=self._containers)
-                    container_builder = ContainerBuilder()
-                    container_builder.ParseFromString(proto_bytes)
-                    yield FoundContainer(Muid.from_bytes(container_muid_bytes), container_builder)
+                    proto_bytes = trxn.get(entry_muid, db=self._entries)
+                    assert proto_bytes is not None
+                    yield FoundEntry(Muid.from_bytes(entry_muid), EntryBuilder.FromString(proto_bytes))
                 placed = by_describing_cursor.next()
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
