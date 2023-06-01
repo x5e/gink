@@ -14,17 +14,22 @@ gdi["bar"] = "moo"
 gdi["foo"] = "zoo"
 gdi[99] = 30
 gdi["nope"][44] = "foo"  # type: ignore
+# print(list(gdi.items()))
+print("FIRST RESET")
 bundle = gdi.reset(middle, recursive=True)
+# print(list(gdi.items()))
+print("++++++++++++++FIRST CHANGES, SHOULD RETURN CHANGES++++++++++++++++++++++++++++\n", bundle._bundle_builder)
 assert 44 not in gdi["nope"]  # type: ignore
 assert bundle is not None and len(bundle) > 0
+print("\nSECOND RESET")
 bundle = gdi.reset(middle, recursive=True)
-print(bundle._count_items)
+
+# print(list(gdi.items()))
 # assert not bundle
+print("++++++++++++++SECOND RESET, NO CHANGES++++++++++++++++++++++++++++\n", bundle._bundle_builder)
 
 
-print(type(bundle))
 
 
-# gdi.reset(middle)
-print(list(gdi.items()))
-print(list(gdi.get("nope").items()))
+# print(list(gdi.items()))
+# print(list(gdi.get("nope").items()))

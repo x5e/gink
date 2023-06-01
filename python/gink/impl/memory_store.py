@@ -339,6 +339,7 @@ class MemoryStore(AbstractStore):
             recursive = False
         if recursive is True:
             recursive = set()
+            recursive.add(container)
 
         if user_key is not None and container is not None: # Reset specific key for directory
             now_entry = self.get_entry_by_key(container=container, key=user_key, as_of=0)
@@ -353,8 +354,11 @@ class MemoryStore(AbstractStore):
                     yield wrap_change(then_entry.builder) # type: ignore
         
         elif user_key is None and container is not None: # Reset whole container
-            then_set = set(self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY))
             now_set = set(self.get_keyed_entries(container=container, as_of=-1, behavior=DIRECTORY))
+            then_set = set(self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY))
+
+            if now_set == then_set:
+                return
 
             for now_entry in now_set:
                 if now_entry not in then_set:
@@ -369,14 +373,14 @@ class MemoryStore(AbstractStore):
                         yield wrap_change(create_deleting_entry(container, key=decode_key(then_entry.builder.key), behavior=DIRECTORY))
                     else:
                         yield wrap_change(then_entry.builder) # type: ignore
-
-                elif str(then_entry.builder.pointee) != "" and recursive is not False:
+                if str(then_entry.builder.pointee) != "" and isinstance(recursive, set): # If entry has a pointee and we want to recurse
                         pointee_muid = Muid(then_entry.builder.pointee.timestamp, then_entry.builder.pointee.medallion, then_entry.builder.pointee.offset)
                         if pointee_muid in recursive:
-                            break
+                            return
                         recursive.add(pointee_muid)
                         for change in self.get_directory_reset_changes(container=pointee_muid, user_key=None, to_time=to_time, recursive=recursive):
                             yield change
+                
 
         else:
             raise NotImplementedError()
