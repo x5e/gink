@@ -100,7 +100,7 @@ class MemoryStore(AbstractStore):
                 raise ValueError(f"don't know what to do with {key}")
 
     def get_keyed_entries(self, container: Muid, behavior: int, as_of: MuTimestamp) -> Iterable[FoundEntry]:
-        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
+        as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
         cont_bytes = bytes(container)
         clearance_time = None
         for clearance_key in self._clearances.irange(
