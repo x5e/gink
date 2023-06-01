@@ -17,7 +17,7 @@ from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (Placement, DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
-                     PlacementBuilderPair, decode_key, decode_entry_occupant)
+                     PlacementBuilderPair, Placement, decode_key, decode_entry_occupant)
 
 
 class MemoryStore(AbstractStore):
@@ -358,22 +358,26 @@ class MemoryStore(AbstractStore):
             now_set = set(self.get_keyed_entries(container=container, as_of=-1, behavior=DIRECTORY))
             then_set = set(self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY))
 
-            now_decoded = {decode_key(now.builder.key): decode_entry_occupant(PlacementBuilderPair(decode_key(now.builder.key), now.builder)) for now in now_set}
-            then_decoded = {decode_key(then.builder.key): decode_entry_occupant(PlacementBuilderPair(decode_key(then.builder.key), then.builder)) for then in then_set}
+            now_decoded = {decode_key(now.builder.key): 
+                           decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(now.builder.key), entry_muid=now.builder.describing, expiry=None), now.builder)) 
+                           for now in now_set}
+            then_decoded = {decode_key(then.builder.key): 
+                            decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(then.builder.key), entry_muid=then.builder.describing, expiry=None), then.builder)) 
+                            for then in then_set}
 
             if now_decoded == then_decoded:
                 return
 
             for now_entry in now_set:
                 key = decode_key(now_entry.builder.key)
-                value = decode_entry_occupant(PlacementBuilderPair(key, now_entry.builder))
+                value = decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(now_entry.builder.key), entry_muid=now_entry.builder.describing, expiry=None), now_entry.builder))
                 if key not in then_decoded.keys() and not isinstance(value, Deletion):
                     # Deletes entries that were not present then
                     yield wrap_change(create_deleting_entry(container, key=decode_key(now_entry.builder.key), behavior=DIRECTORY))
             
             for then_entry in then_set:
                 key = decode_key(then_entry.builder.key)
-                value = decode_entry_occupant(PlacementBuilderPair(key, then_entry.builder))
+                value = decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(then_entry.builder.key), entry_muid=then_entry.builder.describing, expiry=None), then_entry.builder))
                 if isinstance(value, Muid) and isinstance(recursive, set): # If entry points to another container
                     if value not in recursive:
                         for change in self.get_directory_reset_changes(container=value, user_key=None, to_time=to_time, recursive=recursive):
@@ -388,31 +392,6 @@ class MemoryStore(AbstractStore):
                         yield wrap_change(then_entry.builder)
                 else: # Key does not exist now, need to create entry
                     yield wrap_change(then_entry.builder)
-
-
-
-
-
-
-
-
-                
-                # if entry_decoded not in now_decoded:
-                #     # Adds all data present then and not now
-                #     if isinstance(then_entry, Deletion):
-                #         # Handles entry that was deleted
-                #         yield wrap_change(create_deleting_entry(container, key=decode_key(then_entry.builder.key), behavior=DIRECTORY))
-                #     else:
-                #         yield wrap_change(then_entry.builder) # type: ignore
-                # if str(then_entry.builder.pointee) != "" and isinstance(recursive, set): # If entry has a pointee and we want to recurse
-                #         pointee_muid = Muid(then_entry.builder.pointee.timestamp, then_entry.builder.pointee.medallion, then_entry.builder.pointee.offset)
-                #         if pointee_muid in recursive:
-                #             return
-                #         recursive.add(pointee_muid)
-                #         for change in self.get_directory_reset_changes(container=pointee_muid, user_key=None, to_time=to_time, recursive=recursive):
-                #             yield change
-                
-
         else:
             raise NotImplementedError()
 
