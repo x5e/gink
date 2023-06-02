@@ -20,6 +20,16 @@ class FoundEntry(NamedTuple):
     address: Muid
     builder: EntryBuilder
 
+    def __eq__(self, other):
+        if not isinstance(other, FoundEntry):
+            return False
+        else:
+            return self.address == other.address
+        
+    def __hash__(self):
+        return hash(self.address)
+
+
 
 class FoundContainer(NamedTuple):
     address: Muid

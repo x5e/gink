@@ -9,14 +9,15 @@ from sortedcontainers import SortedDict  # type: ignore
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder, Message,
                        ChangeBuilder)
-from .typedefs import UserKey, MuTimestamp, Medallion
+from .typedefs import UserKey, MuTimestamp, Medallion, Deletion
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (Placement, DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
-                     SEQUENCE, LocationKey)
+                     SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
+                     PlacementBuilderPair, Placement, decode_key, decode_entry_occupant)
 
 
 class MemoryStore(AbstractStore):
@@ -100,7 +101,7 @@ class MemoryStore(AbstractStore):
                 raise ValueError(f"don't know what to do with {key}")
 
     def get_keyed_entries(self, container: Muid, behavior: int, as_of: MuTimestamp) -> Iterable[FoundEntry]:
-        as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
+        as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
         cont_bytes = bytes(container)
         clearance_time = None
         for clearance_key in self._clearances.irange(
@@ -113,7 +114,7 @@ class MemoryStore(AbstractStore):
         # TODO this could be more efficient
         for entry_key in iterator:
             entry_storage_key = Placement.from_bytes(entry_key, behavior)
-            if entry_storage_key.entry_muid.timestamp >= as_of:
+            if entry_storage_key.entry_muid.timestamp >= as_of and as_of > 0:
                 continue
             if entry_storage_key.middle_key == last:
                 continue
@@ -325,15 +326,77 @@ class MemoryStore(AbstractStore):
         return PositionedEntry(middle_key.effective_time,
                                placement_key.entry_muid,
                                placement_key.entry_muid, entry_builder)
-
+    
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
-        _ = (to_time, container, user_key, recursive)
-        raise NotImplemented
+        return self.get_directory_reset_changes(to_time=to_time, container=container, user_key=user_key, recursive=recursive)
+
+
+    def get_directory_reset_changes(self, container: Optional[Muid], user_key: Optional[UserKey], 
+                          to_time: MuTimestamp = -1, recursive: Union[bool, set] = False) -> Iterable[ChangeBuilder]:
+        if container is None and user_key is not None:
+            raise ValueError("Can't specify key without specifying container.")
+        if container is None:
+            recursive = False
+        if recursive is True:
+            recursive = set()
+            recursive.add(container)
+
+        if user_key is not None and container is not None: # Reset specific key for directory
+            now_entry = self.get_entry_by_key(container=container, key=user_key, as_of=0)
+            then_entry = self.get_entry_by_key(container=container, key=user_key, as_of=to_time)
+
+            if now_entry != then_entry:
+                # If there is an entry, but it is different from current
+                if isinstance(then_entry, Deletion):
+                    # Handles entry that was deleted
+                    yield wrap_change(create_deleting_entry(container, key=user_key, behavior=DIRECTORY))
+                else:
+                    yield wrap_change(then_entry.builder) # type: ignore
+        
+        elif user_key is None and container is not None: # Reset whole container
+            now_set = set(self.get_keyed_entries(container=container, as_of=-1, behavior=DIRECTORY))
+            then_set = set(self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY))
+
+            now_decoded = {decode_key(now.builder.key): 
+                           decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(now.builder.key), entry_muid=now.builder.describing, expiry=None), now.builder)) 
+                           for now in now_set}
+            then_decoded = {decode_key(then.builder.key): 
+                            decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(then.builder.key), entry_muid=then.builder.describing, expiry=None), then.builder)) 
+                            for then in then_set}
+
+            if now_decoded == then_decoded:
+                return
+
+            for now_entry in now_set:
+                key = decode_key(now_entry.builder.key)
+                value = decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(now_entry.builder.key), entry_muid=now_entry.builder.describing, expiry=None), now_entry.builder))
+                if key not in then_decoded.keys() and not isinstance(value, Deletion):
+                    # Deletes entries that were not present then
+                    yield wrap_change(create_deleting_entry(container, key=decode_key(now_entry.builder.key), behavior=DIRECTORY))
+            
+            for then_entry in then_set:
+                key = decode_key(then_entry.builder.key)
+                value = decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(then_entry.builder.key), entry_muid=then_entry.builder.describing, expiry=None), then_entry.builder))
+                if isinstance(value, Muid) and isinstance(recursive, set): # If entry points to another container
+                    if value not in recursive:
+                        for change in self.get_directory_reset_changes(container=value, user_key=None, to_time=to_time, recursive=recursive):
+                            yield change
+                        recursive.add(value)
+                elif isinstance(then_entry, Deletion):
+                    # Handles entry that was deleted
+                    yield wrap_change(create_deleting_entry(container, key=decode_key(then_entry.builder.key), behavior=DIRECTORY))
+                    
+                elif key in now_decoded.keys(): # Same key then and now
+                    if now_decoded[key] != value:
+                        yield wrap_change(then_entry.builder)
+                else: # Key does not exist now, need to create entry
+                    yield wrap_change(then_entry.builder)
+        else:
+            raise NotImplementedError()
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
-        """ Returns info about all things with the given name.
-        """
+        """ Returns info about all things with the given name. """
         _ = (name, as_of)
         raise NotImplemented
 
