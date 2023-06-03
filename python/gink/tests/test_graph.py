@@ -7,20 +7,23 @@ def test_basics():
     for store in [LmdbStore()]:
         with closing(store):
             db = Database(store)
-            the = Noun()
+            noun = Noun(database=db)
             verb = Verb()
-            edge = verb.create_edge(the, the)
-            edge = verb.create_edge(the, the)
-            print(repr(edge))
-            print("---------------------")
-            print(edge.dumps())
-            print("---------------------")
-            print(edge.dumps(False))
-            print("---------------------")
-            print(edge.dumps(2))
-            print("---------------------")
-            verb.create_edge(Noun.get_global_instance(), the)
-            print(verb.dumps())
+            edge1 = verb.create_edge(noun, noun)
+            edge2 = verb.create_edge(noun, noun)
+            assert edge1 != edge2
+            edge1.set_property_value_by_name("foo", 32)
+            found1 = edge1.get_property_value_by_name("foo")
+            assert found1 == 32
+            found2 = edge2.get_property_value_by_name("foo")
+            assert found2 is None
+            assert noun.is_alive()
+            noun.remove()
+            assert not noun.is_alive()
+            edges = set(verb.get_edges())
+            assert edges == {edge1, edge2}, edges
+            edge1.remove()
+            edges = set(verb.get_edges())
+            assert edges == {edge2}
 
-if __name__ == "__main__":
-    test_basics()
+

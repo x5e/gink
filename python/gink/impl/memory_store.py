@@ -122,19 +122,19 @@ class MemoryStore(AbstractStore):
         # TODO this could be more efficient
         for entry_key in iterator:
             entry_storage_key = Placement.from_bytes(entry_key, behavior)
-            if entry_storage_key.entry_muid.timestamp >= as_of:
+            if entry_storage_key.placer.timestamp >= as_of:
                 continue
-            if entry_storage_key.middle_key == last:
+            if entry_storage_key.middle == last:
                 continue
-            if clearance_time and entry_storage_key.entry_muid.timestamp < clearance_time:
-                last = entry_storage_key.middle_key
+            if clearance_time and entry_storage_key.placer.timestamp < clearance_time:
+                last = entry_storage_key.middle
                 continue
             if entry_storage_key.expiry and entry_storage_key.expiry < as_of:
-                last = entry_storage_key.middle_key
+                last = entry_storage_key.middle
                 continue
             yield FoundEntry(builder=self._placements[entry_key],
-                             address=entry_storage_key.entry_muid)
-            last = entry_storage_key.middle_key
+                             address=entry_storage_key.placer)
+            last = entry_storage_key.middle
 
     def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None],
                          as_of: MuTimestamp) -> Optional[FoundEntry]:
@@ -153,9 +153,9 @@ class MemoryStore(AbstractStore):
             builder = self._placements[encoded_entry_storage_key]
             entry_storage_key = Placement.from_bytes(
                 encoded_entry_storage_key, builder)
-            if clearance_time > entry_storage_key.entry_muid.timestamp:
+            if clearance_time > entry_storage_key.placer.timestamp:
                 return None
-            return FoundEntry(address=entry_storage_key.entry_muid, builder=builder)
+            return FoundEntry(address=entry_storage_key.placer, builder=builder)
         return None
 
     def get_claimed_chains(self) -> Iterable[Chain]:
@@ -204,12 +204,12 @@ class MemoryStore(AbstractStore):
             if offset > 0:
                 offset -= 1
                 continue
-            middle_key = placement_key.middle_key
+            middle_key = placement_key.middle
             assert isinstance(middle_key, QueueMiddleKey)
             yield PositionedEntry(
                 position=middle_key.effective_time,
                 positioner=placement_key.get_positioner(),
-                entry_muid=placement_key.entry_muid,
+                entry_muid=placement_key.placer,
                 builder=entry_builder)
             if limit is not None:
                 limit -= 1
@@ -298,7 +298,7 @@ class MemoryStore(AbstractStore):
         placement_key = Placement.from_builder(entry_builder, new_info, offset)
         encoded_placement_key = bytes(placement_key)
         self._placements[encoded_placement_key] = entry_builder
-        entries_location_key = bytes(placement_key.entry_muid) + bytes(placement_key.entry_muid)
+        entries_location_key = bytes(placement_key.placer) + bytes(placement_key.placer)
         self._locations[entries_location_key] = encoded_placement_key
 
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
@@ -329,11 +329,11 @@ class MemoryStore(AbstractStore):
             return None
         entry_builder = self._placements[location]
         placement_key = Placement.from_bytes(location, entry_builder)
-        middle_key = placement_key.middle_key
+        middle_key = placement_key.middle
         assert isinstance(middle_key, QueueMiddleKey)
         return PositionedEntry(middle_key.effective_time,
-                               placement_key.entry_muid,
-                               placement_key.entry_muid, entry_builder)
+                               placement_key.placer,
+                               placement_key.placer, entry_builder)
 
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:

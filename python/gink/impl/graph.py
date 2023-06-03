@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Optional, Union, Iterable
 
-from python.gink.impl.muid import Muid
+from .muid import Muid
 
 from .typedefs import GenericTimestamp, UserValue, Inclusion
 from .container import Container
