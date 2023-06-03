@@ -152,11 +152,11 @@ class LmdbStore(AbstractStore):
             bundle_info = BundleInfo.from_bytes(found)
             return bundle_info.comment
 
-    def get_container(self, container: Muid) -> ContainerBuilder:
+    def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
         with self._handle.begin() as trxn:
             container_definition_bytes = trxn.get(bytes(container), db=self._containers)
             if not isinstance(container_definition_bytes, bytes):
-                raise KeyError(f"container definition not found for: {container}")
+                return None
             container_builder = ContainerBuilder()
             assert isinstance(container_builder, Message)
             container_builder.ParseFromString(container_definition_bytes)

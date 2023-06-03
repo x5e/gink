@@ -30,7 +30,7 @@ class AbstractStore(ABC):
         self.close()
 
     @abstractmethod
-    def get_container(self, container: Muid) -> ContainerBuilder:
+    def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
         """ Gets the container definition associated with a particular address. """
 
     @abstractmethod

@@ -16,7 +16,10 @@ from .addressable import Addressable
 class Noun(Container):
     BEHAVIOR = NOUN
 
-    def __init__(self, *, root=False, muid: Optional[Muid] = None, database: Optional[Database]=None):
+    def __init__(self, *,
+                 root: bool=False,
+                 muid: Optional[Muid]=None,
+                 database: Optional[Database]=None):
         """
         Creates a placeholder node to contain the idea of something.
 
@@ -41,6 +44,36 @@ class Noun(Container):
         _ = as_of
         return repr(self)
 
+    def is_alive(self, as_of: GenericTimestamp = None) -> bool:
+        ts = self._database.resolve_timestamp(as_of)
+        store = self._database.get_store()
+        if store.get_container(self._muid) is None:
+            return False
+        found = store.get_entry_by_key(container=self._muid, key=None, as_of=ts)
+        return (not found) or not found.builder.deletion
+
+    def __bool__(self) -> bool:
+        return self.is_alive()
+
+    def remove(self, *,
+               purge: bool = False,
+               bundler: Optional[Bundler] = None,
+               comment: Optional[str] = None) -> Muid:
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment=comment)
+        change_builder = ChangeBuilder()
+        entry_builder: EntryBuilder = change_builder.entry
+        entry_builder.behavior = NOUN
+        self._muid.put_into(entry_builder.container)
+        entry_builder.deletion = True
+        if purge:
+            entry_builder.purge = True
+        result = bundler.add_change(change_builder)
+        if immediate:
+            self._database.commit(bundler)
+        return result
 
 class Verb(Container):
     BEHAVIOR = VERB
@@ -108,7 +141,6 @@ class Verb(Container):
         result += ",\n\n".join(stuffing) + ",\n\n])"
         return result
 
-
 class Edge(Addressable):
 
     def dumps(self, indent=1) -> str:
@@ -164,7 +196,7 @@ class Edge(Addressable):
             else:
                 self._valued = inclusion
         else:
-            self._source = source = source if isinstance(source, Muid) else source._muid
+            self._source = source if isinstance(source, Muid) else source._muid
             self._target = target if isinstance(target, Muid) else target._muid
             self._action = action if isinstance(action, Muid) else action._muid
             if bundler is None:
