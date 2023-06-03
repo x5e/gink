@@ -524,11 +524,12 @@ class LmdbStore(AbstractStore):
                     placed = placements_cursor.prev() if desc else placements_cursor.next()
                     continue
                 entry_builder = EntryBuilder()
-                entry_builder.ParseFromString(txn.get(placements_cursor.value(), db=self._entries))  # type: ignore
+                entry_muid_bytes = placements_cursor.value()
+                entry_builder.ParseFromString(txn.get(entry_muid_bytes, db=self._entries))  # type: ignore
                 yield PositionedEntry(
                     position=middle_key.effective_time,
                     positioner=placement_key.get_positioner(),
-                    entry_muid=placement_key.placer,
+                    entry_muid=Muid.from_bytes(entry_muid_bytes),
                     builder=entry_builder)
                 if limit is not None:
                     limit -= 1
@@ -684,8 +685,8 @@ class LmdbStore(AbstractStore):
             txn.put(bytes(removal_key), removal_val, db=self._removals)
         new_location_key = bytes(LocationKey(entry_muid, movement_muid))
         if dest:
-            middle_key = QueueMiddleKey(dest, movement_muid)
-            placement_key = Placement(container, middle_key, entry_muid, entry_expiry)
+            middle_key = QueueMiddleKey(dest)
+            placement_key = Placement(container, middle_key, movement_muid, entry_expiry)
             serialized_placement = bytes(placement_key)
             txn.put(serialized_placement, serialize(entry_muid), db=self._placements)
             txn.put(new_location_key, serialized_placement, db=self._locations)

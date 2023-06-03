@@ -85,13 +85,9 @@ class RemovalKey(NamedTuple):
 class QueueMiddleKey(NamedTuple):
     """ Used to order non-keyed entries by timestamp and modification change. """
     effective_time: MuTimestamp
-    movement_muid: Optional[Muid]
 
     def __bytes__(self):
-        if self.movement_muid:
-            return encode_muts(self.effective_time) + bytes(self.movement_muid)
-        else:
-            return encode_muts(self.effective_time)
+        return encode_muts(self.effective_time)
 
     @staticmethod
     def from_bytes(data: bytes):
@@ -99,11 +95,9 @@ class QueueMiddleKey(NamedTuple):
         effective_time = decode_muts(data[0:8])
         assert effective_time is not None
         if len(data) == 8:
-            return QueueMiddleKey(effective_time, None)
-        elif len(data) == 24:
-            return QueueMiddleKey(effective_time, Muid.from_bytes(data[8:]))
+            return QueueMiddleKey(effective_time)
         else:
-            raise AssertionError("expected QueueMiddleKey to be 8 or 24 bytes")
+            raise AssertionError("expected QueueMiddleKey to be 8 bytes")
 
 
 class Placement(NamedTuple):
@@ -141,7 +135,7 @@ class Placement(NamedTuple):
         elif behavior in (BOX, NOUN):
             middle_key = None
         elif behavior == SEQUENCE:
-            middle_key = QueueMiddleKey(position or entry_muid.timestamp, None)
+            middle_key = QueueMiddleKey(position or entry_muid.timestamp)
         elif behavior in (PROPERTY, ROLE):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
         elif behavior == VERB:

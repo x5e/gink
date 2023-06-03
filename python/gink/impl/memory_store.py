@@ -15,7 +15,7 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .muid import Muid
-from .coding import (Placement, DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
+from .coding import (Placement, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey)
 
 
@@ -286,8 +286,8 @@ class MemoryStore(AbstractStore):
         self._removals[bytes(removal_key)] = builder
         new_location_key = bytes(entry_muid) + bytes(movement_muid)
         if dest:
-            middle_key = QueueMiddleKey(dest, movement_muid)
-            new_placement_key = Placement(container, middle_key, entry_muid, entry_expiry)
+            middle_key = QueueMiddleKey(dest)
+            new_placement_key = Placement(container, middle_key, movement_muid, entry_expiry)
             new_serialized_esk = bytes(new_placement_key)
             self._placements[new_serialized_esk] = self._placements[old_serialized_placement]
             self._locations[new_location_key] = new_serialized_esk
@@ -295,10 +295,10 @@ class MemoryStore(AbstractStore):
             self._locations[new_location_key] = None
 
     def _add_entry(self, new_info: BundleInfo, offset: int, entry_builder: EntryBuilder):
-        placement_key = Placement.from_builder(entry_builder, new_info, offset)
-        encoded_placement_key = bytes(placement_key)
+        placement = Placement.from_builder(entry_builder, new_info, offset)
+        encoded_placement_key = bytes(placement)
         self._placements[encoded_placement_key] = entry_builder
-        entries_location_key = bytes(placement_key.placer) + bytes(placement_key.placer)
+        entries_location_key = bytes(placement.placer) + bytes(placement.placer)
         self._locations[entries_location_key] = encoded_placement_key
 
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
