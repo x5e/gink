@@ -13,6 +13,8 @@ from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
 from ..impl.patch import PATCHED
 
+from ..impl.coding import Deletion
+
 assert PATCHED
 
 
@@ -163,7 +165,7 @@ def test_update():
 
 def test_reset():
     """ tests that the reset(time) functionality works """
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore()]:
         # TODO: implement reset in memory store
         with store:
             # pylint: disable=unsupported-assignment-operation, unsupported-role-test

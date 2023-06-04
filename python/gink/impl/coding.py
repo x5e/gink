@@ -239,20 +239,18 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid], behavior:
     return entry_builder
 
 
-def decode_entry_occupant(entry_storage_pair: PlacementBuilderPair
-                          ) -> Union[UserValue, Muid, Deletion, Inclusion]:
+def decode_entry_occupant(entry_muid: Muid, builder: EntryBuilder) -> Union[UserValue, Muid, Deletion, Inclusion]:
     """ Determines what a container "contains" in a given entry.
 
         The full entry storage pair is required because if it points to something that pointer
         might be relative to the entry address.
     """
-    builder = entry_storage_pair.builder
     if builder.deletion:  # type: ignore
         return deletion
     if builder.HasField("pointee"):  # type: ignore
-        return Muid.create(builder=builder.pointee, context=entry_storage_pair.placement)  # type: ignore
+        return Muid.create(builder=builder.pointee, context=entry_muid)
     if builder.HasField("value"):  # type: ignore
-        return decode_value(entry_storage_pair.builder.value)  # type: ignore
+        return decode_value(builder.value)
     if builder.behavior == ROLE:
         return inclusion
     raise ValueError(f"can't interpret {builder}")

@@ -34,6 +34,7 @@ if TYPE_CHECKING:
         deletion: bool
         pair: Pair
         octets: bytes
+        key: KeyBuilder
 
 
     class ValueBuilder(Message): pass

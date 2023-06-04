@@ -302,7 +302,7 @@ class LmdbStore(AbstractStore):
             previous = self._get_location(trxn, parsed_key.placer, as_of=to_time)
             placed_time = parsed_key.get_placed_time()
             if placed_time >= to_time and last_clear_time < placed_time and location == parsed_key:
-                # this entry was put there recently and it's still there
+                # this entry was put there recently, and it's still there
                 change_builder = ChangeBuilder()
                 container.put_into(change_builder.movement.container)  # type: ignore
                 parsed_key.placer.put_into(change_builder.movement.entry)  # type: ignore
@@ -312,8 +312,9 @@ class LmdbStore(AbstractStore):
             if previous == parsed_key and clear_before_to < placed_time:
                 # this entry existed there at to_time
                 entry_builder = EntryBuilder()
-                entry_builder.ParseFromString(trxn.get(placements_cursor.value(), db=self._entries))
-                occupant = decode_entry_occupant(PlacementBuilderPair(parsed_key, entry_builder))
+                entry_muid_bytes = placements_cursor.value()
+                entry_builder.ParseFromString(trxn.get(entry_muid_bytes, db=self._entries))
+                occupant = decode_entry_occupant(Muid.from_bytes(entry_muid_bytes), entry_builder)
                 if isinstance(occupant, Muid) and seen is not None:
                     for change in self._container_reset_changes(to_time, occupant, seen, trxn):
                         yield change
@@ -352,11 +353,11 @@ class LmdbStore(AbstractStore):
             key = current.placement.get_key()
             if current.placement.placer.timestamp < to_time and last_clear_time < to_time:
                 # no updates to this key specifically or clears have happened since to_time
-                recurse_on = decode_entry_occupant(current)
+                recurse_on = decode_entry_occupant(current.placement.placer, current.builder)
             else:
                 # only here if a clear or change has been made to this key since to_time
                 if last_clear_time <= current.placement.placer.timestamp:
-                    contained_now = decode_entry_occupant(current)
+                    contained_now = decode_entry_occupant(current.placement.placer, current.builder)
                 else:
                     contained_now = deletion
 
@@ -369,7 +370,7 @@ class LmdbStore(AbstractStore):
                 found = to_last_with_prefix(cursor, through_middle, boundary=bytes(limit))
                 data_then = self._parse_entry(cursor, behavior, trxn) if found else None
                 if data_then and data_then.placement.placer.timestamp > last_clear_before_to_time:
-                    contained_then = decode_entry_occupant(data_then)
+                    contained_then = decode_entry_occupant(data_then.placement.placer, data_then.builder)
                 else:
                     contained_then = deletion
 
