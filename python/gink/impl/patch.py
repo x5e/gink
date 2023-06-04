@@ -19,8 +19,9 @@ from .attribution import Attribution
 
 def get_container(
         self: Database,
-        muid: Muid,
+        muid: Muid, *,
         container_builder: Optional[ContainerBuilder] = None,
+        behavior: Optional[int] = None,
         subtypes={
             Behavior.DIRECTORY: Directory,
             Behavior.SEQUENCE: Sequence,
@@ -32,7 +33,7 @@ def get_container(
     """ Gets a pre-existing container. """
     if muid.timestamp == -1:
         behavior = muid.offset
-    else:
+    elif behavior is None:
         container_builder = container_builder or self._store.get_container(muid)
         behavior = getattr(container_builder, "behavior")
     cls = subtypes.get(behavior)
@@ -73,7 +74,7 @@ setattr(Database, "get_attribution", get_attribution)
 def dump(self: Database, as_of: GenericTimestamp = None, file=stdout):
     """ writes the contents of the database to file """
     for muid, container_builder in self._store.get_all_containers():
-        container = self.get_container(muid, container_builder)
+        container = self.get_container(muid, container_builder=container_builder)
         if container.size(as_of=as_of):
             container.dump(as_of=as_of, file=file)
 

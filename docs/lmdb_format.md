@@ -25,7 +25,7 @@
                 * In the case of a DIRECTORY, the middle-key will be binaryproto of the key.
                 * In the case of a SEQUENCE the middle-key will be effective-time
                 * In the case of a PROPERTY/LABEL/REGISTRY the middle key will be subject muid
-                * In the case of a BOX, the middle key will be a zero-length byte sequence.
+                * In the case of a BOX, NOUN, or VERB the middle key will be a zero-length byte sequence.
 
         removals - Used to soft-delete items from the entries table.
             key: (container-muid, placement-muid you're removing, removing-muid)
@@ -54,9 +54,9 @@
             key: bytes(BundleInfo)
             val: bundle bytes (i.e. same as in the bundles table)
 
-        by_describing - an index to enable looking up all the properties/edges on an object
+        by_describing - an index to enable looking up all the properties on an object/edge
             key: (describing-muid, entry-muid)
-            val: container-muid
+            val: edge-muid
 
         by_pointee - an index for looking at entries by what they point-to
             key: (pointee-muid, entry-muid)

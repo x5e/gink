@@ -4,22 +4,23 @@ import "proto/value.proto";
 import "proto/muid.proto";
 import "proto/behavior.proto";
 import "proto/key.proto";
+import "proto/pair.proto";
 
 message Entry {
+
     Muid container = 1;   // must reference a container
     Behavior behavior = 2; // required, must match the behavior of corresponding container
 
     oneof subject {
         // some of these only apply to certain container types:
         Key key = 3;            // KEY_SET, DIRECTORY
-        sint64 location = 4;    // FILE
-        Muid describing = 6;    // PROPERTY, ROLE, REGISTRY
+        Pair pair = 4;          // PAIR_SET, PAIR_MAP, VERB
+        Muid describing = 6;    // PROPERTY, ROLE, VERB
     }
 
     oneof contains {
         // some of these only apply to certain container types:
         Value value = 7;    // BOX, DIRECTORY, SEQUENCE, PROPERTY
-        bytes octets = 8;   // up to 2**30 bytes, for behaviors in FILE, STREAM
         bool deletion = 9;  // KEY_SET, DIRECTORY, ROLE, PROPERTY
         Muid pointee = 10;   // BOX, DIRECTORY, SEQUENCE
     }

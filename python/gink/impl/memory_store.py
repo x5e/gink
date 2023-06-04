@@ -3,21 +3,21 @@
 # standard python stuff
 import sys
 import struct
-from typing import Tuple, Callable, Optional, Iterable, Union
+from typing import Tuple, Callable, Optional, Iterable, Union, Dict
 from sortedcontainers import SortedDict  # type: ignore
 
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder, Message,
                        ChangeBuilder)
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion
-from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
+from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore
 from .chain_tracker import ChainTracker
 from .muid import Muid
-from .coding import (Placement, DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
+from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
-                     PlacementBuilderPair, Placement, decode_key, decode_entry_occupant)
+                     Placement, decode_key, decode_entry_occupant)
 
 
 class MemoryStore(AbstractStore):
@@ -26,10 +26,11 @@ class MemoryStore(AbstractStore):
         (Primarily for use in testing and to be used as a base clase for log-backed store.)
     """
     _bundles: SortedDict  # BundleInfo => bytes
+    _entries: Dict[Muid, EntryBuilder]
     _chain_infos: SortedDict  # Chain => BundleInfo
     _claimed_chains: SortedDict  # Chain
-    _placements: SortedDict  # bytes(PlacementKey) => EntryBuilder
-    _locations: SortedDict  # bytes(entry_muid) + bytes(movement_muid or entry_muid) => bytes
+    _placements: SortedDict  # bytes(PlacementKey) => EntryMuid
+    _locations: SortedDict  # LocationKey => bytes
     _containers: SortedDict  # muid => builder
     _removals: SortedDict  # bytes(removal_key) => MovementBuilder
     _clearances: SortedDict
@@ -41,6 +42,7 @@ class MemoryStore(AbstractStore):
         self._bundles = SortedDict()
         self._chain_infos = SortedDict()
         self._claimed_chains = SortedDict()
+        self._entries = {}
         self._placements = SortedDict()
         self._containers = SortedDict()
         self._locations = SortedDict()
@@ -48,8 +50,8 @@ class MemoryStore(AbstractStore):
         self._clearances = SortedDict()
         self._outbox = SortedDict()
 
-    def get_container(self, container: Muid) -> ContainerBuilder:
-        return self._containers[container]
+    def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
+        return self._containers.get(container)
 
     def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
         for key, val in self._containers.items():
@@ -66,10 +68,19 @@ class MemoryStore(AbstractStore):
                 return None
         raise Exception("unexpected")
 
+    def get_edge_entries(
+            self, as_of: MuTimestamp, limit: Optional[int] = None, offset: int = 0,
+            verb: Optional[Muid] = None, sub: Optional[Muid] = None,
+            obj: Optional[Muid] = None) -> Iterable[FoundEntry]:
+        raise NotImplementedError()
+
+    def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:
+        raise NotImplementedError()
+
     def get_some(self, cls, last_index: Optional[int] = None):
         sorted_dict = {
             BundleBuilder: self._bundles,
-            EntryBuilder: self._placements,
+            EntryBuilder: self._entries,
             MovementBuilder: self._removals,
             BundleInfo: self._bundles,
             Placement: self._placements,
@@ -114,19 +125,19 @@ class MemoryStore(AbstractStore):
         # TODO this could be more efficient
         for entry_key in iterator:
             entry_storage_key = Placement.from_bytes(entry_key, behavior)
-            if entry_storage_key.entry_muid.timestamp >= as_of and as_of > 0:
+            if entry_storage_key.placer.timestamp >= as_of > 0:
                 continue
-            if entry_storage_key.middle_key == last:
+            if entry_storage_key.middle == last:
                 continue
-            if clearance_time and entry_storage_key.entry_muid.timestamp < clearance_time:
-                last = entry_storage_key.middle_key
+            if clearance_time and entry_storage_key.placer.timestamp < clearance_time:
+                last = entry_storage_key.middle
                 continue
             if entry_storage_key.expiry and entry_storage_key.expiry < as_of:
-                last = entry_storage_key.middle_key
+                last = entry_storage_key.middle
                 continue
-            yield FoundEntry(builder=self._placements[entry_key],
-                             address=entry_storage_key.entry_muid)
-            last = entry_storage_key.middle_key
+            yield FoundEntry(builder=self._entries[self._placements[entry_key]],
+                             address=entry_storage_key.placer)
+            last = entry_storage_key.middle
 
     def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None],
                          as_of: MuTimestamp) -> Optional[FoundEntry]:
@@ -142,12 +153,13 @@ class MemoryStore(AbstractStore):
             minimum=minimum,
             maximum=maximum, reverse=True)
         for encoded_entry_storage_key in iterator:
-            builder = self._placements[encoded_entry_storage_key]
+            entry_muid = self._placements[encoded_entry_storage_key]
+            builder = self._entries[entry_muid]
             entry_storage_key = Placement.from_bytes(
                 encoded_entry_storage_key, builder)
-            if clearance_time > entry_storage_key.entry_muid.timestamp:
+            if clearance_time > entry_storage_key.placer.timestamp:
                 return None
-            return FoundEntry(address=entry_storage_key.entry_muid, builder=builder)
+            return FoundEntry(address=entry_storage_key.placer, builder=builder)
         return None
 
     def get_claimed_chains(self) -> Iterable[Chain]:
@@ -178,7 +190,8 @@ class MemoryStore(AbstractStore):
         for placement_bytes in self._placements.irange(prefix, prefix + encode_muts(as_of), reverse=desc):
             if limit is not None and limit <= 0:
                 break
-            entry_builder = self._placements.get(placement_bytes)
+            entry_muid = self._placements.get(placement_bytes)
+            entry_builder = self._entries[entry_muid]
             placement_key = Placement.from_bytes(placement_bytes, SEQUENCE)
             placed_time = placement_key.get_placed_time()
             if placed_time >= as_of or placed_time < clearance_time:
@@ -196,12 +209,12 @@ class MemoryStore(AbstractStore):
             if offset > 0:
                 offset -= 1
                 continue
-            middle_key = placement_key.middle_key
-            assert isinstance(middle_key, QueueMiddleKey)
+            middle = placement_key.middle
+            assert isinstance(middle, QueueMiddleKey)
             yield PositionedEntry(
-                position=middle_key.effective_time,
+                position=middle.effective_time,
                 positioner=placement_key.get_positioner(),
-                entry_muid=placement_key.entry_muid,
+                entry_muid=entry_muid,
                 builder=entry_builder)
             if limit is not None:
                 limit -= 1
@@ -276,10 +289,11 @@ class MemoryStore(AbstractStore):
             return
         removal_key = RemovalKey(container, old_placement_key.get_positioner(), movement_muid)
         self._removals[bytes(removal_key)] = builder
-        new_location_key = bytes(entry_muid) + bytes(movement_muid)
+        # new_location_key = bytes(entry_muid) + bytes(movement_muid)
+        new_location_key = LocationKey(entry_muid, movement_muid)
         if dest:
-            middle_key = QueueMiddleKey(dest, movement_muid)
-            new_placement_key = Placement(container, middle_key, entry_muid, entry_expiry)
+            middle = QueueMiddleKey(dest)
+            new_placement_key = Placement(container, middle, movement_muid, entry_expiry)
             new_serialized_esk = bytes(new_placement_key)
             self._placements[new_serialized_esk] = self._placements[old_serialized_placement]
             self._locations[new_location_key] = new_serialized_esk
@@ -287,10 +301,13 @@ class MemoryStore(AbstractStore):
             self._locations[new_location_key] = None
 
     def _add_entry(self, new_info: BundleInfo, offset: int, entry_builder: EntryBuilder):
-        placement_key = Placement.from_builder(entry_builder, new_info, offset)
-        encoded_placement_key = bytes(placement_key)
-        self._placements[encoded_placement_key] = entry_builder
-        entries_location_key = bytes(placement_key.entry_muid) + bytes(placement_key.entry_muid)
+        placement = Placement.from_builder(entry_builder, new_info, offset)
+        entry_muid = placement.placer
+        encoded_placement_key = bytes(placement)
+        self._entries[entry_muid] = entry_builder
+        self._placements[encoded_placement_key] = entry_muid
+        # entries_location_key = bytes(placement.placer) + bytes(placement.placer)
+        entries_location_key = LocationKey(placement.placer, placement.placer)
         self._locations[entries_location_key] = encoded_placement_key
 
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
@@ -309,9 +326,10 @@ class MemoryStore(AbstractStore):
         return chain_tracker
 
     def _get_entry_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
-        bkey = bytes(entry_muid)
+        # bkey = bytes(entry_muid)
         for location_key in self._locations.irange(
-                bkey, bkey + bytes(Muid(as_of, 0, 0)), reverse=True):
+                LocationKey(entry_muid, Muid(0, 0, 0)),
+                LocationKey(entry_muid, Muid(as_of, -1, -1)), reverse=True):
             return self._locations[location_key]
         return None
 
@@ -319,21 +337,24 @@ class MemoryStore(AbstractStore):
         location = self._get_entry_location(entry, as_of)
         if location is None:
             return None
-        entry_builder = self._placements[location]
+        entry_builder = self._entries[self._placements[location]]
         placement_key = Placement.from_bytes(location, entry_builder)
-        middle_key = placement_key.middle_key
-        assert isinstance(middle_key, QueueMiddleKey)
-        return PositionedEntry(middle_key.effective_time,
-                               placement_key.entry_muid,
-                               placement_key.entry_muid, entry_builder)
-    
+        middle = placement_key.middle
+        assert isinstance(middle, QueueMiddleKey)
+        return PositionedEntry(middle.effective_time,
+                               placement_key.placer,
+                               placement_key.placer, entry_builder)
+
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
         return self.get_directory_reset_changes(to_time=to_time, container=container, user_key=user_key, recursive=recursive)
 
-
-    def get_directory_reset_changes(self, container: Optional[Muid], user_key: Optional[UserKey], 
-                          to_time: MuTimestamp = -1, recursive: Union[bool, set] = False) -> Iterable[ChangeBuilder]:
+    def get_directory_reset_changes(
+            self,
+            container: Optional[Muid],
+            user_key: Optional[UserKey] = None,
+            to_time: MuTimestamp = -1,
+            recursive: Union[bool, set] = False) -> Iterable[ChangeBuilder]:
         if container is None and user_key is not None:
             raise ValueError("Can't specify key without specifying container.")
         if container is None:
@@ -342,7 +363,7 @@ class MemoryStore(AbstractStore):
             recursive = set()
             recursive.add(container)
 
-        if user_key is not None and container is not None: # Reset specific key for directory
+        if user_key is not None and container is not None:  # Reset specific key for directory
             now_entry = self.get_entry_by_key(container=container, key=user_key, as_of=0)
             then_entry = self.get_entry_by_key(container=container, key=user_key, as_of=to_time)
 
@@ -352,17 +373,15 @@ class MemoryStore(AbstractStore):
                     # Handles entry that was deleted
                     yield wrap_change(create_deleting_entry(container, key=user_key, behavior=DIRECTORY))
                 else:
-                    yield wrap_change(then_entry.builder) # type: ignore
-        
-        elif user_key is None and container is not None: # Reset whole container
+                    yield wrap_change(then_entry.builder)  # type: ignore
+
+        elif user_key is None and container is not None:  # Reset whole container
             now_set = set(self.get_keyed_entries(container=container, as_of=-1, behavior=DIRECTORY))
             then_set = set(self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY))
 
-            now_decoded = {decode_key(now.builder.key): 
-                           decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(now.builder.key), entry_muid=now.builder.describing, expiry=None), now.builder)) 
+            now_decoded = {decode_key(now.builder.key): decode_entry_occupant(now.address, now.builder)
                            for now in now_set}
-            then_decoded = {decode_key(then.builder.key): 
-                            decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(then.builder.key), entry_muid=then.builder.describing, expiry=None), then.builder)) 
+            then_decoded = {decode_key(then.builder.key): decode_entry_occupant(then.address, then.builder)
                             for then in then_set}
 
             if now_decoded == then_decoded:
@@ -370,36 +389,37 @@ class MemoryStore(AbstractStore):
 
             for now_entry in now_set:
                 key = decode_key(now_entry.builder.key)
-                value = decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(now_entry.builder.key), entry_muid=now_entry.builder.describing, expiry=None), now_entry.builder))
+                value = now_decoded[key]
                 if key not in then_decoded.keys() and not isinstance(value, Deletion):
                     # Deletes entries that were not present then
-                    yield wrap_change(create_deleting_entry(container, key=decode_key(now_entry.builder.key), behavior=DIRECTORY))
-            
+                    yield wrap_change(
+                        create_deleting_entry(container, key=decode_key(now_entry.builder.key), behavior=DIRECTORY))
+
             for then_entry in then_set:
                 key = decode_key(then_entry.builder.key)
-                value = decode_entry_occupant(PlacementBuilderPair(Placement(container=container, middle_key=decode_key(then_entry.builder.key), entry_muid=then_entry.builder.describing, expiry=None), then_entry.builder))
-                if isinstance(value, Muid) and isinstance(recursive, set): # If entry points to another container
+                value = then_decoded[key]
+                if isinstance(value, Muid) and isinstance(recursive, set):  # If entry points to another container
                     if value not in recursive:
-                        for change in self.get_directory_reset_changes(container=value, user_key=None, to_time=to_time, recursive=recursive):
+                        for change in self.get_directory_reset_changes(value, to_time=to_time, recursive=recursive):
                             yield change
                         recursive.add(value)
-                elif isinstance(then_entry, Deletion):
+                elif isinstance(value, Deletion):
                     # Handles entry that was deleted
-                    yield wrap_change(create_deleting_entry(container, key=decode_key(then_entry.builder.key), behavior=DIRECTORY))
-                    
-                elif key in now_decoded.keys(): # Same key then and now
+                    yield wrap_change(create_deleting_entry(container, key=key, behavior=DIRECTORY))
+
+                elif key in now_decoded.keys():  # Same key then and now
                     if now_decoded[key] != value:
                         yield wrap_change(then_entry.builder)
-                else: # Key does not exist now, need to create entry
+                else:  # Key does not exist now, need to create entry
                     yield wrap_change(then_entry.builder)
         else:
             raise NotImplementedError()
 
-    def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+    def get_by_name(self, name, as_of: MuTimestamp = -1):
         """ Returns info about all things with the given name. """
         _ = (name, as_of)
-        raise NotImplemented
+        raise NotImplementedError()
 
-    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1):
         _ = (desc, as_of)
-        raise NotImplemented
+        raise NotImplementedError()
