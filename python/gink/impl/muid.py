@@ -13,6 +13,9 @@ class Muid(NamedTuple):
     medallion: Medallion
     offset: int
 
+    def __lt__(self, other):
+        return bytes(self) < bytes(other)
+
     def __repr__(self):
         return f"Muid({self.timestamp}, {self.medallion}, {self.offset})"
 

@@ -3,7 +3,7 @@
 # standard python stuff
 import sys
 import struct
-from typing import Tuple, Callable, Optional, Iterable, Union
+from typing import Tuple, Callable, Optional, Iterable, Union, Dict
 from sortedcontainers import SortedDict  # type: ignore
 
 # gink modules
@@ -25,10 +25,11 @@ class MemoryStore(AbstractStore):
         (Primarily for use in testing and to be used as a base clase for log-backed store.)
     """
     _bundles: SortedDict  # BundleInfo => bytes
+    _entries: Dict[Muid, EntryBuilder]
     _chain_infos: SortedDict  # Chain => BundleInfo
     _claimed_chains: SortedDict  # Chain
-    _placements: SortedDict  # bytes(PlacementKey) => EntryBuilder
-    _locations: SortedDict  # bytes(entry_muid) + bytes(movement_muid or entry_muid) => bytes
+    _placements: SortedDict  # bytes(PlacementKey) => EntryMuid
+    _locations: SortedDict  # LocationKey => bytes
     _containers: SortedDict  # muid => builder
     _removals: SortedDict  # bytes(removal_key) => MovementBuilder
     _clearances: SortedDict
@@ -40,6 +41,7 @@ class MemoryStore(AbstractStore):
         self._bundles = SortedDict()
         self._chain_infos = SortedDict()
         self._claimed_chains = SortedDict()
+        self._entries = {}
         self._placements = SortedDict()
         self._containers = SortedDict()
         self._locations = SortedDict()
@@ -77,7 +79,7 @@ class MemoryStore(AbstractStore):
     def get_some(self, cls, last_index: Optional[int] = None):
         sorted_dict = {
             BundleBuilder: self._bundles,
-            EntryBuilder: self._placements,
+            EntryBuilder: self._entries,
             MovementBuilder: self._removals,
             BundleInfo: self._bundles,
             Placement: self._placements,
@@ -132,7 +134,7 @@ class MemoryStore(AbstractStore):
             if entry_storage_key.expiry and entry_storage_key.expiry < as_of:
                 last = entry_storage_key.middle
                 continue
-            yield FoundEntry(builder=self._placements[entry_key],
+            yield FoundEntry(builder=self._entries[self._placements[entry_key]],
                              address=entry_storage_key.placer)
             last = entry_storage_key.middle
 
@@ -150,7 +152,8 @@ class MemoryStore(AbstractStore):
             minimum=minimum,
             maximum=maximum, reverse=True)
         for encoded_entry_storage_key in iterator:
-            builder = self._placements[encoded_entry_storage_key]
+            entry_muid = self._placements[encoded_entry_storage_key]
+            builder = self._entries[entry_muid]
             entry_storage_key = Placement.from_bytes(
                 encoded_entry_storage_key, builder)
             if clearance_time > entry_storage_key.placer.timestamp:
@@ -186,7 +189,8 @@ class MemoryStore(AbstractStore):
         for placement_bytes in self._placements.irange(prefix, prefix + encode_muts(as_of), reverse=desc):
             if limit is not None and limit <= 0:
                 break
-            entry_builder = self._placements.get(placement_bytes)
+            entry_muid = self._placements.get(placement_bytes)
+            entry_builder = self._entries[entry_muid]
             placement_key = Placement.from_bytes(placement_bytes, SEQUENCE)
             placed_time = placement_key.get_placed_time()
             if placed_time >= as_of or placed_time < clearance_time:
@@ -209,7 +213,7 @@ class MemoryStore(AbstractStore):
             yield PositionedEntry(
                 position=middle_key.effective_time,
                 positioner=placement_key.get_positioner(),
-                entry_muid=placement_key.placer,
+                entry_muid=entry_muid,
                 builder=entry_builder)
             if limit is not None:
                 limit -= 1
@@ -284,7 +288,8 @@ class MemoryStore(AbstractStore):
             return
         removal_key = RemovalKey(container, old_placement_key.get_positioner(), movement_muid)
         self._removals[bytes(removal_key)] = builder
-        new_location_key = bytes(entry_muid) + bytes(movement_muid)
+        # new_location_key = bytes(entry_muid) + bytes(movement_muid)
+        new_location_key = LocationKey(entry_muid, movement_muid)
         if dest:
             middle_key = QueueMiddleKey(dest)
             new_placement_key = Placement(container, middle_key, movement_muid, entry_expiry)
@@ -296,9 +301,12 @@ class MemoryStore(AbstractStore):
 
     def _add_entry(self, new_info: BundleInfo, offset: int, entry_builder: EntryBuilder):
         placement = Placement.from_builder(entry_builder, new_info, offset)
+        entry_muid = placement.placer
         encoded_placement_key = bytes(placement)
-        self._placements[encoded_placement_key] = entry_builder
-        entries_location_key = bytes(placement.placer) + bytes(placement.placer)
+        self._entries[entry_muid] = entry_builder
+        self._placements[encoded_placement_key] = entry_muid
+        # entries_location_key = bytes(placement.placer) + bytes(placement.placer)
+        entries_location_key = LocationKey(placement.placer, placement.placer)
         self._locations[entries_location_key] = encoded_placement_key
 
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
@@ -317,9 +325,10 @@ class MemoryStore(AbstractStore):
         return chain_tracker
 
     def _get_entry_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
-        bkey = bytes(entry_muid)
+        # bkey = bytes(entry_muid)
         for location_key in self._locations.irange(
-                bkey, bkey + bytes(Muid(as_of, 0, 0)), reverse=True):
+                LocationKey(entry_muid, Muid(0, 0, 0)),
+                LocationKey(entry_muid, Muid(as_of, -1, -1)), reverse=True):
             return self._locations[location_key]
         return None
 
@@ -327,7 +336,7 @@ class MemoryStore(AbstractStore):
         location = self._get_entry_location(entry, as_of)
         if location is None:
             return None
-        entry_builder = self._placements[location]
+        entry_builder = self._entries[self._placements[location]]
         placement_key = Placement.from_bytes(location, entry_builder)
         middle_key = placement_key.middle
         assert isinstance(middle_key, QueueMiddleKey)

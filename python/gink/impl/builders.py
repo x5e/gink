@@ -6,8 +6,15 @@ from google.protobuf.text_format import Parse  # type: ignore
 from enum import IntEnum
 
 if TYPE_CHECKING:
-    class BundleBuilder(Message): pass
-    class SyncMessage(Message): pass
+
+    class BundleBuilder(Message):
+        pass
+
+
+    class SyncMessage(Message):
+        pass
+
+
     class ChangeBuilder(Message):
         entry: EntryBuilder
         container: ContainerBuilder
