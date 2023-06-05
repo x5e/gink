@@ -103,11 +103,6 @@ class KeySet(Container):
         """ Returns a boolean stating whether the key set contents completely overlap with the specified set/list/tuple 
             Sets are disjoint if and only if their intersection is an empty set.
         """
-        if not isinstance(s, Union[set, list, tuple]):
-            value = s
-            s = set()
-            s.add(value)
-
         return False if self.intersection(s, as_of=as_of) else True
     
     def difference(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> set:
