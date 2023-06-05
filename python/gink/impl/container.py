@@ -163,7 +163,7 @@ class Container(Addressable, ABC):
         return change_muid
 
     def  _add_entry(self, *,
-                   value: Union[UserValue, Deletion, Inclusion, Container],
+                   value: Union[UserValue, Deletion, Inclusion, Container, None],
                    key: Union[Muid, str, int, bytes, None] = None,
                    effective: Optional[MuTimestamp] = None,
                    bundler: Optional[Bundler] = None,

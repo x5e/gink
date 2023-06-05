@@ -22,7 +22,7 @@ BOX: int = Behavior.BOX  # type: ignore
 NOUN: int = Behavior.NOUN  # type: ignore
 ROLE: int = Behavior.ROLE # type: ignore
 VERB: int = Behavior.VERB # type: ignore
-SET: int = Behavior.SET # type: ignore
+KEY_SET: int = Behavior.KEY_SET # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
@@ -131,7 +131,7 @@ class Placement(NamedTuple):
         behavior = getattr(builder, "behavior")
         position = getattr(builder, "effective")
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None]
-        if behavior == DIRECTORY:
+        if behavior in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(builder)
         elif behavior in (BOX, NOUN):
             middle_key = None
@@ -169,7 +169,7 @@ class Placement(NamedTuple):
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
         elif using in (PROPERTY, ROLE):
             middle_key = Muid.from_bytes(middle_key_bytes)
-        elif using in (BOX, NOUN, VERB):
+        elif using in (BOX, NOUN, VERB, KEY_SET):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")
