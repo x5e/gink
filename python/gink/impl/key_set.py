@@ -11,7 +11,7 @@ from .container import Container
 from .coding import KEY_SET, deletion, decode_key, inclusion
 from .bundler import Bundler
 from .typedefs import UserKey, GenericTimestamp
-from .builders import Behavior
+from .builders import Behavior, EntryBuilder
 
 class KeySet(Container):
     _missing = object()
@@ -58,6 +58,15 @@ class KeySet(Container):
         """ Deletes a specified entry from the key set """
         return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
     
+    def remove(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+        """ Deletes a specified entry from the key set, but returns KeyError if not found """
+        as_of = self._database.get_now()
+        found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
+        if found is None or found.builder.deletion:  # type: ignore
+            raise KeyError("Key does not exist")
+        else:
+            return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
+    
     def pop(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None, default=None):
         """ If key exists in the mapping, returns the corresponding value and removes it.
 
@@ -72,7 +81,14 @@ class KeySet(Container):
         self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
         return decode_key(found.builder)
     
-    def items(self, *, as_of=None):
+    def issuperset(self, *, subset: Union[set, list], as_of: GenericTimestamp=None):
+        """ Returns a Boolean stating whether the key set contains the specified set or list of keys """
+        for element in subset:
+            if element not in set(self.items(as_of=as_of)):
+                return False
+        return True
+
+    def items(self, *, as_of: GenericTimestamp=None):
         """ returns an iterable of all items in the key set """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=KEY_SET)
