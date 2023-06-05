@@ -64,9 +64,14 @@ class AbstractStore(ABC):
 
     @abstractmethod
     def get_edge_entries(
-        self, as_of: MuTimestamp, limit: Optional[int] = None, offset: int = 0,
-        verb: Optional[Muid] = None, source: Optional[Muid] = None, target: Optional[Muid] = None) -> Iterable[FoundEntry]:
-        """ Returns all of the edge entries with specified verb and/or subject and/or object. """
+            self,
+            as_of: MuTimestamp,
+            limit: Optional[int] = None,
+            offset: int = 0,
+            verb: Optional[Muid] = None,
+            source: Optional[Muid] = None,
+            target: Optional[Muid] = None) -> Iterable[FoundEntry]:
+        """ Returns all the edge entries with specified verb and/or subject and/or object. """
 
     @abstractmethod
     def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:

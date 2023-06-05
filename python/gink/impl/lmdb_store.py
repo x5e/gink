@@ -59,6 +59,7 @@ class LmdbStore(AbstractStore):
         self._by_describing = self._handle.open_db(b"by_describing")
         self._by_pointee = self._handle.open_db(b"by_pointee")
         self._by_name = self._handle.open_db(b"by_name")
+        self._by_side = self._handle.open_db(b"by_side")
         self._outbox = self._handle.open_db(b"outbox")
         if reset:
             with self._handle.begin(write=True) as txn:
@@ -74,6 +75,9 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._clearances, delete=False)
                 txn.drop(self._properties, delete=False)
                 txn.drop(self._outbox, delete=False)
+                txn.drop(self._by_describing, delete=False)
+                txn.drop(self._by_name, delete=False)
+                txn.drop(self._by_side, delete=False)
         with self._handle.begin() as txn:
             # I'm checking to see if retentions are set in a read-only transaction, because if
             # they are and another process has this file open I don't want to wait to get a lock.
@@ -94,40 +98,74 @@ class LmdbStore(AbstractStore):
             self, as_of: MuTimestamp, limit: Optional[int] = None, skip: int = 0,
             verb: Optional[Muid] = None, source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:
-        if verb is None:
-            raise NotImplementedError()
-        # TODO: add support for lookups by source and/or target
+        if verb is None and source is None and target is None:
+            raise ValueError("need to specify verb or source or target")
         # TODO: add support for clear operation on verbs.
-        verb_bytes = bytes(verb)
         asof_bytes = bytes(Muid(as_of, -1, -1))
+        side_bytes = None
+        if source is not None:
+            side_bytes = bytes(source)
+        if target is not None:
+            side_bytes = bytes(target)
         with self._handle.begin() as trxn:
             removal_cursor = trxn.cursor(self._removals)
-            placement_cursor = trxn.cursor(self._placements)
-            placed = placement_cursor.set_range(verb_bytes)
-            while placed:
-                key, val = placement_cursor.item()
-                if not key.startswith(verb_bytes):
-                    break
-                if not key < verb_bytes + asof_bytes:
-                    break
-                placement = Placement.from_bytes(key, using=VERB)
-                removals_lookup = verb_bytes + bytes(placement.placer)
-                include = True
-                found_removal = to_last_with_prefix(removal_cursor, removals_lookup)
-                if found_removal:
-                    include = False
-                entry_builder = EntryBuilder.FromString(trxn.get(val, db=self._entries))
-                entry_muid = Muid.from_bytes(val)
-                if (source is not None and
-                    Muid.create(context=entry_muid, builder=entry_builder.pair.left) != source):
-                    include = False
-                if (target is not None and
-                    Muid.create(context=entry_muid, builder=entry_builder.pair.rite) != target):
-                    include = False
-                if include:
-                    yield FoundEntry(entry_muid, entry_builder)
-                placed = placement_cursor.next()
-
+            if side_bytes:
+                side_cursor = trxn.cursor(self._by_side)
+                placed = side_cursor.set_range(side_bytes)
+                while placed:
+                    key, entry_bytes = side_cursor.item()
+                    if not key.startswith(side_bytes):
+                        break
+                    if entry_bytes > asof_bytes:
+                        break
+                    entry_builder = EntryBuilder.FromString(trxn.get(entry_bytes, db=self._entries))
+                    entry_muid = Muid.from_bytes(entry_bytes)
+                    found_verb_muid = Muid.create(context=entry_muid, builder=entry_builder.container)
+                    include = True
+                    if verb and found_verb_muid != verb:
+                        include = False
+                    if include:
+                        found_verb_bytes = bytes(found_verb_muid)
+                        found_removal = to_last_with_prefix(removal_cursor, found_verb_bytes + key[-16:])
+                        if found_removal:
+                            include = False
+                    if include:
+                        left = Muid.create(context=entry_muid, builder=entry_builder.pair.left)
+                        rite = Muid.create(context=entry_muid, builder=entry_builder.pair.rite)
+                        if source and left != source:
+                            include = False
+                        if target and rite != target:
+                            include = False
+                    if include:
+                        yield FoundEntry(address=entry_muid, builder=entry_builder)
+                    placed = side_cursor.next()
+            else:
+                placement_cursor = trxn.cursor(self._placements)
+                verb_bytes = bytes(verb)
+                placed = placement_cursor.set_range(verb_bytes)
+                while placed:
+                    key, val = placement_cursor.item()
+                    if not key.startswith(verb_bytes):
+                        break
+                    if not key < verb_bytes + asof_bytes:
+                        break
+                    placement = Placement.from_bytes(key, using=VERB)
+                    removals_lookup = verb_bytes + bytes(placement.placer)
+                    include = True
+                    found_removal = to_last_with_prefix(removal_cursor, removals_lookup)
+                    if found_removal:
+                        include = False
+                    entry_builder = EntryBuilder.FromString(trxn.get(val, db=self._entries))
+                    entry_muid = Muid.from_bytes(val)
+                    if (source is not None and
+                            Muid.create(context=entry_muid, builder=entry_builder.pair.left) != source):
+                        include = False
+                    if (target is not None and
+                            Muid.create(context=entry_muid, builder=entry_builder.pair.rite) != target):
+                        include = False
+                    if include:
+                        yield FoundEntry(entry_muid, entry_builder)
+                    placed = placement_cursor.next()
 
     def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:
         with self._handle.begin() as trxn:
@@ -273,7 +311,7 @@ class LmdbStore(AbstractStore):
             trxn: Trxn,
             seen: Optional[Set[Muid]],
     ) -> Iterable[ChangeBuilder]:
-        """ Gets all of the changes needed to reset a specific Gink sequence to a past time.
+        """ Gets all the changes needed to reset a specific Gink sequence to a past time.
 
             If the `seen` argument is not None, then we're making the changes recursively.
             The `trxn` argument should be a lmdb read transaction.
@@ -333,7 +371,7 @@ class LmdbStore(AbstractStore):
             single_user_key: Optional[UserKey],
             behavior: int
     ) -> Iterable[ChangeBuilder]:
-        """ Gets all of the entries necessary to reset a specific keyed container to what it looked
+        """ Gets all the entries necessary to reset a specific keyed container to what it looked
             like at some previous point in time (or only for a specific key if specified).
             If "seen" is passed, then recursively update sub-containers.
         """
@@ -402,8 +440,9 @@ class LmdbStore(AbstractStore):
             txn.put(key, val, db=self._claims)
 
     def get_claimed_chains(self) -> Iterable[Chain]:
-        assert self
-        raise NotImplementedError()
+        if self:
+            raise NotImplementedError()
+        return []
 
     def _get_location(self, txn, entry_muid: Muid, as_of: int = -1) -> Optional[Placement]:
         """ Tells the location of a particular entry as of a given time. """
@@ -472,9 +511,8 @@ class LmdbStore(AbstractStore):
             else:
                 raise TypeError(f"don't know what to do with key of type {type(key)}")
 
-            placement_key_bytes = to_last_with_prefix(placements_cursor,
-                                                  prefix=bytes(container) + serialized_key,
-                                                  suffix=bytes(Muid(as_of, 0, 0)))
+            placement_key_bytes = to_last_with_prefix(
+                placements_cursor, prefix=bytes(container) + serialized_key, suffix=bytes(Muid(as_of, 0, 0)))
             if not placement_key_bytes:
                 return None
             assert isinstance(placement_key_bytes, bytes)
@@ -700,40 +738,47 @@ class LmdbStore(AbstractStore):
             if not dest:
                 txn.delete(bytes(entry_muid), db=self._entries)
 
-    def _add_entry(self, new_info: BundleInfo, txn: Trxn, offset: int, builder: EntryBuilder):
+    def _add_entry(self, new_info: BundleInfo, txn: Trxn, offset: int, builder: EntryBuilder, restoring: Muid = None):
         retaining = bool(decode_muts(bytes(txn.get(b"entries", db=self._retentions))))
         ensure_entry_is_valid(builder=builder, context=new_info)
         placement_key = Placement.from_builder(builder, new_info, offset)
-        entry_muid = placement_key.placer
+        # TODO: when restoring an edge, create placement key based on new muid, restore entry for old muid
+        placer_muid = placement_key.placer
         container_muid = placement_key.container
         serialized_placement_key = bytes(placement_key)
         if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX, Behavior.PROPERTY, Behavior.ROLE):
             found_entry = self.get_entry_by_key(container_muid, placement_key.middle)
             if found_entry:
                 if retaining:
-                    removal_key = bytes(container_muid) + bytes(found_entry.address) + bytes(entry_muid)
+                    removal_key = bytes(container_muid) + bytes(found_entry.address) + bytes(placer_muid)
                     txn.put(removal_key, b"", db=self._removals)
                 else:
                     self._remove_entry(found_entry.address, txn)
-        entry_key = bytes(entry_muid)
-        txn.put(entry_key, serialize(builder), db=self._entries)
-        txn.put(serialized_placement_key, entry_key, db=self._placements)
-        entries_loc_key = bytes(LocationKey(entry_muid, entry_muid))
+        entry_muid = restoring or placer_muid
+        entry_bytes = bytes(entry_muid)
+        txn.put(entry_bytes, serialize(builder), db=self._entries)
+        txn.put(serialized_placement_key, entry_bytes, db=self._placements)
+        entries_loc_key = bytes(LocationKey(entry_muid, placer_muid))
         txn.put(entries_loc_key, serialized_placement_key, db=self._locations)
         if builder.HasField("describing"):
             describing_muid = Muid.create(new_info, builder.describing)
-            descriptor_key = bytes(describing_muid)  + bytes(entry_muid)
+            descriptor_key = bytes(describing_muid) + bytes(placer_muid)
             txn.put(descriptor_key, bytes(container_muid), db=self._by_describing)
         if builder.HasField("pointee"):
             pointee_muid = Muid.create(new_info, builder.pointee)
-            pointee_key = bytes(pointee_muid) + bytes(entry_muid)
+            pointee_key = bytes(pointee_muid) + bytes(placer_muid)
             txn.put(pointee_key, bytes(container_muid), db=self._by_pointee)
+        if builder.HasField("pair"):
+            left = Muid.create(context=placer_muid, builder=builder.pair.left)
+            rite = Muid.create(context=placer_muid, builder=builder.pair.rite)
+            txn.put(bytes(left) + bytes(placer_muid), b"", db=self._by_side)
+            txn.put(bytes(rite) + bytes(placer_muid), b"", db=self._by_side)
         if container_muid == Muid(-1, -1, Behavior.PROPERTY):
             if builder.HasField("value") and builder.HasField("describing"):
                 describing_muid = Muid.create(new_info, builder.describing)
                 name = decode_value(builder.value)
                 if isinstance(name, str):
-                    by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
+                    by_name_key = name.encode() + b"\x00" + bytes(placer_muid)
                     txn.put(by_name_key, bytes(describing_muid), db=self._by_name)
 
     def _remove_entry(self, entry_muid: Muid, trxn: Trxn):
@@ -754,9 +799,14 @@ class LmdbStore(AbstractStore):
         entry_builder = EntryBuilder()
         entry_builder.ParseFromString(entry_payload)
         container_muid = Muid.create(entry_muid, entry_builder.container)
+        if entry_builder.HasField("pair"):
+            left = Muid.create(context=entry_muid, builder=entry_builder.pair.left)
+            rite = Muid.create(context=entry_muid, builder=entry_builder.pair.rite)
+            trxn.delete(bytes(left) + bytes(entry_muid), db=self._by_side)
+            trxn.delete(bytes(rite) + bytes(entry_muid), db=self._by_side)
         if entry_builder.HasField("describing"):
             describing_muid = Muid.create(entry_muid, entry_builder.describing)
-            descriptor_key = bytes(describing_muid)+ bytes(entry_muid)
+            descriptor_key = bytes(describing_muid) + bytes(entry_muid)
             trxn.delete(descriptor_key, db=self._by_describing)
         if entry_builder.HasField("pointee"):
             pointee_muid = Muid.create(entry_muid, entry_builder.pointee)
@@ -764,7 +814,6 @@ class LmdbStore(AbstractStore):
             trxn.delete(pointee_key, db=self._by_pointee)
         if container_muid == Muid(-1, -1, Behavior.PROPERTY):
             if entry_builder.HasField("value") and entry_builder.HasField("describing"):
-                describing_muid = Muid.create(entry_muid, entry_builder.describing)
                 name = decode_value(entry_builder.value)
                 if isinstance(name, str):
                     by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
