@@ -1,6 +1,6 @@
-""" Contains the set class definition """
+""" Contains the key set class definition """
 
-from typing import Union, Optional, Iterable
+from typing import Union, Optional
 
 from .database import Database
 from .muid import Muid
@@ -11,7 +11,7 @@ from .container import Container
 from .coding import KEY_SET, deletion, decode_key, inclusion
 from .bundler import Bundler
 from .typedefs import UserKey, GenericTimestamp
-from .builders import Behavior, EntryBuilder
+from .builders import Behavior
 
 class KeySet(Container):
     _missing = object()
@@ -81,34 +81,85 @@ class KeySet(Container):
         self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
         return decode_key(found.builder)
     
-    def issuperset(self, subset: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
+    def issuperset(self, subset: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> bool:
         """ Returns a Boolean stating whether the key set contains the specified set or list of keys """
         for element in subset:
             if element not in set(self.items(as_of=as_of)):
                 return False
         return True
     
-    def issubset(self, superset: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
-        """ Returns a Boolean stating whether the key set is a subset of the specified set/list """
+    def issubset(self, superset: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> bool:
+        """ Returns a Boolean stating whether the key set is a subset of the specified set/list/tuple """
         for element in set(self.items()):
             if element not in superset:
                 return False 
         return True
     
-    def isdisjoint(self, subset: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
-        """ Returns a boolean stating whether the key set contents completely overlap with the specified set/list 
+    def isdisjoint(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> bool:
+        """ Returns a boolean stating whether the key set contents completely overlap with the specified set/list/tuple 
             Sets are disjoint if and only if their intersection is an empty set.
         """
-        if not isinstance(subset, Union[set, list, tuple]):
-            value = subset
-            subset = set()
-            subset.add(value)
+        if not isinstance(s, Union[set, list, tuple]):
+            value = s
+            s = set()
+            s.add(value)
 
-        for element in subset:
+        for element in s:
             if element not in set(self.items()):
                 print(element)
                 return True
         return False
+    
+    def difference(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> set:
+        """ Returns a new set of keys in the key set that are not in the specified sets/lists/tuples  """
+        difference = set(self.items())
+        for element in s:
+            if element in difference:
+                difference.remove(element)
+        return difference
+    
+    def intersection(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> set:
+        """ Returns a new set with elements common to the key set and the specified iterables """
+        keyset = set(self.items())
+        intersection = set()
+        for element in s:
+            if element in keyset:
+                intersection.add(element)
+        return intersection
+    
+    def symmetric_difference(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> set:
+        """ Returns a new set with elements in either the key set or the specified iterable, but not both. """
+        sym_difference = set(self.items()).union(s)
+        for element in s:
+            if element in set(self.items()):
+                sym_difference.remove(element)
+        return sym_difference
+    
+    def union(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> set:
+        """ Returns a new set with elements from both the key set and the specified set """
+        return set(self.items()).union(s)
+    
+    def difference_update(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
+        """ Updates the key set, removing elements found in the specified iterables. """
+        difference = set(self.items())
+        for element in s:
+            if element in difference:
+                self.remove(element)
+        
+    def intersection_update(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
+        """ Updates the key set, keeping only elements found in the key set and the specified iterables. """
+        keyset = set(self.items())
+        for element in keyset:
+            if element not in s:
+                self.remove(element)
+    
+    def symmetric_difference_update(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
+        """ Updates the key set, keeping only elements found in either the key set or the specified set, not both. """
+        for element in s:
+            if element in set(self.items()):
+                self.remove(element)
+            else:
+                self.add(element)
 
     def items(self, *, as_of: GenericTimestamp=None):
         """ returns an iterable of all items in the key set """
@@ -138,7 +189,7 @@ class KeySet(Container):
         identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
-        stuffing = [decode_key(entry_pair.builder) for entry_pair in self._database.get_store().get_keyed_entries(container=self._muid, behavior=self.BEHAVIOR, as_of=as_of)]
+        stuffing = [str(decode_key(entry_pair.builder)) for entry_pair in self._database.get_store().get_keyed_entries(container=self._muid, behavior=self.BEHAVIOR, as_of=as_of)]
         as_one_line = result + ",".join(stuffing) + "})"
         if len(as_one_line) < 80:
             return as_one_line
