@@ -73,7 +73,7 @@ def test_entry_to_from_bytes():
     key2 = Placement.from_bytes(encoded, DIRECTORY)
     assert key1 == key2, key2
 
-    key3 = Placement(Muid(123, 77, 1), QueueMiddleKey(235, None), Muid(234, 77, 2), None)
+    key3 = Placement(Muid(123, 77, 1), QueueMiddleKey(235), Muid(234, 77, 2), None)
     encoded = bytes(key3)
     key4 = Placement.from_bytes(encoded, SEQUENCE)
     assert key4 == key3, key4

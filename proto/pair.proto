@@ -1,0 +1,8 @@
+syntax = "proto3";
+package gink;
+import "proto/muid.proto";
+
+message Pair {
+    Muid left = 1;
+    Muid rite = 2;
+}

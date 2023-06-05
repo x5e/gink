@@ -6,12 +6,24 @@ from google.protobuf.text_format import Parse  # type: ignore
 from enum import IntEnum
 
 if TYPE_CHECKING:
-    class BundleBuilder(Message): pass
-    class SyncMessage(Message): pass
+
+    class BundleBuilder(Message):
+        pass
+
+
+    class SyncMessage(Message):
+        pass
+
+
     class ChangeBuilder(Message):
         entry: EntryBuilder
         container: ContainerBuilder
+        restore: MuidBuilder
+        movement: MovementBuilder
 
+    class Pair:
+        left: MuidBuilder
+        rite: MuidBuilder
 
     class EntryBuilder(Message):
         describing: MuidBuilder
@@ -20,28 +32,49 @@ if TYPE_CHECKING:
         value: ValueBuilder
         container: MuidBuilder
         deletion: bool
+        pair: Pair
+        octets: bytes
+        key: KeyBuilder
 
 
     class ValueBuilder(Message): pass
+
+
     class KeyBuilder(Message): pass
+
+
     class ContainerBuilder(Message):
         behavior: int
-    class MovementBuilder(Message): pass
+
+
+    class MovementBuilder(Message):
+        container: MuidBuilder
+        entry: MuidBuilder
+        dest: int
+        purge: bool
+
+
     class ClearanceBuilder(Message): pass
+
+
     class MuidBuilder(Message): pass
+
+
     class LogFile(Message): pass
 
 
     class Behavior(IntEnum):
-        # Note: these are placeholders for typechecking, look at proto def
+        UNSPECIFIED = 0
         BOX = 1
         SEQUENCE = 2
-        SET = 3
+        KEY_SET = 3
         DIRECTORY = 4
-        NOUN = 8
+        PAIR_SET = 5
+        PAIR_MAP = 6
+        NOUN = 7
+        VERB = 8
         PROPERTY = 9
         ROLE = 10
-        VERB = 11
 else:
     from ..builders.bundle_pb2 import Bundle
     from ..builders.sync_message_pb2 import SyncMessage

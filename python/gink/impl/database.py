@@ -340,9 +340,11 @@ class Database:
             self.commit(bundler=bundler)
         return bundler
 
-    def get_container(self, muid: Muid, container_builder: Optional[ContainerBuilder] = None) -> Any:
+    def get_container(self, muid: Muid, *,
+                      behavior: Optional[int] = None,
+                      container_builder: Optional[ContainerBuilder] = None) -> Any:
         """ gets (already created) container associated with a particular muid """
-        _ = (self, muid, container_builder)
+        _ = (self, muid, container_builder, behavior)
         raise Exception("not patched")
 
     def dump(self, as_of: GenericTimestamp = None, file=stdout) -> None:

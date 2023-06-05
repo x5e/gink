@@ -86,13 +86,9 @@ class RemovalKey(NamedTuple):
 class QueueMiddleKey(NamedTuple):
     """ Used to order non-keyed entries by timestamp and modification change. """
     effective_time: MuTimestamp
-    movement_muid: Optional[Muid]
 
     def __bytes__(self):
-        if self.movement_muid:
-            return encode_muts(self.effective_time) + bytes(self.movement_muid)
-        else:
-            return encode_muts(self.effective_time)
+        return encode_muts(self.effective_time)
 
     @staticmethod
     def from_bytes(data: bytes):
@@ -100,11 +96,9 @@ class QueueMiddleKey(NamedTuple):
         effective_time = decode_muts(data[0:8])
         assert effective_time is not None
         if len(data) == 8:
-            return QueueMiddleKey(effective_time, None)
-        elif len(data) == 24:
-            return QueueMiddleKey(effective_time, Muid.from_bytes(data[8:]))
+            return QueueMiddleKey(effective_time)
         else:
-            raise AssertionError("expected QueueMiddleKey to be 8 or 24 bytes")
+            raise AssertionError("expected QueueMiddleKey to be 8 bytes")
 
 
 class Placement(NamedTuple):
@@ -112,23 +106,21 @@ class Placement(NamedTuple):
 
     """
     container: Muid
-    middle_key: Union[UserKey, QueueMiddleKey, Muid, None]
-    entry_muid: Muid
+    middle: Union[UserKey, QueueMiddleKey, Muid, None]
+    placer: Muid
     expiry: Optional[MuTimestamp]
 
     def get_positioner(self) -> Muid:
-        queue_middle_key = self.middle_key
-        assert isinstance(queue_middle_key, QueueMiddleKey)
-        return queue_middle_key.movement_muid or self.entry_muid
+        return self.placer
 
     def get_queue_position(self) -> MuTimestamp:
         """ Pulls out the effective timestamp (ordering position) from the middle_key. """
-        assert isinstance(self.middle_key, QueueMiddleKey)
-        return self.middle_key.effective_time
+        assert isinstance(self.middle, QueueMiddleKey)
+        return self.middle.effective_time
 
     def get_key(self) -> Union[UserKey, Muid, None]:
-        assert not isinstance(self.middle_key, QueueMiddleKey)
-        return self.middle_key
+        assert not isinstance(self.middle, QueueMiddleKey)
+        return self.middle
 
 
     @staticmethod
@@ -141,12 +133,14 @@ class Placement(NamedTuple):
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None]
         if behavior == DIRECTORY:
             middle_key = decode_key(builder)
-        elif behavior == BOX:
+        elif behavior in (BOX, NOUN):
             middle_key = None
         elif behavior == SEQUENCE:
-            middle_key = QueueMiddleKey(position or entry_muid.timestamp, None)
-        elif behavior in (PROPERTY, VERB, ROLE):
+            middle_key = QueueMiddleKey(position or entry_muid.timestamp)
+        elif behavior in (PROPERTY, ROLE):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
+        elif behavior == VERB:
+            middle_key = None
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None
@@ -173,29 +167,29 @@ class Placement(NamedTuple):
             middle_key = decode_key(middle_key_bytes)
         elif using == SEQUENCE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
-        elif using in (PROPERTY, VERB, ROLE):
+        elif using in (PROPERTY, ROLE):
             middle_key = Muid.from_bytes(middle_key_bytes)
-        elif using == BOX:
+        elif using in (BOX, NOUN, VERB):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")
         return Placement(
             container=Muid.from_bytes(container_bytes),
-            middle_key=middle_key,
-            entry_muid=entry_muid,
+            middle=middle_key,
+            placer=entry_muid,
             expiry=decode_muts(expiry_bytes))
 
     def replace_time(self, timestamp: int):
         """ create a entry key that can be used for seeking before the given time """
-        return Placement(self.container, self.middle_key, Muid(timestamp, 0, 0, ), None)
+        return Placement(self.container, self.middle, Muid(timestamp, 0, 0, ), None)
 
     def __bytes__(self) -> bytes:
         parts: List[Any] = [self.container]
-        if isinstance(self.middle_key, (QueueMiddleKey, Muid)):
-            parts.append(self.middle_key)
-        elif self.middle_key is not None:
-            parts.append(encode_key(self.middle_key))
-        parts.append(self.entry_muid)
+        if isinstance(self.middle, (QueueMiddleKey, Muid)):
+            parts.append(self.middle)
+        elif self.middle is not None:
+            parts.append(encode_key(self.middle))
+        parts.append(self.placer)
         parts.append(self.expiry)
         return b"".join(map(serialize, parts))
 
@@ -246,20 +240,18 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid], behavior:
     return entry_builder
 
 
-def decode_entry_occupant(entry_storage_pair: PlacementBuilderPair
-                          ) -> Union[UserValue, Muid, Deletion, Inclusion]:
+def decode_entry_occupant(entry_muid: Muid, builder: EntryBuilder) -> Union[UserValue, Muid, Deletion, Inclusion]:
     """ Determines what a container "contains" in a given entry.
 
         The full entry storage pair is required because if it points to something that pointer
         might be relative to the entry address.
     """
-    builder = entry_storage_pair.builder
     if builder.deletion:  # type: ignore
         return deletion
     if builder.HasField("pointee"):  # type: ignore
-        return Muid.create(builder=builder.pointee, context=entry_storage_pair.placement)  # type: ignore
+        return Muid.create(builder=builder.pointee, context=entry_muid)
     if builder.HasField("value"):  # type: ignore
-        return decode_value(entry_storage_pair.builder.value)  # type: ignore
+        return decode_value(builder.value)
     if builder.behavior == ROLE:
         return inclusion
     raise ValueError(f"can't interpret {builder}")
@@ -272,7 +264,7 @@ def entries_equiv(pair1: PlacementBuilderPair, pair2: PlacementBuilderPair) -> b
         has a new entry.
     """
     assert pair1.placement != pair2.placement, "comparing an entry to itself"
-    assert pair1.placement.middle_key == pair2.placement.middle_key
+    assert pair1.placement.middle == pair2.placement.middle
     assert pair1.placement.container == pair2.placement.container
     if pair1.builder.HasField("pointee"):  # type: ignore
         if pair2.builder.HasField("pointee"):  # type: ignore

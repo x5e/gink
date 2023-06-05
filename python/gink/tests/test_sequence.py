@@ -78,14 +78,14 @@ def test_reordering():
                     seq.append(letter)
                     time.sleep(.001)
                 assert list(seq) == ["a", "b", "c", "x", "y", "z"], list(seq)
-                seq.pop(dest=1)
-                assert list(seq) == ["a", "z", "b", "c", "x", "y"]
-                seq.pop(2, dest=-2)
-                assert list(seq) == ["a", "z", "c", "x", "b", "y"]
-                seq.pop(0, dest=3)
-                assert list(seq) == ["z", "c", "a", "x", "b", "y"]
-                seq.remove("x")
-                assert list(seq) == ["z", "c", "a", "b", "y"]
+                popped = seq.pop(dest=1)
+                assert list(seq) == ["a", "z", "b", "c", "x", "y"], (list(seq), popped)
+                popped = seq.pop(2, dest=-2)
+                assert list(seq) == ["a", "z", "c", "x", "b", "y"], (list(seq), popped)
+                popped = seq.pop(0, dest=3)
+                assert list(seq) == ["z", "c", "a", "x", "b", "y"], (list(seq), popped)
+                popped = seq.remove("x")
+                assert list(seq) == ["z", "c", "a", "b", "y"], (list(seq), popped)
                 seq.remove("c", dest=seq.index("y"))
                 assert list(seq) == ["z", "a", "b", "c", "y"]
                 popped = seq.pop(1, dest=-1)
@@ -106,8 +106,8 @@ def test_expiry():
                 seq.append("first", expiry=0.01)
                 assert list(seq) == ["first"], list(seq)
                 seq.insert(0, "second", expiry=0.02)
-                seq_as_list = list(seq)
                 mark = database.get_now()
+                seq_as_list = list(seq)
                 if seq_as_list != ["second", "first"]:
                     elapsed = str(timedelta(microseconds=mark - start))
                     raise AssertionError(f"{elapsed} unexpected: {seq_as_list} in {store}")
@@ -117,7 +117,8 @@ def test_expiry():
                 if expect_two_three_four != ["second", "three", "four"]:
                     assertion_time = database.get_now()
                     raise AssertionError(str(expect_two_three_four) + " " + str(assertion_time))
-                assert list(seq.values(as_of=mark)) == ["second", "first"]
+                found = list(seq.values(as_of=mark))
+                assert found == ["second", "first"], found
                 seq.remove("three", dest=0.01)
                 after_hiding_three = list(seq)
                 if after_hiding_three != ["second", "four"]:
