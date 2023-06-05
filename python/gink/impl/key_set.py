@@ -13,7 +13,7 @@ from .bundler import Bundler
 from .typedefs import UserKey, GenericTimestamp
 from .builders import Behavior
 
-class Set(Container):
+class KeySet(Container):
     _missing = object()
     BEHAVIOR = KEY_SET
 
@@ -45,10 +45,35 @@ class Set(Container):
             self._database.commit(bundler)
 
     def add(self, key: UserKey, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
-        """ Adds a value to the set """
+        """ Adds a specified value to the key set """
         return self._add_entry(key=key, value=inclusion, bundler=bundler, comment=comment)
     
+    def update(self, keys: list[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+        """ Adds multiple specified values to the key set """
+        # Probably best to initialize a bundler here
+        for key in keys:
+            self._add_entry(key=key, value=inclusion, bundler=bundler, comment=comment)
+
+    def discard(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+        """ Deletes a specified entry from the key set """
+        return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
+    
+    def pop(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None, default=None):
+        """ If key exists in the mapping, returns the corresponding value and removes it.
+
+            Otherwise returns default.  In the case that the key is found and removed,
+            then the change is added to the bundler (or committed immedately with comment
+            if no bundler is specified.)
+        """
+        as_of = self._database.get_now()
+        found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
+        if found is None or found.builder.deletion:  # type: ignore
+            return default
+        self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
+        return decode_key(found.builder)
+    
     def items(self, *, as_of=None):
+        """ returns an iterable of all items in the key set """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=KEY_SET)
         for entry_pair in iterable:
