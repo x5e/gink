@@ -54,6 +54,10 @@ class KeySet(Container):
         for key in keys:
             self._add_entry(key=key, value=inclusion, bundler=bundler, comment=comment)
 
+    def contains(self, key: UserKey, as_of: GenericTimestamp=None):
+        """ Returns a boolean stating whether the specified key is in the key set """
+        return True if key in set(self.items(as_of=as_of)) else False
+
     def discard(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Deletes a specified entry from the key set """
         return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
@@ -90,7 +94,7 @@ class KeySet(Container):
     
     def issubset(self, superset: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> bool:
         """ Returns a Boolean stating whether the key set is a subset of the specified set/list/tuple """
-        for element in set(self.items()):
+        for element in set(self.items(as_of=as_of)):
             if element not in superset:
                 return False 
         return True
@@ -104,15 +108,11 @@ class KeySet(Container):
             s = set()
             s.add(value)
 
-        for element in s:
-            if element not in set(self.items()):
-                print(element)
-                return True
-        return False
+        return False if self.intersection(s, as_of=as_of) else True
     
     def difference(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> set:
         """ Returns a new set of keys in the key set that are not in the specified sets/lists/tuples  """
-        difference = set(self.items())
+        difference = set(self.items(as_of=as_of))
         for element in s:
             if element in difference:
                 difference.remove(element)
@@ -120,7 +120,7 @@ class KeySet(Container):
     
     def intersection(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> set:
         """ Returns a new set with elements common to the key set and the specified iterables """
-        keyset = set(self.items())
+        keyset = set(self.items(as_of=as_of))
         intersection = set()
         for element in s:
             if element in keyset:
@@ -129,31 +129,32 @@ class KeySet(Container):
     
     def symmetric_difference(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> set:
         """ Returns a new set with elements in either the key set or the specified iterable, but not both. """
-        sym_difference = set(self.items()).union(s)
+        keyset_items = set(self.items(as_of=as_of))
+        elements = keyset_items.union(s)
         for element in s:
-            if element in set(self.items()):
-                sym_difference.remove(element)
-        return sym_difference
+            if element in keyset_items:
+                elements.remove(element)
+        return elements
     
     def union(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None) -> set:
         """ Returns a new set with elements from both the key set and the specified set """
-        return set(self.items()).union(s)
+        return set(self.items(as_of=as_of)).union(s)
     
-    def difference_update(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
+    def difference_update(self, s: Union[set, list, tuple]):
         """ Updates the key set, removing elements found in the specified iterables. """
         difference = set(self.items())
         for element in s:
             if element in difference:
                 self.remove(element)
         
-    def intersection_update(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
+    def intersection_update(self, s: Union[set, list, tuple]):
         """ Updates the key set, keeping only elements found in the key set and the specified iterables. """
         keyset = set(self.items())
         for element in keyset:
             if element not in s:
                 self.remove(element)
     
-    def symmetric_difference_update(self, s: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
+    def symmetric_difference_update(self, s: Union[set, list, tuple]):
         """ Updates the key set, keeping only elements found in either the key set or the specified set, not both. """
         for element in s:
             if element in set(self.items()):
