@@ -81,12 +81,34 @@ class KeySet(Container):
         self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
         return decode_key(found.builder)
     
-    def issuperset(self, *, subset: Union[set, list], as_of: GenericTimestamp=None):
+    def issuperset(self, subset: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
         """ Returns a Boolean stating whether the key set contains the specified set or list of keys """
         for element in subset:
             if element not in set(self.items(as_of=as_of)):
                 return False
         return True
+    
+    def issubset(self, superset: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
+        """ Returns a Boolean stating whether the key set is a subset of the specified set/list """
+        for element in set(self.items()):
+            if element not in superset:
+                return False 
+        return True
+    
+    def isdisjoint(self, subset: Union[set, list, tuple], *, as_of: GenericTimestamp=None):
+        """ Returns a boolean stating whether the key set contents completely overlap with the specified set/list 
+            Sets are disjoint if and only if their intersection is an empty set.
+        """
+        if not isinstance(subset, Union[set, list, tuple]):
+            value = subset
+            subset = set()
+            subset.add(value)
+
+        for element in subset:
+            if element not in set(self.items()):
+                print(element)
+                return True
+        return False
 
     def items(self, *, as_of: GenericTimestamp=None):
         """ returns an iterable of all items in the key set """
