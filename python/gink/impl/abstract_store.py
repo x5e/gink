@@ -66,8 +66,6 @@ class AbstractStore(ABC):
     def get_edge_entries(
             self,
             as_of: MuTimestamp,
-            limit: Optional[int] = None,
-            offset: int = 0,
             verb: Optional[Muid] = None,
             source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:

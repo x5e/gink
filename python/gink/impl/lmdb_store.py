@@ -95,8 +95,10 @@ class LmdbStore(AbstractStore):
             # TODO: add expiries table to keep track of when things need to be removed
 
     def get_edge_entries(
-            self, as_of: MuTimestamp, limit: Optional[int] = None, skip: int = 0,
-            verb: Optional[Muid] = None, source: Optional[Muid] = None,
+            self,
+            as_of: MuTimestamp,
+            verb: Optional[Muid] = None,
+            source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:
         if verb is None and source is None and target is None:
             raise ValueError("need to specify verb or source or target")
@@ -118,7 +120,9 @@ class LmdbStore(AbstractStore):
                         break
                     if entry_bytes > asof_bytes:
                         break
-                    entry_builder = EntryBuilder.FromString(trxn.get(entry_bytes, db=self._entries))
+                    assert isinstance(entry_bytes, bytes) and len(entry_bytes) == 16
+                    entry_builder_bytes = trxn.get(entry_bytes, db=self._entries)
+                    entry_builder = EntryBuilder.FromString(entry_builder_bytes)
                     entry_muid = Muid.from_bytes(entry_bytes)
                     found_verb_muid = Muid.create(context=entry_muid, builder=entry_builder.container)
                     include = True
@@ -141,6 +145,7 @@ class LmdbStore(AbstractStore):
                     placed = side_cursor.next()
             else:
                 placement_cursor = trxn.cursor(self._placements)
+                assert verb
                 verb_bytes = bytes(verb)
                 placed = placement_cursor.set_range(verb_bytes)
                 while placed:
@@ -738,7 +743,13 @@ class LmdbStore(AbstractStore):
             if not dest:
                 txn.delete(bytes(entry_muid), db=self._entries)
 
-    def _add_entry(self, new_info: BundleInfo, txn: Trxn, offset: int, builder: EntryBuilder, restoring: Muid = None):
+    def _add_entry(
+            self,
+            new_info: BundleInfo,
+            txn: Trxn,
+            offset: int,
+            builder: EntryBuilder,
+            restoring: Optional[Muid] = None):
         retaining = bool(decode_muts(bytes(txn.get(b"entries", db=self._retentions))))
         ensure_entry_is_valid(builder=builder, context=new_info)
         placement_key = Placement.from_builder(builder, new_info, offset)
@@ -771,8 +782,8 @@ class LmdbStore(AbstractStore):
         if builder.HasField("pair"):
             left = Muid.create(context=placer_muid, builder=builder.pair.left)
             rite = Muid.create(context=placer_muid, builder=builder.pair.rite)
-            txn.put(bytes(left) + bytes(placer_muid), b"", db=self._by_side)
-            txn.put(bytes(rite) + bytes(placer_muid), b"", db=self._by_side)
+            txn.put(bytes(left) + bytes(placer_muid), entry_bytes, db=self._by_side)
+            txn.put(bytes(rite) + bytes(placer_muid), entry_bytes, db=self._by_side)
         if container_muid == Muid(-1, -1, Behavior.PROPERTY):
             if builder.HasField("value") and builder.HasField("describing"):
                 describing_muid = Muid.create(new_info, builder.describing)

@@ -18,6 +18,7 @@ class Noun(Container):
     def __init__(self, *,
                  root: bool = False,
                  muid: Optional[Muid] = None,
+                 bundler: Optional[Bundler] = None,
                  database: Optional[Database] = None):
         """
         Creates a placeholder node to contain the idea of something.
@@ -26,13 +27,16 @@ class Noun(Container):
         db: database send commits through, or last db instance created if None
         """
         database = database or Database.get_last()
-        bundler = Bundler()
+        immediate = False
+        if not isinstance(bundler, Bundler):
+            immediate = True
+            bundler = Bundler()
         if root:
             muid = Muid(-1, -1, NOUN)
         if muid is None:
             muid = Container._create(NOUN, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
-        if len(bundler):
+        if len(bundler) and immediate:
             self._database.commit(bundler)
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
@@ -165,6 +169,7 @@ class Edge(Addressable):
                  database: Optional[Database] = None,
                  _builder: Optional[EntryBuilder] = None,
                  _immediate=False):
+        database = database or Database.get_last()
         self._valued: Union[UserValue, Inclusion]
         if action is None or source is None or target is None:
             if muid is None:
@@ -201,8 +206,8 @@ class Edge(Addressable):
             else:
                 muid.put_into(change_builder.restore)
             if _immediate:
-                self._database.commit(bundler)
-            super().__init__(database=database, muid=muid)
+                database.commit(bundler)
+        super().__init__(database=database, muid=muid)
 
     def dumps(self, indent=1) -> str:
         contents = []
