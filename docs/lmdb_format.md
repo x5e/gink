@@ -56,7 +56,7 @@
 
         by_describing - an index to enable looking up all the properties on an object/edge
             key: (describing-muid, entry-muid)
-            val: edge-muid
+            val: container-muid of the container doing the describing
 
         by_pointee - an index for looking at entries by what they point-to
             key: (pointee-muid, entry-muid)
@@ -65,3 +65,7 @@
         by_name - a special case index for names (global default property)
             key: (name string, null-byte, entry-muid)
             val: named_muid
+
+        by_side - lookup for edges based on source or target muid
+            key: (source/target-muid, placement-muid)
+            val: entry-muid
