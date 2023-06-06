@@ -163,13 +163,13 @@ class Placement(NamedTuple):
         expiry_bytes = data[-8:]
         entry_muid = Muid.from_bytes(entry_muid_bytes)
         middle_key: Union[MuTimestamp, UserKey, Muid, None]
-        if using == DIRECTORY:
+        if using in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(middle_key_bytes)
         elif using == SEQUENCE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
         elif using in (PROPERTY, ROLE):
             middle_key = Muid.from_bytes(middle_key_bytes)
-        elif using in (BOX, NOUN, VERB, KEY_SET):
+        elif using in (BOX, NOUN, VERB):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")

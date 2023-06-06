@@ -14,7 +14,7 @@ assert PATCHED
 
 def test_creation():
     """ test that I can create new key sets as well as proxies for existing ones """
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
@@ -28,7 +28,7 @@ def test_creation():
 def test_add_update_contains():
     """ test that both adding one key or updating with multiple keys works as intended
         also tests contains works as intended """
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
             gks = KeySet.get_global_instance(database=database)
@@ -46,7 +46,7 @@ def test_add_update_contains():
 
 def test_discard_remove_pop():
     """ tests that all delete methods work as intended """
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
             gks = KeySet.get_global_instance(database=database)
@@ -74,7 +74,7 @@ def test_discard_remove_pop():
 
 def test_super_subset_disjoint():
     """ tests that issuperset, issubset, and isdisjoint all work as intended """
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
             gks = KeySet.get_global_instance(database=database)
@@ -87,21 +87,21 @@ def test_super_subset_disjoint():
 
 def test_diff_inter_symdiff_union():
     """ tests that difference, intersection, symmetric_difference, and union methods work as intended """
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
             gks = KeySet.get_global_instance(database=database)
 
             gks.update(["value1", "value2", "value3"])
-            assert gks.difference(["value2", "value3"]) == {"value1"}
-            assert gks.intersection(["value2", "value3"]) == {"value2", "value3"}
+            assert set(gks.difference(["value2", "value3"])) == {"value1"}
+            assert set(gks.intersection(["value2", "value3"])) == {"value2", "value3"}
             assert gks.symmetric_difference(["value2", "value4"]) == {"value1", "value3", "value4"}
             assert gks.union(["value4", "value5"]) == {"value1", "value2", "value3", "value4", "value5"}
 
 def test_diff_inter_symdiff_updates():
     """ tests that the update methods for difference_update, intersection_update, and 
         symmetric_difference_update work as intended """
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
             gks = KeySet.get_global_instance(database=database)
@@ -115,11 +115,12 @@ def test_diff_inter_symdiff_updates():
             assert set(gks.items()) == {"value3"}
 
             gks.symmetric_difference_update(["value1", "value2", "value3", "value4"])
+            # print(set(gks.items()))
             assert set(gks.items()) == {"value1", "value2", "value4"}
 
 def test_asof():
     """ tests as_of works for most methods """
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
             gks = KeySet.get_global_instance(database=database)
@@ -139,8 +140,8 @@ def test_asof():
             assert gks.isdisjoint(["value4", "value5", "value6"], as_of=-1)
 
             # Tests as_of for difference, intersection, symmetric_difference, and union
-            assert gks.difference(["value2", "value3"], as_of=-1) == {"value1"}
-            assert gks.intersection(["value2", "value3"], as_of=-1) == {"value2", "value3"}
+            assert set(gks.difference(["value2", "value3"], as_of=-1)) == {"value1"}
+            assert set(gks.intersection(["value2", "value3"], as_of=-1)) == {"value2", "value3"}
             assert gks.symmetric_difference(["value2", "value4"], as_of=-1) == {"value1", "value3", "value4"}
             assert gks.union(["value4", "value5"], as_of=-1) == {"value1", "value2", "value3", "value4", "value5"}
 
@@ -150,7 +151,7 @@ def test_asof():
 
 def test_size():
     """ tests that the size methods works as intended """
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
             gks = KeySet.get_global_instance(database=database)
