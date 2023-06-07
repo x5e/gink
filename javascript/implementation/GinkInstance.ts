@@ -6,6 +6,7 @@ import { Bundler } from "./Bundler";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
 
+import { KeySet } from "./KeySet";
 import { Directory } from "./Directory";
 import { Box } from "./Box";
 import { Sequence } from "./Sequence";
@@ -108,6 +109,16 @@ export class GinkInstance {
     async createSequence(change?: Bundler|string): Promise<Sequence> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.SEQUENCE, change);
         return new Sequence(this, muid, containerBuilder);
+    }
+
+    /**
+     * Creates a new Key Set container.
+     * @param change either the bundler to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the Key Set container (immediately if a bundler is passed in, otherwise after the commit)
+     */
+    async createKeySet(change?: Bundler|string): Promise<KeySet> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.KEY_SET, change);
+        return new KeySet(this, muid, containerBuilder)
     }
 
     /**

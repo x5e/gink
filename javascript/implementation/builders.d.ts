@@ -9,7 +9,9 @@ declare class ImplementedMessage extends Message {
 export declare enum Behavior {
     UNSPECIFIED,
     BOX=1,
-    DIRECTORY=7, SEQUENCE=8,
+    SEQUENCE=2,
+    KEY_SET=3,
+    DIRECTORY=4,
     PROPERTY=9,
 }
 export declare enum Special {
@@ -66,6 +68,7 @@ export class EntryBuilder extends ImplementedMessage {
     setKey(KeyBuilder);
     setPointee(MuidBuilder);
     setDeletion(boolean);
+    setInclusion(boolean);
     setValue(ValueBuilder);
     hasValue(): boolean;
     getValue(): ValueBuilder;

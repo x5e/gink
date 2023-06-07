@@ -2,12 +2,14 @@ import {Bundler} from "./Bundler";
 import {Value, KeyType, Muid, AsOf} from "./typedefs";
 import {muidToBuilder, wrapValue, wrapKey} from "./utils";
 import {Deletion} from "./Deletion";
+import { Inclusion } from "./Inclusion";
 import {GinkInstance} from "./GinkInstance";
 import { EntryBuilder, ChangeBuilder, Behavior, ClearanceBuilder } from "./builders";
 
 
 export class Container {
     protected static readonly DELETION = new Deletion();
+    protected static readonly INCLUSION = new Inclusion();
 
     /**
      * I can't import List, Directory, etc. into this file because it will cause the inherits clauses to break.
@@ -79,7 +81,7 @@ export class Container {
      */
     protected async addEntry(
         key?: KeyType | true | Container,
-        value?: Value | Container | Deletion,
+        value?: Value | Container | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string):
             Promise<Muid> {
         let immediate = false;
@@ -113,6 +115,8 @@ export class Container {
                 entryBuilder.setPointee(muidToBuilder(value.address, bundler.medallion));
             } else if (value instanceof Deletion) {
                 entryBuilder.setDeletion(true);
+            } else if (value instanceof Inclusion) {
+                entryBuilder.setInclusion(true);
             } else {
                 entryBuilder.setValue(wrapValue(value));
             }
