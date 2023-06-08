@@ -68,7 +68,6 @@ export class EntryBuilder extends ImplementedMessage {
     setKey(KeyBuilder);
     setPointee(MuidBuilder);
     setDeletion(boolean);
-    setInclusion(boolean);
     setValue(ValueBuilder);
     hasValue(): boolean;
     getValue(): ValueBuilder;
