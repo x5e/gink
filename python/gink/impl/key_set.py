@@ -59,7 +59,7 @@ class KeySet(Container):
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
 
-        return False if found is None or found.builder.deletion else True
+        return found is not None and not found.builder.deletion
 
     def discard(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Deletes a specified entry from the key set """
@@ -69,13 +69,13 @@ class KeySet(Container):
         """ Deletes a specified entry from the key set, but returns KeyError if not found """
         as_of = self._database.get_now()
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
-        if found is None or found.builder.deletion:  # type: ignore
+        if found is None or found.builder.deletion:
             raise KeyError("Key does not exist")
         else:
             return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
     
-    def pop(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None, default=None):
-        """ If key exists in the mapping, returns the corresponding value and removes it.
+    def pop(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+        """ If key exists in the key set, returns it and removes it.
 
             Otherwise returns default.  In the case that the key is found and removed,
             then the change is added to the bundler (or committed immedately with comment
@@ -84,18 +84,18 @@ class KeySet(Container):
         as_of = self._database.get_now()
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore
-            return default
+            raise KeyError("Key not found")
         self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
         return decode_key(found.builder)
     
-    def issuperset(self, subset: Iterable, *, as_of: GenericTimestamp=None) -> bool:
+    def issuperset(self, subset: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> bool:
         """ Returns a Boolean stating whether the key set contains the specified set or list of keys """
         for element in subset:
-            if not self.contains(element):
+            if not self.contains(element, as_of=as_of):
                 return False
         return True
     
-    def issubset(self, superset: Iterable, *, as_of: GenericTimestamp=None) -> bool:
+    def issubset(self, superset: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> bool:
         """ Returns a Boolean stating whether the key set is a subset of the specified set/list/tuple """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
@@ -107,13 +107,13 @@ class KeySet(Container):
                 return False
         return True
     
-    def isdisjoint(self, s: Iterable, *, as_of: GenericTimestamp=None) -> bool:
-        """ Returns a boolean stating whether the key set contents completely overlap with the specified set/list/tuple 
+    def isdisjoint(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> bool:
+        """ Returns a boolean stating whether the key set contents overlap with the specified set/list/tuple 
             Sets are disjoint if and only if their intersection is an empty set.
         """
-        return False if set(self.intersection(s, as_of=as_of)) else True
+        return not set(self.intersection(s, as_of=as_of))
     
-    def difference(self, s: Iterable, *, as_of: GenericTimestamp=None) -> Iterable:
+    def difference(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Iterable[UserKey]:
         """ Returns an iterable of keys in the key set that are not in the specified sets/lists/tuples  """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
@@ -124,13 +124,13 @@ class KeySet(Container):
             if decode_key(entry_pair.builder) not in s:
                 yield decode_key(entry_pair.builder)
     
-    def intersection(self, s: Iterable, *, as_of: GenericTimestamp=None) -> Iterable:
+    def intersection(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Iterable[UserKey]:
         """ Returns an iterable with elements common to the key set and the specified iterables """
         for element in s:
             if self.contains(element, as_of=as_of):
                 yield element
     
-    def symmetric_difference(self, s: Iterable, *, as_of: GenericTimestamp=None) -> set:
+    def symmetric_difference(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> set[UserKey]:
         """ Returns a new set with elements in either the key set or the specified iterable, but not both. """
         elements = self.union(s, as_of=as_of)
         for element in s:
@@ -138,17 +138,17 @@ class KeySet(Container):
                 elements.remove(element)
         return elements
     
-    def union(self, s: Iterable, *, as_of: GenericTimestamp=None) -> set:
+    def union(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> set[UserKey]:
         """ Returns a new set with elements from both the key set and the specified set """
         return set(self.items(as_of=as_of)).union(s)
     
-    def difference_update(self, s: Iterable, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+    def difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, removing elements found in the specified iterables. """
         for element in s:
             if self.contains(element):
                 self.remove(element, bundler=bundler, comment=comment)
         
-    def intersection_update(self, s: Iterable, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+    def intersection_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, keeping only elements found in the key set and the specified iterables. """
         intersection = self.intersection(s)
         iterable = self._database.get_store().get_keyed_entries(
@@ -160,7 +160,7 @@ class KeySet(Container):
             if not entry_pair.builder.key in intersection:
                 self._add_entry(key=entry_pair.builder.key, value=deletion, bundler=bundler, comment=comment)
 
-    def symmetric_difference_update(self, s: Iterable, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+    def symmetric_difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, keeping only elements found in either the key set or the specified set, not both. """
         sym_diff = self.symmetric_difference(s)
         iterator = self._database.get_store().get_keyed_entries(
