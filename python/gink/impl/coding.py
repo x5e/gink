@@ -22,6 +22,7 @@ BOX: int = Behavior.BOX  # type: ignore
 NOUN: int = Behavior.NOUN  # type: ignore
 ROLE: int = Behavior.ROLE # type: ignore
 VERB: int = Behavior.VERB # type: ignore
+KEY_SET: int = Behavior.KEY_SET # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
@@ -130,7 +131,7 @@ class Placement(NamedTuple):
         behavior = getattr(builder, "behavior")
         position = getattr(builder, "effective")
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None]
-        if behavior == DIRECTORY:
+        if behavior in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(builder)
         elif behavior in (BOX, NOUN):
             middle_key = None
@@ -162,7 +163,7 @@ class Placement(NamedTuple):
         expiry_bytes = data[-8:]
         entry_muid = Muid.from_bytes(entry_muid_bytes)
         middle_key: Union[MuTimestamp, UserKey, Muid, None]
-        if using == DIRECTORY:
+        if using in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(middle_key_bytes)
         elif using == SEQUENCE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
