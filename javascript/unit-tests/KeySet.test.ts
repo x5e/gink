@@ -39,5 +39,7 @@ test('delete and size work as intended', async function() {
     await ks.add("key1");
     await ks.add("key2");
     ensure(await ks.size() === 2);
-    
+
+    console.log(await ks.toJson())
+
 });
