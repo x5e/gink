@@ -50,9 +50,11 @@ class KeySet(Container):
     
     def update(self, keys: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Adds multiple specified values to the key set """
-        # Probably best to initialize a bundler here
+        if bundler is None:
+            bundler = Bundler(comment)
         for key in keys:
             self._add_entry(key=key, value=inclusion, bundler=bundler, comment=comment)
+        self._database.commit(bundler)
 
     def contains(self, key: UserKey, as_of: GenericTimestamp=None):
         """ Returns a boolean stating whether the specified key is in the key set """
@@ -144,12 +146,17 @@ class KeySet(Container):
     
     def difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, removing elements found in the specified iterables. """
+        if bundler is None:
+            bundler = Bundler()
         for element in s:
             if self.contains(element):
                 self.remove(element, bundler=bundler, comment=comment)
+        self._database.commit(bundler)
         
     def intersection_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, keeping only elements found in the key set and the specified iterables. """
+        if bundler is None:
+            bundler = Bundler()
         intersection = self.intersection(s)
         iterable = self._database.get_store().get_keyed_entries(
             container=self.get_muid(), behavior=self.BEHAVIOR, as_of=self._database.get_now())
@@ -159,6 +166,7 @@ class KeySet(Container):
                 continue
             if not entry_pair.builder.key in intersection:
                 self._add_entry(key=entry_pair.builder.key, value=deletion, bundler=bundler, comment=comment)
+        self._database.commit(bundler)
 
     def symmetric_difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, keeping only elements found in either the key set or the specified set, not both. """
