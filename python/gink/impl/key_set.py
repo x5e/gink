@@ -1,6 +1,6 @@
 """ Contains the key set class definition """
 
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Container as StandardContainer
 
 from .database import Database
 from .muid import Muid
@@ -97,7 +97,7 @@ class KeySet(Container):
                 return False
         return True
     
-    def issubset(self, superset: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> bool:
+    def issubset(self, superset: StandardContainer[UserKey], *, as_of: GenericTimestamp=None) -> bool:
         """ Returns a Boolean stating whether the key set is a subset of the specified set/list/tuple """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
@@ -115,7 +115,7 @@ class KeySet(Container):
         """
         return not set(self.intersection(s, as_of=as_of))
     
-    def difference(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Iterable[UserKey]:
+    def difference(self, s: StandardContainer[UserKey], *, as_of: GenericTimestamp=None) -> Iterable[UserKey]:
         """ Returns an iterable of keys in the key set that are not in the specified sets/lists/tuples  """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
@@ -124,7 +124,7 @@ class KeySet(Container):
             if entry_pair.builder.deletion:
                 continue
             if decode_key(entry_pair.builder) not in s:
-                yield decode_key(entry_pair.builder)
+                yield decode_key(entry_pair.builder) # type: ignore
     
     def intersection(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Iterable[UserKey]:
         """ Returns an iterable with elements common to the key set and the specified iterables """
