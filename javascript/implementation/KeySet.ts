@@ -33,19 +33,20 @@ export class KeySet extends Container {
         return await this.addEntry(key, Container.INCLUSION, change)
     }
 
+    // clear - need to add but not sure how yet
+
     async delete(key: KeyType, change?: Bundler|string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change)
     }
 
-    // async entries(asOf?: AsOf): Promise<Set<KeyType>> {
-    //     const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
-    //     const resultSet = new Set()
-    //     for (const [key, entry] of entries) {
-    //         const val = await interpret(entry, this.ginkInstance);
-    //         resultSet.add(val);
-    //     }
-    //     return resultSet;
-    // }
+    async entries(asOf?: AsOf): Promise<Set<KeyType>> {
+        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        const resultSet = new Set<KeyType>
+        for (const [key, entry] of entries) {
+            resultSet.add(key);
+        }
+        return resultSet;
+    }
 
     async has(key: KeyType, asOf?: AsOf): Promise<boolean> {
         const result = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);

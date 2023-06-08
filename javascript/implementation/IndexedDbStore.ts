@@ -262,7 +262,7 @@ export class IndexedDbStore implements Store {
                 const behavior: Behavior = entryBuilder.getBehavior();
                 let effectiveKey: KeyType | Timestamp | MuidTuple | [];
                 let replacing = true;
-                if (behavior == Behavior.DIRECTORY) {
+                if (behavior == Behavior.DIRECTORY || behavior == Behavior.KEY_SET) {
                     ensure(entryBuilder.hasKey());
                     effectiveKey = unwrapKey(entryBuilder.getKey());
                 } else if (behavior == Behavior.SEQUENCE) {
@@ -481,7 +481,7 @@ export class IndexedDbStore implements Store {
         const result = new Map();
         for (; cursor && matches(cursor.key[0], desiredSrc); cursor = await cursor.continue()) {
             const entry = <Entry>cursor.value;
-            ensure(entry.behavior == Behavior.DIRECTORY);
+            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET);
             const key = entry.effectiveKey;
             ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array));
             if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime) {

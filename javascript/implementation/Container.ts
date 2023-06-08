@@ -116,7 +116,7 @@ export class Container {
             } else if (value instanceof Deletion) {
                 entryBuilder.setDeletion(true);
             } else if (value instanceof Inclusion) {
-                entryBuilder.setInclusion(true);
+                value = Inclusion; // IDK WHAT TO PUT HERE
             } else {
                 entryBuilder.setValue(wrapValue(value));
             }
