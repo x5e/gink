@@ -1,6 +1,6 @@
 """ Contains the key set class definition """
 
-from typing import Optional, Iterable, Container as StandardContainer
+from typing import Optional, Iterable, Container as StandardContainer, Set
 
 from .database import Database
 from .muid import Muid
@@ -132,7 +132,7 @@ class KeySet(Container):
             if self.contains(element, as_of=as_of):
                 yield element
     
-    def symmetric_difference(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> set[UserKey]:
+    def symmetric_difference(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Set[UserKey]:
         """ Returns a new set with elements in either the key set or the specified iterable, but not both. """
         elements = self.union(s, as_of=as_of)
         for element in s:
@@ -140,7 +140,7 @@ class KeySet(Container):
                 elements.remove(element)
         return elements
     
-    def union(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> set[UserKey]:
+    def union(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Set[UserKey]:
         """ Returns a new set with elements from both the key set and the specified set """
         return set(self.items(as_of=as_of)).union(s)
     
