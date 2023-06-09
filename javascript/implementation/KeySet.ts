@@ -3,7 +3,7 @@ import { Container } from "./Container";
 import { KeyType, Muid, AsOf } from "./typedefs"
 import { Bundler } from "./Bundler";
 import { ensure, muidToString } from "./utils";
-import { toJson, interpret } from "./factories"
+import { toJson } from "./factories"
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class KeySet extends Container {
@@ -41,14 +41,12 @@ export class KeySet extends Container {
      */
     async update(keys: Iterable<KeyType>, change?: Bundler|string): Promise<Set<Muid>> {
         // Maybe initialize a bundler here?
-        const additions = new Set<Muid>
+        const additions = new Set<Muid>;
         for (const key of keys) {
-            additions.add(await this.addEntry(key, Container.INCLUSION, change))
+            additions.add(await this.addEntry(key, Container.INCLUSION, change));
         }
-        return additions // There is probably a way better way of returning this info
+        return additions;
     }
-
-    // clear ??
 
     /**
      * Adds a deletion marker (tombstone) for a particular key in the directory.
@@ -130,7 +128,7 @@ export class KeySet extends Container {
      */
     async isSuperset(subset: Iterable<KeyType>): Promise<boolean> {
         for (const elem of subset) {
-            if (!this.has(elem)) {
+            if (!await this.has(elem)) {
                 return false;
             }
         }
@@ -211,8 +209,8 @@ export class KeySet extends Container {
             }   else {
                 returning += ",";
             }
-            returning += `"${key}"`;
-            // returning += await toJson(value, indent === false ? false : +indent + 1, asOf, seen);
+            // returning += `"${key}"`;
+            returning += await toJson(value, indent === false ? false : +indent + 1, asOf, seen);
         }
         returning += "}";
         return returning;
