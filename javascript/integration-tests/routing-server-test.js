@@ -5,7 +5,7 @@ const { GinkInstance, IndexedDbStore } = require("../tsc.out/");
     new Expector("mkdir", ["-p", "/tmp/routing-server-test"]);
     await new Promise((resolve) => setTimeout(resolve, 10));
     if (!process.env["GINK_DEBUG"]) {
-    const server = new Expector("./tsc.out/main.js", [],
+    const server = new Expector("./tsc.out/implementation/main.js", [],
         { env: { GINK_PORT: "8080", GINK_DATA_ROOT: "/tmp/routing-server-test", ...process.env } });
 
     await server.expect("RoutingServer ready");

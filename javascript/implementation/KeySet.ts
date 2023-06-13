@@ -73,7 +73,7 @@ export class KeySet extends Container {
         return resultMap;
     }
 
-    // forEach ??
+    // forEach ?? In the docs but not entirely sure how to implement
 
     /**
      * Returns whether the key set has a key or not.
@@ -109,7 +109,7 @@ export class KeySet extends Container {
         return resultSet;
     }
 
-    // [@@iterator] ??
+    // [@@iterator] ?? In the docs but not entirely sure how to implement
 
     /**
      * How many entries are in the key set.
