@@ -1,6 +1,6 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
-const { GinkInstance, IndexedDbStore } = require("../tsc.out/");
+const { GinkInstance, IndexedDbStore } = require("../tsc.out/implementation");
 (async function () {
     new Expector("mkdir", ["-p", "/tmp/routing-server-test"]);
     await new Promise((resolve) => setTimeout(resolve, 10));
