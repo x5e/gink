@@ -5,6 +5,7 @@ const ChangeBuilder = require("../proto/change_pb")["Change"];
 const EntryBuilder = require("../proto/entry_pb")["Entry"];
 const ContainerBuilder = require("../proto/container_pb")["Container"];
 const SyncMessageBuilder = require("../proto/sync_message_pb")["SyncMessage"];
+const AckBuilder = SyncMessageBuilder.Ack;
 const GreetingBuilder = SyncMessageBuilder.Greeting;
 const GreetingEntryBuilder = GreetingBuilder.GreetingEntry;
 const LogFileBuilder = require("../proto/log_file_pb")["LogFile"];
@@ -41,4 +42,5 @@ module.exports = {
     DocumentBuilder,
     TupleBuilder,
     ClearanceBuilder,
+    AckBuilder
 }

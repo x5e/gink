@@ -3,7 +3,7 @@ const Expector = require("./Expector");
 (async () => {
     console.log("starting");
     const server = new Expector("./tsc.out/implementation/main.js", [], {env: {GINK_PORT: "8080", ...process.env}});
-    await server.expect("ready", 60000); // error somewhere here
+    await server.expect("ready", 60000);
     const client = new Expector("./tsc.out/implementation/main.js", ["ws://127.0.0.1:8080/"]);
     await client.expect("ready", 60000);
     console.log("all ready");

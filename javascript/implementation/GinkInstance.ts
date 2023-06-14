@@ -277,6 +277,7 @@ export class GinkInstance {
             }
         } catch (e) {
             //TODO: Send some sensible code to the peer to say what went wrong.
+            this.logger(e);
             this.peers.get(fromConnectionId)?.close();
             this.peers.delete(fromConnectionId);
         } finally {
