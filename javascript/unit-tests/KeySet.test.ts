@@ -1,7 +1,8 @@
 
 import { sleep } from "./test_utils";
-import { GinkInstance, Bundler, IndexedDbStore } from "../implementation";
-import { ensure } from "../implementation/utils"
+import { GinkInstance, Bundler, IndexedDbStore, Value } from "../implementation";
+import { ensure, matches } from "../implementation/utils"
+import { KeySet } from "../implementation";
 
 test('add and has basic data', async function() {
     // set up the objects
@@ -23,7 +24,7 @@ test('add and has basic data', async function() {
     ensure(await ks.has(myKey));
 });
 
-test('delete and size work as intended', async function() {
+test('delete, pop, and size work as intended', async function() {
     const store = new IndexedDbStore('test2', true);
     const instance = new GinkInstance(store);
     const ks = await instance.createKeySet();
@@ -38,25 +39,42 @@ test('delete and size work as intended', async function() {
     await ks.add("key1");
     await ks.add("key2");
     ensure(await ks.size() === 2);
+
+    const popped = await ks.pop("key2");
+    ensure(popped == "key2");
+    ensure(await ks.size() === 1)
 });
 
-test('update and entries work as intended', async function() {
-    const store = new IndexedDbStore('test3', true);
+test('entries works as intended', async function() {
+    const instance = new GinkInstance(new IndexedDbStore('test3', true));
+    const ks: KeySet = await instance.createKeySet();
+    await ks.update(["key1", "key2", "key3"]);
+    const buffer = <Value[]>[];
+
+    for await (const [muid, contents] of ks.entries()) {
+        const val = await ks.pop(contents);
+        ensure(val == contents, `val=${val}, contents=${contents}`);
+        buffer.push(<Value>contents);
+    }
+    ensure(matches(buffer, ["key1", "key2", "key3"]));
+});
+
+test('add multiple keys within a bundler', async function() {
+    const store = new IndexedDbStore('test4', true);
     const instance = new GinkInstance(store);
     const ks = await instance.createKeySet();
 
-    await ks.update(['key1', 'key2', 'key3']);
+    // make multiple changes in a change set
+    const bundler = new Bundler();
+    await ks.add("key1", bundler);
+    await ks.add("key2", bundler);
+    bundler.comment = "My first bundle!";
+    await instance.addBundler(bundler);
 
-    const myMap = await ks.entries();
-    ensure(myMap.has("key1"));
-    ensure(myMap.has("key3"));
-
-    // update using a set rather than an array
-    await ks.update(new Set(["key4", "key5", "key6"]));
-    await ks.delete("key5");
-    const myMap2 = await ks.entries();
-    ensure(myMap2.has("key6"));
-    ensure(!myMap2.has("key5"));
+    // verify the result
+    ensure(await ks.has("key1"));
+    ensure(await ks.has("key2"));
+    ensure(!await ks.has("key3"));
 });
 
 test('tests superset, union, intersection, symmetric difference, difference', async function() {
@@ -135,13 +153,14 @@ test('KeySet.asOf', async function() {
     ensure(await ks.size(time1)==1);
     ensure(await ks.size(time2)==2);
 
-    // testing asOf for entries, values, and keys
+    // testing asOf toSet
     const values = await ks.toSet(time0);
-    const entries = await ks.entries(time2);
+    const values1 = await ks.toSet(time1);
 
     ensure(!values.size);
-    ensure(entries.size==2);
-    ensure(!values.has("key2"))
+    ensure(!values.has("key2"));
+    ensure(values1.size == 1);
+    ensure(values1.has("key1"));
 });
 
 test('KeySet.clear', async function() {
@@ -150,11 +169,11 @@ test('KeySet.clear', async function() {
     await ks.update(["key1", "key2"]);
     const clearMuid = await ks.clear();
     await ks.update(["key3", "key4"]);
-    const asMap = await ks.entries();
-    ensure(asMap.has("key4") && !asMap.has("key1"), "did not clear")
-    const asMapBeforeClear = await ks.entries(clearMuid.timestamp);
-    if (asMapBeforeClear.has("key4") || !asMapBeforeClear.has("key1")) {
-        console.log(asMapBeforeClear);
+    const asSet = await ks.toSet();
+    ensure(asSet.has("key4") && !asSet.has("key1"), "did not clear")
+    const asSetBeforeClear = await ks.toSet(clearMuid.timestamp);
+    if (asSetBeforeClear.has("key4") || !asSetBeforeClear.has("key1")) {
+        console.log(asSetBeforeClear);
         throw new Error("busted");
     }
 });
@@ -169,22 +188,4 @@ test('KeySet.purge', async function () {
     await ks.clear(true);
     size = await ks.size();
     ensure(size == 0);
-});
-
-test('add multiple keys within a bundler', async function() {
-    const store = new IndexedDbStore('test10', true);
-    const instance = new GinkInstance(store);
-    const ks = await instance.createKeySet();
-
-    // make multiple changes in a change set
-    const bundler = new Bundler();
-    await ks.add("key1", bundler);
-    await ks.add("key2", bundler);
-    bundler.comment = "My first bundle!";
-    await instance.addBundler(bundler);
-
-    // verify the result
-    ensure(await ks.has("key1"));
-    ensure(await ks.has("key2"));
-    ensure(!await ks.has("key3"));
 });

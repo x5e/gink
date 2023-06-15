@@ -2,8 +2,8 @@ import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
 import { KeyType, Muid, AsOf } from "./typedefs"
 import { Bundler } from "./Bundler";
-import { ensure, muidToString } from "./utils";
-import { toJson } from "./factories"
+import { ensure, muidToString, muidTupleToMuid } from "./utils";
+import { interpret, toJson } from "./factories"
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class KeySet extends Container {
@@ -36,8 +36,8 @@ export class KeySet extends Container {
     /**
      * Similar to add method, but for multiple entries.
      * @param keys an iterable of keys to add to the key set
-     * @param change an uptional bundler to put this in.
-     * @returns a promise that resolve to a set of Muids for the created entries.
+     * @param change an optional bundler to put this in.
+     * @returns a promise that resolves to a set of Muids for the created entries.
      */
     async update(keys: Iterable<KeyType>, change?: Bundler|string): Promise<Set<Muid>> {
         let bundler: Bundler;
@@ -55,6 +55,21 @@ export class KeySet extends Container {
     }
 
     /**
+     * Tries to delete the key and return the key itself, throws an error if key not found.
+     * @param key one key of KeyType
+     * @param change an optional bundler to put this in.
+     * @returns a promise that resolves to a key.
+     */
+    async pop(key: KeyType, change?: Bundler|string): Promise<KeyType> {
+        if (await this.has(key)) {
+            await this.delete(key, change)
+            return key;
+        } else {
+            throw new Error("Key not found");
+        }
+    }
+
+    /**
      * Adds a deletion marker (tombstone) for a particular key in the directory.
      * The corresponding value will be seen to be unset in the data model.
      * @param key
@@ -66,17 +81,18 @@ export class KeySet extends Container {
     }
 
     /**
-     * Returns a map of [key, key] - the value is the same as the key for a set
+     * Function to iterate over the contents of the key set, showing the address of each entry (which can be used in pop).
      * @param asOf
-     * @returns a promise of a map of [KeyType, KeyType]
+     * @returns an async iterator across everything in the key set, with values returned as pairs of Muid, Key
      */
-    async entries(asOf?: AsOf): Promise<Map<KeyType, KeyType>> {
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
-        const resultMap = new Map();
-        for (const [key, entry] of entries) {
-            resultMap.set(key, key);
-        }
-        return resultMap;
+    entries(asOf?: AsOf): AsyncGenerator<[Muid,KeyType], void, unknown> {
+        const thisSet = this;
+        return (async function*(){
+            const entries = await thisSet.ginkInstance.store.getKeyedEntries(thisSet.address, asOf);
+            for (const [key, entry] of entries) {
+                yield [muidTupleToMuid(entry.entryId), key]
+            }
+        })();
     }
 
     /**
