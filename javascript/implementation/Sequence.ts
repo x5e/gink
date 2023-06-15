@@ -166,7 +166,6 @@ export class Sequence extends Container {
     }
 
     async size(asOf?: AsOf): Promise<number> {
-        //TODO(TEST ME)
         const entries = await this.ginkInstance.store.getOrderedEntries(this.address, Infinity, asOf);
         return entries.length;
     }

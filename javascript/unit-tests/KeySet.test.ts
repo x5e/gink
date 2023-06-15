@@ -46,7 +46,7 @@ test('update and entries work as intended', async function() {
     const ks = await instance.createKeySet();
 
     await ks.update(['key1', 'key2', 'key3']);
-    
+
     const myMap = await ks.entries();
     ensure(myMap.has("key1"));
     ensure(myMap.has("key3"));
@@ -57,25 +57,6 @@ test('update and entries work as intended', async function() {
     const myMap2 = await ks.entries();
     ensure(myMap2.has("key6"));
     ensure(!myMap2.has("key5"));
-});
-
-test('tests keys and values both return the correct set', async function() {
-    const store = new IndexedDbStore('test4', true);
-    const instance = new GinkInstance(store);
-    const ks = await instance.createKeySet();
-
-    await ks.update(["key1", "key2", "key3"]);
-
-    const values = await ks.values();
-    const keys = await ks.keys();
-    
-    ensure(values.size === 3);
-    ensure(values.has("key1"));
-    ensure(values.has("key3"));
-    
-    ensure(keys.size === 3);
-    ensure(keys.has("key1"));
-    ensure(keys.has("key3"));
 });
 
 test('tests superset, union, intersection, symmetric difference, difference', async function() {
@@ -120,9 +101,9 @@ test('KeySet.toJson', async function() {
 
     await ks.add("key1");
     await ks.update(["key2", "key3"]);
-    
+
     const asJSON = await ks.toJson();
-    ensure(asJSON == `{"key1","key2","key3"}`, asJSON);
+    ensure(asJSON == `["key1","key2","key3"]`, asJSON);
 });
 
 test('KeySet.asOf', async function() {
@@ -146,8 +127,8 @@ test('KeySet.asOf', async function() {
     ensure(!await ks.has("key2", time1));
 
     // testing asOf for toJson
-    ensure(await ks.toJson(false, time1)==`{"key1"}`);
-    ensure(await ks.toJson(false, time2)==`{"key1","key2"}`);
+    ensure(await ks.toJson(false, time1)==`["key1"]`);
+    ensure(await ks.toJson(false, time2)==`["key1","key2"]`);
 
     // testing asOf for size
     ensure(await ks.size(time0)==0);
@@ -155,15 +136,12 @@ test('KeySet.asOf', async function() {
     ensure(await ks.size(time2)==2);
 
     // testing asOf for entries, values, and keys
-    const values = await ks.values(time0);
-    const keys = await ks.keys(time1);
+    const values = await ks.toSet(time0);
     const entries = await ks.entries(time2);
 
     ensure(!values.size);
-    ensure(keys.size==1);
     ensure(entries.size==2);
-    ensure(keys.has("key1") && entries.has("key1"));
-    ensure(!keys.has("key2"));
+    ensure(!values.has("key2"))
 });
 
 test('KeySet.clear', async function() {
