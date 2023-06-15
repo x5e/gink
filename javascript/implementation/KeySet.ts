@@ -19,22 +19,22 @@ export class KeySet extends Container {
 
     /**
      * Adds a key to the keyset.
-     * If a bundler is supplied, the function will add the entry to that bundler 
+     * If a bundler is supplied, the function will add the entry to that bundler
      * and return immediately (presumably you know what to do with a CS if you passed it in).
      * If the caller does not supply a bundler, then one is created on the fly, and
      * then this method will await on the CS being added to the database instance.
      * This is to allow simple console usage like:
      *      await myKeySet.add("foo");
-     * @param key 
+     * @param key
      * @param change an optional bundler to put this in.
-     * @returns a promise that resolves to the address of the newly created entry  
+     * @returns a promise that resolves to the address of the newly created entry
      */
     async add(key: KeyType, change?: Bundler|string): Promise<Muid> {
         return await this.addEntry(key, Container.INCLUSION, change);
     }
 
     /**
-     * Similar to add method, but for multiple entries. 
+     * Similar to add method, but for multiple entries.
      * @param keys an iterable of keys to add to the key set
      * @param change an uptional bundler to put this in.
      * @returns a promise that resolve to a set of Muids for the created entries.
@@ -51,7 +51,7 @@ export class KeySet extends Container {
     /**
      * Adds a deletion marker (tombstone) for a particular key in the directory.
      * The corresponding value will be seen to be unset in the data model.
-     * @param key 
+     * @param key
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
@@ -61,7 +61,7 @@ export class KeySet extends Container {
 
     /**
      * Returns a map of [key, key] - the value is the same as the key for a set
-     * @param asOf 
+     * @param asOf
      * @returns a promise of a map of [KeyType, KeyType]
      */
     async entries(asOf?: AsOf): Promise<Map<KeyType, KeyType>> {
@@ -77,8 +77,8 @@ export class KeySet extends Container {
 
     /**
      * Returns whether the key set has a key or not.
-     * @param key 
-     * @param asOf 
+     * @param key
+     * @param asOf
      * @returns true if the key set has the key, false if not.
      */
     async has(key: KeyType, asOf?: AsOf): Promise<boolean> {
@@ -88,7 +88,7 @@ export class KeySet extends Container {
 
     /**
      * An alias for the values method.
-     * @param asOf 
+     * @param asOf
      * @returns a promise that resolves to a set with KeyTypes.
      */
     async keys(asOf?: AsOf): Promise<Set<KeyType>> {
@@ -97,7 +97,7 @@ export class KeySet extends Container {
 
     /**
      * Returns the contents of the key set as a set.
-     * @param asOf 
+     * @param asOf
      * @returns a promise that resolves to a set with KeyTypes.
      */
     async values(asOf?: AsOf): Promise<Set<KeyType>> {
@@ -108,8 +108,6 @@ export class KeySet extends Container {
         }
         return resultSet;
     }
-
-    // [@@iterator] ?? In the docs but not entirely sure how to implement
 
     /**
      * How many entries are in the key set.
@@ -124,7 +122,7 @@ export class KeySet extends Container {
     /**
      * Returns a boolean stating whether all contents of the specified set are in the key set
      * @param subset another set of KeyTypes to compare contents to
-     * @returns a promise resolving to true if every element from subset are in the key set 
+     * @returns a promise resolving to true if every element from subset are in the key set
      */
     async isSuperset(subset: Iterable<KeyType>): Promise<boolean> {
         for (const elem of subset) {
@@ -134,7 +132,7 @@ export class KeySet extends Container {
         }
         return true;
     }
-    
+
     /**
      * All values in either the key set or the provided iterable
      * @param iterable an iterable of KeyTypes
@@ -217,4 +215,3 @@ export class KeySet extends Container {
 
     }
 }
-
