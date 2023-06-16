@@ -1,6 +1,6 @@
 import { sleep } from "./test_utils";
 import { GinkInstance, Bundler, IndexedDbStore, Directory } from "../implementation";
-import { ensure } from "../implementation/utils"
+import { ensure } from "../implementation/utils";
 
 test('set and get Basic data', async function() {
     // set up the objects
@@ -130,13 +130,19 @@ test('Directory.asOf', async function () {
 test('Directory.purge', async function () {
     const instance = new GinkInstance(new IndexedDbStore('Directory.purge', true));
     const directory = await instance.createDirectory();
+
     await directory.set('A', 99);
+    await sleep(10);
+    const middle = Date.now() * 1000;
+    await sleep(10);
     await directory.set('B', false);
-    let size = await directory.size();
-    ensure(size == 2);
+
+    ensure(await directory.has("A") && await directory.has("B"));
     await directory.clear(true);
-    size = await directory.size();
-    ensure(size == 0);
+
+    const found = await instance.store.getKeyedEntries(directory.address, middle);
+    ensure(!found.size);
+    ensure(!await directory.size())
 });
 
 test('Directory.clear', async function() {
