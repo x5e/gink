@@ -130,7 +130,7 @@ test('KeySet.clear', async function() {
     const ks = await instance.createKeySet();
     await ks.update(["key1", "key2"]);
     const clearMuid = await ks.clear();
-    await ks.update(["key3", "key4"]);
+    ensure(await ks.update(["key3", "key4"]) instanceof Bundler);
     const asSet = await ks.toSet();
     ensure(asSet.has("key4") && !asSet.has("key1"), "did not clear")
     const asSetBeforeClear = await ks.toSet(clearMuid.timestamp);
