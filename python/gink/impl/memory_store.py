@@ -69,11 +69,9 @@ class MemoryStore(AbstractStore):
         raise Exception("unexpected")
 
     def get_edge_entries(
-            self,
-            as_of: MuTimestamp,
-            verb: Optional[Muid] = None,
-            source: Optional[Muid] = None,
-            target: Optional[Muid] = None) -> Iterable[FoundEntry]:
+            self, as_of: MuTimestamp, limit: Optional[int] = None, offset: int = 0,
+            verb: Optional[Muid] = None, sub: Optional[Muid] = None,
+            obj: Optional[Muid] = None) -> Iterable[FoundEntry]:
         raise NotImplementedError()
 
     def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:

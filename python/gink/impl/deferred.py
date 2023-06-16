@@ -34,6 +34,3 @@ class Deferred(Muid):
             return False
         return ((self.offset, self.medallion, self.timestamp)  # type: ignore
                 == (other.offset, other.medallion, other.timestamp))  # type: ignore
-
-    def __ne__(self, other):
-        return not self.__eq__(other)

@@ -26,21 +26,4 @@ def test_basics():
             edges = set(verb.get_edges())
             assert edges == {edge2}
 
-def test_to_from():
-    store = LmdbStore()
-    db = Database(store=store)
-    bundler = Bundler()
-    noun1 = Noun(bundler=bundler)
-    noun2 = Noun(bundler=bundler)
-    db.commit(bundler=bundler)
-    verb = Verb()
-    bundler = Bundler()
-    edge12 = verb.create_edge(noun1, noun2, bundler=bundler)
-    edge21 = verb.create_edge(noun2, noun1, bundler=bundler)
-    db.commit(bundler=bundler)
-    edges_from1 = set(noun1.get_edges_from())
-    assert edges_from1 == {edge12}, edges_from1
-    edges_to = set(noun1.get_edges_to())
-    assert edges_to == {edge21}, edges_to
-
 

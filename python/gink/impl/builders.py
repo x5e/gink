@@ -37,12 +37,10 @@ if TYPE_CHECKING:
         key: KeyBuilder
 
 
-    class ValueBuilder(Message):
-        pass
+    class ValueBuilder(Message): pass
 
 
-    class KeyBuilder(Message):
-        pass
+    class KeyBuilder(Message): pass
 
 
     class ContainerBuilder(Message):
@@ -56,16 +54,13 @@ if TYPE_CHECKING:
         purge: bool
 
 
-    class ClearanceBuilder(Message):
-        pass
+    class ClearanceBuilder(Message): pass
 
 
-    class MuidBuilder(Message):
-        pass
+    class MuidBuilder(Message): pass
 
 
-    class LogFile(Message):
-        pass
+    class LogFile(Message): pass
 
 
     class Behavior(IntEnum):

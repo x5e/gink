@@ -2,6 +2,8 @@
 from __future__ import annotations
 from typing import Optional, Union, Iterable
 
+from .muid import Muid
+
 from .typedefs import GenericTimestamp, UserValue, Inclusion
 from .container import Container
 from .coding import VERB, NOUN, inclusion, encode_value, decode_value
@@ -11,15 +13,13 @@ from .bundler import Bundler
 from .builders import EntryBuilder, ChangeBuilder
 from .addressable import Addressable
 
-
 class Noun(Container):
     BEHAVIOR = NOUN
 
     def __init__(self, *,
-                 root: bool = False,
-                 muid: Optional[Muid] = None,
-                 bundler: Optional[Bundler] = None,
-                 database: Optional[Database] = None):
+                 root: bool=False,
+                 muid: Optional[Muid]=None,
+                 database: Optional[Database]=None):
         """
         Creates a placeholder node to contain the idea of something.
 
@@ -27,16 +27,13 @@ class Noun(Container):
         db: database send commits through, or last db instance created if None
         """
         database = database or Database.get_last()
-        immediate = False
-        if not isinstance(bundler, Bundler):
-            immediate = True
-            bundler = Bundler()
+        bundler = Bundler()
         if root:
             muid = Muid(-1, -1, NOUN)
         if muid is None:
             muid = Container._create(NOUN, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
-        if len(bundler) and immediate:
+        if len(bundler):
             self._database.commit(bundler)
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
@@ -58,16 +55,6 @@ class Noun(Container):
     def __bool__(self) -> bool:
         return self.is_alive()
 
-    def get_edges_from(self, as_of: GenericTimestamp = None) -> Iterable[Edge]:
-        ts = self._database.resolve_timestamp(as_of)
-        for found in self._database.get_store().get_edge_entries(source=self._muid, as_of=ts):
-            yield Edge(muid=found.address, database=self._database, _builder=found.builder)
-
-    def get_edges_to(self, as_of: GenericTimestamp = None) -> Iterable[Edge]:
-        ts = self._database.resolve_timestamp(as_of)
-        for found in self._database.get_store().get_edge_entries(target=self._muid, as_of=ts):
-            yield Edge(muid=found.address, database=self._database, _builder=found.builder)
-
     def remove(self, *,
                purge: bool = False,
                bundler: Optional[Bundler] = None,
@@ -88,14 +75,13 @@ class Noun(Container):
             self._database.commit(bundler)
         return result
 
-
 class Verb(Container):
     BEHAVIOR = VERB
 
     def __init__(self, *,
                  root=False,
                  muid: Optional[Muid] = None,
-                 database: Optional[Database] = None,
+                 database: Optional[Database]=None,
                  contents: Optional[Iterable[Edge]] = None):
         database = database or Database.get_last()
         bundler = Bundler()
@@ -105,7 +91,7 @@ class Verb(Container):
             muid = Container._create(VERB, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         if contents:
-            pass  # This is intentional! The edge constructors will restore them!
+            pass # This is intentional! The edge constructors will restore them!
         if len(bundler):
             self._database.commit(bundler)
 
@@ -120,9 +106,8 @@ class Verb(Container):
             source=sub,
             target=obj,
             valued=msg,
-            bundler=bundler,
             database=self._database,
-            _immediate=immediate)
+            _immediate = immediate)
 
     def get_edges(self, *,
                   source: Union[Noun, Muid, None] = None,
@@ -132,7 +117,7 @@ class Verb(Container):
         source = source._muid if isinstance(source, Noun) else source
         target = target._muid if isinstance(target, Noun) else target
         for found_entry in self._database.get_store().get_edge_entries(
-                ts, verb=self._muid, source=source, target=target):
+            ts, verb=self._muid, source=source, target=target):
             yield Edge(muid=found_entry.address, _builder=found_entry.builder)
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
@@ -142,7 +127,7 @@ class Verb(Container):
         return count
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        """ Dump all the edges for this verb.
+        """ Dump all of the edges for this verb.
         """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "root=True"
@@ -156,58 +141,7 @@ class Verb(Container):
         result += ",\n\n".join(stuffing) + ",\n\n])"
         return result
 
-
 class Edge(Addressable):
-
-    def __init__(self,
-                 muid: Union[Muid, None] = None, *,
-                 action: Union[Muid, Verb, None] = None,
-                 source: Union[Muid, Noun, None] = None,
-                 target: Union[Muid, Noun, None] = None,
-                 valued: Union[UserValue, Inclusion] = inclusion,
-                 bundler: Optional[Bundler] = None,
-                 database: Optional[Database] = None,
-                 _builder: Optional[EntryBuilder] = None,
-                 _immediate=False):
-        database = database or Database.get_last()
-        self._valued: Union[UserValue, Inclusion]
-        if action is None or source is None or target is None:
-            if muid is None:
-                raise ValueError("must specify muid for existing edge or verb, left, and rite")
-            if _builder is None:
-                _builder = self._database.get_store().get_entry(muid)
-                if _builder is None:
-                    raise ValueError("couldn't find that edge!")
-            self._action = Muid.create(context=muid, builder=_builder.container)
-            self._source = Muid.create(context=muid, builder=_builder.pair.left)
-            self._target = Muid.create(context=muid, builder=_builder.pair.rite)
-            if _builder.HasField("value"):
-                self._valued = decode_value(_builder.value)
-            else:
-                self._valued = inclusion
-        else:
-            self._source = source if isinstance(source, Muid) else source._muid
-            self._target = target if isinstance(target, Muid) else target._muid
-            self._action = action if isinstance(action, Muid) else action._muid
-            if bundler is None:
-                _immediate = True
-                bundler = Bundler()
-            change_builder = ChangeBuilder()
-            entry_builder: EntryBuilder = change_builder.entry
-            entry_builder.behavior = VERB
-            self._source.put_into(entry_builder.pair.left)
-            self._target.put_into(entry_builder.pair.rite)
-            self._action.put_into(entry_builder.container)
-            self._valued = valued
-            if not isinstance(valued, Inclusion):
-                encode_value(valued, entry_builder.value)
-            if muid is None:
-                muid = bundler.add_change(change_builder)
-            else:
-                muid.put_into(change_builder.restore)
-            if _immediate:
-                database.commit(bundler)
-        super().__init__(database=database, muid=muid)
 
     def dumps(self, indent=1) -> str:
         contents = []
@@ -233,6 +167,57 @@ class Edge(Addressable):
 
     def _get_container(self) -> Muid:
         return self._action
+
+    def __init__(self, muid: Union[Muid, None] = None, *,
+                 action: Union[Muid, Verb, None] = None,
+                 source: Union[Muid, Noun, None] = None,
+                 target: Union[Muid, Noun, None] = None,
+                 valued: Union[UserValue, Inclusion] = inclusion,
+                 bundler: Optional[Bundler] = None,
+                 database: Optional[Database] = None,
+                 _builder: Optional[EntryBuilder] = None,
+                 _immediate = False):
+        self._database = database or Database.get_last()
+        self._valued: Union[UserValue, Inclusion]
+        self._muid: Muid
+        if action is None or source is None or target is None:
+            if muid is None:
+                raise ValueError("must specify muid for existing edge or verb, left, and rite")
+            self._muid = muid
+            if _builder is None:
+                _builder = self._database.get_store().get_entry(self._muid)
+                if _builder is None:
+                    raise ValueError("couldn't find that edge!")
+            self._action = Muid.create(context=self._muid, builder=_builder.container)
+            self._source = Muid.create(context=self._muid, builder=_builder.pair.left)
+            self._target = Muid.create(context=self._muid, builder=_builder.pair.rite)
+            if _builder.HasField("value"):
+                self._valued = decode_value(_builder.value)
+            else:
+                self._valued = inclusion
+        else:
+            self._source = source if isinstance(source, Muid) else source._muid
+            self._target = target if isinstance(target, Muid) else target._muid
+            self._action = action if isinstance(action, Muid) else action._muid
+            if bundler is None:
+                _immediate = True
+                bundler = Bundler()
+            change_builder = ChangeBuilder()
+            entry_builder: EntryBuilder = change_builder.entry
+            entry_builder.behavior = VERB
+            self._source.put_into(entry_builder.pair.left)
+            self._target.put_into(entry_builder.pair.rite)
+            self._action.put_into(entry_builder.container)
+            self._valued = valued
+            if not isinstance(valued, Inclusion):
+                encode_value(valued, entry_builder.value)
+            if muid is None:
+                self._muid = bundler.add_change(change_builder)
+            else:
+                self._muid = muid
+                muid.put_into(change_builder.restore)
+            if _immediate:
+                self._database.commit(bundler)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}('{self._muid}')"
