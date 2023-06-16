@@ -22,16 +22,16 @@ export class Directory extends Container {
 
     /**
      * Sets a key/value association in a directory.
-     * If a bundler is supplied, the function will add the entry to that bundler 
+     * If a bundler is supplied, the function will add the entry to that bundler
      * and return immediately (presumably you know what to do with a CS if you passed it in).
      * If the caller does not supply a bundler, then one is created on the fly, and
      * then this method will await on the CS being added to the database instance.
      * This is to allow simple console usage like:
      *      await myDirectory.set("foo", "bar");
-     * @param key 
-     * @param value 
+     * @param key
+     * @param value
      * @param change an optional bundler to put this in.
-     * @returns a promise that resolves to the address of the newly created entry  
+     * @returns a promise that resolves to the address of the newly created entry
      */
     async set(key: KeyType, value: Value | Container, change?: Bundler|string): Promise<Muid> {
         return await this.addEntry(key, value, change);
@@ -40,7 +40,7 @@ export class Directory extends Container {
     /**
      * Adds a deletion marker (tombstone) for a particular key in the directory.
      * The corresponding value will be seen to be unset in the data model.
-     * @param key 
+     * @param key
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
@@ -66,11 +66,14 @@ export class Directory extends Container {
 
     async has(key: KeyType, asOf?: AsOf): Promise<boolean> {
         const result = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
+        if (result != undefined && result.deletion) {
+            return false;
+        }
         return result !== undefined;
     }
 
     /**
-     * Dumps the contents of this directory into a javascript Map; mostly useful for 
+     * Dumps the contents of this directory into a javascript Map; mostly useful for
      * debugging though also could be used to create a backup of a database.
      * @param asOf effective time to get the dump for, or undefined for the present
      * @returns a javascript map from keys (numbers or strings) to values or containers

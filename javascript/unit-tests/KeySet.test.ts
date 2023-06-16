@@ -1,4 +1,3 @@
-
 import { sleep } from "./test_utils";
 import { GinkInstance, Bundler, IndexedDbStore, Value } from "../implementation";
 import { ensure, matches } from "../implementation/utils"
@@ -24,7 +23,7 @@ test('add and has basic data', async function() {
     ensure(await ks.has(myKey));
 });
 
-test('delete, pop, and size work as intended', async function() {
+test('delete, and size work as intended', async function() {
     const store = new IndexedDbStore('test2', true);
     const instance = new GinkInstance(store);
     const ks = await instance.createKeySet();
@@ -34,27 +33,26 @@ test('delete, pop, and size work as intended', async function() {
     ensure(await ks.size() === 1);
 
     await ks.delete("key1");
+    ensure(!await ks.has("key1"));
     ensure(await ks.size() === 0);
 
     await ks.add("key1");
     await ks.add("key2");
     ensure(await ks.size() === 2);
 
-    const popped = await ks.pop("key2");
-    ensure(popped == "key2");
-    ensure(await ks.size() === 1)
+    await ks.delete("key2");
+    ensure(!await ks.has("key2"));
 });
 
 test('entries works as intended', async function() {
     const instance = new GinkInstance(new IndexedDbStore('test3', true));
     const ks: KeySet = await instance.createKeySet();
     await ks.update(["key1", "key2", "key3"]);
-    const buffer = <Value[]>[];
+    const buffer = <KeyType[]>[];
 
-    for await (const [muid, contents] of ks.entries()) {
-        const val = await ks.pop(contents);
-        ensure(val == contents, `val=${val}, contents=${contents}`);
-        buffer.push(<Value>contents);
+    for await (const [key, val] of ks.entries()) {
+        await ks.delete(key);
+        buffer.push(<KeyType>key);
     }
     ensure(matches(buffer, ["key1", "key2", "key3"]));
 });
@@ -75,42 +73,6 @@ test('add multiple keys within a bundler', async function() {
     ensure(await ks.has("key1"));
     ensure(await ks.has("key2"));
     ensure(!await ks.has("key3"));
-});
-
-test('tests superset, union, intersection, symmetric difference, difference', async function() {
-    const store = new IndexedDbStore('test5', true);
-    const instance = new GinkInstance(store);
-    const ks = await instance.createKeySet();
-
-    await ks.update(["key1", "key2", "key3"]);
-
-    // testing superset
-    ensure(await ks.isSuperset(["key2", "key3"]));
-    ensure(!await ks.isSuperset(["key2", "key4"]));
-
-    // testing union
-    const union = await ks.union(["key4", "key5", "key6"]);
-    ensure(union.has("key2"));
-    ensure(union.has("key5"));
-    ensure(!union.has("key9"));
-
-    // testing intersection
-    const intersection = await ks.intersection(["key3", "key4", "key5"]);
-    ensure(intersection.has("key3"));
-    ensure(!intersection.has("key2"));
-    ensure(!intersection.has("key4"));
-
-    // testing symmetric difference
-    const symDiff = await ks.symmetricDifference(["key3", "key4", "key5"]);
-    ensure(!symDiff.has("key3"));
-    ensure(symDiff.has("key2"));
-    ensure(symDiff.has("key4"));
-
-    // testing difference
-    const difference = await ks.difference(["key3", "key4", "key5"]);
-    ensure(difference.has("key1"));
-    ensure(difference.has("key2"));
-    ensure(!difference.has("key3"));
 });
 
 test('KeySet.toJson', async function() {
@@ -178,14 +140,17 @@ test('KeySet.clear', async function() {
     }
 });
 
-test('KeySet.purge', async function () {
+test('KeySet.clear(purge)', async function () {
     const instance = new GinkInstance(new IndexedDbStore('test9', true));
     const ks = await instance.createKeySet();
     await ks.add('key1');
+    await sleep(10);
+    const middle = Date.now() * 1000;
+    await sleep(10);
     await ks.add('key2');
-    let size = await ks.size();
-    ensure(size == 2);
+    ensure(await ks.has("key2"));
     await ks.clear(true);
-    size = await ks.size();
-    ensure(size == 0);
+    const found = await instance.store.getKeyedEntries(ks.address, middle);
+    ensure(!found.size);
+
 });
