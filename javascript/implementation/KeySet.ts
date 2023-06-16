@@ -2,8 +2,8 @@ import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
 import { KeyType, Muid, AsOf } from "./typedefs"
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, muidTupleToMuid } from "./utils";
-import { interpret, toJson } from "./factories"
+import { ensure, muidToString } from "./utils";
+import { toJson } from "./factories"
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class KeySet extends Container {
