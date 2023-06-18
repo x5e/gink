@@ -16,7 +16,7 @@ const browserArgs = [
     console.log(`${browserCommand} ${browserArgs.join(' ')}`);
     const browser = new Expector(browserCommand, browserArgs);
     const browsersAreSlow = new Promise(r => setTimeout(r, 1000));
-    const server = new Expector("node", ["./tsc.out/main.js"], 
+    const server = new Expector("node", ["./tsc.out/implementation/main.js"], //TIMING OUT HERE
         {env: {GINK_PORT: "8080", GINK_STATIC_PATH: ".", ...process.env}});
     await browsersAreSlow;
     await server.expect("ready");
