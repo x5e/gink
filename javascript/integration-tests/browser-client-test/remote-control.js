@@ -16,7 +16,7 @@ async function example() {
         // enable events then start!
         await Network.enable();
         await Page.enable();
-        await Page.navigate({ url: 'http://127.0.0.1:8080/' });
+        await Page.navigate({ url: 'http://127.0.0.1:8080/' }); //integration-tests/browser-client-test
 	    await Page.loadEventFired();
         await new Promise(r => setTimeout(r, 1000));
         const expr = "document.getElementById('messages').innerHTML";
