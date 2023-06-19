@@ -100,7 +100,7 @@ export class KeySet extends Container {
      */
     async toSet(asOf?: AsOf): Promise<Set<KeyType>> {
         const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
-        const resultSet = new Set<KeyType>;
+        const resultSet = new Set<KeyType>();
         for (const [key, entry] of entries) {
             resultSet.add(key);
         }
