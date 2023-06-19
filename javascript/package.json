@@ -34,6 +34,7 @@
   },
   "homepage": "https://github.com/x5e/gink#readme",
   "dependencies": {
+    "chrome-remote-interface": "^0.32.2",
     "fake-indexeddb": "^4.0.1",
     "fs-ext": "^2.0.0",
     "google-protobuf": "^3.21.2",
