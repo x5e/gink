@@ -16,13 +16,16 @@ const browserArgs = [
     console.log(`${browserCommand} ${browserArgs.join(' ')}`);
     const browser = new Expector(browserCommand, browserArgs);
     const browsersAreSlow = new Promise(r => setTimeout(r, 1000));
-    const server = new Expector("node", ["./tsc.out/implementation/main.js"], //TIMING OUT HERE
+    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
         {env: {GINK_PORT: "8080", GINK_STATIC_PATH: ".", ...process.env}});
     await browsersAreSlow;
     await server.expect("ready");
     const driver = new Expector(`${__dirname}/remote-control.js`, []);
     await driver.expect(/Server/, 10*1000);
     console.log("success!");
+
+    await driver.expect("Messages go here.", 5*1000);
+    console.log("got page contents!");
 
     server.close();
     browser.close();

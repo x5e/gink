@@ -19,8 +19,7 @@ RUN chmod a+x tsc.out/implementation/main.js
 
 RUN ./integration-tests/node-client-test.js
 RUN ./integration-tests/routing-server-test.js
-# RUN if [ `uname -m` != aarch64 ]; apt-get update; fi
-# RUN if [ `uname -m` != aarch64 ]; then apt-get install -y chromium-driver; fi
-# RUN if [ `uname -m` != aarch64 ]; then ./integration-tests/browser-client-test/browser-test.js; fi
 
-
+RUN if [ `uname -m` != aarch64 ]; then apt-get update; fi
+RUN if [ `uname -m` != aarch64 ]; then apt-get install -y chromium-driver; fi
+RUN if [ `uname -m` != aarch64 ]; then ./integration-tests/browser-client-test/browser-test.js; fi

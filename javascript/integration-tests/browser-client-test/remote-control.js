@@ -4,8 +4,10 @@ const CDP = require('chrome-remote-interface');
 async function example() {
     let client;
     try {
+        const { target } = await CDP.New();
         // connect to endpoint
-        client = await CDP();
+        client = await CDP({target:target});
+        console.log(client);
         // extract domains
         const { Network, Page, Runtime } = client;
         // setup handlers
@@ -15,8 +17,9 @@ async function example() {
         // enable events then start!
         await Network.enable();
         await Page.enable();
-        await Page.navigate({ url: 'http://127.0.0.1:8080/integration-tests/browser-client-test/' });
-        await Page.loadEventFired();
+        console.log(Page)
+        await Page.navigate({ url: 'http://127.0.0.1:8080/integration-tests/browser-client-test' });
+	    await Page.loadEventFired();
         await new Promise(r => setTimeout(r, 1000));
         const expr = "document.getElementById('messages').innerHTML";
         const evaluated = (await Runtime.evaluate({ "expression": expr }));
