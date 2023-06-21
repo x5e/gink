@@ -14,10 +14,8 @@ from .typedefs import UserKey, MuTimestamp, UserValue, Deletion, Inclusion
 from .muid import Muid
 from .bundle_info import BundleInfo
 
-UNSPECIFIED: int = Behavior.UNSPECIFIED  # type: ignore
 SEQUENCE: int = Behavior.SEQUENCE  # type: ignore
 DIRECTORY: int = Behavior.DIRECTORY  # type: ignore
-PROPERTY: int = Behavior.PROPERTY  # type: ignore
 BOX: int = Behavior.BOX  # type: ignore
 NOUN: int = Behavior.NOUN  # type: ignore
 ROLE: int = Behavior.ROLE # type: ignore
@@ -31,8 +29,11 @@ deletion = Deletion()
 inclusion = Inclusion()
 
 
+def has_replacement_semantics(behavior: int) -> bool:
+    return behavior not in (Behavior.SEQUENCE, Behavior.VERB, Behavior.UNSPECIFIED)
+
 def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object()):
-    if getattr(builder, "behavior") == UNSPECIFIED:
+    if getattr(builder, "behavior") == Behavior.UNSPECIFIED:
         raise ValueError("entry lacks a behavior")
     if not builder.HasField("container"):
         raise ValueError("no container specified in entry")
@@ -124,27 +125,27 @@ class Placement(NamedTuple):
 
 
     @staticmethod
-    def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):
+    def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int, restoring: Optional[Muid]=None):
         """ Create an EntryStorageKey from an Entry itself, plus address information. """
         container = Muid.create(builder=getattr(builder, "container"), context=new_info)
-        entry_muid = Muid.create(context=new_info, offset=offset)
+        placement_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")
         position = getattr(builder, "effective")
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None]
         if behavior in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(builder)
-        elif behavior in (BOX, NOUN):
+        elif behavior in (BOX, Behavior.NOUN):
             middle_key = None
         elif behavior == SEQUENCE:
-            middle_key = QueueMiddleKey(position or entry_muid.timestamp)
-        elif behavior in (PROPERTY, ROLE):
+            middle_key = QueueMiddleKey(position or placement_muid.timestamp)
+        elif behavior in (Behavior.PROPERTY, ROLE):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
-        elif behavior == VERB:
-            middle_key = None
+        elif behavior == Behavior.VERB:
+            middle_key = restoring or placement_muid  # entry_muid
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None
-        return Placement(container, middle_key, entry_muid, expiry)
+        return Placement(container, middle_key, placement_muid, expiry)
 
     @staticmethod
     def from_bytes(data: bytes, using: Union[int, bytes, EntryBuilder]=DIRECTORY):
@@ -167,9 +168,9 @@ class Placement(NamedTuple):
             middle_key = decode_key(middle_key_bytes)
         elif using == SEQUENCE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
-        elif using in (PROPERTY, ROLE):
+        elif using in (Behavior.PROPERTY, ROLE):
             middle_key = Muid.from_bytes(middle_key_bytes)
-        elif using in (BOX, NOUN, VERB):
+        elif using in (BOX, Behavior.NOUN, VERB):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")
@@ -232,7 +233,7 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid], behavior:
         encode_key(key, entry_builder.key)  # type: ignore
     elif behavior == BOX:
         assert key is None
-    elif behavior in (PROPERTY, ROLE):
+    elif behavior in (Behavior.PROPERTY, ROLE):
         assert isinstance(key, Muid)
         key.put_into(entry_builder.describing)
     else:

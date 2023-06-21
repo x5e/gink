@@ -4,16 +4,16 @@ from typing import Optional, Union, Iterable
 
 from .typedefs import GenericTimestamp, UserValue, Inclusion
 from .container import Container
-from .coding import VERB, NOUN, inclusion, encode_value, decode_value
+from .coding import VERB, inclusion, encode_value, decode_value
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
-from .builders import EntryBuilder, ChangeBuilder
+from .builders import EntryBuilder, ChangeBuilder, Behavior
 from .addressable import Addressable
 
 
 class Noun(Container):
-    BEHAVIOR = NOUN
+    BEHAVIOR = Behavior.NOUN
 
     def __init__(self, *,
                  root: bool = False,
@@ -32,9 +32,9 @@ class Noun(Container):
             immediate = True
             bundler = Bundler()
         if root:
-            muid = Muid(-1, -1, NOUN)
+            muid = Muid(-1, -1, Behavior.NOUN)
         if muid is None:
-            muid = Container._create(NOUN, database=database, bundler=bundler)
+            muid = Container._create(Behavior.NOUN, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         if len(bundler) and immediate:
             self._database.commit(bundler)
@@ -78,7 +78,7 @@ class Noun(Container):
             bundler = Bundler(comment=comment)
         change_builder = ChangeBuilder()
         entry_builder: EntryBuilder = change_builder.entry
-        entry_builder.behavior = NOUN
+        entry_builder.behavior = Behavior.NOUN
         self._muid.put_into(entry_builder.container)
         entry_builder.deletion = True
         if purge:

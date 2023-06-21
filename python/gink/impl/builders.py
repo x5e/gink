@@ -1,9 +1,10 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import *
 
 from google.protobuf.message import Message   # type: ignore
 from google.protobuf.text_format import Parse  # type: ignore
 from enum import IntEnum
+assert Parse
 
 if TYPE_CHECKING:
 
@@ -80,6 +81,14 @@ if TYPE_CHECKING:
         VERB = 8
         PROPERTY = 9
         ROLE = 10
+
+        @classmethod
+        def keys(cls) -> List[str]:
+            return [key for key in dir(cls) if not key.startswith("_")]
+
+        @classmethod
+        def values(cls) -> List[int]:
+            return [getattr(cls, key) for key in cls.keys()]
 else:
     from ..builders.bundle_pb2 import Bundle
     from ..builders.sync_message_pb2 import SyncMessage

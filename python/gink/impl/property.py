@@ -4,15 +4,16 @@ from typing import Optional, Dict, Tuple, Iterable, Union
 
 from .typedefs import UserValue, GenericTimestamp
 from .container import Container
-from .coding import PROPERTY, deletion
+from .coding import deletion
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
 from .graph import Edge
+from .builders import Behavior
 
 
 class Property(Container):
-    BEHAVIOR = PROPERTY
+    BEHAVIOR = Behavior.PROPERTY
 
     def __init__(self, *, root: bool=False, muid: Optional[Muid] = None, database: Optional[Database]=None,
                  contents: Optional[Dict[Union[Container, Edge], Union[UserValue, Container]]]=None):
@@ -25,9 +26,9 @@ class Property(Container):
         database = database or Database.get_last()
         bundler = Bundler()
         if root:
-            muid = Muid(-1, -1, PROPERTY)
+            muid = Muid(-1, -1, self.BEHAVIOR)
         if muid is None:
-            muid = Container._create(PROPERTY, database=database, bundler=bundler)
+            muid = Container._create(self.BEHAVIOR, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         if contents:
             for key, val in contents.items():
@@ -55,7 +56,7 @@ class Property(Container):
     def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[Container, Union[UserValue, Container]]]:
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self._muid, as_of=as_of, behavior=PROPERTY)
+            container=self._muid, as_of=as_of, behavior=self.BEHAVIOR)
         for entry_pair in iterable:
             if entry_pair.builder.deletion:  # type: ignore
                 continue
@@ -66,7 +67,7 @@ class Property(Container):
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self._muid, as_of=as_of, behavior=PROPERTY)
+            container=self._muid, as_of=as_of, behavior=self.BEHAVIOR)
         count = 0
         for thing in iterable:
             if not thing.builder.deletion:
