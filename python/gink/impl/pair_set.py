@@ -1,18 +1,14 @@
 """ Contains the pair set class definition """
 
-from typing import Optional, Iterable, Container as StandardContainer, Set, Tuple
-
-from python.gink.impl.database import Database
-from python.gink.impl.muid import Muid
-
+from typing import Optional, Tuple
 from .database import Database
 from .muid import Muid
 from .container import Container
-from .coding import PAIR_SET, deletion, decode_key, inclusion
+from .coding import PAIR_SET, deletion
 from .bundler import Bundler
 from .graph import Noun
-from .typedefs import GenericTimestamp, UserKey
 from .builders import Behavior
+from .typedefs import GenericTimestamp
 
 class PairSet(Container):
     _missing = object()
@@ -50,3 +46,19 @@ class PairSet(Container):
 
     def exclude(self, pair: Tuple[Noun, Noun], *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Excludes a pair of Nouns from the pair set """
+        pass
+
+    def size(self, *, as_of: GenericTimestamp = None) -> int:
+        """ returns the number of elements contained """
+        ts = self._database.resolve_timestamp(as_of)
+        iterable = self._database.get_store().get_keyed_entries(
+            container=self._muid, as_of=ts, behavior=Behavior.PAIR_SET)
+        count = 0
+        for entry_pair in iterable:
+            if not entry_pair.builder.deletion:
+                count += 1
+        return count
+
+    def dumps(self, as_of: GenericTimestamp = None) -> str:
+        """ return the contents of this container as a string """
+        pass

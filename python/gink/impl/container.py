@@ -9,7 +9,6 @@ from .builders import ChangeBuilder, EntryBuilder, Behavior
 from .muid import Muid
 from .bundler import Bundler
 from .database import Database
-from .graph import Noun
 from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, Deletion, Inclusion
 from .coding import encode_key, encode_value, decode_value, deletion, inclusion
 from .addressable import Addressable
@@ -217,7 +216,7 @@ class Container(Addressable, ABC):
         return muid
 
     def _add_pair_entry(self, *,
-                   pair: Tuple[Noun, Noun],
+                   pair: Tuple[Container, Container],
                    deletion: bool = False,
                    effective: Optional[MuTimestamp] = None,
                    bundler: Optional[Bundler] = None,
@@ -246,15 +245,13 @@ class Container(Addressable, ABC):
             on_muid = self._muid
         on_muid.put_into(entry_builder.container)
         pair[0]._muid.put_into(entry_builder.pair.left)
-        pair[1]._muid.put_into(entry_builder.pair.left)
+        pair[1]._muid.put_into(entry_builder.pair.rite)
         if deletion:
             entry_builder.deletion = True
         muid = bundler.add_change(change_builder)
         if immediate:
             self._database.commit(bundler)
         return muid
-
-
 
     def reset(
             self,
