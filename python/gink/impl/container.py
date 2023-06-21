@@ -1,6 +1,6 @@
 """ Defines the Container base class. """
 from __future__ import annotations
-from typing import Optional, Union, Iterable
+from typing import Optional, Union, Iterable, Tuple
 from abc import ABC, abstractmethod
 from sys import stdout
 
@@ -9,6 +9,7 @@ from .builders import ChangeBuilder, EntryBuilder, Behavior
 from .muid import Muid
 from .bundler import Bundler
 from .database import Database
+from .graph import Noun
 from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, Deletion, Inclusion
 from .coding import encode_key, encode_value, decode_value, deletion, inclusion
 from .addressable import Addressable
@@ -214,6 +215,46 @@ class Container(Addressable, ABC):
         if immediate:
             self._database.commit(bundler)
         return muid
+
+    def _add_pair_entry(self, *,
+                   pair: Tuple[Noun, Noun],
+                   deletion: bool = False,
+                   effective: Optional[MuTimestamp] = None,
+                   bundler: Optional[Bundler] = None,
+                   comment: Optional[str] = None,
+                   expiry: GenericTimestamp = None,
+                   behavior: Optional[int] = None, # defaults to behavior of current container
+                   on_muid: Optional[Muid] = None, # defaults to current container
+                   ) -> Muid:
+        """ Alternative to add entry, used for PairSet and PairMap data structures """
+        immediate = False
+        if not isinstance(bundler, Bundler):
+            immediate = True
+            bundler = Bundler(comment)
+        change_builder = ChangeBuilder()
+        entry_builder: EntryBuilder = change_builder.entry # type: ignore
+        entry_builder.behavior = behavior or self.get_behavior() # type: ignore
+        if expiry is not None:
+            now = self._database.get_now()
+            expiry = self._database.resolve_timestamp(expiry)
+            if expiry < now:
+                raise ValueError("can't set an expiry to be in the past")
+            entry_builder.expiry = expiry # type: ignore
+        if effective is not None:
+            entry_builder.effective = effective # type: ignore
+        if on_muid is None:
+            on_muid = self._muid
+        on_muid.put_into(entry_builder.container)
+        pair[0]._muid.put_into(entry_builder.pair.left)
+        pair[1]._muid.put_into(entry_builder.pair.left)
+        if deletion:
+            entry_builder.deletion = True
+        muid = bundler.add_change(change_builder)
+        if immediate:
+            self._database.commit(bundler)
+        return muid
+
+
 
     def reset(
             self,

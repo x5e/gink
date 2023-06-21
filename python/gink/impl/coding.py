@@ -23,6 +23,7 @@ NOUN: int = Behavior.NOUN  # type: ignore
 ROLE: int = Behavior.ROLE # type: ignore
 VERB: int = Behavior.VERB # type: ignore
 KEY_SET: int = Behavior.KEY_SET # type: ignore
+PAIR_SET: int = Behavior.PAIR_SET # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
