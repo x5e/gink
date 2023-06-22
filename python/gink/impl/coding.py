@@ -170,7 +170,7 @@ class Placement(NamedTuple):
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
         elif using in (PROPERTY, ROLE):
             middle_key = Muid.from_bytes(middle_key_bytes)
-        elif using in (BOX, NOUN, VERB):
+        elif using in (BOX, NOUN, VERB, PAIR_SET):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")
