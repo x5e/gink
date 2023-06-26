@@ -24,6 +24,7 @@ ROLE: int = Behavior.ROLE # type: ignore
 VERB: int = Behavior.VERB # type: ignore
 KEY_SET: int = Behavior.KEY_SET # type: ignore
 PAIR_SET: int = Behavior.PAIR_SET # type: ignore
+PAIR_MAP: int = Behavior.PAIR_MAP # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
@@ -140,7 +141,7 @@ class Placement(NamedTuple):
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
         elif behavior in (PROPERTY, ROLE):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
-        elif behavior == PAIR_SET:
+        elif behavior in (PAIR_SET, PAIR_MAP):
             left = Muid.create(context=new_info, builder=builder.pair.left)
             rite = Muid.create(context=new_info, builder=builder.pair.rite)
             middle_key = (left, rite)
@@ -172,7 +173,7 @@ class Placement(NamedTuple):
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
         elif using in (PROPERTY, ROLE):
             middle_key = Muid.from_bytes(middle_key_bytes)
-        elif using == PAIR_SET:
+        elif using in (PAIR_SET, PAIR_MAP):
             middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
         elif using in (BOX, NOUN, VERB):
             middle_key = None
@@ -244,7 +245,7 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid
     elif behavior in (PROPERTY, ROLE):
         assert isinstance(key, Muid)
         key.put_into(entry_builder.describing)
-    elif behavior == PAIR_SET:
+    elif behavior in (PAIR_SET, PAIR_MAP):
         assert isinstance(key, tuple)
         assert isinstance(key[0], Muid) and isinstance(key[1], Muid)
         key[0].put_into(entry_builder.pair.left)

@@ -21,7 +21,7 @@ from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
-                     LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_SET)
+                     LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB)
 
 
 class LmdbStore(AbstractStore):

@@ -15,10 +15,11 @@ from .impl.role import Role
 from .impl.key_set import KeySet
 from .impl.graph import Noun, Verb, Edge
 from .impl.pair_set import PairSet
+from .impl.pair_map import PairMap
 from .impl.patch import PATCHED
 
 assert PATCHED
 
 __all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence", "Box", "Bundler",
            "Property", "Container", "Muid", "LogBackedStore", "BundleInfo", "AbstractStore", "Role",
-           "Noun", "Verb", "Edge", "KeySet", "PairSet"]
+           "Noun", "Verb", "Edge", "KeySet", "PairSet", "PairMap"]
