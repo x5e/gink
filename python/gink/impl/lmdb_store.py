@@ -269,22 +269,64 @@ class LmdbStore(AbstractStore):
                 yield change
             return
         elif behavior == Behavior.VERB:
-            for change in self._get_verb_reset_changes(container, to_time, trxn, seen):
+            for change in self._get_verb_reset_changes(container, to_time, trxn):
                 yield change
         else:
             raise NotImplementedError(f"don't know how to reset container of type {behavior}")
 
-    def _get_verb_reset_changes(self, verb: Muid, to_time: MuTimestamp, trxn: Trxn, seen: Optional[Set]):
+    def _get_verb_reset_changes(self, verb: Muid, to_time: MuTimestamp, trxn: Trxn):
         placement_cursor = trxn.cursor(self._placements)
         verb_bytes = bytes(verb)
+        last_entry_muid: Optional[Muid] = None
+        removals_cursor = trxn.cursor(self._removals)
         placed = placement_cursor.set_range(verb_bytes)
+        visible_in_past: bool = False
+        visible_now: bool = False
         while placed:
-            key, val = placement_cursor.item()
-            if key == val:  # will never happen, just a placeholder
+            placement_bytes, entry_muid_bytes = placement_cursor.item()
+            if placement_bytes == entry_muid_bytes:  # will never happen, just a placeholder
                 yield ChangeBuilder()
-            if not key.startswith(verb_bytes):
+            if placement_bytes.startswith(verb_bytes):
+                placement = Placement.from_bytes(placement_bytes, using=Behavior.VERB)
+                entry_muid = placement.get_key()
+            else:
+                entry_muid = None
+            assert isinstance(entry_muid, Muid)
+            if entry_muid != last_entry_muid:
+                if last_entry_muid is not None:
+                    if visible_in_past and not visible_now:
+                        raise NotImplementedError("need to make it visible")
+                    if visible_now and not visible_in_past:
+                        raise NotImplementedError("need to hide")
+                last_entry_muid = entry_muid
+                visible_in_past = False
+                visible_now = False
+            if entry_muid is None:
                 break
-            raise NotImplementedError("verb reset not finished")
+            removal_prefix = verb_bytes + bytes(placement.placer)
+            removing_muid: Optional[Muid] = None
+            if removals_cursor.set_range(removal_prefix) and removals_cursor.key().startswith(removal_prefix):
+                removing_muid = Muid.from_bytes(removals_cursor.key()[-16:])
+            if placement.placer.timestamp < to_time:
+                if removing_muid is None:
+                    visible_in_past = True
+                    visible_now = True
+                elif removing_muid.timestamp < to_time:
+                    visible_in_past = False
+                    visible_now = False
+                elif removing_muid.timestamp > to_time:
+                    visible_now = False
+                    visible_in_past = True
+            else:
+                if removing_muid is None:
+                    visible_now = True
+            placed = placement_cursor.next()
+        if last_entry_muid is not None:
+            if visible_in_past and not visible_now:
+                raise NotImplementedError("need to make it visible")
+            if visible_now and not visible_in_past:
+                raise NotImplementedError("need to hide")
+
 
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=True) -> Iterable[ChangeBuilder]:
