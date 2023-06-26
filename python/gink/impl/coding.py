@@ -119,7 +119,7 @@ class Placement(NamedTuple):
         assert isinstance(self.middle, QueueMiddleKey)
         return self.middle.effective_time
 
-    def get_key(self) -> Union[UserKey, Muid, None]:
+    def get_key(self) -> Union[UserKey, Muid, None, Tuple[Muid, Muid]]:
         assert not isinstance(self.middle, QueueMiddleKey)
         return self.middle
 
@@ -131,7 +131,7 @@ class Placement(NamedTuple):
         entry_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")
         position = getattr(builder, "effective")
-        middle_key: Union[QueueMiddleKey, Muid, UserKey, None]
+        middle_key: Union[QueueMiddleKey, Muid, UserKey, None, Tuple[Muid, Muid]]
         if behavior in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(builder)
         elif behavior in (BOX, NOUN):
@@ -167,7 +167,7 @@ class Placement(NamedTuple):
         entry_muid_bytes = data[-24:-8]
         expiry_bytes = data[-8:]
         entry_muid = Muid.from_bytes(entry_muid_bytes)
-        middle_key: Union[MuTimestamp, UserKey, Muid, None]
+        middle_key: Union[MuTimestamp, UserKey, Muid, None, Tuple[Muid, Muid]]
         if using in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(middle_key_bytes)
         elif using == SEQUENCE:
@@ -226,7 +226,7 @@ class PlacementBuilderPair(NamedTuple):
     builder: EntryBuilder
 
 
-def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid], behavior: int) -> EntryBuilder:
+def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid, Muid]], behavior: int) -> EntryBuilder:
     """ creates an entry that will delete the given key from the container
 
         I'm allowing a null key in the argument then barfing if it's null
@@ -245,6 +245,10 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid], behavior:
     elif behavior in (PROPERTY, ROLE):
         assert isinstance(key, Muid)
         key.put_into(entry_builder.describing)
+    elif behavior == PAIR_SET:
+        assert isinstance(key, tuple)
+        key[0].put_into(entry_builder.pair.left)
+        key[1].put_into(entry_builder.pair.rite)
     else:
         raise Exception(f"don't know how to creating a deleting entry for behavior {behavior}")
     return entry_builder
