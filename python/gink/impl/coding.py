@@ -134,14 +134,12 @@ class Placement(NamedTuple):
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None, Tuple[Muid, Muid]]
         if behavior in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(builder)
-        elif behavior in (BOX, NOUN):
+        elif behavior in (BOX, NOUN, VERB):
             middle_key = None
         elif behavior == SEQUENCE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
         elif behavior in (PROPERTY, ROLE):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
-        elif behavior == VERB:
-            middle_key = None
         elif behavior == PAIR_SET:
             left = Muid.create(context=new_info, builder=builder.pair.left)
             rite = Muid.create(context=new_info, builder=builder.pair.rite)
@@ -195,6 +193,7 @@ class Placement(NamedTuple):
         if isinstance(self.middle, (QueueMiddleKey, Muid)):
             parts.append(self.middle)
         elif isinstance(self.middle, tuple):
+            assert isinstance(self.middle[0], Muid) and isinstance(self.middle[1], Muid)
             parts.append(self.middle[0])
             parts.append(self.middle[1])
         elif self.middle is not None:
@@ -247,6 +246,7 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid
         key.put_into(entry_builder.describing)
     elif behavior == PAIR_SET:
         assert isinstance(key, tuple)
+        assert isinstance(key[0], Muid) and isinstance(key[1], Muid)
         key[0].put_into(entry_builder.pair.left)
         key[1].put_into(entry_builder.pair.rite)
     else:

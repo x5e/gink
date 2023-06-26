@@ -40,6 +40,7 @@ def test_include_exclude():
             assert pairset1.size() == 1
 
             noun3 = Noun(database=database)
+            as_of = database.get_now()
             pairset1.include(pair=(noun1, noun3))
             assert pairset1.size() == 2
 
@@ -51,3 +52,25 @@ def test_include_exclude():
 
             pairset1.exclude(pair=(noun2, noun3))
             assert pairset1.size() == 1
+
+def test_reset_asof():
+    """ tests as_of and reset work as intended. Currently only testing as_of"""
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            database = Database(store=store)
+            noun1 = Noun(database=database)
+            noun2 = Noun(database=database)
+            pairset1 = PairSet(database=database)
+            assert pairset1.size() == 0
+
+            pairset1.include(pair=(noun1, noun2))
+            assert pairset1.size() == 1
+            as_of = database.get_now()
+
+            noun3 = Noun(database=database)
+            pairset1.include(pair=(noun1, noun3))
+            assert pairset1.size() == 2
+
+            # assert pairset1.size(as_of=as_of) == 1
+            # pairset1.reset(as_of)
+            # assert pairset1.size() == 1

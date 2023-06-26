@@ -64,16 +64,16 @@ class PairSet(Container):
         as_of = self._database.resolve_timestamp(as_of)
         identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents="""
-        result += "{"
+        result += "["
 
         stuffing = ""
         for entry_pair in self._database.get_store().get_keyed_entries(container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of):
             left = entry_pair.builder.pair.left
             rite = entry_pair.builder.pair.rite
-            stuffing += str((Muid(left.timestamp, left.medallion, left.offset), Muid(rite.timestamp, rite.medallion, rite.offset)))
+            stuffing += f"{Muid(left.timestamp, left.medallion, left.offset)}, {Muid(rite.timestamp, rite.medallion, rite.offset)}\n\t"
         as_one_line = result + ",".join(stuffing) + "})"
         if len(as_one_line) < 80:
             return as_one_line
         result += "\n\t"
-        result += stuffing + "})"
+        result += "".join(stuffing) + "])"
         return result
