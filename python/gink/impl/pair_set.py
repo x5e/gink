@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 from .database import Database
 from .muid import Muid
 from .container import Container
-from .coding import PAIR_SET, deletion
+from .coding import PAIR_SET, deletion, inclusion
 from .bundler import Bundler
 from .graph import Noun
 from .builders import Behavior
@@ -42,11 +42,11 @@ class PairSet(Container):
 
     def include(self, pair: Tuple[Noun, Noun], *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Includes a pair of Nouns in the pair set """
-        return self._add_pair_entry(pair=pair, bundler=bundler, comment=comment)
+        return self._add_entry(key=pair, value=inclusion, bundler=bundler, comment=comment)
 
     def exclude(self, pair: Tuple[Noun, Noun], *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Excludes a pair of Nouns from the pair set """
-        return self._add_pair_entry(pair=pair, deletion=True, bundler=bundler, comment=comment)
+        return self._add_entry(key=pair, value=deletion, bundler=bundler, comment=comment)
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         """ returns the number of elements contained """
