@@ -6,7 +6,7 @@
     revision number.
 """
 from __future__ import annotations
-from typing import Optional, Union, NamedTuple, List, Any
+from typing import Optional, Union, NamedTuple, List, Any, Tuple
 from struct import Struct
 
 from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
@@ -107,7 +107,7 @@ class Placement(NamedTuple):
 
     """
     container: Muid
-    middle: Union[UserKey, QueueMiddleKey, Muid, None]
+    middle: Union[UserKey, QueueMiddleKey, Muid, None, Tuple[Muid, Muid]]
     placer: Muid
     expiry: Optional[MuTimestamp]
 
@@ -134,7 +134,7 @@ class Placement(NamedTuple):
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None]
         if behavior in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(builder)
-        elif behavior in (BOX, NOUN, PAIR_SET):
+        elif behavior in (BOX, NOUN):
             middle_key = None
         elif behavior == SEQUENCE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
@@ -142,6 +142,10 @@ class Placement(NamedTuple):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
         elif behavior == VERB:
             middle_key = None
+        elif behavior == PAIR_SET:
+            left = Muid.create(context=new_info, builder=builder.pair.left)
+            rite = Muid.create(context=new_info, builder=builder.pair.rite)
+            middle_key = (left, rite)
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None
@@ -170,7 +174,9 @@ class Placement(NamedTuple):
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
         elif using in (PROPERTY, ROLE):
             middle_key = Muid.from_bytes(middle_key_bytes)
-        elif using in (BOX, NOUN, VERB, PAIR_SET):
+        elif using == PAIR_SET:
+            middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
+        elif using in (BOX, NOUN, VERB):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")
@@ -188,6 +194,9 @@ class Placement(NamedTuple):
         parts: List[Any] = [self.container]
         if isinstance(self.middle, (QueueMiddleKey, Muid)):
             parts.append(self.middle)
+        elif isinstance(self.middle, tuple):
+            parts.append(self.middle[0])
+            parts.append(self.middle[1])
         elif self.middle is not None:
             parts.append(encode_key(self.middle))
         parts.append(self.placer)

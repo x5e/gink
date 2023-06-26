@@ -52,7 +52,7 @@ class PairSet(Container):
         """ returns the number of elements contained """
         ts = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self.get_muid(), as_of=ts, behavior=self.BEHAVIOR)
+            container=self._muid, as_of=ts, behavior=self.BEHAVIOR)
         count = 0
         for entry_pair in iterable:
             if not entry_pair.builder.deletion:
@@ -68,7 +68,6 @@ class PairSet(Container):
 
         stuffing = ""
         for entry_pair in self._database.get_store().get_keyed_entries(container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of):
-            # print(entry_pair)
             left = entry_pair.builder.pair.left
             rite = entry_pair.builder.pair.rite
             stuffing += str((Muid(left.timestamp, left.medallion, left.offset), Muid(rite.timestamp, rite.medallion, rite.offset)))
@@ -77,5 +76,4 @@ class PairSet(Container):
             return as_one_line
         result += "\n\t"
         result += stuffing + "})"
-        print(result)
-        # return result
+        return result

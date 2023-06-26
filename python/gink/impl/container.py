@@ -251,7 +251,6 @@ class Container(Addressable, ABC):
         muid = bundler.add_change(change_builder)
         if immediate:
             self._database.commit(bundler)
-        print(entry_builder)
         return muid
 
     def reset(

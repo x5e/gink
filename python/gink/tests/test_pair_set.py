@@ -26,17 +26,28 @@ def test_creation():
             assert len(store.get_bundle_infos()) != 0
             assert pairset1 != pairset2
 
-def test_include():
-    """ test that including pairs of nouns works properly """
-for store in [LmdbStore(), ]: #MemoryStore()
-    with closing(store):
-        database = Database(store=store)
-        noun1 = Noun()
-        noun2 = Noun()
-        pairset1 = PairSet()
-        assert pairset1.size() == 0
+def test_include_exclude():
+    """ test that including and excluding pairs of nouns works properly """
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            database = Database(store=store)
+            noun1 = Noun(database=database)
+            noun2 = Noun(database=database)
+            pairset1 = PairSet(database=database)
+            assert pairset1.size() == 0
 
-        pairset1.include(pair=(noun1, noun2))
-        assert pairset1.size() == 1
+            pairset1.include(pair=(noun1, noun2))
+            assert pairset1.size() == 1
 
-        # Need more tests for more pairs
+            noun3 = Noun(database=database)
+            pairset1.include(pair=(noun1, noun3))
+            assert pairset1.size() == 2
+
+            pairset1.exclude(pair=(noun1, noun2))
+            assert pairset1.size() == 1
+
+            pairset1.include(pair=(noun2, noun3))
+            assert pairset1.size() == 2
+
+            pairset1.exclude(pair=(noun2, noun3))
+            assert pairset1.size() == 1
