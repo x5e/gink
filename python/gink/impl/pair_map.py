@@ -62,4 +62,11 @@ class PairMap(Container):
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         """ returns the number of elements contained """
-        pass
+        as_of = self._database.resolve_timestamp(as_of)
+        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=PAIR_MAP)
+        count = 0
+        for entry_pair in iterable:
+            if entry_pair.builder.deletion:
+                continue
+            count += 1
+        return count

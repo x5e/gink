@@ -26,8 +26,8 @@ def test_creation():
             assert len(store.get_bundle_infos()) != 0
             assert pairmap1 != pairmap2
 
-def test_set_get():
-    """ test that set and get methods work properly """
+def test_basic():
+    """ test that set, get, delete, and size methods work properly """
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             assert isinstance(store, AbstractStore)
@@ -36,6 +36,22 @@ def test_set_get():
 
             noun1 = Noun()
             noun2 = Noun()
+            noun3 = Noun()
             pairmap1.set(key=(noun1, noun2), value="test noun1 -> noun2")
+            after_first = database.get_now()
 
             assert pairmap1.get(key=(noun1, noun2)) == "test noun1 -> noun2"
+            assert pairmap1.size() == 1
+
+            pairmap1.set(key=(noun1, noun3), value="test noun1 -> noun3")
+            assert pairmap1.size() == 2
+
+            pairmap1.delete(key=(noun1, noun2))
+            assert pairmap1.size() == 1
+
+            assert not pairmap1.get(key=(noun1, noun3), as_of=after_first)
+            assert pairmap1.get(key=(noun1, noun2), as_of=after_first)
+            assert pairmap1.get(key=(noun1, noun3)) == "test noun1 -> noun3"
+
+            pairmap1.delete(key=(noun1, noun3))
+            assert pairmap1.size() == 0
