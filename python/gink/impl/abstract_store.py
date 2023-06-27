@@ -11,6 +11,7 @@ from .chain_tracker import ChainTracker
 from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
+from .graph import Noun
 
 
 class AbstractStore(ABC):

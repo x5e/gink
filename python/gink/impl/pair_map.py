@@ -4,10 +4,9 @@ from typing import Optional, Tuple, Union
 from .database import Database
 from .muid import Muid
 from .container import Container
-from .coding import PAIR_MAP, deletion, inclusion
+from .coding import PAIR_MAP, deletion
 from .bundler import Bundler
 from .graph import Noun
-from .builders import Behavior
 from .typedefs import GenericTimestamp, UserValue
 
 class PairMap(Container):

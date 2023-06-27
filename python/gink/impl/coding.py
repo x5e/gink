@@ -193,17 +193,19 @@ class Placement(NamedTuple):
         parts: List[Any] = [self.container]
         if isinstance(self.middle, (QueueMiddleKey, Muid)):
             parts.append(self.middle)
+        elif isinstance(self.middle, (int, str, bytes)):
+            parts.append(encode_key(self.middle))
         elif isinstance(self.middle, tuple):
+            assert len(self.middle) == 2
             if not isinstance(self.middle[0], Muid) and not isinstance(self.middle[1], Muid):
                 # If self.middle is a container (a noun)/not a muid
+                assert not isinstance(self.middle[0], int)
                 parts.append(self.middle[0]._muid)
                 parts.append(self.middle[1]._muid)
             else:
                 assert isinstance(self.middle[0], Muid) and isinstance(self.middle[1], Muid)
                 parts.append(self.middle[0])
                 parts.append(self.middle[1])
-        elif self.middle is not None:
-            parts.append(encode_key(self.middle))
         parts.append(self.placer)
         parts.append(self.expiry)
         return b"".join(map(serialize, parts))
