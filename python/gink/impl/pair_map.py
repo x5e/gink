@@ -44,9 +44,16 @@ class PairMap(Container):
             bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         return self._add_entry(key=key, value=value, bundler=bundler, comment=comment)
 
-    def get(self, key: Tuple[Noun, Noun], default=None, *, as_of: GenericTimestamp = None):
+    def get(self, key: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]], default=None, *, as_of: GenericTimestamp = None):
         as_of = self._database.resolve_timestamp(as_of)
-        found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
+        if isinstance(key[0], Noun) and isinstance(key[1], Noun):
+            muid_key = (key[0]._muid, key[1]._muid)
+            found = self._database.get_store().get_entry_by_key(self._muid, key=muid_key, as_of=as_of)
+        elif isinstance(key[0], Muid) and isinstance(key[1], Muid):
+            found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
+        else:
+            raise ValueError(f"Not sure what to do with {key}, not a tuple of muids or nouns.")
+
         if found is None or found.builder.deletion:  # type: ignore
             return default
         return self._get_occupant(found.builder, found.address)

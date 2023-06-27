@@ -197,7 +197,7 @@ class Placement(NamedTuple):
             parts.append(encode_key(self.middle))
         elif isinstance(self.middle, tuple):
             assert len(self.middle) == 2
-            if not isinstance(self.middle[0], Muid) and not isinstance(self.middle[1], Muid):
+            if not isinstance(self.middle[0], Muid) and not isinstance(self.middle[1], Muid): # type: ignore
                 # If self.middle is a container (a noun)/not a muid
                 assert not isinstance(self.middle[0], int)
                 parts.append(self.middle[0]._muid)
