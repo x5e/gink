@@ -6,7 +6,7 @@
     revision number.
 """
 from __future__ import annotations
-from typing import Optional, Union, NamedTuple, List, Any, Tuple
+from typing import Optional, Union, NamedTuple, List, Any, Tuple, Container
 from struct import Struct
 
 from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
@@ -194,9 +194,14 @@ class Placement(NamedTuple):
         if isinstance(self.middle, (QueueMiddleKey, Muid)):
             parts.append(self.middle)
         elif isinstance(self.middle, tuple):
-            assert isinstance(self.middle[0], Muid) and isinstance(self.middle[1], Muid)
-            parts.append(self.middle[0])
-            parts.append(self.middle[1])
+            if not isinstance(self.middle[0], Muid) and not isinstance(self.middle[1], Muid):
+                # If self.middle is a container (a noun)/not a muid
+                parts.append(self.middle[0]._muid)
+                parts.append(self.middle[1]._muid)
+            else:
+                assert isinstance(self.middle[0], Muid) and isinstance(self.middle[1], Muid)
+                parts.append(self.middle[0])
+                parts.append(self.middle[1])
         elif self.middle is not None:
             parts.append(encode_key(self.middle))
         parts.append(self.placer)

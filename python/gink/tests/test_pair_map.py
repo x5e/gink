@@ -14,14 +14,28 @@ from ..impl.patch import PATCHED
 assert PATCHED
 
 def test_creation():
-    """ test that I can create new pair sets """
+    """ test that I can create new pair maps """
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
-            pairset1 = PairMap(muid=Muid(1, 2, 3), database=database)
+            pairmap1 = PairMap(muid=Muid(1, 2, 3), database=database)
             assert len(store.get_bundle_infos()) == 0
 
-            pairset2 = PairMap()
+            pairmap2 = PairMap()
             assert len(store.get_bundle_infos()) != 0
-            assert pairset1 != pairset2
+            assert pairmap1 != pairmap2
+
+def test_set_get():
+    """ test that set and get methods work properly """
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            assert isinstance(store, AbstractStore)
+            database = Database(store=store)
+            pairmap1 = PairMap(database=database)
+
+            noun1 = Noun()
+            noun2 = Noun()
+            pairmap1.set(key=(noun1, noun2), value="test noun1 -> noun2")
+
+            assert pairmap1.get(key=(noun1, noun2)) == "test noun1 -> noun2"
