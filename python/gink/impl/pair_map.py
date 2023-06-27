@@ -58,12 +58,35 @@ class PairMap(Container):
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ return the contents of this container as a string """
-        pass
+        as_of = self._database.resolve_timestamp(as_of)
+        if self._muid.medallion == -1 and self._muid.timestamp == -1:
+            identifier = "root=True"
+        else:
+            identifier = repr(str(self._muid))
+        result = f"""{self.__class__.__name__}({identifier}, contents="""
+        result += "{"
+        stuffing = ""
+        iterable = self._database.get_store().get_keyed_entries(
+            container=self._muid, as_of=as_of, behavior=PAIR_MAP)
+        for entry_pair in iterable:
+            left = entry_pair.builder.pair.left
+            rite = entry_pair.builder.pair.rite
+            if not entry_pair.builder.deletion:
+                stuffing += f"""\n\t({Muid(left.timestamp, left.medallion, left.offset)},
+                {Muid(rite.timestamp, rite.medallion, rite.offset)}): {entry_pair.builder.value.characters}"""
+
+        as_one_line = result + ", ".join(stuffing) + "})"
+        if len(as_one_line) < 80:
+            return as_one_line
+        result += "\n\t"
+        result += "".join(stuffing) + "})"
+        return result
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         """ returns the number of elements contained """
         as_of = self._database.resolve_timestamp(as_of)
-        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=PAIR_MAP)
+        iterable = self._database.get_store().get_keyed_entries(
+            container=self._muid, as_of=as_of, behavior=PAIR_MAP)
         count = 0
         for entry_pair in iterable:
             if entry_pair.builder.deletion:
