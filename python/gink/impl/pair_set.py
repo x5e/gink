@@ -46,7 +46,7 @@ class PairSet(Container):
         if immediate and len(bundler):
             self._database.commit(bundler)
 
-    def include(self, pair: Tuple[Noun, Noun], *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+    def include(self, pair: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]], *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Includes a pair of Nouns in the pair set """
         return self._add_entry(key=pair, value=inclusion, bundler=bundler, comment=comment)
 
@@ -76,7 +76,7 @@ class PairSet(Container):
         for entry_pair in self._database.get_store().get_keyed_entries(container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of):
             left = entry_pair.builder.pair.left
             rite = entry_pair.builder.pair.rite
-            stuffing += f"{Muid(left.timestamp, left.medallion, left.offset)}, {Muid(rite.timestamp, rite.medallion, rite.offset)}\n\t"
+            stuffing += f"(Muid{(left.timestamp, left.medallion, left.offset)}, Muid{(rite.timestamp, rite.medallion, rite.offset)}),\n\t"
         as_one_line = result + ",".join(stuffing) + "})"
         if len(as_one_line) < 80:
             return as_one_line
