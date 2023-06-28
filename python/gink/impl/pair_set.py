@@ -1,6 +1,6 @@
 """ Contains the pair set class definition """
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Iterable, Union
 from .database import Database
 from .muid import Muid
 from .container import Container
@@ -14,7 +14,8 @@ class PairSet(Container):
     _missing = object()
     BEHAVIOR = PAIR_SET
 
-    def __init__(self, root: Optional[bool] = None, bundler: Optional[Bundler] = None, contents = None,
+    def __init__(self, root: Optional[bool] = None, bundler: Optional[Bundler] = None,
+                 contents: Union[Iterable[Tuple[Noun, Noun]], None] = None,
                  muid: Optional[Muid] = None, database = None, comment: Optional[str] = None):
         """
         Constructor for a pair set proxy.
@@ -37,6 +38,14 @@ class PairSet(Container):
         Container.__init__(self, muid=muid, database=database)
         if contents:
             self.clear(bundler=bundler)
+            for item in contents:
+                if isinstance(item, Muid) and len(contents) == 2:
+                    self.include((item[0], item[1]), bundler=bundler)
+                elif isinstance(item, tuple) and len(item) == 2:
+                    self.include(item, bundler=bundler)
+                else:
+                    raise ValueError(f"Not sure how to handle {contents}")
+
         if immediate and len(bundler):
             self._database.commit(bundler)
 

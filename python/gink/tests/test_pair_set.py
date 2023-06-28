@@ -26,6 +26,12 @@ def test_creation():
             assert len(store.get_bundle_infos()) != 0
             assert pairset1 != pairset2
 
+            noun1 = Noun()
+            noun2 = Noun()
+            noun3 = Noun()
+            pairset3 = PairSet(contents=[(noun1, noun2), (noun2, noun3), (noun1, noun3)])
+            assert pairset3.size() == 3
+
 def test_include_exclude():
     """ test that including and excluding pairs of nouns works properly """
     for store in [LmdbStore(), MemoryStore()]:
@@ -74,3 +80,6 @@ def test_reset_asof():
             # assert pairset1.size(as_of=as_of) == 1
             # pairset1.reset(as_of)
             # assert pairset1.size() == 1
+
+# Add test for creating pairset with contents
+# Add test for eval'ing dumps
