@@ -274,6 +274,10 @@ export class IndexedDbStore implements Store {
                     ensure(entryBuilder.hasDescribing());
                     const describing = builderToMuid(entryBuilder.getDescribing());
                     effectiveKey = muidToTuple(describing);
+                } else if (behavior == Behavior.ROLE) {
+                    ensure(entryBuilder.hasDescribing());
+                    const describing = builderToMuid(entryBuilder.getDescribing());
+                    effectiveKey = muidToTuple(describing);
                 } else {
                     throw new Error(`unexpected behavior: ${behavior}`)
                 }
@@ -481,9 +485,9 @@ export class IndexedDbStore implements Store {
         const result = new Map();
         for (; cursor && matches(cursor.key[0], desiredSrc); cursor = await cursor.continue()) {
             const entry = <Entry>cursor.value;
-            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET);
+            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE);
             const key = entry.effectiveKey;
-            ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array));
+            ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
             if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime) {
                 if (entry.deletion) {
                     result.delete(key);
