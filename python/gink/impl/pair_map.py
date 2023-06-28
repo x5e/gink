@@ -43,12 +43,13 @@ class PairMap(Container):
         if immediate and len(bundler):
             self._database.commit(bundler)
 
-    def set(self, key: Tuple[Noun, Noun],
+    def set(self, key: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]],
             value: Union[UserValue, Container],
             bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         return self._add_entry(key=key, value=value, bundler=bundler, comment=comment)
 
-    def get(self, key: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]], default=None, *, as_of: GenericTimestamp = None):
+    def get(self, key: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]],
+            default=None, *, as_of: GenericTimestamp = None):
         as_of = self._database.resolve_timestamp(as_of)
         if isinstance(key[0], Noun) and isinstance(key[1], Noun):
             muid_key = (key[0]._muid, key[1]._muid)
@@ -82,8 +83,9 @@ class PairMap(Container):
             left = entry_pair.builder.pair.left
             rite = entry_pair.builder.pair.rite
             if not entry_pair.builder.deletion:
-                stuffing += f"""\n\t({Muid(left.timestamp, left.medallion, left.offset)},
-                {Muid(rite.timestamp, rite.medallion, rite.offset)}): {entry_pair.builder.value.characters}"""
+                stuffing += f"""\n\t(Muid{(left.timestamp, left.medallion, left.offset)},
+                Muid{(rite.timestamp, rite.medallion, rite.offset)}):
+                "{entry_pair.builder.value.characters}","""
 
         as_one_line = result + ", ".join(stuffing) + "})"
         if len(as_one_line) < 80:
