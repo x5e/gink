@@ -25,6 +25,12 @@ def test_creation():
             assert len(store.get_bundle_infos()) != 0
             assert pairset1 != pairset2
 
+            noun1 = Noun()
+            noun2 = Noun()
+            noun3 = Noun()
+            pairset3 = PairSet(contents=[(noun1, noun2), (noun2, noun3), (noun1, noun3)])
+            assert pairset3.size() == 3
+
 def test_include_exclude():
     """ test that including and excluding pairs of nouns works properly """
     for store in [LmdbStore(), MemoryStore()]:
@@ -73,3 +79,36 @@ def test_reset_asof():
             # assert pairset1.size(as_of=as_of) == 1
             # pairset1.reset(as_of)
             # assert pairset1.size() == 1
+
+def test_dumps():
+    """ tests the dumps method evals back into an object """
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            database = Database(store=store)
+            noun1 = Noun(database=database)
+            noun2 = Noun(database=database)
+            noun3 = Noun(database=database)
+            pairset1 = PairSet(contents=[(noun1, noun2), (noun1, noun3), (noun2, noun3)], database=database)
+            assert pairset1.size() == 3
+            dump = pairset1.dumps()
+
+            pairset2 = eval(dump)
+            assert pairset2.size() == 3
+
+def test_contains_getpairs():
+    """ tests the contains and get_pairs methods for pair sets """
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            database = Database(store=store)
+            noun1 = Noun(database=database)
+            noun2 = Noun(database=database)
+            noun3 = Noun(database=database)
+            pairset1 = PairSet(contents=[(noun1, noun2), (noun1, noun3), (noun2, noun3)], database=database)
+            assert pairset1.size() == 3
+
+            assert pairset1.contains(pair=(noun1, noun2))
+            assert pairset1.__contains__(pair=(noun1, noun2))
+            assert pairset1.contains(pair=(noun1._muid, noun2._muid))
+
+            assert pairset1.get_pairs() == {(noun1._muid, noun2._muid),
+                                            (noun1._muid, noun3._muid), (noun2._muid, noun3._muid)}

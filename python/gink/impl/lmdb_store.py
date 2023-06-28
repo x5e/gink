@@ -517,6 +517,9 @@ class LmdbStore(AbstractStore):
             elif isinstance(key, (int, str, bytes)):
                 serialized_key = serialize(encode_key(key))
                 behavior = DIRECTORY
+            elif isinstance(key, tuple):
+                serialized_key = bytes(key[0]) + bytes(key[1])
+                behavior = PAIR_SET
             elif key is None:
                 serialized_key = b""
                 behavior = BOX
