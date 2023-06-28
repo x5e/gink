@@ -21,6 +21,7 @@ class PairSet(Container):
         Constructor for a pair set proxy.
 
         muid: the global id of this pair set, created on the fly if None
+        contents: an iterable of pairs (an iterable of tuples) to populate the pair set at initialization
         db: database to send commits through, or last db instance created if None
         """
         if root:
@@ -39,12 +40,8 @@ class PairSet(Container):
         if contents:
             self.clear(bundler=bundler)
             for item in contents:
-                if isinstance(item, Muid) and len(contents) == 2:
-                    self.include((item[0], item[1]), bundler=bundler)
-                elif isinstance(item, tuple) and len(item) == 2:
-                    self.include(item, bundler=bundler)
-                else:
-                    raise ValueError(f"Not sure how to handle {contents}")
+                assert isinstance(item, tuple) and len(item) == 2
+                self.include(item, bundler=bundler)
 
         if immediate and len(bundler):
             self._database.commit(bundler)

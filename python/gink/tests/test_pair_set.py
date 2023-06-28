@@ -81,5 +81,4 @@ def test_reset_asof():
             # pairset1.reset(as_of)
             # assert pairset1.size() == 1
 
-# Add test for creating pairset with contents
 # Add test for eval'ing dumps
