@@ -13,6 +13,7 @@ export declare enum Behavior {
     KEY_SET=3,
     DIRECTORY=4,
     PROPERTY=9,
+    ROLE=10
 }
 export declare enum Special {
     MISSING=0,

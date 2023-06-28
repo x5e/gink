@@ -80,7 +80,7 @@ export class Container {
      * @returns a promise the resolves to the muid of the change
      */
     protected async addEntry(
-        key?: KeyType | true | Container,
+        key?: KeyType | true | Container | Muid,
         value?: Value | Container | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string):
             Promise<Muid> {
@@ -105,8 +105,12 @@ export class Container {
             entryBuilder.setKey(wrapKey(key));
         }
 
-        if (key instanceof Container) {
+        else if (key instanceof Container) {
             entryBuilder.setDescribing(muidToBuilder(key.address));
+        }
+
+        else if (typeof (key) == "object") { // Key is a Muid
+            entryBuilder.setDescribing(muidToBuilder(key));
         }
 
         // TODO: check that the destination/value is compatible with Container
