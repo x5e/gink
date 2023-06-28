@@ -1,6 +1,6 @@
 """ Contains the pair set class definition """
 
-from typing import Optional, Tuple, Iterable, Union
+from typing import Optional, Tuple, Iterable, Union, Set
 from .database import Database
 from .muid import Muid
 from .container import Container
@@ -68,7 +68,7 @@ class PairSet(Container):
     def __contains__(self, pair: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]]) -> bool:
         return self.contains(pair)
 
-    def get_pairs(self, *, as_of: GenericTimestamp = None) -> set[Tuple[Muid, Muid]]:
+    def get_pairs(self, *, as_of: GenericTimestamp = None) -> Set[Tuple[Muid, Muid]]:
         """ Returns a set of muid pairs in the pair set at a given time """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
