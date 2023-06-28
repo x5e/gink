@@ -1,6 +1,6 @@
 """ Contains the pair map class definition """
 
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, Iterable
 from .database import Database
 from .muid import Muid
 from .container import Container
@@ -13,11 +13,13 @@ class PairMap(Container):
     _missing = object()
     BEHAVIOR = PAIR_MAP
 
-    def __init__(self, root: Optional[bool] = None, bundler: Optional[Bundler] = None, contents = None,
-                 muid: Optional[Muid] = None, database = None, comment: Optional[str] = None):
+    def __init__(self, root: Optional[bool] = None, bundler: Optional[Bundler] = None,
+                 contents: Optional[dict] = None, muid: Optional[Muid] = None,
+                 database = None, comment: Optional[str] = None):
         """
         Constructor for a pair set proxy.
 
+        contents: dictionary of (Noun, Noun): Value to populate the pair map
         muid: the global id of this pair set, created on the fly if None
         db: database to send commits through, or last db instance created if None
         """
@@ -36,6 +38,8 @@ class PairMap(Container):
         Container.__init__(self, muid=muid, database=database)
         if contents:
             self.clear(bundler=bundler)
+            for key_pair, value in contents.items():
+                self.set(key_pair, value, bundler)
         if immediate and len(bundler):
             self._database.commit(bundler)
 

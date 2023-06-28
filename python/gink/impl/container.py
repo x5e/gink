@@ -164,7 +164,8 @@ class Container(Addressable, ABC):
 
     def  _add_entry(self, *,
                    value: Union[UserValue, Deletion, Inclusion, Container],
-                   key: Union[Muid, str, int, bytes, None, Tuple[Container, Container]] = None,
+                   key: Union[Muid, str, int, bytes, None,
+                              Tuple[Container, Container], Tuple[Muid, Muid]] = None,
                    effective: Optional[MuTimestamp] = None,
                    bundler: Optional[Bundler] = None,
                    comment: Optional[str] = None,
@@ -196,9 +197,14 @@ class Container(Addressable, ABC):
         if isinstance(key, Muid):
             key.put_into(entry_builder.describing)  # type: ignore
         elif isinstance(key, tuple):
-            assert isinstance(key[0], Container) and isinstance(key[1], Container)
-            key[0]._muid.put_into(entry_builder.pair.left)
-            key[1]._muid.put_into(entry_builder.pair.rite)
+            if isinstance(key[0], Container) and isinstance(key[1], Container):
+                key[0]._muid.put_into(entry_builder.pair.left)
+                key[1]._muid.put_into(entry_builder.pair.rite)
+            elif isinstance(key[0], Muid) and isinstance(key[1], Muid):
+                key[0].put_into(entry_builder.pair.left)
+                key[1].put_into(entry_builder.pair.rite)
+            else:
+                raise ValueError("Tuple can only contain 2 containers or muids")
         if isinstance(value, Container):
             pointee_muid = value.get_muid()
             if pointee_muid.medallion:

@@ -55,3 +55,25 @@ def test_basic():
 
             pairmap1.delete(key=(noun1, noun3))
             assert pairmap1.size() == 0
+
+def test_creating_with_contents():
+    """ tests that creating a pair map with contents populates the entries """
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            assert isinstance(store, AbstractStore)
+            database = Database(store=store)
+            noun1 = Noun()
+            noun2 = Noun()
+            noun3 = Noun()
+
+            pairmap1 = PairMap(contents={
+                (noun1, noun2): "test noun1 -> noun2",
+                (noun2, noun3): "test noun2 -> noun3"},
+                database=database)
+            assert pairmap1.size() == 2
+
+            pairmap2 = PairMap(contents={
+                (noun1._muid, noun2._muid): "test noun1 -> noun2",
+                (noun2._muid, noun3._muid): "test noun2 -> noun3"},
+                database=database)
+            assert pairmap2.size() == 2
