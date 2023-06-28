@@ -95,3 +95,21 @@ def test_dumps():
 
             pairset2 = eval(dump)
             assert pairset2.size() == 3
+
+def test_contains_getpairs():
+    """ tests the contains and get_pairs methods for pair sets """
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            database = Database(store=store)
+            noun1 = Noun(database=database)
+            noun2 = Noun(database=database)
+            noun3 = Noun(database=database)
+            pairset1 = PairSet(contents=[(noun1, noun2), (noun1, noun3), (noun2, noun3)], database=database)
+            assert pairset1.size() == 3
+
+            assert pairset1.contains(pair=(noun1, noun2))
+            assert pairset1.__contains__(pair=(noun1, noun2))
+            assert pairset1.contains(pair=(noun1._muid, noun2._muid))
+
+            assert pairset1.get_pairs() == {(noun1._muid, noun2._muid),
+                                            (noun1._muid, noun3._muid), (noun2._muid, noun3._muid)}

@@ -7,7 +7,6 @@ from .container import Container
 from .coding import PAIR_SET, deletion, inclusion
 from .bundler import Bundler
 from .graph import Noun
-from .builders import Behavior
 from .typedefs import GenericTimestamp
 
 class PairSet(Container):
@@ -46,13 +45,42 @@ class PairSet(Container):
         if immediate and len(bundler):
             self._database.commit(bundler)
 
-    def include(self, pair: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]], *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+    def include(self, pair: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]], *,
+                bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Includes a pair of Nouns in the pair set """
         return self._add_entry(key=pair, value=inclusion, bundler=bundler, comment=comment)
 
-    def exclude(self, pair: Tuple[Noun, Noun], *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+    def exclude(self, pair: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]], *,
+                bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Excludes a pair of Nouns from the pair set """
         return self._add_entry(key=pair, value=deletion, bundler=bundler, comment=comment)
+
+    def contains(self, pair: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]], *, as_of: GenericTimestamp = None) -> bool:
+        ts = self._database.resolve_timestamp(as_of)
+        assert len(pair) == 2
+        if isinstance(pair[0], Noun):
+            muid_pair = (pair[0]._muid, pair[1]._muid)
+            found = self._database.get_store().get_entry_by_key(self.get_muid(), key=muid_pair, as_of=ts)
+        else:
+            found = self._database.get_store().get_entry_by_key(self.get_muid(), key=pair, as_of=ts)
+        return bool(found and not found.builder.deletion)
+
+    def __contains__(self, pair: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]]) -> bool:
+        return self.contains(pair)
+
+    def get_pairs(self, *, as_of: GenericTimestamp = None) -> set[Tuple[Muid, Muid]]:
+        """ Returns a set of muid pairs in the pair set at a given time """
+        as_of = self._database.resolve_timestamp(as_of)
+        iterable = self._database.get_store().get_keyed_entries(
+            container=self._muid, as_of=as_of, behavior=self.BEHAVIOR)
+
+        return {(Muid.create(builder=entry_pair.builder.pair.left, context=entry_pair.address),
+                Muid.create(builder=entry_pair.builder.pair.rite, context=entry_pair.address))
+                for entry_pair in iterable if not entry_pair.builder.deletion}
+
+    def __iter__(self) -> Iterable[Tuple[Muid, Muid]]:
+        for pair in self.get_pairs():
+            yield pair
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         """ returns the number of elements contained """
@@ -71,7 +99,6 @@ class PairSet(Container):
         identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "["
-
         stuffing = ""
         for entry_pair in self._database.get_store().get_keyed_entries(container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of):
             left = entry_pair.builder.pair.left

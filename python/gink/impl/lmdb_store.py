@@ -486,7 +486,7 @@ class LmdbStore(AbstractStore):
             clearance_time = Muid.from_bytes(most_recent_clear[16:32]).timestamp
         return clearance_time
 
-    def get_entry_by_key(self, container: Muid, key: Union[None, UserKey, Muid],
+    def get_entry_by_key(self, container: Muid, key: Union[None, UserKey, Muid, Tuple[Muid, Muid]],
                          as_of: MuTimestamp = -1) -> Optional[FoundEntry]:
         """ Gets a single entry (or none if nothing in the database matches).
 
@@ -510,6 +510,9 @@ class LmdbStore(AbstractStore):
             elif isinstance(key, (int, str, bytes)):
                 serialized_key = serialize(encode_key(key))
                 behavior = DIRECTORY
+            elif isinstance(key, tuple):
+                serialized_key = bytes(key[0]) + bytes(key[1])
+                behavior = PAIR_SET
             elif key is None:
                 serialized_key = b""
                 behavior = BOX
