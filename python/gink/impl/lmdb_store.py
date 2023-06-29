@@ -4,7 +4,7 @@
 import sys
 import os
 import uuid
-from typing import Tuple, Callable, Iterable, Optional, Set, Union
+from typing import Tuple, Callable, Iterable, Optional, Set, Union, Container
 from struct import pack
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
 
@@ -21,7 +21,7 @@ from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
-                     LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_SET)
+                     LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_MAP, PAIR_SET)
 
 
 class LmdbStore(AbstractStore):
@@ -507,6 +507,13 @@ class LmdbStore(AbstractStore):
             if isinstance(key, Muid):
                 serialized_key = bytes(key)
                 behavior = PROPERTY
+            elif isinstance(key, tuple):
+                if isinstance(key[0], Muid) and isinstance(key[1], Muid):
+                    serialized_key = bytes(key[0]) + bytes(key[1])
+                else:
+                    assert not isinstance(key[0], int)
+                    serialized_key = bytes(key[0]._muid) + bytes(key[1]._muid)
+                behavior = PAIR_MAP
             elif isinstance(key, (int, str, bytes)):
                 serialized_key = serialize(encode_key(key))
                 behavior = DIRECTORY
