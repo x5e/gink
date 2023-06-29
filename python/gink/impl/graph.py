@@ -23,7 +23,7 @@ class Noun(Container):
         """
         Creates a placeholder node to contain the idea of something.
 
-        muid: the global id of this directory, created on the fly if None
+        muid: the global id of this noun, created on the fly if None
         db: database send commits through, or last db instance created if None
         """
         database = database or Database.get_last()

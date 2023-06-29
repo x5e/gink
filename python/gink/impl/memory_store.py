@@ -141,7 +141,7 @@ class MemoryStore(AbstractStore):
                              address=entry_storage_key.placer)
             last = entry_storage_key.middle
 
-    def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None],
+    def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None, Tuple[Muid, Muid]],
                          as_of: MuTimestamp) -> Optional[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
         clearance_time = 0

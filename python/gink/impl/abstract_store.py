@@ -44,7 +44,7 @@ class AbstractStore(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None],
+    def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None, Tuple[Muid, Muid]],
                          as_of: MuTimestamp) -> Optional[FoundEntry]:
         """ Gets the most recent entry for a given key at as_of
         """

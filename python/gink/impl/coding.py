@@ -6,7 +6,7 @@
     revision number.
 """
 from __future__ import annotations
-from typing import Optional, Union, NamedTuple, List, Any
+from typing import Optional, Union, NamedTuple, List, Any, Tuple, Container
 from struct import Struct
 
 from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
@@ -23,6 +23,8 @@ NOUN: int = Behavior.NOUN  # type: ignore
 ROLE: int = Behavior.ROLE # type: ignore
 VERB: int = Behavior.VERB # type: ignore
 KEY_SET: int = Behavior.KEY_SET # type: ignore
+PAIR_SET: int = Behavior.PAIR_SET # type: ignore
+PAIR_MAP: int = Behavior.PAIR_MAP # type: ignore
 FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
@@ -106,7 +108,7 @@ class Placement(NamedTuple):
 
     """
     container: Muid
-    middle: Union[UserKey, QueueMiddleKey, Muid, None]
+    middle: Union[UserKey, QueueMiddleKey, Muid, None, Tuple[Muid, Muid]]
     placer: Muid
     expiry: Optional[MuTimestamp]
 
@@ -118,7 +120,7 @@ class Placement(NamedTuple):
         assert isinstance(self.middle, QueueMiddleKey)
         return self.middle.effective_time
 
-    def get_key(self) -> Union[UserKey, Muid, None]:
+    def get_key(self) -> Union[UserKey, Muid, None, Tuple[Muid, Muid]]:
         assert not isinstance(self.middle, QueueMiddleKey)
         return self.middle
 
@@ -130,17 +132,19 @@ class Placement(NamedTuple):
         entry_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")
         position = getattr(builder, "effective")
-        middle_key: Union[QueueMiddleKey, Muid, UserKey, None]
+        middle_key: Union[QueueMiddleKey, Muid, UserKey, None, Tuple[Muid, Muid]]
         if behavior in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(builder)
-        elif behavior in (BOX, NOUN):
+        elif behavior in (BOX, NOUN, VERB):
             middle_key = None
         elif behavior == SEQUENCE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
         elif behavior in (PROPERTY, ROLE):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
-        elif behavior == VERB:
-            middle_key = None
+        elif behavior in (PAIR_SET, PAIR_MAP):
+            left = Muid.create(context=new_info, builder=builder.pair.left)
+            rite = Muid.create(context=new_info, builder=builder.pair.rite)
+            middle_key = (left, rite)
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None
@@ -162,13 +166,15 @@ class Placement(NamedTuple):
         entry_muid_bytes = data[-24:-8]
         expiry_bytes = data[-8:]
         entry_muid = Muid.from_bytes(entry_muid_bytes)
-        middle_key: Union[MuTimestamp, UserKey, Muid, None]
+        middle_key: Union[MuTimestamp, UserKey, Muid, None, Tuple[Muid, Muid]]
         if using in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(middle_key_bytes)
         elif using == SEQUENCE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
         elif using in (PROPERTY, ROLE):
             middle_key = Muid.from_bytes(middle_key_bytes)
+        elif using in (PAIR_SET, PAIR_MAP):
+            middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
         elif using in (BOX, NOUN, VERB):
             middle_key = None
         else:
@@ -187,8 +193,19 @@ class Placement(NamedTuple):
         parts: List[Any] = [self.container]
         if isinstance(self.middle, (QueueMiddleKey, Muid)):
             parts.append(self.middle)
-        elif self.middle is not None:
+        elif isinstance(self.middle, (int, str, bytes)):
             parts.append(encode_key(self.middle))
+        elif isinstance(self.middle, tuple):
+            assert len(self.middle) == 2
+            if not isinstance(self.middle[0], Muid) and not isinstance(self.middle[1], Muid): # type: ignore
+                # If self.middle is a container (a noun)/not a muid
+                assert not isinstance(self.middle[0], int)
+                parts.append(self.middle[0]._muid)
+                parts.append(self.middle[1]._muid)
+            else:
+                assert isinstance(self.middle[0], Muid) and isinstance(self.middle[1], Muid)
+                parts.append(self.middle[0])
+                parts.append(self.middle[1])
         parts.append(self.placer)
         parts.append(self.expiry)
         return b"".join(map(serialize, parts))
@@ -216,7 +233,7 @@ class PlacementBuilderPair(NamedTuple):
     builder: EntryBuilder
 
 
-def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid], behavior: int) -> EntryBuilder:
+def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid, Muid]], behavior: int) -> EntryBuilder:
     """ creates an entry that will delete the given key from the container
 
         I'm allowing a null key in the argument then barfing if it's null
@@ -235,6 +252,11 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid], behavior:
     elif behavior in (PROPERTY, ROLE):
         assert isinstance(key, Muid)
         key.put_into(entry_builder.describing)
+    elif behavior in (PAIR_SET, PAIR_MAP):
+        assert isinstance(key, tuple)
+        assert isinstance(key[0], Muid) and isinstance(key[1], Muid)
+        key[0].put_into(entry_builder.pair.left)
+        key[1].put_into(entry_builder.pair.rite)
     else:
         raise Exception(f"don't know how to creating a deleting entry for behavior {behavior}")
     return entry_builder
