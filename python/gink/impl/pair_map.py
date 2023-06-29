@@ -67,6 +67,46 @@ class PairMap(Container):
                bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
+    def has(self, key: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]], *, as_of=None):
+        """ returns true if the given key exists in the mapping, optionally at specific time """
+        as_of = self._database.resolve_timestamp(as_of)
+        assert isinstance(key, tuple)
+        if isinstance(key[0], Container) and isinstance(key[1], Container):
+            pair_muid = (key[0]._muid, key[1]._muid)
+        else:
+            pair_muid = key
+        found = self._database.get_store().get_entry_by_key(self._muid, key=pair_muid, as_of=as_of)
+        return found is not None and not found.builder.deletion  # type: ignore
+
+    def items(self, *, as_of=None):
+        """ returns an iterable of key,value pairs, as of the effective time (or now) """
+        as_of = self._database.resolve_timestamp(as_of)
+        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=PAIR_MAP)
+        for entry_pair in iterable:
+            if entry_pair.builder.deletion:  # type: ignore
+                continue
+            left = entry_pair.builder.pair.left
+            rite = entry_pair.builder.pair.rite
+            key = (Muid(left.timestamp, left.medallion, left.offset),
+                    (Muid(rite.timestamp, rite.medallion, rite.offset)))
+            contained = self._get_occupant(entry_pair.builder, entry_pair.address)
+            yield (key, contained)
+
+    def __contains__(self, key):
+        return self.has(key)
+
+    def __getitem__(self, key):
+        result = self.get(key, default=self._missing)
+        if result == self._missing:
+            raise KeyError(key)
+        return result
+
+    def __setitem__(self, key, value):
+        self.set(key, value)
+
+    def __delitem__(self, key):
+        self.delete(key)
+
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ return the contents of this container as a string """
         as_of = self._database.resolve_timestamp(as_of)

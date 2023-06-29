@@ -41,10 +41,12 @@ def test_basic():
             after_first = database.get_now()
 
             assert pairmap1.get(key=(noun1, noun2)) == "test noun1 -> noun2"
+            assert pairmap1.has(key=(noun1, noun2))
             assert pairmap1.size() == 1
 
             pairmap1.set(key=(noun1, noun3), value="test noun1 -> noun3")
             assert pairmap1.size() == 2
+            assert pairmap1.has(key=(noun1._muid, noun3._muid))
 
             pairmap1.delete(key=(noun1, noun2))
             assert pairmap1.size() == 1
@@ -73,6 +75,10 @@ def test_contents_dumps():
                 (noun2, noun3): "test noun2 -> noun3"},
                 database=database)
             assert pairmap1.size() == 2
+
+            items = list(pairmap1.items())
+            assert items[0] == ((noun2._muid, noun3._muid), 'test noun2 -> noun3')
+            assert items[1] == ((noun1._muid, noun2._muid), 'test noun1 -> noun2')
 
             pairmap2 = PairMap(contents={
                 (noun1._muid, noun2._muid): "test noun1 -> noun2",

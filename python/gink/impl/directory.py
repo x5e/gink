@@ -166,7 +166,7 @@ class Directory(Container):
         return count
 
     def keys(self, *, as_of=None):
-        """ returns an iterable of all the keys in this direcotry """
+        """ returns an iterable of all the keys in this directory """
         for k, _ in self.items(as_of=as_of):
             yield k
 
