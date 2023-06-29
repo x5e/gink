@@ -59,26 +59,25 @@ export class Role extends Container {
         return resultSet;
     }
 
-    // async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
-    //     //TODO(https://github.com/google/gink/issues/62): add indentation
-    //     ensure(indent === false, "indent not implemented");
-    //     if (seen === undefined) seen = new Set();
-    //     const mySig = muidToString(this.address);
-    //     if (seen.has(mySig)) return "null";
-    //     seen.add(mySig);
-    //     const asSet = await this.toSet(asOf);
-    //     let returning = "[";
-    //     let first = true;
-    //     for (const key of asSet) {
-    //         if (first) {
-    //             first = false;
-    //         }   else {
-    //             returning += ",";
-    //         }
-    //         // returning += `"${key}"`;
-    //         returning += await toJson(key, indent === false ? false : +indent + 1, asOf, seen);
-    //     }
-    //     returning += "]";
-    //     return returning;
-    // }
+    async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+        //TODO(https://github.com/google/gink/issues/62): add indentation
+        ensure(indent === false, "indent not implemented");
+        if (seen === undefined) seen = new Set();
+        const mySig = muidToString(this.address);
+        if (seen.has(mySig)) return "null";
+        seen.add(mySig);
+        const asSet = await this.toSet(asOf);
+        let returning = "[";
+        let first = true;
+        for (const key of asSet) {
+            if (first) {
+                first = false;
+            }   else {
+                returning += ",";
+            }
+            returning += await toJson(muidToString(key), indent === false ? false : +indent + 1, asOf, seen);
+        }
+        returning += "]";
+        return returning;
+    }
 }
