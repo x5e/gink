@@ -1,4 +1,4 @@
-import {builderToMuid, ensure, generateTimestamp, matches, sameData, unwrapKey, unwrapValue, muidToTuple} from "./utils";
+import {builderToMuid, ensure, generateTimestamp, matches, sameData, unwrapKey, unwrapValue, muidToTuple, muidTupleToMuid} from "./utils";
 import {deleteDB, IDBPDatabase, openDB} from 'idb';
 import {
     AsOf,
@@ -490,7 +490,14 @@ export class IndexedDbStore implements Store {
             ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
             if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime) {
                 if (entry.deletion) {
-                    result.delete(key);
+                    console.log(key);
+                    console.log(result.keys());
+
+                    if (result.has(key)) {
+                        result.delete(key);
+                    } else {
+                        throw Error("Key does not exist"); // This is not working properly for role, keys arent found
+                    }
                 } else {
                     result.set(key, entry);
                 }

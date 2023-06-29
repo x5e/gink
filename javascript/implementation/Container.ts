@@ -124,7 +124,6 @@ export class Container {
             } else {
                 entryBuilder.setValue(wrapValue(value));
             }
-
         }
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setEntry(entryBuilder);
