@@ -1,3 +1,4 @@
+import { MuidTuple } from './../implementation/typedefs';
 import { sleep } from "./test_utils";
 import { GinkInstance, IndexedDbStore } from "../implementation";
 import { ensure } from "../implementation/utils";
@@ -16,6 +17,7 @@ test('include and exclude work as intended', async function() {
     ensure(await role1.contains(box1.address));
 
     await role1.exclude(box1);
+    ensure(await role1.contains(box1));
     ensure(await role1.size() == 0, `Exclude test, unexpected size: ${await role1.size()}`);
 });
 

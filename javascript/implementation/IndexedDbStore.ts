@@ -1,4 +1,5 @@
-import {builderToMuid, ensure, generateTimestamp, matches, sameData, unwrapKey, unwrapValue, muidToTuple, muidTupleToMuid} from "./utils";
+import { Listener } from './Listener';
+import {builderToMuid, ensure, generateTimestamp, matches, sameData, unwrapKey, unwrapValue, muidToTuple, muidTupleToMuid, muidToString} from "./utils";
 import {deleteDB, IDBPDatabase, openDB} from 'idb';
 import {
     AsOf,
@@ -486,18 +487,20 @@ export class IndexedDbStore implements Store {
         for (; cursor && matches(cursor.key[0], desiredSrc); cursor = await cursor.continue()) {
             const entry = <Entry>cursor.value;
             ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE);
-            const key = entry.effectiveKey;
+            let key: Muid|string|number|Uint8Array|[];
+
+            if (typeof(entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof(entry.effectiveKey) == "number") {
+                key = entry.effectiveKey;
+            } else if (typeof (entry.effectiveKey) == "object" && !(entry.effectiveKey instanceof Array)) {
+                // If the key is a MuidTuple
+                key = muidToString(muidTupleToMuid(entry.effectiveKey));
+            } else {
+                throw Error(`not sure what to do with a ${typeof(key)} key`)
+            }
             ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
             if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime) {
                 if (entry.deletion) {
-                    console.log(key);
-                    console.log(result.keys());
-
-                    if (result.has(key)) {
-                        result.delete(key);
-                    } else {
-                        throw Error("Key does not exist"); // This is not working properly for role, keys arent found
-                    }
+                    result.delete(key);
                 } else {
                     result.set(key, entry);
                 }
