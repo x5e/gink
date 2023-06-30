@@ -495,7 +495,7 @@ export class IndexedDbStore implements Store {
                 // If the key is a MuidTuple
                 key = muidToString(muidTupleToMuid(entry.effectiveKey));
             } else {
-                throw Error(`not sure what to do with a ${typeof(key)} key`)
+                throw Error(`not sure what to do with a ${typeof(key)} key`);
             }
             ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
             if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime) {
