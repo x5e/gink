@@ -261,7 +261,7 @@ export class IndexedDbStore implements Store {
                     containerId[2] = srcMuid.getOffset();
                 }
                 const behavior: Behavior = entryBuilder.getBehavior();
-                let effectiveKey: KeyType | Timestamp | MuidTuple | [];
+                let effectiveKey: KeyType | Timestamp | MuidTuple | [Muid, Muid] | [];
                 let replacing = true;
                 if (behavior == Behavior.DIRECTORY || behavior == Behavior.KEY_SET) {
                     ensure(entryBuilder.hasKey());
@@ -279,6 +279,12 @@ export class IndexedDbStore implements Store {
                     ensure(entryBuilder.hasDescribing());
                     const describing = builderToMuid(entryBuilder.getDescribing());
                     effectiveKey = muidToTuple(describing);
+                } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
+                    ensure(entryBuilder.hasPair());
+                    const pair = entryBuilder.getPair();
+                    const left = pair.getLeft();
+                    const rite = pair.getRite();
+                    effectiveKey = [builderToMuid(left), builderToMuid(rite)]
                 } else {
                     throw new Error(`unexpected behavior: ${behavior}`)
                 }

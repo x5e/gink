@@ -71,7 +71,9 @@ export class Role extends Container {
         return (async function*(){
             const entries = await thisSet.ginkInstance.store.getKeyedEntries(thisSet.address, asOf);
             for (const [key, entry] of entries) {
-                yield entry.effectiveKey;
+                if (!(entry.effectiveKey instanceof Array)) {
+                    yield entry.effectiveKey;
+                }
             }
         })();
     }

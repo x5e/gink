@@ -12,6 +12,8 @@ export declare enum Behavior {
     SEQUENCE=2,
     KEY_SET=3,
     DIRECTORY=4,
+    PAIR_SET=5,
+    PAIR_MAP=6,
     PROPERTY=9,
     ROLE=10
 }
@@ -60,6 +62,13 @@ export class BundleBuilder extends ImplementedMessage {
     getComment(): string;
 }
 
+export class PairBuilder extends ImplementedMessage {
+    setLeft(MuidBuilder);
+    getLeft(): MuidBuilder;
+    setRite(MuidBuilder);
+    getRite(): MuidBuilder;
+}
+
 export class EntryBuilder extends ImplementedMessage {
     setContainer(MuidBuilder);
     setBehavior(Behavior);
@@ -72,6 +81,9 @@ export class EntryBuilder extends ImplementedMessage {
     setValue(ValueBuilder);
     hasValue(): boolean;
     getValue(): ValueBuilder;
+    hasPair(): boolean;
+    setPair(PairBuilder);
+    getPair(): PairBuilder;
     hasPointee(): boolean;
     getPointee(): MuidBuilder;
     getDeletion(): boolean;

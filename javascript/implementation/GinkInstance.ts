@@ -1,3 +1,4 @@
+import { PairSet } from './PairSet';
 import { Peer } from "./Peer";
 import { makeMedallion, ensure, noOp, generateTimestamp } from "./utils";
 import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, } from "./typedefs";
@@ -133,9 +134,19 @@ export class GinkInstance {
     }
 
     /**
+     * Creates a new PairSet container.
+     * @param change either the bundler to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the PairSet container (immediately if a bundler is passed in, otherwise after the commit)
+     */
+    async createPairSet(change?: Bundler|string): Promise<PairSet> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_SET, change);
+        return new PairSet(this, muid, containerBuilder)
+    }
+
+    /**
      * Creates a new Directory container (like a javascript map or a python dict).
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the Directory container (immediately if a bundler is passed in, otherwise after the commit)
      */
     // TODO: allow user to specify the types allowed for keys and values
     async createDirectory(change?: Bundler|string): Promise<Directory> {
