@@ -284,8 +284,8 @@ export class IndexedDbStore implements Store {
                     const pair = entryBuilder.getPair();
                     const left = pair.getLeft();
                     const rite = pair.getRite();
-                    effectiveKey = muidToString(builderToMuid(left))+"-"+muidToString(builderToMuid(rite));
-                    // effectiveKey = [builderToMuid(left), builderToMuid(rite)];
+                    // There's probably a better way of doing this
+                    effectiveKey = `${muidToString(builderToMuid(left))}-${muidToString(builderToMuid(rite))}`;
                 } else {
                     throw new Error(`unexpected behavior: ${behavior}`)
                 }
@@ -316,7 +316,6 @@ export class IndexedDbStore implements Store {
                     placementId,
                 };
                 if (replacing) {
-                    console.log(effectiveKey);
                     const range = IDBKeyRange.bound([containerId, effectiveKey], [containerId, effectiveKey, placementId]);
                     const search = await wrappedTransaction.objectStore("entries").index("by-container-key-placement"
                         ).openCursor(range, "prev");
@@ -434,7 +433,7 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction(['containers']).objectStore('containers').get(<MuidTuple>addressTuple);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType | Muid, asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.wrapped.transaction(["entries", "clearances"]);
@@ -452,6 +451,8 @@ export class IndexedDbStore implements Store {
         let upperTuple = [asOfTs];
         if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
             semanticKey = key;
+        } else if (key instanceof Array) {
+            semanticKey = `${muidToString(key[0])}-${muidToString(key[1])}`;
         } else if (key) {
             const muidKey = <Muid> key;
             semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];

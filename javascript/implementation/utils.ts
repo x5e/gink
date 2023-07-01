@@ -233,6 +233,16 @@ export function matches(a: any[], b: any[]) {
     return true;
 }
 
+export function stringToMuid(string: String): Muid {
+    const split = string.split(",");
+    ensure(split.length == 3, `This is not a Muid: ${split}`)
+    const muid = new MuidBuilder();
+    muid.setTimestamp(split[0]);
+    muid.setMedallion(split[1]);
+    muid.setOffset(split[2]);
+    return builderToMuid(muid);
+}
+
 export function muidToString(muid: Muid) {
     // TODO(https://github.com/google/gink/issues/61): return canonical representation
     return `${muid.timestamp},${muid.medallion},${muid.offset}`;
