@@ -284,7 +284,8 @@ export class IndexedDbStore implements Store {
                     const pair = entryBuilder.getPair();
                     const left = pair.getLeft();
                     const rite = pair.getRite();
-                    effectiveKey = [builderToMuid(left), builderToMuid(rite)]
+                    effectiveKey = muidToString(builderToMuid(left))+"-"+muidToString(builderToMuid(rite));
+                    // effectiveKey = [builderToMuid(left), builderToMuid(rite)];
                 } else {
                     throw new Error(`unexpected behavior: ${behavior}`)
                 }
@@ -315,6 +316,7 @@ export class IndexedDbStore implements Store {
                     placementId,
                 };
                 if (replacing) {
+                    console.log(effectiveKey);
                     const range = IDBKeyRange.bound([containerId, effectiveKey], [containerId, effectiveKey, placementId]);
                     const search = await wrappedTransaction.objectStore("entries").index("by-container-key-placement"
                         ).openCursor(range, "prev");
@@ -492,7 +494,8 @@ export class IndexedDbStore implements Store {
         const result = new Map();
         for (; cursor && matches(cursor.key[0], desiredSrc); cursor = await cursor.continue()) {
             const entry = <Entry>cursor.value;
-            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE);
+            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
+                entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP);
             let key: Muid|string|number|Uint8Array|[];
 
             if (typeof(entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof(entry.effectiveKey) == "number") {

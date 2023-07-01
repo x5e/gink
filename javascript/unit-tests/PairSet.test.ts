@@ -9,6 +9,8 @@ test('include and exclude work as intended', async function() {
     const box2 = await instance.createBox();
 
     await ps1.include([box1, box2]);
+    ensure(await ps1.size() == 1, `${await ps1.size()}`);
 
-    // ensure(await ps1.size() == 0, `${await ps1.size()}`);
+    await ps1.exclude([box1, box2]);
+    ensure(await ps1.size()==0);
 });

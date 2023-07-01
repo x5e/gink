@@ -113,7 +113,7 @@ export class Container {
             const pair = new PairBuilder();
             if ("address" in key[0] && "address" in key[1]) { // Key is an array of containers
                 pair.setLeft(muidToBuilder(key[0].address));
-                pair.setRite(muidToBuilder(key[0].address));
+                pair.setRite(muidToBuilder(key[1].address));
             } else if (!("address" in key[0]) && !("address" in key[1])) { // Key is an array of muids
                 pair.setLeft(muidToBuilder(key[0]));
                 pair.setRite(muidToBuilder(key[1]));
