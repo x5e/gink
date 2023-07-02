@@ -24,6 +24,7 @@ import {
 import {ChainTracker} from "./ChainTracker";
 import {Store} from "./Store";
 import {Behavior, BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder, MuidBuilder,} from "./builders";
+import { Container } from './Container';
 
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
@@ -433,7 +434,7 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction(['containers']).objectStore('containers').get(<MuidTuple>addressTuple);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Container, Container] | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.wrapped.transaction(["entries", "clearances"]);
@@ -452,7 +453,13 @@ export class IndexedDbStore implements Store {
         if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
             semanticKey = key;
         } else if (key instanceof Array) {
-            semanticKey = `${muidToString(key[0])}-${muidToString(key[1])}`;
+            let pairKey: [Muid, Muid];
+            if ("address" in key[0] && "address" in key[1]) { // Key is an array of containers
+                pairKey = [key[0].address, key[1].address]
+            } else if (!("address" in key[0]) && !("address" in key[1])) { // Key is an array of muids
+                pairKey = [key[0], key[1]];
+            }
+            semanticKey = `${muidToString(pairKey[0])}-${muidToString(pairKey[1])}`;
         } else if (key) {
             const muidKey = <Muid> key;
             semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];

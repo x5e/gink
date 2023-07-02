@@ -22,14 +22,7 @@ export class PairMap extends Container {
     }
 
     async get(key: [Muid, Muid]|[Container, Container], asOf?: AsOf): Promise<Value|Container> {
-        let pairKey: [Muid, Muid];
-        if ("address" in key[0] && "address" in key[1]) { // Key is an array of containers
-            pairKey = [key[0].address, key[1].address]
-        } else if (!("address" in key[0]) && !("address" in key[1])) { // Key is an array of muids
-            pairKey = [key[0], key[1]];
-        }
-        const found = await this.ginkInstance.store.getEntryByKey(this.address, pairKey, asOf);
-
+        const found = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
         if (found && !found.deletion) return found.value;
     }
 

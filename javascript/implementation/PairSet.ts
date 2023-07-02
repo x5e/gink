@@ -44,14 +44,7 @@ export class PairSet extends Container {
      * @returns a promise that resolves to a boolean, true if the key is included, false if not
      */
     async contains(key: [Muid, Muid]|[Container, Container], asOf?: AsOf): Promise<boolean> {
-        let pair_key: [Muid, Muid];
-        let found: Entry;
-        if ("address" in key[0] && "address" in key[1]) { // Key is an array of containers
-            pair_key = [key[0].address, key[1].address]
-        } else if (!("address" in key[0]) && !("address" in key[1])) { // Key is an array of muids
-            pair_key = [key[0], key[1]];
-        }
-        found = await this.ginkInstance.store.getEntryByKey(this.address, pair_key, asOf);
+        const found = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
         if (found && found.deletion) return false;
         return Boolean(found);
     }
