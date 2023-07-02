@@ -1,4 +1,3 @@
-import { Listener } from './Listener';
 import {builderToMuid, ensure, generateTimestamp, matches, sameData, unwrapKey, unwrapValue, muidToTuple, muidTupleToMuid, muidToString} from "./utils";
 import {deleteDB, IDBPDatabase, openDB} from 'idb';
 import {
