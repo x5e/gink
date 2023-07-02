@@ -1,4 +1,3 @@
-import { PairSet } from './PairSet';
 import { Peer } from "./Peer";
 import { makeMedallion, ensure, noOp, generateTimestamp } from "./utils";
 import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, } from "./typedefs";
@@ -7,6 +6,8 @@ import { Bundler } from "./Bundler";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
 
+import { PairSet } from './PairSet';
+import { PairMap } from "./PairMap";
 import { KeySet } from "./KeySet";
 import { Directory } from "./Directory";
 import { Box } from "./Box";
@@ -141,6 +142,16 @@ export class GinkInstance {
     async createPairSet(change?: Bundler|string): Promise<PairSet> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_SET, change);
         return new PairSet(this, muid, containerBuilder)
+    }
+
+    /**
+     * Creates a new PairMap container.
+     * @param change either the bundler to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the PairMap container (immediately if a bundler is passed in, otherwise after the commit)
+     */
+    async createPairMap(change?: Bundler|string): Promise<PairMap> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_SET, change);
+        return new PairMap(this, muid, containerBuilder)
     }
 
     /**
