@@ -150,7 +150,7 @@ export class GinkInstance {
      * @returns promise that resolves to the PairMap container (immediately if a bundler is passed in, otherwise after the commit)
      */
     async createPairMap(change?: Bundler|string): Promise<PairMap> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_SET, change);
+        const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_MAP, change);
         return new PairMap(this, muid, containerBuilder)
     }
 

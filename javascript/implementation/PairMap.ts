@@ -29,7 +29,16 @@ export class PairMap extends Container {
             pairKey = [key[0], key[1]];
         }
         const found = await this.ginkInstance.store.getEntryByKey(this.address, pairKey, asOf);
-        
+
         if (found && !found.deletion) return found.value;
+    }
+
+    async delete(key: [Muid, Muid]|[Container, Container], change?: Bundler|string): Promise<Muid> {
+        return await this.addEntry(key, Container.DELETION, change);
+    }
+
+    async size(asOf?: AsOf): Promise<number> {
+        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        return entries.size;
     }
 }
