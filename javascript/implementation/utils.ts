@@ -243,6 +243,12 @@ export function stringToMuid(string: String): Muid {
     return builderToMuid(muid);
 }
 
+export function pairKeyToArray(effectiveKey: String): Array<Muid> {
+    const split = effectiveKey.split("-");
+    ensure(split.length == 2);
+    return [stringToMuid(split[0]), stringToMuid(split[1])];
+}
+
 export function muidToString(muid: Muid) {
     // TODO(https://github.com/google/gink/issues/61): return canonical representation
     return `${muid.timestamp},${muid.medallion},${muid.offset}`;
