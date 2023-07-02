@@ -47,5 +47,6 @@ test('contains, toSet, and get_member_ids work properly', async function() {
     ensure(await role1.contains(box1));
     ensure(!(await role1.contains(box3)));
 
-    ensure((await role1.toSet()).size == 2);
+    ensure((await role1.toArray()).length == 2);
+    ensure((await role1.toArray())[0].behavior);
 });

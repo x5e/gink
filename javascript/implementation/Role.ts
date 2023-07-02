@@ -1,9 +1,9 @@
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { KeyType, Muid, MuidTuple, AsOf } from "./typedefs";
+import { KeyType, Muid, MuidTuple, AsOf, Entry, Value } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, muidTupleToMuid } from "./utils";
-import { toJson } from "./factories"
+import { ensure, muidToString } from "./utils";
+import { toJson, interpret } from "./factories"
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class Role extends Container {
@@ -77,19 +77,25 @@ export class Role extends Container {
     }
 
     /**
-     * Returns the content of the role as a set.
-     * @param asOf optional timestamp to look back to
-     * @returns a promise that resolves to a set of Muids
+     * Dumps the contents of this list to a javascript array.
+     * useful for debugging and could also be used to export data by walking the tree
+     * @param asOf effective time to get the dump for: leave undefined to get data as of the present
+     * @returns an array containing Values (e.g. numbers, strings) and Containers (e.g. other Lists, Boxes, Directories)
      */
-    async toSet(asOf?: AsOf): Promise<Set<Muid>> {
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
-        const resultSet = new Set<Muid>();
+    async toArray(asOf?: AsOf): Promise<(Container)[]> {
+        const thisList = this;
+        let toArray: Array<Container> = [];
+        let container;
+        const entries = await thisList.ginkInstance.store.getKeyedEntries(thisList.address, asOf);
         for (const [key, entry] of entries) {
-            if (typeof (entry.effectiveKey) == "object" && !(entry.effectiveKey instanceof Uint8Array) && !(entry.effectiveKey instanceof Array)) {
-                resultSet.add(muidTupleToMuid(entry.effectiveKey));
+            container = await interpret(entry, thisList.ginkInstance);
+            if ("behavior" in container) {
+                toArray.push(container);
+            } else {
+                throw Error("All entries should be containers - something is broken");
             }
         }
-        return resultSet;
+        return toArray;
     }
 
     /**
@@ -107,7 +113,7 @@ export class Role extends Container {
         const mySig = muidToString(this.address);
         if (seen.has(mySig)) return "null";
         seen.add(mySig);
-        const asSet = await this.toSet(asOf);
+        const asSet = await this.toArray(asOf);
         let returning = "[";
         let first = true;
         for (const key of asSet) {
@@ -116,7 +122,7 @@ export class Role extends Container {
             }   else {
                 returning += ",";
             }
-            returning += await toJson(muidToString(key), indent === false ? false : +indent + 1, asOf, seen);
+            returning += await toJson(key, indent === false ? false : +indent + 1, asOf, seen);
         }
         returning += "]";
         return returning;
