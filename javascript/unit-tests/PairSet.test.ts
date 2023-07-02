@@ -1,5 +1,5 @@
 import { GinkInstance, IndexedDbStore } from "../implementation";
-import { ensure, muidToString, muidTupleToMuid, stringToMuid } from "../implementation/utils";
+import { ensure } from "../implementation/utils";
 import { sleep } from "./test_utils";
 
 test('include, exclude, and contains work as intended', async function() {

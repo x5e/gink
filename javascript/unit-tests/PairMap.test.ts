@@ -52,4 +52,6 @@ test('asOf and items work as intended', async function() {
     ensure(items0.keys().next().value[0].timestamp == box1.address.timestamp);
     ensure(items0.keys().next().value[1].timestamp == box2.address.timestamp);
     ensure(items0.values().next().value == "box1 -> box2");
+
+    console.log(await pm1.toJson())
 });

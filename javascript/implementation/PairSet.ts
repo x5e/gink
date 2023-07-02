@@ -1,8 +1,8 @@
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { KeyType, Muid, MuidTuple, AsOf, Entry } from "./typedefs";
+import { Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, muidTupleToMuid, stringToMuid } from "./utils";
+import { ensure, muidToString, stringToMuid } from "./utils";
 import { toJson } from "./factories"
 import { Behavior, ContainerBuilder } from "./builders";
 
