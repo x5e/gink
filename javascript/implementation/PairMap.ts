@@ -89,7 +89,7 @@ export class PairMap extends Container {
                 if (typeof(entry.effectiveKey)=="string") {
                     toMap.set(pairKeyToArray(entry.effectiveKey), entry.value);
                 } else {
-                    throw Error(`${typeof(entry.effectiveKey)} key shouldn't be here.`)
+                    throw Error(`${typeof(entry.effectiveKey)} key shouldn't be here.`);
                 }
             }
         }
