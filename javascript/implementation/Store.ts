@@ -78,7 +78,7 @@ export interface Store {
     getBackRefs(pointingTo: Muid): Promise<Entry[]>;
 
     getEntryById(container: Muid, entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined>;
-    getEntryByKey(container: Muid, key?: KeyType | Muid, asOf?: AsOf): Promise<Entry | undefined>;
+    getEntryByKey(container: Muid, key?: KeyType | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined>;
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>>;
     getOrderedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Entry[]>
 

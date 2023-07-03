@@ -13,6 +13,7 @@ const ChainEntryBuilder = LogFileBuilder.ChainEntry;
 const MovementBuilder = require("../proto/movement_pb")["Movement"];
 const MuidBuilder = require("../proto/muid_pb")["Muid"];
 const KeyBuilder = require("../proto/key_pb")["Key"];
+const PairBuilder = require("../proto/pair_pb")["Pair"];
 const ValueBuilder = require("../proto/value_pb")["Value"];
 const ClearanceBuilder = require("../proto/clearance_pb")["Clearance"];
 const Special = ValueBuilder.Special;
@@ -34,6 +35,7 @@ module.exports = {
     MovementBuilder,
     MuidBuilder,
     KeyBuilder,
+    PairBuilder,
     ValueBuilder,
     Special,
     NumberBuilder,

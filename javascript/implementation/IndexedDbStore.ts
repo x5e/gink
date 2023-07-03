@@ -260,7 +260,7 @@ export class IndexedDbStore implements Store {
                     containerId[2] = srcMuid.getOffset();
                 }
                 const behavior: Behavior = entryBuilder.getBehavior();
-                let effectiveKey: KeyType | Timestamp | MuidTuple | [];
+                let effectiveKey: KeyType | Timestamp | MuidTuple | [Muid, Muid] | [];
                 let replacing = true;
                 if (behavior == Behavior.DIRECTORY || behavior == Behavior.KEY_SET) {
                     ensure(entryBuilder.hasKey());
@@ -278,6 +278,13 @@ export class IndexedDbStore implements Store {
                     ensure(entryBuilder.hasDescribing());
                     const describing = builderToMuid(entryBuilder.getDescribing());
                     effectiveKey = muidToTuple(describing);
+                } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
+                    ensure(entryBuilder.hasPair());
+                    const pair = entryBuilder.getPair();
+                    const left = pair.getLeft();
+                    const rite = pair.getRite();
+                    // There's probably a better way of doing this
+                    effectiveKey = `${muidToString(builderToMuid(left))}-${muidToString(builderToMuid(rite))}`;
                 } else {
                     throw new Error(`unexpected behavior: ${behavior}`)
                 }
@@ -425,7 +432,7 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction(['containers']).objectStore('containers').get(<MuidTuple>addressTuple);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType | Muid, asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.wrapped.transaction(["entries", "clearances"]);
@@ -443,6 +450,8 @@ export class IndexedDbStore implements Store {
         let upperTuple = [asOfTs];
         if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
             semanticKey = key;
+        } else if (key instanceof Array) {
+            semanticKey = `${muidToString(key[0])}-${muidToString(key[1])}`;
         } else if (key) {
             const muidKey = <Muid> key;
             semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];
@@ -485,7 +494,8 @@ export class IndexedDbStore implements Store {
         const result = new Map();
         for (; cursor && matches(cursor.key[0], desiredSrc); cursor = await cursor.continue()) {
             const entry = <Entry>cursor.value;
-            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE);
+            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
+                entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP);
             let key: Muid|string|number|Uint8Array|[];
 
             if (typeof(entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof(entry.effectiveKey) == "number") {

@@ -63,7 +63,7 @@ export interface Entry {
      * effectiveKey is a KeyType if the entry is for a Directory, a Timestamp if it's for a sequence,
      * MuidTuple if it's for a property, and empty list for a box.
      */
-    effectiveKey: KeyType | Timestamp | MuidTuple | [];
+    effectiveKey: KeyType | Timestamp | MuidTuple | [Muid, Muid] | [];
     entryId: MuidTuple;
     pointeeList: MuidTuple[]; // use an empty list to denote no pointees
     value?: Value;
