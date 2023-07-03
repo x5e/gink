@@ -113,16 +113,16 @@ export class Role extends Container {
         const mySig = muidToString(this.address);
         if (seen.has(mySig)) return "null";
         seen.add(mySig);
-        const asSet = await this.toArray(asOf);
+        const asArray = await this.toArray(asOf);
         let returning = "[";
         let first = true;
-        for (const key of asSet) {
+        for (const container of asArray) {
             if (first) {
                 first = false;
             }   else {
                 returning += ",";
             }
-            returning += await toJson(key, indent === false ? false : +indent + 1, asOf, seen);
+            returning += await toJson(container, indent === false ? false : +indent + 1, asOf, seen);
         }
         returning += "]";
         return returning;
