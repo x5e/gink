@@ -43,6 +43,10 @@ export async function interpret(entry: Entry, ginkInstance: GinkInstance): Promi
         };
         return construct(ginkInstance, muid);
     }
+    if (typeof(entry.effectiveKey)=="object" && !(entry.effectiveKey instanceof Array) && !(entry.effectiveKey instanceof Uint8Array)) {
+        // For a MuidTuple effective key
+        return await construct(ginkInstance, muidTupleToMuid(entry.effectiveKey));
+    }
     throw new Error(`don't know how to interpret entry: ${JSON.stringify(entry)}`);
 
 }
@@ -85,7 +89,7 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
 * I can't import List, Directory, etc. into this Container.ts because it will cause the inherits clauses to break.
 * So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
 */
-Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Container, asOf?: AsOf): 
+Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Container, asOf?: AsOf):
     AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
     return (async function* () {
         const entries = await instance.store.getBackRefs(pointingTo.address);
@@ -109,4 +113,3 @@ Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Co
         }
     })();
 };
-

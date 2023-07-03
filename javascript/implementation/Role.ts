@@ -1,9 +1,9 @@
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { KeyType, Muid, MuidTuple, AsOf } from "./typedefs";
+import { Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, muidTupleToMuid } from "./utils";
-import { toJson } from "./factories"
+import { ensure, muidToString } from "./utils";
+import { toJson, interpret } from "./factories"
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class Role extends Container {
@@ -62,36 +62,44 @@ export class Role extends Container {
     }
 
     /**
-     * Function to iterate over the contents of the role.
+     * Function to iterate over the containers in the role.
      * @param asOf optional timestamp to look back to
-     * @returns an async iterator across everything in the role, with values returned as MuidTuples
+     * @returns an async iterator across all containers in the role
      */
-    get_member_ids(asOf?: AsOf): AsyncGenerator<MuidTuple|KeyType|[], void, unknown> {
-        const thisSet = this;
+    get_members(asOf?: AsOf): AsyncGenerator<Container, void, unknown> {
+        const thisRole = this;
+        let container;
         return (async function*(){
-            const entries = await thisSet.ginkInstance.store.getKeyedEntries(thisSet.address, asOf);
+            const entries = await thisRole.ginkInstance.store.getKeyedEntries(thisRole.address, asOf);
             for (const [key, entry] of entries) {
-                if (!(entry.effectiveKey instanceof Array)) {
-                    yield entry.effectiveKey;
+                container = await interpret(entry, thisRole.ginkInstance);
+                if ("behavior" in container) {
+                    yield container;
                 }
             }
         })();
     }
 
     /**
-     * Returns the content of the role as a set.
-     * @param asOf optional timestamp to look back to
-     * @returns a promise that resolves to a set of Muids
+     * Dumps the contents of this list to a javascript array.
+     * useful for debugging and could also be used to export data by walking the tree
+     * @param asOf effective time to get the dump for: leave undefined to get data as of the present
+     * @returns an array containing Values (e.g. numbers, strings) and Containers (e.g. other Lists, Boxes, Directories)
      */
-    async toSet(asOf?: AsOf): Promise<Set<Muid>> {
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
-        const resultSet = new Set<Muid>();
+    async toArray(asOf?: AsOf): Promise<(Container)[]> {
+        const thisList = this;
+        let toArray: Array<Container> = [];
+        let container;
+        const entries = await thisList.ginkInstance.store.getKeyedEntries(thisList.address, asOf);
         for (const [key, entry] of entries) {
-            if (typeof (entry.effectiveKey) == "object" && !(entry.effectiveKey instanceof Uint8Array) && !(entry.effectiveKey instanceof Array)) {
-                resultSet.add(muidTupleToMuid(entry.effectiveKey));
+            container = await interpret(entry, thisList.ginkInstance);
+            if ("behavior" in container) {
+                toArray.push(container);
+            } else {
+                throw Error("All entries should be containers - something is broken");
             }
         }
-        return resultSet;
+        return toArray;
     }
 
     /**
@@ -109,16 +117,16 @@ export class Role extends Container {
         const mySig = muidToString(this.address);
         if (seen.has(mySig)) return "null";
         seen.add(mySig);
-        const asSet = await this.toSet(asOf);
+        const asArray = await this.toArray(asOf);
         let returning = "[";
         let first = true;
-        for (const key of asSet) {
+        for (const container of asArray) {
             if (first) {
                 first = false;
             }   else {
                 returning += ",";
             }
-            returning += await toJson(muidToString(key), indent === false ? false : +indent + 1, asOf, seen);
+            returning += await toJson(container, indent === false ? false : +indent + 1, asOf, seen);
         }
         returning += "]";
         return returning;
