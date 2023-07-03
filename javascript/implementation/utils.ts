@@ -233,6 +233,17 @@ export function matches(a: any[], b: any[]) {
     return true;
 }
 
+export function stringMuidToHex(string: String) {
+    let returning = "";
+    const split = string.split(",");
+    ensure(split.length == 3);
+    for (let i = 0; i < 3; i++) {
+        returning += Number(split[i]).toString(16).toUpperCase();
+        if (i != 2) returning += "-";
+    }
+    return returning;
+}
+
 export function stringToMuid(string: String): Muid {
     const split = string.split(",");
     ensure(split.length == 3, `This is not a Muid: ${split}`)
@@ -241,6 +252,12 @@ export function stringToMuid(string: String): Muid {
     muid.setMedallion(split[1]);
     muid.setOffset(split[2]);
     return builderToMuid(muid);
+}
+
+export function pairKeyToArray(effectiveKey: String): Array<Muid> {
+    const split = effectiveKey.split("-");
+    ensure(split.length == 2);
+    return [stringToMuid(split[0]), stringToMuid(split[1])];
 }
 
 export function muidToString(muid: Muid) {

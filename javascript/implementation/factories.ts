@@ -9,6 +9,10 @@ import { Container } from "./Container";
 import { Directory } from "./Directory";
 import { Sequence } from "./Sequence";
 import { Box } from "./Box";
+import { Role } from "./Role";
+import { PairSet } from "./PairSet";
+import { PairMap } from "./PairMap";
+import { KeySet } from "./KeySet";
 import { GinkInstance } from "./GinkInstance";
 import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid } from "./utils";
 import { Behavior, EntryBuilder, ContainerBuilder } from "./builders";
@@ -54,13 +58,13 @@ export async function interpret(entry: Entry, ginkInstance: GinkInstance): Promi
 export async function toJson(value: Value | Container, indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
     ensure(indent === false, "indent not implemented");
     if (value instanceof Container) {
-        if (value instanceof Directory) {
+        if (value instanceof Directory || value instanceof Sequence || value instanceof Box) {
             return await value.toJson(indent, asOf, seen);
         }
-        if (value instanceof Sequence) {
+        if (value instanceof Role || value instanceof PairSet || value instanceof PairMap) {
             return await value.toJson(indent, asOf, seen);
         }
-        if (value instanceof Box) {
+        if (value instanceof KeySet) {
             return await value.toJson(indent, asOf, seen);
         }
         throw new Error(`container type not recognized: ${value}`);
