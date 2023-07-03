@@ -2,7 +2,7 @@ import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
 import { Muid, AsOf, Value } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, pairKeyToArray } from "./utils";
+import { ensure, stringMuidToHex, muidToString, pairKeyToArray } from "./utils";
 import { toJson } from "./factories"
 import { Behavior, ContainerBuilder } from "./builders";
 
@@ -120,8 +120,8 @@ export class PairMap extends Container {
             }   else {
                 returning += ", ";
             }
-            returning += await toJson(`[${muidToString(key[0])}, ${muidToString(key[1])}]: ${value}`,
-            indent === false ? false : +indent + 1, asOf, seen);
+            returning += `["${stringMuidToHex(muidToString(key[0]))}", "${stringMuidToHex(muidToString(key[1]))}"]:`;
+            returning += await toJson(value,indent === false ? false : +indent + 1, asOf, seen);
         }
         returning += "}";
         return returning;
