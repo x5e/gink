@@ -1,6 +1,6 @@
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { KeyType, Muid, MuidTuple, AsOf, Entry, Value } from "./typedefs";
+import { Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure, muidToString } from "./utils";
 import { toJson, interpret } from "./factories"
@@ -62,16 +62,20 @@ export class Role extends Container {
     }
 
     /**
-     * Function to iterate over the contents of the role.
+     * Function to iterate over the containers in the role.
      * @param asOf optional timestamp to look back to
-     * @returns an async iterator across everything in the role, with values returned as MuidTuples
+     * @returns an async iterator across all containers in the role
      */
-    get_member_ids(asOf?: AsOf): AsyncGenerator<MuidTuple|KeyType|[], void, unknown> {
-        const thisSet = this;
+    get_members(asOf?: AsOf): AsyncGenerator<Container, void, unknown> {
+        const thisRole = this;
+        let container;
         return (async function*(){
-            const entries = await thisSet.ginkInstance.store.getKeyedEntries(thisSet.address, asOf);
+            const entries = await thisRole.ginkInstance.store.getKeyedEntries(thisRole.address, asOf);
             for (const [key, entry] of entries) {
-                yield entry.effectiveKey;
+                container = await interpret(entry, thisRole.ginkInstance);
+                if ("behavior" in container) {
+                    yield container;
+                }
             }
         })();
     }
