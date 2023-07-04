@@ -21,6 +21,11 @@ test('include, exclude, and contains work as intended', async function() {
     await ps1.exclude([box1, box2]);
     ensure(await ps1.size()==1);
     ensure(!(await ps1.contains([box1, box2])));
+
+    await ps1.include([box1.address, box2]);
+    ensure(await ps1.size() == 2);
+    ensure(await ps1.contains([box1.address, box2]));
+    ensure(await ps1.contains([box1, box2.address]));
 });
 
 test('asOf and get_pairs work properly', async function() {
