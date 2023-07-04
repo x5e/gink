@@ -433,7 +433,7 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction(['containers']).objectStore('containers').get(<MuidTuple>addressTuple);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Container, Container] | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid|Container, Muid|Container], asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.wrapped.transaction(["entries", "clearances"]);
@@ -452,13 +452,21 @@ export class IndexedDbStore implements Store {
         if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
             semanticKey = key;
         } else if (key instanceof Array) {
-            let pairKey: [Muid, Muid];
-            if ("address" in key[0] && "address" in key[1]) { // Key is an array of containers
-                pairKey = [key[0].address, key[1].address]
-            } else if (!("address" in key[0]) && !("address" in key[1])) { // Key is an array of muids
-                pairKey = [key[0], key[1]];
+            let riteMuid: Muid;
+            let leftMuid: Muid;
+            if ("address" in key[0]) { // Left is a container
+                leftMuid = key[0].address;
             }
-            semanticKey = `${muidToString(pairKey[0])}-${muidToString(pairKey[1])}`;
+            if ("address" in key[1]) { // Right is a container
+                riteMuid = key[1].address;
+            }
+            if (!("address" in key[0])) { // Left is a muid
+                leftMuid = key[0];
+            }
+            if (!("address" in key[1])) { // Right is a Muid
+                riteMuid = key[1];
+            }
+            semanticKey = `${muidToString(leftMuid)}-${muidToString(riteMuid)}`;
         } else if (key) {
             const muidKey = <Muid> key;
             semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];

@@ -23,7 +23,7 @@ export class PairSet extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the inclusion
      */
-    async include(key: [Muid, Muid]|[Container, Container], change?: Bundler|string): Promise<Muid> {
+    async include(key: [Muid|Container, Muid|Container], change?: Bundler|string): Promise<Muid> {
         return await this.addEntry(key, Container.INCLUSION, change);
     }
 
@@ -33,7 +33,7 @@ export class PairSet extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the exclusion
      */
-    async exclude(key: [Muid, Muid]|[Container, Container], change?: Bundler|string): Promise<Muid> {
+    async exclude(key: [Muid|Container, Muid|Container], change?: Bundler|string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 
@@ -43,7 +43,7 @@ export class PairSet extends Container {
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to a boolean, true if the key is included, false if not
      */
-    async contains(key: [Muid, Muid]|[Container, Container], asOf?: AsOf): Promise<boolean> {
+    async contains(key: [Muid|Container, Muid|Container], asOf?: AsOf): Promise<boolean> {
         const found = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
         if (found && found.deletion) return false;
         return Boolean(found);

@@ -81,7 +81,7 @@ export class Container {
      * @returns a promise the resolves to the muid of the change
      */
     protected async addEntry(
-        key?: KeyType | true | Container | Muid | [Muid, Muid] | [Container, Container],
+        key?: KeyType | true | Container | Muid | [Muid|Container, Muid|Container],
         value?: Value | Container | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string):
             Promise<Muid> {
@@ -111,11 +111,16 @@ export class Container {
         }
         else if (key instanceof Array) {
             const pair = new PairBuilder();
-            if ("address" in key[0] && "address" in key[1]) { // Key is an array of containers
+            if ("address" in key[0]) { // Left is a container
                 pair.setLeft(muidToBuilder(key[0].address));
+            }
+            if ("address" in key[1]) { // Right is a container
                 pair.setRite(muidToBuilder(key[1].address));
-            } else if (!("address" in key[0]) && !("address" in key[1])) { // Key is an array of muids
+            }
+            if (!("address" in key[0])) { // Left is a muid
                 pair.setLeft(muidToBuilder(key[0]));
+            }
+            if (!("address" in key[1])) { // Right is a Muid
                 pair.setRite(muidToBuilder(key[1]));
             }
             entryBuilder.setPair(pair);
