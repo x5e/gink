@@ -1,4 +1,5 @@
 import { ChainTracker } from "./ChainTracker";
+import { Container } from "./Container";
 import { Medallion, ChainStart, SeenThrough, Muid, Bytes, KeyType, BundleInfo,
     ClaimedChains, Entry, AsOf} from "./typedefs";
 
@@ -25,7 +26,7 @@ export interface Store {
 
     /**
      * Returns a set of chains that may be appended to.
-     * You'll need to getChainTracker to figure out the last 
+     * You'll need to getChainTracker to figure out the last
      * commit for any chain you want to add to though.
      *
      * Implicitly awaits on this.ready;
@@ -59,8 +60,8 @@ export interface Store {
     /**
      * Get all commits from a store ordered by [timestamp, medallion].
      * Intended to be used to send to a peer.
-     * 
-     * The callback should *NOT* await on anything (will cause problems 
+     *
+     * The callback should *NOT* await on anything (will cause problems
      * with the IndexedDb implementation if you do).
      * See https://github.com/google/gink/issues/28
      *
@@ -78,7 +79,7 @@ export interface Store {
     getBackRefs(pointingTo: Muid): Promise<Entry[]>;
 
     getEntryById(container: Muid, entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined>;
-    getEntryByKey(container: Muid, key?: KeyType | Muid, asOf?: AsOf): Promise<Entry | undefined>;
+    getEntryByKey(container: Muid, key?: KeyType | Muid | [Muid|Container, Muid|Container], asOf?: AsOf): Promise<Entry | undefined>;
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>>;
     getOrderedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Entry[]>
 

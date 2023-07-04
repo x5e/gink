@@ -37,7 +37,7 @@ export class KeySet extends Container {
      * Similar to add method, but for multiple entries.
      * @param keys an iterable of keys to add to the key set
      * @param change an optional bundler to put this in.
-     * @returns a promise that resolves to a set of Muids for the created entries.
+     * @returns a promise that resolves to a Bundler object for the created entries.
      */
     async update(keys: Iterable<KeyType>, change?: Bundler|string): Promise<Bundler> {
         let bundler: Bundler;
@@ -118,7 +118,7 @@ export class KeySet extends Container {
     }
 
     /**
-     * Generates a JSON representation of the data in the list.
+     * Generates a JSON representation of the data in the key set.
      * Mostly intended for demo/debug purposes.
      * @param indent true to pretty print
      * @param asOf effective time

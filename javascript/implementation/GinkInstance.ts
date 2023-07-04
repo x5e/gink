@@ -1,18 +1,21 @@
 import { Peer } from "./Peer";
-import {makeMedallion, ensure, noOp, generateTimestamp} from "./utils";
+import { makeMedallion, ensure, noOp, generateTimestamp } from "./utils";
 import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
 
+import { PairSet } from './PairSet';
+import { PairMap } from "./PairMap";
 import { KeySet } from "./KeySet";
 import { Directory } from "./Directory";
 import { Box } from "./Box";
 import { Sequence } from "./Sequence";
+import { Role } from "./Role";
 import { Store } from "./Store";
 import { Behavior, ContainerBuilder, SyncMessageBuilder } from "./builders";
-import {Property} from "./Property";
+import { Property } from "./Property";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -122,9 +125,39 @@ export class GinkInstance {
     }
 
     /**
+     * Creates a new Role container.
+     * @param change either the bundler to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the Role container (immediately if a bundler is passed in, otherwise after the commit)
+     */
+    async createRole(change?: Bundler|string): Promise<Role> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.ROLE, change);
+        return new Role(this, muid, containerBuilder)
+    }
+
+    /**
+     * Creates a new PairSet container.
+     * @param change either the bundler to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the PairSet container (immediately if a bundler is passed in, otherwise after the commit)
+     */
+    async createPairSet(change?: Bundler|string): Promise<PairSet> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_SET, change);
+        return new PairSet(this, muid, containerBuilder)
+    }
+
+    /**
+     * Creates a new PairMap container.
+     * @param change either the bundler to add this box creation to, or a comment for an immediate change
+     * @returns promise that resolves to the PairMap container (immediately if a bundler is passed in, otherwise after the commit)
+     */
+    async createPairMap(change?: Bundler|string): Promise<PairMap> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_MAP, change);
+        return new PairMap(this, muid, containerBuilder)
+    }
+
+    /**
      * Creates a new Directory container (like a javascript map or a python dict).
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the Directory container (immediately if a bundler is passed in, otherwise after the commit)
      */
     // TODO: allow user to specify the types allowed for keys and values
     async createDirectory(change?: Bundler|string): Promise<Directory> {
@@ -162,7 +195,7 @@ export class GinkInstance {
 
     /**
      * Adds a commit to a chain, setting the medallion and timestamps on the commit in the process.
-     * 
+     *
      * @param bundler a PendingCommit ready to be sealed
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
@@ -213,13 +246,13 @@ export class GinkInstance {
     /**
      * Tries to add a commit to the local store.  If successful (i.e. it hasn't seen it before)
      * then it will also publish that commit to the connected peers.
-     * 
+     *
      * This is called both from addPendingCommit (for locally produced commits) and
      * being called by receiveMessage.
-     * 
+     *
      * @param commitBytes The bytes that correspond to this transaction.
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
-     * @returns 
+     * @returns
      */
     private async receiveCommit(commitBytes: BundleBytes, fromConnectionId?: number): Promise<void> {
         await this.ready;
@@ -244,7 +277,7 @@ export class GinkInstance {
     /**
      * @param messageBytes Bytes received from a peer.
      * @param fromConnectionId Local name of the peer the data was received from.
-     * @returns 
+     * @returns
      */
     protected async receiveMessage(messageBytes: Uint8Array, fromConnectionId: number) {
         await this.ready;
@@ -318,8 +351,8 @@ export class GinkInstance {
             websocketClient.onclose = function (ev: CloseEvent) {
                 // this should always be called once the peer disconnects, including in cases of error
                 onClose(`closed connection ${connectionId} to ${target}`);
-                
-                // If the connection was never successfully established, then 
+
+                // If the connection was never successfully established, then
                 // reject the promise returned from the outer connectTo.
                 reject(ev);
 

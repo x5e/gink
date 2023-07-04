@@ -1,10 +1,11 @@
 import {Bundler} from "./Bundler";
 import {Value, KeyType, Muid, AsOf} from "./typedefs";
-import {muidToBuilder, wrapValue, wrapKey} from "./utils";
+import {muidToBuilder, wrapValue, wrapKey, ensure} from "./utils";
 import {Deletion} from "./Deletion";
 import { Inclusion } from "./Inclusion";
 import {GinkInstance} from "./GinkInstance";
 import { EntryBuilder, ChangeBuilder, Behavior, ClearanceBuilder } from "./builders";
+import { PairBuilder } from "./builders";
 
 
 export class Container {
@@ -80,7 +81,7 @@ export class Container {
      * @returns a promise the resolves to the muid of the change
      */
     protected async addEntry(
-        key?: KeyType | true | Container,
+        key?: KeyType | true | Container | Muid | [Muid|Container, Muid|Container],
         value?: Value | Container | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string):
             Promise<Muid> {
@@ -105,8 +106,27 @@ export class Container {
             entryBuilder.setKey(wrapKey(key));
         }
 
-        if (key instanceof Container) {
+        else if (key instanceof Container) {
             entryBuilder.setDescribing(muidToBuilder(key.address));
+        }
+        else if (key instanceof Array) {
+            const pair = new PairBuilder();
+            if ("address" in key[0]) { // Left is a container
+                pair.setLeft(muidToBuilder(key[0].address));
+            }
+            if ("address" in key[1]) { // Right is a container
+                pair.setRite(muidToBuilder(key[1].address));
+            }
+            if (!("address" in key[0])) { // Left is a muid
+                pair.setLeft(muidToBuilder(key[0]));
+            }
+            if (!("address" in key[1])) { // Right is a Muid
+                pair.setRite(muidToBuilder(key[1]));
+            }
+            entryBuilder.setPair(pair);
+        }
+        else if (typeof (key) == "object") { // Key is a Muid
+            entryBuilder.setDescribing(muidToBuilder(key));
         }
 
         // TODO: check that the destination/value is compatible with Container
@@ -120,7 +140,6 @@ export class Container {
             } else {
                 entryBuilder.setValue(wrapValue(value));
             }
-
         }
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setEntry(entryBuilder);
