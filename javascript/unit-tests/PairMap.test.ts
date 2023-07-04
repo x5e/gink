@@ -23,6 +23,9 @@ test('set, get, delete, and size work as intended', async function() {
     await pm1.set([box2, box3], "box2 -> box3");
     await pm1.set([box1, box3], "box1 -> box3");
     ensure(await pm1.size() == 2);
+
+    await pm1.set([box1, box2.address], "box1 -> box2");
+    ensure(await pm1.get([box1.address, box2]) == "box1 -> box2");
 });
 
 test('asOf and items work as intended', async function() {

@@ -30,7 +30,7 @@ export class PairMap extends Container {
      * @param change an optional bundler to put this change in
      * @returns a promise that resolves to the address (Muid) of the newly created entry
      */
-    async set(key: [Muid, Muid]|[Container, Container], value: Value|Container, change?: Bundler|string): Promise<Muid> {
+    async set(key: [Muid|Container, Muid|Container], value: Value|Container, change?: Bundler|string): Promise<Muid> {
         return await this.addEntry(key, value, change);
     }
 
@@ -40,7 +40,7 @@ export class PairMap extends Container {
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to the value or container associated with the key.
      */
-    async get(key: [Muid, Muid]|[Container, Container], asOf?: AsOf): Promise<Value|Container> {
+    async get(key: [Muid|Container, Muid|Container], asOf?: AsOf): Promise<Value|Container> {
         const found = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
         if (found && !found.deletion) return found.value;
     }
@@ -51,7 +51,7 @@ export class PairMap extends Container {
      * @param change an optional bundler to put this change in
      * @returns a promise that resolves to the address (Muid) of the change.
      */
-    async delete(key: [Muid, Muid]|[Container, Container], change?: Bundler|string): Promise<Muid> {
+    async delete(key: [Muid|Container, Muid|Container], change?: Bundler|string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 
@@ -61,7 +61,7 @@ export class PairMap extends Container {
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to a boolean - true if key is in the pair map
      */
-    async has(key: [Muid, Muid]|[Container, Container], asOf?: AsOf): Promise<boolean> {
+    async has(key: [Muid|Container, Muid|Container], asOf?: AsOf): Promise<boolean> {
         const found = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
         return (found && !found.deletion);
     }
