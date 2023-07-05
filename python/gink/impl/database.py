@@ -13,7 +13,7 @@ from os import getuid, getpid, environ
 from time import time, sleep
 from sys import stdout, argv
 from math import floor
-from logging import getLogger, basicConfig
+from logging import getLogger, basicConfig, FileHandler
 from re import fullmatch, IGNORECASE
 
 # builders
@@ -370,6 +370,12 @@ class Database:
 
     def show_log(self, limit: Optional[int] = -10, file=stdout):
         """ Just prints the log to stdout in a human-readable format. """
+        if file!=stdout:
+            fileh = FileHandler(file, 'a')
+            for hdlr in self._logger.handlers[:]:
+                if isinstance(hdlr,FileHandler):
+                    self._logger.removeHandler(hdlr)
+            self._logger.addHandler(fileh)
         for attribution in self.log(limit=limit):
             self._logger.info(attribution)
 

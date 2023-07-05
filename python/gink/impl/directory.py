@@ -3,7 +3,7 @@
 from typing import Union, Optional, Iterable, Dict
 from sys import stdout
 from os import environ
-from logging import getLogger, basicConfig
+from logging import getLogger, basicConfig, FileHandler
 
 # gink implementation
 from .muid import Muid
@@ -234,6 +234,12 @@ class Directory(Container):
 
     def show_blame(self, as_of: GenericTimestamp = None, file=stdout):
         """ dumps the blame map to <file> in a human-readable format """
+        if file!=stdout:
+            fileh = FileHandler(file, 'a')
+            for hdlr in self._logger.handlers[:]:
+                if isinstance(hdlr,FileHandler):
+                    self._logger.removeHandler(hdlr)
+            self._logger.addHandler(fileh)
         for key, val in self.blame(as_of=as_of).items():
             self._logger.info(f'{repr(key)} {str(val)}')
 
@@ -249,6 +255,12 @@ class Directory(Container):
 
     def show_log(self, key: UserKey, file=stdout, limit=10):
         """ writes the history of modifications to <file> in a human-readable format """
+        if file!=stdout:
+            fileh = FileHandler(file, 'a')
+            for hdlr in self._logger.handlers[:]:
+                if isinstance(hdlr,FileHandler):
+                    self._logger.removeHandler(hdlr)
+            self._logger.addHandler(fileh)
         for att in self.log(key):
             if limit is not None and limit <= 0:
                 break
