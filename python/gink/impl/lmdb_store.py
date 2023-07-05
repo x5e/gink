@@ -3,6 +3,7 @@
 # Standard Python Stuff
 import sys
 import os
+from logging import basicConfig, getLogger
 import uuid
 from typing import Tuple, Callable, Iterable, Optional, Set, Union, Container
 from struct import pack
@@ -23,6 +24,8 @@ from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, de
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
                      LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_MAP, PAIR_SET)
 
+basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "INFO"))
+
 
 class LmdbStore(AbstractStore):
     """
@@ -36,6 +39,7 @@ class LmdbStore(AbstractStore):
             retain_bundles: if not already set in this file, will specify bundle retention
             retain_entries: if not already set in this file, will specify entry retention
         """
+        self._logger = getLogger(self.__class__.__name__)
         self._temporary = False
         if file_path is None:
             prefix = "/tmp/temp."
@@ -714,23 +718,23 @@ class LmdbStore(AbstractStore):
         behavior = entry_builder.behavior
         existing_location_key = to_last_with_prefix(locations_cursor, entry_muid_bytes)
         if not existing_location_key:
-            print(f"WARNING: no existing_location_key for {entry_muid}", file=sys.stderr)
+            self._logger.warning(f"no existing_location_key for {entry_muid}")
             return None  # can't move something I don't know about
         location_key = LocationKey.from_bytes(existing_location_key)
         existing_location_time = location_key.placement.timestamp
         if existing_location_time > movement_muid.timestamp:
             # I'm intentionally ignoring the case where a past (re)move shows up after a later one.
             # This means that while the present state will always converge, the history might not.
-            print("WARNING: existing_location_time > movement_muid.timestamp", file=sys.stderr)
+            self._logger.warning("existing_location_time > movement_muid.timestamp")
             return None
         existing_location_value = locations_cursor.value()
         if len(existing_location_value) == 0:
-            print(f"WARNING: {entry_muid} has already been deleted", file=sys.stderr)
+            self._logger.warning(f"{entry_muid} has already been deleted")
             return None  # already has been deleted
         existing_placement = Placement.from_bytes(existing_location_value, behavior)
         entry_expiry = existing_placement.expiry
         if entry_expiry and movement_muid.timestamp > entry_expiry:
-            print(f"WARNING: entry {entry_muid} has already expired", file=sys.stderr)
+            self._logger.warning(f"entry {entry_muid} has already expired")
             return  # refuse to move a entry that's already expired
         if retaining:
             # only keep the removal info if doing a soft delete, otherwise just nuke the entry
@@ -806,7 +810,7 @@ class LmdbStore(AbstractStore):
         entry_muid_bytes = bytes(entry_muid)
         entry_payload = trxn.pop(entry_muid_bytes, db=self._entries)
         if entry_payload is None:
-            print(f"entry already gone? {entry_muid}", file=sys.stderr)
+            self._logger.warning(f"entry already gone? {entry_muid}")
             return
         loc_cursor = trxn.cursor(self._locations)
         placed = loc_cursor.set_range(entry_muid_bytes)
