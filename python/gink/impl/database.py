@@ -378,6 +378,8 @@ class Database:
             self._logger.addHandler(fileh)
         for attribution in self.log(limit=limit):
             self._logger.info(attribution)
+        if fileh:
+            fileh.close()
 
     def get_by_name(self, name: str, as_of: GenericTimestamp = None) -> List:
         """ Returns all containers of the given type with the given name.

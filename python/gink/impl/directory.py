@@ -242,6 +242,9 @@ class Directory(Container):
             self._logger.addHandler(fileh)
         for key, val in self.blame(as_of=as_of).items():
             self._logger.info(f'{repr(key)} {str(val)}')
+        if fileh:
+            fileh.close()
+
 
     def log(self, key: UserKey) -> Iterable[Attribution]:
         """ Get the history of modifications for a particular key. """
@@ -267,3 +270,5 @@ class Directory(Container):
             self._logger.info(str(att))
             if isinstance(limit, int):
                 limit -= 1
+        if fileh:
+            fileh.close()
