@@ -370,16 +370,8 @@ class Database:
 
     def show_log(self, limit: Optional[int] = -10, file=stdout):
         """ Just prints the log to stdout in a human-readable format. """
-        if file!=stdout:
-            fileh = FileHandler(file, 'a')
-            for hdlr in self._logger.handlers[:]:
-                if isinstance(hdlr,FileHandler):
-                    self._logger.removeHandler(hdlr)
-            self._logger.addHandler(fileh)
         for attribution in self.log(limit=limit):
-            self._logger.info(attribution)
-        if fileh:
-            fileh.close()
+            print(attribution, file=file)
 
     def get_by_name(self, name: str, as_of: GenericTimestamp = None) -> List:
         """ Returns all containers of the given type with the given name.
