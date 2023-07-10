@@ -76,7 +76,7 @@ def test_reordering():
             for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
                 for letter in "abcxyz":
                     seq.append(letter)
-                    time.sleep(.001)
+                    time.sleep(.002)
                 assert list(seq) == ["a", "b", "c", "x", "y", "z"], list(seq)
                 popped = seq.pop(dest=1)
                 assert list(seq) == ["a", "z", "b", "c", "x", "y"], (list(seq), popped)

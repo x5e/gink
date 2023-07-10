@@ -9,11 +9,11 @@ from threading import Lock
 from select import select
 from pwd import getpwuid
 from socket import gethostname
-from os import getuid, getpid
+from os import getuid, getpid, environ
 from time import time, sleep
 from sys import stdout, argv
 from math import floor
-from logging import getLogger
+from logging import getLogger, basicConfig, FileHandler
 from re import fullmatch, IGNORECASE
 
 # builders
@@ -34,6 +34,8 @@ from .chain_tracker import ChainTracker
 from .attribution import Attribution
 from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
+
+basicConfig(level=environ.get("GINK_LOG_LEVEL", "INFO"))
 
 
 class Database:
@@ -60,10 +62,10 @@ class Database:
         self._lock = Lock()
         self._last_time = None
         self._connections = set()
-        self._logger = getLogger(self.__class__.__name__)
         self._listeners = set()
         self._trackers = {}
         self._sent_but_not_acked = set()
+        self._logger = getLogger(self.__class__.__name__)
 
     @staticmethod
     def get_last():

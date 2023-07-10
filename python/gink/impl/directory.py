@@ -2,6 +2,8 @@
 ##################################################################################################0
 from typing import Union, Optional, Iterable, Dict
 from sys import stdout
+from os import environ
+from logging import getLogger, basicConfig
 
 # gink implementation
 from .muid import Muid
@@ -11,6 +13,8 @@ from .coding import decode_key, DIRECTORY, deletion
 from .bundler import Bundler
 from .typedefs import UserKey, GenericTimestamp
 from .attribution import Attribution
+
+basicConfig(level=environ.get("GINK_LOG_LEVEL", "INFO"))
 
 
 class Directory(Container):
@@ -26,6 +30,8 @@ class Directory(Container):
         muid: the global id of this directory, created on the fly if None
         db: database send commits through, or last db instance created if None
         """
+        self._logger = getLogger(self.__class__.__name__)
+
         if ordered:
             if isinstance(ordered[0], str):
                 muid = Muid.from_str(ordered[0])
@@ -230,6 +236,7 @@ class Directory(Container):
         """ dumps the blame map to <file> in a human-readable format """
         for key, val in self.blame(as_of=as_of).items():
             print(repr(key), str(val), file=file)
+
 
     def log(self, key: UserKey) -> Iterable[Attribution]:
         """ Get the history of modifications for a particular key. """

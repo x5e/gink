@@ -3,6 +3,8 @@
 # standard python stuff
 import sys
 import struct
+from os import environ
+from logging import basicConfig, getLogger
 from typing import Tuple, Callable, Optional, Iterable, Union, Dict
 from sortedcontainers import SortedDict  # type: ignore
 
@@ -18,6 +20,8 @@ from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
                      Placement, decode_key, decode_entry_occupant)
+
+basicConfig(level=environ.get("GINK_LOG_LEVEL", "INFO"))
 
 
 class MemoryStore(AbstractStore):
@@ -49,6 +53,7 @@ class MemoryStore(AbstractStore):
         self._removals = SortedDict()
         self._clearances = SortedDict()
         self._outbox = SortedDict()
+        self._logger = getLogger(self.__class__.__name__)
 
     def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
         return self._containers.get(container)
@@ -277,17 +282,17 @@ class MemoryStore(AbstractStore):
         dest = getattr(builder, "dest")
         old_serialized_placement = self._get_entry_location(entry_muid)
         if not old_serialized_placement:
-            print(f"WARNING: could not find location for {entry_muid}")
+            self._logger.warning(f"could not find location for {entry_muid}")
             return
         old_placement_key = Placement.from_bytes(old_serialized_placement, SEQUENCE)
         entry_expiry = old_placement_key.expiry
         if entry_expiry and entry_expiry < movement_muid.timestamp:
-            print(f"WARNING: won't move exipired entry: {entry_muid}", file=sys.stderr)
+            self._logger.warning(f"won't move exipired entry: {entry_muid}")
             return  # refuse to move an entry that's expired
         if movement_muid.timestamp < old_placement_key.get_placed_time():
             # I'm intentionally ignoring the case where a past (re)move shows up after a later one.
             # This means that while the present state will always converge, the history might not.
-            print(f"WARNING: movement comes after placed time, won't move {entry_muid}")
+            self._logger.warning(f"movement comes after placed time, won't move {entry_muid}")
             return
         removal_key = RemovalKey(container, old_placement_key.get_positioner(), movement_muid)
         self._removals[bytes(removal_key)] = builder
