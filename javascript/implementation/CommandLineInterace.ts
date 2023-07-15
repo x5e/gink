@@ -60,7 +60,7 @@ export class CommandLineInterface {
                 this.instance = new SimpleServer(this.store, { software: "SimpleServer", ...common });
             }
         } else {
-            // GINK_PfORT not set, so don't listen for incoming connections
+            // GINK_PORT not set, so don't listen for incoming connections
             this.instance = new GinkInstance(this.store, { software: "node instance" });
         }
         this.targets = process.argv.slice(2);

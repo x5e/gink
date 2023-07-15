@@ -24,7 +24,7 @@ export class Listener {
         sslKeyFilePath?: FilePath,
         sslCertFilePath?: FilePath,
     }) {
-        const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot): undefined;
+        const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot): new StaticServer("./static");
         const port = args.port || "8080";
         let callWhenReady: CallBack;
         this.ready = new Promise((resolve) => {
@@ -43,7 +43,13 @@ export class Listener {
             });
         } else {
             this.httpServer = createHttpServer(function (request, response) {
-                staticServer?.serve(request, response);
+                const url = new URL(request.url, `http://${request.headers.host}`);
+                if (url.pathname == "/list_connections") {
+                    staticServer?.serveFile("./list_connections.html", 200, {}, request, response);
+                }
+                else {
+                    staticServer?.serve(request, response);
+                }
             });
             this.httpServer.listen(port, function () {
                 args?.logger(`Insecure server is listening on port ${port}`);
