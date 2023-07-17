@@ -6,11 +6,37 @@
 </head>
 <body>
 <h1>Connections:</h1>
-<ul id="con">
-    connections go here
-</ul>
+<ul id="peersList"></ul>
 
-<script src="./js/get-connections.js" type="module"></script>
+<script>
+
+    const socket = new WebSocket('ws://localhost:8080');
+
+    socket.onmessage = function(event) {
+        if (!event.data instanceof Blob) {
+            const peersList = document.getElementById('peersList');
+            const peers = JSON.parse(event.data);
+
+            peersList.innerHTML = '';
+
+            if (peers.length > 0) {
+                peers.forEach(function(connectionId) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = connectionId.toString();
+                    peersList.appendChild(listItem);
+                });
+            } else {
+                peersList.innerHTML = 'No peers';
+            }
+        }
+
+    };
+
+    socket.onopen = function() {
+        socket.send('getPeers');
+    };
+
+</script>
 
 </body>
 </html>

@@ -27,7 +27,7 @@ export class SimpleServer extends GinkInstance {
     }) {
         super(store, {software: args.software || "SimpleServer"}, args.logger || (() => null));
         this.listener = new Listener({
-            requestHandler: this.onRequest.bind(this), 
+            requestHandler: this.onRequest.bind(this),
             ...args
         });
         this.ready = Promise.all([this.ready, this.listener.ready]).then(() => args.logger(`SimpleServer.ready`));
@@ -54,13 +54,19 @@ export class SimpleServer extends GinkInstance {
             thisServer.peers.delete(connectionId);
             thisServer.logger(' Peer ' + connection.remoteAddress + ' disconnected.');
         });
+
         connection.on('message', this.onMessage.bind(this, connectionId));
         sendFunc(this.iHave.getGreetingMessageBytes());
     }
 
-    private onMessage(connectionId: number, webSocketMessage: WebSocketMessage) {
+    private onMessage(connectionId: number, webSocketMessage: WebSocketMessage, connection: WebSocketConnection) {
         if (webSocketMessage.type === 'utf8') {
             this.logger('Received Text Message: ' + webSocketMessage.utf8Data);
+            if (webSocketMessage !== undefined && webSocketMessage.utf8Data === 'getPeers' && connection !== undefined && typeof connection.sendUTF === 'function') {
+                const peerList = Array.from(this.peers.keys());
+                connection.sendUTF(JSON.stringify(peerList));
+                return;
+            }
         }
         else if (webSocketMessage.type === 'binary') {
             this.logger('Server received binary message of ' + webSocketMessage.binaryData.length + ' bytes.');
