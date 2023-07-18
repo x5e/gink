@@ -54,17 +54,17 @@ export class SimpleServer extends GinkInstance {
             thisServer.peers.delete(connectionId);
             thisServer.logger(' Peer ' + connection.remoteAddress + ' disconnected.');
         });
-
-        connection.on('message', this.onMessage.bind(this, connectionId));
+        connection.on('message', this.onMessage.bind(this, connectionId, connection));
         sendFunc(this.iHave.getGreetingMessageBytes());
     }
 
-    private onMessage(connectionId: number, webSocketMessage: WebSocketMessage, connection: WebSocketConnection) {
+    private onMessage(connectionId: number, connection: WebSocketConnection, webSocketMessage: WebSocketMessage) {
         if (webSocketMessage.type === 'utf8') {
             this.logger('Received Text Message: ' + webSocketMessage.utf8Data);
             if (webSocketMessage !== undefined && webSocketMessage.utf8Data === 'getPeers' && connection !== undefined && typeof connection.sendUTF === 'function') {
                 const peerList = Array.from(this.peers.keys());
                 connection.sendUTF(JSON.stringify(peerList));
+                this.logger(JSON.stringify(peerList));
                 return;
             }
         }
