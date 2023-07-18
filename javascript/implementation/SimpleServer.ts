@@ -15,6 +15,7 @@ import { Listener } from "./Listener";
 export class SimpleServer extends GinkInstance {
 
     private listener: Listener;
+    private browsers: Set<WebSocketConnection>;
 
     constructor(store: Store, args: {
         port?: NumberStr;
@@ -31,6 +32,7 @@ export class SimpleServer extends GinkInstance {
             ...args
         });
         this.ready = Promise.all([this.ready, this.listener.ready]).then(() => args.logger(`SimpleServer.ready`));
+        this.browsers = new Set();
     }
 
     private async onRequest(request: WebSocketRequest) {
@@ -50,8 +52,18 @@ export class SimpleServer extends GinkInstance {
         const connectionId = this.createConnectionId();
         const peer = new Peer(sendFunc, closeFunc);
         this.peers.set(connectionId, peer);
+        console.log(this.browsers);
+        for (const con of this.browsers) {
+            this.sendPeers(con);
+        }
         connection.on('close', function (_reasonCode, _description) {
             thisServer.peers.delete(connectionId);
+            if (thisServer.browsers.has(connection)) {
+                thisServer.browsers.delete(connection);
+            }
+            for (const con of thisServer.browsers) {
+                thisServer.sendPeers(con);
+            }
             thisServer.logger(' Peer ' + connection.remoteAddress + ' disconnected.');
         });
         connection.on('message', this.onMessage.bind(this, connectionId, connection));
@@ -62,10 +74,10 @@ export class SimpleServer extends GinkInstance {
         if (webSocketMessage.type === 'utf8') {
             this.logger('Received Text Message: ' + webSocketMessage.utf8Data);
             if (webSocketMessage !== undefined && webSocketMessage.utf8Data === 'getPeers' && connection !== undefined && typeof connection.sendUTF === 'function') {
-                const peerList = Array.from(this.peers.keys());
-                connection.sendUTF(JSON.stringify(peerList));
-                this.logger(JSON.stringify(peerList));
-                return;
+                if (!this.browsers.has(connection)) {
+                    this.browsers.add(connection);
+                }
+                this.sendPeers(connection);
             }
         }
         else if (webSocketMessage.type === 'binary') {
@@ -74,5 +86,11 @@ export class SimpleServer extends GinkInstance {
                 (reason) => this.logger(reason)
             );
         }
+    }
+
+    private sendPeers(connection) {
+        const peerList = Array.from(this.peers.keys());
+        connection.sendUTF(JSON.stringify(peerList));
+        return;
     }
 }
