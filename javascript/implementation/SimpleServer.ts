@@ -15,6 +15,7 @@ import { Listener } from "./Listener";
 export class SimpleServer extends GinkInstance {
 
     private listener: Listener;
+    private connections: Map<number, WebSocketConnection>;
     private browsers: Set<WebSocketConnection>;
 
     constructor(store: Store, args: {
@@ -33,6 +34,7 @@ export class SimpleServer extends GinkInstance {
         });
         this.ready = Promise.all([this.ready, this.listener.ready]).then(() => args.logger(`SimpleServer.ready`));
         this.browsers = new Set();
+        this.connections = new Map();
     }
 
     private async onRequest(request: WebSocketRequest) {
@@ -52,17 +54,18 @@ export class SimpleServer extends GinkInstance {
         const connectionId = this.createConnectionId();
         const peer = new Peer(sendFunc, closeFunc);
         this.peers.set(connectionId, peer);
-        console.log(this.browsers);
+        this.connections.set(connectionId, connection.remoteAddress);
         for (const con of this.browsers) {
-            this.sendPeers(con);
+            this.sendConnections(con);
         }
         connection.on('close', function (_reasonCode, _description) {
             thisServer.peers.delete(connectionId);
+            thisServer.connections.delete(connectionId);
             if (thisServer.browsers.has(connection)) {
                 thisServer.browsers.delete(connection);
             }
             for (const con of thisServer.browsers) {
-                thisServer.sendPeers(con);
+                thisServer.sendConnections(con);
             }
             thisServer.logger(' Peer ' + connection.remoteAddress + ' disconnected.');
         });
@@ -77,7 +80,7 @@ export class SimpleServer extends GinkInstance {
                 if (!this.browsers.has(connection)) {
                     this.browsers.add(connection);
                 }
-                this.sendPeers(connection);
+                this.sendConnections(connection);
             }
         }
         else if (webSocketMessage.type === 'binary') {
@@ -88,9 +91,10 @@ export class SimpleServer extends GinkInstance {
         }
     }
 
-    private sendPeers(connection) {
-        const peerList = Array.from(this.peers.keys());
-        connection.sendUTF(JSON.stringify(peerList));
+    //Sends all active connections to the browser (connection parameter)
+    private sendConnections(connection) {
+        const connectionList = JSON.stringify(Array.from(this.connections.entries()));
+        connection.sendUTF(connectionList);
         return;
     }
 }

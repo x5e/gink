@@ -29,9 +29,9 @@ function updatePeersList() {
   peersList.innerHTML = '';
 
   if (peers.length > 0) {
-    peers.forEach(function(connectionId) {
+    peers.forEach(function(connection) {
       const listItem = document.createElement('li');
-      listItem.textContent = connectionId.toString();
+      listItem.textContent = connection[0].toString() + " -> " + connection[1].toString();
       peersList.appendChild(listItem);
     });
   } else {
