@@ -40,9 +40,6 @@ export class Listener {
                 if (url.pathname == "/list_connections") {
                     staticServer?.serveFile("./list_connections.html", 200, {}, request, response);
                 }
-                else if (url.pathname == "/create_connection") {
-                    staticServer?.serveFile("./list_connections.html", 200, {}, request, response);
-                }
                 else {
                     staticServer?.serve(request, response);
                 }
@@ -54,12 +51,9 @@ export class Listener {
             this.httpServer = createHttpServer(function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
                 if (url.pathname == "/list_connections") {
-                    staticServer?.serveFile("./list_connections.html", 200, {}, request, response);
+                    staticServer?.serve(request, response);
                 }
-                else if (url.pathname == "/create_connection") {
-                    staticServer?.serveFile("./list_connections.html", 200, {}, request, response);
-                }
-                else {
+                else { // don't need this now, but leaving it for when there are multiple endpoints
                     staticServer?.serve(request, response);
                 }
             });

@@ -75,12 +75,13 @@ export class SimpleServer extends GinkInstance {
 
     private onMessage(connectionId: number, connection: WebSocketConnection, webSocketMessage: WebSocketMessage) {
         if (webSocketMessage.type === 'utf8') {
-            this.logger('Received Text Message: ' + webSocketMessage.utf8Data);
             if (webSocketMessage !== undefined && webSocketMessage.utf8Data === 'getPeers' && connection !== undefined && typeof connection.sendUTF === 'function') {
                 if (!this.browsers.has(connection)) {
                     this.browsers.add(connection);
                 }
                 this.sendConnections(connection);
+            } else {
+                this.logger('Received Text Message: ' + webSocketMessage.utf8Data);
             }
         }
         else if (webSocketMessage.type === 'binary') {
