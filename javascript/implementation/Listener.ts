@@ -6,6 +6,7 @@ import {
     server as WebSocketServer, request as WebSocketRequest,
 } from 'websocket';
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
+import { parse } from 'querystring';
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -40,6 +41,22 @@ export class Listener {
                 if (url.pathname == "/list_connections") {
                     staticServer?.serveFile("./list_connections.html", 200, {}, request, response);
                 }
+                else if (url.pathname == "/create_connection" && request.method == 'POST') {
+                    let formData = "";
+                    request.on('data', (chunk) => {
+                        formData += chunk;
+                    });
+
+                    request.on('end', () => {
+                        const parsedFormData = parse(formData);
+                        const ipAddress = parsedFormData.address;
+
+                        console.log("Received form data:", ipAddress); //create connection here
+
+                        response.writeHead(301, { 'Content-Type': 'text/plain' });
+                        response.end('Connection created successfully!');
+                    });
+                }
                 else {
                     staticServer?.serve(request, response);
                 }
@@ -53,7 +70,23 @@ export class Listener {
                 if (url.pathname == "/list_connections") {
                     staticServer?.serve(request, response);
                 }
-                else { // don't need this now, but leaving it for when there are multiple endpoints
+                else if (url.pathname == "/create_connection" && request.method == 'POST') {
+                    let formData = "";
+                    request.on('data', (chunk) => {
+                        formData += chunk;
+                    });
+
+                    request.on('end', () => {
+                        const parsedFormData = parse(formData);
+                        const ipAddress = parsedFormData.address;
+
+                        console.log("Received form data:", ipAddress); //create connection here
+
+                        response.writeHead(301, { 'Content-Type': 'text/plain' });
+                        response.end('Connection created successfully!');
+                    });
+                }
+                else {
                     staticServer?.serve(request, response);
                 }
             });
