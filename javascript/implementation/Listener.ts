@@ -7,6 +7,7 @@ import {
 } from 'websocket';
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { parse } from 'querystring';
+import { GinkInstance } from './GinkInstance';
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -19,6 +20,7 @@ export class Listener {
 
     constructor(args: {
         requestHandler: (request: WebSocketRequest)=>void,
+        instance?: GinkInstance,
         staticContentRoot?: DirPath,
         port?: NumberStr,
         logger?: CallBack,
@@ -68,7 +70,7 @@ export class Listener {
             this.httpServer = createHttpServer(function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
                 if (url.pathname == "/list_connections") {
-                    staticServer?.serve(request, response);
+                    staticServer?.serveFile("./list_connections.html", 200, {}, request, response);
                 }
                 else if (url.pathname == "/create_connection" && request.method == 'POST') {
                     let formData = "";
@@ -81,7 +83,11 @@ export class Listener {
                         const ipAddress = parsedFormData.address;
 
                         console.log("Received form data:", ipAddress); //create connection here
-
+                        if (typeof (ipAddress) == "string" && args?.instance) {
+                            args.instance.connectTo(ipAddress);
+                        } else {
+                            args?.logger("No instance provided.")
+                        }
                         response.writeHead(301, { 'Content-Type': 'text/plain' });
                         response.end('Connection created successfully!');
                     });

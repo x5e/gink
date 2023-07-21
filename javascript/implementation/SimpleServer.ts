@@ -30,6 +30,7 @@ export class SimpleServer extends GinkInstance {
         super(store, {software: args.software || "SimpleServer"}, args.logger || (() => null));
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this),
+            instance: this,
             ...args
         });
         this.ready = Promise.all([this.ready, this.listener.ready]).then(() => args.logger(`SimpleServer.ready`));
