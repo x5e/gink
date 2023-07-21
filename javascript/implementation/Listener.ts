@@ -39,6 +39,7 @@ export class Listener {
                 cert: readFileSync(args.sslCertFilePath),
             };
             this.httpServer = createHttpsServer(options, function (request, response) {
+                const thisListener = this;
                 const url = new URL(request.url, `https://${request.headers.host}`);
                 if (url.pathname == "/list_connections") {
                     staticServer?.serveFile("./list_connections.html", 200, {}, request, response);
@@ -52,11 +53,14 @@ export class Listener {
                     request.on('end', () => {
                         const parsedFormData = parse(formData);
                         const ipAddress = parsedFormData.address;
-
-                        console.log("Received form data:", ipAddress); //create connection here
-
-                        response.writeHead(301, { 'Content-Type': 'text/plain' });
-                        response.end('Connection created successfully!');
+                        thisListener.handleConnection({
+                            instance: args?.instance,
+                            ipAddress: ipAddress,
+                            logger: args?.logger,
+                            response: response
+                        });
+                        // response.writeHead(200, { 'Content-Type': 'text/plain' });
+                        // response.end('Connection created successfully!');
                     });
                 }
                 else {
@@ -68,6 +72,7 @@ export class Listener {
             });
         } else {
             this.httpServer = createHttpServer(function (request, response) {
+                const thisListener = this;
                 const url = new URL(request.url, `http://${request.headers.host}`);
                 if (url.pathname == "/list_connections") {
                     staticServer?.serveFile("./list_connections.html", 200, {}, request, response);
@@ -77,19 +82,17 @@ export class Listener {
                     request.on('data', (chunk) => {
                         formData += chunk;
                     });
-
                     request.on('end', () => {
                         const parsedFormData = parse(formData);
                         const ipAddress = parsedFormData.address;
-
-                        console.log("Received form data:", ipAddress); //create connection here
-                        if (typeof (ipAddress) == "string" && args?.instance) {
-                            args.instance.connectTo(ipAddress);
-                        } else {
-                            args?.logger("No instance provided.")
-                        }
-                        response.writeHead(301, { 'Content-Type': 'text/plain' });
-                        response.end('Connection created successfully!');
+                        thisListener.handleConnection({
+                            instance: args?.instance,
+                            ipAddress: ipAddress,
+                            logger: args?.logger,
+                            response: response
+                        });
+                        // response.writeHead(200, { 'Content-Type': 'text/plain' });
+                        // response.end('Connection created successfully!');
                     });
                 }
                 else {
@@ -103,5 +106,23 @@ export class Listener {
         }
         this.websocketServer = new WebSocketServer({ httpServer: this.httpServer });
         this.websocketServer.on('request', args.requestHandler);
+    }
+
+    async handleConnection(args: {
+        instance?: GinkInstance,
+        ipAddress: string|string[],
+        logger?: CallBack,
+        response: any}) {
+        if (typeof (args.ipAddress) == "string" && args?.instance) {
+            const validURL = /^ws:\/\/\d{3}.\d{1}.\d{1}.\d{1}:\d{4}/;
+            if (!validURL.test(args.ipAddress)) {
+                args?.logger("Needs to be a valid websocket connection.")
+            } else {
+                args?.logger("Connecting to " + args.ipAddress);
+                await args?.instance.connectTo(args.ipAddress)
+            }
+        } else if (!args?.instance) {
+            args?.logger("No instance provided.")
+        }
     }
 }
