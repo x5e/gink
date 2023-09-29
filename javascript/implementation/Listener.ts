@@ -26,6 +26,7 @@ export class Listener {
         sslKeyFilePath?: FilePath,
         sslCertFilePath?: FilePath,
     }) {
+        const thisListener = this;
         const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot): new StaticServer("./static");
         const port = args.port || "8080";
         let callWhenReady: CallBack;
@@ -38,8 +39,25 @@ export class Listener {
                 cert: readFileSync(args.sslCertFilePath),
             };
             this.httpServer = createHttpsServer(options, function (request, response) {
-                // Remember to change this too
-                staticServer?.serveFile('/list_connections.html', 200, {}, request, response);
+                const url = new URL(request.url, `http://${request.headers.host}`);
+                if (url.pathname == "/list_connections") {
+                    request.addListener('end', function () {
+                        let connections = Object.fromEntries(args.instance.connections);
+                        response.end(JSON.stringify(connections));
+                    }).resume();
+                }
+                if (url.pathname == "/create_connection") {
+                    request.addListener('end', function () {
+                        if (request.method == 'POST') {
+                            const ipAddress = url.searchParams.get("ipAddress");
+                            thisListener.handleConnection(ipAddress, args.instance, args.logger);
+                            response.end(JSON.stringify({"status": 201, "message": "Connection created successfully"}));
+                        }
+                        else {
+                            response.end(JSON.stringify({"status": 405, "message": "Bad Method."}))
+                        }
+                    }).resume();
+                }
             }).listen(port, () => {
                 args?.logger(`Secure server is listening on port ${port}`);
                 callWhenReady();
@@ -47,12 +65,23 @@ export class Listener {
         } else {
             this.httpServer = createHttpServer(function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
-                switch (request.url) {
-                    case "/list_connections":
+                if (url.pathname == "/list_connections") {
+                    request.addListener('end', function () {
                         let connections = Object.fromEntries(args.instance.connections);
                         response.end(JSON.stringify(connections));
-                    case "/create_connection":
-
+                    }).resume();
+                }
+                if (url.pathname == "/create_connection") {
+                    request.addListener('end', function () {
+                        if (request.method == 'POST') {
+                            const ipAddress = url.searchParams.get("ipAddress");
+                            thisListener.handleConnection(ipAddress, args.instance, args.logger);
+                            response.end(JSON.stringify({"status": 201, "message": "Connection created successfully"}));
+                        }
+                        else {
+                            response.end(JSON.stringify({"status": 405, "message": "Bad Method."}))
+                        }
+                    }).resume();
                 }
             });
             this.httpServer.listen(port, function () {
@@ -62,5 +91,22 @@ export class Listener {
         }
         this.websocketServer = new WebSocketServer({ httpServer: this.httpServer });
         this.websocketServer.on('request', args.requestHandler);
+    }
+
+    async handleConnection(
+        ipAddress: string, //|string[]
+        instance?: SimpleServer,
+        logger?: CallBack) {
+        if (typeof (ipAddress) == "string" && instance) { // it would always be a string?
+            const validURL = /^ws:\/\/\d{3}.\d{1}.\d{1}.\d{1}:\d{4}/;
+            if (!validURL.test(ipAddress)) {
+                logger("Needs to be a valid websocket connection.")
+            } else {
+                logger("Connecting to " + ipAddress);
+                await instance.connectTo(ipAddress)
+            }
+        } else if (!instance) {
+            logger("No instance provided.")
+        }
     }
 }
