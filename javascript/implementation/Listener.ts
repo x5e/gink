@@ -68,18 +68,21 @@ export class Listener {
                 if (url.pathname == "/list_connections") {
                     request.addListener('end', function () {
                         let connections = Object.fromEntries(args.instance.connections);
+                        response.writeHead(200);
                         response.end(JSON.stringify(connections));
                     }).resume();
                 }
-                if (url.pathname == "/create_connection") {
+                else if (url.pathname == "/create_connection") {
                     request.addListener('end', function () {
                         if (request.method == 'POST') {
                             const ipAddress = url.searchParams.get("ipAddress");
                             thisListener.handleConnection(ipAddress, args.instance, args.logger);
+                            response.writeHead(201);
                             response.end(JSON.stringify({"status": 201, "message": "Connection created successfully"}));
                         }
                         else {
-                            response.end(JSON.stringify({"status": 405, "message": "Bad Method."}))
+                            response.writeHead(405);
+                            response.end(JSON.stringify({"status": 405, "message": "Bad Method."}));
                         }
                     }).resume();
                 }
