@@ -15,6 +15,7 @@ import { Listener } from "./Listener";
 export class SimpleServer extends GinkInstance {
 
     private listener: Listener;
+    public connections: Map<number, WebSocketConnection>
 
     constructor(store: Store, args: {
         port?: NumberStr;
@@ -27,9 +28,11 @@ export class SimpleServer extends GinkInstance {
     }) {
         super(store, {software: args.software || "SimpleServer"}, args.logger || (() => null));
         this.listener = new Listener({
-            requestHandler: this.onRequest.bind(this), 
+            requestHandler: this.onRequest.bind(this),
+            instance: this,
             ...args
         });
+        this.connections = new Map();
         this.ready = Promise.all([this.ready, this.listener.ready]).then(() => args.logger(`SimpleServer.ready`));
     }
 
@@ -48,10 +51,12 @@ export class SimpleServer extends GinkInstance {
         const sendFunc = (data: Uint8Array) => { connection.sendBytes(Buffer.from(data)); };
         const closeFunc = () => { connection.close(); };
         const connectionId = this.createConnectionId();
+        this.connections.set(connectionId, connection.remoteAddress);
         const peer = new Peer(sendFunc, closeFunc);
         this.peers.set(connectionId, peer);
         connection.on('close', function (_reasonCode, _description) {
             thisServer.peers.delete(connectionId);
+            thisServer.connections.delete(connectionId);
             thisServer.logger(' Peer ' + connection.remoteAddress + ' disconnected.');
         });
         connection.on('message', this.onMessage.bind(this, connectionId));
