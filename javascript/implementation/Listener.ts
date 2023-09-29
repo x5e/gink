@@ -93,11 +93,8 @@ export class Listener {
         this.websocketServer.on('request', args.requestHandler);
     }
 
-    async handleConnection(
-        ipAddress: string, //|string[]
-        instance?: SimpleServer,
-        logger?: CallBack) {
-        if (typeof (ipAddress) == "string" && instance) { // it would always be a string?
+    async handleConnection(ipAddress: string, instance?: SimpleServer, logger?: CallBack) {
+        if (instance) {
             const validURL = /^ws:\/\/\d{3}.\d{1}.\d{1}.\d{1}:\d{4}/;
             if (!validURL.test(ipAddress)) {
                 logger("Needs to be a valid websocket connection.")
