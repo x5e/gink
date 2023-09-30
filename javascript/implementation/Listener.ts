@@ -18,7 +18,7 @@ export class Listener {
     readonly httpServer: HttpServer | HttpsServer;
 
     constructor(args: {
-        requestHandler: (request: WebSocketRequest)=>void,
+        requestHandler: (request: WebSocketRequest) => void,
         instance?: SimpleServer,
         staticContentRoot?: DirPath,
         port?: NumberStr,
@@ -27,7 +27,7 @@ export class Listener {
         sslCertFilePath?: FilePath,
     }) {
         const thisListener = this;
-        const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot): new StaticServer("./static");
+        const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot) : new StaticServer("./static");
         const port = args.port || "8080";
         let callWhenReady: CallBack;
         this.ready = new Promise((resolve) => {
@@ -40,21 +40,26 @@ export class Listener {
             };
             this.httpServer = createHttpsServer(options, function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
-                if (url.pathname == "/list_connections") {
+                if (url.pathname == "/") {
+                    request.addListener('end', function () {
+                        staticServer.serveFile("./connections.html", 200, {}, request, response);
+                    }).resume();
+                }
+                else if (url.pathname == "/list_connections") {
                     request.addListener('end', function () {
                         let connections = Object.fromEntries(args.instance.connections);
                         response.end(JSON.stringify(connections));
                     }).resume();
                 }
-                if (url.pathname == "/create_connection") {
+                else if (url.pathname == "/create_connection") {
                     request.addListener('end', function () {
                         if (request.method == 'POST') {
                             const ipAddress = url.searchParams.get("ipAddress");
                             thisListener.handleConnection(ipAddress, args.instance, args.logger);
-                            response.end(JSON.stringify({"status": 201, "message": "Connection created successfully"}));
+                            response.end(JSON.stringify({ "status": 201, "message": "Connection created successfully" }));
                         }
                         else {
-                            response.end(JSON.stringify({"status": 405, "message": "Bad Method."}))
+                            response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }))
                         }
                     }).resume();
                 }
@@ -65,7 +70,16 @@ export class Listener {
         } else {
             this.httpServer = createHttpServer(function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
-                if (url.pathname == "/list_connections") {
+                if (url.pathname == "/") {
+                    request.addListener('end', function () {
+                        staticServer.serveFile("./get_connections.js", 200, {}, request, response);
+                        staticServer.serveFile("./connections.html", 200, {}, request, response);
+
+                        staticServer.serve(request, response);
+
+                    }).resume();
+                }
+                else if (url.pathname == "/list_connections") {
                     request.addListener('end', function () {
                         let connections = Object.fromEntries(args.instance.connections);
                         response.writeHead(200);
@@ -78,11 +92,11 @@ export class Listener {
                             const ipAddress = url.searchParams.get("ipAddress");
                             thisListener.handleConnection(ipAddress, args.instance, args.logger);
                             response.writeHead(201);
-                            response.end(JSON.stringify({"status": 201, "message": "Connection created successfully"}));
+                            response.end(JSON.stringify({ "status": 201, "message": "Connection created successfully" }));
                         }
                         else {
                             response.writeHead(405);
-                            response.end(JSON.stringify({"status": 405, "message": "Bad Method."}));
+                            response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }));
                         }
                     }).resume();
                 }
