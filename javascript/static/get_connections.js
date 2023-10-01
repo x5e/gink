@@ -8,11 +8,13 @@ function getConnections() {
             let list = body.appendChild(document.createElement("ul"));
             list.setAttribute("id", "connections-list");
             let open_connections = JSON.parse(data);
-            for (const [key, val] of open_connections) {
+            for (const [key, val] of Object.entries(open_connections)) {
                 let li = list.appendChild(document.createElement("li"));
                 li.innerHTML = `${key} -> ${val}`;
             }
-
+            // call itself to auto update every 5 seconds.
+            // is this bad?
+            setTimeout("getConnections()", 5000);
         },
         error: function (error) {
             console.log(error);
