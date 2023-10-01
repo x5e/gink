@@ -50,6 +50,21 @@ def test_property_dump():
             namer.delete(directory)
             assert namer.size() ==  0
 
+def test_property_from_contents():
+    """ Ensures that a property can process contents passed to the constructor """
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            database = Database(store=store)
+            directory1 = Directory.get_global_instance()
+            directory2 = Directory()
+
+            p1 = Property(database=database, contents={directory1: 5, directory2: 2})
+            p2 = Property(database=database, contents=[(directory1, 6), (directory2, "test")])
+            assert(p1.get(directory1) == 5)
+            assert(p1.get(directory2) == 2)
+            assert(p2.get(directory1) == 6)
+            assert(p2.get(directory2) == "test")
+
 
 def test_property_reset():
     """ ensures that I can remove properties on objects """
