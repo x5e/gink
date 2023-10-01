@@ -1,7 +1,7 @@
 #!/usr/bin/node
 const { spawn } = require('child_process');
 /**
-Expector is a utility class to replecate the functionality found in the command line 
+Expector is a utility class to replecate the functionality found in the command line
 utility "expect" and allow me to test the command line interface in integration tests.
 */
 module.exports = class Expector {
@@ -20,7 +20,7 @@ module.exports = class Expector {
     }
 
     /**
-    * This should be private but it's intentionally written in 
+    * This should be private but it's intentionally written in
       Javascript instead of Typescript, and we don't allow # in
       Typescript code nor the "private" keyword in Javascript so
       just pretend that the "notify" method isn't there :-)
@@ -40,7 +40,7 @@ module.exports = class Expector {
     }
 
     /**
-    * Wait for the "what" string to appear in the stdout or stderr of the program,        
+    * Wait for the "what" string to appear in the stdout or stderr of the program,
     * but reject the promise if timeout happens before the expected string appears.
     */
     async expect(what, timeout = 1000) {
