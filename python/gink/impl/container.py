@@ -194,8 +194,10 @@ class Container(Addressable, ABC):
         on_muid.put_into(entry_builder.container)  # type: ignore
         if isinstance(key, (str, int, bytes)):
             encode_key(key, entry_builder.key)  # type: ignore
-        if isinstance(key, Muid):
+        elif isinstance(key, Muid):
             key.put_into(entry_builder.describing)  # type: ignore
+        elif isinstance(key, Container):
+            key._muid.put_into(entry_builder.describing)
         elif isinstance(key, tuple):
             if isinstance(key[0], Container) and isinstance(key[1], Container):
                 key[0]._muid.put_into(entry_builder.pair.left)

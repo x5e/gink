@@ -30,8 +30,9 @@ class Property(Container):
             muid = Container._create(PROPERTY, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         if contents:
-            for key, val in contents.items():
-                self.set(key, val, bundler=bundler)
+            self.clear(bundler=bundler)
+            self.update(contents, bundler=bundler)
+
         if len(bundler):
             self._database.commit(bundler)
 
@@ -81,6 +82,26 @@ class Property(Container):
             Returns the muid of the new entry.
         """
         return self._add_entry(key=describing._muid, value=value, bundler=bundler, comment=comment)
+
+    def update(self, from_what, *, bundler=None, comment=None):
+        """
+        Performs a shallow copy of key/value pairs from the argument.
+
+        When from_what hasattr "keys", then will try: for k in E: D[k] = E[k]
+        otherwise will try:  for k, v in E: D[k] = v
+        """
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
+        if hasattr(from_what, "keys"):
+            for key in from_what:
+                self._add_entry(key=key, value=from_what[key], bundler=bundler)
+        else:
+            for key, val in from_what:
+                self._add_entry(key=key, value=val, bundler=bundler)
+        if immediate:
+            self._database.commit(bundler)
 
     def delete(self, describing: Union[Container, Edge], *, bundler=None, comment=None) -> Muid:
         """ Removes the value (if any) of this property on object pointed to by `describing`. """
