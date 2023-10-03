@@ -333,6 +333,15 @@ class Graph():
                 }
             }
 
+        elif first_keyword == "AND":
+            condition = max(parsed_tokens["WHERE"].keys())+1
+            parsed_tokens["WHERE"][condition] = {
+                "var": None,
+                "property": None,
+                "operator": None,
+                "value": None
+            }
+
         # When we encounter a -[]->, we need to treat the variable differently.
         is_relationship = False
 
@@ -383,7 +392,7 @@ class Graph():
                 if current_token[0] == Name.Variable:
                     parsed_tokens[first_keyword].append(current_token[1])
 
-            elif first_keyword == "WHERE":
+            elif first_keyword in ("WHERE", "AND"):
                 # To grab the value from the where statement, I figured it makes sense
                 # to find the value after the last non-"." Operator, which requires me
                 # to keep track of the previous token.
@@ -391,20 +400,21 @@ class Graph():
                 if current_token[0] == Name.Variable:
                     if tokens[i+1][1] == ".":
                         # If next token is a ".", this is the variable, not property
-                        parsed_tokens[first_keyword][condition]["var"] = current_token[1]
+                        parsed_tokens["WHERE"][condition]["var"] = current_token[1]
                     else:
-                        parsed_tokens[first_keyword][condition]["property"] = current_token[1]
+                        parsed_tokens["WHERE"][condition]["property"] = current_token[1]
 
                 elif current_token[0] == Operator and current_token[1] != ".":
-                    parsed_tokens[first_keyword][condition]["operator"] = current_token[1]
+                    parsed_tokens["WHERE"][condition]["operator"] = current_token[1]
 
                 elif last_token[0] == Operator and last_token[1] != ".":
-                    parsed_tokens[first_keyword][condition]["value"] = current_token[1]
+                    parsed_tokens["WHERE"][condition]["value"] = current_token[1]
 
             # Stop the loop if the next token is a keyword.
             try:
                 next_token = tokens[i+1]
-                if next_token[0] == Keyword:
+                # Treating AND as a keyword that will work similar to WHERE
+                if next_token[0] == Keyword or next_token[1].upper() == "AND":
                     is_keyword = True
             except IndexError:
                 next_token = None
