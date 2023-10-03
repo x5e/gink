@@ -344,7 +344,7 @@ class Graph():
             except IndexError:
                 break
 
-            print(current_token)
+            print(current_token, i)
             if first_keyword in ("CREATE", "MATCH"):
                 # Handles the first variable in a create or match statement
                 if current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["noun1"]["var"]:
@@ -386,13 +386,8 @@ class Graph():
             elif first_keyword == "WHERE":
                 # To grab the value from the where statement, I figured it makes sense
                 # to find the value after the last non-"." Operator, which requires me
-                # to keep track of the previous token, excluding whitespace.
+                # to keep track of the previous token.
                 last_token = tokens[i-1]
-                last_index = i - 1
-                while last_token[0] == Text.Whitespace:
-                    last_token = tokens[last_index]
-                    last_index -= 1
-
                 if current_token[0] == Name.Variable:
                     if tokens[i+1][1] == ".":
                         # If next token is a ".", this is the variable, not property
@@ -406,11 +401,18 @@ class Graph():
                 elif last_token[0] == Operator and last_token[1] != ".":
                     parsed_tokens[first_keyword][condition]["value"] = current_token[1]
 
-            is_keyword = True if current_token[0] == Keyword and i !=0 else False
+            # Stop the loop if the next token is a keyword.
+            try:
+                next_token = tokens[i+1]
+                if next_token[0] == Keyword:
+                    is_keyword = True
+            except IndexError:
+                next_token = None
+
             i += 1
 
-        # Recurse with the remainder of the unparsed tokens
-        if len(tokens) > 1:
-            self.parse_tokens(tokens=tokens[i-1:], parsed_tokens=parsed_tokens)
+        # Recurse with the remainder of the unparsed tokens, if there is anything left to parse.
+        if len(tokens) > 1 and next_token:
+            self.parse_tokens(tokens=tokens[i:], parsed_tokens=parsed_tokens)
 
         return parsed_tokens
