@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional, Union, Iterable
 
 from py2neo.cypher.lexer import CypherLexer
-from pygments.token import Keyword, Name, Punctuation
+from pygments.token import Keyword, Name, Punctuation, Text, Operator
 
 from .typedefs import GenericTimestamp, UserValue, Inclusion
 from .container import Container
@@ -269,6 +269,7 @@ class Graph():
             database = Database.get_last()
         self.database = database
         self.lexer = CypherLexer()
+        self.lexer.add_filter("whitespace")
 
     def query(self, query: str):
         tokens = self.lexer.get_tokens(query)
@@ -279,16 +280,36 @@ class Graph():
     def parse_tokens(self, tokens: Iterable, parsed_tokens: dict = {}) -> dict:
         """
         Iterates through the tokens created by the CypherLexer, and creates a dictionary with
-        the information needed to query the graph database.
+        the information needed to query the graph database. The output of the Cypher query,
+        MATCH (n:Node) WHERE n.foo = 12 RETURN n
+        Looks like:
+        {
+            "MATCH": {
+                "noun1": {
+                    "var": "n",
+                    "label": "Node"
+                }
+            },
+            "WHERE": {
+                1: {
+                    "var": "n",
+                    "property": "foo",
+                    "operator": "=",
+                    "value": 12
+                }
+            },
+            "RETURN": ["n"]
+        }
         """
-        # TODO: figure out how the best way to check for Cypher syntax errors
+        # TODO: figure out the best way to check for Cypher syntax errors
 
         # I want this method to recurse for every keyword, so this is how I'm keeping track.
         is_keyword = False
         # Make tokens generator subscriptable.
         tokens = list(tokens)
         # If the method is working properly, the first item of the list should be the keyword to analyze.
-        first_keyword = tokens[0][1]
+        first_keyword = tokens[0][1].upper()
+
         # Create and Match have similar properties, so grouping them together.
         if first_keyword in ("CREATE", "MATCH"):
                 parsed_tokens[first_keyword] = {
@@ -299,6 +320,18 @@ class Graph():
         # Return and delete only need an array to hold the nodes/edges to delete
         elif first_keyword in ("RETURN", "DELETE"):
             parsed_tokens[first_keyword] = []
+
+        elif first_keyword == "WHERE":
+            # If we encounter AND clauses, we will increment the condition and come back here
+            condition = 1
+            parsed_tokens[first_keyword] = {
+                condition: {
+                    "var": None,
+                    "property": None,
+                    "operator": None,
+                    "value": None
+                }
+            }
 
         # When we encounter a -[]->, we need to treat the variable differently.
         is_relationship = False
@@ -311,41 +344,70 @@ class Graph():
             except IndexError:
                 break
 
-            if first_keyword in ("CREATE", "MATCH"):
-                # Handles the first variable in a create or match statement
-                if current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["noun1"]["var"]:
-                    parsed_tokens[first_keyword]["noun1"]["var"] = current_token[1]
+            if current_token[0] == Text.Whitespace:
+                pass
+            else:
+                print(current_token)
+                if first_keyword in ("CREATE", "MATCH"):
+                    # Handles the first variable in a create or match statement
+                    if current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["noun1"]["var"]:
+                        parsed_tokens[first_keyword]["noun1"]["var"] = current_token[1]
 
-                # Handles all labels for nouns and edges
-                elif current_token[0] == Name.Label:
-                    # Since Cypher follows the pattern (var:Label), i-2 will give us the last variable.
-                    last_var = tokens[i-2][1]
-                    for key, value in parsed_tokens[first_keyword].items():
-                        if value["var"]  == last_var:
-                            if key == "noun1":
-                                parsed_tokens[first_keyword]["noun1"]["label"] = current_token[1]
-                            elif key == "edge":
-                                parsed_tokens[first_keyword]["edge"]["label"] = current_token[1]
-                            elif key == "noun2":
-                                parsed_tokens[first_keyword]["noun2"]["label"] = current_token[1]
+                    # Handles all labels for nouns and edges
+                    elif current_token[0] == Name.Label:
+                        # Since Cypher follows the pattern (var:Label), i-2 will give us the last variable.
+                        # If we encounter a label, match it to the last variable.
+                        if tokens[i-2][0] == Name.Variable:
+                            last_var = tokens[i-2][1]
+                            for key, value in parsed_tokens[first_keyword].items():
+                                if value["var"]  == last_var:
+                                    if key == "noun1":
+                                        parsed_tokens[first_keyword]["noun1"]["label"] = current_token[1]
+                                    elif key == "edge":
+                                        parsed_tokens[first_keyword]["edge"]["label"] = current_token[1]
+                                    elif key == "noun2":
+                                        parsed_tokens[first_keyword]["noun2"]["label"] = current_token[1]
 
-                elif current_token[0] == Punctuation and "[" in current_token[1]:
-                    is_relationship = True
+                    elif current_token[0] == Punctuation and "[" in current_token[1]:
+                        is_relationship = True
 
-                elif current_token[0] == Punctuation and "]" in current_token[1]:
-                    is_relationship = False
+                    elif current_token[0] == Punctuation and "]" in current_token[1]:
+                        is_relationship = False
 
-                # Handles the second variable (after a relationship) in a create or match statement
-                elif not is_relationship and current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["noun2"]["var"]:
-                    parsed_tokens[first_keyword]["noun2"]["var"] = current_token[1]
+                    # Handles the second variable (after a relationship) in a create or match statement
+                    elif not is_relationship and current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["noun2"]["var"]:
+                        parsed_tokens[first_keyword]["noun2"]["var"] = current_token[1]
 
-                elif is_relationship and current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["edge"]["var"]:
-                    parsed_tokens[first_keyword]["edge"]["var"] = current_token[1]
+                    elif is_relationship and current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["edge"]["var"]:
+                        parsed_tokens[first_keyword]["edge"]["var"] = current_token[1]
 
 
-            elif first_keyword in ("RETURN", "DELETE"):
-                if current_token[0] == Name.Variable:
-                    parsed_tokens[first_keyword].append(current_token[1])
+                elif first_keyword in ("RETURN", "DELETE"):
+                    if current_token[0] == Name.Variable:
+                        parsed_tokens[first_keyword].append(current_token[1])
+
+                elif first_keyword == "WHERE":
+                    # To grab the value from the where statement, I figured it makes sense
+                    # to find the value after the last non-"." Operator, which requires me
+                    # to keep track of the previous token, excluding whitespace.
+                    last_token = tokens[i-1]
+                    last_index = i - 1
+                    while last_token[0] == Text.Whitespace:
+                        last_token = tokens[last_index]
+                        last_index -= 1
+
+                    if current_token[0] == Name.Variable:
+                        if tokens[i+1][1] == ".":
+                            # If next token is a ".", this is the variable, not property
+                            parsed_tokens[first_keyword][condition]["var"] = current_token[1]
+                        else:
+                            parsed_tokens[first_keyword][condition]["property"] = current_token[1]
+
+                    elif current_token[0] == Operator and current_token[1] != ".":
+                        parsed_tokens[first_keyword][condition]["operator"] = current_token[1]
+
+                    elif last_token[0] == Operator and last_token[1] != ".":
+                        parsed_tokens[first_keyword][condition]["value"] = current_token[1]
 
             is_keyword = True if current_token[0] == Keyword and i !=0 else False
             i += 1
