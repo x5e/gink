@@ -2,6 +2,9 @@
 from __future__ import annotations
 from typing import Optional, Union, Iterable
 
+from py2neo.cypher.lexer import CypherLexer
+from pygments.token import Keyword, Name
+
 from .typedefs import GenericTimestamp, UserValue, Inclusion
 from .container import Container
 from .coding import VERB, NOUN, inclusion, encode_value, decode_value
@@ -256,3 +259,65 @@ class Edge(Addressable):
         if immediate:
             self._database.commit(bundler)
         return change_muid
+
+class Graph():
+    """
+    Intended to house all of the graph query stuff
+    """
+    def __init__(self, database: Union[Database, None] = None):
+        if not database:
+            database = Database.get_last()
+        self.database = database
+        self.lexer = CypherLexer()
+
+    def query(self, query: str):
+        tokens = self.lexer.get_tokens(query)
+        parsed_tokens = self.parse_tokens(tokens)
+        # Obviously not done, just first step
+        return parsed_tokens
+
+    def parse_tokens(self, tokens: Iterable, parsed_tokens: dict = {}) -> dict:
+        # I want this method to recurse for every keyword, so this is how i'm keeping track.
+        is_keyword = False
+        # Make tokens generator subscriptable.
+        tokens = list(tokens)
+        # If the method is working properly, the first item of the list should be the keyword to analyze.
+        first_keyword = tokens[0][1]
+        # Create and Match have similar properties, so grouping them together.
+        if first_keyword in ("CREATE", "MATCH"):
+                parsed_tokens[first_keyword] = {
+                    "noun1": None,
+                    "edge": None,
+                    "noun2": None
+                }
+        # Return and delete only need an array to hold the nodes/edges to delete
+        elif first_keyword in ("RETURN", "DELETE"):
+            parsed_tokens[first_keyword] = []
+
+        # This loop breaks at each keyword and calls the function again on the remainder of the tokens.
+        i = 0
+        while not is_keyword:
+            try:
+                token = tokens[i]
+                print(token)
+            except IndexError:
+                break
+
+            if first_keyword in ("CREATE", "MATCH"):
+                if token[0] == Name.Variable and not parsed_tokens[first_keyword]["noun1"]:
+                    parsed_tokens[first_keyword]["noun1"] = token[1]
+                elif token[0] == Name.Variable and not parsed_tokens[first_keyword]["noun2"]:
+                    parsed_tokens[first_keyword]["noun2"] = token[1]
+
+            elif first_keyword in ("RETURN", "DELETE"):
+                if token[0] == Name.Variable:
+                    parsed_tokens[first_keyword].append(token[1])
+
+            is_keyword = True if token[0] == Keyword and i !=0 else False
+            i += 1
+
+        if len(tokens) > 1:
+            print()
+            self.parse_tokens(tokens=tokens[i-1:], parsed_tokens=parsed_tokens)
+
+        return parsed_tokens
