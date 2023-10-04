@@ -310,13 +310,13 @@ class Graph():
         # If the method is working properly, the first item of the list should be the keyword to analyze.
         first_keyword = tokens[0][1].upper()
 
-        # Create and Match have similar properties, so grouping them together.
-        if first_keyword in ("CREATE", "MATCH"):
-                parsed_tokens[first_keyword] = {
-                    "noun1": {"var": None, "label": None},
-                    "edge": {"var": None, "label": None},
-                    "noun2": {"var": None, "label": None}
-                }
+        # Initializing hash tables based on the keywords we encounter
+        if first_keyword == "MATCH":
+            parsed_tokens[first_keyword] = {}
+
+        elif first_keyword == "CREATE":
+            parsed_tokens[first_keyword] = {}
+
         # Return and delete only need an array to hold the nodes/edges to delete
         elif first_keyword in ("RETURN", "DELETE"):
             parsed_tokens[first_keyword] = []
@@ -333,6 +333,7 @@ class Graph():
                 }
             }
 
+        # Need to rethink this so it will work with OR operator
         elif first_keyword == "AND":
             condition = max(parsed_tokens["WHERE"].keys())+1
             parsed_tokens["WHERE"][condition] = {
@@ -342,8 +343,18 @@ class Graph():
                 "value": None
             }
 
+        elif first_keyword == "SET":
+            parsed_tokens[first_keyword] = {
+                "var": None,
+                "property": None,
+                "operator": None,
+                "value": None
+            }
+
         # When we encounter a -[]->, we need to treat the variable differently.
         is_relationship = False
+        # This variable is to let the loop know we are in the final connected node of -[]->()
+        is_connected = False
 
         # This loop breaks at each keyword and calls the function again on the remainder of the tokens.
         i = 0
@@ -354,10 +365,26 @@ class Graph():
                 break
 
             print(current_token, i)
-            if first_keyword in ("CREATE", "MATCH"):
+            if first_keyword == "MATCH":
+
+                # Handles the second variable (after a relationship) in a create or match statement
+                if is_connected and current_token[0] == Name.Variable:
+                    for key in parsed_tokens["MATCH"].keys():
+                                # Finds the first variable that doesn't yet have a connection but has an edge
+                                if not parsed_tokens["MATCH"][key].get("connects_to") and parsed_tokens["MATCH"][key].get("edge"):
+                                    parsed_tokens["MATCH"][key]["connects_to"] = {"var": current_token[1]}
+                                    break
+
                 # Handles the first variable in a create or match statement
-                if current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["noun1"]["var"]:
-                    parsed_tokens[first_keyword]["noun1"]["var"] = current_token[1]
+                elif current_token[0] == Name.Variable and not parsed_tokens[first_keyword].get(current_token[1]):
+                    if not is_relationship:
+                        parsed_tokens[first_keyword][current_token[1]] = {}
+                    else:
+                        for key in parsed_tokens["MATCH"].keys():
+                            # Finds the first variable that doesn't yet have an edge added
+                            if not parsed_tokens["MATCH"][key].get("edge"):
+                                parsed_tokens["MATCH"][key]["edge"] = {"var": current_token[1]}
+                                break
 
                 # Handles all labels for nouns and edges
                 elif current_token[0] == Name.Label:
@@ -365,28 +392,31 @@ class Graph():
                     # If we encounter a label, match it to the last variable.
                     if tokens[i-2][0] == Name.Variable:
                         last_var = tokens[i-2][1]
-                        for key, value in parsed_tokens[first_keyword].items():
-                            if value["var"]  == last_var:
-                                if key == "noun1":
-                                    parsed_tokens[first_keyword]["noun1"]["label"] = current_token[1]
-                                elif key == "edge":
-                                    parsed_tokens[first_keyword]["edge"]["label"] = current_token[1]
-                                elif key == "noun2":
-                                    parsed_tokens[first_keyword]["noun2"]["label"] = current_token[1]
+                        if not is_relationship and not is_connected:
+                            parsed_tokens[first_keyword][last_var]["label"] = current_token[1]
+                        elif is_relationship:
+                            for key in parsed_tokens["MATCH"].keys():
+                                # Finds the first variable that doesn't yet have an edge label added
+                                if not parsed_tokens["MATCH"][key]["edge"].get("label"):
+                                    parsed_tokens["MATCH"][key]["edge"]["label"] = current_token[1]
+                                    break
+                        elif is_connected:
+                            for key in parsed_tokens["MATCH"].keys():
+                                # Finds the first variable that doesn't yet have a connection but has an edge
+                                if not parsed_tokens["MATCH"][key]["connects_to"].get("label") and parsed_tokens["MATCH"][key].get("edge"):
+                                    parsed_tokens["MATCH"][key]["connects_to"]["label"] = current_token[1]
+                                    break
 
                 elif current_token[0] == Punctuation and "[" in current_token[1]:
                     is_relationship = True
 
                 elif current_token[0] == Punctuation and "]" in current_token[1]:
                     is_relationship = False
-
-                # Handles the second variable (after a relationship) in a create or match statement
-                elif not is_relationship and current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["noun2"]["var"]:
-                    parsed_tokens[first_keyword]["noun2"]["var"] = current_token[1]
+                    # Done with relationship, moving on to connected node.
+                    is_connected = True
 
                 elif is_relationship and current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["edge"]["var"]:
                     parsed_tokens[first_keyword]["edge"]["var"] = current_token[1]
-
 
             elif first_keyword in ("RETURN", "DELETE"):
                 if current_token[0] == Name.Variable:
@@ -409,6 +439,21 @@ class Graph():
 
                 elif last_token[0] == Operator and last_token[1] != ".":
                     parsed_tokens["WHERE"][condition]["value"] = current_token[1]
+
+            elif first_keyword == "SET":
+                last_token = tokens[i-1]
+                if current_token[0] == Name.Variable:
+                    if tokens[i+1][1] == ".":
+                        # If next token is a ".", this is the variable, not property
+                        parsed_tokens["SET"]["var"] = current_token[1]
+                    else:
+                        parsed_tokens["SET"]["property"] = current_token[1]
+
+                elif current_token[0] == Operator and current_token[1] != ".":
+                    parsed_tokens["SET"]["operator"] = current_token[1]
+
+                elif last_token[0] == Operator and last_token[1] != ".":
+                    parsed_tokens["SET"]["value"] = current_token[1]
 
             # Stop the loop if the next token is a keyword.
             try:
