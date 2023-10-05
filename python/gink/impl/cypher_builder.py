@@ -32,7 +32,7 @@ class CypherMatch():
     def __init__(self) -> None:
         self.root_nodes: Set[CypherNode] = set()
 
-    def print_nodes(self):
+    def print(self):
         for node in self.root_nodes:
             print(f"({node.variable if node.variable else ''}:{node.label})")
 
@@ -42,4 +42,4 @@ class CypherCreate():
 
     def print(self):
         for node in self.root_nodes:
-            print(node.label, node.properties)
+            print(node.label, node.properties, "-[", node.rel.label, "]->", node.rel.next_node.label, node.rel.next_node.properties)
