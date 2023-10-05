@@ -303,9 +303,22 @@ class Graph():
             cypher_create = CypherCreate()
             cypher_builder.create = cypher_create
 
-        elif first_keyword == "WHERE":
-            cypher_where = CypherWhere()
-            cypher_builder.where = cypher_where
+        # Using this current_clause variable to shorten the code, since these
+        # three keywords all operate in very similar ways
+        elif first_keyword in ("WHERE", "AND", "OR"):
+            if cypher_builder.where:
+                    cypher_where = cypher_builder.where
+            else:
+                cypher_where = CypherWhere()
+                cypher_builder.where = cypher_where
+            if first_keyword == "WHERE":
+                current_clause = cypher_where
+            elif first_keyword == "AND":
+                current_clause = CypherWhere()
+                cypher_where.and_.append(current_clause)
+            elif first_keyword == "OR":
+                current_clause = CypherWhere()
+                cypher_where.or_.append(current_clause)
 
         elif first_keyword == "SET":
             cypher_set = CypherSet()
@@ -482,6 +495,7 @@ class Graph():
                             node.label = current_token[1]
 
             elif first_keyword == "SET":
+                # SET clauses are pretty simple - SET var.property operator value
                 if tokens[i-1][1] == "." and current_token[0] == Name.Variable:
                         cypher_set.property = current_token[1]
                 elif current_token[0] == Name.Variable:
@@ -491,8 +505,18 @@ class Graph():
                 elif tokens[i-1][0] == Operator and not tokens[i-1][1] == ".":
                     cypher_set.value = current_token[1]
 
-            elif first_keyword == "WHERE":
-                pass
+            # WHERE AND and OR are basically the same. The difficult part comes with
+            # trying to organize the classes to where it makes sense to loop through
+            # and check the conditions.
+            elif first_keyword in ("WHERE", "AND", "OR"):
+                if tokens[i-1][1] == "." and current_token[0] == Name.Variable:
+                        current_clause.property = current_token[1]
+                elif current_token[0] == Name.Variable:
+                    current_clause.variable = current_token[1]
+                elif current_token[0] == Operator and not current_token[1] == ".":
+                    current_clause.operator = current_token[1]
+                elif tokens[i-1][0] == Operator and not tokens[i-1][1] == ".":
+                    current_clause.value = current_token[1]
 
             elif first_keyword == "RETURN":
                 if current_token[0] == Name.Variable:
@@ -502,15 +526,11 @@ class Graph():
                 if current_token[0] == Name.Variable:
                     cypher_delete.deleting.append(current_token[1])
 
-
-
-
-
             # Stop the loop if the next token is a keyword.
             try:
                 next_token = tokens[i+1]
                 # Treating AND as a keyword that will work similar to WHERE
-                if next_token[0] == Keyword or next_token[1].upper() == "AND":
+                if next_token[0] == Keyword or next_token[1].upper() == "AND" or next_token[1].upper() == "OR":
                     is_keyword = True
             except IndexError:
                 next_token = None

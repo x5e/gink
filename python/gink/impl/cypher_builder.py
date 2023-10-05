@@ -58,7 +58,20 @@ class CypherCreate():
 
 class CypherWhere():
     def __init__(self) -> None:
-        pass
+        self.variable: str | None = None
+        self.property: str | None = None
+        self.operator: str | None = None
+        self.value: str | None = None
+
+        self.and_: list[CypherWhere] = []
+        self.or_: list[CypherWhere] = []
+
+    def print(self):
+        print(f"{self.variable}.{self.property} {self.operator} {self.value}")
+        for item in self.and_:
+            print(f"AND {item.variable}.{item.property} {item.operator} {item.value}")
+        for item in self.or_:
+            print(f"OR {item.variable}.{item.property} {item.operator} {item.value}")
 
 class CypherSet():
     def __init__(self) -> None:
