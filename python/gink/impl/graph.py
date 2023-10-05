@@ -279,6 +279,10 @@ class Graph():
         return parsed_tokens
 
     def parse_tokens(self, tokens: Iterable, cypher_builder: CypherBuilder | None = None) -> CypherBuilder:
+        """
+        Iterates through the tokens created by the CypherLexer, and builds a CypherBuilder filled with
+        the clauses and data in the query.
+        """
         if not cypher_builder:
             cypher_builder = CypherBuilder()
         # TODO: figure out the best way to check for Cypher syntax errors
@@ -298,6 +302,14 @@ class Graph():
         elif first_keyword == "CREATE":
             cypher_create = CypherCreate()
             cypher_builder.create = cypher_create
+
+        elif first_keyword == "DELETE":
+            cypher_delete = CypherDelete()
+            cypher_builder.delete = cypher_delete
+
+        elif first_keyword == "RETURN":
+            cypher_return = CypherReturn()
+            cypher_builder.return_ = cypher_return
 
         # When we encounter a -[]->, we need to treat the variable differently.
         is_relationship = False
@@ -461,6 +473,14 @@ class Graph():
                             rel.next_node = node
                             node.label = current_token[1]
 
+            elif first_keyword == "RETURN":
+                if current_token[0] == Name.Variable:
+                    cypher_return.returning.append(current_token[1])
+
+            elif first_keyword == "DELETE":
+                if current_token[0] == Name.Variable:
+                    cypher_delete.deleting.append(current_token[1])
+
 
 
 
@@ -483,14 +503,6 @@ class Graph():
         return cypher_builder
 
     def parse_tokens2(self, tokens: Iterable, parsed_tokens: dict = {}) -> dict:
-        """
-        Iterates through the tokens created by the CypherLexer, and creates a dictionary with
-        the information needed to query the graph database. The output of the Cypher query,
-        }
-        """
-        # TODO: figure out the best way to check for Cypher syntax errors
-
-        # I want this method to recurse for every keyword, so this is how I'm keeping track.
         is_keyword = False
         # Make tokens generator subscriptable and remove whitespace.
         tokens = [token for token in tokens if token[0] != Text.Whitespace]

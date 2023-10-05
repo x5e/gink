@@ -8,6 +8,8 @@ class CypherBuilder():
     def __init__(self) -> None:
         self.match: CypherMatch | None = None
         self.create: CypherCreate | None = None
+        self.delete: CypherDelete | None = None
+        self.return_: CypherReturn | None = None
 
 class CypherNode():
     def __init__(self) -> None:
@@ -43,3 +45,17 @@ class CypherCreate():
     def print(self):
         for node in self.root_nodes:
             print(node.label, node.properties, "-[", node.rel.label, "]->", node.rel.next_node.label, node.rel.next_node.properties)
+
+class CypherReturn():
+    def __init__(self) -> None:
+        self.returning: list[str] = []
+
+    def print(self):
+        print(self.returning)
+
+class CypherDelete():
+    def __init__(self) -> None:
+        self.deleting: list[str] = []
+
+    def print(self):
+        print(self.deleting)
