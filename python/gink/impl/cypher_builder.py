@@ -7,12 +7,16 @@ from typing import Set
 class CypherBuilder():
     def __init__(self) -> None:
         self.match: CypherMatch | None = None
+        self.create: CypherCreate | None = None
 
 class CypherNode():
     def __init__(self) -> None:
         self.variable: str | None = None
         self.label: str | None = None
         self.rel: CypherRel | None = None
+
+        # For use with CREATE
+        self.properties: dict = {}
 
 class CypherRel():
     def __init__(self) -> None:
@@ -24,8 +28,18 @@ class CypherRel():
     def print(self):
         print(f"({self.previous_node.label})-[{self.label}]->({self.next_node.label})")
 
-
-
 class CypherMatch():
     def __init__(self) -> None:
         self.root_nodes: Set[CypherNode] = set()
+
+    def print_nodes(self):
+        for node in self.root_nodes:
+            print(f"({node.variable if node.variable else ''}:{node.label})")
+
+class CypherCreate():
+    def __init__(self) -> None:
+        self.root_nodes: Set[CypherNode] = set()
+
+    def print(self):
+        for node in self.root_nodes:
+            print(node.label, node.properties)

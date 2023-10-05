@@ -278,7 +278,7 @@ class Graph():
         # Obviously not done, just first step
         return parsed_tokens
 
-    def parse_tokens(self, tokens: Iterable, cypher_builder: CypherBuilder|None = None) -> CypherBuilder|None:
+    def parse_tokens(self, tokens: Iterable, cypher_builder: CypherBuilder | None = None) -> CypherBuilder:
         if not cypher_builder:
             cypher_builder = CypherBuilder()
         # TODO: figure out the best way to check for Cypher syntax errors
@@ -295,10 +295,16 @@ class Graph():
             cypher_match = CypherMatch()
             cypher_builder.match = cypher_match
 
+        elif first_keyword == "CREATE":
+            cypher_create = CypherCreate()
+            cypher_builder.create = cypher_create
+
         # When we encounter a -[]->, we need to treat the variable differently.
         is_relationship = False
         # This variable is to let the loop know we are in the final connected node of -[]->()
         is_connected = False
+        # determining whether the Name.Variable token is actually a variable or a property
+        in_properties = False
 
         i = 0
         while not is_keyword:
@@ -307,13 +313,17 @@ class Graph():
             except IndexError:
                 break
 
+            # Marking where we are in the query
             if current_token[0] == Punctuation and "[" in current_token[1]:
                     is_relationship = True
-
             elif current_token[0] == Punctuation and "]" in current_token[1]:
                 is_relationship = False
                 # Done with relationship, moving on to connected node.
                 is_connected = True
+            elif current_token[0] == Punctuation and "{" in current_token[1]:
+                in_properties = True
+            elif current_token[0] == Punctuation and "}" in current_token[1]:
+                in_properties = False
 
             print(current_token)
             if first_keyword == "MATCH":
@@ -373,7 +383,36 @@ class Graph():
                             rel.next_node = node
                             node.label = current_token[1]
 
+            elif first_keyword == "CREATE":
+                # First node in a node-rel-node sequence
+                if not is_relationship and not is_connected:
+                    if current_token[0] == Name.Variable and not in_properties:
+                        node = CypherNode()
+                        cypher_create.root_nodes.add(node)
+                        node.variable = current_token[1]
 
+                    elif current_token[0] == Name.Variable and in_properties:
+                        current_property = current_token[1]
+                        node.properties[current_property] = None
+
+                    # If the second to last token was a variable and we are in properties,
+                    # it should be safe to assume this is a value, since properties follow
+                    # {property1: 'value1'}
+                    elif tokens[i-2][0] == Name.Variable and in_properties:
+                        # TODO: figure out how to properly handle quotes.
+                        node.properties[current_property] = current_token[1]
+
+                    elif current_token[0] == Name.Label:
+                        last_var = tokens[i-2][1] if tokens[i-2][0] == Name.Variable else None
+                        # If the query includes a variable, add the label to the node we just created
+                        if last_var:
+                            node.label = current_token[1]
+                        # Otherwise, we need to create the node here without a variable.
+                        else:
+                            node = CypherNode()
+                            # Remember this node specifically when we reach the end of (node)-[rel]-(node)
+                            cypher_match.root_nodes.add(node)
+                            node.label = current_token[1]
 
 
 
