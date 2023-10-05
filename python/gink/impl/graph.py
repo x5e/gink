@@ -13,6 +13,7 @@ from .database import Database
 from .bundler import Bundler
 from .builders import EntryBuilder, ChangeBuilder
 from .addressable import Addressable
+from .cypher_builder import *
 
 
 class Noun(Container):
@@ -277,28 +278,128 @@ class Graph():
         # Obviously not done, just first step
         return parsed_tokens
 
-    def parse_tokens(self, tokens: Iterable, parsed_tokens: dict = {}) -> dict:
+    def parse_tokens(self, tokens: Iterable, cypher_builder: CypherBuilder|None = None) -> CypherBuilder|None:
+        if not cypher_builder:
+            cypher_builder = CypherBuilder()
+        # TODO: figure out the best way to check for Cypher syntax errors
+
+        # I want this method to recurse for every keyword, so this is how I'm keeping track.
+        is_keyword = False
+        # Make tokens generator subscriptable and remove whitespace.
+        tokens = [token for token in tokens if token[0] != Text.Whitespace]
+        # If the method is working properly, the first item of the list should be the keyword to analyze.
+        first_keyword = tokens[0][1].upper()
+
+        # Initializing hash tables based on the keywords we encounter
+        if first_keyword == "MATCH":
+            cypher_match = CypherMatch()
+            cypher_builder.match = cypher_match
+
+        # When we encounter a -[]->, we need to treat the variable differently.
+        is_relationship = False
+        # This variable is to let the loop know we are in the final connected node of -[]->()
+        is_connected = False
+
+        i = 0
+        while not is_keyword:
+            try:
+                current_token = tokens[i]
+            except IndexError:
+                break
+
+            if current_token[0] == Punctuation and "[" in current_token[1]:
+                    is_relationship = True
+
+            elif current_token[0] == Punctuation and "]" in current_token[1]:
+                is_relationship = False
+                # Done with relationship, moving on to connected node.
+                is_connected = True
+
+            print(current_token)
+            if first_keyword == "MATCH":
+                # First node in a node-rel-node sequence
+                if not is_relationship and not is_connected:
+                    if current_token[0] == Name.Variable:
+                        node = CypherNode()
+                        cypher_match.root_nodes.add(node)
+                        node.variable = current_token[1]
+
+                    elif current_token[0] == Name.Label:
+                        last_var = tokens[i-2][1] if tokens[i-2][0] == Name.Variable else None
+                        # If the query includes a variable, add the label to the node we just created
+                        if last_var:
+                            node.label = current_token[1]
+                        # Otherwise, we need to create the node here without a variable.
+                        else:
+                            node = CypherNode()
+                            # Remember this node specifically when we reach the end of (node)-[rel]-(node)
+                            cypher_match.root_nodes.add(node)
+                            node.label = current_token[1]
+
+                elif is_relationship and not is_connected:
+                    if current_token[0] == Name.Variable:
+                        # Node still refers to the variable declared above, since a relationship has to
+                        # create a node first.
+                        rel = CypherRel()
+                        node.rel = rel
+                        rel.var = current_token[1]
+                        rel.previous_node = node
+
+                    elif current_token[0] == Name.Label:
+                        last_var = tokens[i-2][1] if tokens[i-2][0] == Name.Variable else None
+                        if last_var and rel:
+                            rel.label = current_token[1]
+                        else:
+                            rel = CypherRel()
+                            node.rel = rel
+                            rel.label = current_token[1]
+                            rel.previous_node = node
+
+                elif is_connected and not is_relationship:
+                    if current_token[0] == Name.Variable:
+                        node = CypherNode()
+                        rel.next_node = node
+                        cypher_match.root_nodes.add(node)
+                        node.variable = current_token[1]
+
+                    elif current_token[0] == Name.Label:
+                        last_var = tokens[i-2][1] if tokens[i-2][0] == Name.Variable else None
+                        # If the query includes a variable, add the label to the node we just created
+                        if last_var:
+                            node.label = current_token[1]
+                        # Otherwise, we need to create the node here without a variable.
+                        else:
+                            node = CypherNode()
+                            rel.next_node = node
+                            node.label = current_token[1]
+
+
+
+
+
+
+
+            # Stop the loop if the next token is a keyword.
+            try:
+                next_token = tokens[i+1]
+                # Treating AND as a keyword that will work similar to WHERE
+                if next_token[0] == Keyword or next_token[1].upper() == "AND":
+                    is_keyword = True
+            except IndexError:
+                next_token = None
+
+            i += 1
+
+        # Recurse with the remainder of the unparsed tokens, if there is anything left to parse.
+        if len(tokens) > 1 and next_token:
+            self.parse_tokens(tokens=tokens[i:], cypher_builder=cypher_builder)
+
+        return cypher_builder
+
+    def parse_tokens2(self, tokens: Iterable, parsed_tokens: dict = {}) -> dict:
         """
         Iterates through the tokens created by the CypherLexer, and creates a dictionary with
         the information needed to query the graph database. The output of the Cypher query,
-        MATCH (n:Node) WHERE n.foo = 12 RETURN n
-        Looks like:
-        {
-            "MATCH": {
-                "noun1": {
-                    "var": "n",
-                    "label": "Node"
-                }
-            },
-            "WHERE": {
-                1: {
-                    "var": "n",
-                    "property": "foo",
-                    "operator": "=",
-                    "value": 12
-                }
-            },
-            "RETURN": ["n"]
         }
         """
         # TODO: figure out the best way to check for Cypher syntax errors
@@ -311,10 +412,7 @@ class Graph():
         first_keyword = tokens[0][1].upper()
 
         # Initializing hash tables based on the keywords we encounter
-        if first_keyword == "MATCH":
-            parsed_tokens[first_keyword] = {}
-
-        elif first_keyword == "CREATE":
+        if first_keyword in ("MATCH", "CREATE"):
             parsed_tokens[first_keyword] = {}
 
         # Return and delete only need an array to hold the nodes/edges to delete
@@ -355,6 +453,12 @@ class Graph():
         is_relationship = False
         # This variable is to let the loop know we are in the final connected node of -[]->()
         is_connected = False
+        # Properties are tokenized as variables, so this indicates that the next variables are properties.
+        after_label = False
+        # Remembers location of previous variable key to add the label without searching
+        add_label_here = None
+        # Remembers location of the node we are building
+        current_node = None
 
         # This loop breaks at each keyword and calls the function again on the remainder of the tokens.
         i = 0
@@ -363,6 +467,14 @@ class Graph():
                 current_token = tokens[i]
             except IndexError:
                 break
+
+            if current_token[0] == Punctuation and "[" in current_token[1]:
+                    is_relationship = True
+
+            elif current_token[0] == Punctuation and "]" in current_token[1]:
+                is_relationship = False
+                # Done with relationship, moving on to connected node.
+                is_connected = True
 
             print(current_token, i)
             if first_keyword == "MATCH":
@@ -407,13 +519,26 @@ class Graph():
                                     parsed_tokens["MATCH"][key]["connects_to"]["label"] = current_token[1]
                                     break
 
-                elif current_token[0] == Punctuation and "[" in current_token[1]:
-                    is_relationship = True
+                    # the query doesnt include a variable, like (:Node) or [:Relationship]
+                    elif tokens[i-2][1] == "(" or tokens[i-2][1] == "[":
+                        if not is_relationship and not is_connected:
+                            # if there is no variable to associate the label and connection to,
+                            # just calling it "null(number)"
+                            next_key_number = len(parsed_tokens[first_keyword].keys())+1
+                            parsed_tokens[first_keyword][f"null{next_key_number}"] = {"label": current_token[1]}
 
-                elif current_token[0] == Punctuation and "]" in current_token[1]:
-                    is_relationship = False
-                    # Done with relationship, moving on to connected node.
-                    is_connected = True
+                        elif is_relationship:
+                            for key in parsed_tokens["MATCH"].keys():
+                                # Finds the first variable that doesn't yet have an edge label added
+                                if not parsed_tokens["MATCH"][key]["edge"].get("label"):
+                                    parsed_tokens["MATCH"][key]["edge"]["label"] = current_token[1]
+                                    break
+                        elif is_connected:
+                            for key in parsed_tokens["MATCH"].keys():
+                                # Finds the first variable that doesn't yet have a connection but has an edge
+                                if not parsed_tokens["MATCH"][key].get("connects_to") and parsed_tokens["MATCH"][key].get("edge"):
+                                    parsed_tokens["MATCH"][key]["connects_to"] = {"var": None, "label": current_token[1]}
+                                    break
 
                 elif is_relationship and current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["edge"]["var"]:
                     parsed_tokens[first_keyword]["edge"]["var"] = current_token[1]
@@ -421,6 +546,11 @@ class Graph():
             elif first_keyword in ("RETURN", "DELETE"):
                 if current_token[0] == Name.Variable:
                     parsed_tokens[first_keyword].append(current_token[1])
+
+            elif first_keyword == "CREATE":
+                if not after_label and current_token[0] == Name.Variable:
+                    parsed_tokens[first_keyword][current_token[1]] = {}
+
 
             elif first_keyword in ("WHERE", "AND"):
                 # To grab the value from the where statement, I figured it makes sense
@@ -468,6 +598,6 @@ class Graph():
 
         # Recurse with the remainder of the unparsed tokens, if there is anything left to parse.
         if len(tokens) > 1 and next_token:
-            self.parse_tokens(tokens=tokens[i:], parsed_tokens=parsed_tokens)
+            self.parse_tokens2(tokens=tokens[i:], parsed_tokens=parsed_tokens)
 
         return parsed_tokens
