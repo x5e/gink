@@ -294,7 +294,7 @@ class Graph():
         # If the method is working properly, the first item of the list should be the keyword to analyze.
         first_keyword = tokens[0][1].upper()
 
-        # Initializing hash tables based on the keywords we encounter
+        # Initializing hash tables based on the keywords encountered
         if first_keyword == "MATCH":
             cypher_match = CypherMatch()
             cypher_builder.match = cypher_match
@@ -302,6 +302,14 @@ class Graph():
         elif first_keyword == "CREATE":
             cypher_create = CypherCreate()
             cypher_builder.create = cypher_create
+
+        elif first_keyword == "WHERE":
+            cypher_where = CypherWhere()
+            cypher_builder.where = cypher_where
+
+        elif first_keyword == "SET":
+            cypher_set = CypherSet()
+            cypher_builder.set.append(cypher_set)
 
         elif first_keyword == "DELETE":
             cypher_delete = CypherDelete()
@@ -473,6 +481,19 @@ class Graph():
                             rel.next_node = node
                             node.label = current_token[1]
 
+            elif first_keyword == "SET":
+                if tokens[i-1][1] == "." and current_token[0] == Name.Variable:
+                        cypher_set.property = current_token[1]
+                elif current_token[0] == Name.Variable:
+                    cypher_set.variable = current_token[1]
+                elif current_token[0] == Operator and not current_token[1] == ".":
+                    cypher_set.operator = current_token[1]
+                elif tokens[i-1][0] == Operator and not tokens[i-1][1] == ".":
+                    cypher_set.value = current_token[1]
+
+            elif first_keyword == "WHERE":
+                pass
+
             elif first_keyword == "RETURN":
                 if current_token[0] == Name.Variable:
                     cypher_return.returning.append(current_token[1])
@@ -501,201 +522,3 @@ class Graph():
             self.parse_tokens(tokens=tokens[i:], cypher_builder=cypher_builder)
 
         return cypher_builder
-
-    def parse_tokens2(self, tokens: Iterable, parsed_tokens: dict = {}) -> dict:
-        is_keyword = False
-        # Make tokens generator subscriptable and remove whitespace.
-        tokens = [token for token in tokens if token[0] != Text.Whitespace]
-        # If the method is working properly, the first item of the list should be the keyword to analyze.
-        first_keyword = tokens[0][1].upper()
-
-        # Initializing hash tables based on the keywords we encounter
-        if first_keyword in ("MATCH", "CREATE"):
-            parsed_tokens[first_keyword] = {}
-
-        # Return and delete only need an array to hold the nodes/edges to delete
-        elif first_keyword in ("RETURN", "DELETE"):
-            parsed_tokens[first_keyword] = []
-
-        elif first_keyword == "WHERE":
-            # If we encounter AND clauses, we will increment the condition and come back here
-            condition = 1
-            parsed_tokens[first_keyword] = {
-                condition: {
-                    "var": None,
-                    "property": None,
-                    "operator": None,
-                    "value": None
-                }
-            }
-
-        # Need to rethink this so it will work with OR operator
-        elif first_keyword == "AND":
-            condition = max(parsed_tokens["WHERE"].keys())+1
-            parsed_tokens["WHERE"][condition] = {
-                "var": None,
-                "property": None,
-                "operator": None,
-                "value": None
-            }
-
-        elif first_keyword == "SET":
-            parsed_tokens[first_keyword] = {
-                "var": None,
-                "property": None,
-                "operator": None,
-                "value": None
-            }
-
-        # When we encounter a -[]->, we need to treat the variable differently.
-        is_relationship = False
-        # This variable is to let the loop know we are in the final connected node of -[]->()
-        is_connected = False
-        # Properties are tokenized as variables, so this indicates that the next variables are properties.
-        after_label = False
-        # Remembers location of previous variable key to add the label without searching
-        add_label_here = None
-        # Remembers location of the node we are building
-        current_node = None
-
-        # This loop breaks at each keyword and calls the function again on the remainder of the tokens.
-        i = 0
-        while not is_keyword:
-            try:
-                current_token = tokens[i]
-            except IndexError:
-                break
-
-            if current_token[0] == Punctuation and "[" in current_token[1]:
-                    is_relationship = True
-
-            elif current_token[0] == Punctuation and "]" in current_token[1]:
-                is_relationship = False
-                # Done with relationship, moving on to connected node.
-                is_connected = True
-
-            print(current_token, i)
-            if first_keyword == "MATCH":
-
-                # Handles the second variable (after a relationship) in a create or match statement
-                if is_connected and current_token[0] == Name.Variable:
-                    for key in parsed_tokens["MATCH"].keys():
-                                # Finds the first variable that doesn't yet have a connection but has an edge
-                                if not parsed_tokens["MATCH"][key].get("connects_to") and parsed_tokens["MATCH"][key].get("edge"):
-                                    parsed_tokens["MATCH"][key]["connects_to"] = {"var": current_token[1]}
-                                    break
-
-                # Handles the first variable in a create or match statement
-                elif current_token[0] == Name.Variable and not parsed_tokens[first_keyword].get(current_token[1]):
-                    if not is_relationship:
-                        parsed_tokens[first_keyword][current_token[1]] = {}
-                    else:
-                        for key in parsed_tokens["MATCH"].keys():
-                            # Finds the first variable that doesn't yet have an edge added
-                            if not parsed_tokens["MATCH"][key].get("edge"):
-                                parsed_tokens["MATCH"][key]["edge"] = {"var": current_token[1]}
-                                break
-
-                # Handles all labels for nouns and edges
-                elif current_token[0] == Name.Label:
-                    # Since Cypher follows the pattern (var:Label), i-2 will give us the last variable.
-                    # If we encounter a label, match it to the last variable.
-                    if tokens[i-2][0] == Name.Variable:
-                        last_var = tokens[i-2][1]
-                        if not is_relationship and not is_connected:
-                            parsed_tokens[first_keyword][last_var]["label"] = current_token[1]
-                        elif is_relationship:
-                            for key in parsed_tokens["MATCH"].keys():
-                                # Finds the first variable that doesn't yet have an edge label added
-                                if not parsed_tokens["MATCH"][key]["edge"].get("label"):
-                                    parsed_tokens["MATCH"][key]["edge"]["label"] = current_token[1]
-                                    break
-                        elif is_connected:
-                            for key in parsed_tokens["MATCH"].keys():
-                                # Finds the first variable that doesn't yet have a connection but has an edge
-                                if not parsed_tokens["MATCH"][key]["connects_to"].get("label") and parsed_tokens["MATCH"][key].get("edge"):
-                                    parsed_tokens["MATCH"][key]["connects_to"]["label"] = current_token[1]
-                                    break
-
-                    # the query doesnt include a variable, like (:Node) or [:Relationship]
-                    elif tokens[i-2][1] == "(" or tokens[i-2][1] == "[":
-                        if not is_relationship and not is_connected:
-                            # if there is no variable to associate the label and connection to,
-                            # just calling it "null(number)"
-                            next_key_number = len(parsed_tokens[first_keyword].keys())+1
-                            parsed_tokens[first_keyword][f"null{next_key_number}"] = {"label": current_token[1]}
-
-                        elif is_relationship:
-                            for key in parsed_tokens["MATCH"].keys():
-                                # Finds the first variable that doesn't yet have an edge label added
-                                if not parsed_tokens["MATCH"][key]["edge"].get("label"):
-                                    parsed_tokens["MATCH"][key]["edge"]["label"] = current_token[1]
-                                    break
-                        elif is_connected:
-                            for key in parsed_tokens["MATCH"].keys():
-                                # Finds the first variable that doesn't yet have a connection but has an edge
-                                if not parsed_tokens["MATCH"][key].get("connects_to") and parsed_tokens["MATCH"][key].get("edge"):
-                                    parsed_tokens["MATCH"][key]["connects_to"] = {"var": None, "label": current_token[1]}
-                                    break
-
-                elif is_relationship and current_token[0] == Name.Variable and not parsed_tokens[first_keyword]["edge"]["var"]:
-                    parsed_tokens[first_keyword]["edge"]["var"] = current_token[1]
-
-            elif first_keyword in ("RETURN", "DELETE"):
-                if current_token[0] == Name.Variable:
-                    parsed_tokens[first_keyword].append(current_token[1])
-
-            elif first_keyword == "CREATE":
-                if not after_label and current_token[0] == Name.Variable:
-                    parsed_tokens[first_keyword][current_token[1]] = {}
-
-
-            elif first_keyword in ("WHERE", "AND"):
-                # To grab the value from the where statement, I figured it makes sense
-                # to find the value after the last non-"." Operator, which requires me
-                # to keep track of the previous token.
-                last_token = tokens[i-1]
-                if current_token[0] == Name.Variable:
-                    if tokens[i+1][1] == ".":
-                        # If next token is a ".", this is the variable, not property
-                        parsed_tokens["WHERE"][condition]["var"] = current_token[1]
-                    else:
-                        parsed_tokens["WHERE"][condition]["property"] = current_token[1]
-
-                elif current_token[0] == Operator and current_token[1] != ".":
-                    parsed_tokens["WHERE"][condition]["operator"] = current_token[1]
-
-                elif last_token[0] == Operator and last_token[1] != ".":
-                    parsed_tokens["WHERE"][condition]["value"] = current_token[1]
-
-            elif first_keyword == "SET":
-                last_token = tokens[i-1]
-                if current_token[0] == Name.Variable:
-                    if tokens[i+1][1] == ".":
-                        # If next token is a ".", this is the variable, not property
-                        parsed_tokens["SET"]["var"] = current_token[1]
-                    else:
-                        parsed_tokens["SET"]["property"] = current_token[1]
-
-                elif current_token[0] == Operator and current_token[1] != ".":
-                    parsed_tokens["SET"]["operator"] = current_token[1]
-
-                elif last_token[0] == Operator and last_token[1] != ".":
-                    parsed_tokens["SET"]["value"] = current_token[1]
-
-            # Stop the loop if the next token is a keyword.
-            try:
-                next_token = tokens[i+1]
-                # Treating AND as a keyword that will work similar to WHERE
-                if next_token[0] == Keyword or next_token[1].upper() == "AND":
-                    is_keyword = True
-            except IndexError:
-                next_token = None
-
-            i += 1
-
-        # Recurse with the remainder of the unparsed tokens, if there is anything left to parse.
-        if len(tokens) > 1 and next_token:
-            self.parse_tokens2(tokens=tokens[i:], parsed_tokens=parsed_tokens)
-
-        return parsed_tokens

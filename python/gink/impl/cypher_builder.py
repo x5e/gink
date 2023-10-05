@@ -8,8 +8,18 @@ class CypherBuilder():
     def __init__(self) -> None:
         self.match: CypherMatch | None = None
         self.create: CypherCreate | None = None
+        self.where: CypherWhere | None = None
+        self.set: list[CypherSet] = []
+
         self.delete: CypherDelete | None = None
         self.return_: CypherReturn | None = None
+
+    def print_set(self):
+        """
+        Prints every SET clause in the query.
+        """
+        for set in self.set:
+            set.print()
 
 class CypherNode():
     def __init__(self) -> None:
@@ -46,7 +56,29 @@ class CypherCreate():
         for node in self.root_nodes:
             print(node.label, node.properties, "-[", node.rel.label, "]->", node.rel.next_node.label, node.rel.next_node.properties)
 
+class CypherWhere():
+    def __init__(self) -> None:
+        pass
+
+class CypherSet():
+    def __init__(self) -> None:
+        self.variable: str | None = None
+        self.property: str | None = None
+        self.operator: str | None = None
+        self.value = None
+
+    def print(self):
+        print(f"{self.variable}.{self.property} {self.operator} {self.value}")
+
+
+# May eventually move these lists themselves into a variable directly
+# inside CypherBuilder.
 class CypherReturn():
+    """
+    Houses a list of variables to return.
+    Keeping this as its own class in case I need to add
+    more to it later.
+    """
     def __init__(self) -> None:
         self.returning: list[str] = []
 
@@ -54,6 +86,11 @@ class CypherReturn():
         print(self.returning)
 
 class CypherDelete():
+    """
+    Houses a list of variables to delete.
+    Keeping this as its own class in case I need to add
+    more to it later.
+    """
     def __init__(self) -> None:
         self.deleting: list[str] = []
 
