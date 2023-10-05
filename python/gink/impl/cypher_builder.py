@@ -2,14 +2,14 @@
 To keep Cypher terminology separate from Gink, I've chosen to use names like
 Node (Gink's noun), Rel[ationship](Gink's edge/verb)
 """
-from typing import Set
+from typing import Set, List
 
 class CypherBuilder():
     def __init__(self) -> None:
         self.match: CypherMatch | None = None
         self.create: CypherCreate | None = None
         self.where: CypherWhere | None = None
-        self.set: list[CypherSet] = []
+        self.set: List[CypherSet] = []
 
         self.delete: CypherDelete | None = None
         self.return_: CypherReturn | None = None
@@ -63,8 +63,8 @@ class CypherWhere():
         self.operator: str | None = None
         self.value: str | None = None
 
-        self.and_: list[CypherWhere] = []
-        self.or_: list[CypherWhere] = []
+        self.and_: List[CypherWhere] = []
+        self.or_: List[CypherWhere] = []
 
     def print(self):
         print(f"{self.variable}.{self.property} {self.operator} {self.value}")
@@ -93,7 +93,7 @@ class CypherReturn():
     more to it later.
     """
     def __init__(self) -> None:
-        self.returning: list[str] = []
+        self.returning: List[str] = []
 
     def print(self):
         print(self.returning)
@@ -105,7 +105,7 @@ class CypherDelete():
     more to it later.
     """
     def __init__(self) -> None:
-        self.deleting: list[str] = []
+        self.deleting: List[str] = []
 
     def print(self):
         print(self.deleting)
