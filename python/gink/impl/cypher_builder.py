@@ -2,17 +2,18 @@
 To keep Cypher terminology separate from Gink, I've chosen to use names like
 Node (Gink's noun), Rel[ationship](Gink's edge/verb)
 """
-from typing import Set, List
+from typing import Set, List, Optional
+from .typedefs import UserValue
 
 class CypherBuilder():
     def __init__(self) -> None:
-        self.match: CypherMatch | None = None
-        self.create: CypherCreate | None = None
-        self.where: CypherWhere | None = None
+        self.match: Optional[CypherMatch] = None
+        self.create: Optional[CypherCreate] = None
+        self.where: Optional[CypherWhere] = None
         self.set: List[CypherSet] = []
 
-        self.delete: CypherDelete | None = None
-        self.return_: CypherReturn | None = None
+        self.delete: Optional[CypherDelete] = None
+        self.return_: Optional[CypherReturn] = None
 
     def print_set(self):
         """
@@ -23,19 +24,19 @@ class CypherBuilder():
 
 class CypherNode():
     def __init__(self) -> None:
-        self.variable: str | None = None
-        self.label: str | None = None
-        self.rel: CypherRel | None = None
+        self.variable: Optional[str] = None
+        self.label: Optional[str] = None
+        self.rel: Optional[CypherRel] = None
 
         # For use with CREATE
         self.properties: dict = {}
 
 class CypherRel():
     def __init__(self) -> None:
-        self.var: str | None = None
-        self.label: str | None = None
-        self.previous_node: CypherNode | None = None
-        self.next_node: CypherNode | None = None
+        self.var: Optional[str] = None
+        self.label: Optional[str] = None
+        self.previous_node: Optional[CypherNode] = None
+        self.next_node: Optional[CypherNode] = None
 
     def print(self):
         print(f"({self.previous_node.label})-[{self.label}]->({self.next_node.label})")
@@ -58,10 +59,10 @@ class CypherCreate():
 
 class CypherWhere():
     def __init__(self) -> None:
-        self.variable: str | None = None
-        self.property: str | None = None
-        self.operator: str | None = None
-        self.value: str | None = None
+        self.variable: Optional[str] = None
+        self.property: Optional[str] = None
+        self.operator: Optional[str] = None
+        self.value: Optional[str] = None
 
         self.and_: List[CypherWhere] = []
         self.or_: List[CypherWhere] = []
@@ -75,10 +76,10 @@ class CypherWhere():
 
 class CypherSet():
     def __init__(self) -> None:
-        self.variable: str | None = None
-        self.property: str | None = None
-        self.operator: str | None = None
-        self.value = None
+        self.variable: Optional[str] = None
+        self.property: Optional[str] = None
+        self.operator: Optional[str] = None
+        self.value: Optional[UserValue] = None
 
     def print(self):
         print(f"{self.variable}.{self.property} {self.operator} {self.value}")

@@ -267,16 +267,20 @@ class Graph():
     """
     def __init__(self, database: Union[Database, None] = None):
         if not database:
-            database = Database.get_last()
+            self.database = Database.get_last()
         self.database = database
         self.lexer = CypherLexer()
         self.lexer.add_filter("whitespace")
 
     def query(self, query: str):
         tokens = self.lexer.get_tokens(query)
-        parsed_tokens = self.parse_tokens(tokens)
+        cypher_builder = self.parse_tokens(tokens)
         # Obviously not done, just first step
-        return parsed_tokens
+        return cypher_builder
+
+    def execute_cypher(self, cypher_builder: CypherBuilder):
+        store = self.database.get_store()
+        # entries = store.get_edge_entries(as_of=self.database.get_now())
 
     def parse_tokens(self, tokens: Iterable, cypher_builder: CypherBuilder | None = None) -> CypherBuilder:
         """
@@ -286,6 +290,9 @@ class Graph():
         if not cypher_builder:
             cypher_builder = CypherBuilder()
         # TODO: figure out the best way to check for Cypher syntax errors
+        # here is a parser in scala: https://github.com/outr/neo4akka/blob/master/src/main/scala/com/outr/neo4akka/Macros.scala#L32
+
+        # TODO: There is still a ton more to do here in terms of handling clauses and stuff.
 
         # I want this method to recurse for every keyword, so this is how I'm keeping track.
         is_keyword = False
