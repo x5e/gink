@@ -185,7 +185,7 @@ class LmdbStore(AbstractStore):
             entry_builder.ParseFromString(found)
             return entry_builder
 
-    def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
+    def get_all_containers(self, behaviors: Optional[Iterable[int]] = None) -> Iterable[Tuple[Muid, ContainerBuilder]]:
         yield Muid(-1, -1, 7), ContainerBuilder()
         yield Muid(-1, -1, 8), ContainerBuilder()
         with self._handle.begin() as trxn:
@@ -195,7 +195,11 @@ class LmdbStore(AbstractStore):
                 key, val = container_cursor.item()
                 container_builder = ContainerBuilder()
                 container_builder.ParseFromString(val)
-                yield Muid.from_bytes(key), container_builder
+                if behaviors:
+                    if container_builder.behavior in behaviors:
+                        yield Muid.from_bytes(key), container_builder
+                else:
+                    yield Muid.from_bytes(key), container_builder
                 positioned = container_cursor.next()
 
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:

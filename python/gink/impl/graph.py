@@ -280,7 +280,7 @@ class Graph():
 
     def execute_cypher(self, cypher_builder: CypherBuilder):
         store = self.database.get_store()
-        # entries = store.get_edge_entries(as_of=self.database.get_now())
+        containers = list(store.get_all_containers(behaviors=[NOUN, VERB]))
 
     def parse_tokens(self, tokens: Iterable, cypher_builder: CypherBuilder | None = None) -> CypherBuilder:
         """
