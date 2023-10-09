@@ -51,7 +51,7 @@ def get_attribution(
     """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
 
         After the timestamp and medallion it will ignore other ordered arguments, so
-        that it can be used via get_attribution(*muid).
+        that it can be used via ``get_attribution(*muid)``.
     """
     medallion_directory = Directory.get_medallion_instance(
         medallion=medallion, database=self)
