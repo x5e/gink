@@ -198,12 +198,14 @@ order_noun = Noun(database=database)
 user_noun.remove()
 order_noun.remove()
 
+is_alive = user_noun.is_alive() # returns False since we removed it.
+
 # Most of the Noun functionality comes when using
 # an edge - more examples below.
 ```
 
 #### Edge and Verb
-An Edge is what connects a Noun to another Noun. The Verb is the "action" of an Edge, or the relationship between the nouns. For example, one noun may be a user, while the other node is an order. This may be depicted as (User)--Ordered-->(Order). User and Order are Nouns, Ordered is the Verb, and the lines connecting them (and the direction) is the Edge.
+An Edge is what connects a Noun to another Noun. The Verb is the `action` of an Edge, or the relationship between the nouns. For example, one noun may be a user, while the other node is an order. This may be depicted as (User)--Ordered-->(Order). User and Order are Nouns, Ordered is the Verb, and the lines connecting them (and the direction) is the Edge.
 
 ```python
 user_noun = Noun(database=database)
@@ -213,8 +215,8 @@ order_noun = Noun(database=database)
 ordered_verb = Verb(database=database)
 ordered_verb.create_edge(user_noun, order_noun, "Ordered")
 
-# We can get all edges of any Verb (can specify source or target)
-# since we only have one edge, we don't need to specify a source or target here.
+# We can get all edges of any Verb (can specify source or target) since
+# we only have one edge, we don't need to specify a source or target here.
 edges = ordered_verb.get_edges()
 
 # Above returns a generator of edges, so lets get the only edge we have so far
@@ -232,12 +234,27 @@ ordered_edge.remove()
 
 (all-containers)=
 ### All Containers
-The container is the parent class for all of these data structures. Here are some examples of the powerful operations you can do with any container:
+The Container is the parent class for all Gink data structures. Here are some examples of the powerful operations you can do with any container:
+#### Global Instance
+For each Container type there's a pre-existing global instance with address `Muid(timestamp=-1, medallion=-1, offset=behavior)`. This container type can be written to by any instance, and may be used to coordinate between database instances or just for testing/demo purposes.
 ```python
-# global instance
-# initializing data structure with contents
-# reset
-# as_of
-# bundler/comment stuff
-# clear
+global_directory = Directory.get_global_instance(database=database)
+
+global_box = Box.get_global_instance(database=database)
+
+global_key_set = KeySet.get_global_instance(database=database)
 ```
+#### From Contents
+To make it easier to insert data into an object upon initialization, Gink allows you to specify a `contents` argument to the constructor of the object. Different data structures may take different types as contents, but the idea remains the same for all Gink objects.
+```python
+directory = Directory(database=database, contents={"key1": "value1", "key2": 42, "key3": [1, 2, 3, 4]})
+
+
+```
+#### Reset
+#### Back in time
+#### Bundling and comments
+#### Clearing
+#### Dumps
+
+## Database Operations

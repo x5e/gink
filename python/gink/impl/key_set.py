@@ -37,7 +37,7 @@ class KeySet(Container):
         Container.__init__(self, muid=muid, database=database)
         if contents:
             self.clear(bundler=bundler)
-            # self.update(contents, bundler=bundler)
+            self.update(contents, bundler=bundler)
         if immediate and len(bundler):
             self._database.commit(bundler)
 
@@ -47,11 +47,14 @@ class KeySet(Container):
 
     def update(self, keys: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Adds multiple specified values to the key set """
+        immediate = False
         if bundler is None:
+            immediate = True
             bundler = Bundler(comment)
         for key in keys:
-            self._add_entry(key=key, value=inclusion, bundler=bundler, comment=comment)
-        self._database.commit(bundler)
+            self._add_entry(key=key, value=inclusion, bundler=bundler)
+        if immediate:
+            self._database.commit(bundler)
 
     def contains(self, key: UserKey, as_of: GenericTimestamp=None):
         """ Returns a boolean stating whether the specified key is in the key set """

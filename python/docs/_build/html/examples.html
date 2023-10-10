@@ -342,6 +342,8 @@ While the Pair Set’s methods do not mimic those of the Python Set, you can thi
 <span class="n">user_noun</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
 <span class="n">order_noun</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
 
+<span class="n">is_alive</span> <span class="o">=</span> <span class="n">user_noun</span><span class="o">.</span><span class="n">is_alive</span><span class="p">()</span> <span class="c1"># returns False since we removed it.</span>
+
 <span class="c1"># Most of the Noun functionality comes when using</span>
 <span class="c1"># an edge - more examples below.</span>
 </pre></div>
@@ -357,8 +359,8 @@ While the Pair Set’s methods do not mimic those of the Python Set, you can thi
 <span class="n">ordered_verb</span> <span class="o">=</span> <span class="n">Verb</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">)</span>
 <span class="n">ordered_verb</span><span class="o">.</span><span class="n">create_edge</span><span class="p">(</span><span class="n">user_noun</span><span class="p">,</span> <span class="n">order_noun</span><span class="p">,</span> <span class="s2">&quot;Ordered&quot;</span><span class="p">)</span>
 
-<span class="c1"># We can get all edges of any Verb (can specify source or target)</span>
-<span class="c1"># since we only have one edge, we don&#39;t need to specify a source or target here.</span>
+<span class="c1"># We can get all edges of any Verb (can specify source or target) since</span>
+<span class="c1"># we only have one edge, we don&#39;t need to specify a source or target here.</span>
 <span class="n">edges</span> <span class="o">=</span> <span class="n">ordered_verb</span><span class="o">.</span><span class="n">get_edges</span><span class="p">()</span>
 
 <span class="c1"># Above returns a generator of edges, so lets get the only edge we have so far</span>
@@ -379,14 +381,32 @@ While the Pair Set’s methods do not mimic those of the Python Set, you can thi
 <section id="all-containers">
 <span id="id1"></span><h3>All Containers<a class="headerlink" href="#all-containers" title="Link to this heading">¶</a></h3>
 <p>The container is the parent class for all of these data structures. Here are some examples of the powerful operations you can do with any container:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># global instance</span>
-<span class="c1"># initializing data structure with contents</span>
-<span class="c1"># reset</span>
-<span class="c1"># as_of</span>
-<span class="c1"># bundler/comment stuff</span>
-<span class="c1"># clear</span>
+<section id="global-instance">
+<h4>Global Instance<a class="headerlink" href="#global-instance" title="Link to this heading">¶</a></h4>
+<p>For each container type there’s a pre-existing global instance with address Muid(timestamp=-1, medallion=-1, offset=behavior). This container type can be written to by any instance, and may be used to coordinate between database instances or just for testing/demo purposes.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">global_directory</span> <span class="o">=</span> <span class="n">Directory</span><span class="o">.</span><span class="n">get_global_instance</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">)</span>
+
+<span class="n">global_box</span> <span class="o">=</span> <span class="n">Box</span><span class="o">.</span><span class="n">get_global_instance</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">)</span>
+
+<span class="n">global_key_set</span> <span class="o">=</span> <span class="n">KeySet</span><span class="o">.</span><span class="n">get_global_instance</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">)</span>
 </pre></div>
 </div>
+</section>
+<section id="from-contents">
+<h4>From Contents<a class="headerlink" href="#from-contents" title="Link to this heading">¶</a></h4>
+</section>
+<section id="reset">
+<h4>Reset<a class="headerlink" href="#reset" title="Link to this heading">¶</a></h4>
+</section>
+<section id="back-in-time">
+<h4>Back in time<a class="headerlink" href="#back-in-time" title="Link to this heading">¶</a></h4>
+</section>
+<section id="bundling-and-comments">
+<h4>Bundling and comments<a class="headerlink" href="#bundling-and-comments" title="Link to this heading">¶</a></h4>
+</section>
+<section id="clearing">
+<h4>Clearing<a class="headerlink" href="#clearing" title="Link to this heading">¶</a></h4>
+</section>
 </section>
 </section>
 </section>
@@ -420,7 +440,15 @@ While the Pair Set’s methods do not mimic those of the Python Set, you can thi
 <li><a class="reference internal" href="#edge-and-verb">Edge and Verb</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#all-containers">All Containers</a></li>
+<li><a class="reference internal" href="#all-containers">All Containers</a><ul>
+<li><a class="reference internal" href="#global-instance">Global Instance</a></li>
+<li><a class="reference internal" href="#from-contents">From Contents</a></li>
+<li><a class="reference internal" href="#reset">Reset</a></li>
+<li><a class="reference internal" href="#back-in-time">Back in time</a></li>
+<li><a class="reference internal" href="#bundling-and-comments">Bundling and comments</a></li>
+<li><a class="reference internal" href="#clearing">Clearing</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
