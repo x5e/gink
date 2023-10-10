@@ -59,11 +59,11 @@ sequence.append(42)
 sequence.append("a")
 sequence.append("b")
 
-# Returns 0
 found = sequence.index("Hello, World!")
+# Returns 0
 
-# Returns 42
 popped = sequence.pop(1)
+# Returns 42
 
 # Pops and returns the value at index 0, which is "Hello, World!"
 # The destination argument allows you to place the item
@@ -83,15 +83,67 @@ as_list = list(sequence)
 ```
 
 ### Key Set
+The Key Set is designed to work similarly to a Python Set - it is just a "list" of unique keys. If you are looking for a data structure to hold a reference to another container (or a Muid), check out [Role](#role-examples) below.\
+Note: a Key Set can hold keys of types str, int, and bytes.
+```python
+ks = KeySet(database=database)
+
+ks.add("key1")
+ks.add("key2")
+
+is_contained = ks.contains("key1") # Returns True
+
+ks.remove("key1")
+
+ks.update(["key3", "key4"]) # adds multiple keys
+
+popped = ks.pop("key2") # returns "key2"
+
+# Our Python KeySet also includes operations such as
+# issubset, issuperset, etc. I encourage you to check out
+# the full docs to see the other methods.
+ks.update(["key1", "key2"])
+# keyset is now ["key1", "key2", "key3", "key4"]
+is_subset = ks.issubset(["key1", "key2", "key3", "key4", "key5"])
+
+# returns True
+union = ks.union(["key4", "key5"])
+# returns ["key1", "key2", "key3", "key4", "key5"]
+```
 
 ### Pair Set
+The Pair Set is the first data structure out of the previous examples that has few similarities to the build-in Python data structures. In Gink, every container is given a "Muid" (to read more about what a Muid is, [click here](#muid)). In simple terms, a Muid is just a unique identifier to keep track of containers (and changes).\
+<br>
+While the Pair Set's methods do not mimic those of the Python Set, you can think of a Pair Set as a set of tuples. These tuples contain pairs of (Muid, Muid), or (Noun, Noun) (more on Nouns [here](#noun-examples)). Basically, a Pair Set serves to store the fact that two Nouns are connected.
+
+```python
+ps = PairSet()
+
+noun1 = Noun()
+noun2 = Noun()
+
+# "Include" refers to the fact that the pair is either
+# in the pair set, or it is not.
+ps.include(pair=(noun1, noun2))
+ps.exclude(pair=(noun1, noun2))
+
+# Same as above, but adding the pair using muids.
+ps.include(pair=(noun1._muid, noun2,_muid))
+
+is_contained = ps.contains(pair=(noun1, noun2)) # returns True
+
+pairs = ps.get_pairs() # returns Set{(noun1._muid, noun2._muid)}
+```
 
 ### Pair Map
 
+
+(role-examples)=
 ### Role
 
 ### Property
 
+(noun-examples)=
 ### Noun
 
 ### Verb
@@ -100,6 +152,7 @@ as_list = list(sequence)
 ### All Containers
 The container is the parent class for all of these data structures. Here are some examples of the powerful operations you can do with any container:
 ```python
+# initializing data structure with contents
 # reset
 # as_of
 # bundler/comment stuff

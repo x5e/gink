@@ -8,13 +8,11 @@ Welcome to Gink!
 .. toctree::
    :maxdepth: 3
 
-
    getting_started
    examples
    reference
 
-   auto_docs
-
+   all_docs
 
 Indices and tables
 ==================

@@ -7,22 +7,16 @@
    :members:
 ```
 <hr>
-
 ```{eval-rst}
 .. automodule:: python.gink.impl.box
    :members:
 ```
 <hr>
-
-A Gink Directory aims to mimic the Python dictionary while allowing for simple storage in the Gink database.
 ```{eval-rst}
 .. automodule:: python.gink.impl.directory
    :members:
 ```
 <hr>
-
-
-
 ```{eval-rst}
 .. automodule:: python.gink.impl.graph
    :members:
