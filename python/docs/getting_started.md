@@ -37,3 +37,5 @@ value1 = directory.get("foo")
 value2 = directory["foo"]
 
 ```
+
+Take a look at the examples section for getting started with some of the other data structures.

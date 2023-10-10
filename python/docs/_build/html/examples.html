@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Welcome to Gink! &#8212; Gink  documentation</title>
+    <title>Examples &#8212; Gink  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
     <link rel="stylesheet" type="text/css" href="_static/basic_mod.css?v=94a554c0" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -18,7 +18,8 @@
     <script src="_static/js/petite-vue.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Getting Started" href="getting_started.html" /> 
+    <link rel="next" title="Reference" href="reference.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" /> 
   </head><body data-dark_mode_code_blocks="true">
 
 <div id="top_nav">
@@ -32,7 +33,7 @@
         <p id="toggle_sidebar">
             <a href="#" title="Toggle sidebar">|||</a>
         </p>
-        <h1><a href="#" title="Go to homepage">Gink  documentation</a></h1>
+        <h1><a href="index.html" title="Go to homepage">Gink  documentation</a></h1>
 
         <a id="mode_toggle" href="#" @click.prevent="handleClick" :title="mode">
     <template v-if="mode == 'light'">
@@ -120,9 +121,9 @@
 
     
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper"><ul>
+        <div class="sphinxsidebarwrapper"><ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="reference.html">Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_docs.html">All Documentation</a></li>
 </ul>
@@ -136,58 +137,104 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <section id="welcome-to-gink">
-<h1>Welcome to Gink!<a class="headerlink" href="#welcome-to-gink" title="Link to this heading">¶</a></h1>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#quickstart">Quickstart</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="examples.html#data-structure-operations">Data Structure Operations</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="examples.html#box">Box</a></li>
-<li class="toctree-l3"><a class="reference internal" href="examples.html#directory">Directory</a></li>
-<li class="toctree-l3"><a class="reference internal" href="examples.html#sequence">Sequence</a></li>
-<li class="toctree-l3"><a class="reference internal" href="examples.html#all-containers">All Containers</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="reference.html">Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="reference.html#changelog">Changelog</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="auto_docs.html">All Documentation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="auto_docs.html#module-python.gink.impl.container">Data Structures</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="auto_docs.html#python.gink.impl.container.Container"><code class="docutils literal notranslate"><span class="pre">Container</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="auto_docs.html#python.gink.impl.box.Box"><code class="docutils literal notranslate"><span class="pre">Box</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="auto_docs.html#python.gink.impl.directory.Directory"><code class="docutils literal notranslate"><span class="pre">Directory</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="auto_docs.html#python.gink.impl.graph.Noun"><code class="docutils literal notranslate"><span class="pre">Noun</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="auto_docs.html#python.gink.impl.graph.Verb"><code class="docutils literal notranslate"><span class="pre">Verb</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="auto_docs.html#module-python.gink.impl.abstract_store">Stores</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="auto_docs.html#python.gink.impl.abstract_store.AbstractStore"><code class="docutils literal notranslate"><span class="pre">AbstractStore</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="auto_docs.html#module-python.gink.impl.connection">Connections</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="auto_docs.html#python.gink.impl.connection.Connection"><code class="docutils literal notranslate"><span class="pre">Connection</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="auto_docs.html#module-python.gink.impl.addressable">Other Modules</a></li>
-</ul>
-</li>
-</ul>
+  <section id="examples">
+<h1>Examples<a class="headerlink" href="#examples" title="Link to this heading">¶</a></h1>
+<section id="data-structure-operations">
+<h2>Data Structure Operations<a class="headerlink" href="#data-structure-operations" title="Link to this heading">¶</a></h2>
+<p>Note: there are some operations that are available to all Containers, which are shown at the <a class="reference internal" href="#all-containers">end of this page</a>.<br />
+<br>
+For all operations, a store and a database are needed:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">gink</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">store</span> <span class="o">=</span> <span class="n">LmdbStore</span><span class="p">(</span><span class="s1">&#39;example.db&#39;</span><span class="p">)</span>
+<span class="n">database</span> <span class="o">=</span> <span class="n">Database</span><span class="p">(</span><span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span>
+</pre></div>
+</div>
+<section id="box">
+<h3>Box<a class="headerlink" href="#box" title="Link to this heading">¶</a></h3>
+<p>A Box (view docs) is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">box</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">)</span>
+
+<span class="n">box</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s2">&quot;foo&quot;</span><span class="p">:</span> <span class="s2">&quot;bar&quot;</span><span class="p">,</span> <span class="s2">&quot;key2&quot;</span><span class="p">:</span> <span class="mi">15</span><span class="p">})</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">box</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="c1"># Returns the python dictionary just added</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">box</span><span class="o">.</span><span class="n">isEmpty</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">box</span><span class="o">.</span><span class="n">size</span><span class="p">())</span> <span class="c1"># This will only return 0 or 1 (1 in this case).</span>
+</pre></div>
 </div>
 </section>
-<section id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading">¶</a></h1>
-<ul class="simple">
-<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
-<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
-<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
-</ul>
+<section id="directory">
+<h3>Directory<a class="headerlink" href="#directory" title="Link to this heading">¶</a></h3>
+<p>The Directory aims to mimic the functionality of a Python dictionary. If you know how to use a dictionary, you should already know how to use the directory!</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">directory</span> <span class="o">=</span> <span class="n">Directory</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">)</span>
+
+<span class="n">directory</span><span class="p">[</span><span class="s2">&quot;key1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;value1&quot;</span>
+
+<span class="c1"># Saves a timestamp after &quot;key1&quot; and before &quot;key2&quot;</span>
+<span class="n">time</span> <span class="o">=</span> <span class="n">database</span><span class="o">.</span><span class="n">get_now</span><span class="p">()</span>
+
+<span class="c1"># Achieves the same thing as the previous set, just different syntax.</span>
+<span class="n">directory</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;key2&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;test&quot;</span><span class="p">:</span> <span class="s2">&quot;document&quot;</span><span class="p">})</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">directory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;key2&quot;</span><span class="p">)</span> <span class="c1"># Returns {&quot;test&quot;: &quot;document&quot;}</span>
+<span class="n">result2</span> <span class="o">=</span> <span class="n">directory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;key3&quot;</span><span class="p">)</span> <span class="c1"># Returns None</span>
+
+<span class="c1"># Returns an generator of [&quot;key1&quot;, &quot;key2&quot;]</span>
+<span class="n">keys</span> <span class="o">=</span> <span class="n">directory</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+<span class="c1"># Returns the items as a generator of (key, value tuples) in the directory</span>
+<span class="c1"># at the specified timestamp - in this case, [(&quot;key1&quot;, &quot;value1&quot;)]</span>
+<span class="n">items</span> <span class="o">=</span> <span class="n">directory</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="n">as_of</span><span class="o">=</span><span class="n">time</span><span class="p">)</span>
+
+<span class="c1"># Returns &quot;value1&quot; and removes the key: value pair from the directory.</span>
+<span class="n">value</span> <span class="o">=</span> <span class="n">directory</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;key1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="sequence">
+<h3>Sequence<a class="headerlink" href="#sequence" title="Link to this heading">¶</a></h3>
+<p>The Sequence is equivalent to a Python list. Again, these operations should look pretty familiar! In a Gink Sequence, the contents are ordered by timestamps.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sequence</span> <span class="o">=</span> <span class="n">Sequence</span><span class="p">()</span>
+
+<span class="n">sequence</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Hello, World!&quot;</span><span class="p">)</span>
+<span class="n">sequence</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">sequence</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+<span class="n">sequence</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">)</span>
+
+<span class="c1"># Returns 0</span>
+<span class="n">found</span> <span class="o">=</span> <span class="n">sequence</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;Hello, World!&quot;</span><span class="p">)</span>
+
+<span class="c1"># Returns 42</span>
+<span class="n">popped</span> <span class="o">=</span> <span class="n">sequence</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Pops and returns the value at index 0, which is &quot;Hello, World!&quot;</span>
+<span class="c1"># The destination argument allows you to place the item</span>
+<span class="c1"># back into the sequence at a different timestamp</span>
+<span class="c1"># in this case, -1 would indicate the timestamp of the last change.</span>
+<span class="c1"># So, this sequence is now ordered as [&quot;a&quot;, &quot;b&quot;, &quot;Hello, World!&quot;]</span>
+<span class="n">popped</span> <span class="o">=</span> <span class="n">sequence</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dest</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="c1"># Inserts &quot;x&quot; at index 1, between &quot;a&quot; and &quot;b&quot;, in this example.</span>
+<span class="c1"># Comment is an optional parameter that will be included in</span>
+<span class="c1"># bundle for this change (most operations may contain comments).</span>
+<span class="n">sequence</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">comment</span><span class="o">=</span><span class="s2">&quot;insert x&quot;</span><span class="p">)</span>
+
+<span class="c1"># Convert contents to Python list</span>
+<span class="n">as_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sequence</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="all-containers">
+<span id="id1"></span><h3>All Containers<a class="headerlink" href="#all-containers" title="Link to this heading">¶</a></h3>
+<p>The container is the parent class for all of these data structures. Here are some examples of the powerful operations you can do with any container:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># reset</span>
+<span class="c1"># as_of</span>
+<span class="c1"># bundler/comment stuff</span>
+<span class="c1"># clear</span>
+</pre></div>
+</div>
+</section>
+</section>
 </section>
 
 
@@ -204,8 +251,16 @@
             <p><a class="toggle_right_sidebar" href="#"><span class="icon">&gt;</span><span>Page contents:<span></a></p>
             <div class="page_toc">
                 <ul>
-<li><a class="reference internal" href="#">Welcome to Gink!</a></li>
-<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+<li><a class="reference internal" href="#">Examples</a><ul>
+<li><a class="reference internal" href="#data-structure-operations">Data Structure Operations</a><ul>
+<li><a class="reference internal" href="#box">Box</a></li>
+<li><a class="reference internal" href="#directory">Directory</a></li>
+<li><a class="reference internal" href="#sequence">Sequence</a></li>
+<li><a class="reference internal" href="#all-containers">All Containers</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 
             </div>
@@ -218,11 +273,14 @@
         <div class="button_nav">
             <div class="left">
                 
+                <a href="getting_started.html">
+                    <span class="icon">&lt;</span><span>Getting Started</span></a>
+                
             </div>
 
             <div class="right">
                 
-                    <a href="getting_started.html"><span>Getting Started</span><span class="icon">&gt;</span></a>
+                    <a href="reference.html"><span>Reference</span><span class="icon">&gt;</span></a>
                 
             </div>
         </div>

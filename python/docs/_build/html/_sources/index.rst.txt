@@ -10,6 +10,7 @@ Welcome to Gink!
 
 
    getting_started
+   examples
    reference
 
    auto_docs
