@@ -153,18 +153,88 @@ items = pm.items() # returns a generator of ((Muid, Muid), value)
 
 (role-examples)=
 ### Role
+A Role is simply a collection of Containers that have something in common.
+```python
+role = Role(database=database)
+noun1 = Noun()
+noun2 = Noun()
+
+role.include(noun1)
+role.include(noun2._muid)
+
+# returns a generator of the member Muids
+member_muids = role.get_member_ids()
+
+# returns a Set of the member Containers
+members = role.get_members()
+
+role.exclude(noun1)
+```
 
 ### Property
+A Property is used to tie a particular object to a value, which may be any standard value, or another Container.
+```python
+prop = Property(database=database)
+directory = Directory(database=database)
 
+prop.set(directory, "my favorite directory")
+contents = prop.get(directory) # Returns "my favorite directory"
+
+# This overwrites the previous property
+prop.set(directory, {"key1": "value1", "key2": "value2"})
+
+prop.delete(directory)
+```
+
+### Graph
 (noun-examples)=
-### Noun
+#### Noun
+The Noun is a core part of Gink's graph data structure. If you are familiar with graph databases, the Gink Noun is comparable to a Node. The Noun is designed to connect to other nodes through edges, which is described below.
+```python
+# Basic creation and deletion
+user_noun = Noun(database=database)
+order_noun = Noun(database=database)
 
-### Verb
+user_noun.remove()
+order_noun.remove()
+
+# Most of the Noun functionality comes when using
+# an edge - more examples below.
+```
+
+#### Edge and Verb
+An Edge is what connects a Noun to another Noun. The Verb is the "action" of an Edge, or the relationship between the nouns. For example, one noun may be a user, while the other node is an order. This may be depicted as (User)--Ordered-->(Order). User and Order are Nouns, Ordered is the Verb, and the lines connecting them (and the direction) is the Edge.
+
+```python
+user_noun = Noun(database=database)
+order_noun = Noun(database=database)
+
+# An easy way to connect nouns is by creating a Verb
+ordered_verb = Verb(database=database)
+ordered_verb.create_edge(user_noun, order_noun, "Ordered")
+
+# We can get all edges of any Verb (can specify source or target)
+# since we only have one edge, we don't need to specify a source or target here.
+edges = ordered_verb.get_edges()
+
+# Above returns a generator of edges, so lets get the only edge we have so far
+ordered_edge = list(edges)[0]
+
+# Now we can get the source, target, and action of this edge
+# The action, in this context, is the actual message of the verb, "Ordered"
+source = ordered_edge.get_source()
+target = ordered_edge.get_target()
+action = ordered_edge.get_action()
+
+# To remove the edge
+ordered_edge.remove()
+```
 
 (all-containers)=
 ### All Containers
 The container is the parent class for all of these data structures. Here are some examples of the powerful operations you can do with any container:
 ```python
+# global instance
 # initializing data structure with contents
 # reset
 # as_of
