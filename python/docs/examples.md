@@ -11,7 +11,7 @@ database = Database(store=store)
 ```
 
 ### Box
-A Box (view docs) is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.
+A Box is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.
 ```python
 box = Box(database=database)
 
@@ -136,10 +136,40 @@ pairs = ps.get_pairs() # returns Set{(noun1._muid, noun2._muid)}
 ```
 
 ### Pair Map
+Similar to the Pair Set, a Pair Map has keys consisting of a (Noun, Noun) or (Muid, Muid) tuple. These keys are mapped to a value, which may be a Container or other standard value (str, int, list, etc.). The Pair Map has methods similar to those  found in the built in map object.
 
+```python
+pm = PairMap(database=database)
+noun1 = Noun()
+noun2 = Noun()
+
+pm.set(key=(noun1, noun2), value="noun1->noun2")
+
+in_pm = pm.has(key=(noun1._muid, noun2._muid)) # returns True
+value = pm.get(key=(noun1, noun2)) # returns "noun1->noun2"
+
+items = pm.items() # returns a generator of ((Muid, Muid), value)
+```
 
 (role-examples)=
 ### Role
+A Role is simply a collection of Containers that have something in common.
+```python
+role = Role(database=database)
+noun1 = Noun()
+noun2 = Noun()
+
+role.include(noun1)
+role.include(noun2._muid)
+
+# returns a generator of the member Muids
+member_muids = role.get_member_ids()
+
+# returns a Set of the member Containers
+members = role.get_members()
+
+role.exclude(noun1)
+```
 
 ### Property
 

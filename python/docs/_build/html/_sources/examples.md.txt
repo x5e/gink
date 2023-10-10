@@ -11,7 +11,7 @@ database = Database(store=store)
 ```
 
 ### Box
-A Box (view docs) is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.
+A Box is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.
 ```python
 box = Box(database=database)
 
@@ -115,9 +115,40 @@ union = ks.union(["key4", "key5"])
 The Pair Set is the first data structure out of the previous examples that has few similarities to the build-in Python data structures. In Gink, every container is given a "Muid" (to read more about what a Muid is, [click here](#muid)). In simple terms, a Muid is just a unique identifier to keep track of containers (and changes).\
 <br>
 While the Pair Set's methods do not mimic those of the Python Set, you can think of a Pair Set as a set of tuples. These tuples contain pairs of (Muid, Muid), or (Noun, Noun) (more on Nouns [here](#noun-examples)). Basically, a Pair Set serves to store the fact that two Nouns are connected.
-### Pair Map
-```python
 
+```python
+ps = PairSet()
+
+noun1 = Noun()
+noun2 = Noun()
+
+# "Include" refers to the fact that the pair is either
+# in the pair set, or it is not.
+ps.include(pair=(noun1, noun2))
+ps.exclude(pair=(noun1, noun2))
+
+# Same as above, but adding the pair using muids.
+ps.include(pair=(noun1._muid, noun2,_muid))
+
+is_contained = ps.contains(pair=(noun1, noun2)) # returns True
+
+pairs = ps.get_pairs() # returns Set{(noun1._muid, noun2._muid)}
+```
+
+### Pair Map
+Similar to the Pair Set, a Pair Map has keys consisting of a (Noun, Noun) or (Muid, Muid) tuple. These keys are mapped to a value, which may be a Container or other standard value (str, int, list, etc.). The Pair Map has methods similar to those  found in the built in map object.
+
+```python
+pm = PairMap(database=database)
+noun1 = Noun()
+noun2 = Noun()
+
+pm.set(key=(noun1, noun2), value="noun1->noun2")
+
+in_pm = pm.has(key=(noun1._muid, noun2._muid)) # returns True
+value = pm.get(key=(noun1, noun2)) # returns "noun1->noun2"
+
+items = pm.items() # returns a generator of ((Muid, Muid), value)
 ```
 
 (role-examples)=
@@ -134,6 +165,7 @@ While the Pair Set's methods do not mimic those of the Python Set, you can think
 ### All Containers
 The container is the parent class for all of these data structures. Here are some examples of the powerful operations you can do with any container:
 ```python
+# initializing data structure with contents
 # reset
 # as_of
 # bundler/comment stuff

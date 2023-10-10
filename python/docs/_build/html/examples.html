@@ -151,7 +151,7 @@ For all operations, a store and a database are needed:</p>
 </div>
 <section id="box">
 <h3>Box<a class="headerlink" href="#box" title="Link to this heading">¶</a></h3>
-<p>A Box (view docs) is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.</p>
+<p>A Box is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">box</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">)</span>
 
 <span class="n">box</span><span class="o">.</span><span class="n">set</span><span class="p">({</span><span class="s2">&quot;foo&quot;</span><span class="p">:</span> <span class="s2">&quot;bar&quot;</span><span class="p">,</span> <span class="s2">&quot;key2&quot;</span><span class="p">:</span> <span class="mi">15</span><span class="p">})</span>
@@ -259,10 +259,38 @@ Note: a Key Set can hold keys of types str, int, and bytes.</p>
 <p>The Pair Set is the first data structure out of the previous examples that has few similarities to the build-in Python data structures. In Gink, every container is given a “Muid” (to read more about what a Muid is, <a class="reference internal" href="#muid"><span class="xref myst">click here</span></a>). In simple terms, a Muid is just a unique identifier to keep track of containers (and changes).<br />
 <br>
 While the Pair Set’s methods do not mimic those of the Python Set, you can think of a Pair Set as a set of tuples. These tuples contain pairs of (Muid, Muid), or (Noun, Noun) (more on Nouns <a class="reference internal" href="#noun-examples">here</a>). Basically, a Pair Set serves to store the fact that two Nouns are connected.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ps</span> <span class="o">=</span> <span class="n">PairSet</span><span class="p">()</span>
+
+<span class="n">noun1</span> <span class="o">=</span> <span class="n">Noun</span><span class="p">()</span>
+<span class="n">noun2</span> <span class="o">=</span> <span class="n">Noun</span><span class="p">()</span>
+
+<span class="c1"># &quot;Include&quot; refers to the fact that the pair is either</span>
+<span class="c1"># in the pair set, or it is not.</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">include</span><span class="p">(</span><span class="n">pair</span><span class="o">=</span><span class="p">(</span><span class="n">noun1</span><span class="p">,</span> <span class="n">noun2</span><span class="p">))</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">exclude</span><span class="p">(</span><span class="n">pair</span><span class="o">=</span><span class="p">(</span><span class="n">noun1</span><span class="p">,</span> <span class="n">noun2</span><span class="p">))</span>
+
+<span class="c1"># Same as above, but adding the pair using muids.</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">include</span><span class="p">(</span><span class="n">pair</span><span class="o">=</span><span class="p">(</span><span class="n">noun1</span><span class="o">.</span><span class="n">_muid</span><span class="p">,</span> <span class="n">noun2</span><span class="p">,</span><span class="n">_muid</span><span class="p">))</span>
+
+<span class="n">is_contained</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">pair</span><span class="o">=</span><span class="p">(</span><span class="n">noun1</span><span class="p">,</span> <span class="n">noun2</span><span class="p">))</span> <span class="c1"># returns True</span>
+
+<span class="n">pairs</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">get_pairs</span><span class="p">()</span> <span class="c1"># returns Set{(noun1._muid, noun2._muid)}</span>
+</pre></div>
+</div>
 </section>
 <section id="pair-map">
 <h3>Pair Map<a class="headerlink" href="#pair-map" title="Link to this heading">¶</a></h3>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>
+<p>Similar to the Pair Set, a Pair Map has keys consisting of a (Noun, Noun) or (Muid, Muid) tuple. These keys are mapped to a value, which may be a Container or other standard value (str, int, list, etc.). The Pair Map has methods similar to those  found in the built in map object.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pm</span> <span class="o">=</span> <span class="n">PairMap</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">)</span>
+<span class="n">noun1</span> <span class="o">=</span> <span class="n">Noun</span><span class="p">()</span>
+<span class="n">noun2</span> <span class="o">=</span> <span class="n">Noun</span><span class="p">()</span>
+
+<span class="n">pm</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="p">(</span><span class="n">noun1</span><span class="p">,</span> <span class="n">noun2</span><span class="p">),</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;noun1-&gt;noun2&quot;</span><span class="p">)</span>
+
+<span class="n">in_pm</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="p">(</span><span class="n">noun1</span><span class="o">.</span><span class="n">_muid</span><span class="p">,</span> <span class="n">noun2</span><span class="o">.</span><span class="n">_muid</span><span class="p">))</span> <span class="c1"># returns True</span>
+<span class="n">value</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="p">(</span><span class="n">noun1</span><span class="p">,</span> <span class="n">noun2</span><span class="p">))</span> <span class="c1"># returns &quot;noun1-&gt;noun2&quot;</span>
+
+<span class="n">items</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="c1"># returns a generator of ((Muid, Muid), value)</span>
 </pre></div>
 </div>
 </section>
@@ -281,7 +309,8 @@ While the Pair Set’s methods do not mimic those of the Python Set, you can thi
 <section id="all-containers">
 <span id="id1"></span><h3>All Containers<a class="headerlink" href="#all-containers" title="Link to this heading">¶</a></h3>
 <p>The container is the parent class for all of these data structures. Here are some examples of the powerful operations you can do with any container:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># reset</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># initializing data structure with contents</span>
+<span class="c1"># reset</span>
 <span class="c1"># as_of</span>
 <span class="c1"># bundler/comment stuff</span>
 <span class="c1"># clear</span>
