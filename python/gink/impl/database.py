@@ -127,7 +127,7 @@ class Database:
             integers and floats that look like timestamps or microsecond timestamps are
             treated as such.
 
-            small intergers are treated as "right before the <index> commit"
+            small integers are treated as "right before the <index> commit"
         """
         if timestamp is None:
             return self.get_now()

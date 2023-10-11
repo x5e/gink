@@ -205,7 +205,7 @@ is_alive = user_noun.is_alive() # returns False since we removed it.
 ```
 
 #### Edge and Verb
-An Edge is what connects a Noun to another Noun. The Verb is the "action" of an Edge, or the relationship between the nouns. For example, one noun may be a user, while the other node is an order. This may be depicted as (User)--Ordered-->(Order). User and Order are Nouns, Ordered is the Verb, and the lines connecting them (and the direction) is the Edge.
+An Edge is what connects a Noun to another Noun. The Verb is the `action` of an Edge, or the relationship between the nouns. For example, one noun may be a user, while the other node is an order. This may be depicted as (User)--Ordered-->(Order). User and Order are Nouns, Ordered is the Verb, and the lines connecting them (and the direction) is the Edge.
 
 ```python
 user_noun = Noun(database=database)
@@ -234,9 +234,9 @@ ordered_edge.remove()
 
 (all-containers)=
 ### All Containers
-The container is the parent class for all of these data structures. Here are some examples of the powerful operations you can do with any container:
+The Container is the parent class for all Gink data structures. Here are some examples of the powerful operations you can do with any container:
 #### Global Instance
-For each container type there's a pre-existing global instance with address Muid(timestamp=-1, medallion=-1, offset=behavior). This container type can be written to by any instance, and may be used to coordinate between database instances or just for testing/demo purposes.
+For each Container type there's a pre-existing global instance with address `Muid(timestamp=-1, medallion=-1, offset=behavior)`. This container type can be written to by any instance, and may be used to coordinate between database instances or just for testing/demo purposes.
 ```python
 global_directory = Directory.get_global_instance(database=database)
 
@@ -245,7 +245,96 @@ global_box = Box.get_global_instance(database=database)
 global_key_set = KeySet.get_global_instance(database=database)
 ```
 #### From Contents
-#### Reset
+To make it easier to insert data into an object upon initialization, Gink allows you to specify a `contents` argument to the constructor of the object. Different data structures may take different types as contents, but the idea remains the same for all Gink objects.
+```python
+directory = Directory(database=database, contents={"key1": "value1", "key2": 42, "key3": [1, 2, 3, 4]})
+
+key_set = KeySet(database=database, contents=["key1", "key2", 3])
+
+directory = Directory(database=database, contents={"key1": "value1", "key2": 42, "key3": [1, 2, 3, 4]})
+
+# Noun creation for pair map population
+noun1 = Noun()
+noun2 = Noun()
+
+# Pair Map contents only takes a dictionary. Read the docs for the accepted data
+# types for other data structures.
+pair_map = PairMap(contents={(noun1, noun2): "value"})
+```
 #### Back in time
+You will frequently see `as_of` in the Gink documentation. `as_of` refers to the time to look back to. There are multiple ways of interacting with `as_of`. If you are curious about how certain timestamps are resolved, take a look at `Database.resolve_timestamp()`\
+One easy way is to pass a negative integer indicating how many changes back you want to look.
+```python
+box = Box(contents="first_value")
+box.set("second_value")
+
+# Passing -1 into the as_of argument looks back at the previous value
+# Returns "first_value"
+previous = box.get(as_of=-1)
+```
+Another common way to use timestamps is to "save" a time between changes as a variable.
+```python
+box = Box(contents="first_value")
+time_after_first = database.get_now()
+box.set("second_value")
+
+# Passing saved timestamp into as_of
+# Returns "first_value"
+previous = box.get(as_of=time_after_first)
+```
+
+#### Reset
+Resetting a container is a fundamental operation used to revert the container back to a previous time. Above we looked at using timestamps to get previous values, but resetting to specific times may prove more useful. This example uses a directory, but this functionality works the same for all containers.
+```python
+directory = Directory()
+
+directory["foo"] = "bar"
+directory["bar"] = "foo"
+time_between = database.get_now()
+directory[7] = {"user": 1003203, "email": "test@test.com"}
+
+has_7 = 7 in directory # returns True
+directory.reset(as_of=time_between)
+has_7 = 7 in directory # now returns False
+has_bar = "bar" in directory # still returns True
+```
+
 #### Bundling and comments
+Think of a bundle like a commit in Git. A bundle is just a collection of changes with an optional comment/message. Without specifying a bundler object, most Gink operations will immediately commit the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle, here is an example:
+```python
+directory = Directory()
+bundler = Bundler(comment="example setting values in directory")
+
+directory.set("key1", 1, bundler=bundler)
+directory.set("key2", "value2", bundler=bundler)
+directory.update({"key3": 3, "key4": 4}, bundler=bundler)
+
+# This seals the bundler and commits changes to database
+# at this point, no more changes may be added
+database.commit(bundler)
+```
+
 #### Clearing
+Clearing a container does exactly what you would expect it to do. The `Container.clear()` method removes all entries from the container and returns the Muid of the clearance. The clearance is processed as a new database change, which means you can still look back at previous timestamps or reset the database back to before the clearance occurred.
+```python
+directory = Directory()
+
+directory["foo"] = "bar"
+directory["bar"] = "foo"
+directory[7] = {"user": 1003203, "email": "test@test.com"}
+# Storing the muid of the clearance to use later
+clearance_muid = directory.clear()
+
+# Directory is now empty
+has_foo = "foo" in directory # Returns False
+has_bar = "bar" in directory # Returns False
+has_7 = "7" in directory # Returns False
+
+# Using the muid's timestamp to look back before the clearance
+# Returns "bar"
+previous = directory.get("foo", as_of=clearance_muid.timestamp)
+
+```
+#### Dumps
+
+## Database Operations
