@@ -9,7 +9,9 @@ Welcome to Gink!
    :maxdepth: 3
 
    getting_started
+
    examples
+
    reference
 
    all_docs

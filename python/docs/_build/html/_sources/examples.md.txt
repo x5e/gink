@@ -112,7 +112,7 @@ union = ks.union(["key4", "key5"])
 ```
 
 ### Pair Set
-The Pair Set is the first data structure out of the previous examples that has few similarities to the build-in Python data structures. In Gink, every container is given a "Muid" (to read more about what a Muid is, [click here](#muid)). In simple terms, a Muid is just a unique identifier to keep track of containers (and changes).\
+The Pair Set is the first data structure out of the previous examples that has few similarities to the build-in Python data structures. In Gink, every container is given a "Muid" upon creation ([Muid docs](#muid)). In simple terms, a Muid is just a unique identifier to keep track of containers (and changes).\
 <br>
 While the Pair Set's methods do not mimic those of the Python Set, you can think of a Pair Set as a set of tuples. These tuples contain pairs of (Muid, Muid), or (Noun, Noun) (more on Nouns [here](#noun-examples)). Basically, a Pair Set serves to store the fact that two Nouns are connected.
 
@@ -247,18 +247,20 @@ global_key_set = KeySet.get_global_instance(database=database)
 #### From Contents
 To make it easier to insert data into an object upon initialization, Gink allows you to specify a `contents` argument to the constructor of the object. Different data structures may take different types as contents, but the idea remains the same for all Gink objects.
 ```python
-directory = Directory(database=database, contents={"key1": "value1", "key2": 42, "key3": [1, 2, 3, 4]})
+directory = Directory(database=database, contents={
+    "key1": "value1", "key2": 42, "key3": [1, 2, 3, 4]})
 
 key_set = KeySet(database=database, contents=["key1", "key2", 3])
 
-directory = Directory(database=database, contents={"key1": "value1", "key2": 42, "key3": [1, 2, 3, 4]})
+directory = Directory(database=database, contents={
+    "key1": "value1", "key2": 42, "key3": [1, 2, 3, 4]})
 
 # Noun creation for pair map population
 noun1 = Noun()
 noun2 = Noun()
 
-# Pair Map contents only takes a dictionary. Read the docs for the accepted data
-# types for other data structures.
+# Pair Map contents only takes a dictionary. Read the docs for the
+# accepted data types for other data structures.
 pair_map = PairMap(contents={(noun1, noun2): "value"})
 ```
 #### Back in time
@@ -300,7 +302,7 @@ has_bar = "bar" in directory # still returns True
 ```
 
 #### Bundling and comments
-Think of a bundle like a commit in Git. A bundle is just a collection of changes with an optional comment/message. Without specifying a bundler object, most Gink operations will immediately commit the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle, here is an example:
+Think of a bundle as a commit in Git. A bundle is just a collection of changes with an optional comment/message. Without specifying a bundler object, most Gink operations will immediately commit the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle, here is an example:
 ```python
 directory = Directory()
 bundler = Bundler(comment="example setting values in directory")
@@ -336,5 +338,72 @@ previous = directory.get("foo", as_of=clearance_muid.timestamp)
 
 ```
 #### Dumps
+The `Container.dumps()` method dumps the contents of a container into a string. This string can `eval` back into a Gink object, so this method can be used for backup purposes.
+```python
+# Dumps using PairSet
+noun1 = Noun(database=database)
+noun2 = Noun(database=database)
+noun3 = Noun(database=database)
+pairset = PairSet(contents=[
+    (noun1, noun2), (noun1, noun3), (noun2, noun3)], database=database)
+
+dump = pairset1.dumps()
+
+pairset2 = eval(dump)
+
+# Returns 3, since this is a new object with the same
+# contents as the original
+new_size = pairset2.size()
+
+```
 
 ## Database Operations
+A very common database operation is `Database.commit()`. If you read the bundler example, you have already seen how this works. A commit seals the bundler and sends those changes to the database.
+
+### Commit
+```python
+directory = Directory()
+bundler = Bundler(comment="example setting values in directory")
+
+# Since a bundler was specified, this change is not
+# automatically committed.
+directory.set("key1", 1, bundler=bundler)
+
+# Manually commit a bundle of changes
+database.commit(bundler)
+
+# Since no bundler is specified here, this
+# change is automatically committed to the db.
+directory.set("key2", 2)
+```
+
+### Reset
+Similar to how `Container.reset()` works, the Database class has its own reset functionality that will reset all containers to the specified time. A "reset" is simply one large bundle of changes that updates the database entries to what they were are the previous timestamp; this allows you to easily look back before the reset.
+
+```python
+database = Database(store=store)
+root = Directory.get_global_instance(database=database)
+queue = Sequence.get_global_instance(database=database)
+misc = Directory()
+
+misc["yes"] = False
+root["foo"] = "bar"
+queue.append("value1")
+
+# No as_of argument defaults to EPOCH
+# which is the time of database creation (empty)
+database.reset()
+
+# All containers will have a length of 0
+# since the database is now empty.
+size = len(root)
+
+# as_of=-1 reverts the database to the
+# previous change
+database.reset(as_of=-1)
+
+# This will now have a len of 1,
+# and one element of "value1"
+size = len(queue)
+
+```

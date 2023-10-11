@@ -7,12 +7,13 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath("../../"))
 
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Gink'
-copyright = '2023, Darin McGill & Charlie Alders'
-author = 'Darin McGill & Charlie Alders'
+copyright = '2023, X5E Inc.'
+author = 'X5E Inc.'
 # release = '0.0.1'
 
 # -- General configuration ---------------------------------------------------
@@ -28,5 +29,5 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'piccolo_theme'
+html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']

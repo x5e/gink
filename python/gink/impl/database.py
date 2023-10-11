@@ -326,7 +326,7 @@ class Database:
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):
         """ Resets the database to a specific point in time.
 
-            Note that it litterally just "re"-sets everything in one big
+            Note that it literally just "re"-sets everything in one big
             bundle to the values that existed at that time, so you can always
             go and look at the state of the database beforehand.
         """
