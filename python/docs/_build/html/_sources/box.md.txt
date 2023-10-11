@@ -1,8 +1,0 @@
-A Gink Box is the simplest data structure offered. Each box can only hold one item at a time.
-
-```{eval-rst}
-.. automodule:: python.gink.impl.box
-   :members:
-```
-## Box Example
-example here
