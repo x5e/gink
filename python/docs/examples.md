@@ -39,6 +39,7 @@ result = directory.get("key2") # Returns {"test": "document"}
 result2 = directory.get("key3") # Returns None
 
 # Returns an generator of ["key1", "key2"]
+# Note: the order may not be the same.
 keys = directory.keys()
 
 # Returns the items as a generator of (key, value tuples) in the directory
@@ -104,11 +105,13 @@ popped = ks.pop("key2") # returns "key2"
 # the full docs to see the other methods.
 ks.update(["key1", "key2"])
 # keyset is now ["key1", "key2", "key3", "key4"]
-is_subset = ks.issubset(["key1", "key2", "key3", "key4", "key5"])
 
+is_subset = ks.issubset(["key1", "key2", "key3", "key4", "key5"])
 # returns True
+
 union = ks.union(["key4", "key5"])
 # returns ["key1", "key2", "key3", "key4", "key5"]
+# however, the return value is not ordered.
 ```
 
 ### Pair Set
@@ -128,7 +131,7 @@ ps.include(pair=(noun1, noun2))
 ps.exclude(pair=(noun1, noun2))
 
 # Same as above, but adding the pair using muids.
-ps.include(pair=(noun1._muid, noun2,_muid))
+ps.include(pair=(noun1._muid, noun2._muid))
 
 is_contained = ps.contains(pair=(noun1, noun2)) # returns True
 
