@@ -9,6 +9,10 @@ from .box import Box
 from .sequence import Sequence
 from .property import Property
 from .database import Database
+from .graph import Noun, Verb
+from .pair_map import PairMap
+from .pair_set import PairSet
+from .key_set import KeySet
 from .role import Role
 from .muid import Muid
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
@@ -28,6 +32,11 @@ def get_container(
             Behavior.PROPERTY: Property,
             Behavior.BOX: Box,
             Behavior.ROLE: Role,
+            Behavior.NOUN: Noun,
+            Behavior.VERB: Verb,
+            Behavior.KEY_SET: KeySet,
+            Behavior.PAIR_SET: PairSet,
+            Behavior.PAIR_MAP: PairMap
         }
 ) -> Container:
     """ Gets a pre-existing container. """
