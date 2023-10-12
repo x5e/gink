@@ -255,9 +255,6 @@ directory = Directory(database=database, contents={
 
 key_set = KeySet(database=database, contents=["key1", "key2", 3])
 
-directory = Directory(database=database, contents={
-    "key1": "value1", "key2": 42, "key3": [1, 2, 3, 4]})
-
 # Noun creation for pair map population
 noun1 = Noun()
 noun2 = Noun()
@@ -299,7 +296,7 @@ time_between = database.get_now()
 directory[7] = {"user": 1003203, "email": "test@test.com"}
 
 has_7 = 7 in directory # returns True
-directory.reset(as_of=time_between)
+directory.reset(to_time=time_between)
 has_7 = 7 in directory # now returns False
 has_bar = "bar" in directory # still returns True
 ```
@@ -347,7 +344,7 @@ The `Container.dumps()` method dumps the contents of a container into a string. 
 noun1 = Noun(database=database)
 noun2 = Noun(database=database)
 noun3 = Noun(database=database)
-pairset = PairSet(contents=[
+pairset1 = PairSet(contents=[
     (noun1, noun2), (noun1, noun3), (noun2, noun3)], database=database)
 
 dump = pairset1.dumps()
@@ -401,9 +398,9 @@ database.reset()
 # since the database is now empty.
 size = len(root)
 
-# as_of=-1 reverts the database to the
+# to_time=-1 reverts the database to the
 # previous change
-database.reset(as_of=-1)
+database.reset(to_time=-1)
 
 # This will now have a len of 1,
 # and one element of "value1"
