@@ -238,7 +238,7 @@ class Container(Addressable, ABC):
     ) -> Bundler:
         """ Resets either a specific key or the whole container to a particular past timestamp.
 
-            (They optional key argument only makes sense when the container is a directory).
+            (The optional key argument only makes sense when the container is a directory).
 
             Note that this actually creates new entries to literally "re"-set items.
             So it'll still be possible to look at before the reset time and see history.

@@ -16,3 +16,5 @@ python/dist
 setup.cfg
 .uploaded
 javascript/proto
+python/docs/_build
+example.db*

@@ -129,7 +129,7 @@ class Sequence(Container):
             bundler: what to add this change to
             comment: make an immediate change with this comment
             dest: new location in the list or time in the future; integer values are interpreted
-                to be before the given index if positive or after the given index if negative
+            to be before the given index if positive or after the given index if negative
 
             returns: the muid of the change
         """

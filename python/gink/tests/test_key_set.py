@@ -44,6 +44,17 @@ def test_add_update_contains():
             assert gks.contains("value2")
             assert gks.contains("value3")
 
+def test_from_contents():
+    """ tests that creating key sets from contents works """
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            database = Database(store=store)
+            ks = KeySet(database=database, contents=["key1", "key2", 3])
+
+            assert ks.size() == 3
+            assert ks.contains(3)
+            assert ks.contains("key1")
+
 def test_discard_remove_pop():
     """ tests that all delete methods work as intended """
     for store in [LmdbStore(), MemoryStore()]:
@@ -99,7 +110,7 @@ def test_diff_inter_symdiff_union():
             assert gks.union(["value4", "value5"]) == {"value1", "value2", "value3", "value4", "value5"}
 
 def test_diff_inter_symdiff_updates():
-    """ tests that the update methods for difference_update, intersection_update, and 
+    """ tests that the update methods for difference_update, intersection_update, and
         symmetric_difference_update work as intended """
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
@@ -156,9 +167,8 @@ def test_size():
             database = Database(store=store)
             gks = KeySet.get_global_instance(database=database)
             gks.update(["value1", "value2", "value3"])
-            
+
             assert gks.size() == 3
             gks.add("value4")
             assert gks.size() == 4
             assert gks.size(as_of=-1) == 3
-

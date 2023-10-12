@@ -101,10 +101,11 @@ class PairSet(Container):
         result += "["
         stuffing = ""
         for entry_pair in self._database.get_store().get_keyed_entries(container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of):
-            left = entry_pair.builder.pair.left
-            rite = entry_pair.builder.pair.rite
-            stuffing += f"(Muid{(left.timestamp, left.medallion, left.offset)}, Muid{(rite.timestamp, rite.medallion, rite.offset)}),\n\t"
-        as_one_line = result + ",".join(stuffing) + "})"
+            if not entry_pair.builder.deletion:
+                left = entry_pair.builder.pair.left
+                rite = entry_pair.builder.pair.rite
+                stuffing += f"(Muid{(left.timestamp, left.medallion, left.offset)}, Muid{(rite.timestamp, rite.medallion, rite.offset)}),\n\t"
+        as_one_line = result + ",".join(stuffing) + "])"
         if len(as_one_line) < 80:
             return as_one_line
         result += "\n\t"
