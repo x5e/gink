@@ -9,6 +9,7 @@ from ..impl.bundler import Bundler
 from ..impl.bundle_info import BundleInfo
 from ..impl.directory import Directory
 from ..impl.sequence import Sequence
+from ..impl.key_set import KeySet
 
 
 def test_database():
@@ -67,18 +68,25 @@ def test_reset_everything():
             database = Database(store=store)
             root = Directory.get_global_instance(database=database)
             queue = Sequence.get_global_instance(database=database)
+            ks = KeySet(database=database)
             misc = Directory()
+
             misc[b"yes"] = False
             root["foo"] = "bar"
             queue.append("something")
+            ks.add("key1")
+
             assert len(root) == 1
             assert len(queue) == 1
             assert len(misc) == 1
+            assert len(ks) == 1
             database.reset()
             assert len(root) == 0, root.dumps()
             assert len(queue) == 0
             assert len(misc) == 0
+            assert len(ks) == 0
             database.reset(to_time=-1)
             assert len(root) == 1
             assert len(queue) == 1
             assert len(misc) == 1
+            assert len(ks) == 1

@@ -244,7 +244,7 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid
     entry_builder.behavior = behavior
     muid.put_into(entry_builder.container)  # type: ignore
     entry_builder.deletion = True  # type: ignore
-    if behavior == DIRECTORY:
+    if behavior in (DIRECTORY, KEY_SET):
         assert isinstance(key, (int, str, bytes))
         encode_key(key, entry_builder.key)  # type: ignore
     elif behavior == BOX:
@@ -274,7 +274,7 @@ def decode_entry_occupant(entry_muid: Muid, builder: EntryBuilder) -> Union[User
         return Muid.create(builder=builder.pointee, context=entry_muid)
     if builder.HasField("value"):  # type: ignore
         return decode_value(builder.value)
-    if builder.behavior == ROLE:
+    if builder.behavior in (ROLE, KEY_SET):
         return inclusion
     raise ValueError(f"can't interpret {builder}")
 
