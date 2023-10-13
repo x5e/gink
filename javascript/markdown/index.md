@@ -285,6 +285,7 @@ await property.delete(directory);
 ```
 
 ### All Containers
+Most of these examples use a `Directory` for simplicity, but these operations can be performed on any container and have many applications.
 
 #### Back in time
 A parameter you may come across in many different functions of Gink is `asOf`. asOf can be used to look back to a specific time, or just look back to a specfic number of changes ago.
@@ -293,12 +294,72 @@ A parameter you may come across in many different functions of Gink is `asOf`. a
 // but all containers can make use of timestamps.
 const directory = instance.createDirectory();
 
+// saving a timestamp before anything is added
+const time0 = instance.getNow();
+await directory.set("foo", "bar");
+const time1 = instance.getNow();
+await directory.set("A", "B");
+// current directory looks like
+// {"foo": "bar", "A": "B"}
 
+// at time0, the directory was empty.
+// this will return Map{}
+const emptyMap = directory.toMap(time0);
+
+// at time1, the directory did not have the key "A"
+// this will return false
+let hasA = directory.has("A", time1);
+
+// instead of saving timestamps, you can
+// use negative numbers to indicate how
+// many changes back you'd like to look.
+// Since adding "A": "B" was the last change,
+// this looks back before it, so it will return false.
+let hasA = directory.has("A", -1);
+
+// to visualize, the map at asOf=-1 would look like
+// Map{"foo"=>"bar"}
+const fooMap = directory.toMap(-1);
 ```
-#### Reset
+
 #### Clear
+All containers may be completely cleared out by using `Container.clear()`. By default, clearing out a container does not mean the data is gone, just that the container will now be empty. If the purge parameter is set to true, the data will be completely purged from the instance.
+```ts
+const directory = await instance.createDirectory();
+
+await directory.set('A', 'B');
+
+// save the muid from the clearance
+// pass true to clear() to purge.
+// defaults to false
+const clearMuid = await directory.clear(false);
+
+// will return false after clearance
+const hasA = await directory.has("A");
+
+// using the timestamp of the muid to look back before the clearance.
+// returns true
+const hasABeforeClear = await directory.has("A", clearMuid.timestamp)
+```
+
 #### toJson
+All containers and their contents can be represented as JSON
+```ts
+const directory = await instance.createDirectory();
+
+await directory.set("A", "B");
+
+// nesting Gink Directories
+const other = await instance.createDirectory();
+await other.set("xxx", "yyy");
+
+await directory.set("C", other);
+
+// viewing contents as JSON
+const asJSON = await directory.toJson();
+// returns {"A": "B", "C": {"xxx": "yyy"}}
+```
 
 ## Database Operations
-### Reset
 ### Connecting to other instances
+TODO

@@ -133,7 +133,7 @@ test('Directory.purge', async function () {
 
     await directory.set('A', 99);
     await sleep(10);
-    const middle = Date.now() * 1000;
+    const middle = instance.getNow();
     await sleep(10);
     await directory.set('B', false);
 
