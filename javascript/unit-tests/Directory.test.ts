@@ -96,15 +96,15 @@ test('Directory.asOf', async function () {
     const instance = new GinkInstance(new IndexedDbStore('Directory.asOf', true));
     const directory = await instance.createDirectory();
 
-    const time0 = Date.now() * 1000;
+    const time0 = instance.getNow();
     await sleep(10);
     await directory.set('A', 'B');
     await sleep(10);
-    const time1 = Date.now() * 1000;
+    const time1 = instance.getNow();
     await sleep(10);
     await directory.set('cheese', 4);
     await sleep(10);
-    const time2 = Date.now() * 1000;
+    const time2 = instance.getNow();
 
     const asJsonNow = await directory.toJson();
     ensure(asJsonNow==`{"A":"B","cheese":4}`);
