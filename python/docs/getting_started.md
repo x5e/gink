@@ -8,7 +8,8 @@ Gink is a versioned, eventually consistent, multi-paradigm database management s
 
 Assuming you already have Python installed, install Gink by
 ```
-pip install gink
+# Note: gink is not yet available on pip
+# Once available, these instructions will be updated!
 ```
 
 Example - create a directory
