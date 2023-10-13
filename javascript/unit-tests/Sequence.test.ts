@@ -265,7 +265,7 @@ test('Sequence.reorder.by_position', async function() {
     await seq.push("bar");
     await sleep(9);
     await seq.push("baz");
-    await seq.move(-1, 1)
+    await seq.move(-1, 1);
     await seq.move(0, -1);
     await seq.move(1, 0);
     const asArray = await seq.toArray();
