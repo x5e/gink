@@ -17,4 +17,5 @@ setup.cfg
 .uploaded
 javascript/proto
 python/docs/_build
+javascript/docs
 example.db*

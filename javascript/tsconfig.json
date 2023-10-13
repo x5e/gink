@@ -9,5 +9,9 @@
     "declaration": true,
     "allowJs": true
   },
-  "include": ["implementation/*.ts", "implementation/*.js", "builders/*.js", "unit-tests/*.ts"]
+  "include": ["implementation/*.ts", "implementation/*.js", "builders/*.js", "unit-tests/*.ts"],
+  "typedocOptions": {
+    "entryPoints": ["./implementation"],
+    "out": "docs"
+}
 }

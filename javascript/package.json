@@ -40,6 +40,7 @@
     "google-protobuf": "^3.21.2",
     "idb": "^7.1.1",
     "node-static": "^0.7.11",
+    "typedoc-plugin-missing-exports": "^2.1.0",
     "websocket": "^1.0.34"
   },
   "devDependencies": {
