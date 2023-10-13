@@ -7,10 +7,11 @@ on:
 jobs:
     build:
         runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: ./javascript
         steps:
         - uses: actions/checkout@v3
-        - name: Move to JavaScript working directory
-          run: cd javascript
         - name: Install NPM dependencies
           run: npm install
         - name: Build docs
