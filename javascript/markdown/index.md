@@ -5,7 +5,10 @@ It takes a "protocol-first" approach, which facilitates multiple implementations
 that can share data. Additionally, some of the data structures available in Gink are designed to operate similarly to native JavaScript data structures, which removes the steep learning curve found in other backend solutions. For example, Gink has directory, sequence, and key set data structures, which behave similarly to Objects, Arrays, and Sets, respectively.
 
 # Installation
-TODO: Installation instructions
+Assuming you have node.js and npm installed already:
+```sh
+npm install gink
+```
 
 ## Quickstart
 
