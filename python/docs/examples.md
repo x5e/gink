@@ -301,21 +301,6 @@ has_7 = 7 in directory # now returns False
 has_bar = "bar" in directory # still returns True
 ```
 
-#### Bundling and comments
-Think of a bundle as a commit in Git. A bundle is just a collection of changes with an optional comment/message. Without specifying a bundler object, most Gink operations will immediately commit the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle, here is an example:
-```python
-directory = Directory()
-bundler = Bundler(comment="example setting values in directory")
-
-directory.set("key1", 1, bundler=bundler)
-directory.set("key2", "value2", bundler=bundler)
-directory.update({"key3": 3, "key4": 4}, bundler=bundler)
-
-# This seals the bundler and commits changes to database
-# at this point, no more changes may be added
-database.commit(bundler)
-```
-
 #### Clearing
 Clearing a container does exactly what you would expect it to do. The `Container.clear()` method removes all entries from the container and returns the Muid of the clearance. The clearance is processed as a new database change, which means you can still look back at previous timestamps or reset the database back to before the clearance occurred.
 ```python
@@ -358,23 +343,19 @@ new_size = pairset2.size()
 ```
 
 ## Database Operations
-A very common database operation is `Database.commit()`. If you read the bundler example, you have already seen how this works. A commit seals the bundler and sends those changes to the database.
-
-### Commit
+#### Bundling, comments, and commits
+A bundle is simply a collection of changes with an optional comment/message, like a commit in Git. Without specifying a bundler object, Gink operations will immediately commit the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle (and when to commit them), here is an example:
 ```python
 directory = Directory()
 bundler = Bundler(comment="example setting values in directory")
 
-# Since a bundler was specified, this change is not
-# automatically committed.
 directory.set("key1", 1, bundler=bundler)
+directory.set("key2", "value2", bundler=bundler)
+directory.update({"key3": 3, "key4": 4}, bundler=bundler)
 
-# Manually commit a bundle of changes
+# This seals the bundler and commits changes to database
+# at this point, no more changes may be added
 database.commit(bundler)
-
-# Since no bundler is specified here, this
-# change is automatically committed to the db.
-directory.set("key2", 2)
 ```
 
 ### Reset

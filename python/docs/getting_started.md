@@ -6,14 +6,14 @@ Gink is a versioned, eventually consistent, multi-paradigm database management s
 
 ## Quickstart
 
+### Installation
 Assuming you already have Python installed, install Gink by
-```
-# Note: gink is not yet available on pip
-# Once available, these instructions will be updated!
+```sh
+pip3 install gink
 ```
 
-Example - create a directory
-
+### Example
+Creating and using a directory
 
 ``` python
 from gink import *
@@ -39,4 +39,4 @@ value2 = directory["foo"]
 
 ```
 
-Take a look at the examples section for getting started with some of the other data structures.
+Take a look at the examples section to get started with some of the other data structures.
