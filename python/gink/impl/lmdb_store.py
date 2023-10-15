@@ -293,7 +293,7 @@ class LmdbStore(AbstractStore):
                         yield change
                     cursor_placed = containers_cursor.next()
                 # then loop over the "magic" pre-defined
-                for behavior in [DIRECTORY, SEQUENCE, BOX]:
+                for behavior in [DIRECTORY, SEQUENCE, BOX, KEY_SET]:
                     muid = Muid(-1, -1, behavior)
                     for change in self._container_reset_changes(to_time, muid, seen, txn):
                         yield change

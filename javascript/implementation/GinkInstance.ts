@@ -186,6 +186,15 @@ export class GinkInstance {
     }
 
     /**
+     * Useful for interacting with asOf in other
+     * Gink functions.
+     * @returns now as a number of seconds.
+     */
+    public getNow(): number {
+        return Date.now() * 1000;
+    }
+
+    /**
     * Adds a listener that will be called every time a commit is received with the
     * CommitInfo (which contains chain information, timestamp, and commit comment).
     */
