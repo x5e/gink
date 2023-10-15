@@ -9,5 +9,12 @@
     "declaration": true,
     "allowJs": true
   },
-  "include": ["implementation/*.ts", "implementation/*.js", "builders/*.js", "unit-tests/*.ts"]
+  "include": ["implementation/*.ts", "implementation/*.js", "builders/*.js", "unit-tests/*.ts"],
+  "typedocOptions": {
+    "name": "Gink",
+    "entryPointStrategy": "expand",
+    "entryPoints": ["./implementation"],
+    "out": "docs",
+    "readme": "./markdown/index.md"
+}
 }
