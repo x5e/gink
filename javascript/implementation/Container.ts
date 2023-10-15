@@ -33,6 +33,13 @@ export class Container {
         readonly behavior: Behavior) {
     }
 
+    public equals(other: any): boolean {
+        if (!(other instanceof Container)) return false;
+        return ((other.address.medallion == this.address.medallion) &&
+            (other.address.offset == this.address.offset) &&
+            (other.address.timestamp == this.address.timestamp))
+    }
+
     /**
      * Starts an async iterator that returns all the containers pointing to the object in question.
      * Note: the behavior of this method may change to only include backref to lists and vertices
