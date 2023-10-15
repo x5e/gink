@@ -16,20 +16,50 @@ import { KeySet } from "./KeySet";
 import { GinkInstance } from "./GinkInstance";
 import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid } from "./utils";
 import { Behavior, EntryBuilder, ContainerBuilder } from "./builders";
+import { Property } from "./Property";
 
-export async function construct(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
+export async function construct(
+        ginkInstance: GinkInstance,
+        address: Muid,
+        containerBuilder?: ContainerBuilder): Promise<Container> {
+
     if (address.timestamp === -1) {
         if (address.offset === Behavior.DIRECTORY) return new Directory(ginkInstance, address);
         if (address.offset === Behavior.SEQUENCE) return new Sequence(ginkInstance, address);
         if (address.offset === Behavior.BOX) return new Box(ginkInstance, address);
+        if (address.offset === Behavior.PAIR_MAP) return new PairMap(ginkInstance, address);
+        if (address.offset === Behavior.PAIR_SET) return new PairSet(ginkInstance, address);
+        if (address.offset === Behavior.KEY_SET) return new KeySet(ginkInstance, address);
+        if (address.offset === Behavior.ROLE) return new Role(ginkInstance, address);
+        if (address.offset === Behavior.PROPERTY) return new Property(ginkInstance, address);
     }
+
     if (containerBuilder === undefined) {
         const containerBytes = ensure(await ginkInstance.store.getContainerBytes(address));
         containerBuilder = <ContainerBuilder> ContainerBuilder.deserializeBinary(containerBytes);
     }
-    if (containerBuilder.getBehavior() == Behavior.DIRECTORY) return (new Directory(ginkInstance, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.SEQUENCE) return (new Sequence(ginkInstance, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.BOX) return (new Box(ginkInstance, address, containerBuilder));
+
+    if (containerBuilder.getBehavior() == Behavior.BOX)
+        return (new Box(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.SEQUENCE)
+        return (new Sequence(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.KEY_SET)
+        return (new KeySet(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.DIRECTORY)
+        return (new Directory(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.PAIR_SET)
+        return (new PairSet(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.PAIR_MAP)
+        return (new PairMap(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.NOUN)
+        throw new Error("Nouns aren't implemented in Type/Javascript yet!");
+    if (containerBuilder.getBehavior() == Behavior.VERB)
+        throw new Error("Verbs aren't implemented in Type/Javascript yet!");
+    if (containerBuilder.getBehavior() == Behavior.PROPERTY)
+        return (new Property(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.ROLE)
+        return (new Role(ginkInstance, address, containerBuilder));
+
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
 }
 
