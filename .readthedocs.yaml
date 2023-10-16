@@ -15,4 +15,3 @@ sphinx:
 python:
    install:
    - run: pip install .[docs]
-   - run: pip install
