@@ -164,8 +164,9 @@ class KeySet(Container):
         for entry_pair in iterable:
             if entry_pair.builder.deletion:
                 continue
-            if not entry_pair.builder.key in intersection:
-                self._add_entry(key=entry_pair.builder.key, value=deletion, bundler=bundler, comment=comment)
+            key = decode_key(entry_pair.builder)
+            if key and not key in intersection:
+                self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
         self._database.commit(bundler)
 
     def symmetric_difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
@@ -178,7 +179,7 @@ class KeySet(Container):
                 continue
             key = decode_key(entry_pair.builder)
             if key and key not in sym_diff:
-                self.remove(key, bundler=bundler, comment=comment)
+                self.remove(key=key, bundler=bundler, comment=comment)
         self.update(sym_diff, bundler=bundler, comment=comment)
 
     def items(self, *, as_of: GenericTimestamp=None):
