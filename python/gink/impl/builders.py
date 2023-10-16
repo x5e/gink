@@ -32,6 +32,7 @@ if TYPE_CHECKING:
         value: ValueBuilder
         container: MuidBuilder
         deletion: bool
+        purge: bool
         pair: Pair
         octets: bytes
         key: KeyBuilder
