@@ -122,6 +122,9 @@ def test_diff_inter_symdiff_updates():
             gks.difference_update(["value1", "value2"])
             assert set(gks.items()) == {"value3"}
 
+            gks.add("value0")
+            assert set(gks.items()) == {"value0", "value3"}
+
             gks.intersection_update(["value3", "value4", "value5"])
             assert set(gks.items()) == {"value3"}
 
