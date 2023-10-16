@@ -1,6 +1,6 @@
 {
   "name": "@darinmcgill/gink",
-  "version": "0.20230318.0",
+  "version": "${VERSION}",
   "description": "an eventually consistent database",
   "main": "tsc.out/implementation/main.js",
   "browser": "webpack.out/packed.js",
