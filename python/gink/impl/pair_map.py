@@ -4,7 +4,7 @@ from typing import Optional, Tuple, Union, Iterable
 from .database import Database
 from .muid import Muid
 from .container import Container
-from .coding import PAIR_MAP, deletion
+from .coding import PAIR_MAP, deletion, decode_entry_occupant
 from .bundler import Bundler
 from .graph import Noun
 from .typedefs import GenericTimestamp, UserValue
@@ -123,9 +123,10 @@ class PairMap(Container):
             left = entry_pair.builder.pair.left
             rite = entry_pair.builder.pair.rite
             if not entry_pair.builder.deletion:
+                value = decode_entry_occupant(self._muid, entry_pair.builder)
                 stuffing += f"""\n\t(Muid{(left.timestamp, left.medallion, left.offset)},
                 Muid{(rite.timestamp, rite.medallion, rite.offset)}):
-                "{entry_pair.builder.value.characters}","""
+                "{value if not isinstance(value, bytes) else value!r}","""
 
         as_one_line = result + ", ".join(stuffing) + "})"
         if len(as_one_line) < 80:
