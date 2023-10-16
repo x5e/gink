@@ -62,7 +62,9 @@ if TYPE_CHECKING:
 
 
     class MuidBuilder(Message):
-        pass
+        timestamp: int
+        medallion: int
+        offset: int
 
 
     class LogFile(Message):
