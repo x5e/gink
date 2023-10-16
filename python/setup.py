@@ -1,9 +1,11 @@
 from setuptools import setup, find_packages
 from pathlib import Path
+import os
 
 
 setup(
     name='gink',
+    version=os.environ.get("VERSION"),
     description='a system for storing data structures in lmdb',
     url='https://github.com/x5e/gink',
     author='Darin McGill',
