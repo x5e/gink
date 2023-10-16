@@ -1,6 +1,4 @@
 # Getting Started
-<font size="5">Familiar data structures to let you focus on developing a beautiful front-end.</font>
-
 Gink is a versioned, eventually consistent, multi-paradigm database management system. It takes a "protocol-first" approach, which facilitates multiple implementations that can share data. In addition to some of the more complex data structures, Gink offers many data structures that mimic Python's own implementations, which you are likely very familiar with. For example, our directory, sequence, and key set operate similarly to Python's dictionary, list, and set, respectively.
 
 
