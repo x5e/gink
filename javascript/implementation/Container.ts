@@ -6,9 +6,10 @@ import { Inclusion } from "./Inclusion";
 import {GinkInstance} from "./GinkInstance";
 import { EntryBuilder, ChangeBuilder, Behavior, ClearanceBuilder } from "./builders";
 import { PairBuilder } from "./builders";
+import { Addressable } from "./Addressable";
 
 
-export class Container {
+export class Container extends Addressable {
     protected static readonly DELETION = new Deletion();
     protected static readonly INCLUSION = new Inclusion();
 
@@ -21,16 +22,11 @@ export class Container {
      */
     static _getBackRefsFunction: (a: GinkInstance, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void>;
 
-    /**
-     *
-     * @param ginkInstance required
-     * @param address not necessary for root schema
-     * @param behavior
-     */
     protected constructor(
-        readonly ginkInstance: GinkInstance,
-        readonly address: Muid,
+        ginkInstance: GinkInstance,
+        address: Muid,
         readonly behavior: Behavior) {
+            super(ginkInstance, address)
     }
 
     public equals(other: any): boolean {
