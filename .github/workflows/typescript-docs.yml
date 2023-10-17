@@ -2,7 +2,7 @@ name: Build and Deploy Docs
 
 on:
   push:
-    branches: [char26-deploydocs]
+    branches: [main]
 
 jobs:
   build:
