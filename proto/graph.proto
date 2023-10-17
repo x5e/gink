@@ -1,0 +1,28 @@
+syntax = "proto3";
+package gink;
+
+import "proto/muid.proto";
+import "proto/value.proto";
+
+
+enum EdgeBehavior {
+    UNK = 0;
+    EVT = 1;
+    SET = 2;
+    MAP = 3;
+}
+
+message EdgeType {
+    EdgeBehavior edge_behavior = 1;
+}
+
+message Edge {
+    EdgeBehavior edge_behavior = 1;
+    Muid edge_type = 2;
+    Muid source = 3;
+    Muid target = 4;
+    oneof payload {
+        Value value = 5;  // required for MAP, optional for EVT
+        bool delete = 6;  // only for SET or MAP
+    }
+}

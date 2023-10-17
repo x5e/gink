@@ -7,10 +7,6 @@ enum Behavior {
     SEQUENCE = 2; // entries have a value or pointee but no key, ordered by time
     KEY_SET = 3; // entries have only key, no value, and may be removed with a deletion
     DIRECTORY = 4; // entries have key and also something contained (value or pointee)
-    PAIR_SET = 5; //
-    PAIR_MAP = 6; // maps pairs of muids to values, could be used for neural net weights
-    NOUN = 7; // entries correspond to removal (soft deletion)
-    VERB = 8;  // entries have a source noun, target noun, and optional value
     PROPERTY = 9; // entries have a subject and value
-    ROLE = 10; // entries have describing and optionally deleting
+    LABEL = 10; // entries have describing and optionally deleting
 };

@@ -14,14 +14,14 @@ message Entry {
     oneof subject {
         // some of these only apply to certain container types:
         Key key = 3;            // KEY_SET, DIRECTORY
-        Pair pair = 4;          // PAIR_SET, PAIR_MAP, VERB
-        Muid describing = 6;    // PROPERTY, ROLE, VERB
+        Pair pair = 4;          // PAIR_SET, PAIR_MAP
+        Muid describing = 6;    // PROPERTY, LABEL
     }
 
     oneof contains {
         // some of these only apply to certain container types:
         Value value = 7;    // BOX, DIRECTORY, SEQUENCE, PROPERTY
-        bool deletion = 9;  // KEY_SET, DIRECTORY, ROLE, PROPERTY
+        bool deletion = 9;  // KEY_SET, DIRECTORY, LABEL, PROPERTY
         Muid pointee = 10;   // BOX, DIRECTORY, SEQUENCE
     }
 
