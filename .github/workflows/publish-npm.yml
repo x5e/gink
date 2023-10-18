@@ -8,17 +8,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Install Protobuf Compiler
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: protobuf-compiler
       - name: Setup Node
         uses: actions/setup-node@v2
         with:
           node-version: latest
           registry-url: 'https://registry.npmjs.org'
+      - name: Build Protos & Rebuild
+        run: make && npm rebuild
       - name: Update Version
         run: export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" package.json
-      - name: Install dependencies and build
-        run: npm ci && npm rebuild
-      - name: Compile TypeScript
-        run: tsc
       - name: Publish package on NPM
         run: npm publish --access public
         env:

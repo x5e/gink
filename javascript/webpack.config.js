@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-    entry: './web-entry.js',
+    entry: './javascript/web-entry.js',
     mode: "development",
     devtool: "inline-source-map",
     output: {
@@ -13,9 +13,9 @@ module.exports = {
     },
     module: {
         rules: [
-            { 
+            {
                 exclude: /node_modules/,
-                test: /\.tsx?$/, 
+                test: /\.tsx?$/,
                 loader: "ts-loader",
             }
         ]

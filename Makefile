@@ -7,10 +7,11 @@ PYTHON_CODE=$(wildcard python/*.py python/gink/impl/*.py python/gink/tests/*.py 
 all: python/gink/builders node_modules/gink/protoc.out tsc.out webpack.out
 
 clean:
-	rm -rf protoc.out webpack.out tsc.out python/gink/builders node_modules/gink/protoc.out
+	rm -rf javascript/protoc.out javascript/webpack.out javascript/tsc.out python/gink/builders javascript/node_modules/gink/protoc.out
 
-node_modules: package.json
-	npm install
+node_modules:
+	mkdir -p javascript/node_modules && \
+	npm install --prefix javascript
 
 python/gink/builders: $(PROTOS)
 	rm -rf python/gink/builders* && \
@@ -27,20 +28,20 @@ javascript/proto: $(PROTOS)
 
 protoc.out: $(PROTOS)
 	 rm -rf protoc.out && mkdir -p protoc.out.making && protoc \
-	--proto_path=proto \
+	--proto_path=. \
 	--js_out=import_style=commonjs,binary:protoc.out.making \
 	$(PROTOS) && mv protoc.out.making protoc.out
 
 node_modules/gink/protoc.out: node_modules protoc.out
-	rm -rf node_modules/gink && mkdir -p node_modules/gink && \
-	cp -r protoc.out node_modules/gink/
+	rm -rf javascript/node_modules/gink && mkdir -p javascript/node_modules/gink && \
+	cp -r protoc.out javascript/node_modules/gink/
 #	ln -s -r -t node_modules/gink protoc.out
 
 webpack.out: tsc.out
-	env webpack
+	env npx webpack-cli build --config ./javascript/webpack.config.js
 
-tsc.out: protoc.out node_modules/gink/protoc.out tsconfig.json typescript-impl/*.ts
-	env tsc && chmod a+x tsc.out/main.js
+tsc.out: protoc.out node_modules/gink/protoc.out
+	env tsc -p javascript && chmod a+x javascript/tsc.out/implementation/main.js
 
 unit_tests:
 	env jest
