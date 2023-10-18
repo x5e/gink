@@ -117,39 +117,39 @@ union = ks.union(["key4", "key5"])
 ### Pair Set
 The Pair Set is the first data structure out of the previous examples that has few similarities to the build-in Python data structures. In Gink, every container is given a "Muid" upon creation ([Muid docs](#muid)). In simple terms, a Muid is just a unique identifier to keep track of containers (and changes).\
 <br>
-While the Pair Set's methods do not mimic those of the Python Set, you can think of a Pair Set as a set of tuples. These tuples contain pairs of (Muid, Muid), or (Noun, Noun) (more on Nouns [here](#noun-examples)). Basically, a Pair Set serves to store the fact that two Nouns are connected.
+While the Pair Set's methods do not mimic those of the Python Set, you can think of a Pair Set as a set of tuples. These tuples contain pairs of (Muid, Muid), or (Vertex, Vertex) (more on Vertexs [here](#vertex-examples)). Basically, a Pair Set serves to store the fact that two Vertexs are connected.
 
 ```python
 ps = PairSet()
 
-noun1 = Noun()
-noun2 = Noun()
+vertex1 = Vertex()
+vertex2 = Vertex()
 
 # "Include" refers to the fact that the pair is either
 # in the pair set, or it is not.
-ps.include(pair=(noun1, noun2))
-ps.exclude(pair=(noun1, noun2))
+ps.include(pair=(vertex1, vertex2))
+ps.exclude(pair=(vertex1, vertex2))
 
 # Same as above, but adding the pair using muids.
-ps.include(pair=(noun1._muid, noun2._muid))
+ps.include(pair=(vertex1._muid, vertex2._muid))
 
-is_contained = ps.contains(pair=(noun1, noun2)) # returns True
+is_contained = ps.contains(pair=(vertex1, vertex2)) # returns True
 
-pairs = ps.get_pairs() # returns Set{(noun1._muid, noun2._muid)}
+pairs = ps.get_pairs() # returns Set{(vertex1._muid, vertex2._muid)}
 ```
 
 ### Pair Map
-Similar to the Pair Set, a Pair Map has keys consisting of a (Noun, Noun) or (Muid, Muid) tuple. These keys are mapped to a value, which may be a Container or other standard value (str, int, list, etc.). The Pair Map has methods similar to those  found in the built in map object.
+Similar to the Pair Set, a Pair Map has keys consisting of a (Vertex, Vertex) or (Muid, Muid) tuple. These keys are mapped to a value, which may be a Container or other standard value (str, int, list, etc.). The Pair Map has methods similar to those  found in the built in map object.
 
 ```python
 pm = PairMap(database=database)
-noun1 = Noun()
-noun2 = Noun()
+vertex1 = Vertex()
+vertex2 = Vertex()
 
-pm.set(key=(noun1, noun2), value="noun1->noun2")
+pm.set(key=(vertex1, vertex2), value="vertex1->vertex2")
 
-in_pm = pm.has(key=(noun1._muid, noun2._muid)) # returns True
-value = pm.get(key=(noun1, noun2)) # returns "noun1->noun2"
+in_pm = pm.has(key=(vertex1._muid, vertex2._muid)) # returns True
+value = pm.get(key=(vertex1, vertex2)) # returns "vertex1->vertex2"
 
 items = pm.items() # returns a generator of ((Muid, Muid), value)
 ```
@@ -159,11 +159,11 @@ items = pm.items() # returns a generator of ((Muid, Muid), value)
 A Role is simply a collection of Containers that have something in common.
 ```python
 role = Role(database=database)
-noun1 = Noun()
-noun2 = Noun()
+vertex1 = Vertex()
+vertex2 = Vertex()
 
-role.include(noun1)
-role.include(noun2._muid)
+role.include(vertex1)
+role.include(vertex2._muid)
 
 # returns a generator of the member Muids
 member_muids = role.get_member_ids()
@@ -171,7 +171,7 @@ member_muids = role.get_member_ids()
 # returns a Set of the member Containers
 members = role.get_members()
 
-role.exclude(noun1)
+role.exclude(vertex1)
 ```
 
 ### Property
@@ -190,33 +190,33 @@ prop.delete(directory)
 ```
 
 ### Graph
-(noun-examples)=
-#### Noun
-The Noun is a core part of Gink's graph data structure. If you are familiar with graph databases, the Gink Noun is comparable to a Node. The Noun is designed to connect to other nodes through edges, which is described below.
+(vertex-examples)=
+#### Vertex
+The Vertex is a core part of Gink's graph data structure. If you are familiar with graph databases, the Gink Vertex is comparable to a Node. The Vertex is designed to connect to other nodes through edges, which is described below.
 ```python
 # Basic creation and deletion
-user_noun = Noun(database=database)
-order_noun = Noun(database=database)
+user_vertex = Vertex(database=database)
+order_vertex = Vertex(database=database)
 
-user_noun.remove()
-order_noun.remove()
+user_vertex.remove()
+order_vertex.remove()
 
-is_alive = user_noun.is_alive() # returns False since we removed it.
+is_alive = user_vertex.is_alive() # returns False since we removed it.
 
-# Most of the Noun functionality comes when using
+# Most of the Vertex functionality comes when using
 # an edge - more examples below.
 ```
 
 #### Edge and Verb
-An Edge is what connects a Noun to another Noun. The Verb is the `action` of an Edge, or the relationship between the nouns. For example, one noun may be a user, while the other node is an order. This may be depicted as (User)--Ordered-->(Order). User and Order are Nouns, Ordered is the Verb, and the lines connecting them (and the direction) is the Edge.
+An Edge is what connects a Vertex to another Vertex. The Verb is the `action` of an Edge, or the relationship between the vertexs. For example, one vertex may be a user, while the other node is an order. This may be depicted as (User)--Ordered-->(Order). User and Order are Vertexs, Ordered is the Verb, and the lines connecting them (and the direction) is the Edge.
 
 ```python
-user_noun = Noun(database=database)
-order_noun = Noun(database=database)
+user_vertex = Vertex(database=database)
+order_vertex = Vertex(database=database)
 
-# An easy way to connect nouns is by creating a Verb
+# An easy way to connect vertexs is by creating a Verb
 ordered_verb = Verb(database=database)
-ordered_verb.create_edge(user_noun, order_noun, "Ordered")
+ordered_verb.create_edge(user_vertex, order_vertex, "Ordered")
 
 # We can get all edges of any Verb (can specify source or target) since
 # we only have one edge, we don't need to specify a source or target here.
@@ -255,13 +255,13 @@ directory = Directory(database=database, contents={
 
 key_set = KeySet(database=database, contents=["key1", "key2", 3])
 
-# Noun creation for pair map population
-noun1 = Noun()
-noun2 = Noun()
+# Vertex creation for pair map population
+vertex1 = Vertex()
+vertex2 = Vertex()
 
 # Pair Map contents only takes a dictionary. Read the docs for the
 # accepted data types for other data structures.
-pair_map = PairMap(contents={(noun1, noun2): "value"})
+pair_map = PairMap(contents={(vertex1, vertex2): "value"})
 ```
 #### Back in time
 You will frequently see `as_of` in the Gink documentation. `as_of` refers to the time to look back to. There are multiple ways of interacting with `as_of`. If you are curious about how certain timestamps are resolved, take a look at `Database.resolve_timestamp()`\
@@ -326,11 +326,11 @@ previous = directory.get("foo", as_of=clearance_muid.timestamp)
 The `Container.dumps()` method dumps the contents of a container into a string. This string can `eval` back into a Gink object, so this method can be used for backup purposes.
 ```python
 # Dumps using PairSet
-noun1 = Noun(database=database)
-noun2 = Noun(database=database)
-noun3 = Noun(database=database)
+vertex1 = Vertex(database=database)
+vertex2 = Vertex(database=database)
+vertex3 = Vertex(database=database)
 pairset1 = PairSet(contents=[
-    (noun1, noun2), (noun1, noun3), (noun2, noun3)], database=database)
+    (vertex1, vertex2), (vertex1, vertex3), (vertex2, vertex3)], database=database)
 
 dump = pairset1.dumps()
 
