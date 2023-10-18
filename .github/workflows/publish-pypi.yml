@@ -8,6 +8,9 @@ jobs:
   build:
     name: Build distribution
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./python
 
     steps:
     - uses: actions/checkout@v4
