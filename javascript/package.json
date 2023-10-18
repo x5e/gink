@@ -1,5 +1,5 @@
 {
-  "name": "@darinmcgill/gink",
+  "name": "@x5e/gink",
   "version": "${VERSION}",
   "description": "an eventually consistent database",
   "main": "tsc.out/implementation/main.js",

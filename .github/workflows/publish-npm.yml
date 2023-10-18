@@ -17,6 +17,8 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - name: Install dependencies and build
         run: npm ci && npm rebuild
+      - name: Compile TypeScript
+        run: tsc
       - name: Publish package on NPM
         run: npm publish
         env:
