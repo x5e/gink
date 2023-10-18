@@ -7,7 +7,7 @@ that can share data. Additionally, some of the data structures available in Gink
 # Installation
 Assuming you have node.js and npm installed already:
 ```sh
-npm install gink
+npm install @x5e/gink
 ```
 
 ## Quickstart
