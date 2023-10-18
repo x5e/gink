@@ -20,6 +20,8 @@ jobs:
         python-version: "3.x"
     - name: Update Version
       run: export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" setup.py
+    - name: Build protos
+      run: cd .. && make python/gink/builders
     - name: Install pypa/build
       run: >-
         python3 -m
