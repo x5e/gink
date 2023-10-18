@@ -6,7 +6,7 @@ from .muid import Muid
 from .container import Container
 from .coding import PAIR_MAP, deletion, decode_entry_occupant
 from .bundler import Bundler
-from .graph import Noun
+from .graph import Vertex
 from .typedefs import GenericTimestamp, UserValue
 
 class PairMap(Container):
@@ -19,7 +19,7 @@ class PairMap(Container):
         """
         Constructor for a pair set proxy.
 
-        contents: dictionary of (Noun, Noun): Value to populate the pair map
+        contents: dictionary of (Vertex, Vertex): Value to populate the pair map
         muid: the global id of this pair set, created on the fly if None
         db: database to send commits through, or last db instance created if None
         """
@@ -43,31 +43,31 @@ class PairMap(Container):
         if immediate and len(bundler):
             self._database.commit(bundler)
 
-    def set(self, key: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]],
+    def set(self, key: Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]],
             value: Union[UserValue, Container],
             bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         return self._add_entry(key=key, value=value, bundler=bundler, comment=comment)
 
-    def get(self, key: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]],
+    def get(self, key: Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]],
             default=None, *, as_of: GenericTimestamp = None):
         as_of = self._database.resolve_timestamp(as_of)
-        if isinstance(key[0], Noun) and isinstance(key[1], Noun):
+        if isinstance(key[0], Vertex) and isinstance(key[1], Vertex):
             muid_key = (key[0]._muid, key[1]._muid)
             found = self._database.get_store().get_entry_by_key(self._muid, key=muid_key, as_of=as_of)
         elif isinstance(key[0], Muid) and isinstance(key[1], Muid):
             found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
         else:
-            raise ValueError(f"Not sure what to do with {key}, not a tuple of muids or nouns.")
+            raise ValueError(f"Not sure what to do with {key}, not a tuple of muids or vertices.")
 
         if found is None or found.builder.deletion:  # type: ignore
             return default
         return self._get_occupant(found.builder, found.address)
 
-    def delete(self, key: Tuple[Noun, Noun],
+    def delete(self, key: Tuple[Vertex, Vertex],
                bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
-    def has(self, key: Union[Tuple[Noun, Noun], Tuple[Muid, Muid]], *, as_of=None):
+    def has(self, key: Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]], *, as_of=None):
         """ returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
         assert isinstance(key, tuple)

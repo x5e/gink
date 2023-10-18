@@ -3,7 +3,7 @@
 from contextlib import closing
 from ..impl.muid import Muid
 from ..impl.pair_map import PairMap
-from ..impl.graph import Noun
+from ..impl.graph import Vertex
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
@@ -34,28 +34,28 @@ def test_basic():
             database = Database(store=store)
             pairmap1 = PairMap(database=database)
 
-            noun1 = Noun()
-            noun2 = Noun()
-            noun3 = Noun()
-            pairmap1.set(key=(noun1, noun2), value="test noun1 -> noun2")
+            vertex1 = Vertex()
+            vertex2 = Vertex()
+            vertex3 = Vertex()
+            pairmap1.set(key=(vertex1, vertex2), value="test vertex1 -> vertex2")
             after_first = database.get_now()
 
-            assert pairmap1.get(key=(noun1, noun2)) == "test noun1 -> noun2"
-            assert pairmap1.has(key=(noun1, noun2))
+            assert pairmap1.get(key=(vertex1, vertex2)) == "test vertex1 -> vertex2"
+            assert pairmap1.has(key=(vertex1, vertex2))
             assert pairmap1.size() == 1
 
-            pairmap1.set(key=(noun1, noun3), value="test noun1 -> noun3")
+            pairmap1.set(key=(vertex1, vertex3), value="test vertex1 -> vertex3")
             assert pairmap1.size() == 2
-            assert pairmap1.has(key=(noun1._muid, noun3._muid))
+            assert pairmap1.has(key=(vertex1._muid, vertex3._muid))
 
-            pairmap1.delete(key=(noun1, noun2))
+            pairmap1.delete(key=(vertex1, vertex2))
             assert pairmap1.size() == 1
 
-            assert not pairmap1.get(key=(noun1, noun3), as_of=after_first)
-            assert pairmap1.get(key=(noun1, noun2), as_of=after_first)
-            assert pairmap1.get(key=(noun1, noun3)) == "test noun1 -> noun3"
+            assert not pairmap1.get(key=(vertex1, vertex3), as_of=after_first)
+            assert pairmap1.get(key=(vertex1, vertex2), as_of=after_first)
+            assert pairmap1.get(key=(vertex1, vertex3)) == "test vertex1 -> vertex3"
 
-            pairmap1.delete(key=(noun1, noun3))
+            pairmap1.delete(key=(vertex1, vertex3))
             assert pairmap1.size() == 0
 
 def test_contents_dumps():
@@ -66,23 +66,23 @@ def test_contents_dumps():
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
-            noun1 = Noun()
-            noun2 = Noun()
-            noun3 = Noun()
+            vertex1 = Vertex()
+            vertex2 = Vertex()
+            vertex3 = Vertex()
 
             pairmap1 = PairMap(contents={
-                (noun1, noun2): "test noun1 -> noun2",
-                (noun2, noun3): "test noun2 -> noun3"},
+                (vertex1, vertex2): "test vertex1 -> vertex2",
+                (vertex2, vertex3): "test vertex2 -> vertex3"},
                 database=database)
             assert pairmap1.size() == 2
 
             items = list(pairmap1.items())
-            assert items[0] == ((noun2._muid, noun3._muid), 'test noun2 -> noun3')
-            assert items[1] == ((noun1._muid, noun2._muid), 'test noun1 -> noun2')
+            assert items[0] == ((vertex2._muid, vertex3._muid), 'test vertex2 -> vertex3')
+            assert items[1] == ((vertex1._muid, vertex2._muid), 'test vertex1 -> vertex2')
 
             pairmap2 = PairMap(contents={
-                (noun1._muid, noun2._muid): "test noun1 -> noun2",
-                (noun2._muid, noun3._muid): "test noun2 -> noun3"},
+                (vertex1._muid, vertex2._muid): "test vertex1 -> vertex2",
+                (vertex2._muid, vertex3._muid): "test vertex2 -> vertex3"},
                 database=database)
             assert pairmap2.size() == 2
 
