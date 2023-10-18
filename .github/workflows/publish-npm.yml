@@ -10,16 +10,16 @@ jobs:
         uses: actions/checkout@v2
       - name: Setup Node
         uses: actions/setup-node@v2
-      - name: Update Version
-        run: export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" package.json
         with:
           node-version: lts
           registry-url: 'https://registry.npmjs.org'
+      - name: Update Version
+        run: export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" package.json
       - name: Install dependencies and build
         run: npm ci && npm rebuild
       - name: Compile TypeScript
         run: tsc
       - name: Publish package on NPM
-        run: npm publish
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

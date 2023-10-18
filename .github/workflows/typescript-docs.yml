@@ -21,7 +21,6 @@ jobs:
           with:
             name: github-pages
             path: javascript/docs/
-            
   deploy:
     # Add a dependency to the build job
     needs: build
