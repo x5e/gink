@@ -19,7 +19,7 @@ the other in Python.
 
 # TypeScript
 
-[TypeScript Docs](#) (link not working yet, sorry!)
+[TypeScript Docs](https://www.x5e.com/gink/)
 
 The typescript implementation can be used in one of three modes:
 * via node.js as a server instance that listens to websocket connections from other instances
@@ -29,12 +29,12 @@ The typescript implementation can be used in one of three modes:
 ## Installation
 ### Using npm
 ```sh
-npm install gink
+npm install @x5e/gink
 ```
 Note: The current gink package on npm is outdated and will be updated soon.
 
 ## Examples
-To see examples for all data structures in the TypeScript implementation, check out our [docs](#).
+To see examples for all data structures in the TypeScript implementation, check out our full [docs](https://www.x5e.com/gink/).
 
 Import and initialize database and ginkInstance:
 ```ts
