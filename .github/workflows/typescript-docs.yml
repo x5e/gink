@@ -5,23 +5,23 @@ on:
     branches: [main]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./javascript
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install NPM dependencies
-        run: npm install
-      - name: Build docs
-        run: npx typedoc
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v1
-        with:
-          name: github-pages
-          path: docs/
-
+    build:
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: ./javascript
+        steps:
+        - uses: actions/checkout@v3
+        - name: Install NPM dependencies
+          run: npm install
+        - name: Build docs
+          run: npx typedoc
+        - name: Upload Artifact
+          uses: actions/upload-pages-artifact@v2
+          with:
+            name: github-pages
+            path: javascript/docs/
+            
   deploy:
     # Add a dependency to the build job
     needs: build
