@@ -1,7 +1,7 @@
 """ tests the conversion functions in code_values
 """
 from ..impl.builders import ChangeBuilder, EntryBuilder
-from ..impl.coding import encode_value, decode_value, Placement, QueueMiddleKey, SEQUENCE, DIRECTORY, PAIR_SET, NOUN
+from ..impl.coding import encode_value, decode_value, Placement, QueueMiddleKey, SEQUENCE, DIRECTORY, PAIR_SET, VERTEX
 from ..impl.muid import Muid
 from ..impl.bundler import Bundler
 
@@ -86,8 +86,8 @@ def test_entry_to_from_bytes():
 
     # Testing serialization for pairs
     global_pairset = Muid(-1, -1, PAIR_SET)
-    noun1 = Muid(-1, -1, NOUN)
-    noun2 = Muid(124, 54, NOUN)
+    noun1 = Muid(-1, -1, VERTEX)
+    noun2 = Muid(124, 54, VERTEX)
     pairkey1 = Placement(global_pairset, (noun1, noun2), Muid(412, 51, 5), None)
     encoded_pair = bytes(pairkey1)
     pairkey2 = Placement.from_bytes(encoded_pair, PAIR_SET)
@@ -104,8 +104,8 @@ def test_entry_to_from_builder():
         entry_builder.behavior = PAIR_SET
 
         global_pairset = Muid(-1, -1, PAIR_SET)
-        noun1 = Muid(-1, -1, NOUN)
-        noun2 = Muid(124, 54, NOUN)
+        noun1 = Muid(-1, -1, VERTEX)
+        noun2 = Muid(124, 54, VERTEX)
 
         global_pairset.put_into(entry_builder.container)
         noun1.put_into(entry_builder.pair.left)

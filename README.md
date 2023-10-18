@@ -346,9 +346,9 @@ directory = Directory(database=database, contents={
 
 key_set = KeySet(database=database, contents=["key1", "key2", 3])
 
-# Noun creation for pair map population
-noun1 = Noun()
-noun2 = Noun()
+# Vertex creation for pair map population
+vertex1 = Vertex()
+vertex2 = Vertex()
 
 # Pair Map contents only takes a dictionary. Read the docs for the
 # accepted data types for other data structures.

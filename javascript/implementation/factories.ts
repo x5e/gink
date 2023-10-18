@@ -51,7 +51,7 @@ export async function construct(
         return (new PairSet(ginkInstance, address, containerBuilder));
     if (containerBuilder.getBehavior() == Behavior.PAIR_MAP)
         return (new PairMap(ginkInstance, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.NOUN)
+    if (containerBuilder.getBehavior() == Behavior.VERTEX)
         throw new Error("Nouns aren't implemented in Type/Javascript yet!");
     if (containerBuilder.getBehavior() == Behavior.VERB)
         throw new Error("Verbs aren't implemented in Type/Javascript yet!");

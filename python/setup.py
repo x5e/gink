@@ -33,7 +33,7 @@ setup(
         "docs": [
             "sphinx",
             "myst-parser",
-            "sphinkx-rtd-theme",
+            "sphinx-rtd-theme",
             "sphinx-copybutton"
         ]
     },
