@@ -3,8 +3,9 @@ PROTOS=$(wildcard proto/*.proto)
 export PATH := ./javascript/node_modules/.bin/:$(PATH)
 PYTHON_CODE=$(wildcard python/*.py python/gink/impl/*.py python/gink/tests/*.py python/gink/*.py)
 
+all: python/gink/builders javascript/proto tsc.out node_modules/gink/protoc.out webpack.out
 
-all: python/gink/builders javascript/proto node_modules/gink/protoc.out tsc.out webpack.out
+javascript: javascript/proto tsc.out node_modules/gink/protoc.out webpack.out
 
 clean:
 	rm -rf javascript/protoc.out javascript/proto javascript/webpack.out javascript/tsc.out python/gink/builders javascript/node_modules/gink/protoc.out
@@ -24,7 +25,6 @@ javascript/proto: $(PROTOS)
 	rm -rf javascript/proto* && \
 	protoc \
 	--js_out=import_style=commonjs,binary:javascript/ $(PROTOS) \
-
 
 protoc.out: $(PROTOS)
 	 rm -rf javascript/protoc.out && mkdir -p protoc.out.making && protoc \

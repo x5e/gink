@@ -24,7 +24,8 @@
     "package.json",
     "tsc.out/**",
     "protoc.out/**",
-    "webpack.out/**"
+    "webpack.out/**",
+    "README.md"
   ],
   "bin": "./tsc.out/implementation/main.js",
   "scripts": {
