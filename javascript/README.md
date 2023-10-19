@@ -1,4 +1,4 @@
-# Overview
+# Gink in General
 
 Gink is a versioned, eventually consistent, multi-paradigm database management system.
 It takes a "protocol-first" approach, which facilitates multiple implementations

@@ -1,7 +1,7 @@
 # Gink in General
 
 Gink aims to be a "protocol first" database system defined by the protocol for syncronizing
-instances, rather than by a specific implementation.  Defining the database in terms of
+instances, rather than by a specific implementation. Defining the database in terms of
 the interchange format allows for independent implementations to interact seamlessly in
 a well-defined manner.
 
