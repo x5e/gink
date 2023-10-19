@@ -14,6 +14,10 @@ The typescript implementation can be used in one of three modes:
 * [Installation](#installation)
 * [Examples](#examples)
     * [Data Structures](#data-structures)
+        * [Box](#box)
+        * [Directory](#directory)
+        * [Sequence](#sequence)
+        * [All Containers](#all-containers)
     * [Instance Operations](#instance)
 
 ## Installation
