@@ -23,7 +23,6 @@
   "files": [
     "package.json",
     "tsc.out/**",
-    "protoc.out/**",
     "webpack.out/**",
     "README.md"
   ],
