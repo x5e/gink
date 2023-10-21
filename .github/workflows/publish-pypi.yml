@@ -2,7 +2,7 @@ name: Publish Python distribution to PyPI
 
 on:
   push:
-    branches: [char26-ghactions] #main
+    branches: [main]
 
 jobs:
   build:
@@ -58,5 +58,5 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
-    # - name: Publish distribution to PyPI
-    #   uses: pypa/gh-action-pypi-publish@release/v1
+    - name: Publish distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
