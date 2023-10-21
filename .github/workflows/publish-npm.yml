@@ -1,7 +1,7 @@
 name: Publish to NPM
 on:
   push:
-    branches: [main]
+    branches: [char26-ghactions] #main
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,7 +26,7 @@ jobs:
         run: npm rebuild
       - name: Update Version
         run: export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" package.json
-      - name: Publish package on NPM
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # - name: Publish package on NPM
+      #   run: npm publish --access public
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
