@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working_directory: ./javascript
+        working-directory: ./javascript
     steps:
       - name: Checkout
         uses: actions/checkout@v2
