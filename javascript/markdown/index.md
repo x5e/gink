@@ -2,7 +2,7 @@
 
 Gink is a versioned, eventually consistent, multi-paradigm database management system.
 It takes a "protocol-first" approach, which facilitates multiple implementations
-that can share data. Additionally, some of the data structures available in Gink are designed to operate similarly to native JavaScript data structures, which removes the steep learning curve found in other backend solutions. For example, Gink has directory, sequence, and key set data structures, which behave similarly to Objects, Arrays, and Sets, respectively.
+that can share data. Additionally, some of the data structures available in Gink are designed to operate similarly to native JavaScript data structures, which removes the steep learning curve found in other backend solutions. For example, Gink has Directory, Sequence, and KeySet data structures, which behave similarly to Objects, Arrays, and Sets, respectively.
 
 # Installation
 Assuming you have node.js and npm installed already:
