@@ -18,8 +18,14 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: "3.x"
+    - name: Install Protobuf Compiler
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: protobuf-compiler
     - name: Update Version
-      run: export VERSION=`date -u +0.%Y%m%d.%s`
+      run: export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" setup.py
+    - name: Build protos
+      run: cd .. && make python/gink/builders
     - name: Install pypa/build
       run: >-
         python3 -m
