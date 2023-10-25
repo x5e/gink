@@ -16,7 +16,7 @@ Example - create a directory\
 Take a look at other examples below for a more in depth look at all of the available data structures.
 
 ```ts
-import { GinkInstance, IndexedDbStore, Directory } from "../implementation";
+import { GinkInstance, IndexedDbStore } from "@x5e/gink";
 
 // Initialize document store and database
 const store = new IndexedDbStore('directory-example');
@@ -36,7 +36,7 @@ const result = await directory.get("key1");
 # Examples
 All examples will need a store and `GinkInstance`:
 ```ts
-import { IndexedDbStore, GinkInstance } from "../implementation";
+import { IndexedDbStore, GinkInstance } from "@x5e/gink";
 
 const store = new IndexedDbStore('examples');
 const instance = new GinkInstance(store);
@@ -89,7 +89,7 @@ await directory.set("new dir", subdir);
 A `Sequence` is the Gink version of a JavaScript Array. Sequences are specifically ordered by time of insertion, so they end up representing a queue quite well. Due to the fact they are ordered by insertion, Sequences do not support `unshift`.
 
 ```ts
-const seq: Sequence = await instance.createSequence();
+const seq = await instance.createSequence();
 
 await seq.push("A");
 await seq.push("B");
