@@ -9,6 +9,7 @@ build:
    jobs:
       pre_create_environment:
          - make python/gink/builders
+         - export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" setup.py
 
 sphinx:
    configuration: python/docs/conf.py
