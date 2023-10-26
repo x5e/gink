@@ -1,5 +1,5 @@
 {
-  "name": "@darinmcgill/gink",
+  "name": "@x5e/gink",
   "version": "${VERSION}",
   "description": "an eventually consistent database",
   "main": "tsc.out/implementation/main.js",
@@ -23,8 +23,8 @@
   "files": [
     "package.json",
     "tsc.out/**",
-    "protoc.out/**",
-    "webpack.out/**"
+    "webpack.out/**",
+    "README.md"
   ],
   "bin": "./tsc.out/implementation/main.js",
   "scripts": {
@@ -45,6 +45,7 @@
   "devDependencies": {
     "@types/google-protobuf": "^3.15.6",
     "@types/jest": "^29.5.0",
-    "ts-jest": "^29.0.5"
+    "ts-jest": "^29.0.5",
+    "webpack-cli": "^5.1.4"
   }
 }

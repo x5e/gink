@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 from pathlib import Path
 
-
 setup(
     name='gink',
+    version='${VERSION}',
     description='a system for storing data structures in lmdb',
     url='https://github.com/x5e/gink',
     author='Darin McGill',
@@ -33,7 +33,7 @@ setup(
         "docs": [
             "sphinx",
             "myst-parser",
-            "sphinkx-rtd-theme",
+            "sphinx-rtd-theme",
             "sphinx-copybutton"
         ]
     },
