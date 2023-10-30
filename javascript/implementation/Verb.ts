@@ -26,7 +26,7 @@ export class Verb extends Container {
 
         const key: [Muid|Container, Muid|Container] = [source, target];
         const muid = await this.addEntry(key, value, change);
-        return new Edge(this.ginkInstance, muid, source, target, this.address);
+        return new Edge(this.ginkInstance, muid, source, target, this.address, value);
     }
 
 
