@@ -1,4 +1,15 @@
-import {builderToMuid, ensure, generateTimestamp, matches, sameData, unwrapKey, unwrapValue, muidToTuple, muidTupleToMuid, muidToString} from "./utils";
+import {
+    builderToMuid,
+    ensure,
+    generateTimestamp,
+    matches,
+    muidToString,
+    muidToTuple,
+    muidTupleToMuid,
+    sameData,
+    unwrapKey,
+    unwrapValue
+} from "./utils";
 import {deleteDB, IDBPDatabase, openDB} from 'idb';
 import {
     AsOf,
@@ -23,7 +34,7 @@ import {
 import {ChainTracker} from "./ChainTracker";
 import {Store} from "./Store";
 import {Behavior, BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder, MuidBuilder,} from "./builders";
-import { Container } from './Container';
+import {Container} from './Container';
 
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
@@ -34,7 +45,7 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
  * be done using a shim that is only an in-memory implementation of the IndexedDb API,
  * so the LogBackedStore should be used on the server for persistence.  Most of the time
  * uses of Gink should not need to call methods on the store directly, instead just
- * pass it into the GinkInstance (or SimpleServer, etc).
+ * pass it into the GinkInstance (or SimpleServer, etc.).
  */
 export class IndexedDbStore implements Store {
 
@@ -123,6 +134,8 @@ export class IndexedDbStore implements Store {
                 entries.createIndex("by-container-key-placement", ["containerId", "effectiveKey", "placementId"]);
                 entries.createIndex("pointees", "pointeeList", {multiEntry: true, unique: false});
                 entries.createIndex("locations", ["entryId", "placementId"]);
+                entries.createIndex("sources", "sourceList", {multiEntry: true, unique: false});
+                entries.createIndex("targets", "targetList", {multiEntry: true, unique: false});
             },
         });
     }
@@ -269,7 +282,7 @@ export class IndexedDbStore implements Store {
                 } else if (behavior == Behavior.SEQUENCE) {
                     effectiveKey = entryBuilder.getEffective()  ||  timestamp;
                     replacing = false;
-                } else if (behavior == Behavior.BOX) {
+                } else if (behavior == Behavior.BOX || behavior == Behavior.VERTEX) {
                     effectiveKey = [];
                 } else if (behavior == Behavior.PROPERTY) {
                     ensure(entryBuilder.hasDescribing());
@@ -279,6 +292,9 @@ export class IndexedDbStore implements Store {
                     ensure(entryBuilder.hasDescribing());
                     const describing = builderToMuid(entryBuilder.getDescribing());
                     effectiveKey = muidToTuple(describing);
+                } else if (behavior == Behavior.VERB) {
+                    ensure(entryBuilder.hasPair());
+                    effectiveKey = entryBuilder.getEffective()  ||  timestamp;
                 } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
                     ensure(entryBuilder.hasPair());
                     const pair = entryBuilder.getPair();
@@ -301,6 +317,23 @@ export class IndexedDbStore implements Store {
                     ];
                     pointeeList.push(pointee);
                 }
+                const sourceList = <MuidTuple[]>[];
+                const targetList = <MuidTuple[]>[];
+                if (entryBuilder.hasPair()) {
+                    const pairBuilder = entryBuilder.getPair();
+                    const source = <MuidTuple>[
+                        pairBuilder.getLeft().getTimestamp() || bundleInfo.timestamp,
+                        pairBuilder.getLeft().getMedallion() || bundleInfo.medallion,
+                        pairBuilder.getLeft().getOffset()
+                    ];
+                    sourceList.push(source);
+                    const target = <MuidTuple>[
+                        pairBuilder.getRite().getTimestamp() || bundleInfo.timestamp,
+                        pairBuilder.getRite().getMedallion() || bundleInfo.medallion,
+                        pairBuilder.getRite().getOffset()
+                    ];
+                    targetList.push(target);
+                }
                 const value = entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined;
                 const expiry = entryBuilder.getExpiry() || undefined;
                 const deletion = entryBuilder.getDeletion();
@@ -314,6 +347,8 @@ export class IndexedDbStore implements Store {
                     expiry,
                     deletion,
                     placementId,
+                    sourceList,
+                    targetList,
                 };
                 if (replacing) {
                     const range = IDBKeyRange.bound([containerId, effectiveKey], [containerId, effectiveKey, placementId]);
@@ -371,6 +406,8 @@ export class IndexedDbStore implements Store {
                         expiry: found.expiry,
                         deletion: found.deletion,
                         placementId: movementId,
+                        sourceList: found.sourceList,
+                        targetList: found.targetList,
                     }
                     await wrappedTransaction.objectStore("entries").add(destEntry);
                 }
@@ -531,6 +568,33 @@ export class IndexedDbStore implements Store {
             }
         }
         return result;
+    }
+
+    async getEdgesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]> {
+        await this.ready;
+        const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp() + 1;
+        const asTuple = <MuidTuple>[vertex.timestamp, vertex.medallion, vertex.offset];
+        let unfiltered: Entry[] = [];
+        if (source) {
+            const unfiltered = await this.wrapped.getAllFromIndex("entries", "sources", asTuple);
+        } else {
+            const unfiltered = await this.wrapped.getAllFromIndex("entries", "targets", asTuple);
+        }
+        const trxn = this.wrapped.transaction(["entries", "removals"]);
+        const returning: Entry[] = [];
+        const removals = trxn.objectStore("removals");
+        for (let i=0; i< unfiltered.length; i++) {
+            const entry: Entry = unfiltered[i];
+            if (entry.placementId[0] < asOfTs) {
+                continue;
+            }
+            const removalsBound = IDBKeyRange.bound([entry.placementId], [entry.placementId, [asOfTs]]);
+            // TODO: This seek-per-entry isn't very efficient and should be a replaced with a scan.
+            const removalsCursor = await removals.index("by-removing").openCursor(removalsBound);
+            if (!removalsCursor)
+                returning.push(entry);
+        }
+        return returning;
     }
 
     /**

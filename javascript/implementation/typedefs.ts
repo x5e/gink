@@ -26,7 +26,7 @@ export interface CommitListener {
 }
 
 export interface CallBack {
-    (value?): void;
+    (value?: any): void;
 }
 
 export interface AuthFunction {
@@ -63,13 +63,15 @@ export interface Entry {
      * effectiveKey is a KeyType if the entry is for a Directory, a Timestamp if it's for a sequence,
      * MuidTuple if it's for a property, and empty list for a box.
      */
-    effectiveKey: KeyType | Timestamp | MuidTuple | [Muid, Muid] | [];
+    effectiveKey: KeyType | Timestamp | MuidTuple | [];
     entryId: MuidTuple;
     pointeeList: MuidTuple[]; // use an empty list to denote no pointees
     value?: Value;
     expiry?: Timestamp;
     deletion?: boolean;
     placementId: MuidTuple;
+    sourceList: MuidTuple[]; // used for edges
+    targetList: MuidTuple[]; // used for edges
 }
 
 export interface Removal {
@@ -122,6 +124,8 @@ export interface IndexedDbStoreSchema extends DBSchema {
           "by-container-key-placement": [MuidTuple,  KeyType | Timestamp | MuidTuple | [], MuidTuple];
           'pointees': MuidTuple;
           'locations': [MuidTuple, MuidTuple];
+          'sources': MuidTuple;
+          'targets': MuidTuple;
       };
     };
 }

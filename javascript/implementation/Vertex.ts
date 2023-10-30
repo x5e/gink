@@ -5,20 +5,20 @@ import { Behavior, ContainerBuilder} from "./builders";
 import { Bundler } from "./Bundler";
 import { ensure } from "./utils";
 
-export class Noun extends Container {
+export class Vertex extends Container {
 
     constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, Behavior.NOUN);
+        super(ginkInstance, address, Behavior.VERTEX);
         if (this.address.timestamp < 0) {
-            ensure(address.offset == Behavior.NOUN);
+            ensure(address.offset == Behavior.VERTEX);
         } else if (containerBuilder) {
-            ensure(containerBuilder.getBehavior() == Behavior.NOUN);
+            ensure(containerBuilder.getBehavior() == Behavior.VERTEX);
         }
     }
 
     /**
     * Returns a promise that resolves to true showing if this placeholder is/was visible at the
-    * specified time (default now), or false if it was soft deleted.
+    * specified time (default now), or false if it was softly deleted.
     * @returns undefined, a basic value, or a container
     */
     async isAlive(asOf?: AsOf): Promise<boolean> {

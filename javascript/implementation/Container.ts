@@ -84,8 +84,8 @@ export class Container extends Addressable {
      * @returns a promise the resolves to the muid of the change
      */
     protected async addEntry(
-        key?: KeyType | true | Container | Muid | [Muid|Container, Muid|Container],
-        value?: Value | Container | Deletion | Inclusion,
+        key?: KeyType | true | Addressable | Muid | [Muid|Container, Muid|Container],
+        value?: Value | Addressable | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string):
             Promise<Muid> {
         let immediate = false;
@@ -109,7 +109,7 @@ export class Container extends Addressable {
             entryBuilder.setKey(wrapKey(key));
         }
 
-        else if (key instanceof Container) {
+        else if (key instanceof Addressable) {
             entryBuilder.setDescribing(muidToBuilder(key.address));
         }
         else if (key instanceof Array) {
@@ -134,7 +134,7 @@ export class Container extends Addressable {
 
         // TODO: check that the destination/value is compatible with Container
         if (value !== undefined) {
-            if (value instanceof Container) {
+            if (value instanceof Addressable) {
                 entryBuilder.setPointee(muidToBuilder(value.address, bundler.medallion));
             } else if (value instanceof Deletion) {
                 entryBuilder.setDeletion(true);

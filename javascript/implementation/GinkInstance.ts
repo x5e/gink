@@ -16,6 +16,7 @@ import { Role } from "./Role";
 import { Store } from "./Store";
 import { Behavior, ContainerBuilder, SyncMessageBuilder } from "./builders";
 import { Property } from "./Property";
+import {Vertex} from "./Vertex";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -164,6 +165,12 @@ export class GinkInstance {
         const [muid, containerBuilder] = await this.createContainer(Behavior.DIRECTORY, change);
         return new Directory(this, muid, containerBuilder);
     }
+
+    async createVertex(change?: Bundler|string): Promise<Vertex> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.VERTEX, change);
+        return new Vertex(this, muid, containerBuilder);
+    }
+
 
     async createProperty(bundlerOrComment?: Bundler|string): Promise<Property> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.PROPERTY, bundlerOrComment);

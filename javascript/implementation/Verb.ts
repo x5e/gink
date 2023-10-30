@@ -1,9 +1,11 @@
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { Muid, AsOf } from "./typedefs";
+import { Muid, AsOf, Value} from "./typedefs";
 import { Behavior, ContainerBuilder} from "./builders";
 import { Bundler } from "./Bundler";
 import { ensure } from "./utils";
+import { Edge } from "./Edge";
+import { Vertex } from "./Vertex";
 
 export class Verb extends Container {
 
@@ -16,21 +18,17 @@ export class Verb extends Container {
         }
     }
 
-    /**
-    * Returns a promise that resolves to true showing if this placeholder is/was visible at the
-    * specified time (default now), or false if it was soft deleted.
-    * @returns undefined, a basic value, or a container
-    */
-    async isAlive(asOf?: AsOf): Promise<boolean> {
-        const entry = await this.ginkInstance.store.getEntryByKey(this.address, undefined, asOf);
-        return (entry === undefined || !entry.deletion);
+    async createEdge(source: Vertex|Muid, target: Vertex|Muid, value?: Value, change?: Bundler|string): Promise<Edge> {
+        if (source instanceof Vertex)
+            source = source.address;
+        if (target instanceof Vertex)
+            target = target.address;
+
+        const key: [Muid|Container, Muid|Container] = [source, target];
+        const muid = await this.addEntry(key, value, change);
+        return new Edge(this.ginkInstance, muid, source, target, this.address);
     }
 
-    /**
-     * Performs a soft delete of this graph node.
-     */
-    async remove(change?: Bundler|string): Promise<Muid> {
-        return this.addEntry(undefined, Container.DELETION, change);
-    }
+
 
 }

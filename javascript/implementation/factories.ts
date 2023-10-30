@@ -17,6 +17,7 @@ import { GinkInstance } from "./GinkInstance";
 import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid } from "./utils";
 import { Behavior, EntryBuilder, ContainerBuilder } from "./builders";
 import { Property } from "./Property";
+import { Vertex } from "./Vertex";
 
 export async function construct(
         ginkInstance: GinkInstance,
@@ -32,6 +33,7 @@ export async function construct(
         if (address.offset === Behavior.KEY_SET) return new KeySet(ginkInstance, address);
         if (address.offset === Behavior.ROLE) return new Role(ginkInstance, address);
         if (address.offset === Behavior.PROPERTY) return new Property(ginkInstance, address);
+        if (address.offset === Behavior.VERTEX) return new Vertex(ginkInstance, address);
     }
 
     if (containerBuilder === undefined) {
@@ -52,7 +54,7 @@ export async function construct(
     if (containerBuilder.getBehavior() == Behavior.PAIR_MAP)
         return (new PairMap(ginkInstance, address, containerBuilder));
     if (containerBuilder.getBehavior() == Behavior.VERTEX)
-        throw new Error("Nouns aren't implemented in Type/Javascript yet!");
+        return (new Vertex(ginkInstance, address, containerBuilder));
     if (containerBuilder.getBehavior() == Behavior.VERB)
         throw new Error("Verbs aren't implemented in Type/Javascript yet!");
     if (containerBuilder.getBehavior() == Behavior.PROPERTY)
