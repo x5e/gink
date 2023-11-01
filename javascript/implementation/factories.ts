@@ -14,7 +14,7 @@ import { PairSet } from "./PairSet";
 import { PairMap } from "./PairMap";
 import { KeySet } from "./KeySet";
 import { GinkInstance } from "./GinkInstance";
-import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid } from "./utils";
+import {ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid, rehydrate} from "./utils";
 import { Behavior, EntryBuilder, ContainerBuilder } from "./builders";
 import { Property } from "./Property";
 import { Vertex } from "./Vertex";
@@ -72,11 +72,7 @@ export async function interpret(entry: Entry, ginkInstance: GinkInstance): Promi
     if (entry.value !== undefined)
         return entry.value;
     if (entry.pointeeList.length > 0) {
-        const muid: Muid = {
-            timestamp: entry.pointeeList[0][0],
-            medallion: entry.pointeeList[0][1],
-            offset: entry.pointeeList[0][2],
-        };
+        const muid: Muid = rehydrate(entry.pointeeList[0]);
         return construct(ginkInstance, muid);
     }
     if (typeof(entry.effectiveKey)=="object" && !(entry.effectiveKey instanceof Array) && !(entry.effectiveKey instanceof Uint8Array)) {
@@ -132,7 +128,7 @@ Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Co
         for (const entry of entries) {
             const containerMuid = muidTupleToMuid(entry.containerId);
             const entryMuid = muidTupleToMuid(entry.entryId);
-            const there = await instance.store.getEntryById(containerMuid, entryMuid, asOf);
+            const there = await instance.store.getEntryById(entryMuid, asOf);
             if (! there) continue;
             const containerBytes = await instance.store.getContainerBytes(containerMuid);
             const containerBuilder = <ContainerBuilder> ContainerBuilder.deserializeBinary(containerBytes);

@@ -20,6 +20,7 @@ export type ChangeSetOffset = number;
 export type AsOf = Timestamp | Date | ChangeSetOffset;
 export type MuidTuple = [Timestamp, Medallion, Offset];
 export type Cookies = Map<string, string>;
+export type Indexable = MuidTuple;
 
 export interface CommitListener {
     (commitInfo: BundleInfo): Promise<void>;
@@ -27,6 +28,10 @@ export interface CommitListener {
 
 export interface CallBack {
     (value?: any): void;
+}
+
+export interface Indexer {
+    (value: Muid): Indexable;
 }
 
 export interface AuthFunction {
@@ -65,13 +70,13 @@ export interface Entry {
      */
     effectiveKey: KeyType | Timestamp | MuidTuple | [];
     entryId: MuidTuple;
-    pointeeList: MuidTuple[]; // use an empty list to denote no pointees
+    pointeeList: Indexable[]; // use an empty list to denote no pointees
     value?: Value;
     expiry?: Timestamp;
     deletion?: boolean;
     placementId: MuidTuple;
-    sourceList: MuidTuple[]; // used for edges
-    targetList: MuidTuple[]; // used for edges
+    sourceList: Indexable[]; // used for edges
+    targetList: Indexable[]; // used for edges
 }
 
 export interface Removal {
@@ -86,6 +91,14 @@ export interface Clearance {
     containerId: MuidTuple;
     clearanceId: MuidTuple;
     purging: boolean;
+}
+
+export interface EdgeData {
+    source: Muid;
+    target: Muid;
+    action: Muid;
+    value?: Value;
+    effective: number;
 }
 
 export interface IndexedDbStoreSchema extends DBSchema {
@@ -122,10 +135,10 @@ export interface IndexedDbStoreSchema extends DBSchema {
       key: MuidTuple;
       indexes: {
           "by-container-key-placement": [MuidTuple,  KeyType | Timestamp | MuidTuple | [], MuidTuple];
-          'pointees': MuidTuple;
+          'pointees': Indexable;
           'locations': [MuidTuple, MuidTuple];
-          'sources': MuidTuple;
-          'targets': MuidTuple;
+          'sources': Indexable;
+          'targets': Indexable;
       };
     };
 }

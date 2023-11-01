@@ -1,9 +1,10 @@
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import { Muid, AsOf } from "./typedefs";
+import {Muid, AsOf, Entry} from "./typedefs";
 import { Behavior, ContainerBuilder} from "./builders";
 import { Bundler } from "./Bundler";
-import { ensure } from "./utils";
+import {ensure, entryToEdgeData, muidTupleToMuid} from "./utils";
+import { Edge } from "./Edge";
 
 export class Vertex extends Container {
 
@@ -33,4 +34,22 @@ export class Vertex extends Container {
         return this.addEntry(undefined, Container.DELETION, change);
     }
 
+    async getEdgesFrom(asOf?: AsOf){
+        return this.getEdges(true);
+    }
+
+    async getEdgesTo(asOf?: AsOf) {
+        return this.getEdges(false);
+    }
+
+    async getEdges(source: boolean, asOf?: AsOf): Promise<Edge[]> {
+        const entries = await this.ginkInstance.store.getEntriesBySourceOrTarget(this.address, source, asOf);
+        const thisVertex = this;
+        const edges = entries.map(
+            function(entry: Entry) {
+                return new Edge(thisVertex.ginkInstance, muidTupleToMuid(entry.entryId), entryToEdgeData(entry));
+            }
+        )
+        return edges;
+    }
 }

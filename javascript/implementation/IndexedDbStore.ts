@@ -1,7 +1,7 @@
 import {
     builderToMuid,
     ensure,
-    generateTimestamp,
+    generateTimestamp, dehydrate,
     matches,
     muidToString,
     muidToTuple,
@@ -20,7 +20,7 @@ import {
     ChainStart,
     ClaimedChains,
     Clearance,
-    Entry,
+    Entry, Indexable,
     IndexedDbStoreSchema,
     KeyType,
     Medallion,
@@ -142,8 +142,8 @@ export class IndexedDbStore implements Store {
 
     async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
         await this.ready;
-        const asTuple = <MuidTuple>[pointingTo.timestamp, pointingTo.medallion, pointingTo.offset];
-        return this.wrapped.getAllFromIndex("entries", "pointees", asTuple);
+        const indexable = dehydrate(pointingTo);
+        return this.wrapped.getAllFromIndex("entries", "pointees", indexable);
     }
 
     async close() {
@@ -307,31 +307,31 @@ export class IndexedDbStore implements Store {
                 }
                 const entryId: MuidTuple = [timestamp, medallion, offset];
                 const placementId: MuidTuple = entryId;
-                const pointeeList = <MuidTuple[]>[];
+                const pointeeList = <Indexable[]>[];
                 if (entryBuilder.hasPointee()) {
                     const pointeeMuidBuilder: MuidBuilder = entryBuilder.getPointee();
-                    const pointee = <MuidTuple>[
-                        pointeeMuidBuilder.getTimestamp() || bundleInfo.timestamp,
-                        pointeeMuidBuilder.getMedallion() || bundleInfo.medallion,
-                        pointeeMuidBuilder.getOffset(),
-                    ];
+                    const pointee = dehydrate({
+                        timestamp: pointeeMuidBuilder.getTimestamp() || bundleInfo.timestamp,
+                        medallion: pointeeMuidBuilder.getMedallion() || bundleInfo.medallion,
+                        offset: pointeeMuidBuilder.getOffset(),
+                    });
                     pointeeList.push(pointee);
                 }
-                const sourceList = <MuidTuple[]>[];
-                const targetList = <MuidTuple[]>[];
+                const sourceList = <Indexable[]>[];
+                const targetList = <Indexable[]>[];
                 if (entryBuilder.hasPair()) {
                     const pairBuilder = entryBuilder.getPair();
-                    const source = <MuidTuple>[
-                        pairBuilder.getLeft().getTimestamp() || bundleInfo.timestamp,
-                        pairBuilder.getLeft().getMedallion() || bundleInfo.medallion,
-                        pairBuilder.getLeft().getOffset()
-                    ];
+                    const source = dehydrate({
+                        timestamp: pairBuilder.getLeft().getTimestamp() || bundleInfo.timestamp,
+                        medallion: pairBuilder.getLeft().getMedallion() || bundleInfo.medallion,
+                        offset: pairBuilder.getLeft().getOffset()
+                    });
                     sourceList.push(source);
-                    const target = <MuidTuple>[
-                        pairBuilder.getRite().getTimestamp() || bundleInfo.timestamp,
-                        pairBuilder.getRite().getMedallion() || bundleInfo.medallion,
-                        pairBuilder.getRite().getOffset()
-                    ];
+                    const target = dehydrate({
+                        timestamp: pairBuilder.getRite().getTimestamp() || bundleInfo.timestamp,
+                        medallion: pairBuilder.getRite().getMedallion() || bundleInfo.medallion,
+                        offset: pairBuilder.getRite().getOffset()
+                    });
                     targetList.push(target);
                 }
                 const value = entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined;
@@ -570,22 +570,22 @@ export class IndexedDbStore implements Store {
         return result;
     }
 
-    async getEdgesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]> {
+    async getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]> {
         await this.ready;
         const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp() + 1;
-        const asTuple = <MuidTuple>[vertex.timestamp, vertex.medallion, vertex.offset];
+        const indexable = dehydrate(vertex);
         let unfiltered: Entry[] = [];
         if (source) {
-            const unfiltered = await this.wrapped.getAllFromIndex("entries", "sources", asTuple);
+            unfiltered = await this.wrapped.getAllFromIndex("entries", "sources", indexable);
         } else {
-            const unfiltered = await this.wrapped.getAllFromIndex("entries", "targets", asTuple);
+            unfiltered = await this.wrapped.getAllFromIndex("entries", "targets", indexable);
         }
         const trxn = this.wrapped.transaction(["entries", "removals"]);
         const returning: Entry[] = [];
         const removals = trxn.objectStore("removals");
         for (let i=0; i< unfiltered.length; i++) {
             const entry: Entry = unfiltered[i];
-            if (entry.placementId[0] < asOfTs) {
+            if (entry.placementId[0] >= asOfTs) {
                 continue;
             }
             const removalsBound = IDBKeyRange.bound([entry.placementId], [entry.placementId, [asOfTs]]);
@@ -639,9 +639,9 @@ export class IndexedDbStore implements Store {
         return returning;
     }
 
-    async getEntryById(container: Muid, entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp();
-        const entryId = [entryMuid.timestamp ?? 0, container.medallion ?? 0, container.offset ?? 0];
+        const entryId = [entryMuid.timestamp ?? 0, entryMuid.medallion ?? 0, entryMuid.offset ?? 0];
         const entryRange = IDBKeyRange.bound([entryId, [0]], [entryId, [asOfTs]]);
         const trxn = this.wrapped.transaction(["entries", "removals"]);
         const entryCursor = await trxn.objectStore("entries").index("locations").openCursor(entryRange, "prev");

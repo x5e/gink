@@ -3,7 +3,7 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value, MuidTuple, KeyType } from "./typedefs";
+import {Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry, Indexer, Indexable} from "./typedefs";
 import {
     MuidBuilder,
     ValueBuilder,
@@ -265,6 +265,15 @@ export function muidToString(muid: Muid) {
     return `${muid.timestamp},${muid.medallion},${muid.offset}`;
 }
 
+export function strToMuid(value: string): Muid {
+    const nums = value.split(",");
+    return {
+        timestamp: Number(nums[0]),
+        medallion: Number(nums[1]),
+        offset: Number(nums[2])
+    }
+}
+
 function byteToHex(byte: number) {
     const returning = byte.toString(16).toUpperCase();
     return byte < 0x10 ? '0' + returning : returning;
@@ -358,3 +367,16 @@ export function sameData(key1: any, key2: any): boolean {
     }
     return false;
 }
+
+export function entryToEdgeData(entry: Entry): EdgeData {
+    return {
+        source: null, //muidTupleToMuid(entry.sourceList[0]),
+        target: null, //muidTupleToMuid(entry.targetList[0]),
+        value: entry.value,
+        action: muidTupleToMuid(entry.containerId),
+        effective: <number> entry.effectiveKey,
+    }
+}
+
+export const dehydrate = muidToTuple;
+export const rehydrate = muidTupleToMuid;
