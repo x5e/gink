@@ -4,10 +4,21 @@ PYTHON_CODE=$(wildcard python/*.py python/gink/impl/*.py python/gink/tests/*.py 
 
 all: python/gink/builders javascript/proto javascript/tsc.out javascript/webpack.out
 
-.PHONY: clean 
+.PHONY: clean running-as-root install-dependencies install-debian-packages
 
 clean:
 	rm -rf javascript/proto javascript/webpack.out javascript/tsc.out python/gink/builders 
+
+running-as-root:
+	bash -c 'test `id -u` -eq 0'
+
+install-debian-packages: running-as-root
+	apt-get install -y `cat packages.txt | tr '\n' ' '`
+
+install-protoc-gen-js: running-as-root
+	npm install -g protoc-gen-js # https://stackoverflow.com/questions/72572040
+
+install-dependencies: install-debian-packages install-protoc-gen-js
 
 python/gink/builders: $(PROTOS)
 	rm -rf python/gink/builders* && \
