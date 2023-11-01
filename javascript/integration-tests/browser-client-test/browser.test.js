@@ -20,9 +20,9 @@ test('connect to server and display commits', async () => {
     await waitForMessages;
 
     const messages = await page.$eval("#messages", e => e.innerHTML);
-    expect(messages).toContain('Messages go here.');
-    expect(messages).toContain('Hello, Universe!');
-    expect(messages).toContain('start: SimpleServer');
+
+    const expectedMessages = /Messages go here\..*Hello, Universe!.*start: SimpleServer/s
+    expect(messages).toMatch(expectedMessages);
 
     server.close();
     browser.close();
