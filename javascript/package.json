@@ -30,7 +30,7 @@
   "scripts": {
     "serve": "GINK_PORT=8080 ./tsc.out/implementation/main.js",
     "build": "tsc",
-    "test": "jest",
+    "test": "jest -- unit-tests",
     "browser-tests": "jest -- browser.test.js"
   },
   "homepage": "https://github.com/x5e/gink#readme",
