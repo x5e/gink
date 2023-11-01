@@ -300,19 +300,21 @@ The `deletion` and `expiry` fields may be used with their usual meaning.  As in 
 container types, you can't move entries, but you can overwrite them by adding another entry
 with the same subject.
 
-### REGISTRY
+### NOUN
 
-A containers with the `REGISTRY` behavior allow links (edges) between database objects to be
+Placeholder containers may be created to serve as a proxy for a
+real-world object, which then can be described via properties or pointed to via other containers.
+Entries for nouns can either soft delete them, effectively removing them from the graph,
+or to restore them (undo deletion).
+
+### VERB
+
+A containers with the `VERB` behavior allow links (edges) between database objects to be
 created.  Multiple links can exist between two objects, and these links are ordered in time
 like sequence entries.  They can be reordered or removed with movement messages.  It's expected
 that this data type will be used to implement edges in for graph database type applications
-(and that entries/edges will be annotated with properties).
-
-### PLACEHOLDER
-
-This is the anti-behavior behavior, meaning that containers of this kind shouldn't have
-any entries themselves.  Placeholder containers may be created to serve as a proxy for a
-real-world object, which then can be described via properties or pointed to via other containers.
+(and that entries/edges will be annotated with properties).  Additionally edges can have a
+payload value, to support cases where an edge is used to represent an event (e.g. message).
 
 ## Data Types Contemplated But Not Specified
 
@@ -382,15 +384,6 @@ Though these delta-based data types would be cool, it's more important:
 * to allow clear operations on all container types, and
 * to allow implementations to offer a no-history-saving mode
 both of which ensure that it's possible to keep the storage requirements of Gink managable.
-
-### An Edge Type with Contents
-
-The currently available edge type (REGISTRY) allows you to create edges between any two
-gink objects, but those edges themselves don't contain any value or point to any external object.
-Instead, it's expected that properties will be set on edges.  This has the advantage of allowing
-those propery values to be mutable.  Allowing users to create edges with immutable values on them
-doesn't have an immediate use case and might lead to some confusion, because creating a new edge
-between two addresses won't replace and existing edge.
 
 ### Tabular Data
 

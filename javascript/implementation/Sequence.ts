@@ -79,7 +79,7 @@ export class Sequence extends Container {
         let muid: Muid;
         if (what && typeof (what) == "object") {
             muid = what;
-            const entry = await this.ginkInstance.store.getEntryById(this.address, muid);
+            const entry = await this.ginkInstance.store.getEntryById(muid);
             if (!entry) return undefined;
             ensure(entry.entryId[0] == muid.timestamp && entry.entryId[2] == muid.offset);
             returning = await interpret(entry, this.ginkInstance);

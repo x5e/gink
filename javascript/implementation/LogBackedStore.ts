@@ -96,6 +96,10 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getOrderedEntries(container, through, asOf);
     }
 
+    async getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]> {
+        await this.ready;
+        return this.indexedDbStore.getEntriesBySourceOrTarget(vertex, source, asOf);
+    }
 
     async getCommitsProcessed() {
         await this.ready;
@@ -164,8 +168,8 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getBackRefs(pointingTo);
     }
 
-    async getEntryById(container: Muid, entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
         await this.ready;
-        return this.indexedDbStore.getEntryById(container, entryMuid, asOf);
+        return this.indexedDbStore.getEntryById(entryMuid, asOf);
     }
 }

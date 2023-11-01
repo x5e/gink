@@ -6,9 +6,10 @@ import { Inclusion } from "./Inclusion";
 import {GinkInstance} from "./GinkInstance";
 import { EntryBuilder, ChangeBuilder, Behavior, ClearanceBuilder } from "./builders";
 import { PairBuilder } from "./builders";
+import { Addressable } from "./Addressable";
 
 
-export class Container {
+export class Container extends Addressable {
     protected static readonly DELETION = new Deletion();
     protected static readonly INCLUSION = new Inclusion();
 
@@ -21,25 +22,13 @@ export class Container {
      */
     static _getBackRefsFunction: (a: GinkInstance, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void>;
 
-    /**
-     *
-     * @param ginkInstance required
-     * @param address not necessary for root schema
-     * @param behavior
-     */
     protected constructor(
-        readonly ginkInstance: GinkInstance,
-        readonly address: Muid,
+        ginkInstance: GinkInstance,
+        address: Muid,
         readonly behavior: Behavior) {
+            super(ginkInstance, address)
     }
-
-    public equals(other: any): boolean {
-        if (!(other instanceof Container)) return false;
-        return ((other.address.medallion == this.address.medallion) &&
-            (other.address.offset == this.address.offset) &&
-            (other.address.timestamp == this.address.timestamp))
-    }
-
+    
     /**
      * Starts an async iterator that returns all the containers pointing to the object in question.
      * Note: the behavior of this method may change to only include backref to lists and vertices
@@ -88,8 +77,8 @@ export class Container {
      * @returns a promise the resolves to the muid of the change
      */
     protected async addEntry(
-        key?: KeyType | true | Container | Muid | [Muid|Container, Muid|Container],
-        value?: Value | Container | Deletion | Inclusion,
+        key?: KeyType | true | Addressable | Muid | [Muid|Container, Muid|Container],
+        value?: Value | Addressable | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string):
             Promise<Muid> {
         let immediate = false;
@@ -113,7 +102,7 @@ export class Container {
             entryBuilder.setKey(wrapKey(key));
         }
 
-        else if (key instanceof Container) {
+        else if (key instanceof Addressable) {
             entryBuilder.setDescribing(muidToBuilder(key.address));
         }
         else if (key instanceof Array) {
@@ -138,7 +127,7 @@ export class Container {
 
         // TODO: check that the destination/value is compatible with Container
         if (value !== undefined) {
-            if (value instanceof Container) {
+            if (value instanceof Addressable) {
                 entryBuilder.setPointee(muidToBuilder(value.address, bundler.medallion));
             } else if (value instanceof Deletion) {
                 entryBuilder.setDeletion(true);
