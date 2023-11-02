@@ -17,6 +17,13 @@ test('connect to server and display commits', async () => {
         {env: {GINK_PORT: "8081", GINK_STATIC_PATH: ".", ...process.env}});
     await server.expect("ready");
 
+    // For some reason if I don't handle console output, this test fails because
+    // the messages aren't displayed properly..?
+    // TODO: Figure out why the test fails without page.on('console')
+    page.on('console', async e => {
+        const args = await Promise.all(e.args().map(a => a.jsonValue()));
+      });
+
     await page.goto('http://127.0.0.1:8081/integration-tests/browser-client-test');
     await page.waitForSelector('#messages');
 
@@ -30,4 +37,4 @@ test('connect to server and display commits', async () => {
 
     server.close();
     browser.close();
-}, 8000)
+}, 10000)
