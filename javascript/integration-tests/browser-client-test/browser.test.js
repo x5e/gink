@@ -4,8 +4,12 @@ const { expect } = require('@jest/globals');
 
 test('connect to server and display commits', async () => {
     let browser = await puppeteer.launch({
-        product: 'chrome',
-        headless: "new"
+        executablePath: '/usr/bin/google-chrome',
+        headless: "new",
+        args: [
+            "--no-sandbox",
+            "--disable-gpu",
+        ]
     });
     let page = await browser.newPage();
 
