@@ -33,6 +33,6 @@ RUN apt-get update && apt-get install gnupg wget -y && \
   apt-get update && \
   apt-get install google-chrome-stable -y --no-install-recommends && \
   rm -rf /var/lib/apt/lists/*
-RUN npm run browser-tests
+RUN npm run browser-integration
 RUN ./integration-tests/node-client-test.js
 RUN ./integration-tests/routing-server-test.js
