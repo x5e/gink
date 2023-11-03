@@ -1,7 +1,7 @@
 import { Box, IndexedDbStore, GinkInstance, Bundler, Muid } from "../implementation/index";
 import { ensure } from "../implementation/utils";
 
-test('create a box; set and get data in it', async function() {
+it('create a box; set and get data in it', async function () {
     // set up the objects
     const store = new IndexedDbStore('box-test1', true);
     const instance = new GinkInstance(store);
@@ -33,7 +33,7 @@ test('create a box; set and get data in it', async function() {
 });
 
 
-test('set a box in a bundler', async function() {
+it('set a box in a bundler', async function () {
     // set up the objects
     const instance = new GinkInstance(new IndexedDbStore('box-test2', true));
     const aBox: Box = await instance.createBox();
@@ -54,7 +54,7 @@ test('set a box in a bundler', async function() {
 });
 
 
-test('create a box and set in same CS', async function() {
+it('create a box and set in same CS', async function () {
     // set up the objects
     const store = new IndexedDbStore('box-test3', true);
     const instance = new GinkInstance(store);
@@ -73,7 +73,7 @@ test('create a box and set in same CS', async function() {
     ensure(val == "a value");
 });
 
-test('set a value in a box then clear it', async function() {
+it('set a value in a box then clear it', async function () {
     const instance = new GinkInstance(new IndexedDbStore('box-test4', true));
 
     // put a value into the box
@@ -93,7 +93,7 @@ test('set a value in a box then clear it', async function() {
 
 });
 
-test('Box.toJson', async function() {
+it('Box.toJson', async function () {
     const instance = new GinkInstance(new IndexedDbStore('Box.toJson', true));
 
     // put a value into the box

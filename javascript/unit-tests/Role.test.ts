@@ -1,7 +1,7 @@
 import { GinkInstance, IndexedDbStore } from "../implementation";
 import { ensure, muidToString, muidTupleToMuid } from "../implementation/utils";
 
-test('include and exclude work as intended', async function() {
+it('include and exclude work as intended', async function () {
     const store = new IndexedDbStore('test1', true);
     const instance = new GinkInstance(store);
     const role1 = await instance.createRole();
@@ -24,8 +24,8 @@ test('include and exclude work as intended', async function() {
     let found = false;
     const box2MuidStr = muidToString(box2.address);
     for (const entry of await store.getAllEntries()) {
-        if(typeof(entry.effectiveKey)=="object" && !(entry.effectiveKey instanceof Uint8Array) &&
-        !(entry.effectiveKey instanceof Array)) {
+        if (typeof (entry.effectiveKey) == "object" && !(entry.effectiveKey instanceof Uint8Array) &&
+            !(entry.effectiveKey instanceof Array)) {
             if (box2MuidStr == muidToString(muidTupleToMuid(entry.effectiveKey))) {
                 found = true;
             }
@@ -34,7 +34,7 @@ test('include and exclude work as intended', async function() {
     ensure(found);
 });
 
-test('contains, toArray, and get_members work properly', async function() {
+it('contains, toArray, and get_members work properly', async function () {
     const store = new IndexedDbStore('test2', true);
     const instance = new GinkInstance(store);
     const role1 = await instance.createRole();

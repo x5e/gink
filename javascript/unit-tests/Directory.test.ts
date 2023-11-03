@@ -2,7 +2,7 @@ import { sleep } from "./test_utils";
 import { GinkInstance, Bundler, IndexedDbStore, Directory } from "../implementation";
 import { ensure } from "../implementation/utils";
 
-test('set and get Basic data', async function() {
+it('set and get Basic data', async function () {
     // set up the objects
     const store = new IndexedDbStore('test1', true);
     const instance = new GinkInstance(store);
@@ -26,7 +26,7 @@ test('set and get Basic data', async function() {
 
 });
 
-test('set multiple key/value pairs in one change-set', async function() {
+it('set multiple key/value pairs in one change-set', async function () {
     const store = new IndexedDbStore('test2', true);
     const instance = new GinkInstance(store);
     const schema = await instance.createDirectory();
@@ -46,7 +46,7 @@ test('set multiple key/value pairs in one change-set', async function() {
 });
 
 
-test('use a sub-schema', async function() {
+it('use a sub-schema', async function () {
     const instance = new GinkInstance(new IndexedDbStore('test3', true));
     const schema = await instance.createDirectory();
 
@@ -60,7 +60,7 @@ test('use a sub-schema', async function() {
     ensure("123" == await anotherProxy.get("xyz"));
 });
 
-test('convert to standard Map', async function() {
+it('convert to standard Map', async function () {
     const instance = new GinkInstance(new IndexedDbStore('convert', true));
     const directory = await instance.createDirectory();
 
@@ -78,7 +78,7 @@ test('convert to standard Map', async function() {
 
 })
 
-test('Directory.toJSON', async function () {
+it('Directory.toJSON', async function () {
     const instance = new GinkInstance(new IndexedDbStore('toJSON', true));
     const directory = await instance.createDirectory();
 
@@ -92,7 +92,7 @@ test('Directory.toJSON', async function () {
     ensure(asJSON == `{"bar":3,"blue":{"xxx":"yyy"},"foo":"bar","zoom":null}`, asJSON);
 });
 
-test('Directory.asOf', async function () {
+it('Directory.asOf', async function () {
     const instance = new GinkInstance(new IndexedDbStore('Directory.asOf', true));
     const directory = await instance.createDirectory();
 
@@ -107,27 +107,27 @@ test('Directory.asOf', async function () {
     const time2 = instance.getNow();
 
     const asJsonNow = await directory.toJson();
-    ensure(asJsonNow==`{"A":"B","cheese":4}`);
+    ensure(asJsonNow == `{"A":"B","cheese":4}`);
     ensure((await directory.get('cheese')) === 4);
 
     const asJson2 = await directory.toJson(false, time2);
-    ensure(asJson2==`{"A":"B","cheese":4}`);
+    ensure(asJson2 == `{"A":"B","cheese":4}`);
     ensure((await directory.get('cheese', time2)) === 4);
 
     const asJson1 = await directory.toJson(false, time1);
-    ensure(asJson1==`{"A":"B"}`);
+    ensure(asJson1 == `{"A":"B"}`);
     ensure((await directory.get('cheese', time1)) === undefined);
 
     const asMap0 = await directory.toMap(time0);
     ensure(asMap0.size == 0);
 
     const asJsonBack = await directory.toJson(false, -1);
-    ensure(asJsonBack==`{"A":"B"}`);
+    ensure(asJsonBack == `{"A":"B"}`);
     ensure((await directory.get('cheese', -1)) === undefined);
     ensure((await directory.get('A', -1)) === 'B');
 });
 
-test('Directory.purge', async function () {
+it('Directory.purge', async function () {
     const instance = new GinkInstance(new IndexedDbStore('Directory.purge', true));
     const directory = await instance.createDirectory();
 
@@ -145,14 +145,14 @@ test('Directory.purge', async function () {
     ensure(!await directory.size())
 });
 
-test('Directory.clear', async function() {
+it('Directory.clear', async function () {
     const instance = new GinkInstance(new IndexedDbStore('Directory.clear', true));
     const directory = await instance.createDirectory();
     await directory.set('A', 99);
     const clearMuid = await directory.clear();
     await directory.set('B', false);
     const asMap = await directory.toMap();
-    ensure(asMap.has("B") && ! asMap.has("A"), "did not clear");
+    ensure(asMap.has("B") && !asMap.has("A"), "did not clear");
     const asMapBeforeClear = await directory.toMap(clearMuid.timestamp);
     if (asMapBeforeClear.has("B") || !asMapBeforeClear.has("A")) {
         console.log(asMapBeforeClear);

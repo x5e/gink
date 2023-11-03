@@ -2,7 +2,7 @@ import { ensure } from "../implementation/utils";
 import { PromiseChainLock } from "../implementation/PromiseChainLock";
 function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-test('test lock/unlock ', async () => {
+it('test lock/unlock ', async () => {
     const promiseChainLock = new PromiseChainLock();
     let countLocks = 0;
     const messages: string[] = [];

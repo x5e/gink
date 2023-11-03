@@ -2,7 +2,7 @@ import { GinkInstance, IndexedDbStore } from "../implementation";
 import { ensure } from "../implementation/utils";
 import { sleep } from "./test_utils";
 
-test('include, exclude, and contains work as intended', async function() {
+it('include, exclude, and contains work as intended', async function () {
     const store = new IndexedDbStore('test1', true);
     const instance = new GinkInstance(store);
     const ps1 = await instance.createPairSet();
@@ -19,7 +19,7 @@ test('include, exclude, and contains work as intended', async function() {
     ensure(await ps1.contains([box2, box3]));
 
     await ps1.exclude([box1, box2]);
-    ensure(await ps1.size()==1);
+    ensure(await ps1.size() == 1);
     ensure(!(await ps1.contains([box1, box2])));
 
     await ps1.include([box1.address, box2]);
@@ -28,7 +28,7 @@ test('include, exclude, and contains work as intended', async function() {
     ensure(await ps1.contains([box1, box2.address]));
 });
 
-test('asOf and get_pairs work properly', async function() {
+it('asOf and get_pairs work properly', async function () {
     const store = new IndexedDbStore('test2', true);
     const instance = new GinkInstance(store);
     const ps1 = await instance.createPairSet();
@@ -55,6 +55,6 @@ test('asOf and get_pairs work properly', async function() {
     const asOfSet = await ps1.get_pairs(time0);
     ensure(asOfSet.size == 1);
 
-    ensure(await ps1.size(time0)==1);
+    ensure(await ps1.size(time0) == 1);
     ensure(!await ps1.contains([box1, box3], time0));
 });

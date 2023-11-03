@@ -1,7 +1,7 @@
 import { GinkInstance, IndexedDbStore } from "../implementation";
 import { ensure, sameData } from "../implementation/utils"
 
-test('Property.basics', async function () {
+it('Property.basics', async function () {
     const instance = new GinkInstance(new IndexedDbStore('Property.basics', true));
     const gd = instance.getGlobalDirectory();
     const property = await instance.createProperty();
