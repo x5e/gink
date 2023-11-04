@@ -50,6 +50,7 @@
     "expect": "^29.7.0",
     "jest-puppeteer": "^9.0.1",
     "karma-webpack": "^5.0.0",
+    "node-loader": "^2.0.0",
     "puppeteer": "^21.4.1",
     "ts-jest": "^29.0.5",
     "ts-loader": "^9.5.0",

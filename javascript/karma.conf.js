@@ -5,7 +5,11 @@ module.exports = function (config) {
         files: [
             { pattern: 'unit-tests/*.ts', watched: true, served: true, included: true, type: 'js' },
         ],
-
+        client: {
+            jasmine: {
+                random: false
+            }
+        },
         autoWatch: false,
         singleRun: true,
         failOnEmptyTestSuite: false,
@@ -22,8 +26,18 @@ module.exports = function (config) {
         port: 9876,
         webpack: {
             resolve: {
-                extensions: [".ts", ".tsx", ".js"]
+                extensions: [".ts", ".tsx", ".js", ".node"],
+                modules: ['node_modules'],
+                fallback: {
+                    "path": false,
+                    "fs": false,
+                    "http": false,
+                    "https": false,
+                    "readline": false,
+                    "console": false,
+                }
             },
+
             module: {
                 rules: [
                     {
@@ -38,7 +52,11 @@ module.exports = function (config) {
                         test: /\.tsx?$/i,
                         exclude: /(node_modules)/,
                         loader: 'ts-loader'
-                    }
+                    },
+                    {
+                        test: /\.node$/,
+                        loader: "node-loader",
+                    },
 
                 ]
             }
