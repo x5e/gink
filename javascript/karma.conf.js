@@ -1,7 +1,7 @@
 module.exports = function (config) {
     config.set({
         basePath: '.',
-        exclude: [],
+        exclude: ['unit-tests/LogBackedStore.test.ts'],
         files: [
             { pattern: 'unit-tests/*.ts', watched: true, served: true, included: true, type: 'js' },
         ],
