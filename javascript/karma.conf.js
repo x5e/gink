@@ -41,14 +41,6 @@ module.exports = function (config) {
             module: {
                 rules: [
                     {
-                        test: /\.js*$/i,
-                        exclude: /(node_modules)/,
-                        loader: 'babel-loader',
-                        options: {
-                            presets: ['@babel/preset-env']
-                        }
-                    },
-                    {
                         test: /\.tsx?$/i,
                         exclude: /(node_modules)/,
                         loader: 'ts-loader'
