@@ -12,7 +12,6 @@ module.exports = function (config) {
         },
         autoWatch: false,
         singleRun: true,
-        failOnEmptyTestSuite: false,
         logLevel: config.LOG_WARN,
         frameworks: ['jasmine', 'webpack'],
         browsers: ['ChromeHeadlessNS'],
@@ -22,8 +21,8 @@ module.exports = function (config) {
                 flags: ['--no-sandbox', '--disable-gpu']
             }
         },
-        reporters: ['mocha', 'kjhtml'],
-        port: 9876,
+        // uncomment this for more verbosity within the tests
+        // reporters: ['mocha', 'kjhtml'],
         webpack: {
             resolve: {
                 extensions: [".ts", ".tsx", ".js", ".node"],
