@@ -4,7 +4,7 @@ import { ensure } from "../implementation/utils";
 
 
 
-test('isAlive and remove', async function() {
+it('isAlive and remove', async function () {
     const store = new IndexedDbStore('vertex1', true);
     const instance = new GinkInstance(store);
     const vertex = await instance.createVertex();
@@ -15,7 +15,7 @@ test('isAlive and remove', async function() {
     ensure(await vertex.isAlive(aliveTime));
 });
 
-test('verb.createEdge', async function() {
+it('verb.createEdge', async function () {
     const store = new IndexedDbStore('verb.createEdge', true);
     const instance = new GinkInstance(store);
     const vertex1 = await instance.createVertex();
@@ -28,7 +28,7 @@ test('verb.createEdge', async function() {
     ensure((edge1.getEdgeType()).equals(verb1));
 });
 
-test('from_to', async function () {
+it('from_to', async function () {
     const store = new IndexedDbStore('source.target', true);
     const instance = new GinkInstance(store);
     const vertex1 = await instance.createVertex();
@@ -52,11 +52,11 @@ test('from_to', async function () {
     ensure(edgesTo2.length == 2, `wtf: ${edgesTo2.length}`);
     ensure(edgesTo2[0].equals(edge12) || edgesTo2[0].equals(edge22));
     ensure(edgesTo2[1].equals(edge12) || edgesTo2[1].equals(edge22));
-    ensure(! edgesTo2[0].equals(edgesTo2[1]));
+    ensure(!edgesTo2[0].equals(edgesTo2[1]));
 
     const edgesFrom2 = await vertex2.getEdgesFrom();
     ensure(edgesFrom2.length == 3);
-    edgesFrom2.sort(function(a, b) {return a.getOriginalPosition() < b.getOriginalPosition() ? -1: +1});
+    edgesFrom2.sort(function (a, b) { return a.getOriginalPosition() < b.getOriginalPosition() ? -1 : +1 });
     ensure(edgesFrom2[0].equals(edge21));
     ensure(edgesFrom2[1].equals(edge22));
     ensure(edgesFrom2[2].equals(edge23));

@@ -1,7 +1,7 @@
 import { GinkInstance, IndexedDbStore } from "../implementation";
 import { ensure } from "../implementation/utils"
 
-test('pointingTo', async function () {
+it('pointingTo', async function () {
     const indexedDBStore = new IndexedDbStore('pointingTo', true);
     const instance = new GinkInstance(indexedDBStore);
 

@@ -9,7 +9,7 @@ testStore('LogBackedStore',
 );
 
 
-test('test locks', async () => {
+it('test locks', async () => {
     const TEST_FILE_FOR_LOCKS = "/tmp/test_file_for_locks.store";
     const lbs1 = new LogBackedStore(TEST_FILE_FOR_LOCKS);
     await lbs1.ready;

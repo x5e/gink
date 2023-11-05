@@ -1,10 +1,10 @@
 import { testStore } from "./Store.test";
-import {GinkInstance, IndexedDbStore, generateTimestamp, ensure} from "../implementation";
+import { GinkInstance, IndexedDbStore, generateTimestamp, ensure } from "../implementation";
 
-testStore('IndexedDbStore', async () => new IndexedDbStore("test", true));
+testStore('IndexedDbStore', async () => new IndexedDbStore("IDB.test", true));
 export const result = 1;
 
-test('use methods', async () => {
+it('use methods', async () => {
     const indexedDbStore = new IndexedDbStore('IndexedDbStore.test.1');
     const ginkInstance = new GinkInstance(indexedDbStore);
     const dir = ginkInstance.getGlobalDirectory();

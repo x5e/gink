@@ -2,8 +2,8 @@ import { GinkInstance, IndexedDbStore } from "../implementation";
 import { ensure } from "../implementation/utils";
 import { sleep } from "./test_utils";
 
-test('set, get, delete, and size work as intended', async function() {
-    const store = new IndexedDbStore('test1', true);
+it('set, get, delete, and size work as intended', async function () {
+    const store = new IndexedDbStore('PM.test1', true);
     const instance = new GinkInstance(store);
     const pm1 = await instance.createPairMap();
     const box1 = await instance.createBox();
@@ -28,8 +28,8 @@ test('set, get, delete, and size work as intended', async function() {
     ensure(await pm1.get([box1.address, box2]) == "box1 -> box2");
 });
 
-test('asOf and items work as intended', async function() {
-    const store = new IndexedDbStore('test2', true);
+it('asOf and items work as intended', async function () {
+    const store = new IndexedDbStore('PM.test2', true);
     const instance = new GinkInstance(store);
     const pm1 = await instance.createPairMap();
     const box1 = await instance.createBox();

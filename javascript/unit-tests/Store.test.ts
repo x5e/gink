@@ -12,7 +12,7 @@ import { Bundler } from "../implementation";
 export type StoreMaker = () => Promise<Store>;
 
 // Jest complains if there's a test suite without a test.
-test('placeholder', () => {
+it('placeholder', () => {
     expect(1 + 2).toBe(3);
 });
 
@@ -35,7 +35,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         await store.close();
     });
 
-    test(`${implName} test accepts chain start but only once`, async () => {
+    it(`${implName} test accepts chain start but only once`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const [_info1, acceptedOnce] = await store.addBundle(chainStart);
         const [_info2, acceptedTwice] = await store.addBundle(chainStart);
@@ -43,7 +43,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         expect(acceptedTwice).toBeFalsy();
     });
 
-    test(`${implName} ensure that it rejects when doesn't have chain start`, async () => {
+    it(`${implName} ensure that it rejects when doesn't have chain start`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
         let added: boolean = false;
@@ -58,7 +58,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         expect(barfed).toBeTruthy();
     });
 
-    test(`${implName} test rejects missing link`, async () => {
+    it(`${implName} test rejects missing link`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
         const thirdTrxn = extendChain("Hello, a third!", secondTrxn, NEXT_TS1 + 1);
@@ -75,15 +75,15 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         expect(barfed).toBeTruthy();
     });
 
-    test(`${implName} test creates greeting`, async () => {
+    it(`${implName} test creates greeting`, async () => {
         await addTrxns(store);
-        const hasMap = <ChainTracker> await store.getChainTracker();
+        const hasMap = <ChainTracker>await store.getChainTracker();
 
         expect(hasMap.getCommitInfo([MEDALLION1, START_MICROS1])!.timestamp).toBe(NEXT_TS1);
         expect(hasMap.getCommitInfo([MEDALLION2, START_MICROS2])!.timestamp).toBe(NEXT_TS2);
     });
 
-    test(`${implName} test sends trxns in order`, async () => {
+    it(`${implName} test sends trxns in order`, async () => {
         await addTrxns(store);
         if (replacer) {
             await store.close();
@@ -92,13 +92,13 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sent: Array<BundleBytes> = [];
         await store.getCommits((x: BundleBytes) => { sent.push(x); });
         expect(sent.length).toBe(4);
-        expect((<BundleBuilder> BundleBuilder.deserializeBinary(sent[0])).getTimestamp()).toBe(START_MICROS1);
-        expect((<BundleBuilder> BundleBuilder.deserializeBinary(sent[1])).getTimestamp()).toBe(START_MICROS2);
-        expect((<BundleBuilder> BundleBuilder.deserializeBinary(sent[2])).getTimestamp()).toBe(NEXT_TS1);
-        expect((<BundleBuilder> BundleBuilder.deserializeBinary(sent[3])).getTimestamp()).toBe(NEXT_TS2);
+        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[0])).getTimestamp()).toBe(START_MICROS1);
+        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[1])).getTimestamp()).toBe(START_MICROS2);
+        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[2])).getTimestamp()).toBe(NEXT_TS1);
+        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[3])).getTimestamp()).toBe(NEXT_TS2);
     });
 
-    test(`${implName} test claim chains`, async () => {
+    it(`${implName} test claim chains`, async () => {
         await store.claimChain(MEDALLION1, START_MICROS1);
         await store.claimChain(MEDALLION2, START_MICROS2);
         if (replacer) {
@@ -111,7 +111,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         expect(active.get(MEDALLION2)).toBe(START_MICROS2);
     });
 
-    test(`${implName} test save/fetch container`, async () => {
+    it(`${implName} test save/fetch container`, async () => {
         const bundleBuilder = new BundleBuilder();
         bundleBuilder.setChainStart(START_MICROS1);
         bundleBuilder.setTimestamp(START_MICROS1);
@@ -127,13 +127,13 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         ensure(commitInfo.timestamp == START_MICROS1);
         const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
         ensure(containerBytes);
-        const containerBuilder2 = <ContainerBuilder> ContainerBuilder.deserializeBinary(containerBytes);
+        const containerBuilder2 = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
         ensure(containerBuilder2.getBehavior() == Behavior.DIRECTORY);
     });
 
-    test(`${implName} create / view Entry`, async () => {
+    it(`${implName} create / view Entry`, async () => {
         const bundler = new Bundler();
-        const sourceAddress = {medallion: 1, timestamp:2, offset: 3};
+        const sourceAddress = { medallion: 1, timestamp: 2, offset: 3 };
         const entryBuilder = new EntryBuilder();
         entryBuilder
             .setBehavior(Behavior.DIRECTORY)
@@ -141,13 +141,13 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
             .setKey(wrapKey("abc"))
             .setValue(wrapValue("xyz"));
         const address = bundler.addEntry(entryBuilder);
-        bundler.seal({medallion: 4, chainStart: 5, timestamp: 5});
+        bundler.seal({ medallion: 4, chainStart: 5, timestamp: 5 });
         await store.addBundle(bundler.bytes);
         ensure(address.medallion == 4);
         ensure(address.timestamp == 5);
-        const entry = <Entry> await store.getEntryByKey(sourceAddress, "abc",);
-        ensure(matches(entry.containerId, [2,1,3]));
-        ensure(matches(entry.entryId, [5,4,1]));
+        const entry = <Entry>await store.getEntryByKey(sourceAddress, "abc",);
+        ensure(matches(entry.containerId, [2, 1, 3]));
+        ensure(matches(entry.entryId, [5, 4, 1]));
         ensure(entry.value == "xyz");
         ensure(entry.effectiveKey == "abc");
     });

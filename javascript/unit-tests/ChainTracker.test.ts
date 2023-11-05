@@ -2,7 +2,7 @@ import { BundleInfo } from "../implementation";
 import { ChainTracker } from "../implementation/ChainTracker";
 import { ensure } from "../implementation/utils"
 
-test('track two commits', async () => {
+it('track two commits', async () => {
     const chainTracker = new ChainTracker({});
     const medallion = 521994040637930;
     const chainStart = 1662789574924000;

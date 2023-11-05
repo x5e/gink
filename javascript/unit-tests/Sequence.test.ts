@@ -2,7 +2,7 @@ import { sleep } from "./test_utils";
 import { GinkInstance, Bundler, IndexedDbStore, Sequence, Muid, Value } from "../implementation";
 import { ensure, matches, generateTimestamp } from "../implementation/utils"
 
-test('push to a queue and peek', async function () {
+it('push to a queue and peek', async function () {
     // set up the objects
     const store = new IndexedDbStore('list-test1', true);
     const instance = new GinkInstance(store);
@@ -17,7 +17,7 @@ test('push to a queue and peek', async function () {
 });
 
 
-test('push and pop', async function () {
+it('push and pop', async function () {
     // set up the objects
     const store = new IndexedDbStore('list-test2', true);
     const instance = new GinkInstance(store);
@@ -59,7 +59,7 @@ test('push and pop', async function () {
 
 });
 
-test('size and at', async function () {
+it('size and at', async function () {
     // set up the objects
     const store = new IndexedDbStore('list-test3', true);
     const instance = new GinkInstance(store);
@@ -96,7 +96,7 @@ test('size and at', async function () {
 
 });
 
-test('entries', async function () {
+it('entries', async function () {
     // set up the objects
     const store = new IndexedDbStore('list-entries-test', true);
     const instance = new GinkInstance(store);
@@ -112,10 +112,10 @@ test('entries', async function () {
         ensure(val == contents, `val=${val}, contents=${contents}`);
         buffer.push(<Value>contents);
     }
-    ensure(matches(buffer, ["A","B","C"]));
+    ensure(matches(buffer, ["A", "B", "C"]));
 });
 
-test('list-changeset', async function() {
+it('list-changeset', async function () {
     const store = new IndexedDbStore('list-changeset', true);
     const instance = new GinkInstance(store);
 
@@ -141,7 +141,7 @@ test('list-changeset', async function() {
     ensure(matches(result, ["B", "C", "D"]));
 });
 
-test('List.toJSON', async function() {
+it('List.toJSON', async function () {
     // set up the objects
     const store = new IndexedDbStore('List.toJSON', true);
     const instance = new GinkInstance(store);
@@ -171,7 +171,7 @@ test('List.toJSON', async function() {
 });
 
 
-test('List.asOf', async function() {
+it('List.asOf', async function () {
     // set up the objects
     const store = new IndexedDbStore('List.asOf', true);
     const instance = new GinkInstance(store);
@@ -202,7 +202,7 @@ test('List.asOf', async function() {
 
 });
 
-test('List.clear', async function () {
+it('List.clear', async function () {
     const store = new IndexedDbStore('List.clear', true);
     const instance = new GinkInstance(store);
     const list: Sequence = await instance.createSequence();
@@ -223,7 +223,7 @@ test('List.clear', async function () {
     ensure(size == 0, `size=${size}`);
 });
 
-test('List.purge_pop', async function () {
+it('List.purge_pop', async function () {
     const store = new IndexedDbStore('List.purge_pop', true);
     const instance = new GinkInstance(store);
     const seq = await instance.createSequence();
@@ -240,7 +240,7 @@ test('List.purge_pop', async function () {
     ensure(matches(["bar"], await seq.toArray(Infinity, beforeFirstPop)));
 });
 
-test('Sequence.reorder', async function() {
+it('Sequence.reorder', async function () {
     const store = new IndexedDbStore('Sequence.reorder');
     const instance = new GinkInstance(store);
     const seq = await instance.createSequence();
@@ -256,7 +256,7 @@ test('Sequence.reorder', async function() {
     ensure(matches(asArray, ["bar", "baz", "foo"]), JSON.stringify(asArray));
 });
 
-test('Sequence.reorder.by_position', async function() {
+it('Sequence.reorder.by_position', async function () {
     const store = new IndexedDbStore('Sequence.reorder.by_position');
     const instance = new GinkInstance(store);
     const seq = await instance.createSequence();
