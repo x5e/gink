@@ -3,7 +3,7 @@ import { ensure } from "../implementation/utils";
 import { sleep } from "./test_utils";
 
 it('set, get, delete, and size work as intended', async function () {
-    const store = new IndexedDbStore('test1', true);
+    const store = new IndexedDbStore('PM.test1', true);
     const instance = new GinkInstance(store);
     const pm1 = await instance.createPairMap();
     const box1 = await instance.createBox();
@@ -29,7 +29,7 @@ it('set, get, delete, and size work as intended', async function () {
 });
 
 it('asOf and items work as intended', async function () {
-    const store = new IndexedDbStore('test2', true);
+    const store = new IndexedDbStore('PM.test2', true);
     const instance = new GinkInstance(store);
     const pm1 = await instance.createPairMap();
     const box1 = await instance.createBox();

@@ -4,7 +4,7 @@ import { ensure } from "../implementation/utils";
 
 it('set and get Basic data', async function () {
     // set up the objects
-    const store = new IndexedDbStore('test1', true);
+    const store = new IndexedDbStore('Directory.test1', true);
     const instance = new GinkInstance(store);
     const schema = await instance.createDirectory();
 
@@ -27,7 +27,7 @@ it('set and get Basic data', async function () {
 });
 
 it('set multiple key/value pairs in one change-set', async function () {
-    const store = new IndexedDbStore('test2', true);
+    const store = new IndexedDbStore('Directory.test2', true);
     const instance = new GinkInstance(store);
     const schema = await instance.createDirectory();
 
@@ -47,7 +47,7 @@ it('set multiple key/value pairs in one change-set', async function () {
 
 
 it('use a sub-schema', async function () {
-    const instance = new GinkInstance(new IndexedDbStore('test3', true));
+    const instance = new GinkInstance(new IndexedDbStore('Directory.test3', true));
     const schema = await instance.createDirectory();
 
     // set things up
@@ -61,7 +61,7 @@ it('use a sub-schema', async function () {
 });
 
 it('convert to standard Map', async function () {
-    const instance = new GinkInstance(new IndexedDbStore('convert', true));
+    const instance = new GinkInstance(new IndexedDbStore('Directory.convert', true));
     const directory = await instance.createDirectory();
 
     await directory.set("foo", "bar");
@@ -79,7 +79,7 @@ it('convert to standard Map', async function () {
 })
 
 it('Directory.toJSON', async function () {
-    const instance = new GinkInstance(new IndexedDbStore('toJSON', true));
+    const instance = new GinkInstance(new IndexedDbStore('Directory.toJSON', true));
     const directory = await instance.createDirectory();
 
     await directory.set("foo", "bar");

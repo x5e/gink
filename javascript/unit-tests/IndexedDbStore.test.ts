@@ -1,7 +1,7 @@
 import { testStore } from "./Store.test";
 import { GinkInstance, IndexedDbStore, generateTimestamp, ensure } from "../implementation";
 
-testStore('IndexedDbStore', async () => new IndexedDbStore("test", true));
+testStore('IndexedDbStore', async () => new IndexedDbStore("IDB.test", true));
 export const result = 1;
 
 it('use methods', async () => {

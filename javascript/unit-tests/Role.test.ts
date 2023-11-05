@@ -2,7 +2,7 @@ import { GinkInstance, IndexedDbStore } from "../implementation";
 import { ensure, muidToString, muidTupleToMuid } from "../implementation/utils";
 
 it('include and exclude work as intended', async function () {
-    const store = new IndexedDbStore('test1', true);
+    const store = new IndexedDbStore('Role.test1', true);
     const instance = new GinkInstance(store);
     const role1 = await instance.createRole();
 
@@ -12,11 +12,11 @@ it('include and exclude work as intended', async function () {
     const box2 = await instance.createBox();
     await role1.include(box1);
     ensure(await role1.size() == 1, `Include test, unexpected size: ${await role1.size()}`);
-    ensure(await role1.contains(box1));
+    ensure(await role1.contains(box1), `Doesn't contain box1`);
     ensure(await role1.contains(box1.address));
 
     await role1.exclude(box1);
-    ensure(await role1.contains(box1));
+    ensure(await role1.contains(box1), `Still contains box1 after exclude`);
     ensure(await role1.size() == 0, `Exclude test, unexpected size: ${await role1.size()}`);
 
     // Testing a container can be excluded before it was included.
@@ -24,8 +24,7 @@ it('include and exclude work as intended', async function () {
     let found = false;
     const box2MuidStr = muidToString(box2.address);
     for (const entry of await store.getAllEntries()) {
-        if (typeof (entry.effectiveKey) == "object" && !(entry.effectiveKey instanceof Uint8Array) &&
-            !(entry.effectiveKey instanceof Array)) {
+        if (typeof (entry.effectiveKey) == "object" && entry.effectiveKey.length == 3 && !(entry.effectiveKey instanceof Uint8Array)) {
             if (box2MuidStr == muidToString(muidTupleToMuid(entry.effectiveKey))) {
                 found = true;
             }
@@ -35,7 +34,7 @@ it('include and exclude work as intended', async function () {
 });
 
 it('contains, toArray, and get_members work properly', async function () {
-    const store = new IndexedDbStore('test2', true);
+    const store = new IndexedDbStore('Role.test2', true);
     const instance = new GinkInstance(store);
     const role1 = await instance.createRole();
 
