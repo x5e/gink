@@ -301,20 +301,17 @@ class Graph():
             raise AssertionError("Query needs to start with a keyword.")
 
         for i in range(0, len(tokens)):
-            match tokens[i][1]:
-                case "MATCH":
-                    cypher_query.build_match(tokens[i:])
-                case "CREATE":
-                    cypher_query.build_create(tokens[i:])
-                case "WHERE" | "AND" | "OR":
-                    cypher_query.build_where_and_or(tokens[i:])
-                case "SET":
-                    cypher_query.build_set(tokens[i:])
-                case "DELETE":
-                    cypher_query.build_delete(tokens[i:])
-                case "RETURN":
-                    cypher_query.build_return(tokens[i:])
-                case _:
-                    continue
+            if tokens[i][1] == "MATCH":
+                cypher_query.build_match(tokens[i:])
+            elif tokens[i][1] == "CREATE":
+                cypher_query.build_create(tokens[i:])
+            elif tokens[i][1] in ("WHERE", "AND", "OR"):
+                cypher_query.build_where_and_or(tokens[i:])
+            elif tokens[i][1] == "SET":
+                cypher_query.build_set(tokens[i:])
+            elif tokens[i][1] == "DELETE":
+                cypher_query.build_delete(tokens[i:])
+            elif tokens[i][1] == "RETURN":
+                cypher_query.build_return(tokens[i:])
 
         return cypher_query
