@@ -1,19 +1,18 @@
 """
 To keep Cypher terminology separate from Gink, I've chosen to use names like
-Node (Gink's noun), Rel[ationship](Gink's edge/verb)
+Node (Gink's Vertex), Rel[ationship](Gink's Edge/Verb)
 """
 from typing import List, Optional, Iterable
 from pygments.token import Name, Punctuation, Operator
 from .cypher_utils import is_token_keyword
 from .cypher_clauses import *
 
-class CypherBuilder():
+class CypherQuery():
     def __init__(self) -> None:
         self.match: Optional[CypherMatch] = None
         self.create: Optional[CypherCreate] = None
         self.where: Optional[CypherWhere] = None
         self.set: Optional[List[CypherSet]] = None
-
         self.delete: Optional[CypherDelete] = None
         self.return_: Optional[CypherReturn] = None
 
@@ -22,7 +21,7 @@ class CypherBuilder():
         Constructs a MATCH based on the tokens provided. The first token
         should be a Keyword MATCH.
 
-        This method places the CypherMatch into the instance of the CypherBuilder,
+        This method places the CypherMatch into the instance of the CypherQuery,
         so there is no need to do that with the return value.
         """
         assert tokens[0][1] == 'MATCH'
@@ -117,7 +116,7 @@ class CypherBuilder():
         Constructs a CREATE based on the tokens provided. The first token
         should be a Keyword CREATE.
 
-        This method places the CypherCreate into the instance of the CypherBuilder,
+        This method places the CypherCreate into the instance of the CypherQuery,
         so there is no need to do that with the return value.
         """
         assert tokens[0][1] == 'CREATE'
@@ -133,6 +132,7 @@ class CypherBuilder():
         i = 0
         while not is_keyword:
             current_token = tokens[i]
+            print(current_token)
 
             # Marking where we are in the query
             if current_token[0] == Punctuation and "[" in current_token[1]:
@@ -141,7 +141,11 @@ class CypherBuilder():
                 # Done with relationship, moving on to connected node.
                 is_relationship = False
                 is_connected = True
-
+            
+            elif current_token[0] == Punctuation and "{" in current_token[1]:
+                in_properties = True
+            elif current_token[0] == Punctuation and "}" in current_token[1]:
+                in_properties = False
             # First node in a node-rel-node sequence
             if not is_relationship and not is_connected:
                 if current_token[0] == Name.Variable and not in_properties:
@@ -157,8 +161,9 @@ class CypherBuilder():
                 # it should be safe to assume this is a value, since properties follow
                 # {property1: 'value1'}
                 elif tokens[i-2][0] == Name.Variable and in_properties:
-                    # TODO: figure out how to properly handle quotes.
-                    node.properties[current_property] = current_token[1]
+                    property_value: str = current_token[1]
+                    property_value = property_value.replace("'", "").replace("\"", "")
+                    node.properties[current_property] = property_value
 
                 elif current_token[0] == Name.Label:
                     last_var = tokens[i-2][1] if tokens[i-2][0] == Name.Variable else None
@@ -234,7 +239,7 @@ class CypherBuilder():
         Constructs a SET based on the tokens provided. The first token
         should be a Keyword SET.
 
-        This method places the CypherSet into the instance of the CypherBuilder,
+        This method places the CypherSet into the instance of the CypherQuery,
         so there is no need to do that with the return value.
         """
         assert tokens[0][1] == 'SET' 
@@ -281,13 +286,13 @@ class CypherBuilder():
         Constructs a WHERE if the first token is WHERE, otherwise add an AND or OR to a 
         provided WhereBuilder.
 
-        This method places the CypherWhere into the instance of the CypherBuilder,
+        This method places the CypherWhere into the instance of the CypherQuery,
         so there is no need to do that with the return value.
         """
         assert tokens[0][1] in ('WHERE', 'AND', 'OR')
         if tokens[0][1] != 'WHERE':
             # This implies we are in an AND or OR operator,
-            # which means a we can use the CypherBuilder's 
+            # which means a we can use the CypherQuery's 
             # current WhereBuilder
             where_builder = self.where
             assert where_builder
@@ -322,7 +327,7 @@ class CypherBuilder():
         Constructs a RETURN based on the tokens provided. The first token
         should be a Keyword RETURN.
 
-        This method places the CypherReturn into the instance of the CypherBuilder,
+        This method places the CypherReturn into the instance of the CypherQuery,
         so there is no need to do that with the return value.
         """
         assert tokens[0][1] == 'RETURN'
@@ -352,7 +357,7 @@ class CypherBuilder():
         Constructs a DELETE based on the tokens provided. The first token
         should be a Keyword DELETE.
 
-        This method places the CypherDelete into the instance of the CypherBuilder,
+        This method places the CypherDelete into the instance of the CypherQuery,
         so there is no need to do that with the return value.
         """
         assert tokens[0][1] == 'DELETE'
@@ -376,8 +381,11 @@ class CypherBuilder():
             
         return delete_builder
     
-    def print(self):
+    def to_string(self):
         clauses = [self.create, self.match, self.where, self.set, self.return_, self.delete]
+        returning = ""
         for clause in clauses:
             if clause:
-                clause.print()
+                returning += " " + clause.to_string() #type: ignore
+
+        return returning.lstrip()

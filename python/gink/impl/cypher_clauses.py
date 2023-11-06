@@ -1,4 +1,4 @@
-from typing import Set, List, Optional, Iterable
+from typing import Set, List, Optional
 from .typedefs import UserValue
 
 class CypherNode():
@@ -10,13 +10,21 @@ class CypherNode():
         # For use with CREATE
         self.properties: dict = {}
 
-    def print(self):
+    def to_string(self) -> str:
+        returning = "("
+        returning += self.variable
+        if self.label:
+            returning += ":" + self.label
+        if self.properties:
+            returning += str(self.properties)
+        returning += ")"
         if self.rel:
-            self.rel.print()
-        else:
-            print(self.variable, ":", self.label)
-            print("properties: ", self.properties)
+            assert self.rel.var or self.rel.label
+            returning += f"-[{self.rel.var or ''}{':' + self.rel.label or ''}]->"
+            returning += self.rel.next_node.to_string()
 
+        return returning
+            
 class CypherRel():
     def __init__(self) -> None:
         self.var: Optional[str] = None
@@ -24,24 +32,24 @@ class CypherRel():
         self.previous_node: Optional[CypherNode] = None
         self.next_node: Optional[CypherNode] = None
 
-    def print(self):
-        print(f"({self.previous_node.label})-[{self.label}]->({self.next_node.label})")
-
 class CypherMatch():
     def __init__(self) -> None:
         self.root_nodes: Set[CypherNode] = set()
 
     def print(self):
         for node in self.root_nodes:
-            print(f"({node.variable if node.variable else ''}:{node.label})")
+            print(node.to_string())
 
 class CypherCreate():
     def __init__(self) -> None:
         self.root_nodes: Set[CypherNode] = set()
 
-    def print(self):
+    def to_string(self):
+        returning = "CREATE "
         for node in self.root_nodes:
-            node.print()
+            returning += node.to_string()
+        
+        return returning
 
 class CypherWhere():
     def __init__(self) -> None:
@@ -50,15 +58,19 @@ class CypherWhere():
         self.operator: Optional[str] = None
         self.value: Optional[str] = None
 
+        # Going to need to think through AND and OR more.
         self.and_: List[CypherWhere] = []
         self.or_: List[CypherWhere] = []
 
-    def print(self):
-        print(f"{self.variable}.{self.property} {self.operator} {self.value}")
+    def to_string(self):
+        returning = "WHERE "
+        returning += f"{self.variable}.{self.property} {self.operator} {self.value}"
         for item in self.and_:
-            print(f"AND {item.variable}.{item.property} {item.operator} {item.value}")
+            returning += f" AND {item.variable}.{item.property} {item.operator} {item.value}"
         for item in self.or_:
-            print(f"OR {item.variable}.{item.property} {item.operator} {item.value}")
+            returning += f" OR {item.variable}.{item.property} {item.operator} {item.value}"
+
+        return returning
 
 class CypherSet():
     def __init__(self) -> None:
@@ -67,12 +79,12 @@ class CypherSet():
         self.operator: Optional[str] = None
         self.value: Optional[UserValue] = None
 
-    def print(self):
-        print(f"{self.variable}.{self.property} {self.operator} {self.value}")
+    def to_string(self):
+        return f"SET {self.variable}.{self.property} {self.operator} {self.value}"
 
 
 # May eventually move these lists themselves into a variable directly
-# inside CypherBuilder.
+# inside CypherQuery.
 class CypherReturn():
     """
     Houses a list of variables to return.
@@ -82,8 +94,12 @@ class CypherReturn():
     def __init__(self) -> None:
         self.returning: List[str] = []
 
-    def print(self):
-        print(self.returning)
+    def to_string(self):
+        returning = "RETURN (" + self.returning[0]
+        for var in self.returning[1:]:
+            returning += ", " + var
+        returning += ")"
+        return returning
 
 class CypherDelete():
     """
@@ -94,5 +110,9 @@ class CypherDelete():
     def __init__(self) -> None:
         self.deleting: List[str] = []
 
-    def print(self):
-        print(self.deleting)
+    def to_string(self):
+        returning = "RETURN (" + self.deleting[0]
+        for var in self.deleting[1:]:
+            returning += ", " + var
+        returning += ")"
+        return returning

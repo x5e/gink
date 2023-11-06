@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional, Union, Iterable
 
 from py2neo.cypher.lexer import CypherLexer
-from pygments.token import Keyword, Name, Punctuation, Text, Operator
+from pygments.token import Keyword, Text
 
 from .typedefs import GenericTimestamp, UserValue, Inclusion
 from .container import Container
@@ -275,21 +275,21 @@ class Graph():
 
     def query(self, query: str):
         tokens = self.lexer.get_tokens(query)
-        cypher_builder = self.parse_tokens(tokens)
+        cypher_query = self.parse_tokens(tokens)
         # Obviously not done, just first step
-        return cypher_builder
+        return cypher_query
 
-    def execute_cypher(self, cypher_builder: CypherBuilder):
+    def execute_cypher(self, cypher_query: CypherQuery):
         store = self.database.get_store()
         containers = list(store.get_all_containers(behaviors=[VERTEX, VERB]))
 
-    def parse_tokens(self, tokens: Iterable, cypher_builder: CypherBuilder | None = None) -> CypherBuilder:
+    def parse_tokens(self, tokens: Iterable, cypher_query: CypherQuery | None = None) -> CypherQuery:
         """
-        Iterates through the tokens created by the CypherLexer, and builds a CypherBuilder filled with
+        Iterates through the tokens created by the CypherLexer, and builds a CypherQuery filled with
         the clauses and data in the query.
         """
-        if not cypher_builder:
-            cypher_builder = CypherBuilder()
+        if not cypher_query:
+            cypher_query = CypherQuery()
         # TODO: figure out the best way to check for Cypher syntax errors
         # here is a parser in scala: https://github.com/outr/neo4akka/blob/master/src/main/scala/com/outr/neo4akka/Macros.scala#L32
 
@@ -303,16 +303,16 @@ class Graph():
         for i in range(0, len(tokens)):
             match tokens[i][1]:
                 case "MATCH":
-                    cypher_builder.build_match(tokens[i:])
+                    cypher_query.build_match(tokens[i:])
                 case "CREATE":
-                    cypher_builder.build_create(tokens[i:])
+                    cypher_query.build_create(tokens[i:])
                 case "WHERE", "AND", "OR":
-                    cypher_builder.build_where_and_or(tokens[i:])
+                    cypher_query.build_where_and_or(tokens[i:])
                 case "SET":
-                    cypher_builder.build_set(tokens[i:])
+                    cypher_query.build_set(tokens[i:])
                 case "DELETE":
-                    cypher_builder.build_delete(tokens[i:])
+                    cypher_query.build_delete(tokens[i:])
                 case "RETURN":
-                    cypher_builder.build_return(tokens[i:])
+                    cypher_query.build_return(tokens[i:])
 
-        return cypher_builder
+        return cypher_query
