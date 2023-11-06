@@ -8,4 +8,6 @@ export { IndexedDbStore } from "./IndexedDbStore";
 export { Bundler } from "./Bundler";
 export { Muid, BundleInfo, Value } from "./typedefs";
 export { Container } from "./Container";
+export { Vertex } from "./Vertex";
+export { Verb } from "./Verb";
 export { logToStdErr, generateTimestamp, ensure } from "./utils";

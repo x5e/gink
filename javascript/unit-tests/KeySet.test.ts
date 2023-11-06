@@ -3,9 +3,9 @@ import { GinkInstance, Bundler, IndexedDbStore, Value } from "../implementation"
 import { ensure, matches } from "../implementation/utils"
 import { KeySet } from "../implementation";
 
-test('add and has basic data', async function() {
+it('add and has basic data', async function () {
     // set up the objects
-    const store = new IndexedDbStore('test1', true);
+    const store = new IndexedDbStore('ks-test1', true);
     const instance = new GinkInstance(store);
     const ks = await instance.createKeySet();
 
@@ -23,8 +23,8 @@ test('add and has basic data', async function() {
     ensure(await ks.has(myKey));
 });
 
-test('delete, and size work as intended', async function() {
-    const store = new IndexedDbStore('test2', true);
+it('delete, and size work as intended', async function () {
+    const store = new IndexedDbStore('ks-test2', true);
     const instance = new GinkInstance(store);
     const ks = await instance.createKeySet();
 
@@ -44,8 +44,8 @@ test('delete, and size work as intended', async function() {
     ensure(!await ks.has("key2"));
 });
 
-test('entries works as intended', async function() {
-    const instance = new GinkInstance(new IndexedDbStore('test3', true));
+it('entries works as intended', async function () {
+    const instance = new GinkInstance(new IndexedDbStore('ks-test3', true));
     const ks: KeySet = await instance.createKeySet();
     await ks.update(["key1", "key2", "key3"]);
     const buffer = <KeyType[]>[];
@@ -57,8 +57,8 @@ test('entries works as intended', async function() {
     ensure(matches(buffer, ["key1", "key2", "key3"]));
 });
 
-test('add multiple keys within a bundler', async function() {
-    const store = new IndexedDbStore('test4', true);
+it('add multiple keys within a bundler', async function () {
+    const store = new IndexedDbStore('ks-test4', true);
     const instance = new GinkInstance(store);
     const ks = await instance.createKeySet();
 
@@ -75,8 +75,8 @@ test('add multiple keys within a bundler', async function() {
     ensure(!await ks.has("key3"));
 });
 
-test('KeySet.toJson', async function() {
-    const instance = new GinkInstance(new IndexedDbStore('test6', true));
+it('KeySet.toJson', async function () {
+    const instance = new GinkInstance(new IndexedDbStore('ks-test6', true));
     const ks = await instance.createKeySet();
 
     await ks.add("key1");
@@ -86,8 +86,8 @@ test('KeySet.toJson', async function() {
     ensure(asJSON == `["key1","key2","key3"]`, asJSON);
 });
 
-test('KeySet.asOf', async function() {
-    const instance = new GinkInstance(new IndexedDbStore('test7', true));
+it('KeySet.asOf', async function () {
+    const instance = new GinkInstance(new IndexedDbStore('ks-test7', true));
     const ks = await instance.createKeySet();
 
     const time0 = Date.now() * 1000;
@@ -107,13 +107,13 @@ test('KeySet.asOf', async function() {
     ensure(!await ks.has("key2", time1));
 
     // testing asOf for toJson
-    ensure(await ks.toJson(false, time1)==`["key1"]`);
-    ensure(await ks.toJson(false, time2)==`["key1","key2"]`);
+    ensure(await ks.toJson(false, time1) == `["key1"]`);
+    ensure(await ks.toJson(false, time2) == `["key1","key2"]`);
 
     // testing asOf for size
-    ensure(await ks.size(time0)==0);
-    ensure(await ks.size(time1)==1);
-    ensure(await ks.size(time2)==2);
+    ensure(await ks.size(time0) == 0);
+    ensure(await ks.size(time1) == 1);
+    ensure(await ks.size(time2) == 2);
 
     // testing asOf toSet
     const values = await ks.toSet(time0);
@@ -125,8 +125,8 @@ test('KeySet.asOf', async function() {
     ensure(values1.has("key1"));
 });
 
-test('KeySet.clear', async function() {
-    const instance = new GinkInstance(new IndexedDbStore('test8', true));
+it('KeySet.clear', async function () {
+    const instance = new GinkInstance(new IndexedDbStore('ks-test8', true));
     const ks = await instance.createKeySet();
     await ks.update(["key1", "key2"]);
     const clearMuid = await ks.clear();
@@ -140,8 +140,8 @@ test('KeySet.clear', async function() {
     }
 });
 
-test('KeySet.clear(purge)', async function () {
-    const instance = new GinkInstance(new IndexedDbStore('test9', true));
+it('KeySet.clear(purge)', async function () {
+    const instance = new GinkInstance(new IndexedDbStore('ks-test9', true));
     const ks = await instance.createKeySet();
     await ks.add('key1');
     await sleep(10);

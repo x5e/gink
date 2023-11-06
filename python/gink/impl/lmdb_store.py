@@ -22,7 +22,7 @@ from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
-                     LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_MAP, PAIR_SET)
+                     LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_MAP, PAIR_SET, KEY_SET)
 
 basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "INFO"))
 
@@ -268,7 +268,7 @@ class LmdbStore(AbstractStore):
             trxn: Trxn) -> Iterable[ChangeBuilder]:
         """ Figures out which specific reset method to call to reset a container. """
         behavior = self._get_behavior(container, trxn)
-        if behavior in (DIRECTORY, BOX, ROLE, PROPERTY):
+        if behavior in (DIRECTORY, BOX, ROLE, PROPERTY, KEY_SET):
             for change in self._get_keyed_reset(container, to_time, trxn, seen, None, behavior):
                 yield change
             return
@@ -297,7 +297,7 @@ class LmdbStore(AbstractStore):
                         yield change
                     cursor_placed = containers_cursor.next()
                 # then loop over the "magic" pre-defined
-                for behavior in [DIRECTORY, SEQUENCE, BOX]:
+                for behavior in [DIRECTORY, SEQUENCE, BOX, KEY_SET]:
                     muid = Muid(-1, -1, behavior)
                     for change in self._container_reset_changes(to_time, muid, seen, txn):
                         yield change

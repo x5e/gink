@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 from pathlib import Path
 
-
 setup(
     name='gink',
+    version='${VERSION}',
     description='a system for storing data structures in lmdb',
     url='https://github.com/x5e/gink',
     author='Darin McGill',
@@ -29,7 +29,13 @@ setup(
     ],
     extras_require={
         "test": ["nose2"],
-        "lint": ["mypy"],
+        "lint": ["mypy==0.812"],
+        "docs": [
+            "sphinx",
+            "myst-parser",
+            "sphinx-rtd-theme",
+            "sphinx-copybutton"
+        ]
     },
     license_files=["LICENSE"],
     long_description=(Path(__file__).parent / "README.md").read_text(),

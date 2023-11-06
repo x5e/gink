@@ -1,4 +1,4 @@
-""" Contains the Noun, Verb, and Edge classes (all needed for graph database functionality). """
+""" Contains the Vertex, Verb, and Edge classes (all needed for graph database functionality). """
 from __future__ import annotations
 from typing import Optional, Union, Iterable
 
@@ -7,7 +7,7 @@ from pygments.token import Keyword, Name, Punctuation, Text, Operator
 
 from .typedefs import GenericTimestamp, UserValue, Inclusion
 from .container import Container
-from .coding import VERB, NOUN, inclusion, encode_value, decode_value
+from .coding import VERB, VERTEX, inclusion, encode_value, decode_value
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
@@ -16,8 +16,8 @@ from .addressable import Addressable
 from .cypher_builder import *
 
 
-class Noun(Container):
-    BEHAVIOR = NOUN
+class Vertex(Container):
+    BEHAVIOR = VERTEX
 
     def __init__(self, *,
                  root: bool = False,
@@ -27,7 +27,7 @@ class Noun(Container):
         """
         Creates a placeholder node to contain the idea of something.
 
-        muid: the global id of this noun, created on the fly if None
+        muid: the global id of this vertex, created on the fly if None
         db: database send commits through, or last db instance created if None
         """
         database = database or Database.get_last()
@@ -36,9 +36,9 @@ class Noun(Container):
             immediate = True
             bundler = Bundler()
         if root:
-            muid = Muid(-1, -1, NOUN)
+            muid = Muid(-1, -1, VERTEX)
         if muid is None:
-            muid = Container._create(NOUN, database=database, bundler=bundler)
+            muid = Container._create(VERTEX, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         if len(bundler) and immediate:
             self._database.commit(bundler)
@@ -82,7 +82,7 @@ class Noun(Container):
             bundler = Bundler(comment=comment)
         change_builder = ChangeBuilder()
         entry_builder: EntryBuilder = change_builder.entry
-        entry_builder.behavior = NOUN
+        entry_builder.behavior = VERTEX
         self._muid.put_into(entry_builder.container)
         entry_builder.deletion = True
         if purge:
@@ -113,7 +113,7 @@ class Verb(Container):
         if len(bundler):
             self._database.commit(bundler)
 
-    def create_edge(self, sub: Noun, obj: Noun, msg: Union[UserValue, Inclusion] = inclusion,
+    def create_edge(self, sub: Vertex, obj: Vertex, msg: Union[UserValue, Inclusion] = inclusion,
                     comment: Optional[str] = None, bundler: Optional[Bundler] = None) -> Edge:
         immediate = False
         if bundler is None:
@@ -129,12 +129,12 @@ class Verb(Container):
             _immediate=immediate)
 
     def get_edges(self, *,
-                  source: Union[Noun, Muid, None] = None,
-                  target: Union[Noun, Muid, None] = None,
+                  source: Union[Vertex, Muid, None] = None,
+                  target: Union[Vertex, Muid, None] = None,
                   as_of: GenericTimestamp = None) -> Iterable[Edge]:
         ts = self._database.resolve_timestamp(as_of)
-        source = source._muid if isinstance(source, Noun) else source
-        target = target._muid if isinstance(target, Noun) else target
+        source = source._muid if isinstance(source, Vertex) else source
+        target = target._muid if isinstance(target, Vertex) else target
         for found_entry in self._database.get_store().get_edge_entries(
                 ts, verb=self._muid, source=source, target=target):
             yield Edge(muid=found_entry.address, _builder=found_entry.builder)
@@ -166,8 +166,8 @@ class Edge(Addressable):
     def __init__(self,
                  muid: Union[Muid, None] = None, *,
                  action: Union[Muid, Verb, None] = None,
-                 source: Union[Muid, Noun, None] = None,
-                 target: Union[Muid, Noun, None] = None,
+                 source: Union[Muid, Vertex, None] = None,
+                 target: Union[Muid, Vertex, None] = None,
                  valued: Union[UserValue, Inclusion] = inclusion,
                  bundler: Optional[Bundler] = None,
                  database: Optional[Database] = None,
@@ -229,11 +229,11 @@ class Edge(Addressable):
     def get_action(self) -> Verb:
         return Verb(muid=self._action, database=self._database)
 
-    def get_source(self) -> Noun:
-        return Noun(muid=self._source, database=self._database)
+    def get_source(self) -> Vertex:
+        return Vertex(muid=self._source, database=self._database)
 
-    def get_target(self) -> Noun:
-        return Noun(muid=self._target, database=self._database)
+    def get_target(self) -> Vertex:
+        return Vertex(muid=self._target, database=self._database)
 
     def _get_container(self) -> Muid:
         return self._action

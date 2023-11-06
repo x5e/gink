@@ -9,6 +9,10 @@ from .box import Box
 from .sequence import Sequence
 from .property import Property
 from .database import Database
+from .graph import Vertex, Verb
+from .pair_map import PairMap
+from .pair_set import PairSet
+from .key_set import KeySet
 from .role import Role
 from .muid import Muid
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
@@ -28,6 +32,11 @@ def get_container(
             Behavior.PROPERTY: Property,
             Behavior.BOX: Box,
             Behavior.ROLE: Role,
+            Behavior.VERTEX: Vertex,
+            Behavior.VERB: Verb,
+            Behavior.KEY_SET: KeySet,
+            Behavior.PAIR_SET: PairSet,
+            Behavior.PAIR_MAP: PairMap
         }
 ) -> Container:
     """ Gets a pre-existing container. """
@@ -51,7 +60,7 @@ def get_attribution(
     """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
 
         After the timestamp and medallion it will ignore other ordered arguments, so
-        that it can be used via get_attribution(*muid).
+        that it can be used via ``get_attribution(*muid)``.
     """
     medallion_directory = Directory.get_medallion_instance(
         medallion=medallion, database=self)

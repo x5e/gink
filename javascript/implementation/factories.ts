@@ -14,22 +14,54 @@ import { PairSet } from "./PairSet";
 import { PairMap } from "./PairMap";
 import { KeySet } from "./KeySet";
 import { GinkInstance } from "./GinkInstance";
-import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid } from "./utils";
+import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid, rehydrate } from "./utils";
 import { Behavior, EntryBuilder, ContainerBuilder } from "./builders";
+import { Property } from "./Property";
+import { Vertex } from "./Vertex";
 
-export async function construct(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder): Promise<Container> {
+export async function construct(
+    ginkInstance: GinkInstance,
+    address: Muid,
+    containerBuilder?: ContainerBuilder): Promise<Container> {
+
     if (address.timestamp === -1) {
         if (address.offset === Behavior.DIRECTORY) return new Directory(ginkInstance, address);
         if (address.offset === Behavior.SEQUENCE) return new Sequence(ginkInstance, address);
         if (address.offset === Behavior.BOX) return new Box(ginkInstance, address);
+        if (address.offset === Behavior.PAIR_MAP) return new PairMap(ginkInstance, address);
+        if (address.offset === Behavior.PAIR_SET) return new PairSet(ginkInstance, address);
+        if (address.offset === Behavior.KEY_SET) return new KeySet(ginkInstance, address);
+        if (address.offset === Behavior.ROLE) return new Role(ginkInstance, address);
+        if (address.offset === Behavior.PROPERTY) return new Property(ginkInstance, address);
+        if (address.offset === Behavior.VERTEX) return new Vertex(ginkInstance, address);
     }
+
     if (containerBuilder === undefined) {
         const containerBytes = ensure(await ginkInstance.store.getContainerBytes(address));
-        containerBuilder = <ContainerBuilder> ContainerBuilder.deserializeBinary(containerBytes);
+        containerBuilder = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
     }
-    if (containerBuilder.getBehavior() == Behavior.DIRECTORY) return (new Directory(ginkInstance, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.SEQUENCE) return (new Sequence(ginkInstance, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.BOX) return (new Box(ginkInstance, address, containerBuilder));
+
+    if (containerBuilder.getBehavior() == Behavior.BOX)
+        return (new Box(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.SEQUENCE)
+        return (new Sequence(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.KEY_SET)
+        return (new KeySet(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.DIRECTORY)
+        return (new Directory(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.PAIR_SET)
+        return (new PairSet(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.PAIR_MAP)
+        return (new PairMap(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.VERTEX)
+        return (new Vertex(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.VERB)
+        throw new Error("Verbs aren't implemented in Type/Javascript yet!");
+    if (containerBuilder.getBehavior() == Behavior.PROPERTY)
+        return (new Property(ginkInstance, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.ROLE)
+        return (new Role(ginkInstance, address, containerBuilder));
+
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
 }
 
@@ -40,14 +72,10 @@ export async function interpret(entry: Entry, ginkInstance: GinkInstance): Promi
     if (entry.value !== undefined)
         return entry.value;
     if (entry.pointeeList.length > 0) {
-        const muid: Muid = {
-            timestamp: entry.pointeeList[0][0],
-            medallion: entry.pointeeList[0][1],
-            offset: entry.pointeeList[0][2],
-        };
+        const muid: Muid = rehydrate(entry.pointeeList[0]);
         return construct(ginkInstance, muid);
     }
-    if (typeof(entry.effectiveKey)=="object" && !(entry.effectiveKey instanceof Array) && !(entry.effectiveKey instanceof Uint8Array)) {
+    if (typeof (entry.effectiveKey) == "object" && entry.effectiveKey.length == 3 && !(entry.effectiveKey instanceof Uint8Array)) {
         // For a MuidTuple effective key
         return await construct(ginkInstance, muidTupleToMuid(entry.effectiveKey));
     }
@@ -75,7 +103,7 @@ export async function toJson(value: Value | Container, indent: number | boolean 
 
 export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: Bytes, entryAddress?: Muid): Promise<Value | Container | undefined> {
     ensure(entryBytes instanceof Uint8Array);
-    const entryBuilder = <EntryBuilder> EntryBuilder.deserializeBinary(entryBytes);
+    const entryBuilder = <EntryBuilder>EntryBuilder.deserializeBinary(entryBytes);
     if (entryBuilder.hasValue()) {
         return unwrapValue(entryBuilder.getValue());
     }
@@ -93,20 +121,20 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
 * I can't import List, Directory, etc. into this Container.ts because it will cause the inherits clauses to break.
 * So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
 */
-Container._getBackRefsFunction = function(instance: GinkInstance, pointingTo: Container, asOf?: AsOf):
+Container._getBackRefsFunction = function (instance: GinkInstance, pointingTo: Container, asOf?: AsOf):
     AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
     return (async function* () {
         const entries = await instance.store.getBackRefs(pointingTo.address);
         for (const entry of entries) {
             const containerMuid = muidTupleToMuid(entry.containerId);
             const entryMuid = muidTupleToMuid(entry.entryId);
-            const there = await instance.store.getEntryById(containerMuid, entryMuid, asOf);
-            if (! there) continue;
+            const there = await instance.store.getEntryById(entryMuid, asOf);
+            if (!there) continue;
             const containerBytes = await instance.store.getContainerBytes(containerMuid);
-            const containerBuilder = <ContainerBuilder> ContainerBuilder.deserializeBinary(containerBytes);
+            const containerBuilder = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
             if (entry.behavior == Behavior.DIRECTORY) {
                 yield <[KeyType | Muid | undefined, Container]>
-                        [entry.effectiveKey, new Directory(instance, containerMuid, containerBuilder)];
+                    [entry.effectiveKey, new Directory(instance, containerMuid, containerBuilder)];
             }
             if (entry.behavior == Behavior.SEQUENCE) {
                 yield [entryMuid, new Sequence(instance, containerMuid, containerBuilder)];

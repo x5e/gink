@@ -6,7 +6,7 @@ The typescript implementation can be used in one of three modes:
 * in a web browser, which can't listen for incoming connections but can still connect to server instances
 
 # Coding Conventions
-* Each typescript class should have a CamelCase name and exist in a cooresponding CamelCase.ts file, and 
+* Each typescript class should have a CamelCase name and exist in a corresponding CamelCase.ts file, and
 should not export anything other than the respective class.
 * Non-class code goes in lower case files.
 * Files should be formatted according to the visual studio code default formatter.

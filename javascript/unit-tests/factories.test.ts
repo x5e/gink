@@ -1,7 +1,8 @@
 import { GinkInstance, IndexedDbStore } from "../implementation";
+import { Property } from "../implementation/Property";
 import { ensure } from "../implementation/utils"
 
-test('complex.toJSON', async function () {
+it('complex.toJSON', async function () {
     const instance = new GinkInstance(new IndexedDbStore('toJSON', true));
     const directory = await instance.createDirectory();
 
@@ -23,7 +24,7 @@ test('complex.toJSON', async function () {
     await directory.set("tuple", ["yes"]);
 
     const asJson = await directory.toJson();
-    const expected = `{"bar":3,"document":{"a date":"2022-10-16T03:50:49.196Z","an array":[1,3,` + 
+    const expected = `{"bar":3,"document":{"a date":"2022-10-16T03:50:49.196Z","an array":[1,3,` +
         `true,false,null],"some bytes":"5E20","sub object":{"key":"value"}},"foo":"bar","tuple":["yes"]}`;
     ensure(asJson == expected, asJson);
 
@@ -31,4 +32,25 @@ test('complex.toJSON', async function () {
     const pulledOut = await directory.get("document");
     ensure(pulledOut[Symbol.toStringTag] === "Map"); // true
     // ensure(pulledOut instanceof Map); // false
+});
+
+
+it('various.contents', async function () {
+    const instance = new GinkInstance(new IndexedDbStore('contents', true));
+    const box = await instance.createBox();
+    const property = await instance.createProperty();
+
+    await box.set(property);
+    let found = await box.get();
+    ensure(property.equals(found));
+
+    const pairSet = await instance.createPairSet();
+    await box.set(pairSet);
+    found = await box.get();
+    ensure(pairSet.equals(found));
+
+    const directory = await instance.getGlobalDirectory();
+    await box.set(directory);
+    found = await box.get();
+    ensure(directory.equals(found));
 });

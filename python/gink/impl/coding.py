@@ -19,7 +19,7 @@ SEQUENCE: int = Behavior.SEQUENCE  # type: ignore
 DIRECTORY: int = Behavior.DIRECTORY  # type: ignore
 PROPERTY: int = Behavior.PROPERTY  # type: ignore
 BOX: int = Behavior.BOX  # type: ignore
-NOUN: int = Behavior.NOUN  # type: ignore
+VERTEX: int = Behavior.VERTEX  # type: ignore
 ROLE: int = Behavior.ROLE # type: ignore
 VERB: int = Behavior.VERB # type: ignore
 KEY_SET: int = Behavior.KEY_SET # type: ignore
@@ -135,7 +135,7 @@ class Placement(NamedTuple):
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None, Tuple[Muid, Muid]]
         if behavior in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(builder)
-        elif behavior in (BOX, NOUN, VERB):
+        elif behavior in (BOX, VERTEX, VERB):
             middle_key = None
         elif behavior == SEQUENCE:
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
@@ -175,7 +175,7 @@ class Placement(NamedTuple):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using in (PAIR_SET, PAIR_MAP):
             middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
-        elif using in (BOX, NOUN, VERB):
+        elif using in (BOX, VERTEX, VERB):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")
@@ -198,7 +198,7 @@ class Placement(NamedTuple):
         elif isinstance(self.middle, tuple):
             assert len(self.middle) == 2
             if not isinstance(self.middle[0], Muid) and not isinstance(self.middle[1], Muid): # type: ignore
-                # If self.middle is a container (a noun)/not a muid
+                # If self.middle is a container (a vertex)/not a muid
                 assert not isinstance(self.middle[0], int)
                 parts.append(self.middle[0]._muid)
                 parts.append(self.middle[1]._muid)
@@ -244,7 +244,7 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid
     entry_builder.behavior = behavior
     muid.put_into(entry_builder.container)  # type: ignore
     entry_builder.deletion = True  # type: ignore
-    if behavior == DIRECTORY:
+    if behavior in (DIRECTORY, KEY_SET):
         assert isinstance(key, (int, str, bytes))
         encode_key(key, entry_builder.key)  # type: ignore
     elif behavior == BOX:
@@ -274,7 +274,7 @@ def decode_entry_occupant(entry_muid: Muid, builder: EntryBuilder) -> Union[User
         return Muid.create(builder=builder.pointee, context=entry_muid)
     if builder.HasField("value"):  # type: ignore
         return decode_value(builder.value)
-    if builder.behavior == ROLE:
+    if builder.behavior in (ROLE, KEY_SET):
         return inclusion
     raise ValueError(f"can't interpret {builder}")
 

@@ -1,4 +1,4 @@
-""" Contains the `Property` Container class. """
+""" Contains the `Role` Container class. """
 from __future__ import annotations
 from typing import Optional, Union, Set, Iterable
 
@@ -17,7 +17,7 @@ class Role(Container):
     def __init__(self, *, contents: Optional[Set[Union[Muid, Container]]]=None,
                  muid: Optional[Muid] = None, database=None):
         """
-        Constructor for a property definition.
+        Constructor for a role definition.
 
         muid: the global id of this directory, created on the fly if None
         db: database send commits through, or last db instance created if None

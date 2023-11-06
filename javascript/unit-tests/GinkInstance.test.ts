@@ -4,8 +4,8 @@ import { ensure } from "../implementation/utils"
 import { BundleBytes } from "../implementation/typedefs";
 import { BundleBuilder } from "../implementation/builders";
 
-test('test commit', async () => {
-    const store = new IndexedDbStore();
+it('test commit', async () => {
+    const store = new IndexedDbStore("GinkInstance.commit");
     const instance = new GinkInstance(store);
     const commitInfo = await instance.addBundler(new Bundler("hello world"));
     ensure(commitInfo.comment == "hello world");
@@ -17,14 +17,14 @@ test('test commit', async () => {
     return "okay!";
 });
 
-test('uses claimed chain', async () => {
-    const store = new IndexedDbStore("test", true);
+it('uses claimed chain', async () => {
+    const store = new IndexedDbStore("GinkInstance.test", true);
     await store.ready;
     const commitBytes = makeChainStart("chain start comment", MEDALLION1, START_MICROS1);
     await store.addBundle(commitBytes);
     await store.claimChain(MEDALLION1, START_MICROS1);
     await store.getCommits((commitBytes: BundleBytes, _commitInfo: BundleInfo) => {
-        const commit = <BundleBuilder> BundleBuilder.deserializeBinary(commitBytes);
+        const commit = <BundleBuilder>BundleBuilder.deserializeBinary(commitBytes);
         ensure(commit.getComment() == "chain start comment")
     })
     const instance = new GinkInstance(store);

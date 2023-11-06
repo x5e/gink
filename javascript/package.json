@@ -1,6 +1,6 @@
 {
-  "name": "@darinmcgill/gink",
-  "version": "0.20230318.0",
+  "name": "@x5e/gink",
+  "version": "${VERSION}",
   "description": "an eventually consistent database",
   "main": "tsc.out/implementation/main.js",
   "browser": "webpack.out/packed.js",
@@ -23,14 +23,16 @@
   "files": [
     "package.json",
     "tsc.out/**",
-    "protoc.out/**",
-    "webpack.out/**"
+    "webpack.out/**",
+    "README.md"
   ],
   "bin": "./tsc.out/implementation/main.js",
   "scripts": {
     "serve": "GINK_PORT=8080 ./tsc.out/implementation/main.js",
     "build": "tsc",
-    "test": "jest"
+    "test": "jest -- unit-tests",
+    "browser-unit": "karma start",
+    "browser-integration": "jest -- browser.test.js"
   },
   "homepage": "https://github.com/x5e/gink#readme",
   "dependencies": {
@@ -45,6 +47,15 @@
   "devDependencies": {
     "@types/google-protobuf": "^3.15.6",
     "@types/jest": "^29.5.0",
-    "ts-jest": "^29.0.5"
+    "expect": "^29.7.0",
+    "jest-puppeteer": "^9.0.1",
+    "karma-webpack": "^5.0.0",
+    "node-loader": "^2.0.0",
+    "puppeteer": "^21.4.1",
+    "ts-jest": "^29.0.5",
+    "ts-loader": "^9.5.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-karma-jasmine": "^4.0.0"
   }
 }

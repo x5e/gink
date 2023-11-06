@@ -1,2 +1,2 @@
-var gink = require("./tsc.out/index");
+var gink = require("./tsc.out/implementation/index");
 globalThis.gink = gink;

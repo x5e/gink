@@ -1,0 +1,8 @@
+npm
+protobuf-compiler
+python3-nose2
+python3-wsproto
+python3-sortedcontainers
+python3-lmdb
+python3-protobuf
+make

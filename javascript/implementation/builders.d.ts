@@ -14,6 +14,8 @@ export declare enum Behavior {
     DIRECTORY=4,
     PAIR_SET=5,
     PAIR_MAP=6,
+    VERTEX = 7,
+    VERB = 8,
     PROPERTY=9,
     ROLE=10
 }
