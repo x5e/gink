@@ -15,6 +15,8 @@ class CypherBuilder():
         self.delete: Optional[CypherDelete] = None
         self.return_: Optional[CypherReturn] = None
 
+    
+
     def add_set(self, cypher_set):
         assert isinstance(cypher_set, CypherSet)
         if not self.set:

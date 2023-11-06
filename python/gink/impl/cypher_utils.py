@@ -1,22 +1,19 @@
 from typing import Iterable
-from pygments.token import Keyword, Name, Punctuation, Text, Operator
+from pygments.token import Keyword, Name, Punctuation, Operator
 
 from ..impl.cypher_builder import *
 
 def build_match(tokens: Iterable) -> CypherMatch:
-    assert tokens[1][1] == 'MATCH'
+    assert tokens[0][1] == 'MATCH'
     # When we encounter a -[]->, we need to treat the variable differently.
     is_relationship = False
     # This variable is to let the loop know we are in the final connected node of -[]->()
     is_connected = False
     is_keyword = False
-    match_builder = CypherMatch
+    match_builder = CypherMatch()
     i = 0
     while not is_keyword:
-    #     try:
         current_token = tokens[i]
-    #     except IndexError:
-    #         break
 
         # Marking where we are in the query
         if current_token[0] == Punctuation and "[" in current_token[1]:
@@ -87,14 +84,14 @@ def build_match(tokens: Iterable) -> CypherMatch:
             next_token = tokens[i+1]
             is_keyword = is_token_keyword(next_token)
         except IndexError:
-            next_token = None
+            break
 
         i += 1
     
     return match_builder
 
 def build_create(tokens: Iterable) -> CypherCreate:
-    assert tokens[1][1] == 'CREATE'
+    assert tokens[0][1] == 'CREATE'
     # When we encounter a -[]->, we need to treat the variable differently.
     is_relationship = False
     # This variable is to let the loop know we are in the final connected node of -[]->()
@@ -104,10 +101,7 @@ def build_create(tokens: Iterable) -> CypherCreate:
     create_builder = CypherCreate()
     i = 0
     while not is_keyword:
-        # try:
         current_token = tokens[i]
-        # except IndexError:
-        #     break
 
         # First node in a node-rel-node sequence
         if not is_relationship and not is_connected:
@@ -190,22 +184,19 @@ def build_create(tokens: Iterable) -> CypherCreate:
             next_token = tokens[i+1]
             is_keyword = is_token_keyword(next_token)
         except IndexError:
-            next_token = None
+            break
 
         i += 1
 
     return create_builder
 
 def build_set(tokens: Iterable) -> CypherSet:
-    assert tokens[1][1] == 'SET' 
+    assert tokens[0][1] == 'SET' 
     set_builder = CypherSet()
     is_keyword = False
     i = 0
     while not is_keyword:
-        # try:
         current_token = tokens[i]
-        # except IndexError:
-        #     break
         # SET clauses are pretty simple - SET var.property operator value
         if tokens[i-1][1] == "." and current_token[0] == Name.Variable:
                 set_builder.property = current_token[1]
@@ -220,22 +211,87 @@ def build_set(tokens: Iterable) -> CypherSet:
             next_token = tokens[i+1]
             is_keyword = is_token_keyword(next_token)
         except IndexError:
-            next_token = None
+            break
 
         i += 1
 
     return set_builder
 
 def where_and_or(tokens: Iterable, where_builder: Optional[CypherWhere]) -> CypherWhere:
-    assert tokens[1][1] in ('WHERE', 'AND', 'OR')
-    if tokens[1][1] != 'WHERE':
+    """
+    This is a sort of 'catch-all' for WHERE, AND, and OR,
+    which all behave similarly
+    """
+    assert tokens[0][1] in ('WHERE', 'AND', 'OR')
+    if tokens[0][1] != 'WHERE':
+        # This implies we are in an AND or OR operator,
+        # which means a where builder needs to be passed
         assert where_builder
     else:
         where_builder = CypherWhere()
+    is_keyword = False
+    i = 0
+    while not is_keyword:
+        current_token = tokens[i]
+        if tokens[i-1][1] == "." and current_token[0] == Name.Variable:
+                where_builder.property = current_token[1]
+        elif current_token[0] == Name.Variable:
+            where_builder.variable = current_token[1]
+        elif current_token[0] == Operator and not current_token[1] == ".":
+            where_builder.operator = current_token[1]
+        elif tokens[i-1][0] == Operator and not tokens[i-1][1] == ".":
+            where_builder.value = current_token[1]
 
-    ### More here
+        try:
+            next_token = tokens[i+1]
+            is_keyword = is_token_keyword(next_token)
+        except IndexError:
+            break
+
+        i += 1
     
     return where_builder
+
+def build_return(tokens: Iterable) -> CypherReturn:
+    assert tokens[0][1] == 'RETURN'
+    return_builder = CypherReturn()
+    is_keyword = False
+    i = 0
+    while not is_keyword:
+        current_token = tokens[i]
+        if current_token[0] == Name.Variable:
+            return_builder.returning.append(current_token[1])
+
+        try:
+            next_token = tokens[i+1]
+            is_keyword = is_token_keyword(next_token)
+        except IndexError:
+            break
+
+        i += 1
+
+    return return_builder
+
+def build_delete(tokens: Iterable) -> CypherDelete:
+    assert tokens[0][1] == 'DELETE'
+    delete_builder = CypherDelete()
+    is_keyword = False
+    i = 0
+    while not is_keyword:
+        current_token = tokens[i]
+        if current_token[0] == Name.Variable:
+            delete_builder.deleting.append(current_token[1])
+
+        try:
+            next_token = tokens[i+1]
+            is_keyword = is_token_keyword(next_token)
+        except IndexError:
+            break
+
+        i += 1
+        
+    return delete_builder
+        
 
 def is_token_keyword(token) -> bool:
     if token[0] == Keyword or token[1].upper() == "AND" or token[1].upper() == "OR":

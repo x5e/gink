@@ -14,6 +14,7 @@ from .bundler import Bundler
 from .builders import EntryBuilder, ChangeBuilder
 from .addressable import Addressable
 from .cypher_builder import *
+from .cypher_utils import *
 
 
 class Vertex(Container):
@@ -294,258 +295,33 @@ class Graph():
 
         # TODO: There is still a ton more to do here in terms of handling clauses and stuff.
 
-        # I want this method to recurse for every keyword, so this is how I'm keeping track.
-        is_keyword = False
         # Make tokens generator subscriptable and remove whitespace.
         tokens = [token for token in tokens if token[0] != Text.Whitespace]
-        # If the method is working properly, the first item of the list should be the keyword to analyze.
-        first_keyword = tokens[0][1].upper()
+        if tokens[0][0] != Keyword:
+            raise AssertionError("Query needs to start with a keyword.")
 
-        # Initializing hash tables based on the keywords encountered
-        if first_keyword == "MATCH":
-            cypher_match = CypherMatch()
-            cypher_builder.match = cypher_match
-
-        elif first_keyword == "CREATE":
-            cypher_create = CypherCreate()
-            cypher_builder.create = cypher_create
-
-        # Using this current_clause variable to shorten the code, since these
-        # three keywords all operate in very similar ways
-        elif first_keyword in ("WHERE", "AND", "OR"):
-            if cypher_builder.where:
-                    cypher_where = cypher_builder.where
-            else:
-                cypher_where = CypherWhere()
-                cypher_builder.where = cypher_where
-            if first_keyword == "WHERE":
-                current_clause = cypher_where
-            elif first_keyword == "AND":
-                current_clause = CypherWhere()
-                cypher_where.and_.append(current_clause)
-            elif first_keyword == "OR":
-                current_clause = CypherWhere()
-                cypher_where.or_.append(current_clause)
-
-        elif first_keyword == "SET":
-            cypher_set = CypherSet()
-            cypher_builder.set.append(cypher_set)
-
-        elif first_keyword == "DELETE":
-            cypher_delete = CypherDelete()
-            cypher_builder.delete = cypher_delete
-
-        elif first_keyword == "RETURN":
-            cypher_return = CypherReturn()
-            cypher_builder.return_ = cypher_return
-
-        # When we encounter a -[]->, we need to treat the variable differently.
-        is_relationship = False
-        # This variable is to let the loop know we are in the final connected node of -[]->()
-        is_connected = False
-        # determining whether the Name.Variable token is actually a variable or a property
-        in_properties = False
-
-        i = 0
-        while not is_keyword:
-            try:
-                current_token = tokens[i]
-            except IndexError:
-                break
-
-            # Marking where we are in the query
-            if current_token[0] == Punctuation and "[" in current_token[1]:
-                    is_relationship = True
-            elif current_token[0] == Punctuation and "]" in current_token[1]:
-                # Done with relationship, moving on to connected node.
-                is_relationship = False
-                is_connected = True
-            elif current_token[0] == Punctuation and "{" in current_token[1]:
-                in_properties = True
-            elif current_token[0] == Punctuation and "}" in current_token[1]:
-                in_properties = False
-
-            print(current_token)
-            if first_keyword == "MATCH":
-                # First node in a node-rel-node sequence
-                if not is_relationship and not is_connected:
-                    if current_token[0] == Name.Variable:
-                        node = CypherNode()
-                        cypher_match.root_nodes.add(node)
-                        node.variable = current_token[1]
-
-                    elif current_token[0] == Name.Label:
-                        last_var = tokens[i-2][1] if tokens[i-2][0] == Name.Variable else None
-                        # If the query includes a variable, add the label to the node we just created
-                        if last_var:
-                            node.label = current_token[1]
-                        # Otherwise, we need to create the node here without a variable.
-                        else:
-                            node = CypherNode()
-                            # Remember this node specifically when we reach the end of (node)-[rel]-(node)
-                            cypher_match.root_nodes.add(node)
-                            node.label = current_token[1]
-
-                elif is_relationship and not is_connected:
-                    if current_token[0] == Name.Variable:
-                        # Node still refers to the variable declared above, since a relationship has to
-                        # create a node first.
-                        rel = CypherRel()
-                        node.rel = rel
-                        rel.var = current_token[1]
-                        rel.previous_node = node
-
-                    elif current_token[0] == Name.Label:
-                        last_var = tokens[i-2][1] if tokens[i-2][0] == Name.Variable else None
-                        if last_var and rel:
-                            rel.label = current_token[1]
-                        else:
-                            rel = CypherRel()
-                            node.rel = rel
-                            rel.label = current_token[1]
-                            rel.previous_node = node
-
-                elif is_connected and not is_relationship:
-                    if current_token[0] == Name.Variable:
-                        node = CypherNode()
-                        rel.next_node = node
-                        cypher_match.root_nodes.add(node)
-                        node.variable = current_token[1]
-
-                    elif current_token[0] == Name.Label:
-                        last_var = tokens[i-2][1] if tokens[i-2][0] == Name.Variable else None
-                        # If the query includes a variable, add the label to the node we just created
-                        if last_var:
-                            node.label = current_token[1]
-                        # Otherwise, we need to create the node here without a variable.
-                        else:
-                            node = CypherNode()
-                            rel.next_node = node
-                            node.label = current_token[1]
-
-            elif first_keyword == "CREATE":
-                # First node in a node-rel-node sequence
-                if not is_relationship and not is_connected:
-                    if current_token[0] == Name.Variable and not in_properties:
-                        node = CypherNode()
-                        cypher_create.root_nodes.add(node)
-                        node.variable = current_token[1]
-
-                    elif current_token[0] == Name.Variable and in_properties:
-                        current_property = current_token[1]
-                        node.properties[current_property] = None
-
-                    # If the second to last token was a variable and we are in properties,
-                    # it should be safe to assume this is a value, since properties follow
-                    # {property1: 'value1'}
-                    elif tokens[i-2][0] == Name.Variable and in_properties:
-                        # TODO: figure out how to properly handle quotes.
-                        node.properties[current_property] = current_token[1]
-
-                    elif current_token[0] == Name.Label:
-                        last_var = tokens[i-2][1] if tokens[i-2][0] == Name.Variable else None
-                        # If the query includes a variable, add the label to the node we just created
-                        if last_var:
-                            node.label = current_token[1]
-                        # Otherwise, we need to create the node here without a variable.
-                        else:
-                            node = CypherNode()
-                            # Remember this node specifically when we reach the end of (node)-[rel]-(node)
-                            cypher_match.root_nodes.add(node)
-                            node.label = current_token[1]
-
-                elif is_relationship and not is_connected:
-                    if current_token[0] == Name.Variable:
-                        # Node still refers to the variable declared above, since a relationship has to
-                        # create a node first.
-                        rel = CypherRel()
-                        node.rel = rel
-                        rel.var = current_token[1]
-                        rel.previous_node = node
-
-                    elif current_token[0] == Name.Label:
-                        last_var = tokens[i-2][1] if tokens[i-2][0] == Name.Variable else None
-                        if last_var and rel:
-                            rel.label = current_token[1]
-                        else:
-                            rel = CypherRel()
-                            node.rel = rel
-                            rel.label = current_token[1]
-                            rel.previous_node = node
-
-                elif is_connected and not is_relationship:
-                    if current_token[0] == Name.Variable and not in_properties:
-                        node = CypherNode()
-                        rel.next_node = node
-                        node.variable = current_token[1]
-
-                    elif current_token[0] == Name.Variable and in_properties:
-                        current_property = current_token[1]
-                        node.properties[current_property] = None
-
-                    # If the second to last token was a variable and we are in properties,
-                    # it should be safe to assume this is a value, since properties follow
-                    # {property1: 'value1'}
-                    elif tokens[i-2][0] == Name.Variable and in_properties:
-                        # TODO: figure out how to properly handle quotes for property values.
-                        node.properties[current_property] = current_token[1]
-
-                    elif current_token[0] == Name.Label:
-                        last_var = tokens[i-2][1] if tokens[i-2][0] == Name.Variable else None
-                        # If the query includes a variable, add the label to the node we just created
-                        if last_var:
-                            node.label = current_token[1]
-                        # Otherwise, we need to create the node here without a variable.
-                        else:
-                            node = CypherNode()
-                            rel.next_node = node
-                            node.label = current_token[1]
-
-            elif first_keyword == "SET":
-                # SET clauses are pretty simple - SET var.property operator value
-                if tokens[i-1][1] == "." and current_token[0] == Name.Variable:
-                        cypher_set.property = current_token[1]
-                elif current_token[0] == Name.Variable:
-                    cypher_set.variable = current_token[1]
-                elif current_token[0] == Operator and not current_token[1] == ".":
-                    cypher_set.operator = current_token[1]
-                elif tokens[i-1][0] == Operator and not tokens[i-1][1] == ".":
-                    cypher_set.value = current_token[1]
-
-            # WHERE AND and OR are basically the same. The difficult part comes with
-            # trying to organize the classes to where it makes sense to loop through
-            # and check the conditions.
-            elif first_keyword in ("WHERE", "AND", "OR"):
-                if tokens[i-1][1] == "." and current_token[0] == Name.Variable:
-                        current_clause.property = current_token[1]
-                elif current_token[0] == Name.Variable:
-                    current_clause.variable = current_token[1]
-                elif current_token[0] == Operator and not current_token[1] == ".":
-                    current_clause.operator = current_token[1]
-                elif tokens[i-1][0] == Operator and not tokens[i-1][1] == ".":
-                    current_clause.value = current_token[1]
-
-            elif first_keyword == "RETURN":
-                if current_token[0] == Name.Variable:
-                    cypher_return.returning.append(current_token[1])
-
-            elif first_keyword == "DELETE":
-                if current_token[0] == Name.Variable:
-                    cypher_delete.deleting.append(current_token[1])
-
-            # Stop the loop if the next token is a keyword.
-            try:
-                next_token = tokens[i+1]
-                # Treating AND as a keyword that will work similar to WHERE
-                if next_token[0] == Keyword or next_token[1].upper() == "AND" or next_token[1].upper() == "OR":
-                    is_keyword = True
-            except IndexError:
-                next_token = None
-
-            i += 1
-
-        # Recurse with the remainder of the unparsed tokens, if there is anything left to parse.
-        if len(tokens) > 1 and next_token:
-            self.parse_tokens(tokens=tokens[i:], cypher_builder=cypher_builder)
+        for i in range(0, len(tokens)):
+            match tokens[i][1]:
+                case "MATCH":
+                    match_builder = build_match(tokens[i:])
+                    cypher_builder.match = match_builder
+                case "CREATE":
+                    create_builder = build_create(tokens[i:])
+                    cypher_builder.create = create_builder
+                case "WHERE":
+                    where_builder = where_and_or(tokens[i:])
+                    cypher_builder.where = where_builder
+                case "AND", "OR":
+                    updated_where_builder = where_and_or(tokens[i:], where_builder)
+                    cypher_builder.where = updated_where_builder
+                case "SET":
+                    set_builder = build_set(tokens[i:])
+                    cypher_builder.set = set_builder
+                case "DELETE":
+                    delete_builder = build_delete(tokens[i:])
+                    cypher_builder.delete = delete_builder
+                case "RETURN":
+                    return_builder = build_return(tokens[i:])
+                    cypher_builder.return_ = return_builder
 
         return cypher_builder
