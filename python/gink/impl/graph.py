@@ -13,7 +13,7 @@ from .database import Database
 from .bundler import Bundler
 from .builders import EntryBuilder, ChangeBuilder
 from .addressable import Addressable
-from .cypher_builder import *
+from .cypher_query import *
 from .cypher_utils import *
 
 
@@ -303,25 +303,16 @@ class Graph():
         for i in range(0, len(tokens)):
             match tokens[i][1]:
                 case "MATCH":
-                    match_builder = build_match(tokens[i:])
-                    cypher_builder.match = match_builder
+                    cypher_builder.build_match(tokens[i:])
                 case "CREATE":
-                    create_builder = build_create(tokens[i:])
-                    cypher_builder.create = create_builder
-                case "WHERE":
-                    where_builder = where_and_or(tokens[i:])
-                    cypher_builder.where = where_builder
-                case "AND", "OR":
-                    updated_where_builder = where_and_or(tokens[i:], where_builder)
-                    cypher_builder.where = updated_where_builder
+                    cypher_builder.build_create(tokens[i:])
+                case "WHERE", "AND", "OR":
+                    cypher_builder.build_where_and_or(tokens[i:])
                 case "SET":
-                    set_builder = build_set(tokens[i:])
-                    cypher_builder.set = set_builder
+                    cypher_builder.build_set(tokens[i:])
                 case "DELETE":
-                    delete_builder = build_delete(tokens[i:])
-                    cypher_builder.delete = delete_builder
+                    cypher_builder.build_delete(tokens[i:])
                 case "RETURN":
-                    return_builder = build_return(tokens[i:])
-                    cypher_builder.return_ = return_builder
+                    cypher_builder.build_return(tokens[i:])
 
         return cypher_builder

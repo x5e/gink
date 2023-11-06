@@ -1,34 +1,5 @@
-"""
-To keep Cypher terminology separate from Gink, I've chosen to use names like
-Node (Gink's noun), Rel[ationship](Gink's edge/verb)
-"""
-from typing import Set, List, Optional
+from typing import Set, List, Optional, Iterable
 from .typedefs import UserValue
-
-class CypherBuilder():
-    def __init__(self) -> None:
-        self.match: Optional[CypherMatch] = None
-        self.create: Optional[CypherCreate] = None
-        self.where: Optional[CypherWhere] = None
-        self.set: Optional[List[CypherSet]] = None
-
-        self.delete: Optional[CypherDelete] = None
-        self.return_: Optional[CypherReturn] = None
-
-    
-
-    def add_set(self, cypher_set):
-        assert isinstance(cypher_set, CypherSet)
-        if not self.set:
-            self.set = []
-        self.set.append(cypher_set)
-
-    def print_set(self):
-        """
-        Prints every SET clause in the query.
-        """
-        for set in self.set:
-            set.print()
 
 class CypherNode():
     def __init__(self) -> None:
@@ -38,6 +9,13 @@ class CypherNode():
 
         # For use with CREATE
         self.properties: dict = {}
+
+    def print(self):
+        if self.rel:
+            self.rel.print()
+        else:
+            print(self.variable, ":", self.label)
+            print("properties: ", self.properties)
 
 class CypherRel():
     def __init__(self) -> None:
@@ -63,7 +41,7 @@ class CypherCreate():
 
     def print(self):
         for node in self.root_nodes:
-            print(node.label, node.properties, "-[", node.rel.label, "]->", node.rel.next_node.label, node.rel.next_node.properties)
+            node.print()
 
 class CypherWhere():
     def __init__(self) -> None:
