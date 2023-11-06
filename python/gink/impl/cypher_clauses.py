@@ -17,11 +17,23 @@ class CypherNode():
         if self.label:
             returning += ":" + self.label
         if self.properties:
-            returning += str(self.properties)
+            returning += "{"
+            for key, val in self.properties.items():
+                # Make sure there are no quotes in the key so this
+                # can be reconstructed as a query
+                key = str(key).replace('"', '').replace('\'', '')
+                is_val_str = isinstance(val, str)
+                # This feels a little hacky, but it is important for only strings
+                # to have quotes in a query.
+                returning += f"{key}: "
+                returning += "'" if is_val_str else ''
+                returning += val
+                returning += "'" if is_val_str else ''
+            returning += "}"
         returning += ")"
         if self.rel:
-            assert self.rel.var or self.rel.label
-            returning += f"-[{self.rel.var or ''}{':' + self.rel.label if self.rel.label else ''}]->"
+            assert self.rel.variable or self.rel.label
+            returning += f"-[{self.rel.variable or ''}{':' + self.rel.label if self.rel.label else ''}]->"
             assert self.rel.next_node
             returning += self.rel.next_node.to_string()
 
@@ -29,22 +41,29 @@ class CypherNode():
             
 class CypherRel():
     def __init__(self) -> None:
-        self.var: Optional[str] = None
+        self.variable: Optional[str] = None
         self.label: Optional[str] = None
         self.previous_node: Optional[CypherNode] = None
         self.next_node: Optional[CypherNode] = None
 
 class CypherMatch():
     def __init__(self) -> None:
-        self.root_nodes: Set[CypherNode] = set()
+        self.root_nodes: List[CypherNode] = []
 
-    def print(self):
-        for node in self.root_nodes:
-            print(node.to_string())
+    def to_string(self):
+        if not self.root_nodes:
+            raise AssertionError("This MATCH contains no nodes.")
+        returning = "MATCH " + self.root_nodes[0].to_string()
+        try:
+            for node in self.root_nodes[1:]:
+                returning += ", " + node.to_string()
+        except IndexError:
+            return returning
+        return returning
 
 class CypherCreate():
     def __init__(self) -> None:
-        self.root_nodes: Set[CypherNode] = set()
+        self.root_nodes: List[CypherNode] = []
 
     def to_string(self):
         returning = "CREATE "
@@ -67,10 +86,15 @@ class CypherWhere():
     def to_string(self):
         returning = "WHERE "
         returning += f"{self.variable}.{self.property} {self.operator} {self.value}"
-        for item in self.and_:
-            returning += f" AND {item.variable}.{item.property} {item.operator} {item.value}"
-        for item in self.or_:
-            returning += f" OR {item.variable}.{item.property} {item.operator} {item.value}"
+        and_builder = self.and_
+        while and_builder:
+            returning += f" AND {and_builder.variable}.{and_builder.property} {and_builder.operator} {and_builder.value}"
+            and_builder = and_builder.and_
+
+        or_builder = self.or_
+        while or_builder:
+            returning += f" OR {or_builder.variable}.{or_builder.property} {or_builder.operator} {or_builder.value}"
+            or_builder = or_builder.or_
 
         return returning
 
@@ -113,7 +137,7 @@ class CypherDelete():
         self.deleting: List[str] = []
 
     def to_string(self):
-        returning = "RETURN (" + self.deleting[0]
+        returning = "DELETE (" + self.deleting[0]
         for var in self.deleting[1:]:
             returning += ", " + var
         returning += ")"

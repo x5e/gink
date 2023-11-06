@@ -306,7 +306,7 @@ class Graph():
                     cypher_query.build_match(tokens[i:])
                 case "CREATE":
                     cypher_query.build_create(tokens[i:])
-                case "WHERE", "AND", "OR":
+                case "WHERE" | "AND" | "OR":
                     cypher_query.build_where_and_or(tokens[i:])
                 case "SET":
                     cypher_query.build_set(tokens[i:])
@@ -314,5 +314,7 @@ class Graph():
                     cypher_query.build_delete(tokens[i:])
                 case "RETURN":
                     cypher_query.build_return(tokens[i:])
+                case _:
+                    continue
 
         return cypher_query

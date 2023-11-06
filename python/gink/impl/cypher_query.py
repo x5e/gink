@@ -2,7 +2,7 @@
 To keep Cypher terminology separate from Gink, I've chosen to use names like
 Node (Gink's Vertex), Rel[ationship](Gink's Edge/Verb)
 """
-from typing import List, Optional, Iterable
+from typing import List, Optional
 from pygments.token import Name, Punctuation, Operator
 from .cypher_utils import is_token_keyword
 from .cypher_clauses import *
@@ -36,10 +36,9 @@ class CypherQuery():
         i = 0
         while not is_keyword:
             current_token = tokens[i]
-
             # Marking where we are in the query
             if current_token[0] == Punctuation and "[" in current_token[1]:
-                    is_relationship = True
+                is_relationship = True
             elif current_token[0] == Punctuation and "]" in current_token[1]:
                 # Done with relationship, moving on to connected node.
                 is_relationship = False
@@ -49,7 +48,7 @@ class CypherQuery():
             if not is_relationship and not is_connected:
                 if current_token[0] == Name.Variable:
                     node = CypherNode()
-                    match_builder.root_nodes.add(node)
+                    match_builder.root_nodes.append(node)
                     node.variable = current_token[1]
 
                 elif current_token[0] == Name.Label:
@@ -61,7 +60,7 @@ class CypherQuery():
                     else:
                         node = CypherNode()
                         # Remember this node specifically when we reach the end of (node)-[rel]-(node)
-                        match_builder.root_nodes.add(node)
+                        match_builder.root_nodes.append(node)
                         node.label = current_token[1]
 
             elif is_relationship and not is_connected:
@@ -70,7 +69,7 @@ class CypherQuery():
                     # create a node first.
                     rel = CypherRel()
                     node.rel = rel
-                    rel.var = current_token[1]
+                    rel.variable = current_token[1]
                     rel.previous_node = node
 
                 elif current_token[0] == Name.Label:
@@ -87,7 +86,6 @@ class CypherQuery():
                 if current_token[0] == Name.Variable:
                     node = CypherNode()
                     rel.next_node = node
-                    match_builder.root_nodes.add(node)
                     node.variable = current_token[1]
 
                 elif current_token[0] == Name.Label:
@@ -132,8 +130,6 @@ class CypherQuery():
         i = 0
         while not is_keyword:
             current_token = tokens[i]
-            print(current_token)
-
             # Marking where we are in the query
             if current_token[0] == Punctuation and "[" in current_token[1]:
                     is_relationship = True
@@ -150,7 +146,7 @@ class CypherQuery():
             if not is_relationship and not is_connected:
                 if current_token[0] == Name.Variable and not in_properties:
                     node = CypherNode()
-                    create_builder.root_nodes.add(node)
+                    create_builder.root_nodes.append(node)
                     node.variable = current_token[1]
 
                 elif current_token[0] == Name.Variable and in_properties:
@@ -183,7 +179,7 @@ class CypherQuery():
                     # create a node first.
                     rel = CypherRel()
                     node.rel = rel
-                    rel.var = current_token[1]
+                    rel.variable = current_token[1]
                     rel.previous_node = node
 
                 elif current_token[0] == Name.Label:
@@ -250,7 +246,7 @@ class CypherQuery():
             current_token = tokens[i]
             # SET clauses are pretty simple - SET var.property operator value
             if tokens[i-1][1] == "." and current_token[0] == Name.Variable:
-                    set_builder.property = current_token[1]
+                set_builder.property = current_token[1]
             elif current_token[0] == Name.Variable:
                 set_builder.variable = current_token[1]
             elif current_token[0] == Operator and not current_token[1] == ".":
@@ -271,13 +267,6 @@ class CypherQuery():
         self.set.append(set_builder)
         return set_builder
 
-    def print_set(self):
-        """
-        Prints every SET clause in the query.
-        """
-        for set in self.set:
-            set.print()
-
     def build_where_and_or(self, tokens: list) -> CypherWhere:
         """
         This is a sort of 'catch-all' for WHERE, AND, and OR,
@@ -290,12 +279,12 @@ class CypherQuery():
         so there is no need to do that with the return value.
         """
         assert tokens[0][1] in ('WHERE', 'AND', 'OR')
-        if tokens[0][1] != 'WHERE':
-            # This implies we are in an AND or OR operator,
-            # which means a we can use the CypherQuery's 
-            # current WhereBuilder
-            where_builder = self.where
-            assert where_builder
+        if tokens[0][1] == 'AND':
+            self.where.and_ = CypherWhere()
+            where_builder = self.where.and_
+        elif tokens[0][1] == 'OR':
+            self.where.or_ = CypherWhere()
+            where_builder = self.where.or_
         else:
             where_builder = CypherWhere()
             self.where = where_builder
@@ -385,7 +374,10 @@ class CypherQuery():
         clauses = [self.create, self.match, self.where, self.set, self.return_, self.delete]
         returning = ""
         for clause in clauses:
-            if clause:
+            if clause == self.set and self.set:
+                for s in self.set:
+                    returning += " " + s.to_string()
+            elif clause:
                 returning += " " + clause.to_string() #type: ignore
 
         return returning.lstrip()
