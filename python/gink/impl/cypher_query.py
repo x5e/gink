@@ -170,7 +170,7 @@ class CypherQuery():
                     else:
                         node = CypherNode()
                         # Remember this node specifically when we reach the end of (node)-[rel]-(node)
-                        create_builder.root_nodes.add(node)
+                        create_builder.root_nodes.append(node)
                         node.label = current_token[1]
 
             elif is_relationship and not is_connected:
@@ -280,11 +280,13 @@ class CypherQuery():
         """
         assert tokens[0][1] in ('WHERE', 'AND', 'OR')
         if tokens[0][1] == 'AND':
-            self.where.and_ = CypherWhere()
-            where_builder = self.where.and_
+            assert self.where
+            where_builder = CypherWhere()
+            self.where.and_.append(where_builder)
         elif tokens[0][1] == 'OR':
-            self.where.or_ = CypherWhere()
-            where_builder = self.where.or_
+            assert self.where    
+            where_builder = CypherWhere()
+            self.where.or_.append(where_builder)
         else:
             where_builder = CypherWhere()
             self.where = where_builder
@@ -370,7 +372,7 @@ class CypherQuery():
             
         return delete_builder
     
-    def to_string(self):
+    def to_string(self) -> str:
         clauses = [self.create, self.match, self.where, self.set, self.return_, self.delete]
         returning = ""
         for clause in clauses:

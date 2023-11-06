@@ -57,10 +57,10 @@ def test_where():
     assert builder.where.property == 'username'
     assert builder.where.operator == '='
     assert builder.where.value == "'test'"
-    assert builder.where.and_.property == 'email'
-    assert builder.where.and_.value == "'test@email.com'"
-    assert builder.where.or_.property == 'fname'
-    assert builder.where.or_.value == "'me'"
+    assert builder.where.and_[0].property == 'email'
+    assert builder.where.and_[0].value == "'test@email.com'"
+    assert builder.where.or_[0].property == 'fname'
+    assert builder.where.or_[0].value == "'me'"
     assert builder.to_string() == "MATCH (u)-[r]->(b) WHERE u.username = 'test' AND u.email = 'test@email.com' OR u.fname = 'me' RETURN (u)"
 
 

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from google.protobuf.message import Message   # type: ignore
 from google.protobuf.text_format import Parse  # type: ignore
 from enum import IntEnum
+from datetime import datetime, time, date, timezone
 
 from .typedefs import Medallion, MuTimestamp
 
@@ -41,7 +42,23 @@ if TYPE_CHECKING:
 
 
     class ValueBuilder(Message):
-        pass
+        bigint: int
+        octets: bytes
+        characters: str
+        integer: int
+        # timestamp: Timestamp
+        date: date
+        time: time
+        double: float
+        symbol: str
+        # special: Special
+        tuple: tuple
+        # document: Document
+        uuid: bytes
+        timezone: timezone
+        datetime: datetime
+        # zoned: ZonedDateTime
+        # interval: Interval
 
 
     class KeyBuilder(Message):
