@@ -10,10 +10,16 @@ class CypherBuilder():
         self.match: Optional[CypherMatch] = None
         self.create: Optional[CypherCreate] = None
         self.where: Optional[CypherWhere] = None
-        self.set: List[CypherSet] = []
+        self.set: Optional[List[CypherSet]] = None
 
         self.delete: Optional[CypherDelete] = None
         self.return_: Optional[CypherReturn] = None
+
+    def add_set(self, cypher_set):
+        assert isinstance(cypher_set, CypherSet)
+        if not self.set:
+            self.set = []
+        self.set.append(cypher_set)
 
     def print_set(self):
         """
