@@ -283,7 +283,7 @@ class Graph():
         store = self.database.get_store()
         containers = list(store.get_all_containers(behaviors=[VERTEX, VERB]))
 
-    def parse_tokens(self, tokens: Iterable, cypher_query: CypherQuery | None = None) -> CypherQuery:
+    def parse_tokens(self, all_tokens: Iterable, cypher_query: CypherQuery | None = None) -> CypherQuery:
         """
         Iterates through the tokens created by the CypherLexer, and builds a CypherQuery filled with
         the clauses and data in the query.
@@ -296,7 +296,7 @@ class Graph():
         # TODO: There is still a ton more to do here in terms of handling clauses and stuff.
 
         # Make tokens generator subscriptable and remove whitespace.
-        tokens = [token for token in tokens if token[0] != Text.Whitespace]
+        tokens: list = [token for token in all_tokens if token[0] != Text.Whitespace]
         if tokens[0][0] != Keyword:
             raise AssertionError("Query needs to start with a keyword.")
 

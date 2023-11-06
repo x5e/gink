@@ -16,7 +16,7 @@ class CypherQuery():
         self.delete: Optional[CypherDelete] = None
         self.return_: Optional[CypherReturn] = None
 
-    def build_match(self, tokens: Iterable) -> CypherMatch:
+    def build_match(self, tokens: list) -> CypherMatch:
         """
         Constructs a MATCH based on the tokens provided. The first token
         should be a Keyword MATCH.
@@ -111,7 +111,7 @@ class CypherQuery():
 
         return match_builder
     
-    def build_create(self, tokens: Iterable) -> CypherCreate:
+    def build_create(self, tokens: list) -> CypherCreate:
         """
         Constructs a CREATE based on the tokens provided. The first token
         should be a Keyword CREATE.
@@ -234,7 +234,7 @@ class CypherQuery():
 
         return create_builder
 
-    def build_set(self, tokens: Iterable) -> CypherSet:
+    def build_set(self, tokens: list) -> CypherSet:
         """
         Constructs a SET based on the tokens provided. The first token
         should be a Keyword SET.
@@ -278,7 +278,7 @@ class CypherQuery():
         for set in self.set:
             set.print()
 
-    def build_where_and_or(self, tokens: Iterable) -> CypherWhere:
+    def build_where_and_or(self, tokens: list) -> CypherWhere:
         """
         This is a sort of 'catch-all' for WHERE, AND, and OR,
         which all behave similarly.
@@ -322,7 +322,7 @@ class CypherQuery():
         
         return where_builder
     
-    def build_return(self, tokens: Iterable) -> CypherReturn:
+    def build_return(self, tokens: list) -> CypherReturn:
         """
         Constructs a RETURN based on the tokens provided. The first token
         should be a Keyword RETURN.
@@ -352,7 +352,7 @@ class CypherQuery():
 
         return return_builder
 
-    def build_delete(self, tokens: Iterable) -> CypherDelete:
+    def build_delete(self, tokens: list) -> CypherDelete:
         """
         Constructs a DELETE based on the tokens provided. The first token
         should be a Keyword DELETE.

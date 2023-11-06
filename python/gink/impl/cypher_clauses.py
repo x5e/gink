@@ -12,6 +12,7 @@ class CypherNode():
 
     def to_string(self) -> str:
         returning = "("
+        assert self.variable
         returning += self.variable
         if self.label:
             returning += ":" + self.label
@@ -20,7 +21,8 @@ class CypherNode():
         returning += ")"
         if self.rel:
             assert self.rel.var or self.rel.label
-            returning += f"-[{self.rel.var or ''}{':' + self.rel.label or ''}]->"
+            returning += f"-[{self.rel.var or ''}{':' + self.rel.label if self.rel.label else ''}]->"
+            assert self.rel.next_node
             returning += self.rel.next_node.to_string()
 
         return returning
