@@ -31,13 +31,15 @@ class LmdbStore(AbstractStore):
     """
     """
 
-    def __init__(self, file_path=None, reset=False, retain_bundles=True, retain_entries=True):
+    def __init__(self, file_path=None, reset=False, retain_bundles=True, retain_entries=True, map_size=8000000000000):
         """ Opens a gink.mdb file for use as a Store.
 
             file_path: where find or place the data file
             reset: if True and file exists, will wipe it after opening
             retain_bundles: if not already set in this file, will specify bundle retention
             retain_entries: if not already set in this file, will specify entry retention
+            map_size: Maximum size in bits the database may grow to. Defaults to 1TB
+            since there is no penalty for making this number large on 64 bit systems.
         """
         self._logger = getLogger(self.__class__.__name__)
         self._temporary = False
@@ -48,7 +50,7 @@ class LmdbStore(AbstractStore):
             file_path = prefix + str(uuid.uuid4()) + ".gink.mdb"
             self._temporary = True
         self._file_path = file_path
-        self._handle = ldmbopen(file_path, max_dbs=100, subdir=False)
+        self._handle = ldmbopen(file_path, max_dbs=100, map_size=map_size, subdir=False)
         self._bundles = self._handle.open_db(b"bundles")
         self._chains = self._handle.open_db(b"chains")
         self._claims = self._handle.open_db(b"claims")
