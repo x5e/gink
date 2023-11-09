@@ -20,3 +20,4 @@ python/docs/_build
 javascript/docs
 example.db*
 venv
+large_file.json
