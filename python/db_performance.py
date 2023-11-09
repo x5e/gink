@@ -21,19 +21,14 @@ def generate_json(file_path: str):
                 "testData9": "14239081741847918471481"
                 }
         f.write(json.dumps(test))
+        del test
 
 def insert_json(file_path: str):
-    """
-    This can take a while depending on how much data is in the JSON file.
-    """
     with open(file_path, 'r') as f:
         file = f.read()
     store = LmdbStore('example.db')
     db = Database(store)
-    global_dir = Directory.get_global_instance(db)
     directory = Directory(db, contents=json.loads(file))
-    # To make it easy to find this directory again
-    global_dir.set("big_dir", directory)
 
 def test_db():
     generate_json('large_file.json')
