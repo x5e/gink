@@ -1,10 +1,11 @@
 import json
-import timeit
+from timeit import timeit
 from gink import *
 
 def generate_json(file_path: str):
     """
-    Generates a JSON file with a size of 1.68GB
+    Generates a JSON file with a size of 179MB if range is 500k
+    or 1.68GB if range is set to 5 mil
     """
     with open(file_path, 'w') as f:
         test = {"test": {}}
@@ -34,6 +35,7 @@ def test_db():
     generate_json('large_file.json')
     print("file populated")
     insert_json('large_file.json')
-    print("done!")
+    print("done!\ntook", timeit("insert_json('large_file.json')", "from __main__ import insert_json", number=1), " seconds.")
 
-print(timeit.timeit(test_db()))
+if __name__ == "__main__":
+    test_db()
