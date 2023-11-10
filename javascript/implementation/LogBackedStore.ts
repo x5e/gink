@@ -172,4 +172,9 @@ export class LogBackedStore implements Store {
         await this.ready;
         return this.indexedDbStore.getEntryById(entryMuid, asOf);
     }
+
+    async getAllEntries(): Promise<Entry[]> {
+        await this.ready;
+        return this.indexedDbStore.getAllEntries();
+    }
 }

@@ -680,7 +680,7 @@ export class IndexedDbStore implements Store {
     }
 
     // for debugging, not part of the api/interface
-    async getAllEntries() {
+    async getAllEntries(): Promise<Entry[]> {
         return await this.wrapped.transaction(["entries"]).objectStore("entries").getAll();
     }
 
