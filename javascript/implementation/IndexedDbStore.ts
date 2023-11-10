@@ -488,7 +488,7 @@ export class IndexedDbStore implements Store {
         let upperTuple = [asOfTs];
         if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
             semanticKey = key;
-        } else if (key instanceof Array) {
+        } else if (Array.isArray(key)) {
             let riteMuid: Muid;
             let leftMuid: Muid;
             if ("address" in key[0]) { // Left is a container
@@ -553,7 +553,7 @@ export class IndexedDbStore implements Store {
 
             if (typeof (entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof (entry.effectiveKey) == "number") {
                 key = entry.effectiveKey;
-            } else if (typeof (entry.effectiveKey) == "object" && entry.effectiveKey.length == 3) {
+            } else if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
                 // If the key is a MuidTuple
                 key = muidToString(muidTupleToMuid(entry.effectiveKey));
 

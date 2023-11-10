@@ -1,9 +1,9 @@
-import {Bundler} from "./Bundler";
-import {Value, KeyType, Muid, AsOf} from "./typedefs";
-import {muidToBuilder, wrapValue, wrapKey, ensure} from "./utils";
-import {Deletion} from "./Deletion";
+import { Bundler } from "./Bundler";
+import { Value, KeyType, Muid, AsOf } from "./typedefs";
+import { muidToBuilder, wrapValue, wrapKey, ensure } from "./utils";
+import { Deletion } from "./Deletion";
 import { Inclusion } from "./Inclusion";
-import {GinkInstance} from "./GinkInstance";
+import { GinkInstance } from "./GinkInstance";
 import { EntryBuilder, ChangeBuilder, Behavior, ClearanceBuilder } from "./builders";
 import { PairBuilder } from "./builders";
 import { Addressable } from "./Addressable";
@@ -26,9 +26,9 @@ export class Container extends Addressable {
         ginkInstance: GinkInstance,
         address: Muid,
         readonly behavior: Behavior) {
-            super(ginkInstance, address)
+        super(ginkInstance, address)
     }
-    
+
     /**
      * Starts an async iterator that returns all the containers pointing to the object in question.
      * Note: the behavior of this method may change to only include backref to lists and vertices
@@ -51,7 +51,7 @@ export class Container extends Addressable {
         }
         let immediate = false;
         let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler){
+        if (bundlerOrComment instanceof Bundler) {
             bundler = bundlerOrComment;
         } else {
             immediate = true;
@@ -77,14 +77,14 @@ export class Container extends Addressable {
      * @returns a promise the resolves to the muid of the change
      */
     protected async addEntry(
-        key?: KeyType | true | Addressable | Muid | [Muid|Container, Muid|Container],
+        key?: KeyType | true | Addressable | Muid | [Muid | Container, Muid | Container],
         value?: Value | Addressable | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string):
-            Promise<Muid> {
+        Promise<Muid> {
         let immediate = false;
         let bundler: Bundler;
 
-        if (bundlerOrComment instanceof Bundler){
+        if (bundlerOrComment instanceof Bundler) {
             bundler = bundlerOrComment;
         } else {
             immediate = true;
@@ -105,7 +105,7 @@ export class Container extends Addressable {
         else if (key instanceof Addressable) {
             entryBuilder.setDescribing(muidToBuilder(key.address));
         }
-        else if (key instanceof Array) {
+        else if (Array.isArray(key)) {
             const pair = new PairBuilder();
             if ("address" in key[0]) { // Left is a container
                 pair.setLeft(muidToBuilder(key[0].address));
@@ -121,7 +121,7 @@ export class Container extends Addressable {
             }
             entryBuilder.setPair(pair);
         }
-        else if (typeof (key) == "object") { // Key is a Muid
+        else if (typeof (key) == "object" && key.medallion) { // Key is a Muid
             entryBuilder.setDescribing(muidToBuilder(key));
         }
 
