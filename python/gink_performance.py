@@ -1,4 +1,5 @@
 from datetime import datetime
+import random
 from gink import *
 
 def test_write_fresh(count: int):
@@ -38,7 +39,7 @@ def test_write_occupied(count: int):
 
         print("Testing: Writing", count, "new key, value entries...")
         before_time = datetime.utcnow()
-        for i in range(count, count+10000):
+        for i in range(count, count*2):
             directory.set(f"test{i}", "test data to be inserted")
         after_time = datetime.utcnow()
 
@@ -136,8 +137,81 @@ def test_delete(count: int):
     print("- Total time:", total_time, "seconds")
     print("- Deletes per second:", round(updates_per_second, 2))
     print()
-
     
+def test_random_read(count: int):
+    """
+    Tests reading random entries in a directory and sequence of
+    'count' size.
+    """
+    with LmdbStore() as store:
+        db = Database(store)
+        directory = Directory(db, muid=Muid(1, 2, 3))
+        sequence = Sequence(db, muid=Muid(2, 2, 3))
+        print("Testing Gink random read performance")
+        print(f"Filling fresh directory and sequence with {count} entries.")
+        for i in range(0, count):
+            directory.set(f"test{i}", "test data to be inserted")
+            sequence.append(f"test{i} data to be inserted")
+
+        rand = random.randint(0, count-1)
+        print("Random index is", rand)
+        before_time = datetime.utcnow()
+        assert directory.get(f"test{rand}")
+        after_time = datetime.utcnow()
+        directory_total_time = round((after_time - before_time).total_seconds(), 4)
+
+        before_time = datetime.utcnow()
+        assert sequence[rand]
+        after_time = datetime.utcnow()
+        sequence_total_time = round((after_time - before_time).total_seconds(), 4)
+
+    print("- Found Directory value after", directory_total_time, "seconds")
+    print("- Found Sequence value after", sequence_total_time, "seconds")
+    print()
+
+def test_as_db_increases(count: int):
+    """
+    Tests write and read performance 5 times, as the database size
+    continues to increase by 'count'.
+
+    For example, passing 10,000 as the count will test database write and
+    read performance at 10,000, 20,000, 30,000, 40,000, then 50,000 entries.
+    """
+    with LmdbStore() as store:
+        db = Database(store)
+        directory = Directory(db, muid=Muid(1, 2, 3))
+        current_entries = 0
+        
+        print("Testing Gink writing and reading performance as database size increases.")
+        for r in range(1, 6):
+            print(f"Testing Gink writing performance to database with {current_entries} entries.")
+            print("Writing", count, "key, value entries...")
+            before_time = datetime.utcnow()
+            for i in range(0, count):
+                directory.set(f"test{i}", "test data to be inserted")
+            after_time = datetime.utcnow()
+
+            total_time = round((after_time - before_time).total_seconds(), 4)
+            writes_per_second = count/total_time
+            print(f"** For database starting at {current_entries} entries **")
+            print("- Total write time:", total_time, "seconds")
+            print("- Writes per second:", round(writes_per_second, 2))
+            print()
+
+            before_time = datetime.utcnow()
+            for i in range(0, count):
+                assert directory.get(f"test{i}")
+            after_time = datetime.utcnow()
+
+            total_time = round((after_time - before_time).total_seconds(), 4)
+            reads_per_second = count/total_time
+            print(f"** For database with {count*r} entries **")
+            print("- Total read time:", total_time, "seconds")
+            print("- Reads per second:", round(reads_per_second, 2))
+            print()
+
+            current_entries = count * r
+
 def test_all(count: int):
     test_write_fresh(count)
     test_read(count)
@@ -145,6 +219,8 @@ def test_all(count: int):
     test_sequence_append(count)
     test_read_write(count)
     test_delete(count)
+    test_random_read(count)
+    test_as_db_increases(count)
 
 if __name__ == "__main__":
     from argparse import ArgumentParser, Namespace
@@ -165,8 +241,10 @@ if __name__ == "__main__":
     read
     read_write
     delete
+    random_read
+    increasing
     """
-    choices_tests = ["write_fresh", "write_occupied", "sequence_append", "read", "read_write", "delete"]
+    choices_tests = ["write_fresh", "write_occupied", "sequence_append", "read", "read_write", "delete", "random_read", "increasing"]
     parser.add_argument("-t", "--tests", help=help_tests, nargs="+", choices=choices_tests, default="all")
     args: Namespace = parser.parse_args()
 
@@ -185,3 +263,7 @@ if __name__ == "__main__":
             test_read_write(args.count)
         if "delete" in args.tests:
             test_delete(args.count)
+        if "random_read" in args.tests:
+            test_random_read(args.count)
+        if "increasing" in args.tests:
+            test_as_db_increases(args.count)
