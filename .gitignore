@@ -19,5 +19,6 @@ javascript/proto
 python/docs/_build
 javascript/docs
 example.db*
+*gink.db*
 venv
 large_file.json
