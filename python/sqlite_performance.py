@@ -131,6 +131,31 @@ def test_delete(count: int):
     """
     Tests deletion performance.
     """
+    with sqlite3.connect("file::memory:") as con:
+        cur = con.cursor()
+        cur.execute("CREATE TABLE test(test)")
+
+        print("Testing SQLite deleting performance to occupied database with", count, "existing entries.")
+        print("Populating database with", count, "entries...")
+        for i in range(0, count):
+            cur.execute(f"""INSERT INTO test VALUES ('test{i} data to be inserted')""")
+            con.commit()
+        
+        print("Deleting", count, "entries...")
+        before_time = datetime.utcnow()
+        for i in range(count, count*2):
+            cur.execute(f"""DELETE FROM test WHERE test='test{i} data to be inserted'""")
+            con.commit()
+        after_time = datetime.utcnow()
+        # Making sure entries were actually deleted.
+        assert not cur.execute(f"""SELECT test FROM test WHERE test='test{count/2} data to be inserted'""").fetchone()
+
+    total_time = round((after_time - before_time).total_seconds(), 4)
+    writes_per_second = count/total_time
+    print("- Total time:", total_time, "seconds")
+    print("- Deletions per second:", round(writes_per_second, 2))
+    print()
+
 def test_random_read(count: int):
     """
     Tests reading random entries in a directory and sequence of
@@ -168,7 +193,43 @@ def test_as_db_increases(count: int):
     For example, passing 10,000 as the count will test database write and
     read performance at 10,000, 20,000, 30,000, 40,000, then 50,000 entries.
     """
+    with sqlite3.connect("file::memory:") as con:
+        cur = con.cursor()
+        cur.execute("CREATE TABLE test(test)")
+        current_entries = 0
 
+        print("Testing SQLite writing performance to a growing database - each entry will committed individually.")
+
+        for r in range(1, 6):
+            print(f"Writing {count} entries to a database with {current_entries} existing entries...")
+            before_time = datetime.utcnow()
+            for i in range(0, count):
+                cur.execute(f"""INSERT INTO test VALUES ('test{i} data to be inserted')""")
+                con.commit()
+            after_time = datetime.utcnow()
+
+            write_total_time = round((after_time - before_time).total_seconds(), 4)
+            writes_per_second = count/write_total_time
+            print(f"** For database starting at {current_entries} entries **")
+            print("- Total time:", write_total_time, "seconds")
+            print("- Writes per second:", round(writes_per_second, 2))
+            print()
+
+            print(f"Reading {count} entries from a database with {count * r} existing entries...")
+            before_time = datetime.utcnow()
+            for i in range(0, count):
+                assert cur.execute(f"""SELECT test FROM test WHERE test='test{i} data to be inserted'""").fetchone()
+            after_time = datetime.utcnow()
+
+            read_total_time = round((after_time - before_time).total_seconds(), 4)
+            reads_per_second = count/read_total_time
+            print(f"** For database with {count*r} entries **") 
+            print("- Total time:", read_total_time, "seconds")
+            print("- Reads per second:", round(reads_per_second, 2))
+            print()
+
+            current_entries = count * r
+    
 def test_all(count: int):
     test_write_fresh(count)
     test_read(count)
