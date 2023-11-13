@@ -5,15 +5,39 @@ from gink import *
 def test_write_fresh(count: int):
     """
     Test writes per second writing to an empty database.
+    Commits to database every commit.
     """
     with LmdbStore() as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
-        before_time = datetime.utcnow()
         print("Testing Gink writing performance to fresh database.")
         print("Writing", count, "key, value entries...")
+        before_time = datetime.utcnow()
         for i in range(0, count):
             directory.set(f"test{i}", "test data to be inserted")
+        after_time = datetime.utcnow()
+
+    total_time = round((after_time - before_time).total_seconds(), 4)
+    writes_per_second = count/total_time
+    print("- Total time:", total_time, "seconds")
+    print("- Writes per second:", round(writes_per_second, 2))
+    print()
+
+def test_write_big_commit(count: int):
+    """
+    Test writes per second writing to an empty database.
+    Bundles all writes into one big commit.
+    """
+    with LmdbStore() as store:
+        db = Database(store)
+        directory = Directory(db, muid=Muid(1, 2, 3))
+        bundler = Bundler('test')
+        print("Testing Gink writing performance to fresh database in one commit.")
+        print("Writing", count, "key, value entries...")
+        before_time = datetime.utcnow()
+        for i in range(0, count):
+            directory.set(f"test{i}", "test data to be inserted", bundler=bundler)
+        db.commit(bundler)
         after_time = datetime.utcnow()
 
     total_time = round((after_time - before_time).total_seconds(), 4)
@@ -140,33 +164,27 @@ def test_delete(count: int):
     
 def test_random_read(count: int):
     """
-    Tests reading random entries in a directory and sequence of
-    'count' size.
+    Tests reading random entries in a directory of 'count' size.
     """
     with LmdbStore() as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
-        sequence = Sequence(db, muid=Muid(2, 2, 3))
         print("Testing Gink random read performance")
-        print(f"Filling fresh directory and sequence with {count} entries.")
+        print(f"Filling fresh directory with {count} entries.")
         for i in range(0, count):
             directory.set(f"test{i}", "test data to be inserted")
-            sequence.append(f"test{i} data to be inserted")
 
-        rand = random.randint(0, count-1)
-        print("Random index is", rand)
+        random_numbers = [random.randint(0, count-1) for _ in range(0, 1000)]
+        
+        print(f"Reading 1000 random entries.")
         before_time = datetime.utcnow()
-        assert directory.get(f"test{rand}")
+        for i in random_numbers:
+            assert directory.get(f"test{i}")
         after_time = datetime.utcnow()
         directory_total_time = round((after_time - before_time).total_seconds(), 4)
 
-        before_time = datetime.utcnow()
-        assert sequence[rand]
-        after_time = datetime.utcnow()
-        sequence_total_time = round((after_time - before_time).total_seconds(), 4)
-
-    print("- Found Directory value after", directory_total_time, "seconds")
-    print("- Found Sequence value after", sequence_total_time, "seconds")
+    print("- Total time: ", directory_total_time, "seconds")
+    print("- Random reads per second: ", round(100/directory_total_time, 2))
     print()
 
 def test_as_db_increases(count: int):
@@ -227,7 +245,6 @@ if __name__ == "__main__":
     
     parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
     parser.add_argument("-c", "--count", help="number of records", type=int, default=100)
-    parser.add_argument("-g", "--gink", help="path to gink db", default="gink.db")
 
     help_tests = """
     Each test has an isolated instance of a store,
@@ -236,6 +253,7 @@ if __name__ == "__main__":
     Specific tests to run:
 
     write_fresh
+    write_big_commit
     write_occupied
     sequence_append
     read
@@ -244,7 +262,7 @@ if __name__ == "__main__":
     random_read
     increasing
     """
-    choices_tests = ["write_fresh", "write_occupied", "sequence_append", "read", "read_write", "delete", "random_read", "increasing"]
+    choices_tests = ["write_fresh", "write_big_commit","write_occupied", "sequence_append", "read", "read_write", "delete", "random_read", "increasing"]
     parser.add_argument("-t", "--tests", help=help_tests, nargs="+", choices=choices_tests, default="all")
     args: Namespace = parser.parse_args()
 
@@ -253,6 +271,8 @@ if __name__ == "__main__":
     else:
         if "write_fresh" in args.tests:
             test_write_fresh(args.count)
+        if "write_big_commit" in args.tests:
+            test_write_big_commit(args.count)
         if "write_occupied" in args.tests:
             test_write_occupied(args.count)
         if "sequence_append" in args.tests:
