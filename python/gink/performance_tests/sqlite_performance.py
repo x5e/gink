@@ -292,6 +292,7 @@ def test_all(count: int, num_inc_tests: int) -> dict:
     results["write_fresh"] = test_write_fresh(count)
     results["read"] = test_read(count)
     results["write_occupied"] = test_write_occupied(count)
+    results["write_big_commit"] = test_write_big_commit(count)
     results["read_write"] = test_read_write(count)
     results["delete"] = test_delete(count)
     results["random_read"] = test_random_read(count)
