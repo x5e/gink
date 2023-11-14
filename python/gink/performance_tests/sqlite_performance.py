@@ -1,5 +1,6 @@
 import sqlite3
 import random
+import json
 from datetime import datetime
 
 def test_write_fresh(count: int):
@@ -25,6 +26,12 @@ def test_write_fresh(count: int):
     print("- Writes per second:", round(writes_per_second, 2))
     print()
 
+    results = {
+            "total_time": total_time,
+            "writes_per_second": writes_per_second
+            }
+    return results
+
 def test_write_big_commit(count: int):
     """
     Test writes per second writing to an empty database.
@@ -48,6 +55,12 @@ def test_write_big_commit(count: int):
     print("- Total time:", total_time, "seconds")
     print("- Writes per second:", round(writes_per_second, 2))
     print()
+
+    results = {
+            "total_time": total_time,
+            "writes_per_second": writes_per_second
+            }
+    return results
 
 def test_write_occupied(count: int):
     """
@@ -77,6 +90,12 @@ def test_write_occupied(count: int):
     print("- Writes per second:", round(writes_per_second, 2))
     print()
 
+    results = {
+            "total_time": total_time,
+            "writes_per_second": writes_per_second
+            }
+    return results
+
 def test_read(count: int):
     """
     Tests reads per second, or how long it takes to read
@@ -104,6 +123,12 @@ def test_read(count: int):
     print("- Reads per second:", round(reads_per_second, 2))
     print()
 
+    results = {
+            "total_time": total_time,
+            "reads_per_second": reads_per_second
+            }
+    return results
+
 def test_read_write(count:int):
     """
     Tests transactions per second while writing then reading.
@@ -126,6 +151,12 @@ def test_read_write(count:int):
     print("- Total time:", total_time, "seconds")
     print("- Transactions per second:", round(txns_per_second, 2))
     print()
+
+    results = {
+            "total_time": total_time,
+            "txns_per_second": txns_per_second
+            }
+    return results
 
 def test_delete(count: int):
     """
@@ -151,10 +182,16 @@ def test_delete(count: int):
         assert not cur.execute(f"""SELECT test FROM test WHERE test='test{count/2} data to be inserted'""").fetchone()
 
     total_time = round((after_time - before_time).total_seconds(), 4)
-    writes_per_second = count/total_time
+    deletes_per_second = count/total_time
     print("- Total time:", total_time, "seconds")
-    print("- Deletions per second:", round(writes_per_second, 2))
+    print("- Deletions per second:", round(deletes_per_second, 2))
     print()
+
+    results = {
+            "total_time": total_time,
+            "deletes_per_second": deletes_per_second
+            }
+    return results
 
 def test_random_read(count: int):
     """
@@ -185,6 +222,12 @@ def test_random_read(count: int):
     print("- Reads per second:", round(reads_per_second, 2))
     print()
 
+    results = {
+            "total_time": total_time,
+            "reads_per_second": reads_per_second
+            }
+    return results
+
 def test_as_db_increases(count: int):
     """
     Tests write and read performance 5 times, as the database size
@@ -197,6 +240,7 @@ def test_as_db_increases(count: int):
         cur = con.cursor()
         cur.execute("CREATE TABLE test(test)")
         current_entries = 0
+        results = {}
 
         print("Testing SQLite writing performance to a growing database - each entry will committed individually.")
 
@@ -228,23 +272,39 @@ def test_as_db_increases(count: int):
             print("- Reads per second:", round(reads_per_second, 2))
             print()
 
+            results[count*r] = {
+                "write": {
+                    "total_time": write_total_time,
+                    "writes_per_second": writes_per_second
+                },
+                "read": {
+                    "total_time": read_total_time,
+                    "reads_per_second": reads_per_second
+                }
+            }
+
             current_entries = count * r
+
+        return results
     
 def test_all(count: int):
-    test_write_fresh(count)
-    test_read(count)
-    test_write_occupied(count)
-    test_read_write(count)
-    test_delete(count)
-    test_random_read(count)
-    test_as_db_increases(count)
+    results = {}
+    results["write_fresh"] = test_write_fresh(count)
+    results["read"] = test_read(count)
+    results["write_occupied"] = test_write_occupied(count)
+    results["read_write"] = test_read_write(count)
+    results["delete"] = test_delete(count)
+    results["random_read"] = test_random_read(count)
+    results["increases"] = test_as_db_increases(count)
+    return results
 
 if __name__ == "__main__":
     from argparse import ArgumentParser, Namespace
     
     parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
     parser.add_argument("-c", "--count", help="number of records", type=int, default=100)
-    parser.add_argument("-g", "--sqlite", help="path to sqlite db", default="sqlite.db")
+    parser.add_argument("-d", "--database", help="path to sqlite database file", default="sqlite.db")
+    parser.add_argument("-o", "--output", help="json file to save output. default to no file, stdout")
 
     help_tests = """
     Each test has an isolated instance of a store,
@@ -266,21 +326,36 @@ if __name__ == "__main__":
     args: Namespace = parser.parse_args()
 
     if args.tests == "all":
-        test_all(args.count)
+        results = test_all(args.count)
     else:
+        results = {}
         if "write_fresh" in args.tests:
-            test_write_fresh(args.count)
+            results["write_fresh"] = test_write_fresh(args.count)
         if "write_big_commit" in args.tests:
-            test_write_big_commit(args.count)
+            results["write_big_commit"] = test_write_big_commit(args.count)
         if "write_occupied" in args.tests:
-            test_write_occupied(args.count)
+            results["write_occupied"] = test_write_occupied(args.count)
         if "read" in args.tests:
-            test_read(args.count)
+            results["read"] = test_read(args.count)
         if "read_write" in args.tests:
-            test_read_write(args.count)
+            results["read_write"] = test_read_write(args.count)
         if "delete" in args.tests:
-            test_delete(args.count)
+            results["delete"] = test_delete(args.count)
         if "random_read" in args.tests:
-            test_random_read(args.count)
+            results["random_read"] = test_random_read(args.count)
         if "increasing" in args.tests:
-            test_as_db_increases(args.count)
+            results["increases"] = test_as_db_increases(args.count)
+
+    if args.output:
+        try:
+            # If file already exists, meaning tests have been run
+            # on another database first.
+            with open(args.output, 'r') as f:
+                data = json.loads(f.read())
+                data["sqlite"] = results
+        except FileNotFoundError:
+            # If this is the first test run.
+            data = {"sqlite": results}
+
+        with open(args.output, 'w') as f:
+            f.write(json.dumps(data))

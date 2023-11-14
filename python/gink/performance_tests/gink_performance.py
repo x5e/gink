@@ -1,7 +1,6 @@
 from datetime import datetime
 import random
 import json
-from pathlib import Path
 from gink import *
 
 def test_write_fresh(count: int) -> dict:
@@ -324,7 +323,6 @@ if __name__ == "__main__":
     parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
     parser.add_argument("-c", "--count", help="number of records", type=int, default=100)
     parser.add_argument("-o", "--output", help="json file to save output. default to no file, stdout")
-
 
     help_tests = """
     Each test has an isolated instance of a store,
