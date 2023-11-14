@@ -3,7 +3,7 @@ import random
 import json
 from datetime import datetime
 
-def test_write_fresh(count: int):
+def test_write_fresh(count: int) -> dict:
     """
     Test writes per second writing to an empty database.
     Commits to the database for every write.
@@ -32,7 +32,7 @@ def test_write_fresh(count: int):
             }
     return results
 
-def test_write_big_commit(count: int):
+def test_write_big_commit(count: int) -> dict:
     """
     Test writes per second writing to an empty database.
     Bundles all transactions into one commit.
@@ -62,7 +62,7 @@ def test_write_big_commit(count: int):
             }
     return results
 
-def test_write_occupied(count: int):
+def test_write_occupied(count: int) -> dict:
     """
     Tests writes per second on a database that already has data.
     This test is similar to write_fresh, but the timer doesn't start
@@ -96,7 +96,7 @@ def test_write_occupied(count: int):
             }
     return results
 
-def test_read(count: int):
+def test_read(count: int) -> dict:
     """
     Tests reads per second, or how long it takes to read
     'count' entries.
@@ -129,7 +129,7 @@ def test_read(count: int):
             }
     return results
 
-def test_read_write(count:int):
+def test_read_write(count:int) -> dict:
     """
     Tests transactions per second while writing then reading.
     """
@@ -158,7 +158,7 @@ def test_read_write(count:int):
             }
     return results
 
-def test_delete(count: int):
+def test_delete(count: int) -> dict:
     """
     Tests deletion performance.
     """
@@ -193,7 +193,7 @@ def test_delete(count: int):
             }
     return results
 
-def test_random_read(count: int):
+def test_random_read(count: int) -> dict:
     """
     Tests reading random entries in a directory and sequence of
     'count' size. Reads 100 random entries.
@@ -228,7 +228,7 @@ def test_random_read(count: int):
             }
     return results
 
-def test_as_db_increases(count: int):
+def test_as_db_increases(count: int) -> dict:
     """
     Tests write and read performance 5 times, as the database size
     continues to increase by 'count'.
@@ -287,7 +287,7 @@ def test_as_db_increases(count: int):
 
         return results
     
-def test_all(count: int):
+def test_all(count: int) -> dict:
     results = {}
     results["write_fresh"] = test_write_fresh(count)
     results["read"] = test_read(count)
