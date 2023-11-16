@@ -46,56 +46,44 @@ def graph_write(path_to_data: Path):
         plt.show()
 
 def graph_increasing(path_to_data: Path):
+    """
+    Plots line graphs for both read and write as 
+    data increases.
+    """
     with open(path_to_data, "r") as f:
         data: dict = json.loads(f.read())
     assert data
-    gink = data.get("gink")
-    sqlite = data.get("sqlite")
     legend = []
     plt.figure(4, figsize=(10, 10))
     ax1 = plt.subplot(211)
     ax2 = plt.subplot(212)
-    if gink:
+    for db in data.keys():
         x = []
         writes = []
         reads = []
-        for key in gink["increases"].keys():
+        for key in data[db]["increases"].keys():
             x.append(key)
-            writes.append(gink["increases"][key]["write"]["writes_per_second"])
-            reads.append(gink["increases"][key]["read"]["reads_per_second"])
+            writes.append(data[db]["increases"][key]["write"]["writes_per_second"])
+            reads.append(data[db]["increases"][key]["read"]["reads_per_second"])
         ax1.plot(x, writes)
         ax2.plot(x, reads)
-        legend.append("Gink")
+        legend.append(db)
 
-    if sqlite:
-        x = []
-        writes = []
-        reads = []
-        for key in sqlite["increases"].keys():
-            x.append(key)
-            writes.append(sqlite["increases"][key]["write"]["writes_per_second"])
-            reads.append(sqlite["increases"][key]["read"]["reads_per_second"])
-        ax1.plot(x, writes)
-        ax2.plot(x, reads)
-        legend.append("SQLite")
-
-    if gink or sqlite:
-        if gink:
-            num_bins = len(gink["increases"].keys())
-        else:
-            num_bins = len(sqlite["increases"].keys())
-        ax1.set_title("Writes per second as DB Increases")
-        ax1.set_xlabel("# of Entries in Database")
-        ax1.set_ylabel("Writes per second")
-        ax2.set_title("Reads per second as DB Increases")
-        ax2.set_xlabel("# of Entries in Database")
-        ax2.set_ylabel("Reads per second")
-        ax2.set_ylim(bottom=0)
-        ax1.xaxis.set_major_locator(plt.MaxNLocator(num_bins))
-        ax2.xaxis.set_major_locator(plt.MaxNLocator(num_bins))
-        ax1.legend(legend, ncol=2)
-        ax2.legend(legend, ncol=2)
-        plt.show()
+    # All databases SHOULD have the same number of increasing tests,
+    # so it should be fine to use the last db as the number of bins.
+    num_bins = len(data[db]["increases"].keys())
+    ax1.set_title("Writes per second as DB Increases")
+    ax1.set_xlabel("# of Entries in Database")
+    ax1.set_ylabel("Writes per second")
+    ax2.set_title("Reads per second as DB Increases")
+    ax2.set_xlabel("# of Entries in Database")
+    ax2.set_ylabel("Reads per second")
+    ax2.set_ylim(bottom=0)
+    ax1.xaxis.set_major_locator(plt.MaxNLocator(num_bins))
+    ax2.xaxis.set_major_locator(plt.MaxNLocator(num_bins))
+    ax1.legend(legend, ncol=2)
+    ax2.legend(legend, ncol=2)
+    plt.show()
 
 if __name__ == "__main__":
     from argparse import ArgumentParser, Namespace
