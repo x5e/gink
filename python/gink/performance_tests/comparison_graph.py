@@ -62,19 +62,20 @@ def graph_increasing(path_to_data: Path):
             reads.append(gink["increases"][key]["read"]["reads_per_second"])
         plt.figure(1, figsize=(10, 10))
         ax1 = plt.subplot(211)
-        plt.plot(x, writes)
-        plt.title("Writes per second as DB Increases")
-        plt.xlabel("# of Entries in Database")
-        plt.ylabel("Writes per second")
+        ax1.plot(x, writes)
+        ax1.set_title("Writes per second as DB Increases")
+        ax1.set_xlabel("# of Entries in Database")
+        ax1.set_ylabel("Writes per second")
 
         ax2 = plt.subplot(212)
-        plt.plot(x, reads)
-        plt.legend(["gink"])
-        plt.title("Reads per second as DB Increases")
-        plt.xlabel("# of Entries in Database")
-        plt.ylabel("Reads per second")
-        plt.ylim(bottom=0)
+        ax2.plot(x, reads)
+        ax2.legend(["gink"])
+        ax2.set_title("Reads per second as DB Increases")
+        ax2.set_xlabel("# of Entries in Database")
+        ax2.set_ylabel("Reads per second")
+        ax2.set_ylim(bottom=0)
         legend.append("Gink")
+        num_bins = len(gink["increases"].keys())
 
     if sqlite:
         x = []
@@ -86,16 +87,18 @@ def graph_increasing(path_to_data: Path):
             reads.append(sqlite["increases"][key]["read"]["reads_per_second"])
         plt.figure(1, figsize=(10, 10))
         ax1 = plt.subplot(211)
-        plt.plot(x, writes)
+        ax1.plot(x, writes)
 
         ax2 = plt.subplot(212)
-        plt.plot(x, reads)
+        ax2.plot(x, reads)
         legend.append("SQLite")
+        num_bins = len(sqlite["increases"].keys())
 
     if gink or sqlite:
-        ax1.xaxis.set_major_locator(plt.MaxNLocator(10))
-        ax2.xaxis.set_major_locator(plt.MaxNLocator(10))
-        plt.legend(legend, bbox_to_anchor=(0.63, -0.2), ncol=2)
+        ax1.xaxis.set_major_locator(plt.MaxNLocator(num_bins))
+        ax2.xaxis.set_major_locator(plt.MaxNLocator(num_bins))
+        ax1.legend(legend, ncol=2)
+        ax2.legend(legend, ncol=2)
         plt.show()
 
 if __name__ == "__main__":
@@ -103,7 +106,21 @@ if __name__ == "__main__":
     
     parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
     parser.add_argument("-d", "--data", help="json file that contains test data")
+    graphs_help = """
+    Select specific graphs to display.
+    Defaults to 'all'.
+    Options:
+    'write'
+    'read'
+    'delete'
+    'increases'
+    """
+    graphs_choices = ['all', 'write', 'read', 'delete', 'increases']
+    parser.add_argument("-g", "--graphs", help=graphs_help, choices=graphs_choices, default='all')
+
     args: Namespace = parser.parse_args()
 
-    graph_write(args.data)
-    # graph_increasing(args.data)
+    if args.graphs in ('all', 'write'):
+        graph_write(args.data)
+    if args.graphs in ('all', 'increasing'):
+        graph_increasing(args.data)
