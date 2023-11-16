@@ -7,13 +7,9 @@ def graph_write(path_to_data: Path):
     with open(path_to_data, "r") as f:
         data: dict = json.loads(f.read())
     assert data
-    gink = data.get("gink")
-    sqlite = data.get("sqlite")
     x_labels = []
-    if gink:
-        x_labels.append("Gink")
-    if sqlite:
-        x_labels.append("SQLite")
+    for label in data.keys():
+        x_labels.append(label)
     x = np.arange(len(x_labels))
     width = 0.25
     multiplier = 0
@@ -22,28 +18,80 @@ def graph_write(path_to_data: Path):
         "write_occupied": [],
         "write_big_commit": []
     }
-    fig, ax = plt.subplots(layout='constrained')
-    if gink:
-        all_data["write_fresh"].append(gink["write_fresh"]["writes_per_second"])
-        all_data["write_occupied"].append(gink["write_occupied"]["writes_per_second"])
-        all_data["write_big_commit"].append(gink["write_big_commit"]["writes_per_second"])
+    plt.figure(1)
+    ax = plt.subplot()
+    for db in data.keys():
+        all_data["write_fresh"].append(data[db]["write_fresh"]["writes_per_second"])
+        all_data["write_occupied"].append(data[db]["write_occupied"]["writes_per_second"])
+        all_data["write_big_commit"].append(data[db]["write_big_commit"]["writes_per_second"])
     
-    if sqlite:
-        all_data["write_fresh"].append(sqlite["write_fresh"]["writes_per_second"])
-        all_data["write_occupied"].append(sqlite["write_occupied"]["writes_per_second"])
-        all_data["write_big_commit"].append(sqlite["write_big_commit"]["writes_per_second"])
+    for test, results in all_data.items():
+        offset = width * multiplier
+        rects = ax.bar(x + offset, results, width, label=test)
+        ax.bar_label(rects, padding=3)
+        multiplier += 1
+    ax.set_ylabel('Writes per second')
+    ax.set_title('Writes per second - Gink vs SQLite')
+    ax.set_xticks(x + width, x_labels)
+    ax.legend(loc='upper left', ncols=3)
+
+def graph_read(path_to_data: Path):
+    with open(path_to_data, "r") as f:
+        data: dict = json.loads(f.read())
+    assert data
+    x_labels = []
+    for label in data.keys():
+        x_labels.append(label)
+    x = np.arange(len(x_labels))
+    width = 0.25
+    multiplier = 0
+    all_data = {
+        "read": [],
+        "read_write": [],
+        "random_read": []
+    }
+    plt.figure(2)
+    ax = plt.subplot()
+    for db in data.keys():
+        all_data["read"].append(data[db]["read"]["reads_per_second"])
+        all_data["read_write"].append(data[db]["read_write"]["txns_per_second"])
+        all_data["random_read"].append(data[db]["random_read"]["reads_per_second"])
     
-    if gink or sqlite:
-        for test, results in all_data.items():
-            offset = width * multiplier
-            rects = ax.bar(x + offset, results, width, label=test)
-            ax.bar_label(rects, padding=3)
-            multiplier += 1
-        ax.set_ylabel('WPS')
-        ax.set_title('Writes per second - Gink vs SQLite')
-        ax.set_xticks(x + width, x_labels)
-        ax.legend(loc='upper left', ncols=3)
-        plt.show()
+    for test, results in all_data.items():
+        offset = width * multiplier
+        rects = ax.bar(x + offset, results, width, label=test)
+        ax.bar_label(rects, padding=3)
+        multiplier += 1
+    ax.set_ylabel('Reads per second')
+    ax.set_title('Reads per second - Gink vs SQLite')
+    ax.set_xticks(x + width, x_labels)
+    ax.legend(loc='upper left', ncols=3)
+
+def graph_delete(path_to_data: Path):
+    with open(path_to_data, "r") as f:
+        data: dict = json.loads(f.read())
+    assert data
+    x_labels = [label for label in data.keys()]
+    x = np.arange(len(x_labels))
+    width = 0.25
+    multiplier = 0
+    all_data = {
+        "delete": []
+    }
+    plt.figure(3)
+    ax = plt.subplot()
+    for db in data.keys():
+        all_data["delete"].append(data[db]["delete"]["deletes_per_second"])
+    
+    for test, results in all_data.items():
+        offset = width * multiplier
+        rects = ax.bar(x + offset, results, width, label=test)
+        ax.bar_label(rects, padding=3)
+        multiplier += 1
+    ax.set_ylabel('Deletes per second')
+    ax.set_title('Deletes per second - Gink vs SQLite')
+    ax.set_xticks(x + width, x_labels)
+    ax.legend(loc='upper left', ncols=3)
 
 def graph_increasing(path_to_data: Path):
     """
@@ -83,7 +131,7 @@ def graph_increasing(path_to_data: Path):
     ax2.xaxis.set_major_locator(plt.MaxNLocator(num_bins))
     ax1.legend(legend, ncol=2)
     ax2.legend(legend, ncol=2)
-    plt.show()
+    
 
 if __name__ == "__main__":
     from argparse import ArgumentParser, Namespace
@@ -106,5 +154,10 @@ if __name__ == "__main__":
 
     if args.graphs in ('all', 'write'):
         graph_write(args.data)
+    if args.graphs in ('all', 'read'):
+        graph_read(args.data)
+    if args.graphs in ('all', 'delete'):
+        graph_delete(args.data)
     if args.graphs in ('all', 'increases'):
         graph_increasing(args.data)
+    plt.show()
