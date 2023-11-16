@@ -357,10 +357,10 @@ if __name__ == "__main__":
             # on another database first.
             with open(args.output, 'r') as f:
                 data = json.loads(f.read())
-                data["sqlite"] = results
+                data["sqlite_python"] = results
         except FileNotFoundError:
             # If this is the first test run.
-            data = {"sqlite": results}
+            data = {"sqlite_python": results}
 
         with open(args.output, 'w') as f:
             f.write(json.dumps(data))
