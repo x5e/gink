@@ -187,7 +187,7 @@ def test_delete(count: int) -> dict:
     Tests deletion performance.
     Returns results as a dictionary.
     """
-    with LmdbStore() as store:
+    with LmdbStore(retain_bundles=False, retain_entries=False) as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
         print("Testing Gink delete performance")
@@ -379,10 +379,10 @@ if __name__ == "__main__":
             # on another database first.
             with open(args.output, 'r') as f:
                 data = json.loads(f.read())
-                data["gink"] = results
+                data["gink_python"] = results
         except FileNotFoundError:
             # If this is the first test run.
-            data = {"gink": results}
+            data = {"gink_python": results}
 
         with open(args.output, 'w') as f:
             f.write(json.dumps(data))
