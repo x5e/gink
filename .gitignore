@@ -21,4 +21,4 @@ javascript/docs
 example.db*
 *gink.db*
 venv
-large_file.json
+data.json
