@@ -75,7 +75,7 @@ export async function interpret(entry: Entry, ginkInstance: GinkInstance): Promi
         const muid: Muid = rehydrate(entry.pointeeList[0]);
         return construct(ginkInstance, muid);
     }
-    if (typeof (entry.effectiveKey) == "object" && entry.effectiveKey.length == 3 && !(entry.effectiveKey instanceof Uint8Array)) {
+    if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
         // For a MuidTuple effective key
         return await construct(ginkInstance, muidTupleToMuid(entry.effectiveKey));
     }
