@@ -12,7 +12,7 @@ def test_write_fresh(count: int) -> dict:
     with LmdbStore() as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
-        print("Testing Gink writing performance to fresh database.")
+        print("Testing Gink Python writing performance to fresh database.")
         print("Writing", count, "key, value entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
@@ -41,7 +41,7 @@ def test_write_big_commit(count: int) -> dict:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
         bundler = Bundler('test')
-        print("Testing Gink writing performance to fresh database in one commit.")
+        print("Testing Gink Python writing performance to fresh database in one commit.")
         print("Writing", count, "key, value entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
@@ -72,7 +72,7 @@ def test_write_occupied(count: int) -> dict:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
         
-        print("Testing Gink writing performance to occupied database with", count, "entries.")
+        print("Testing Gink Python writing performance to occupied database with", count, "entries.")
         print("Filling fresh database with key, value entries...")
         for i in range(0, count):
             directory.set(f"test{i}", "test data to be inserted")
@@ -108,7 +108,7 @@ def test_read(count: int) -> dict:
         for i in range(0, count):
             directory.set(f"test{i}", "test data to be inserted")
 
-        print("Testing Gink reading performance")
+        print("Testing Gink Python reading performance")
         print("Reading", count, "key,value entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
@@ -135,7 +135,7 @@ def test_sequence_append(count: int) -> dict:
     with LmdbStore() as store:
         db = Database(store)
         seq = Sequence(db, muid=Muid(2, 2, 3))
-        print("Testing Gink Sequence append performance")
+        print("Testing Gink Python Sequence append performance")
         print("Appending", count, "entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
@@ -162,7 +162,7 @@ def test_read_write(count:int) -> dict:
     with LmdbStore() as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
-        print("Testing Gink write/read performance")
+        print("Testing Gink Python write/read performance")
         print("Writing then reading", count,"entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
@@ -190,7 +190,7 @@ def test_delete(count: int) -> dict:
     with LmdbStore(retain_bundles=False, retain_entries=False) as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
-        print("Testing Gink delete performance")
+        print("Testing Gink Python delete performance")
         print("Filling fresh database with key, value entries to be deleted.")
         for i in range(0, count):
             directory.set(f"test{i}", "test data to be inserted")
@@ -221,7 +221,7 @@ def test_random_read(count: int) -> dict:
     with LmdbStore() as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
-        print("Testing Gink random read performance")
+        print("Testing Gink Python random read performance")
         print(f"Filling fresh directory with {count} entries.")
         for i in range(0, count):
             directory.set(f"test{i}", "test data to be inserted")
@@ -262,9 +262,9 @@ def test_as_db_increases(count: int, num_inc_tests: int) -> dict:
         current_entries = 0
         results = {}
         
-        print("Testing Gink writing and reading performance as database size increases.")
+        print("Testing Gink Python writing and reading performance as database size increases.")
         for r in range(1, num_inc_tests+1):
-            print(f"Testing Gink writing performance to database with {current_entries} entries.")
+            print(f"Testing Gink Python writing performance to database with {current_entries} entries.")
             print("Writing", count, "key, value entries...")
             write_before_time = datetime.utcnow()
             for i in range(0, count):
