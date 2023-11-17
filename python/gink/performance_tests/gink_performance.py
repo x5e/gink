@@ -326,7 +326,7 @@ if __name__ == "__main__":
     parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
     parser.add_argument("-c", "--count", help="number of records", type=int, default=100)
     parser.add_argument("-o", "--output", help="json file to save output. default to no file, stdout")
-    parser.add_argument("-d", "--dir", help="directory for temporary database", default="perf_test_temp", type=Path)
+    parser.add_argument("-d", "--dir", help="directory for temporary database", default="./perf_test_temp", type=Path)
     parser.add_argument("-r", "--retain", help="retain entries and bundles in deletion test?", default=False, type=bool)
     help_increasing = """
     Number of intervals to run the increasing test.
@@ -354,10 +354,10 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--tests", help=help_tests, nargs="+", choices=choices_tests, default="all")
     args: Namespace = parser.parse_args()
     try:
-        os.mkdir(os.path.join("./", args.dir))
+        os.mkdir(args.dir)
     except FileExistsError:
         pass
-    db_path = os.path.join("./", args.dir, "gink.db")
+    db_path = os.path.join(args.dir, "gink.db")
     if args.tests == "all":
         results = test_all(db_path, args.count, args.increasing, args.retain)
     else:

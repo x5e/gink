@@ -20,5 +20,6 @@ python/docs/_build
 javascript/docs
 example.db*
 *gink.db*
+sqlite.db
 venv
 data.json
