@@ -187,7 +187,7 @@ def test_delete(count: int) -> dict:
     Tests deletion performance.
     Returns results as a dictionary.
     """
-    with LmdbStore() as store:
+    with LmdbStore(retain_bundles=False, retain_entries=False) as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
         print("Testing Gink delete performance")
@@ -247,7 +247,7 @@ def test_random_read(count: int) -> dict:
             }
     return results
 
-def test_as_db_increases(count: int) -> dict:
+def test_as_db_increases(count: int, num_inc_tests: int) -> dict:
     """
     Tests write and read performance 5 times, as the database size
     continues to increase by 'count'.
@@ -263,7 +263,7 @@ def test_as_db_increases(count: int) -> dict:
         results = {}
         
         print("Testing Gink writing and reading performance as database size increases.")
-        for r in range(1, 6):
+        for r in range(1, num_inc_tests+1):
             print(f"Testing Gink writing performance to database with {current_entries} entries.")
             print("Writing", count, "key, value entries...")
             write_before_time = datetime.utcnow()
@@ -305,16 +305,17 @@ def test_as_db_increases(count: int) -> dict:
 
     return results
 
-def test_all(count: int):
+def test_all(count: int, num_inc_tests: int):
     results = {}
     results["write_fresh"] = test_write_fresh(count)
     results["read"] = test_read(count)
     results["write_occupied"] = test_write_occupied(count)
+    results["write_big_commit"] = test_write_big_commit(count)
     results["sequence_append"] = test_sequence_append(count)
     results["read_write"] = test_read_write(count)
     results["delete"] = test_delete(count)
     results["random_read"] = test_random_read(count)
-    results["increases"] = test_as_db_increases(count)
+    results["increases"] = test_as_db_increases(count, num_inc_tests)
     return results
 
 if __name__ == "__main__":
@@ -323,6 +324,11 @@ if __name__ == "__main__":
     parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
     parser.add_argument("-c", "--count", help="number of records", type=int, default=100)
     parser.add_argument("-o", "--output", help="json file to save output. default to no file, stdout")
+    help_increasing = """
+    Number of intervals to run the increasing test.
+    Max entries will be -> this flag * count.
+    """
+    parser.add_argument("-i", "--increasing", help=help_increasing, type=int, default=5)
 
     help_tests = """
     Each test has an isolated instance of a store,
@@ -345,7 +351,7 @@ if __name__ == "__main__":
     args: Namespace = parser.parse_args()
 
     if args.tests == "all":
-        results = test_all(args.count)
+        results = test_all(args.count, args.increasing)
     else:
         results = {}
         if "write_fresh" in args.tests:
@@ -365,7 +371,7 @@ if __name__ == "__main__":
         if "random_read" in args.tests:
             results["random_read"] = test_random_read(args.count)
         if "increasing" in args.tests:
-            results["increases"] = test_as_db_increases(args.count)
+            results["increases"] = test_as_db_increases(args.count, args.increasing)
     
     if args.output:
         try:
@@ -373,10 +379,10 @@ if __name__ == "__main__":
             # on another database first.
             with open(args.output, 'r') as f:
                 data = json.loads(f.read())
-                data["gink"] = results
+                data["gink_python"] = results
         except FileNotFoundError:
             # If this is the first test run.
-            data = {"gink": results}
+            data = {"gink_python": results}
 
         with open(args.output, 'w') as f:
             f.write(json.dumps(data))

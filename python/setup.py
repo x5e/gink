@@ -30,6 +30,7 @@ setup(
     extras_require={
         "test": ["nose2"],
         "lint": ["mypy==0.812"],
+        "performance": ["matplotlib"],
         "docs": [
             "sphinx",
             "myst-parser",
