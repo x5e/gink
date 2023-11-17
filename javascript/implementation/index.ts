@@ -8,7 +8,6 @@ export { PairSet } from "./PairSet";
 export { Property } from "./Property";
 export { Role } from "./Role";
 export { IndexedDbStore } from "./IndexedDbStore";
-export { LogBackedStore } from "./LogBackedStore";
 export { Bundler } from "./Bundler";
 export { Muid, BundleInfo, Value } from "./typedefs";
 export { Container } from "./Container";
