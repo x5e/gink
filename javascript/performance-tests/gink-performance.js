@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
+// uncomment this to test in node... for now
 // const gink = require('../tsc.out/implementation/index');
-// const utils = require('../tsc.out/implementation/utils');
 
 async function testWriteFresh(count, keepHistory) {
     const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_fresh', true, keepingHistory = keepHistory));
@@ -273,7 +273,7 @@ async function testAll(count, num_inc_tests, keepHistory) {
     results["read"] = await testRead(count);
     results["sequence_append"] = await testSequenceAppend(count);
     results["read_write"] = await testReadWrite(count);
-    results["delete"] = await testDelete(count);
+    results["delete"] = await testDelete(count, keepHistory);
     results["random_read"] = await testRandomRead(count);
     results["increasing"] = await testIncreasing(count, num_inc_tests);
     return results;
@@ -356,10 +356,10 @@ if (require.main === module) {
             try {
                 const fileData = fs.readFileSync(args.output)
                 data = JSON.parse(fileData);
-                data["gink_typescript"] = results;
+                data["gink_node"] = results;
             }
             catch {
-                data = { "gink_typescript": results };
+                data = { "gink_node": results };
             }
             fs.writeFileSync(args.output, JSON.stringify(data));
         }

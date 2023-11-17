@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gink Browser Performance</title>
     <script src="../webpack.out/packed.js"></script>
-    <script src="gink_performance.js"></script>
+    <script src="gink-performance.js"></script>
 </head>
 
 <body style="width: 100vw; height: 100vh;">
@@ -15,9 +15,11 @@
     <script>
         (async () => {
             const resultsHtml = document.getElementById("results");
-
+            // have to edit the parameters here for now
             let results = await testAll(100, 5, false);
             resultsHtml.textContent = JSON.stringify(results, undefined, 2);
+            let done = document.querySelector('body').appendChild(document.createElement('p'))
+            done.setAttribute('id', 'done');
         })();
     </script>
 </body>
