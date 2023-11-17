@@ -53,7 +53,7 @@ export class GinkInstance {
         fullName?: string,
         email?: string,
         software?: string,
-    }) {
+    }): Promise<void> {
         await this.store.ready;
         const claimedChains = await this.store.getClaimedChains();
         if (claimedChains.size) {
