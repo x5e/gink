@@ -247,7 +247,7 @@ def test_random_read(count: int) -> dict:
             }
     return results
 
-def test_as_db_increases(count: int, num_inc_tests: int) -> dict:
+def test_increasing(count: int, num_inc_tests: int) -> dict:
     """
     Tests write and read performance 5 times, as the database size
     continues to increase by 'count'.
@@ -315,7 +315,7 @@ def test_all(count: int, num_inc_tests: int):
     results["read_write"] = test_read_write(count)
     results["delete"] = test_delete(count)
     results["random_read"] = test_random_read(count)
-    results["increases"] = test_as_db_increases(count, num_inc_tests)
+    results["increasing"] = test_increasing(count, num_inc_tests)
     return results
 
 if __name__ == "__main__":
@@ -371,7 +371,7 @@ if __name__ == "__main__":
         if "random_read" in args.tests:
             results["random_read"] = test_random_read(args.count)
         if "increasing" in args.tests:
-            results["increases"] = test_as_db_increases(args.count, args.increasing)
+            results["increasing"] = test_increasing(args.count, args.increasing)
     
     if args.output:
         try:

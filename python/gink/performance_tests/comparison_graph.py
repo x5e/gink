@@ -151,10 +151,10 @@ def graph_increasing(path_to_data: Path):
         x = []
         writes = []
         reads = []
-        for key in data[db]["increases"].keys():
+        for key in data[db]["increasing"].keys():
             x.append(key)
-            wps = data[db]["increases"][key]["write"]["writes_per_second"]
-            rps = data[db]["increases"][key]["read"]["reads_per_second"]
+            wps = data[db]["increasing"][key]["write"]["writes_per_second"]
+            rps = data[db]["increasing"][key]["read"]["reads_per_second"]
             writes.append(wps)
             reads.append(rps)
             if y_max_w < wps:
@@ -168,7 +168,7 @@ def graph_increasing(path_to_data: Path):
 
     # All databases SHOULD have the same number of increasing tests,
     # so it should be fine to use the last db as the number of bins.
-    num_bins = len(data[db]["increases"].keys())
+    num_bins = len(data[db]["increasing"].keys())
 
     ax1.set_title("Writes per second as DB Increases")
     ax1.set_xlabel("# of Entries in Database")
@@ -196,9 +196,9 @@ if __name__ == "__main__":
     'write'
     'read'
     'delete'
-    'increases'
+    'increasing'
     """
-    graphs_choices = ['all', 'write', 'read', 'delete', 'increases']
+    graphs_choices = ['all', 'write', 'read', 'delete', 'increasing']
     parser.add_argument("-g", "--graphs", help=graphs_help, choices=graphs_choices, default='all')
 
     args: Namespace = parser.parse_args()
@@ -209,6 +209,6 @@ if __name__ == "__main__":
         graph_read(args.data)
     if args.graphs in ('all', 'delete'):
         graph_delete(args.data)
-    if args.graphs in ('all', 'increases'):
+    if args.graphs in ('all', 'increasing'):
         graph_increasing(args.data)
     plt.show()
