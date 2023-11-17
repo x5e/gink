@@ -5,8 +5,8 @@ const utils = require('../tsc.out/implementation/utils');
 const fs = require('fs');
 const { ArgumentParser } = require('argparse');
 
-async function test_write_fresh(count) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_fresh', true, keepingHistory = false));
+async function testWriteFresh(count, keepHistory) {
+    const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_fresh', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log("Testing Gink TypeScript writing performance to fresh database.");
     console.log("Writing", count, "key, value entries...");
@@ -28,8 +28,8 @@ async function test_write_fresh(count) {
     return results;
 }
 
-async function test_write_big_commit(count) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_big_commit', true, keepingHistory = false));
+async function testWriteBigCommit(count, keepHistory) {
+    const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_big_commit', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     const bundler = new gink.Bundler();
     console.log("Testing Gink TypeScript writing performance to fresh database in one commit.");
@@ -53,8 +53,8 @@ async function test_write_big_commit(count) {
     return results;
 }
 
-async function test_write_occupied(count) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_occupied', true, keepingHistory = false));
+async function testWriteOccupied(count, keepHistory) {
+    const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_occupied', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript writing performance to occupied database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
@@ -80,8 +80,8 @@ async function test_write_occupied(count) {
     return results;
 }
 
-async function test_read(count) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('read', true, keepingHistory = false));
+async function testRead(count, keepHistory) {
+    const instance = new gink.GinkInstance(new gink.IndexedDbStore('read', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript reading performance to database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
@@ -107,8 +107,8 @@ async function test_read(count) {
     return results;
 }
 
-async function test_sequence_append(count) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('sequence_append', true, keepingHistory = false));
+async function testSequenceAppend(count, keepHistory) {
+    const instance = new gink.GinkInstance(new gink.IndexedDbStore('sequence_append', true, keepingHistory = keepHistory));
     const sequence = await instance.createSequence();
     console.log("Testing Gink TypeScript Sequence append (push) performance to fresh database.");
     console.log("Appending", count, "entries...");
@@ -131,8 +131,8 @@ async function test_sequence_append(count) {
 
 }
 
-async function test_read_write(count) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('read_write', true, keepingHistory = false));
+async function testReadWrite(count, keepHistory) {
+    const instance = new gink.GinkInstance(new gink.IndexedDbStore('read_write', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log("Testing Gink TypeScript writing then reading performance.");
     console.log("Writing then reading", count, "key, value entries...");
@@ -155,8 +155,8 @@ async function test_read_write(count) {
     return results;
 }
 
-async function test_delete(count) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('delete', true, keepingHistory = false));
+async function testDelete(count, keepHistory) {
+    const instance = new gink.GinkInstance(new gink.IndexedDbStore('delete', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript deletion performance to occupied database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
@@ -183,9 +183,9 @@ async function test_delete(count) {
     return results;
 }
 
-async function test_random_read(count) {
+async function testRandomRead(count, keepHistory) {
     const howMany = 1000
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('random_read', true, keepingHistory = false));
+    const instance = new gink.GinkInstance(new gink.IndexedDbStore('random_read', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript reading performance to database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
@@ -216,8 +216,8 @@ async function test_random_read(count) {
 
 }
 
-async function test_increasing(count, num_inc_tests) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('increasing', true, keepingHistory = false));
+async function testIncreasing(count, num_inc_tests, keepHistory) {
+    const instance = new gink.GinkInstance(new gink.IndexedDbStore('increasing', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     let currentEntries = 0;
     let results = {}
@@ -267,17 +267,17 @@ async function test_increasing(count, num_inc_tests) {
     return results;
 }
 
-async function test_all(count, num_inc_tests) {
+async function testAll(count, num_inc_tests, keepHistory) {
     const results = {}
-    results["write_fresh"] = await test_write_fresh(count);
-    results["write_big_commit"] = await test_write_big_commit(count);
-    results["write_occupied"] = await test_write_occupied(count);
-    results["read"] = await test_read(count);
-    results["sequence_append"] = await test_sequence_append(count);
-    results["read_write"] = await test_read_write(count);
-    results["delete"] = await test_delete(count);
-    results["random_read"] = await test_random_read(count);
-    results["increasing"] = await test_increasing(count, num_inc_tests);
+    results["write_fresh"] = await testWriteFresh(count);
+    results["write_big_commit"] = await testWriteBigCommit(count);
+    results["write_occupied"] = await testWriteOccupied(count);
+    results["read"] = await testRead(count);
+    results["sequence_append"] = await testSequenceAppend(count);
+    results["read_write"] = await testReadWrite(count);
+    results["delete"] = await testDelete(count);
+    results["random_read"] = await testRandomRead(count);
+    results["increasing"] = await testIncreasing(count, num_inc_tests);
     return results;
 }
 
@@ -285,6 +285,8 @@ if (require.main === module) {
     const parser = new ArgumentParser();
     parser.add_argument("-c", "--count", { help: "number of records", type: 'int', default: 100 })
     parser.add_argument("-o", "--output", { help: "json file to save output. default to no file, stdout" })
+    parser.add_argument("-k", "--keepHistory", { help: "keep history?", default: false, type: Boolean })
+
     const help_increasing = `
         Number of intervals to run the increasing test.
         Max entries will be -> this flag * count.
@@ -312,36 +314,36 @@ if (require.main === module) {
     const args = parser.parse_args();
     (async () => {
         if (args.tests == "all") {
-            results = await test_all(args.count, args.increasing)
+            results = await testAll(args.count, args.increasing, args.keepHistory)
         }
         else {
             results = {}
             if (args.tests.includes("write_fresh")) {
-                results["write_fresh"] = await test_write_fresh(args.count)
+                results["write_fresh"] = await testWriteFresh(args.count, args.keepHistory)
             }
             if (args.tests.includes("write_big_commit")) {
-                results["write_big_commit"] = await test_write_big_commit(args.count)
+                results["write_big_commit"] = await testWriteBigCommit(args.count, args.keepHistory)
             }
             if (args.tests.includes("write_occupied")) {
-                results["write_occupied"] = await test_write_occupied(args.count)
+                results["write_occupied"] = await testWriteOccupied(args.count, args.keepHistory)
             }
             if (args.tests.includes("sequence_append")) {
-                results["sequence_append"] = await test_sequence_append(args.count)
+                results["sequence_append"] = await testSequenceAppend(args.count, args.keepHistory)
             }
             if (args.tests.includes("read")) {
-                results["read"] = await test_read(args.count)
+                results["read"] = await testRead(args.count, args.keepHistory)
             }
             if (args.tests.includes("read_write")) {
-                results["read_write"] = await test_read_write(args.count)
+                results["read_write"] = await testReadWrite(args.count, args.keepHistory)
             }
             if (args.tests.includes("delete")) {
-                results["delete"] = await test_delete(args.count)
+                results["delete"] = await testDelete(args.count, args.keepHistory)
             }
             if (args.tests.includes("random_read")) {
-                results["random_read"] = await test_random_read(args.count)
+                results["random_read"] = await testRandomRead(args.count, args.keepHistory)
             }
             if (args.tests.includes("increasing")) {
-                results["increasing"] = await test_increasing(args.count, args.increasing)
+                results["increasing"] = await testIncreasing(args.count, args.increasing, args.keepHistory)
             }
         }
 
