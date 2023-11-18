@@ -4,11 +4,12 @@ const puppeteer = require('puppeteer');
 const Expector = require("../integration-tests/Expector");
 
 async function test_browser_performance() {
-    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
+    const server = new Expector("node", ["javascript/tsc.out/implementation/main.js"],
         { env: { GINK_PORT: "8081", GINK_STATIC_PATH: ".", ...process.env } });
     await server.expect("ready");
     const all_results = {}
     for (const product of ["chrome", "firefox"]) {
+        console.log(`Testing ${product}...`);
         let browser = await puppeteer.launch({
             product: product,
             headless: "new",
@@ -29,7 +30,7 @@ async function test_browser_performance() {
         await server.close();
     }
     catch { }
-
+    console.log("Browser performance tests finished.")
     return all_results;
 }
 
