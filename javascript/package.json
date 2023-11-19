@@ -41,6 +41,8 @@
     "fs-ext": "^2.0.0",
     "google-protobuf": "^3.21.2",
     "idb": "^7.1.1",
+    "karma": "^6.4.2",
+    "karma-mocha-reporter": "^2.2.5",
     "node-static": "^0.7.11",
     "websocket": "^1.0.34"
   },
@@ -49,13 +51,14 @@
     "@types/jest": "^29.5.0",
     "expect": "^29.7.0",
     "jest-puppeteer": "^9.0.1",
+    "karma-chrome-launcher": "^3.2.0",
+    "karma-jasmine": "^5.1.0",
     "karma-webpack": "^5.0.0",
     "node-loader": "^2.0.0",
     "puppeteer": "^21.4.1",
     "ts-jest": "^29.0.5",
     "ts-loader": "^9.5.0",
     "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4",
-    "webpack-karma-jasmine": "^4.0.0"
+    "webpack-cli": "^5.1.4"
   }
 }

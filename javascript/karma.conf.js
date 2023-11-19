@@ -31,6 +31,7 @@ module.exports = function (config) {
                     "path": false,
                     "fs": false,
                     "http": false,
+                    "url": false,
                     "https": false,
                     "readline": false,
                     "console": false,
