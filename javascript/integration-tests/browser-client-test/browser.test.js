@@ -3,14 +3,17 @@ const Expector = require("../Expector");
 const { expect } = require('@jest/globals');
 
 it('connect to server and display commits', async () => {
-    let browser = await puppeteer.launch({
-        executablePath: '/usr/bin/google-chrome',
-        headless: "new",
-        args: [
-            "--no-sandbox",
-            "--disable-gpu",
-        ]
-    });
+    if (process.env.CHROME_BIN) {
+        let browser = await puppeteer.launch({
+            executablePath: process.env.CHROME_BIN,
+            headless: "new",
+            args: [
+                "--no-sandbox",
+                "--disable-gpu",
+            ]
+        });
+    }
+
     let page = await browser.newPage();
 
     const server = new Expector("node", ["./tsc.out/implementation/main.js"],
