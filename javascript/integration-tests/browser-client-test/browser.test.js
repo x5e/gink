@@ -49,17 +49,17 @@ it('connect to server and display commits', async () => {
     await page.goto('http://127.0.0.1:8081/integration-tests/browser-client-test');
     await page.waitForSelector('#messages');
 
-    // if you are using a RaspberryPi, or another low powered machine, uncomment these.
-    // const rpiIsSlow = new Promise(r => setTimeout(r, 3000));
-    // await rpiIsSlow;
+    // if you are using a RaspberryPi, or another low powered machine, make sure these are uncommented
+    const slowMachine = new Promise(r => setTimeout(r, 3000));
+    await slowMachine;
 
     await waitForMessages;
 
     const messages = await page.$eval("#messages", e => e.innerHTML);
 
+    await server.close();
+    await browser.close();
+
     const expectedMessages = /Messages go here\..*Hello, Universe!.*start: SimpleServer/s
     expect(messages).toMatch(expectedMessages);
-
-    server.close();
-    browser.close();
-}, 13000)
+}, 13000);
