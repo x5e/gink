@@ -73,13 +73,12 @@ def test_write_occupied(db_file_path: Path|str, count: int) -> dict:
     with sqlite3.connect(db_file_path) as con:
         cur = con.cursor()
         cur.execute("CREATE TABLE write_occupied(test)")
-
+        print("Testing SQLite writing performance to occupied database with", count, "existing entries.")
+        print("Filling table with", count, "entries...")
         for i in range(0, count):
             cur.execute(f"""INSERT INTO write_occupied VALUES ('test{i} data to be inserted')""")
-            con.commit()
-
-        print("Testing SQLite writing performance to occupied database with", count, "existing entries.")
-        print("Writing", count, "entries...")
+        con.commit()
+        print("Writing", count, "new entries...")
         before_time = datetime.utcnow()
         for i in range(count, count*2):
             cur.execute(f"""INSERT INTO write_occupied VALUES ('test{i} data to be inserted')""")

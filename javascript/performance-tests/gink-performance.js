@@ -1,9 +1,6 @@
 #!/usr/bin/env node
 
-const gink = require('../tsc.out/implementation/index');
-const utils = require('../tsc.out/implementation/utils');
-const fs = require('fs');
-const { ArgumentParser } = require('argparse');
+if (typeof window == 'undefined') gink = require('../tsc.out/implementation/index');
 
 async function testWriteFresh(count, keepHistory) {
     const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_fresh', true, keepingHistory = keepHistory));
@@ -91,7 +88,7 @@ async function testRead(count, keepHistory) {
     console.log("Reading", count, "key, value entries...");
     const beforeTime = Date.now();
     for (let i = 0; i < count; i++) {
-        utils.ensure(await directory.get(`test${i}`));
+        if (!(await directory.get(`test${i}`))) throw new Error(`test${i} doesn't exist.`);
     }
     const afterTime = Date.now();
     const totalTime = ((afterTime - beforeTime) / 1000);
@@ -139,7 +136,7 @@ async function testReadWrite(count, keepHistory) {
     const beforeTime = Date.now();
     for (let i = 0; i < count; i++) {
         await directory.set(`test${i}`, "test data to be inserted");
-        utils.ensure(await directory.get(`test${i}`));
+        if (!(await directory.get(`test${i}`))) throw new Error(`test${i} doesn't exist.`);
     }
     const afterTime = Date.now();
     const totalTime = ((afterTime - beforeTime) / 1000);
@@ -169,7 +166,7 @@ async function testDelete(count, keepHistory) {
         await directory.delete(`test${i}`);
     }
     const afterTime = Date.now();
-    utils.ensure(!await directory.get(`test${count / 2}`)); // Make sure stuff was actually deleted
+    if (await directory.get(`test${count / 2}`)) throw new Error(`test${count / 2} still exists.`); // Make sure stuff was actually deleted
     const totalTime = ((afterTime - beforeTime) / 1000);
     const deletesPerSecond = (count / totalTime);
     console.log("- Total time:", totalTime.toFixed(4), "seconds");
@@ -199,7 +196,7 @@ async function testRandomRead(count, keepHistory) {
     console.log("Randomly reading", howMany, "key, value entries...");
     const beforeTime = Date.now();
     for (num of randomInts) {
-        utils.ensure(await directory.get(`test${num}`));
+        if (!(await directory.get(`test${num}`))) throw new Error(`test${num} doesn't exist.`);
     }
     const afterTime = Date.now();
     const totalTime = ((afterTime - beforeTime) / 1000);
@@ -275,25 +272,65 @@ async function testAll(count, num_inc_tests, keepHistory) {
     results["read"] = await testRead(count);
     results["sequence_append"] = await testSequenceAppend(count);
     results["read_write"] = await testReadWrite(count);
-    results["delete"] = await testDelete(count);
+    results["delete"] = await testDelete(count, keepHistory);
     results["random_read"] = await testRandomRead(count);
     results["increasing"] = await testIncreasing(count, num_inc_tests);
     return results;
 }
 
+async function main(tests, count, increasing, keepHistory) {
+    if (tests == "all") {
+        results = await testAll(count, increasing, keepHistory)
+    }
+    else {
+        results = {}
+        if (tests.includes("write_fresh")) {
+            results["write_fresh"] = await testWriteFresh(count, keepHistory)
+        }
+        if (tests.includes("write_big_commit")) {
+            results["write_big_commit"] = await testWriteBigCommit(count, keepHistory)
+        }
+        if (tests.includes("write_occupied")) {
+            results["write_occupied"] = await testWriteOccupied(count, keepHistory)
+        }
+        if (tests.includes("sequence_append")) {
+            results["sequence_append"] = await testSequenceAppend(count, keepHistory)
+        }
+        if (tests.includes("read")) {
+            results["read"] = await testRead(count, keepHistory)
+        }
+        if (tests.includes("read_write")) {
+            results["read_write"] = await testReadWrite(count, keepHistory)
+        }
+        if (tests.includes("delete")) {
+            results["delete"] = await testDelete(count, keepHistory)
+        }
+        if (tests.includes("random_read")) {
+            results["random_read"] = await testRandomRead(count, keepHistory)
+        }
+        if (tests.includes("increasing")) {
+            results["increasing"] = await testIncreasing(count, increasing, keepHistory)
+        }
+    }
+    return results;
+}
+
 if (require.main === module) {
+    const { ArgumentParser } = require('argparse');
+    const fs = require('fs');
+
     const parser = new ArgumentParser();
     parser.add_argument("-c", "--count", { help: "number of records", type: 'int', default: 100 })
     parser.add_argument("-o", "--output", { help: "json file to save output. default to no file, stdout" })
     parser.add_argument("-k", "--keepHistory", { help: "keep history?", default: false, type: Boolean })
 
-    const help_increasing = `
+    const helpIncreasing = `
         Number of intervals to run the increasing test.
         Max entries will be -> this flag * count.
         `
-    parser.add_argument("-i", "--increasing", { help: help_increasing, type: 'int', default: 5 })
+    parser.add_argument("-i", "--increasing", { help: helpIncreasing, type: 'int', default: 5 })
 
-    const help_tests = `
+    const helpTests = `
         Each test has an isolated instance of a store,
         so each test may be run independently.
 
@@ -309,52 +346,19 @@ if (require.main === module) {
         random_read
         increasing
         `
-    const choices_tests = ["write_fresh", "write_big_commit", "write_occupied", "sequence_append", "read", "read_write", "delete", "random_read", "increasing"]
-    parser.add_argument("-t", "--tests", { help: help_tests, nargs: "+", choices: choices_tests, default: "all" })
+    const choicesTests = ["write_fresh", "write_big_commit", "write_occupied", "sequence_append", "read", "read_write", "delete", "random_read", "increasing"]
+    parser.add_argument("-t", "--tests", { help: helpTests, nargs: "+", choices: choicesTests, default: "all" })
     const args = parser.parse_args();
     (async () => {
-        if (args.tests == "all") {
-            results = await testAll(args.count, args.increasing, args.keepHistory)
-        }
-        else {
-            results = {}
-            if (args.tests.includes("write_fresh")) {
-                results["write_fresh"] = await testWriteFresh(args.count, args.keepHistory)
-            }
-            if (args.tests.includes("write_big_commit")) {
-                results["write_big_commit"] = await testWriteBigCommit(args.count, args.keepHistory)
-            }
-            if (args.tests.includes("write_occupied")) {
-                results["write_occupied"] = await testWriteOccupied(args.count, args.keepHistory)
-            }
-            if (args.tests.includes("sequence_append")) {
-                results["sequence_append"] = await testSequenceAppend(args.count, args.keepHistory)
-            }
-            if (args.tests.includes("read")) {
-                results["read"] = await testRead(args.count, args.keepHistory)
-            }
-            if (args.tests.includes("read_write")) {
-                results["read_write"] = await testReadWrite(args.count, args.keepHistory)
-            }
-            if (args.tests.includes("delete")) {
-                results["delete"] = await testDelete(args.count, args.keepHistory)
-            }
-            if (args.tests.includes("random_read")) {
-                results["random_read"] = await testRandomRead(args.count, args.keepHistory)
-            }
-            if (args.tests.includes("increasing")) {
-                results["increasing"] = await testIncreasing(args.count, args.increasing, args.keepHistory)
-            }
-        }
-
+        const results = await main(args.tests, args.count, args.increasing, args.keepHistory)
         if (args.output) {
             try {
-                const file_data = fs.readFileSync(args.output)
-                data = JSON.parse(file_data);
-                data["gink_typescript"] = results;
+                const fileData = fs.readFileSync(args.output)
+                data = JSON.parse(fileData);
+                data["gink_node"] = results;
             }
             catch {
-                data = { "gink_typescript": results };
+                data = { "gink_node": results };
             }
             fs.writeFileSync(args.output, JSON.stringify(data));
         }
