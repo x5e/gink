@@ -14,10 +14,10 @@ def graph_write(path_to_data: Path):
     with open(path_to_data, "r") as f:
         data: dict = json.loads(f.read())
     assert data
-    x_labels = []
+    y_labels = []
     for label in data.keys():
-        x_labels.append(label)
-    x = np.arange(len(x_labels))
+        y_labels.append(label)
+    y = np.arange(len(y_labels))
     width = 0.25
     multiplier = 0
     all_data = {
@@ -27,7 +27,7 @@ def graph_write(path_to_data: Path):
     }
     plt.figure(1)
     ax = plt.subplot()
-    y_max = 0
+    x_max = 0
     for db in data.keys():
         wf = data[db]["write_fresh"]["writes_per_second"]
         wo = data[db]["write_occupied"]["writes_per_second"]
@@ -36,19 +36,23 @@ def graph_write(path_to_data: Path):
         all_data["write_occupied"].append(wo)
         all_data["write_big_commit"].append(wbc)
     
-    if y_max < wf or y_max < wo or y_max < wbc:
-            y_max = max(wf, wo, wbc)
+        if x_max < wf or x_max < wo or x_max < wbc:
+            x_max = max(wf, wo, wbc)
 
     for test, results in all_data.items():
         offset = width * multiplier
-        rects = ax.bar(x + offset, results, width, label=test)
+        rects = ax.barh(y + offset, results, width, label=test)
         ax.bar_label(rects, padding=3)
         multiplier += 1
-    ax.set_ylabel('Writes per second')
+    ax.invert_yaxis()
+    ax.set_xlabel('Writes per second')
     ax.set_title('Writes per second - Gink vs SQLite')
-    ax.set_xticks(x + width, x_labels)
-    ax.set_ylim(bottom=0, top=y_max+(y_max*.2))
-    ax.legend(loc='upper left', ncols=3)
+    ax.set_yticks(y + width, y_labels)
+    ax.set_xlim(left=0, right=x_max+(x_max*.2))
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+          fancybox=True, shadow=True, ncol=3)
+    plt.subplots_adjust(left=0.2, bottom=0.2)
+    
 
 def graph_read(path_to_data: Path):
     """
@@ -60,10 +64,10 @@ def graph_read(path_to_data: Path):
     with open(path_to_data, "r") as f:
         data: dict = json.loads(f.read())
     assert data
-    x_labels = []
+    y_labels = []
     for label in data.keys():
-        x_labels.append(label)
-    x = np.arange(len(x_labels))
+        y_labels.append(label)
+    y = np.arange(len(y_labels))
     width = 0.25
     multiplier = 0
     all_data = {
@@ -73,7 +77,7 @@ def graph_read(path_to_data: Path):
     }
     plt.figure(2)
     ax = plt.subplot()
-    y_max = 0
+    x_max = 0
     for db in data.keys():
         read_rps = data[db]["read"]["reads_per_second"]
         wr_rps = data[db]["read_write"]["txns_per_second"]
@@ -82,19 +86,22 @@ def graph_read(path_to_data: Path):
         all_data["read_write"].append(wr_rps)
         all_data["random_read"].append(rand_rps)
 
-        if y_max < read_rps or y_max < wr_rps or y_max < rand_rps:
-            y_max = max(read_rps, wr_rps, rand_rps)
+        if x_max < read_rps or x_max < wr_rps or x_max < rand_rps:
+            x_max = max(read_rps, wr_rps, rand_rps)
     
     for test, results in all_data.items():
         offset = width * multiplier
-        rects = ax.bar(x + offset, results, width, label=test)
+        rects = ax.barh(y + offset, results, width, label=test)
         ax.bar_label(rects, padding=3)
         multiplier += 1
-    ax.set_ylabel('Reads per second')
-    ax.set_title('Reads per second - Gink vs SQLite')
-    ax.set_xticks(x + width, x_labels)
-    ax.set_ylim(bottom=0, top=y_max+(y_max*.2))
-    ax.legend(loc='upper left', ncols=3)
+    ax.invert_yaxis()
+    ax.set_xlabel('Writes per second')
+    ax.set_title('Writes per second - Gink vs SQLite')
+    ax.set_yticks(y + width, y_labels)
+    ax.set_xlim(left=0, right=x_max+(x_max*.2))
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+          fancybox=True, shadow=True, ncol=3)
+    plt.subplots_adjust(left=0.2, bottom=0.2)
 
 def graph_delete(path_to_data: Path):
     """
@@ -151,10 +158,10 @@ def graph_increasing(path_to_data: Path):
         x = []
         writes = []
         reads = []
-        for key in data[db]["increases"].keys():
+        for key in data[db]["increasing"].keys():
             x.append(key)
-            wps = data[db]["increases"][key]["write"]["writes_per_second"]
-            rps = data[db]["increases"][key]["read"]["reads_per_second"]
+            wps = data[db]["increasing"][key]["write"]["writes_per_second"]
+            rps = data[db]["increasing"][key]["read"]["reads_per_second"]
             writes.append(wps)
             reads.append(rps)
             if y_max_w < wps:
@@ -168,7 +175,7 @@ def graph_increasing(path_to_data: Path):
 
     # All databases SHOULD have the same number of increasing tests,
     # so it should be fine to use the last db as the number of bins.
-    num_bins = len(data[db]["increases"].keys())
+    num_bins = len(data[db]["increasing"].keys())
 
     ax1.set_title("Writes per second as DB Increases")
     ax1.set_xlabel("# of Entries in Database")
@@ -196,9 +203,9 @@ if __name__ == "__main__":
     'write'
     'read'
     'delete'
-    'increases'
+    'increasing'
     """
-    graphs_choices = ['all', 'write', 'read', 'delete', 'increases']
+    graphs_choices = ['all', 'write', 'read', 'delete', 'increasing']
     parser.add_argument("-g", "--graphs", help=graphs_help, choices=graphs_choices, default='all')
 
     args: Namespace = parser.parse_args()
@@ -209,6 +216,6 @@ if __name__ == "__main__":
         graph_read(args.data)
     if args.graphs in ('all', 'delete'):
         graph_delete(args.data)
-    if args.graphs in ('all', 'increases'):
+    if args.graphs in ('all', 'increasing'):
         graph_increasing(args.data)
     plt.show()
