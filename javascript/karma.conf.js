@@ -14,6 +14,9 @@ module.exports = function (config) {
         singleRun: true,
         logLevel: config.LOG_WARN,
         frameworks: ['jasmine', 'webpack'],
+        // for the tests to run as intended, set env CHROME_BIN
+        // to the path to the chrome binary. Chromium works too.
+        // ex: export CHROME_BIN=/bin/chromium-browser
         browsers: ['ChromeHeadlessNS'],
         customLaunchers: {
             ChromeHeadlessNS: {
@@ -31,6 +34,7 @@ module.exports = function (config) {
                     "path": false,
                     "fs": false,
                     "http": false,
+                    "url": false,
                     "https": false,
                     "readline": false,
                     "console": false,
