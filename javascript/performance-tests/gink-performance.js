@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-if (typeof window == 'undefined') gink = require('../tsc.out/implementation/index');
+if (typeof window == 'undefined') {
+    let gink = require('../tsc.out/implementation/index');
+}
 
 async function testWriteFresh(count, keepHistory) {
     const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_fresh', true, keepingHistory = keepHistory));

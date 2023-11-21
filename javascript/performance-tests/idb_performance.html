@@ -1,0 +1,27 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDB Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
+    <script src="idb-performance.js"></script>
+</head>
+
+<body>
+    <h1>IndexedDB Performance Tests</h1>
+    <pre
+        id="results">Running performance tests...<br>Check console for real-time updates. Results will display here.</pre>
+    <script>
+        (async () => {
+            const resultsHtml = document.getElementById("results");
+            // have to edit the parameters here for now
+            let results = await testAll(1000, 5);
+            resultsHtml.textContent = JSON.stringify(results, undefined, 2);
+            let done = document.querySelector('body').appendChild(document.createElement('p'))
+            done.setAttribute('id', 'done');
+        })();
+    </script>
+</body>
+
+</html>
