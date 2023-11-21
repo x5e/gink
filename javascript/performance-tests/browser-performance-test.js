@@ -15,9 +15,12 @@ async function test_browser_performance() {
             headless: "new",
         });
         let page = await browser.newPage();
+        page
+            .on('console', message =>
+                console.log(`${product}: ${message.text()}`))
 
-        await page.goto('http://127.0.0.1:8081/performance-tests/performance_tests.html');
-        await page.waitForSelector('#done');
+        await page.goto('http://127.0.0.1:8081/javascript/performance-tests/performance_tests.html');
+        await page.waitForSelector('#done', { timeout: 0 });
 
         let results = await page.$eval("#results", e => e.innerHTML);
         let results_obj = JSON.parse(results);
