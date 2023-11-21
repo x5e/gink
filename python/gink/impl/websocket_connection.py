@@ -68,7 +68,7 @@ class WebsocketConnection(Connection):
     def receive(self) -> Iterable[SyncMessage]:
         if self._closed:
             return
-        data = self._socket.recv(2 ** 30)
+        data = self._socket.recv(4096 * 4096)
         if not data:
             self._closed = True
         self._ws.receive_data(data)
