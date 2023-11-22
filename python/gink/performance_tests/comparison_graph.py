@@ -95,8 +95,8 @@ def graph_read(path_to_data: Path):
         ax.bar_label(rects, padding=3)
         multiplier += 1
     ax.invert_yaxis()
-    ax.set_xlabel('Writes per second')
-    ax.set_title('Writes per second - Gink vs SQLite')
+    ax.set_xlabel('Reads per second')
+    ax.set_title('Reads per second - Gink vs SQLite')
     ax.set_yticks(y + width, y_labels)
     ax.set_xlim(left=0, right=x_max+(x_max*.2))
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
