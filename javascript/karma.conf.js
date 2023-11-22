@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = function (config) {
     config.set({
         basePath: '.',
@@ -27,6 +29,10 @@ module.exports = function (config) {
         // uncomment this for more verbosity within the tests
         // reporters: ['mocha', 'kjhtml'],
         webpack: {
+            output: {
+                filename: 'packed-tests.js',
+                path: path.resolve(__dirname, 'webpack.out/unit-tests'),
+            },
             resolve: {
                 extensions: [".ts", ".tsx", ".js", ".node"],
                 modules: ['node_modules'],
