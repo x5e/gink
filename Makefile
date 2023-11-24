@@ -12,6 +12,14 @@ clean:
 running-as-root:
 	bash -c 'test `id -u` -eq 0'
 
+test-python:
+	cd python && python3 -m nose2
+
+test-javascript:
+	cd javascript && npm test
+
+test: test-python test-javascript
+
 install-debian-packages: running-as-root
 	apt-get install -y `cat packages.txt | tr '\n' ' '`
 

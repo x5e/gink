@@ -31,7 +31,7 @@ class LmdbStore(AbstractStore):
     """
     """
 
-    def __init__(self, file_path=None, reset=False, retain_bundles=True, retain_entries=True, map_size=8000000000000):
+    def __init__(self, file_path=None, reset=False, retain_bundles=True, retain_entries=True, map_size=2**30):
         """ Opens a gink.mdb file for use as a Store.
 
             file_path: where find or place the data file
