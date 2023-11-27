@@ -31,6 +31,7 @@
     "serve": "GINK_PORT=8080 ./tsc.out/implementation/main.js",
     "build": "tsc",
     "test": "jest -- unit-tests",
+    "test-seq": "jest -- Sequence.test.ts",
     "browser-unit": "karma start",
     "browser-integration": "jest -- browser.test.js",
     "browser-performance": "node performance-tests/browser-performance-test.js"

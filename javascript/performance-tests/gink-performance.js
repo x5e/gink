@@ -1,19 +1,23 @@
 #!/usr/bin/env node
+let gink = require('../tsc.out/implementation/index');
 
 if (typeof window == 'undefined') {
     let gink = require('../tsc.out/implementation/index');
 }
 
 async function testWriteFresh(count, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_fresh', true, keepingHistory = keepHistory));
+    const store = new gink.IndexedDbStore('write_fresh', true, keepingHistory = keepHistory);
+    const instance = new gink.GinkInstance(store);
     const directory = await instance.createDirectory();
     console.log("Testing Gink TypeScript writing performance to fresh database.");
     console.log("Writing", count, "key, value entries...");
     const beforeTime = Date.now();
     for (let i = 0; i < count; i++) {
-        await directory.set(`test${i}`, "test data to be inserted");
+        directory.set(`test${i}`, "test data to be inserted");
     }
     const afterTime = Date.now();
+    // await store.transactionComplete();
+    if (!(await directory.get(`test${count/2}`))) throw new Error(`test${count/2} doesn't exist.`);
     const totalTime = ((afterTime - beforeTime) / 1000);
     const writesPerSecond = (count / totalTime);
     console.log("- Total time:", totalTime.toFixed(4), "seconds");
@@ -35,10 +39,11 @@ async function testWriteBigCommit(count, keepHistory) {
     console.log("Writing", count, "key, value entries...");
     const beforeTime = Date.now();
     for (let i = 0; i < count; i++) {
-        await directory.set(`test${i}`, "test data to be inserted", bundler);
+        directory.set(`test${i}`, "test data to be inserted", bundler);
     }
     await instance.addBundler(bundler);
     const afterTime = Date.now();
+    if (!(await directory.get(`test${count/2}`))) throw new Error(`test${count/2} doesn't exist.`);
     const totalTime = ((afterTime - beforeTime) / 1000);
     const writesPerSecond = (count / totalTime);
     console.log("- Total time:", totalTime.toFixed(4), "seconds");
@@ -66,6 +71,7 @@ async function testWriteOccupied(count, keepHistory) {
         await directory.set(`test${i}`, "test data to be inserted");
     }
     const afterTime = Date.now();
+    if (!(await directory.get(`test${count+count/2}`))) throw new Error(`test${count+count/2} doesn't exist.`);
     const totalTime = ((afterTime - beforeTime) / 1000);
     const writesPerSecond = (count / totalTime);
     console.log("- Total time:", totalTime.toFixed(4), "seconds");
@@ -165,9 +171,10 @@ async function testDelete(count, keepHistory) {
     console.log("Deleting", count, "key, value entries...");
     const beforeTime = Date.now();
     for (let i = 0; i < count; i++) {
-        await directory.delete(`test${i}`);
+        directory.delete(`test${i}`);
     }
     const afterTime = Date.now();
+
     if (await directory.get(`test${count / 2}`)) throw new Error(`test${count / 2} still exists.`); // Make sure stuff was actually deleted
     const totalTime = ((afterTime - beforeTime) / 1000);
     const deletesPerSecond = (count / totalTime);
@@ -227,9 +234,10 @@ async function testIncreasing(count, num_inc_tests, keepHistory) {
         console.log("Writing", count, "new key, value entries...");
         const writeBeforeTime = Date.now();
         for (let i = 0; i < count; i++) {
-            await directory.set(`test${i}`, "test data to be inserted");
+            directory.set(`test${i}`, "test data to be inserted");
         }
         const writeAfterTime = Date.now();
+        if (!(await directory.get(`test${count/2}`))) throw new Error(`test${count/2} doesn't exist.`);
         const writeTotalTime = ((writeAfterTime - writeBeforeTime) / 1000);
         const writesPerSecond = (count / writeTotalTime);
         console.log(`** For database starting at ${currentEntries} entries **`);
@@ -239,7 +247,7 @@ async function testIncreasing(count, num_inc_tests, keepHistory) {
 
         const readBeforeTime = Date.now();
         for (let i = 0; i < count; i++) {
-            await directory.set(`test${i}`, "test data to be inserted");
+            if (!(await directory.get(`test${i}`))) throw new Error(`test${i} doesn't exist.`);
         }
         const readAfterTime = Date.now();
         const readTotalTime = ((readAfterTime - readBeforeTime) / 1000);

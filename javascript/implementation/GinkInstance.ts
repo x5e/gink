@@ -293,7 +293,7 @@ export class GinkInstance {
                 }
             });
         });
-        return new Promise((res) => {return});
+        return Promise.resolve();
 
     }
 

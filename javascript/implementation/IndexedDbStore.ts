@@ -52,7 +52,7 @@ export class IndexedDbStore implements Store {
     ready: Promise<void>;
     private wrapped: IDBPDatabase<IndexedDbStoreSchema>;
     private wrappedTransaction = undefined;
-    private chainInfoTransaction = undefined;
+    private counter = 0;
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
     constructor(indexedDbName = "gink-default", reset = false, private keepingHistory = true) {
         this.ready = this.initialize(indexedDbName, reset);
@@ -241,9 +241,8 @@ export class IndexedDbStore implements Store {
                 this.wrappedTransaction = this.wrapped.transaction(
                     ['trxns', 'chainInfos', 'containers', 'entries', 'removals', 'clearances']
                     , 'readwrite');
-                this.chainInfoTransaction = this.wrappedTransaction.objectStore('chainInfos');
             }
-            let oldChainInfoPromise = this.chainInfoTransaction.get([medallion, chainStart]);
+            let oldChainInfoPromise = this.wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
             oldChainInfoPromise.then((oldChainInfo) => {
                 if (oldChainInfo || priorTime) {
                     if (oldChainInfo?.timestamp >= timestamp) {
@@ -256,12 +255,13 @@ export class IndexedDbStore implements Store {
                 }
             });
 
-            this.chainInfoTransaction.put(bundleInfo);
+            this.wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
             // Only timestamp and medallion are required for uniqueness, the others just added to make
             // the getNeededTransactions faster by not requiring parsing again.
             const commitKey: BundleInfoTuple = IndexedDbStore.commitInfoToKey(bundleInfo);
             this.wrappedTransaction.objectStore("trxns").add(bundleBytes, commitKey);
             const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
+
             for (const [offset, changeBuilder] of changesMap.entries()) {
                 ensure(offset > 0);
                 const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
@@ -378,6 +378,8 @@ export class IndexedDbStore implements Store {
                         });
                     }
                     this.wrappedTransaction.objectStore("entries").add(entry);
+                    this.counter++;
+
                     continue;
                 }
                 if (changeBuilder.hasMovement()) {
@@ -478,17 +480,12 @@ export class IndexedDbStore implements Store {
             }
             return this.wrappedTransaction.done.then(() => {
                 this.wrappedTransaction = undefined;
-                this.chainInfoTransaction = undefined;
                 return [bundleInfo, true];
             });
     });
     }
 
     async cursorDelete(cursor): Promise<void> {
-        /**
-         *
-         *
-         */
         while (cursor) {
             await cursor.delete();
             cursor = await cursor.continue();
