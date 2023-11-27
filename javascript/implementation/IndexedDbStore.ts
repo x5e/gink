@@ -10,7 +10,7 @@ import {
     unwrapKey,
     unwrapValue
 } from "./utils";
-import { deleteDB, IDBPDatabase, openDB, IDBPCursorWithValue } from 'idb';
+import { deleteDB, IDBPDatabase, openDB } from 'idb';
 import {
     AsOf,
     BundleBytes,
@@ -52,8 +52,8 @@ export class IndexedDbStore implements Store {
     ready: Promise<void>;
     private wrapped: IDBPDatabase<IndexedDbStoreSchema>;
     private wrappedTransaction = undefined;
+    private chainInfoTransaction = undefined;
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
-
     constructor(indexedDbName = "gink-default", reset = false, private keepingHistory = true) {
         this.ready = this.initialize(indexedDbName, reset);
     }
@@ -235,266 +235,265 @@ export class IndexedDbStore implements Store {
     addBundle(bundleBytes: BundleBytes): Promise<[BundleInfo, boolean]> {
         return this.ready.then(() => {
             const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = IndexedDbStore.extractCommitInfo(bundleBuilder);
-        const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
-        if (!this.wrappedTransaction) {
-            this.wrappedTransaction = this.wrapped.transaction(
-                ['trxns', 'chainInfos', 'containers', 'entries', 'removals', 'clearances']
-                , 'readwrite');
-        }
-
-        this.wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart])
-        .then((oldChainInfo: BundleInfo) => {
-            if (oldChainInfo || priorTime) {
-                if (oldChainInfo?.timestamp >= timestamp) {
-                    return [bundleInfo, false];
-                }
-                if (oldChainInfo?.timestamp != priorTime) {
-                    //TODO(https://github.com/google/gink/issues/27): Need to explicitly close?
-                    throw new Error(`missing prior chain entry for ${bundleInfo}, have ${oldChainInfo}`);
-                }
+            const bundleInfo = IndexedDbStore.extractCommitInfo(bundleBuilder);
+            const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
+            if (!this.wrappedTransaction) {
+                this.wrappedTransaction = this.wrapped.transaction(
+                    ['trxns', 'chainInfos', 'containers', 'entries', 'removals', 'clearances']
+                    , 'readwrite');
+                this.chainInfoTransaction = this.wrappedTransaction.objectStore('chainInfos');
             }
-        });
+            let oldChainInfoPromise = this.chainInfoTransaction.get([medallion, chainStart]);
+            oldChainInfoPromise.then((oldChainInfo) => {
+                if (oldChainInfo || priorTime) {
+                    if (oldChainInfo?.timestamp >= timestamp) {
+                        return [bundleInfo, false];
+                    }
+                    if (oldChainInfo?.timestamp != priorTime) {
+                        //TODO(https://github.com/google/gink/issues/27): Need to explicitly close?
+                        throw new Error(`missing prior chain entry for ${bundleInfo}, have ${oldChainInfo}`);
+                    }
+                }
+            });
 
-        this.wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
-        // Only timestamp and medallion are required for uniqueness, the others just added to make
-        // the getNeededTransactions faster by not requiring parsing again.
-        const commitKey: BundleInfoTuple = IndexedDbStore.commitInfoToKey(bundleInfo);
-        this.wrappedTransaction.objectStore("trxns").add(bundleBytes, commitKey);
-        const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
-        for (const [offset, changeBuilder] of changesMap.entries()) {
-            ensure(offset > 0);
-            const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
-            if (changeBuilder.hasContainer()) {
-                const containerBytes = changeBuilder.getContainer().serializeBinary();
-                this.wrappedTransaction.objectStore("containers").add(containerBytes, changeAddressTuple);
-                continue;
-            }
-            if (changeBuilder.hasEntry()) {
-                const entryBuilder: EntryBuilder = changeBuilder.getEntry();
-                // TODO(https://github.com/google/gink/issues/55): explain root
-                const containerId: MuidTuple = [0, 0, 0];
-                if (entryBuilder.hasContainer()) {
-                    const srcMuid: MuidBuilder = entryBuilder.getContainer();
-                    containerId[0] = srcMuid.getTimestamp() || bundleInfo.timestamp;
-                    containerId[1] = srcMuid.getMedallion() || bundleInfo.medallion;
-                    containerId[2] = srcMuid.getOffset();
+            this.chainInfoTransaction.put(bundleInfo);
+            // Only timestamp and medallion are required for uniqueness, the others just added to make
+            // the getNeededTransactions faster by not requiring parsing again.
+            const commitKey: BundleInfoTuple = IndexedDbStore.commitInfoToKey(bundleInfo);
+            this.wrappedTransaction.objectStore("trxns").add(bundleBytes, commitKey);
+            const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
+            for (const [offset, changeBuilder] of changesMap.entries()) {
+                ensure(offset > 0);
+                const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
+                if (changeBuilder.hasContainer()) {
+                    const containerBytes = changeBuilder.getContainer().serializeBinary();
+                    this.wrappedTransaction.objectStore("containers").add(containerBytes, changeAddressTuple);
+                    continue;
                 }
-                const behavior: Behavior = entryBuilder.getBehavior();
-                let effectiveKey: KeyType | Timestamp | MuidTuple | [Muid, Muid] | [];
-                let replacing = true;
-                if (behavior == Behavior.DIRECTORY || behavior == Behavior.KEY_SET) {
-                    ensure(entryBuilder.hasKey());
-                    effectiveKey = unwrapKey(entryBuilder.getKey());
-                } else if (behavior == Behavior.SEQUENCE) {
-                    effectiveKey = entryBuilder.getEffective() || timestamp;
-                    replacing = false;
-                } else if (behavior == Behavior.BOX || behavior == Behavior.VERTEX) {
-                    effectiveKey = [];
-                } else if (behavior == Behavior.PROPERTY) {
-                    ensure(entryBuilder.hasDescribing());
-                    const describing = builderToMuid(entryBuilder.getDescribing());
-                    effectiveKey = muidToTuple(describing);
-                } else if (behavior == Behavior.ROLE) {
-                    ensure(entryBuilder.hasDescribing());
-                    const describing = builderToMuid(entryBuilder.getDescribing());
-                    effectiveKey = muidToTuple(describing);
-                } else if (behavior == Behavior.VERB) {
-                    ensure(entryBuilder.hasPair());
-                    effectiveKey = entryBuilder.getEffective() || timestamp;
-                } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
-                    ensure(entryBuilder.hasPair());
-                    const pair = entryBuilder.getPair();
-                    const left = pair.getLeft();
-                    const rite = pair.getRite();
-                    // There's probably a better way of doing this
-                    effectiveKey = `${muidToString(builderToMuid(left))}-${muidToString(builderToMuid(rite))}`;
-                } else {
-                    throw new Error(`unexpected behavior: ${behavior}`)
-                }
-                const entryId: MuidTuple = [timestamp, medallion, offset];
-                const placementId: MuidTuple = entryId;
-                const pointeeList = <Indexable[]>[];
-                if (entryBuilder.hasPointee()) {
-                    const pointeeMuidBuilder: MuidBuilder = entryBuilder.getPointee();
-                    const pointee = dehydrate({
-                        timestamp: pointeeMuidBuilder.getTimestamp() || bundleInfo.timestamp,
-                        medallion: pointeeMuidBuilder.getMedallion() || bundleInfo.medallion,
-                        offset: pointeeMuidBuilder.getOffset(),
-                    });
-                    pointeeList.push(pointee);
-                }
-                const sourceList = <Indexable[]>[];
-                const targetList = <Indexable[]>[];
-                if (entryBuilder.hasPair()) {
-                    const pairBuilder = entryBuilder.getPair();
-                    const source = dehydrate({
-                        timestamp: pairBuilder.getLeft().getTimestamp() || bundleInfo.timestamp,
-                        medallion: pairBuilder.getLeft().getMedallion() || bundleInfo.medallion,
-                        offset: pairBuilder.getLeft().getOffset()
-                    });
-                    sourceList.push(source);
-                    const target = dehydrate({
-                        timestamp: pairBuilder.getRite().getTimestamp() || bundleInfo.timestamp,
-                        medallion: pairBuilder.getRite().getMedallion() || bundleInfo.medallion,
-                        offset: pairBuilder.getRite().getOffset()
-                    });
-                    targetList.push(target);
-                }
-                const value = entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined;
-                const expiry = entryBuilder.getExpiry() || undefined;
-                const deletion = entryBuilder.getDeletion();
-                const entry: Entry = {
-                    behavior,
-                    containerId,
-                    effectiveKey,
-                    entryId,
-                    pointeeList,
-                    value,
-                    expiry,
-                    deletion,
-                    placementId,
-                    sourceList,
-                    targetList,
-                };
-                if (replacing) {
-                    const range = IDBKeyRange.bound([containerId, effectiveKey], [containerId, effectiveKey, placementId]);
-                    this.wrappedTransaction.objectStore("entries").index("by-container-key-placement"
-                    ).openCursor(range, "prev").then((search) => {
-                        if (search) {
-                            if (this.keepingHistory) {
-                                const removal: Removal = {
-                                    removing: search.value.placementId,
-                                    removalId: placementId,
-                                    containerId: containerId,
-                                    dest: 0,
-                                    entryId: search.value.entryId
+                if (changeBuilder.hasEntry()) {
+                    const entryBuilder: EntryBuilder = changeBuilder.getEntry();
+                    // TODO(https://github.com/google/gink/issues/55): explain root
+                    const containerId: MuidTuple = [0, 0, 0];
+                    if (entryBuilder.hasContainer()) {
+                        const srcMuid: MuidBuilder = entryBuilder.getContainer();
+                        containerId[0] = srcMuid.getTimestamp() || bundleInfo.timestamp;
+                        containerId[1] = srcMuid.getMedallion() || bundleInfo.medallion;
+                        containerId[2] = srcMuid.getOffset();
+                    }
+                    const behavior: Behavior = entryBuilder.getBehavior();
+                    let effectiveKey: KeyType | Timestamp | MuidTuple | [Muid, Muid] | [];
+                    let replacing = true;
+                    if (behavior == Behavior.DIRECTORY || behavior == Behavior.KEY_SET) {
+                        ensure(entryBuilder.hasKey());
+                        effectiveKey = unwrapKey(entryBuilder.getKey());
+                    } else if (behavior == Behavior.SEQUENCE) {
+                        effectiveKey = entryBuilder.getEffective() || timestamp;
+                        replacing = false;
+                    } else if (behavior == Behavior.BOX || behavior == Behavior.VERTEX) {
+                        effectiveKey = [];
+                    } else if (behavior == Behavior.PROPERTY) {
+                        ensure(entryBuilder.hasDescribing());
+                        const describing = builderToMuid(entryBuilder.getDescribing());
+                        effectiveKey = muidToTuple(describing);
+                    } else if (behavior == Behavior.ROLE) {
+                        ensure(entryBuilder.hasDescribing());
+                        const describing = builderToMuid(entryBuilder.getDescribing());
+                        effectiveKey = muidToTuple(describing);
+                    } else if (behavior == Behavior.VERB) {
+                        ensure(entryBuilder.hasPair());
+                        effectiveKey = entryBuilder.getEffective() || timestamp;
+                    } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
+                        ensure(entryBuilder.hasPair());
+                        const pair = entryBuilder.getPair();
+                        const left = pair.getLeft();
+                        const rite = pair.getRite();
+                        // There's probably a better way of doing this
+                        effectiveKey = `${muidToString(builderToMuid(left))}-${muidToString(builderToMuid(rite))}`;
+                    } else {
+                        throw new Error(`unexpected behavior: ${behavior}`)
+                    }
+                    const entryId: MuidTuple = [timestamp, medallion, offset];
+                    const placementId: MuidTuple = entryId;
+                    const pointeeList = <Indexable[]>[];
+                    if (entryBuilder.hasPointee()) {
+                        const pointeeMuidBuilder: MuidBuilder = entryBuilder.getPointee();
+                        const pointee = dehydrate({
+                            timestamp: pointeeMuidBuilder.getTimestamp() || bundleInfo.timestamp,
+                            medallion: pointeeMuidBuilder.getMedallion() || bundleInfo.medallion,
+                            offset: pointeeMuidBuilder.getOffset(),
+                        });
+                        pointeeList.push(pointee);
+                    }
+                    const sourceList = <Indexable[]>[];
+                    const targetList = <Indexable[]>[];
+                    if (entryBuilder.hasPair()) {
+                        const pairBuilder = entryBuilder.getPair();
+                        const source = dehydrate({
+                            timestamp: pairBuilder.getLeft().getTimestamp() || bundleInfo.timestamp,
+                            medallion: pairBuilder.getLeft().getMedallion() || bundleInfo.medallion,
+                            offset: pairBuilder.getLeft().getOffset()
+                        });
+                        sourceList.push(source);
+                        const target = dehydrate({
+                            timestamp: pairBuilder.getRite().getTimestamp() || bundleInfo.timestamp,
+                            medallion: pairBuilder.getRite().getMedallion() || bundleInfo.medallion,
+                            offset: pairBuilder.getRite().getOffset()
+                        });
+                        targetList.push(target);
+                    }
+                    const value = entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined;
+                    const expiry = entryBuilder.getExpiry() || undefined;
+                    const deletion = entryBuilder.getDeletion();
+                    const entry: Entry = {
+                        behavior,
+                        containerId,
+                        effectiveKey,
+                        entryId,
+                        pointeeList,
+                        value,
+                        expiry,
+                        deletion,
+                        placementId,
+                        sourceList,
+                        targetList,
+                    };
+                    if (replacing) {
+                        const range = IDBKeyRange.bound([containerId, effectiveKey], [containerId, effectiveKey, placementId]);
+                        this.wrappedTransaction.objectStore("entries").index("by-container-key-placement"
+                        ).openCursor(range, "prev").then((search) => {
+                            if (search) {
+                                if (this.keepingHistory) {
+                                    const removal: Removal = {
+                                        removing: search.value.placementId,
+                                        removalId: placementId,
+                                        containerId: containerId,
+                                        dest: 0,
+                                        entryId: search.value.entryId
+                                    }
+                                    this.wrappedTransaction.objectStore("removals").add(removal);
+                                } else {
+                                    this.wrappedTransaction.objectStore("entries").delete(placementId);
                                 }
-                                this.wrappedTransaction.objectStore("removals").add(removal);
-                            } else {
-                                this.wrappedTransaction.objectStore("entries").delete(placementId);
                             }
+                        });
+                    }
+                    this.wrappedTransaction.objectStore("entries").add(entry);
+                    continue;
+                }
+                if (changeBuilder.hasMovement()) {
+                    const movementBuilder: MovementBuilder = changeBuilder.getMovement();
+                    const entryMuid = movementBuilder.getEntry();
+                    const entryId: MuidTuple = [
+                        entryMuid.getTimestamp() || timestamp,
+                        entryMuid.getMedallion() || medallion,
+                        entryMuid.getOffset()];
+                    const movementId: MuidTuple = [timestamp, medallion, offset];
+                    const containerId: MuidTuple = [0, 0, 0];
+                    if (movementBuilder.hasContainer()) {
+                        const srcMuid: MuidBuilder = movementBuilder.getContainer();
+                        containerId[0] = srcMuid.getTimestamp() || bundleInfo.timestamp;
+                        containerId[1] = srcMuid.getMedallion() || bundleInfo.medallion;
+                        containerId[2] = srcMuid.getOffset();
+                    }
+
+                    const range = IDBKeyRange.bound([entryId, [0]], [entryId, [Infinity]]);
+                    this.wrappedTransaction.objectStore("entries").index("locations").openCursor(range, "prev")
+                    .then((search) => {
+                        if (!search) {
+                            // continue; // Nothing found to remove.
+                        }
+                        else {
+                            const found: Entry = search.value;
+                            const dest = movementBuilder.getDest();
+                            if (dest != 0) {
+                                const destEntry: Entry = {
+                                    behavior: found.behavior,
+                                    containerId: found.containerId,
+                                    effectiveKey: dest,
+                                    entryId: found.entryId,
+                                    pointeeList: found.pointeeList,
+                                    value: found.value,
+                                    expiry: found.expiry,
+                                    deletion: found.deletion,
+                                    placementId: movementId,
+                                    sourceList: found.sourceList,
+                                    targetList: found.targetList,
+                                }
+                                this.wrappedTransaction.objectStore("entries").add(destEntry);
+                            }
+                            if (movementBuilder.getPurge() || !this.keepingHistory) {
+                                search.delete();
+                            } else {
+                                const removal: Removal = {
+                                    containerId,
+                                    removalId: movementId,
+                                    dest,
+                                    entryId,
+                                    removing: found.placementId,
+                                };
+                                this.wrappedTransaction.objectStore("removals").add(removal);
+                        }
                         }
                     });
                 }
-                this.wrappedTransaction.objectStore("entries").add(entry);
-                continue;
-            }
-            if (changeBuilder.hasMovement()) {
-                const movementBuilder: MovementBuilder = changeBuilder.getMovement();
-                const entryMuid = movementBuilder.getEntry();
-                const entryId: MuidTuple = [
-                    entryMuid.getTimestamp() || timestamp,
-                    entryMuid.getMedallion() || medallion,
-                    entryMuid.getOffset()];
-                const movementId: MuidTuple = [timestamp, medallion, offset];
-                const containerId: MuidTuple = [0, 0, 0];
-                if (movementBuilder.hasContainer()) {
-                    const srcMuid: MuidBuilder = movementBuilder.getContainer();
-                    containerId[0] = srcMuid.getTimestamp() || bundleInfo.timestamp;
-                    containerId[1] = srcMuid.getMedallion() || bundleInfo.medallion;
-                    containerId[2] = srcMuid.getOffset();
-                }
+                if (changeBuilder.hasClearance()) {
+                    const clearanceBuilder = changeBuilder.getClearance();
+                    const container = builderToMuid(clearanceBuilder.getContainer(), { timestamp, medallion, offset });
+                    const containerMuidTuple: MuidTuple = [container.timestamp, container.medallion, container.offset];
+                    if (clearanceBuilder.getPurge()) {
+                        // When purging, remove all entries from the container.
+                        const onePast = [container.timestamp, container.medallion, container.offset + 1];
+                        const range = IDBKeyRange.bound([containerMuidTuple], [onePast], false, true);
+                        let entriesCursorPromise = this.wrappedTransaction.objectStore("entries").index("by-container-key-placement").openCursor(range);
+                        entriesCursorPromise.then((entriesCursor) => {
+                            this.cursorDelete(entriesCursor);
+                        });
 
-                const range = IDBKeyRange.bound([entryId, [0]], [entryId, [Infinity]]);
-                this.wrappedTransaction.objectStore("entries").index("locations").openCursor(range, "prev")
-                .then((search) => {
-                    if (!search) {
-                        // continue; // Nothing found to remove.
-                    }
-                    else {
-                        const found: Entry = search.value;
-                        const dest = movementBuilder.getDest();
-                        if (dest != 0) {
-                            const destEntry: Entry = {
-                                behavior: found.behavior,
-                                containerId: found.containerId,
-                                effectiveKey: dest,
-                                entryId: found.entryId,
-                                pointeeList: found.pointeeList,
-                                value: found.value,
-                                expiry: found.expiry,
-                                deletion: found.deletion,
-                                placementId: movementId,
-                                sourceList: found.sourceList,
-                                targetList: found.targetList,
-                            }
-                            this.wrappedTransaction.objectStore("entries").add(destEntry);
+                        // When doing a purging clear, remove previous clearances for the container.
+                        let clearancesCursorPromise = this.wrappedTransaction.objectStore("clearances").openCursor(range);
+                        if (clearancesCursorPromise) {
+                            clearancesCursorPromise.then((clearancesCursor) => {
+                                this.cursorDelete(clearancesCursor);
+                            });
                         }
-                        if (movementBuilder.getPurge() || !this.keepingHistory) {
-                            search.delete();
-                        } else {
-                            const removal: Removal = {
-                                containerId,
-                                removalId: movementId,
-                                dest,
-                                entryId,
-                                removing: found.placementId,
-                            };
-                            this.wrappedTransaction.objectStore("removals").add(removal);
-                    }
-                    }
-                });
-            }
-            if (changeBuilder.hasClearance()) {
-                const clearanceBuilder = changeBuilder.getClearance();
-                const container = builderToMuid(clearanceBuilder.getContainer(), { timestamp, medallion, offset });
-                const containerMuidTuple: MuidTuple = [container.timestamp, container.medallion, container.offset];
-                if (clearanceBuilder.getPurge()) {
-                    // When purging, remove all entries from the container.
-                    const onePast = [container.timestamp, container.medallion, container.offset + 1];
-                    const range = IDBKeyRange.bound([containerMuidTuple], [onePast], false, true);
-                    let entriesCursor = this.wrappedTransaction.objectStore("entries").index("by-container-key-placement").openCursor(range);
-                    while (entriesCursor) {
-                        entriesCursor = entriesCursor.then((entriesCursor) => {
-                            return entriesCursor.delete().then(() => {
-                                return entriesCursor.continue().then(() => {
-                                    return entriesCursor;
-                                });
-                            });
-                        });
-                    }
 
-                    // When doing a purging clear, remove previous clearances for the container.
-                    let clearancesCursor = this.wrappedTransaction.objectStore("clearances").openCursor(range);
-                    while (clearancesCursor) {
-                        clearancesCursor = clearancesCursor.then((clearancesCursor) => {
-                            return clearancesCursor.delete().then(() => {
-                                return clearancesCursor.continue().then(() => {
-                                    return clearancesCursor;
-                                });
+                        // When doing a purging clear, remove all removals for the container.
+                        let removalsCursorPromise = this.wrappedTransaction.objectStore("removals").index("by-container-movement").openCursor(range);
+                        if (removalsCursorPromise) {
+                            removalsCursorPromise.then((removalsCursor) => {
+                                this.cursorDelete(removalsCursor);
                             });
-                        });
+                        }
                     }
-                    // When doing a purging clear, remove all removals for the container.
-                    let removalsCursor = this.wrappedTransaction.objectStore("removals").index("by-container-movement").openCursor(range);
-                    while (removalsCursor) {
-                        removalsCursor = removalsCursor.then((removalsCursor) => {
-                            return removalsCursor.delete().then(() => {
-                                return removalsCursor.continue().then(() => {
-                                    return removalsCursor;
-                                });
-                            });
-                        });
-                    }
+                    const clearance: Clearance = {
+                        containerId: containerMuidTuple,
+                        clearanceId: changeAddressTuple,
+                        purging: clearanceBuilder.getPurge()
+                    };
+                    this.wrappedTransaction.objectStore("clearances").add(clearance);
+
+                    continue;
                 }
-                const clearance: Clearance = {
-                    containerId: containerMuidTuple,
-                    clearanceId: changeAddressTuple,
-                    purging: clearanceBuilder.getPurge()
-                };
-                this.wrappedTransaction.objectStore("clearances").add(clearance);
-                this.wrappedTransaction = undefined;
-                continue;
+                throw new Error("don't know how to apply this kind of change");
             }
-            throw new Error("don't know how to apply this kind of change");
-        }
-        return this.wrappedTransaction.done.then(() => {
-            return [bundleInfo, true];
-        });
+            return this.wrappedTransaction.done.then(() => {
+                this.wrappedTransaction = undefined;
+                this.chainInfoTransaction = undefined;
+                return [bundleInfo, true];
+            });
     });
+    }
 
-
+    async cursorDelete(cursor): Promise<void> {
+        /**
+         *
+         *
+         */
+        while (cursor) {
+            await cursor.delete();
+            cursor = await cursor.continue();
+        }
+        return Promise.resolve()
     }
 
     async getContainerBytes(address: Muid): Promise<Bytes | undefined> {

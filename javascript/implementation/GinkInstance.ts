@@ -224,9 +224,9 @@ export class GinkInstance {
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
         let resultInfo: BundleInfo;
-        this.ready.then(() =>{
+        return this.ready.then(() =>{
             const nowMicros = generateTimestamp();
-            this.store.getSeenThrough(this.myChain).then((seenThrough) => {
+            return this.store.getSeenThrough(this.myChain).then((seenThrough) => {
                 ensure(seenThrough > 0 && (seenThrough < nowMicros));
                 const commitInfo: BundleInfo = {
                     medallion: this.myChain[0],
@@ -236,10 +236,9 @@ export class GinkInstance {
                 };
                 resultInfo = bundler.seal(commitInfo);
                 this.receiveCommit(bundler.bytes);
-
+                return resultInfo;
             });
         });
-        return new Promise((res) => {return resultInfo;});
     }
 
     /**

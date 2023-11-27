@@ -69,9 +69,7 @@ export class SimpleServer extends GinkInstance {
         }
         else if (webSocketMessage.type === 'binary') {
             this.logger('Server received binary message of ' + webSocketMessage.binaryData.length + ' bytes.');
-            this.receiveMessage(webSocketMessage.binaryData, connectionId).catch(
-                (reason) => this.logger(reason)
-            );
+            this.receiveMessage(webSocketMessage.binaryData, connectionId);
         }
     }
 }

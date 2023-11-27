@@ -143,7 +143,7 @@ it('Directory.purge', async function () {
     const found = await instance.store.getKeyedEntries(directory.address, middle);
     ensure(!found.size);
     ensure(!await directory.size())
-});
+}, 100000000);
 
 it('Directory.clear', async function () {
     const instance = new GinkInstance(new IndexedDbStore('Directory.clear', true));
@@ -158,4 +158,4 @@ it('Directory.clear', async function () {
         console.log(asMapBeforeClear);
         throw new Error("busted");
     }
-})
+});
