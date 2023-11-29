@@ -243,7 +243,7 @@ export class IndexedDbStore implements Store {
                     , 'readwrite');
             }
             let oldChainInfoPromise = this.wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
-            oldChainInfoPromise.then((oldChainInfo) => {
+            return oldChainInfoPromise.then((oldChainInfo) => {
                 if (oldChainInfo || priorTime) {
                     if (oldChainInfo?.timestamp >= timestamp) {
                         return [bundleInfo, false];
@@ -253,9 +253,7 @@ export class IndexedDbStore implements Store {
                         throw new Error(`missing prior chain entry for ${bundleInfo}, have ${oldChainInfo}`);
                     }
                 }
-            });
-
-            this.wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
+                this.wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
             // Only timestamp and medallion are required for uniqueness, the others just added to make
             // the getNeededTransactions faster by not requiring parsing again.
             const commitKey: BundleInfoTuple = IndexedDbStore.commitInfoToKey(bundleInfo);
@@ -481,6 +479,7 @@ export class IndexedDbStore implements Store {
             return this.wrappedTransaction.done.then(() => {
                 this.wrappedTransaction = undefined;
                 return [bundleInfo, true];
+            });
             });
     });
     }

@@ -235,8 +235,9 @@ export class GinkInstance {
                     priorTime: seenThrough,
                 };
                 resultInfo = bundler.seal(commitInfo);
-                this.receiveCommit(bundler.bytes);
-                return resultInfo;
+                return this.receiveCommit(bundler.bytes).then(() => {
+                    return resultInfo;
+                });
             });
         });
     }
@@ -321,9 +322,7 @@ export class GinkInstance {
                     this.logger(`got greeting from ${fromConnectionId}`);
                     const greeting = parsed.getGreeting();
                     peer._receiveHasMap(new ChainTracker({ greeting }));
-                    this.store.getCommits(peer._sendIfNeeded.bind(peer)).then(() => {
-                        return;
-                    });
+                    this.store.getCommits(peer._sendIfNeeded.bind(peer));
                 }
                 if (parsed.hasAck()) {
                     const ack = parsed.getAck();

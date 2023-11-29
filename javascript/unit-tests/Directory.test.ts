@@ -9,7 +9,8 @@ it('set and get Basic data', async function () {
     const schema = await instance.createDirectory();
 
     // set a value
-    schema.set("a key", "a value");
+    await schema.set("a key", "a value");
+    // schema.set("a key2", "a value2");
 
     // check that the desired result exists in the database
     const result = await schema.get("a key");
