@@ -12,7 +12,7 @@ async function test_gink_browser_performance() {
         console.log(`Testing gink ${product}...`);
         let browser = await puppeteer.launch({
             product: product,
-            headless: "new",
+            headless: false,
         });
         let page = await browser.newPage();
         page.on('console', message => console.log(`gink ${product}: ${message.text()}`));

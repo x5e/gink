@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-const { dir } = require('console');
 let gink = require('../tsc.out/implementation/index');
 
 if (typeof window == 'undefined') {
@@ -18,7 +17,7 @@ async function testWriteFresh(count, keepHistory) {
     }
     const afterTime = Date.now();
     await directory.set("waiting", "waiting");
-    if (!(await directory.get(`test${count/2}`))) throw new Error(`test${count/2} doesn't exist.`);
+    if (!(await directory.get(`test${count / 2}`))) throw new Error(`test${count / 2} doesn't exist.`);
     const totalTime = ((afterTime - beforeTime) / 1000);
     const writesPerSecond = (count / totalTime);
     console.log("- Total time:", totalTime.toFixed(4), "seconds");
@@ -44,7 +43,7 @@ async function testWriteBigCommit(count, keepHistory) {
     }
     await instance.addBundler(bundler);
     const afterTime = Date.now();
-    if (!(await directory.get(`test${count/2}`))) throw new Error(`test${count/2} doesn't exist.`);
+    if (!(await directory.get(`test${count / 2}`))) throw new Error(`test${count / 2} doesn't exist.`);
     const totalTime = ((afterTime - beforeTime) / 1000);
     const writesPerSecond = (count / totalTime);
     console.log("- Total time:", totalTime.toFixed(4), "seconds");
@@ -72,7 +71,7 @@ async function testWriteOccupied(count, keepHistory) {
         await directory.set(`test${i}`, "test data to be inserted");
     }
     const afterTime = Date.now();
-    if (!(await directory.get(`test${count+count/2}`))) throw new Error(`test${count+count/2} doesn't exist.`);
+    if (!(await directory.get(`test${count + count / 2}`))) throw new Error(`test${count + count / 2} doesn't exist.`);
     const totalTime = ((afterTime - beforeTime) / 1000);
     const writesPerSecond = (count / totalTime);
     console.log("- Total time:", totalTime.toFixed(4), "seconds");
@@ -224,7 +223,8 @@ async function testRandomRead(count, keepHistory) {
 }
 
 async function testIncreasing(count, num_inc_tests, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('increasing', true, keepingHistory = keepHistory));
+    const store = new gink.IndexedDbStore('increasing', true, keepingHistory = keepHistory);
+    const instance = new gink.GinkInstance(store);
     const directory = await instance.createDirectory();
     let currentEntries = 0;
     let results = {}
@@ -238,13 +238,16 @@ async function testIncreasing(count, num_inc_tests, keepHistory) {
             directory.set(`test${i}`, "test data to be inserted");
         }
         const writeAfterTime = Date.now();
-        await directory.set("waiting", "waiting");
-        if (!(await directory.get(`test${(count*r)/2}`))) throw new Error(`test${(count*r)/2} doesn't exist.`);
+        const waitingTime = Date.now();
+        await store.transactionComplete();
+        const waitingEnd = Date.now();
+        if (!(await directory.get(`test${(count * r) / 2}`))) throw new Error(`test${(count * r) / 2} doesn't exist.`);
         const writeTotalTime = ((writeAfterTime - writeBeforeTime) / 1000);
         const writesPerSecond = (count / writeTotalTime);
         console.log(`** For database starting at ${currentEntries} entries **`);
         console.log("- Total write time:", writeTotalTime.toFixed(4), "seconds");
         console.log("- Writes per second:", writesPerSecond.toFixed(2));
+        console.log(`- Waiting for all transactions: ${(waitingEnd - waitingTime) / 1000} seconds.`)
         console.log();
 
         // const readBeforeTime = Date.now();
