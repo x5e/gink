@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+let gink = require('../tsc.out/implementation/index');
 
 if (typeof window == 'undefined') {
     let gink = require('../tsc.out/implementation/index');
@@ -239,7 +240,7 @@ async function testIncreasing(count, num_inc_tests, keepHistory) {
 
         const readBeforeTime = Date.now();
         for (let i = 0; i < count; i++) {
-            await directory.set(`test${i}`, "test data to be inserted");
+            if (!(await directory.get(`test${i}`))) throw new Error(`test${i} doesn't exist.`);
         }
         const readAfterTime = Date.now();
         const readTotalTime = ((readAfterTime - readBeforeTime) / 1000);
