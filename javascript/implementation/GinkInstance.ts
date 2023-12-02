@@ -293,7 +293,11 @@ export class GinkInstance {
                     listener(bundleInfo);
                 }
                 return Promise.resolve();
+            }).catch((e) => {
+                console.error(e);
             });
+        }).catch((e) => {
+            console.error(e);
         });
 
 

@@ -397,6 +397,8 @@ export class IndexedDbStore implements Store {
                                         this.wrappedTransaction.objectStore("entries").delete(placementId);
                                     }
                                 }
+                            }).catch((e) => {
+                                console.error(e);
                             });
                         }
                         this.wrappedTransaction.objectStore("entries").add(entry);
@@ -455,6 +457,8 @@ export class IndexedDbStore implements Store {
                                         this.wrappedTransaction.objectStore("removals").add(removal);
                                     }
                                 }
+                            }).catch((e) => {
+                                console.error(e);
                             });
                         continue;
                     }
@@ -469,6 +473,8 @@ export class IndexedDbStore implements Store {
                             let entriesCursorPromise = this.wrappedTransaction.objectStore("entries").index("by-container-key-placement").openCursor(range);
                             entriesCursorPromise.then((entriesCursor) => {
                                 this.cursorDelete(entriesCursor);
+                            }).catch((e) => {
+                                console.error(e);
                             });
 
                             // When doing a purging clear, remove previous clearances for the container.
@@ -476,6 +482,8 @@ export class IndexedDbStore implements Store {
                             if (clearancesCursorPromise) {
                                 clearancesCursorPromise.then((clearancesCursor) => {
                                     this.cursorDelete(clearancesCursor);
+                                }).catch((e) => {
+                                    console.error(e);
                                 });
                             }
 
@@ -484,6 +492,8 @@ export class IndexedDbStore implements Store {
                             if (removalsCursorPromise) {
                                 removalsCursorPromise.then((removalsCursor) => {
                                     this.cursorDelete(removalsCursor);
+                                }).catch((e) => {
+                                    console.error(e);
                                 });
                             }
                         }
@@ -501,8 +511,14 @@ export class IndexedDbStore implements Store {
                 return this.wrappedTransaction.done.then(() => {
                     this.wrappedTransaction = undefined;
                     return [bundleInfo, true];
+                }).catch((e) => {
+                    console.error(e);
                 });
+            }).catch((e) => {
+                console.error(e);
             });
+        }).catch((e) => {
+            console.error(e);
         });
     }
 
