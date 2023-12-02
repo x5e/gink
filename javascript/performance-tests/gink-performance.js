@@ -15,8 +15,9 @@ async function testWriteFresh(count, keepHistory) {
     for (let i = 0; i < count; i++) {
         directory.set(`test${i}`, "test data to be inserted");
     }
+    // await store.transactionComplete();
+    await directory.set('waiting', 'waiting')
     const afterTime = Date.now();
-    await directory.set("waiting", "waiting");
     if (!(await directory.get(`test${count / 2}`))) throw new Error(`test${count / 2} doesn't exist.`);
     const totalTime = ((afterTime - beforeTime) / 1000);
     const writesPerSecond = (count / totalTime);
@@ -41,6 +42,8 @@ async function testWriteBigCommit(count, keepHistory) {
     for (let i = 0; i < count; i++) {
         directory.set(`test${i}`, "test data to be inserted", bundler);
     }
+    // await store.transactionComplete();
+    await directory.set('waiting', 'waiting', bundler);
     await instance.addBundler(bundler);
     const afterTime = Date.now();
     if (!(await directory.get(`test${count / 2}`))) throw new Error(`test${count / 2} doesn't exist.`);
@@ -58,18 +61,23 @@ async function testWriteBigCommit(count, keepHistory) {
 }
 
 async function testWriteOccupied(count, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_occupied', true, keepingHistory = keepHistory));
+    const store = new gink.IndexedDbStore('write_occupied', true, keepingHistory = keepHistory)
+    const instance = new gink.GinkInstance(store);
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript writing performance to occupied database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
     for (let i = 0; i < count; i++) {
-        await directory.set(`test${i}`, "test data to be inserted");
+        directory.set(`test${i}`, "test data to be inserted");
     }
+    // await store.transactionComplete();
+    await directory.set('waiting', 'waiting');
     console.log("Writing", count, "new key, value entries...");
     const beforeTime = Date.now();
     for (let i = count; i < count * 2; i++) {
-        await directory.set(`test${i}`, "test data to be inserted");
+        directory.set(`test${i}`, "test data to be inserted");
     }
+    // await store.transactionComplete();
+    await directory.set('waiting', 'waiting');
     const afterTime = Date.now();
     if (!(await directory.get(`test${count + count / 2}`))) throw new Error(`test${count + count / 2} doesn't exist.`);
     const totalTime = ((afterTime - beforeTime) / 1000);
@@ -86,13 +94,16 @@ async function testWriteOccupied(count, keepHistory) {
 }
 
 async function testRead(count, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('read', true, keepingHistory = keepHistory));
+    const store = new gink.IndexedDbStore('read', true, keepingHistory = keepHistory);
+    const instance = new gink.GinkInstance(store);
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript reading performance to database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
     for (let i = 0; i < count; i++) {
-        await directory.set(`test${i}`, "test data to be inserted");
+        directory.set(`test${i}`, "test data to be inserted");
     }
+    // await store.transactionComplete();
+    await directory.set('waiting', 'waiting');
     console.log("Reading", count, "key, value entries...");
     const beforeTime = Date.now();
     for (let i = 0; i < count; i++) {
@@ -161,20 +172,24 @@ async function testReadWrite(count, keepHistory) {
 }
 
 async function testDelete(count, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('delete', true, keepingHistory = keepHistory));
+    const store = new gink.IndexedDbStore('delete', true, keepingHistory = keepHistory);
+    const instance = new gink.GinkInstance(store);
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript deletion performance to occupied database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
     for (let i = 0; i < count; i++) {
-        await directory.set(`test${i}`, "test data to be inserted");
+        directory.set(`test${i}`, "test data to be inserted");
     }
     console.log("Deleting", count, "key, value entries...");
+    // await store.transactionComplete();
+    await directory.set('waiting', 'waiting');
     const beforeTime = Date.now();
     for (let i = 0; i < count; i++) {
         directory.delete(`test${i}`);
     }
+    // await store.transactionComplete();
+    await directory.set('waiting', 'waiting');
     const afterTime = Date.now();
-
     if (await directory.get(`test${count / 2}`)) throw new Error(`test${count / 2} still exists.`); // Make sure stuff was actually deleted
     const totalTime = ((afterTime - beforeTime) / 1000);
     const deletesPerSecond = (count / totalTime);
@@ -191,13 +206,16 @@ async function testDelete(count, keepHistory) {
 
 async function testRandomRead(count, keepHistory) {
     const howMany = 1000
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('random_read', true, keepingHistory = keepHistory));
+    const store = new gink.IndexedDbStore('random_read', true, keepingHistory = keepHistory);
+    const instance = new gink.GinkInstance(store);
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript reading performance to database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
     for (let i = 0; i < count; i++) {
-        await directory.set(`test${i}`, "test data to be inserted");
+        directory.set(`test${i}`, "test data to be inserted");
     }
+    // await store.transactionComplete();
+    await directory.set('waiting', 'waiting');
     const randomInts = [];
     for (let i = 0; i < howMany; i++) {
         randomInts.push(Math.floor(Math.random() * count));
@@ -237,40 +255,38 @@ async function testIncreasing(count, num_inc_tests, keepHistory) {
         for (let i = currentEntries; i < count * r; i++) {
             directory.set(`test${i}`, "test data to be inserted");
         }
+        // await store.transactionComplete();
+        await directory.set('waiting', 'waiting');
         const writeAfterTime = Date.now();
-        const waitingTime = Date.now();
-        await store.transactionComplete();
-        const waitingEnd = Date.now();
         if (!(await directory.get(`test${(count * r) / 2}`))) throw new Error(`test${(count * r) / 2} doesn't exist.`);
         const writeTotalTime = ((writeAfterTime - writeBeforeTime) / 1000);
         const writesPerSecond = (count / writeTotalTime);
         console.log(`** For database starting at ${currentEntries} entries **`);
         console.log("- Total write time:", writeTotalTime.toFixed(4), "seconds");
         console.log("- Writes per second:", writesPerSecond.toFixed(2));
-        console.log(`- Waiting for all transactions: ${(waitingEnd - waitingTime) / 1000} seconds.`)
         console.log();
 
-        // const readBeforeTime = Date.now();
-        // for (let i = 0; i < count; i++) {
-        //     if (!(await directory.get(`test${i}`))) throw new Error(`test${i} doesn't exist.`);
-        // }
-        // const readAfterTime = Date.now();
-        // const readTotalTime = ((readAfterTime - readBeforeTime) / 1000);
-        // const readsPerSecond = (count / readTotalTime);
-        // console.log(`** For database with ${count * r} entries **`);
-        // console.log("- Total read time:", readTotalTime.toFixed(4), "seconds");
-        // console.log("- Reads per second:", readsPerSecond.toFixed(2));
-        // console.log();
+        const readBeforeTime = Date.now();
+        for (let i = 0; i < count; i++) {
+            if (!(await directory.get(`test${i}`))) throw new Error(`test${i} doesn't exist.`);
+        }
+        const readAfterTime = Date.now();
+        const readTotalTime = ((readAfterTime - readBeforeTime) / 1000);
+        const readsPerSecond = (count / readTotalTime);
+        console.log(`** For database with ${count * r} entries **`);
+        console.log("- Total read time:", readTotalTime.toFixed(4), "seconds");
+        console.log("- Reads per second:", readsPerSecond.toFixed(2));
+        console.log();
 
         results[count * r] = {
             "write": {
                 "total_time": writeTotalTime,
                 "writes_per_second": writesPerSecond
             },
-            // "read": {
-            //     "total_time": readTotalTime,
-            //     "reads_per_second": readsPerSecond
-            // }
+            "read": {
+                "total_time": readTotalTime,
+                "reads_per_second": readsPerSecond
+            }
         }
 
         currentEntries = count * r;

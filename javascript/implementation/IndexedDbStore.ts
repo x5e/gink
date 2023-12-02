@@ -60,8 +60,8 @@ export class IndexedDbStore implements Store {
 
     async dropHistory(container?: Muid, before?: AsOf): Promise<void> {
         const beforeTs = before ? await this.asOfToTimestamp(before) : generateTimestamp();
-        if (!this.wrappedTransaction) {
-            this.wrappedTransaction = this.wrapped.transaction(['entries', 'clearances', 'removals'], 'readwrite');
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
         }
         let removalsCursor = await this.wrappedTransaction.objectStore("removals").openCursor(IDBKeyRange.upperBound([beforeTs]));
         if (container) {
@@ -168,10 +168,12 @@ export class IndexedDbStore implements Store {
         }
         if (asOf < 0 && asOf > -1000) {
             // Interpret as number of commits in the past.
-            if (!this.wrappedTransaction) {
-                this.wrappedTransaction = this.wrapped.transaction(["trxns"]).objectStore("trxns");
+            if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+                this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
+
+
             }
-            let cursor = await this.wrappedTransaction.openCursor(undefined, "prev");
+            let cursor = await this.wrappedTransaction.objectStore("trxns").openCursor(undefined, "prev");
 
             let commitsToTraverse = -asOf;
             for (; cursor; cursor = await cursor.continue()) {
@@ -188,7 +190,10 @@ export class IndexedDbStore implements Store {
 
     async getClaimedChains(): Promise<ClaimedChains> {
         await this.ready;
-        const objectStore = this.wrapped.transaction("activeChains").objectStore("activeChains");
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== 'active') {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
+        }
+        const objectStore = this.wrappedTransaction.objectStore("activeChains");
         const items = await objectStore.getAll();
         const result = new Map();
         for (let i = 0; i < items.length; i++) {
@@ -200,11 +205,12 @@ export class IndexedDbStore implements Store {
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
         //TODO(https://github.com/google/gink/issues/29): check for medallion reuse
         await this.ready;
-        if (!this.wrappedTransaction) {
-            this.wrappedTransaction = this.wrapped.transaction(['activeChains'], 'readwrite');
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
         }
         await this.wrappedTransaction.objectStore('activeChains').add({ chainStart, medallion });
         await this.wrappedTransaction.done;
+        this.wrappedTransaction = undefined;
     }
 
     async getChainTracker(): Promise<ChainTracker> {
@@ -218,8 +224,8 @@ export class IndexedDbStore implements Store {
 
     async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
         await this.ready;
-        if (!this.wrappedTransaction) {
-            this.wrappedTransaction = this.wrapped.transaction(['chainInfos']);
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
         }
         const commitInfo = await this.wrappedTransaction.objectStore('chainInfos').get(key);
         return commitInfo.timestamp;
@@ -227,8 +233,8 @@ export class IndexedDbStore implements Store {
 
     private async getChainInfos(): Promise<Array<BundleInfo>> {
         await this.ready;
-        if (!this.wrappedTransaction) {
-            this.wrappedTransaction = this.wrapped.transaction(['chainInfos']);
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
         }
         return await this.wrappedTransaction.objectStore('chainInfos').getAll();
     }
@@ -247,7 +253,7 @@ export class IndexedDbStore implements Store {
     }
 
     async transactionComplete(): Promise<void> {
-        if (this.wrappedTransaction) {
+        if (this.wrappedTransaction && this.wrappedTransaction._state == 'active') {
             return await this.wrappedTransaction.done;
         }
     }
@@ -257,10 +263,8 @@ export class IndexedDbStore implements Store {
             const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
             const bundleInfo = IndexedDbStore.extractCommitInfo(bundleBuilder);
             const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
-            if (!this.wrappedTransaction) {
-                this.wrappedTransaction = this.wrapped.transaction(
-                    ['trxns', 'chainInfos', 'containers', 'entries', 'removals', 'clearances']
-                    , 'readwrite');
+            if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+                this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
             }
             let oldChainInfoPromise = this.wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
             return oldChainInfoPromise.then((oldChainInfo) => {
@@ -419,10 +423,7 @@ export class IndexedDbStore implements Store {
                         const range = IDBKeyRange.bound([entryId, [0]], [entryId, [Infinity]]);
                         this.wrappedTransaction.objectStore("entries").index("locations").openCursor(range, "prev")
                             .then((search) => {
-                                if (!search) {
-                                    // continue; // Nothing found to remove.
-                                }
-                                else {
+                                if (search) {
                                     const found: Entry = search.value;
                                     const dest = movementBuilder.getDest();
                                     if (dest != 0) {
@@ -515,8 +516,8 @@ export class IndexedDbStore implements Store {
 
     async getContainerBytes(address: Muid): Promise<Bytes | undefined> {
         const addressTuple = [address.timestamp, address.medallion, address.offset];
-        if (!this.wrappedTransaction) {
-            this.wrappedTransaction = this.wrapped.transaction(['containers']);
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
         }
         return await this.wrappedTransaction.objectStore('containers').get(<MuidTuple>addressTuple);
     }
@@ -527,10 +528,10 @@ export class IndexedDbStore implements Store {
 
         let clearanceTime: Timestamp = 0;
         const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]])
-        if (!this.wrappedTransaction) {
-            this.wrappedTransaction = this.wrapped.transaction(["entries", "clearances"]).objectStore("clearances");
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
         }
-        const clearancesCursor = await this.wrappedTransaction.openCursor(clearancesSearch, "prev");
+        const clearancesCursor = await this.wrappedTransaction.objectStore("clearances").openCursor(clearancesSearch, "prev");
         if (clearancesCursor) {
             clearanceTime = clearancesCursor.value.clearanceId[0];
         }
@@ -563,7 +564,7 @@ export class IndexedDbStore implements Store {
         const lower = [desiredSrc];
         const upper = [desiredSrc, semanticKey, upperTuple];
         const searchRange = IDBKeyRange.bound(lower, upper);
-        const entriesCursor = await this.wrapped.transaction(["entries"]).objectStore("entries").index(
+        const entriesCursor = await this.wrappedTransaction.objectStore("entries").index(
             "by-container-key-placement").openCursor(searchRange, "prev");
         if (entriesCursor) {
             const entry: Entry = entriesCursor.value;
@@ -582,8 +583,8 @@ export class IndexedDbStore implements Store {
     async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
-        if (!this.wrappedTransaction) {
-            this.wrappedTransaction = this.wrapped.transaction(["clearances", "entries"]);
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
         }
         let clearanceTime: Timestamp = 0;
         const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]])
@@ -635,9 +636,11 @@ export class IndexedDbStore implements Store {
         } else {
             unfiltered = await this.wrapped.getAllFromIndex("entries", "targets", indexable);
         }
-        const trxn = this.wrapped.transaction(["entries", "removals"]);
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
+        }
         const returning: Entry[] = [];
-        const removals = trxn.objectStore("removals");
+        const removals = this.wrappedTransaction.objectStore("removals");
         for (let i = 0; i < unfiltered.length; i++) {
             const entry: Entry = unfiltered[i];
             if (entry.placementId[0] >= asOfTs) {
@@ -667,8 +670,8 @@ export class IndexedDbStore implements Store {
         const lower = [containerId, 0];
         const upper = [containerId, asOfTs];
         const range = IDBKeyRange.bound(lower, upper);
-        if (!this.wrappedTransaction) {
-            this.wrappedTransaction = this.wrapped.transaction(["entries", "removals", "clearances"], 'readwrite');
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
         }
 
         let clearanceTime: Timestamp = 0;
@@ -700,14 +703,16 @@ export class IndexedDbStore implements Store {
         const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp();
         const entryId = [entryMuid.timestamp ?? 0, entryMuid.medallion ?? 0, entryMuid.offset ?? 0];
         const entryRange = IDBKeyRange.bound([entryId, [0]], [entryId, [asOfTs]]);
-        const trxn = this.wrapped.transaction(["entries", "removals"]);
-        const entryCursor = await trxn.objectStore("entries").index("locations").openCursor(entryRange, "prev");
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
+        }
+        const entryCursor = await this.wrappedTransaction.objectStore("entries").index("locations").openCursor(entryRange, "prev");
         if (!entryCursor) {
             return undefined;
         }
         const entry: Entry = entryCursor.value;
         const removalRange = IDBKeyRange.bound([entry.placementId], [entry.placementId, [asOfTs]])
-        const removalCursor = await trxn.objectStore("removals").openCursor(removalRange);
+        const removalCursor = await this.wrappedTransaction.objectStore("removals").openCursor(removalRange);
         if (removalCursor) {
             return undefined;
         }
@@ -749,8 +754,8 @@ export class IndexedDbStore implements Store {
     async getCommits(callBack: (commitBytes: BundleBytes, commitInfo: BundleInfo) => void) {
         await this.ready;
 
-        if (!this.wrappedTransaction) {
-            this.wrappedTransaction = this.wrapped.transaction("trxns");
+        if (!this.wrappedTransaction || this.wrappedTransaction._state !== "active") {
+            this.wrappedTransaction = this.wrapped.transaction(['trxns', 'chainInfos', 'activeChains', 'clearances', 'containers', 'removals', 'entries'], 'readwrite');
         }
         // We loop through all commits and send those the peer doesn't have.
         for (let cursor = await this.wrappedTransaction.objectStore("trxns").openCursor();
