@@ -34,29 +34,31 @@ import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder, MuidBuilder, } from "./builders";
 import { Container } from './Container';
+import { TreeMap } from 'jstreemap';
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
-    private trxns: Map<Uint8Array, BundleInfoTuple>; // may want to specify value eventually
-    private chainInfos: Map<[Medallion, ChainStart], BundleInfo>;
-    private activeChains: Map<[Medallion, ChainStart], boolean>;
-    private clearances: Map<MuidTuple, Clearance>;
-    private containers: Map<Uint8Array, MuidTuple>;
-    private removals: Map<MuidTuple, Removal>;
-    private entries: Map<MuidTuple, Entry>;
+    private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
+    private trxns: TreeMap<Uint8Array, BundleInfoTuple>; // bytes => BundleInfoTuple
+    private chainInfos: TreeMap<[Medallion, ChainStart], BundleInfo>;
+    private activeChains: TreeMap<Medallion, ChainStart>;
+    private clearances: TreeMap<MuidTuple, Clearance>; // ClearanceId => Clearance
+    private containers: TreeMap<MuidTuple, Uint8Array>; // ContainerId => bytes
+    private removals: TreeMap<MuidTuple, Removal>; // RemovalId => Removal
+    private entries: TreeMap<MuidTuple, Entry>; // PlacementId => Entry
 
     constructor(private keepingHistory = true) {
         this.ready = this.initialize();
     }
 
     private async initialize(): Promise<void> {
-        this.trxns = new Map();
-        this.chainInfos = new Map();
-        this.activeChains = new Map();
-        this.clearances = new Map();
-        this.containers = new Map();
-        this.removals = new Map();
-        this.entries = new Map();
+        this.trxns = new TreeMap();
+        this.chainInfos = new TreeMap();
+        this.activeChains = new TreeMap();
+        this.clearances = new TreeMap();
+        this.containers = new TreeMap();
+        this.removals = new TreeMap();
+        this.entries = new TreeMap();
         return Promise.resolve();
     }
 
@@ -71,15 +73,11 @@ export class MemoryStore implements Store {
     }
 
     async getClaimedChains(): Promise<ClaimedChains> {
-        const result = new Map();
-        for (const [medallion, chainStart] of this.activeChains) {
-            result.set(medallion, chainStart);
-        }
-        return new Promise(() => result);
+        return new Promise(() => this.activeChains);
     }
 
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
-        this.activeChains.set([medallion, chainStart], true);
+        this.activeChains.set(medallion, chainStart);
         return Promise.resolve();
     }
 
@@ -136,7 +134,7 @@ export class MemoryStore implements Store {
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
             if (changeBuilder.hasContainer()) {
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
-                this.containers.set(containerBytes, changeAddressTuple);
+                this.containers.set(changeAddressTuple, containerBytes);
                 continue;
             }
             if (changeBuilder.hasEntry()) {
@@ -267,12 +265,10 @@ export class MemoryStore implements Store {
                     containerId[1] = srcMuid.getMedallion() || bundleInfo.medallion;
                     containerId[2] = srcMuid.getOffset();
                 }
-                const range = IDBKeyRange.bound([entryId, [0]], [entryId, [Infinity]]);
-                const search = await wrappedTransaction.objectStore("entries").index("locations").openCursor(range, "prev");
-                if (!search) {
+                const found: Entry = this.entries.get(entryId);
+                if (!found) {
                     continue; // Nothing found to remove.
                 }
-                const found: Entry = search.value;
                 const dest = movementBuilder.getDest();
                 if (dest != 0) {
                     const destEntry: Entry = {
@@ -291,7 +287,7 @@ export class MemoryStore implements Store {
                     this.entries.set(destEntry.placementId, destEntry);
                 }
                 if (movementBuilder.getPurge() || !this.keepingHistory) {
-                    search.delete();
+                    this.entries.delete(entryId);
                 } else {
                     const removal: Removal = {
                         containerId,
@@ -310,24 +306,24 @@ export class MemoryStore implements Store {
                 const containerMuidTuple: MuidTuple = [container.timestamp, container.medallion, container.offset];
                 if (clearanceBuilder.getPurge()) {
                     // When purging, remove all entries from the container.
-                    const onePast = [container.timestamp, container.medallion, container.offset + 1];
-                    const range = IDBKeyRange.bound([containerMuidTuple], [onePast], false, true);
-                    let entriesCursor = await wrappedTransaction.objectStore("entries").index("by-container-key-placement").openCursor(range);
-                    while (entriesCursor) {
-                        await entriesCursor.delete();
-                        entriesCursor = await entriesCursor.continue();
+                    const onePast: [number, number, number] = [container.timestamp, container.medallion, container.offset + 1];
+                    const lowerEntries = this.entries.lowerBound(containerMuidTuple);
+                    const upper = this.entries.upperBound(onePast);
+                    while (!lowerEntries.equals(upper)) {
+                        this.entries.delete(lowerEntries.key);
+                        lowerEntries.next();
                     }
                     // When doing a purging clear, remove previous clearances for the container.
-                    let clearancesCursor = await wrappedTransaction.objectStore("clearances").openCursor(range);
-                    while (clearancesCursor) {
-                        await clearancesCursor.delete();
-                        clearancesCursor = await clearancesCursor.continue();
+                    const lowerClearances = this.clearances.lowerBound(containerMuidTuple);
+                    while (!lowerEntries.equals(upper)) {
+                        this.entries.delete(lowerClearances.key);
+                        lowerClearances.next();
                     }
                     // When doing a purging clear, remove all removals for the container.
-                    let removalsCursor = await wrappedTransaction.objectStore("removals").index("by-container-movement").openCursor(range);
-                    while (removalsCursor) {
-                        await removalsCursor.delete();
-                        removalsCursor = await removalsCursor.continue();
+                    const lowerRemovals = this.removals.lowerBound(containerMuidTuple);
+                    while (!lowerEntries.equals(upper)) {
+                        this.entries.delete(lowerRemovals.key);
+                        lowerRemovals.next();
                     }
                 }
                 const clearance: Clearance = {
@@ -346,5 +342,78 @@ export class MemoryStore implements Store {
     private static commitInfoToKey(commitInfo: BundleInfo): BundleInfoTuple {
         return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
         commitInfo.priorTime || 0, commitInfo.comment || ""];
+    }
+
+    async getContainerBytes(address: Muid): Promise<Bytes | undefined> {
+        const addressTuple: [number, number, number] = [address.timestamp, address.medallion, address.offset];
+        return this.containers.get(addressTuple);
+    }
+
+    private async asOfToTimestamp(asOf: AsOf): Promise<Timestamp> {
+        if (asOf instanceof Date) {
+            return asOf.getTime() * 1000;
+        }
+        if (asOf > MemoryStore.YEAR_2020) {
+            return asOf;
+        }
+        if (asOf < 0 && asOf > -1000) {
+            // Interpret as number of commits in the past.
+            try {
+                const key = this.trxns.keys()[asOf];
+                const tuple = <BundleInfoTuple>this.trxns.get(key);
+                return tuple[0];
+            } catch {
+                // Looking further back than we have commits.
+                throw new Error("no commits that far back");
+            }
+        }
+        throw new Error(`don't know how to interpret asOf=${asOf}`);
+    }
+
+    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined> {
+        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
+        const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
+
+        let clearanceTime: Timestamp = 0;
+        const clearancesSearch = this.clearances.get(desiredSrc);
+        if (clearancesSearch) {
+            clearanceTime = clearancesSearch.clearanceId[0];
+        }
+
+        let semanticKey: KeyType | MuidTuple | [] = [];
+        if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
+            semanticKey = key;
+        } else if (Array.isArray(key)) {
+            let riteMuid: Muid;
+            let leftMuid: Muid;
+            if ("address" in key[0]) { // Left is a container
+                leftMuid = key[0].address;
+            }
+            if ("address" in key[1]) { // Right is a container
+                riteMuid = key[1].address;
+            }
+            if (!("address" in key[0])) { // Left is a muid
+                leftMuid = key[0];
+            }
+            if (!("address" in key[1])) { // Right is a Muid
+                riteMuid = key[1];
+            }
+            semanticKey = `${muidToString(leftMuid)}-${muidToString(riteMuid)}`;
+        } else if (key) {
+            const muidKey = <Muid>key;
+            semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];
+        }
+        const lower = this.entries.lowerBound(desiredSrc);
+        const upper = this.entries.upperBound([asOfTs, desiredSrc[1], desiredSrc[2]]);
+        let entry: Entry | undefined = undefined;
+        while (!lower.equals(upper)) {
+            if (lower.value.effectiveKey == key && !(entry.placementId[0] < clearanceTime)) {
+                entry = lower.value;
+                break;
+            }
+            lower.next();
+        }
+        return entry;
+
     }
 }

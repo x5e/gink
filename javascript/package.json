@@ -42,6 +42,7 @@
     "fs-ext": "^2.0.0",
     "google-protobuf": "^3.21.2",
     "idb": "^7.1.1",
+    "jstreemap": "^1.28.2",
     "karma": "^6.4.2",
     "karma-mocha-reporter": "^2.2.5",
     "node-static": "^0.7.11",
