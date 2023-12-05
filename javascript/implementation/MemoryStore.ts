@@ -1,14 +1,11 @@
 import {
     builderToMuid,
     ensure,
-    generateTimestamp, dehydrate,
-    matches,
+    generateTimestamp,
     muidToString,
     muidToTuple,
     muidTupleToMuid,
     muidTupleToString,
-    sameData,
-    unwrapKey,
     unwrapValue
 } from "./utils";
 import {
@@ -20,8 +17,8 @@ import {
     ChainStart,
     ClaimedChains,
     Clearance,
-    Entry, Indexable,
-    IndexedDbStoreSchema,
+    Entry,
+    Indexable,
     KeyType,
     Medallion,
     Muid,
@@ -33,9 +30,18 @@ import {
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder, MuidBuilder, } from "./builders";
+import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { Container } from './Container';
 import { TreeMap } from 'jstreemap';
+import {
+    getEffectiveKey,
+    extractMovementInfo,
+    extractContainerMuid,
+    buildPairLists,
+    buildPointeeList,
+    medallionChainStartToString,
+    muidPairToSemanticKey
+} from "./store_utils";
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
@@ -119,12 +125,7 @@ export class MemoryStore implements Store {
     }
 
     async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
-        return Promise.resolve(this.chainInfos.get(MemoryStore.medallionChainStartToString(key)).timestamp);
-    }
-
-    static medallionChainStartToString(tuple: [number, number]): string {
-        // this is for [Medallion, ChainStart] keys
-        return `${tuple[0]}, ${tuple[1]}`;
+        return Promise.resolve(this.chainInfos.get(medallionChainStartToString(key)).timestamp);
     }
 
     private getChainInfos(): Iterable<BundleInfo> {
@@ -149,21 +150,20 @@ export class MemoryStore implements Store {
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
         const bundleInfo = MemoryStore.extractCommitInfo(bundleBuilder);
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
-        const oldChainInfo = this.chainInfos.get(MemoryStore.medallionChainStartToString([medallion, chainStart]));
+        const oldChainInfo = this.chainInfos.get(medallionChainStartToString([medallion, chainStart]));
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
                 return [bundleInfo, false];
             }
             if (oldChainInfo?.timestamp != priorTime) {
-                //TODO(https://github.com/google/gink/issues/27): Need to explicitly close?
                 throw new Error(`missing prior chain entry for ${bundleInfo}, have ${oldChainInfo}`);
             }
         }
-        this.chainInfos.set(MemoryStore.medallionChainStartToString([medallion, chainStart]), bundleInfo);
+        this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const commitKey: BundleInfoTuple = MemoryStore.commitInfoToKey(bundleInfo);
         this.trxns.set(commitKey, bundleBytes);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
-        for (const [offset, changeBuilder] of changesMap.entries()) {
+        for (const [offset, changeBuilder] of changesMap) {
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
             if (changeBuilder.hasContainer()) {
@@ -173,75 +173,23 @@ export class MemoryStore implements Store {
             }
             if (changeBuilder.hasEntry()) {
                 const entryBuilder: EntryBuilder = changeBuilder.getEntry();
-                // TODO(https://github.com/google/gink/issues/55): explain root
-                const containerId: MuidTuple = [0, 0, 0];
+                let containerId: [number, number, number] = [0, 0, 0];
                 if (entryBuilder.hasContainer()) {
-                    const srcMuid: MuidBuilder = entryBuilder.getContainer();
-                    containerId[0] = srcMuid.getTimestamp() || bundleInfo.timestamp;
-                    containerId[1] = srcMuid.getMedallion() || bundleInfo.medallion;
-                    containerId[2] = srcMuid.getOffset();
+                    containerId = extractContainerMuid(entryBuilder, bundleInfo);
                 }
                 const behavior: Behavior = entryBuilder.getBehavior();
-                let effectiveKey: KeyType | Timestamp | MuidTuple | [Muid, Muid] | [];
-                let replacing = true;
-                if (behavior == Behavior.DIRECTORY || behavior == Behavior.KEY_SET) {
-                    ensure(entryBuilder.hasKey());
-                    effectiveKey = unwrapKey(entryBuilder.getKey());
-                } else if (behavior == Behavior.SEQUENCE) {
-                    effectiveKey = entryBuilder.getEffective() || timestamp;
-                    replacing = false;
-                } else if (behavior == Behavior.BOX || behavior == Behavior.VERTEX) {
-                    effectiveKey = [];
-                } else if (behavior == Behavior.PROPERTY) {
-                    ensure(entryBuilder.hasDescribing());
-                    const describing = builderToMuid(entryBuilder.getDescribing());
-                    effectiveKey = muidToTuple(describing);
-                } else if (behavior == Behavior.ROLE) {
-                    ensure(entryBuilder.hasDescribing());
-                    const describing = builderToMuid(entryBuilder.getDescribing());
-                    effectiveKey = muidToTuple(describing);
-                } else if (behavior == Behavior.VERB) {
-                    ensure(entryBuilder.hasPair());
-                    effectiveKey = entryBuilder.getEffective() || timestamp;
-                } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
-                    ensure(entryBuilder.hasPair());
-                    const pair = entryBuilder.getPair();
-                    const left = pair.getLeft();
-                    const rite = pair.getRite();
-                    // There's probably a better way of doing this
-                    effectiveKey = `${muidToString(builderToMuid(left))}-${muidToString(builderToMuid(rite))}`;
-                } else {
-                    throw new Error(`unexpected behavior: ${behavior}`)
-                }
                 const entryId: MuidTuple = [timestamp, medallion, offset];
                 const placementId: MuidTuple = entryId;
-                const pointeeList = <Indexable[]>[];
+                let pointeeList = <Indexable[]>[];
                 if (entryBuilder.hasPointee()) {
-                    const pointeeMuidBuilder: MuidBuilder = entryBuilder.getPointee();
-                    const pointee = dehydrate({
-                        timestamp: pointeeMuidBuilder.getTimestamp() || bundleInfo.timestamp,
-                        medallion: pointeeMuidBuilder.getMedallion() || bundleInfo.medallion,
-                        offset: pointeeMuidBuilder.getOffset(),
-                    });
-                    pointeeList.push(pointee);
+                    pointeeList = buildPointeeList(entryBuilder, bundleInfo);
                 }
-                const sourceList = <Indexable[]>[];
-                const targetList = <Indexable[]>[];
+                let sourceList = <Indexable[]>[];
+                let targetList = <Indexable[]>[];
                 if (entryBuilder.hasPair()) {
-                    const pairBuilder = entryBuilder.getPair();
-                    const source = dehydrate({
-                        timestamp: pairBuilder.getLeft().getTimestamp() || bundleInfo.timestamp,
-                        medallion: pairBuilder.getLeft().getMedallion() || bundleInfo.medallion,
-                        offset: pairBuilder.getLeft().getOffset()
-                    });
-                    sourceList.push(source);
-                    const target = dehydrate({
-                        timestamp: pairBuilder.getRite().getTimestamp() || bundleInfo.timestamp,
-                        medallion: pairBuilder.getRite().getMedallion() || bundleInfo.medallion,
-                        offset: pairBuilder.getRite().getOffset()
-                    });
-                    targetList.push(target);
+                    [sourceList, targetList] = buildPairLists(entryBuilder, bundleInfo);
                 }
+                const [effectiveKey, replacing] = getEffectiveKey(entryBuilder, timestamp);
                 const value = entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined;
                 const expiry = entryBuilder.getExpiry() || undefined;
                 const deletion = entryBuilder.getDeletion();
@@ -261,7 +209,7 @@ export class MemoryStore implements Store {
                 if (replacing) {
                     let search: Entry;
                     // May be a better way to do this.
-                    for (const [muidTuple, entry] of this.entries) {
+                    for (const entry of this.entries.values()) {
                         if (muidTupleToString(entry.containerId) == muidTupleToString(containerId)) {
                             if ((Array.isArray(effectiveKey) && Array.isArray(entry.effectiveKey)) &&
                                 (effectiveKey.length == 3 && entry.effectiveKey.length == 3)) {
@@ -273,7 +221,6 @@ export class MemoryStore implements Store {
                                     search = entry;
                                 }
                             }
-
                         }
                     }
                     if (search) {
@@ -295,20 +242,7 @@ export class MemoryStore implements Store {
                 continue;
             }
             if (changeBuilder.hasMovement()) {
-                const movementBuilder: MovementBuilder = changeBuilder.getMovement();
-                const entryMuid = movementBuilder.getEntry();
-                const entryId: MuidTuple = [
-                    entryMuid.getTimestamp() || timestamp,
-                    entryMuid.getMedallion() || medallion,
-                    entryMuid.getOffset()];
-                const movementId: MuidTuple = [timestamp, medallion, offset];
-                const containerId: MuidTuple = [0, 0, 0];
-                if (movementBuilder.hasContainer()) {
-                    const srcMuid: MuidBuilder = movementBuilder.getContainer();
-                    containerId[0] = srcMuid.getTimestamp() || bundleInfo.timestamp;
-                    containerId[1] = srcMuid.getMedallion() || bundleInfo.medallion;
-                    containerId[2] = srcMuid.getOffset();
-                }
+                const { movementBuilder, entryId, movementId, containerId } = extractMovementInfo(changeBuilder, bundleInfo, offset);
                 const found: Entry = this.entries.get(muidTupleToString(entryId));
                 if (!found) {
                     continue; // Nothing found to remove.
@@ -393,7 +327,7 @@ export class MemoryStore implements Store {
         return this.containers.get(muidTupleToString(addressTuple));
     }
 
-    private async asOfToTimestamp(asOf: AsOf): Promise<Timestamp> {
+    private asOfToTimestamp(asOf: AsOf): Timestamp {
         if (asOf instanceof Date) {
             return asOf.getTime() * 1000;
         }
@@ -417,7 +351,6 @@ export class MemoryStore implements Store {
     async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
-
         let clearanceTime: Timestamp = 0;
         const clearancesSearch = this.clearances.get(muidTupleToString(desiredSrc));
         if (clearancesSearch) {
@@ -428,21 +361,7 @@ export class MemoryStore implements Store {
         if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
             semanticKey = key;
         } else if (Array.isArray(key)) {
-            let riteMuid: Muid;
-            let leftMuid: Muid;
-            if ("address" in key[0]) { // Left is a container
-                leftMuid = key[0].address;
-            }
-            if ("address" in key[1]) { // Right is a container
-                riteMuid = key[1].address;
-            }
-            if (!("address" in key[0])) { // Left is a muid
-                leftMuid = key[0];
-            }
-            if (!("address" in key[1])) { // Right is a Muid
-                riteMuid = key[1];
-            }
-            semanticKey = `${muidToString(leftMuid)}-${muidToString(riteMuid)}`;
+            semanticKey = muidPairToSemanticKey(key);
         } else if (key) {
             const muidKey = <Muid>key;
             semanticKey = muidTupleToString([muidKey.timestamp, muidKey.medallion, muidKey.offset]);
