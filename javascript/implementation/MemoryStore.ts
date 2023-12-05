@@ -55,7 +55,7 @@ export class MemoryStore implements Store {
     }
 
     async dropHistory(container?: Muid, before?: AsOf): Promise<void> {
-        const beforeTs = before ? await this.asOfToTimestamp(before) : generateTimestamp();
+        const beforeTs = before ? await this.asOfToTimestamp(before) : await this.asOfToTimestamp(-1);
         let lower = this.entries.lowerBound(muidTupleToString([0, 0, 0]));
         let upper = this.entries.upperBound(muidTupleToString([beforeTs, 0, 0]));
         if (container) {
@@ -63,7 +63,9 @@ export class MemoryStore implements Store {
             lower = this.entries.lowerBound(muidTupleToString(containerTuple));
             upper = this.entries.upperBound(muidTupleToString([beforeTs, container.medallion, container.offset]));
         }
+
         while (!lower.equals(upper)) {
+            console.log(lower.key, `| ${beforeTs},0,0`);
             this.entries.delete(lower.key);
             lower.next();
         }
@@ -261,8 +263,18 @@ export class MemoryStore implements Store {
                     let search: Entry;
                     // May be a better way to do this.
                     for (const [muidTuple, entry] of this.entries) {
-                        if (entry.containerId == containerId && entry.effectiveKey == effectiveKey) {
-                            search = entry;
+                        if (muidTupleToString(entry.containerId) == muidTupleToString(containerId)) {
+                            if ((Array.isArray(effectiveKey) && Array.isArray(entry.effectiveKey)) &&
+                                (effectiveKey.length == 3 && entry.effectiveKey.length == 3)) {
+                                if (muidTupleToString(entry.effectiveKey) == muidTupleToString(effectiveKey)) {
+                                    search = entry;
+                                }
+                            } else {
+                                if (entry.effectiveKey == effectiveKey) {
+                                    search = entry;
+                                }
+                            }
+
                         }
                     }
                     if (search) {
@@ -392,7 +404,8 @@ export class MemoryStore implements Store {
         if (asOf < 0 && asOf > -1000) {
             // Interpret as number of commits in the past.
             try {
-                const key = this.trxns.keys()[asOf];
+                const trxnKeyArray = Array.from(this.trxns.keys())
+                const key = trxnKeyArray[trxnKeyArray.length + asOf];
                 return key[0];
             } catch {
                 // Looking further back than we have commits.
