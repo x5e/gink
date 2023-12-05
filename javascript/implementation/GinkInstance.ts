@@ -44,7 +44,7 @@ export class GinkInstance {
         fullName?: string,
         email?: string,
         software?: string,
-    }, readonly logger:CallBack = noOp) {
+    }, readonly logger: CallBack = noOp) {
         this.ready = this.initialize(info);
     }
 
@@ -61,9 +61,9 @@ export class GinkInstance {
         } else {
             const medallion = makeMedallion();
             const chainStart = generateTimestamp();
-            this.myChain =  [medallion, chainStart];
+            this.myChain = [medallion, chainStart];
             const bundler = new Bundler(`start: ${info?.software || "GinkInstance"}`, medallion);
-            const medallionInfo = new Directory(this, {timestamp:-1, medallion, offset: Behavior.DIRECTORY});
+            const medallionInfo = new Directory(this, { timestamp: -1, medallion, offset: Behavior.DIRECTORY });
             if (info?.email) {
                 await medallionInfo.set("email", info.email, bundler);
             }
@@ -93,7 +93,7 @@ export class GinkInstance {
     }
 
     getGlobalProperty(): Property {
-        return new Property(this, {timestamp: -1, medallion: -1, offset: Behavior.PROPERTY});
+        return new Property(this, { timestamp: -1, medallion: -1, offset: Behavior.PROPERTY });
     }
 
     /**
@@ -101,7 +101,7 @@ export class GinkInstance {
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
      * @returns promise that resolves to the Box container (immediately if a bundler is passed in, otherwise after the commit)
      */
-    async createBox(change?: Bundler|string): Promise<Box> {
+    async createBox(change?: Bundler | string): Promise<Box> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.BOX, change);
         return new Box(this, muid, containerBuilder);
     }
@@ -111,7 +111,7 @@ export class GinkInstance {
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
      * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the commit)
      */
-    async createSequence(change?: Bundler|string): Promise<Sequence> {
+    async createSequence(change?: Bundler | string): Promise<Sequence> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.SEQUENCE, change);
         return new Sequence(this, muid, containerBuilder);
     }
@@ -121,7 +121,7 @@ export class GinkInstance {
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
      * @returns promise that resolves to the Key Set container (immediately if a bundler is passed in, otherwise after the commit)
      */
-    async createKeySet(change?: Bundler|string): Promise<KeySet> {
+    async createKeySet(change?: Bundler | string): Promise<KeySet> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.KEY_SET, change);
         return new KeySet(this, muid, containerBuilder)
     }
@@ -131,7 +131,7 @@ export class GinkInstance {
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
      * @returns promise that resolves to the Role container (immediately if a bundler is passed in, otherwise after the commit)
      */
-    async createRole(change?: Bundler|string): Promise<Role> {
+    async createRole(change?: Bundler | string): Promise<Role> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.ROLE, change);
         return new Role(this, muid, containerBuilder)
     }
@@ -141,7 +141,7 @@ export class GinkInstance {
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
      * @returns promise that resolves to the PairSet container (immediately if a bundler is passed in, otherwise after the commit)
      */
-    async createPairSet(change?: Bundler|string): Promise<PairSet> {
+    async createPairSet(change?: Bundler | string): Promise<PairSet> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_SET, change);
         return new PairSet(this, muid, containerBuilder)
     }
@@ -151,7 +151,7 @@ export class GinkInstance {
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
      * @returns promise that resolves to the PairMap container (immediately if a bundler is passed in, otherwise after the commit)
      */
-    async createPairMap(change?: Bundler|string): Promise<PairMap> {
+    async createPairMap(change?: Bundler | string): Promise<PairMap> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_MAP, change);
         return new PairMap(this, muid, containerBuilder)
     }
@@ -162,29 +162,29 @@ export class GinkInstance {
      * @returns promise that resolves to the Directory container (immediately if a bundler is passed in, otherwise after the commit)
      */
     // TODO: allow user to specify the types allowed for keys and values
-    async createDirectory(change?: Bundler|string): Promise<Directory> {
+    async createDirectory(change?: Bundler | string): Promise<Directory> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.DIRECTORY, change);
         return new Directory(this, muid, containerBuilder);
     }
 
-    async createVertex(change?: Bundler|string): Promise<Vertex> {
+    async createVertex(change?: Bundler | string): Promise<Vertex> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.VERTEX, change);
         return new Vertex(this, muid, containerBuilder);
     }
 
 
-    async createVerb(change?: Bundler|string): Promise<Verb> {
+    async createVerb(change?: Bundler | string): Promise<Verb> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.VERB, change);
         return new Verb(this, muid, containerBuilder);
     }
 
 
-    async createProperty(bundlerOrComment?: Bundler|string): Promise<Property> {
+    async createProperty(bundlerOrComment?: Bundler | string): Promise<Property> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.PROPERTY, bundlerOrComment);
         return new Property(this, muid, containerBuilder);
     }
 
-    protected async createContainer(behavior: Behavior, change?: Bundler|string): Promise<[Muid, ContainerBuilder]> {
+    protected async createContainer(behavior: Behavior, change?: Bundler | string): Promise<[Muid, ContainerBuilder]> {
         let immediate = false;
         if (!(change instanceof Bundler)) {
             immediate = true;
@@ -239,6 +239,8 @@ export class GinkInstance {
             };
             resultInfo = bundler.seal(commitInfo);
             await this.receiveCommit(bundler.bytes);
+        } catch (e) {
+            console.error(e);
         } finally {
             unlockingFunction();
         }
@@ -308,7 +310,7 @@ export class GinkInstance {
         if (!peer) throw Error("Got a message from a peer I don't have a proxy for?");
         const unlockingFunction = await this.processingLock.acquireLock();
         try {
-            const parsed = <SyncMessageBuilder> SyncMessageBuilder.deserializeBinary(messageBytes);
+            const parsed = <SyncMessageBuilder>SyncMessageBuilder.deserializeBinary(messageBytes);
             if (parsed.hasBundle()) {
                 const commitBytes: BundleBytes = parsed.getBundle_asU8();
                 await this.receiveCommit(commitBytes, fromConnectionId);

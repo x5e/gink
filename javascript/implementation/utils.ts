@@ -3,7 +3,7 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import {Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry, Indexer, Indexable} from "./typedefs";
+import { Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry, Indexer, Indexable } from "./typedefs";
 import {
     MuidBuilder,
     ValueBuilder,
@@ -30,7 +30,7 @@ export function generateTimestamp(): number {
     return current;
 }
 
-export function noOp(_?) { ensure(true);}
+export function noOp(_?) { ensure(true); }
 
 /**
  * Randomly selects a number that can be used as a medallion.
@@ -152,7 +152,7 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
         const keys = document.getKeysList();
         const values = document.getValuesList();
         const result = new Map();
-        for (let i=0;i<keys.length;i++) {
+        for (let i = 0; i < keys.length; i++) {
             result.set(unwrapKey(keys[i]), unwrapValue(values[i]));
         }
         return result;
@@ -194,7 +194,7 @@ export function wrapValue(arg: Value): ValueBuilder {
     if (arg === false) {
         return valueBuilder.setSpecial(Special.FALSE);
     }
-    if (typeof(arg) == "string") {
+    if (typeof (arg) == "string") {
         return valueBuilder.setCharacters(arg);
     }
     if (typeof (arg) == "number") {
@@ -203,7 +203,7 @@ export function wrapValue(arg: Value): ValueBuilder {
         }
         return valueBuilder.setDoubled(arg);
     }
-    if (typeof(arg) == "bigint") {
+    if (typeof (arg) == "bigint") {
         throw new Error("encoding bigints not implemented right now");
     }
     if (Array.isArray(arg)) {
@@ -214,7 +214,7 @@ export function wrapValue(arg: Value): ValueBuilder {
     if (arg instanceof Map) {
         const documentBuilder = new DocumentBuilder();
         for (const [key, val] of arg.entries()) {
-            if (typeof(key) != "number" && typeof(key) != "string") {
+            if (typeof (key) != "number" && typeof (key) != "string") {
                 throw new Error("keys in documents must be numbers or strings");
             }
             documentBuilder.addKeys(wrapKey(key));
@@ -260,9 +260,13 @@ export function pairKeyToArray(effectiveKey: String): Array<Muid> {
     return [stringToMuid(split[0]), stringToMuid(split[1])];
 }
 
-export function muidToString(muid: Muid) {
+export function muidToString(muid: Muid): string {
     // TODO(https://github.com/google/gink/issues/61): return canonical representation
     return `${muid.timestamp},${muid.medallion},${muid.offset}`;
+}
+
+export function muidTupleToString(muidTuple: MuidTuple): string {
+    return `${muidTuple[0]},${muidTuple[1]},${muidTuple[2]}`;
 }
 
 export function strToMuid(value: string): Muid {
@@ -350,14 +354,14 @@ export function logToStdErr(msg: string) {
 export function sameData(key1: any, key2: any): boolean {
     if (key1 instanceof Uint8Array && key2 instanceof Uint8Array) {
         if (key1.byteLength != key2.byteLength) return false;
-        for (let i =0; i< key1.byteLength; i++) {
+        for (let i = 0; i < key1.byteLength; i++) {
             if (key1[i] != key2[i]) return false;
         }
         return true;
     }
     if (Array.isArray(key1) && Array.isArray(key2)) {
         if (key1.length != key2.length) return false;
-        for (let i=0;i<key1.length;i++) {
+        for (let i = 0; i < key1.length; i++) {
             if (key1[i] != key2[i]) return false;
         }
         return true;
@@ -374,7 +378,7 @@ export function entryToEdgeData(entry: Entry): EdgeData {
         target: null, //muidTupleToMuid(entry.targetList[0]),
         value: entry.value,
         action: muidTupleToMuid(entry.containerId),
-        effective: <number> entry.effectiveKey,
+        effective: <number>entry.effectiveKey,
     }
 }
 

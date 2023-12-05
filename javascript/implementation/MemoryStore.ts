@@ -6,6 +6,7 @@ import {
     muidToString,
     muidToTuple,
     muidTupleToMuid,
+    muidTupleToString,
     sameData,
     unwrapKey,
     unwrapValue
@@ -39,13 +40,15 @@ import { TreeMap } from 'jstreemap';
 export class MemoryStore implements Store {
     ready: Promise<void>;
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
+    // Awkward, but need to use strings to represent objects, since we won't always 
+    // have the original reference to use.
     private trxns: TreeMap<Uint8Array, BundleInfoTuple>; // bytes => BundleInfoTuple
-    private chainInfos: TreeMap<[Medallion, ChainStart], BundleInfo>;
-    private activeChains: TreeMap<Medallion, ChainStart>;
-    private clearances: TreeMap<MuidTuple, Clearance>; // ClearanceId => Clearance
-    private containers: TreeMap<MuidTuple, Uint8Array>; // ContainerId => bytes
-    private removals: TreeMap<MuidTuple, Removal>; // RemovalId => Removal
-    private entries: TreeMap<MuidTuple, Entry>; // PlacementId => Entry
+    private chainInfos: TreeMap<string, BundleInfo>; // [Medallion, ChainStart] => BundleInfo
+    private activeChains: Map<Medallion, ChainStart>;
+    private clearances: TreeMap<string, Clearance>; // ClearanceId => Clearance
+    private containers: TreeMap<string, Uint8Array>; // ContainerId => bytes
+    private removals: TreeMap<string, Removal>; // RemovalId => Removal
+    private entries: TreeMap<string, Entry>; // PlacementId => Entry
 
     constructor(private keepingHistory = true) {
         this.ready = this.initialize();
@@ -54,7 +57,7 @@ export class MemoryStore implements Store {
     private async initialize(): Promise<void> {
         this.trxns = new TreeMap();
         this.chainInfos = new TreeMap();
-        this.activeChains = new TreeMap();
+        this.activeChains = new Map();
         this.clearances = new TreeMap();
         this.containers = new TreeMap();
         this.removals = new TreeMap();
@@ -64,16 +67,16 @@ export class MemoryStore implements Store {
 
     async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
         const backRefs: Entry[] = [];
-        for (const [muidTuple, entry] of this.entries.entries()) {
-            if (muidTuple == muidToTuple(pointingTo) && entry.pointeeList) {
+        for (const [muidTupleString, entry] of this.entries.entries()) {
+            if (muidTupleString == muidToString(pointingTo) && entry.pointeeList) {
                 backRefs.push(entry);
             }
         }
-        return new Promise(() => backRefs);
+        return Promise.resolve(backRefs);
     }
 
     async getClaimedChains(): Promise<ClaimedChains> {
-        return new Promise(() => this.activeChains);
+        return Promise.resolve(this.activeChains);
     }
 
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
@@ -86,11 +89,16 @@ export class MemoryStore implements Store {
         for (const bundleInfo of this.chainInfos.values()) {
             hasMap.markAsHaving(bundleInfo);
         }
-        return new Promise(() => hasMap);
+        return Promise.resolve(hasMap);
     }
 
     async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
-        return new Promise(() => this.chainInfos.get(key).timestamp);
+        return Promise.resolve(this.chainInfos.get(MemoryStore.medallionChainStartToString(key)).timestamp);
+    }
+
+    static medallionChainStartToString(tuple: [number, number]): string {
+        // this is for [Medallion, ChainStart] keys
+        return `${tuple[0]}, ${tuple[1]}`;
     }
 
     private getChainInfos(): Iterable<BundleInfo> {
@@ -115,7 +123,7 @@ export class MemoryStore implements Store {
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
         const bundleInfo = MemoryStore.extractCommitInfo(bundleBuilder);
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
-        const oldChainInfo = this.chainInfos.get([medallion, chainStart]);
+        const oldChainInfo = this.chainInfos.get(MemoryStore.medallionChainStartToString([medallion, chainStart]));
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
                 return [bundleInfo, false];
@@ -125,7 +133,7 @@ export class MemoryStore implements Store {
                 throw new Error(`missing prior chain entry for ${bundleInfo}, have ${oldChainInfo}`);
             }
         }
-        this.chainInfos.set([medallion, chainStart], bundleInfo);
+        this.chainInfos.set(MemoryStore.medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const commitKey: BundleInfoTuple = MemoryStore.commitInfoToKey(bundleInfo);
         this.trxns.set(bundleBytes, commitKey);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
@@ -134,7 +142,7 @@ export class MemoryStore implements Store {
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
             if (changeBuilder.hasContainer()) {
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
-                this.containers.set(changeAddressTuple, containerBytes);
+                this.containers.set(muidTupleToString(changeAddressTuple), containerBytes);
                 continue;
             }
             if (changeBuilder.hasEntry()) {
@@ -241,13 +249,13 @@ export class MemoryStore implements Store {
                                 dest: 0,
                                 entryId: search.entryId
                             }
-                            this.removals.set(removal.removalId, removal);
+                            this.removals.set(muidTupleToString(removal.removalId), removal);
                         } else {
-                            this.entries.delete(placementId);
+                            this.entries.delete(muidTupleToString(placementId));
                         }
                     }
                 }
-                this.entries.set(placementId, entry);
+                this.entries.set(muidTupleToString(placementId), entry);
                 continue;
             }
             if (changeBuilder.hasMovement()) {
@@ -265,7 +273,7 @@ export class MemoryStore implements Store {
                     containerId[1] = srcMuid.getMedallion() || bundleInfo.medallion;
                     containerId[2] = srcMuid.getOffset();
                 }
-                const found: Entry = this.entries.get(entryId);
+                const found: Entry = this.entries.get(muidTupleToString(entryId));
                 if (!found) {
                     continue; // Nothing found to remove.
                 }
@@ -284,10 +292,10 @@ export class MemoryStore implements Store {
                         sourceList: found.sourceList,
                         targetList: found.targetList,
                     }
-                    this.entries.set(destEntry.placementId, destEntry);
+                    this.entries.set(muidTupleToString(destEntry.placementId), destEntry);
                 }
                 if (movementBuilder.getPurge() || !this.keepingHistory) {
-                    this.entries.delete(entryId);
+                    this.entries.delete(muidTupleToString(entryId));
                 } else {
                     const removal: Removal = {
                         containerId,
@@ -296,7 +304,7 @@ export class MemoryStore implements Store {
                         entryId,
                         removing: found.placementId,
                     };
-                    this.removals.set(removal.removalId, removal);
+                    this.removals.set(muidTupleToString(removal.removalId), removal);
                 }
                 continue;
             }
@@ -307,20 +315,20 @@ export class MemoryStore implements Store {
                 if (clearanceBuilder.getPurge()) {
                     // When purging, remove all entries from the container.
                     const onePast: [number, number, number] = [container.timestamp, container.medallion, container.offset + 1];
-                    const lowerEntries = this.entries.lowerBound(containerMuidTuple);
-                    const upper = this.entries.upperBound(onePast);
+                    const lowerEntries = this.entries.lowerBound(muidTupleToString(containerMuidTuple));
+                    const upper = this.entries.upperBound(muidTupleToString(onePast));
                     while (!lowerEntries.equals(upper)) {
                         this.entries.delete(lowerEntries.key);
                         lowerEntries.next();
                     }
                     // When doing a purging clear, remove previous clearances for the container.
-                    const lowerClearances = this.clearances.lowerBound(containerMuidTuple);
+                    const lowerClearances = this.clearances.lowerBound(muidTupleToString(containerMuidTuple));
                     while (!lowerEntries.equals(upper)) {
                         this.entries.delete(lowerClearances.key);
                         lowerClearances.next();
                     }
                     // When doing a purging clear, remove all removals for the container.
-                    const lowerRemovals = this.removals.lowerBound(containerMuidTuple);
+                    const lowerRemovals = this.removals.lowerBound(muidTupleToString(containerMuidTuple));
                     while (!lowerEntries.equals(upper)) {
                         this.entries.delete(lowerRemovals.key);
                         lowerRemovals.next();
@@ -331,7 +339,7 @@ export class MemoryStore implements Store {
                     clearanceId: changeAddressTuple,
                     purging: clearanceBuilder.getPurge()
                 };
-                this.clearances.set(clearance.clearanceId, clearance);
+                this.clearances.set(muidTupleToString(clearance.clearanceId), clearance);
                 continue;
             }
             throw new Error("don't know how to apply this kind of change");
@@ -346,7 +354,7 @@ export class MemoryStore implements Store {
 
     async getContainerBytes(address: Muid): Promise<Bytes | undefined> {
         const addressTuple: [number, number, number] = [address.timestamp, address.medallion, address.offset];
-        return this.containers.get(addressTuple);
+        return this.containers.get(muidTupleToString(addressTuple));
     }
 
     private async asOfToTimestamp(asOf: AsOf): Promise<Timestamp> {
@@ -375,7 +383,7 @@ export class MemoryStore implements Store {
         const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
 
         let clearanceTime: Timestamp = 0;
-        const clearancesSearch = this.clearances.get(desiredSrc);
+        const clearancesSearch = this.clearances.get(muidTupleToString(desiredSrc));
         if (clearancesSearch) {
             clearanceTime = clearancesSearch.clearanceId[0];
         }
@@ -403,8 +411,8 @@ export class MemoryStore implements Store {
             const muidKey = <Muid>key;
             semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];
         }
-        const lower = this.entries.lowerBound(desiredSrc);
-        const upper = this.entries.upperBound([asOfTs, desiredSrc[1], desiredSrc[2]]);
+        const lower = this.entries.lowerBound(muidTupleToString(desiredSrc));
+        const upper = this.entries.upperBound(muidTupleToString([asOfTs, desiredSrc[1], desiredSrc[2]]));
         let entry: Entry | undefined = undefined;
         while (!lower.equals(upper)) {
             if (lower.value.effectiveKey == key && !(entry.placementId[0] < clearanceTime)) {
@@ -414,6 +422,23 @@ export class MemoryStore implements Store {
             lower.next();
         }
         return entry;
-
+    }
+    async getCommits(): Promise<void> {
+        throw Error("not implemented");
+    }
+    async getEntryById(): Promise<Entry> {
+        throw Error("not implemented");
+    }
+    async getKeyedEntries(): Promise<Map<KeyType, Entry>> {
+        throw Error("not implemented");
+    }
+    async getOrderedEntries(): Promise<Entry[]> {
+        throw Error("not implemented");
+    }
+    async getEntriesBySourceOrTarget(): Promise<Entry[]> {
+        throw Error("not implemented");
+    }
+    async close(): Promise<void> {
+        throw Error("not implemented");
     }
 }
