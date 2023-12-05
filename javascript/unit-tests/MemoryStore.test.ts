@@ -27,5 +27,4 @@ it('tests getEntryByKey and getKeyedEntries', async () => {
     await dir.set("bar", "foo");
     ensure((await memStore.getEntryById(id)).value == "bar");
     ensure((await memStore.getKeyedEntries(dir.address)).size == 2);
-
 });

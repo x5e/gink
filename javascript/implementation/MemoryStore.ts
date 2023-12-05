@@ -512,9 +512,42 @@ export class MemoryStore implements Store {
         }
         return result;
     }
-    async getOrderedEntries(): Promise<Entry[]> {
-        throw Error("not implemented");
+
+    /**
+     * Returns entry data for a List.
+     * @param container to get entries for
+     * @param through number to get, negative for starting from end
+     * @param asOf show results as of a time in the past
+     * @returns a promise of a list of ChangePairs
+     */
+    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
+        const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp() + 1;
+        const containerId: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
+        const lower = this.entries.lowerBound(muidTupleToString(containerId));
+        const upper = this.entries.upperBound(muidTupleToString([asOfTs, containerId[1], containerId[2]]));
+
+        let clearanceTime: Timestamp = 0;
+        const upperClearance = this.clearances.upperBound(muidTupleToString([asOfTs, containerId[1], containerId[2]]));
+        if (upperClearance.value) {
+            clearanceTime = upperClearance.value.clearanceId[0];
+        }
+        const returning = <Entry[]>[];
+
+        let to = through < 0 ? lower : upper;
+        let from = through < 0 ? upper : lower;
+
+        const needed = through < 0 ? -through : through + 1;
+        while (!from.equals(to) && from.value && returning.length < needed) {
+            const entry: Entry = from.value;
+            if (entry.placementId[0] >= clearanceTime) {
+                const upperRemoval = this.removals.upperBound(muidTupleToString([asOfTs, entry.placementId[1], entry.placementId[2]]))
+                if (!upperRemoval.value) returning.push(entry);
+            }
+            through < 0 ? from.prev() : from.next();
+        }
+        return returning;
     }
+
     async getEntriesBySourceOrTarget(): Promise<Entry[]> {
         throw Error("not implemented");
     }
