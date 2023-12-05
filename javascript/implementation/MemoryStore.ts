@@ -42,7 +42,7 @@ export class MemoryStore implements Store {
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
     // Awkward, but need to use strings to represent objects, since we won't always 
     // have the original reference to use.
-    private trxns: TreeMap<Uint8Array, BundleInfoTuple>; // bytes => BundleInfoTuple
+    private trxns: TreeMap<BundleInfoTuple, Uint8Array>; // BundleInfoTuple => bytes
     private chainInfos: TreeMap<string, BundleInfo>; // [Medallion, ChainStart] => BundleInfo
     private activeChains: Map<Medallion, ChainStart>;
     private clearances: TreeMap<string, Clearance>; // ClearanceId => Clearance
@@ -52,6 +52,31 @@ export class MemoryStore implements Store {
 
     constructor(private keepingHistory = true) {
         this.ready = this.initialize();
+    }
+
+    async dropHistory(container?: Muid, before?: AsOf): Promise<void> {
+        const beforeTs = before ? await this.asOfToTimestamp(before) : generateTimestamp();
+        let lower = this.entries.lowerBound(muidTupleToString([0, 0, 0]));
+        let upper = this.entries.upperBound(muidTupleToString([beforeTs, 0, 0]));
+        if (container) {
+            const containerTuple = muidToTuple(container);
+            lower = this.entries.lowerBound(muidTupleToString(containerTuple));
+            upper = this.entries.upperBound(muidTupleToString([beforeTs, container.medallion, container.offset]));
+        }
+        while (!lower.equals(upper)) {
+            this.entries.delete(lower.key);
+            lower.next();
+        }
+        return Promise.resolve();
+    }
+
+    async stopHistory(): Promise<void> {
+        this.keepingHistory = false;
+        return this.dropHistory();
+    }
+
+    startHistory(): void {
+        this.keepingHistory = true;
     }
 
     private async initialize(): Promise<void> {
@@ -135,7 +160,7 @@ export class MemoryStore implements Store {
         }
         this.chainInfos.set(MemoryStore.medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const commitKey: BundleInfoTuple = MemoryStore.commitInfoToKey(bundleInfo);
-        this.trxns.set(bundleBytes, commitKey);
+        this.trxns.set(commitKey, bundleBytes);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
@@ -368,8 +393,7 @@ export class MemoryStore implements Store {
             // Interpret as number of commits in the past.
             try {
                 const key = this.trxns.keys()[asOf];
-                const tuple = <BundleInfoTuple>this.trxns.get(key);
-                return tuple[0];
+                return key[0];
             } catch {
                 // Looking further back than we have commits.
                 throw new Error("no commits that far back");
@@ -409,13 +433,13 @@ export class MemoryStore implements Store {
             semanticKey = `${muidToString(leftMuid)}-${muidToString(riteMuid)}`;
         } else if (key) {
             const muidKey = <Muid>key;
-            semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];
+            semanticKey = muidTupleToString([muidKey.timestamp, muidKey.medallion, muidKey.offset]);
         }
         const lower = this.entries.lowerBound(muidTupleToString(desiredSrc));
         const upper = this.entries.upperBound(muidTupleToString([asOfTs, desiredSrc[1], desiredSrc[2]]));
         let entry: Entry | undefined = undefined;
         while (!lower.equals(upper)) {
-            if (lower.value.effectiveKey == key && !(entry.placementId[0] < clearanceTime)) {
+            if (lower.value.effectiveKey == semanticKey && !(lower.value.placementId[0] < clearanceTime)) {
                 entry = lower.value;
                 break;
             }
@@ -423,12 +447,20 @@ export class MemoryStore implements Store {
         }
         return entry;
     }
-    async getCommits(): Promise<void> {
+
+    async getCommits(callBack: (commitBytes: BundleBytes, commitInfo: BundleInfo) => void) {
+        for (const [key, val] of this.trxns) {
+            const commitKey: BundleInfoTuple = key;
+            const commitInfo = MemoryStore.commitKeyToInfo(commitKey);
+            const commitBytes: BundleBytes = val;
+            callBack(commitBytes, commitInfo);
+        }
+    }
+
+    async getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
         throw Error("not implemented");
     }
-    async getEntryById(): Promise<Entry> {
-        throw Error("not implemented");
-    }
+
     async getKeyedEntries(): Promise<Map<KeyType, Entry>> {
         throw Error("not implemented");
     }
@@ -438,7 +470,39 @@ export class MemoryStore implements Store {
     async getEntriesBySourceOrTarget(): Promise<Entry[]> {
         throw Error("not implemented");
     }
+
+    private static commitKeyToInfo(commitKey: BundleInfoTuple) {
+        return {
+            timestamp: commitKey[0],
+            medallion: commitKey[1],
+            chainStart: commitKey[2],
+            priorTime: commitKey[3],
+            comment: commitKey[4],
+        };
+    }
+
     async close(): Promise<void> {
-        throw Error("not implemented");
+        delete this.trxns;
+        delete this.chainInfos;
+        delete this.activeChains;
+        delete this.clearances;
+        delete this.containers;
+        delete this.removals;
+        delete this.entries;
+    }
+
+    // for debugging, not part of the api/interface
+    getAllEntryKeys(): IterableIterator<string> {
+        return this.entries.keys();
+    }
+
+    // for debugging, not part of the api/interface
+    getAllEntries(): TreeMap<string, Entry> {
+        return this.entries;
+    }
+
+    // for debugging, not part of the api/interface
+    getAllRemovals(): TreeMap<string, Removal> {
+        return this.removals;
     }
 }
