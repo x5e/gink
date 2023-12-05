@@ -15,10 +15,17 @@ it('test basic operations', async () => {
     ensure(removals.size == 1);
     await memStore.dropHistory();
     const entriesAfterDrop = memStore.getAllEntryKeys();
-    let counter = 0;
-    for (const entry of entriesAfterDrop) {
-        counter++;
-    }
-    ensure(counter == 1);
+    ensure(Array.from(entriesAfterDrop).length == 1);
     ensure(!await dir.has("foo", beforeSecondSet));
+});
+
+it('tests getEntryByKey and getKeyedEntries', async () => {
+    const memStore = new MemoryStore(true);
+    const instance = new GinkInstance(memStore);
+    const dir = instance.getGlobalDirectory();
+    const id = await dir.set("foo", "bar");
+    await dir.set("bar", "foo");
+    ensure((await memStore.getEntryById(id)).value == "bar");
+    ensure((await memStore.getKeyedEntries(dir.address)).size == 2);
+
 });

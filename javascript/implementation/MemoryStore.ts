@@ -65,7 +65,6 @@ export class MemoryStore implements Store {
         }
 
         while (!lower.equals(upper)) {
-            console.log(lower.key, `| ${beforeTs},0,0`);
             this.entries.delete(lower.key);
             lower.next();
         }
@@ -470,12 +469,48 @@ export class MemoryStore implements Store {
         }
     }
 
-    async getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
-        throw Error("not implemented");
+    async getEntryById(entryMuid: Muid): Promise<Entry | undefined> {
+        const entry = this.entries.get(muidToString(entryMuid));
+        return entry;
     }
 
-    async getKeyedEntries(): Promise<Map<KeyType, Entry>> {
-        throw Error("not implemented");
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
+        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
+        const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
+        let clearanceTime: Timestamp = 0;
+        const upperClearance = this.clearances.upperBound(muidTupleToString([asOfTs, desiredSrc[1], desiredSrc[2]]));
+        if (upperClearance.value) {
+            clearanceTime = upperClearance.value.clearanceId[0];
+        }
+        const lower = this.entries.lowerBound(muidTupleToString([desiredSrc[1], desiredSrc[2], Behavior.DIRECTORY]));
+        const result = new Map();
+        while (lower.value) {
+            const entry = <Entry>lower.value;
+
+            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
+                entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP);
+            let key: Muid | string | number | Uint8Array | [];
+
+            if (typeof (entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof (entry.effectiveKey) == "number") {
+                key = entry.effectiveKey;
+            } else if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
+                // If the key is a MuidTuple
+                key = muidToString(muidTupleToMuid(entry.effectiveKey));
+
+            } else {
+                throw Error(`not sure what to do with a ${typeof (key)} key`);
+            }
+            ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
+            if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime) {
+                if (entry.deletion) {
+                    result.delete(key);
+                } else {
+                    result.set(key, entry);
+                }
+            }
+            lower.next()
+        }
+        return result;
     }
     async getOrderedEntries(): Promise<Entry[]> {
         throw Error("not implemented");
