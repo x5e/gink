@@ -40,7 +40,8 @@ import {
     buildPairLists,
     buildPointeeList,
     medallionChainStartToString,
-    muidPairToSemanticKey
+    muidPairToSemanticKey,
+    extractCommitInfo
 } from "./store_utils";
 
 export class MemoryStore implements Store {
@@ -132,23 +133,10 @@ export class MemoryStore implements Store {
         return this.chainInfos.values();
     }
 
-    private static extractCommitInfo(bundleData: Uint8Array | BundleBuilder): BundleInfo {
-        if (bundleData instanceof Uint8Array) {
-            bundleData = <BundleBuilder>BundleBuilder.deserializeBinary(bundleData);
-        }
-        return {
-            timestamp: bundleData.getTimestamp(),
-            medallion: bundleData.getMedallion(),
-            chainStart: bundleData.getChainStart(),
-            priorTime: bundleData.getPrevious() || undefined,
-            comment: bundleData.getComment() || undefined,
-        };
-    }
-
     async addBundle(bundleBytes: BundleBytes): Promise<[BundleInfo, boolean]> {
         await this.ready;
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = MemoryStore.extractCommitInfo(bundleBuilder);
+        const bundleInfo = extractCommitInfo(bundleBuilder);
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const oldChainInfo = this.chainInfos.get(medallionChainStartToString([medallion, chainStart]));
         if (oldChainInfo || priorTime) {
@@ -163,7 +151,7 @@ export class MemoryStore implements Store {
         const commitKey: BundleInfoTuple = MemoryStore.commitInfoToKey(bundleInfo);
         this.trxns.set(commitKey, bundleBytes);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
-        for (const [offset, changeBuilder] of changesMap) {
+        for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
             if (changeBuilder.hasContainer()) {

@@ -1,4 +1,4 @@
-import { Behavior, ChangeBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
+import { Behavior, ChangeBuilder, BundleBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
 import { KeyType, Timestamp, MuidTuple, Muid, BundleInfo, Indexable } from "./typedefs";
 import {
     ensure,
@@ -132,4 +132,17 @@ export function muidPairToSemanticKey(key: [Muid | Container, Muid | Container])
         riteMuid = key[1];
     }
     return `${muidToString(leftMuid)}-${muidToString(riteMuid)}`;
+}
+
+export function extractCommitInfo(bundleData: Uint8Array | BundleBuilder): BundleInfo {
+    if (bundleData instanceof Uint8Array) {
+        bundleData = <BundleBuilder>BundleBuilder.deserializeBinary(bundleData);
+    }
+    return {
+        timestamp: bundleData.getTimestamp(),
+        medallion: bundleData.getMedallion(),
+        chainStart: bundleData.getChainStart(),
+        priorTime: bundleData.getPrevious() || undefined,
+        comment: bundleData.getComment() || undefined,
+    };
 }
