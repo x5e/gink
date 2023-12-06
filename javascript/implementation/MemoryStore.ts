@@ -41,13 +41,16 @@ import {
     buildPointeeList,
     medallionChainStartToString,
     muidPairToSemanticKey,
-    extractCommitInfo
+    extractCommitInfo,
+    buildChainTracker,
+    keyToSemanticKey,
+    commitKeyToInfo
 } from "./store_utils";
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
-    // Awkward, but need to use strings to represent objects, since we won't always 
+    // Awkward, but need to use strings to represent objects, since we won't always
     // have the original reference to use.
     private trxns: TreeMap<BundleInfoTuple, Uint8Array>; // BundleInfoTuple => bytes
     private chainInfos: TreeMap<string, BundleInfo>; // [Medallion, ChainStart] => BundleInfo
@@ -61,8 +64,8 @@ export class MemoryStore implements Store {
         this.ready = this.initialize();
     }
 
-    async dropHistory(container?: Muid, before?: AsOf): Promise<void> {
-        const beforeTs = before ? await this.asOfToTimestamp(before) : await this.asOfToTimestamp(-1);
+    dropHistory(container?: Muid, before?: AsOf): void {
+        const beforeTs = before ? this.asOfToTimestamp(before) : this.asOfToTimestamp(-1);
         let lower = this.entries.lowerBound(muidTupleToString([0, 0, 0]));
         let upper = this.entries.upperBound(muidTupleToString([beforeTs, 0, 0]));
         if (container) {
@@ -75,12 +78,11 @@ export class MemoryStore implements Store {
             this.entries.delete(lower.key);
             lower.next();
         }
-        return Promise.resolve();
     }
 
-    async stopHistory(): Promise<void> {
+    stopHistory(): void {
         this.keepingHistory = false;
-        return this.dropHistory();
+        this.dropHistory();
     }
 
     startHistory(): void {
@@ -118,11 +120,9 @@ export class MemoryStore implements Store {
     }
 
     async getChainTracker(): Promise<ChainTracker> {
-        const hasMap: ChainTracker = new ChainTracker({});
-        for (const bundleInfo of this.chainInfos.values()) {
-            hasMap.markAsHaving(bundleInfo);
-        }
-        return Promise.resolve(hasMap);
+        const chainInfos = this.getChainInfos();
+        const chainTracker = buildChainTracker(chainInfos);
+        return Promise.resolve(chainTracker);
     }
 
     async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
@@ -345,15 +345,7 @@ export class MemoryStore implements Store {
             clearanceTime = clearancesSearch.clearanceId[0];
         }
 
-        let semanticKey: KeyType | MuidTuple | [] = [];
-        if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
-            semanticKey = key;
-        } else if (Array.isArray(key)) {
-            semanticKey = muidPairToSemanticKey(key);
-        } else if (key) {
-            const muidKey = <Muid>key;
-            semanticKey = muidTupleToString([muidKey.timestamp, muidKey.medallion, muidKey.offset]);
-        }
+        const semanticKey = keyToSemanticKey(key);
         const lower = this.entries.lowerBound(muidTupleToString(desiredSrc));
         const upper = this.entries.upperBound(muidTupleToString([asOfTs, desiredSrc[1], desiredSrc[2]]));
         let entry: Entry | undefined = undefined;
@@ -370,7 +362,7 @@ export class MemoryStore implements Store {
     async getCommits(callBack: (commitBytes: BundleBytes, commitInfo: BundleInfo) => void) {
         for (const [key, val] of this.trxns) {
             const commitKey: BundleInfoTuple = key;
-            const commitInfo = MemoryStore.commitKeyToInfo(commitKey);
+            const commitInfo = commitKeyToInfo(commitKey);
             const commitBytes: BundleBytes = val;
             callBack(commitBytes, commitInfo);
         }
@@ -382,7 +374,7 @@ export class MemoryStore implements Store {
     }
 
     async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
-        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
+        const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         let clearanceTime: Timestamp = 0;
         const upperClearance = this.clearances.upperBound(muidTupleToString([asOfTs, desiredSrc[1], desiredSrc[2]]));
@@ -457,16 +449,6 @@ export class MemoryStore implements Store {
 
     async getEntriesBySourceOrTarget(): Promise<Entry[]> {
         throw Error("not implemented");
-    }
-
-    private static commitKeyToInfo(commitKey: BundleInfoTuple) {
-        return {
-            timestamp: commitKey[0],
-            medallion: commitKey[1],
-            chainStart: commitKey[2],
-            priorTime: commitKey[3],
-            comment: commitKey[4],
-        };
     }
 
     async close(): Promise<void> {

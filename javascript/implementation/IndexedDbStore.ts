@@ -7,7 +7,6 @@ import {
     muidToTuple,
     muidTupleToMuid,
     sameData,
-    unwrapKey,
     unwrapValue
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB } from 'idb';
@@ -31,10 +30,10 @@ import {
     SeenThrough,
     Timestamp,
 } from "./typedefs";
-import { extractCommitInfo, extractContainerMuid, getEffectiveKey, extractMovementInfo, buildPairLists, buildPointeeList, muidPairToSemanticKey } from "./store_utils";
+import { extractCommitInfo, extractContainerMuid, getEffectiveKey, extractMovementInfo, buildPairLists, buildPointeeList, muidPairToSemanticKey, buildChainTracker, keyToSemanticKey, commitKeyToInfo, commitInfoToKey } from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder, MuidBuilder, } from "./builders";
+import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { Container } from './Container';
 
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
@@ -201,11 +200,9 @@ export class IndexedDbStore implements Store {
 
     async getChainTracker(): Promise<ChainTracker> {
         await this.ready;
-        const hasMap: ChainTracker = new ChainTracker({});
-        (await this.getChainInfos()).map((value) => {
-            hasMap.markAsHaving(value);
-        });
-        return hasMap;
+        const chainInfos = await this.getChainInfos();
+        const chainTracker = buildChainTracker(chainInfos);
+        return chainTracker;
     }
 
     async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
@@ -240,7 +237,7 @@ export class IndexedDbStore implements Store {
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring parsing again.
-        const commitKey: BundleInfoTuple = IndexedDbStore.commitInfoToKey(bundleInfo);
+        const commitKey: BundleInfoTuple = commitInfoToKey(bundleInfo);
         await wrappedTransaction.objectStore("trxns").add(bundleBytes, commitKey);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
@@ -397,8 +394,6 @@ export class IndexedDbStore implements Store {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.wrapped.transaction(["entries", "clearances"]);
-
-
         let clearanceTime: Timestamp = 0;
         const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]])
         const clearancesCursor = await trxn.objectStore("clearances").openCursor(clearancesSearch, "prev");
@@ -406,17 +401,8 @@ export class IndexedDbStore implements Store {
             clearanceTime = clearancesCursor.value.clearanceId[0];
         }
 
-
-        let semanticKey: KeyType | MuidTuple | [] = [];
         let upperTuple = [asOfTs];
-        if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
-            semanticKey = key;
-        } else if (Array.isArray(key)) {
-            semanticKey = muidPairToSemanticKey(key);
-        } else if (key) {
-            const muidKey = <Muid>key;
-            semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];
-        }
+        const semanticKey = keyToSemanticKey(key);
         const lower = [desiredSrc];
         const upper = [desiredSrc, semanticKey, upperTuple];
         const searchRange = IDBKeyRange.bound(lower, upper);
@@ -568,21 +554,6 @@ export class IndexedDbStore implements Store {
         return entry;
     }
 
-    private static commitKeyToInfo(commitKey: BundleInfoTuple) {
-        return {
-            timestamp: commitKey[0],
-            medallion: commitKey[1],
-            chainStart: commitKey[2],
-            priorTime: commitKey[3],
-            comment: commitKey[4],
-        };
-    }
-
-    private static commitInfoToKey(commitInfo: BundleInfo): BundleInfoTuple {
-        return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
-        commitInfo.priorTime || 0, commitInfo.comment || ""];
-    }
-
     // for debugging, not part of the api/interface
     async getAllEntryKeys() {
         return await this.wrapped.transaction(["entries"]).objectStore("entries").getAllKeys();
@@ -607,7 +578,7 @@ export class IndexedDbStore implements Store {
         for (let cursor = await this.wrapped.transaction("trxns").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
             const commitKey = <BundleInfoTuple>cursor.key;
-            const commitInfo = IndexedDbStore.commitKeyToInfo(commitKey);
+            const commitInfo = commitKeyToInfo(commitKey);
             const commitBytes: BundleBytes = cursor.value;
             callBack(commitBytes, commitInfo);
         }

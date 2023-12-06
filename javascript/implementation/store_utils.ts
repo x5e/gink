@@ -1,5 +1,6 @@
+import { ChainTracker } from './ChainTracker';
 import { Behavior, ChangeBuilder, BundleBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
-import { KeyType, Timestamp, MuidTuple, Muid, BundleInfo, Indexable } from "./typedefs";
+import { KeyType, Timestamp, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple } from "./typedefs";
 import {
     ensure,
     unwrapKey,
@@ -145,4 +146,41 @@ export function extractCommitInfo(bundleData: Uint8Array | BundleBuilder): Bundl
         priorTime: bundleData.getPrevious() || undefined,
         comment: bundleData.getComment() || undefined,
     };
+}
+
+export function buildChainTracker(chainInfos: Iterable<BundleInfo>): ChainTracker {
+    const hasMap: ChainTracker = new ChainTracker({});
+    for (const value of chainInfos) {
+        hasMap.markAsHaving(value);
+    }
+    return hasMap;
+}
+
+export function keyToSemanticKey(key: KeyType | Muid | [Muid | Container, Muid | Container]):
+    KeyType | MuidTuple | [] {
+    let semanticKey: KeyType | MuidTuple | [] = [];
+    if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
+        semanticKey = key;
+    } else if (Array.isArray(key)) {
+        semanticKey = muidPairToSemanticKey(key);
+    } else if (key) {
+        const muidKey = <Muid>key;
+        semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];
+    }
+    return semanticKey;
+}
+
+export function commitKeyToInfo(commitKey: BundleInfoTuple) {
+    return {
+        timestamp: commitKey[0],
+        medallion: commitKey[1],
+        chainStart: commitKey[2],
+        priorTime: commitKey[3],
+        comment: commitKey[4],
+    };
+}
+
+export function commitInfoToKey(commitInfo: BundleInfo): BundleInfoTuple {
+    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
+    commitInfo.priorTime || 0, commitInfo.comment || ""];
 }
