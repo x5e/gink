@@ -23,7 +23,7 @@ export class Role extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the inclusion
      */
-    async include(key: Muid|Container, change?: Bundler|string): Promise<Muid> {
+    async include(key: Muid | Container, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.INCLUSION, change);
     }
 
@@ -33,7 +33,7 @@ export class Role extends Container {
      * @param change an optional bundler to put this in
      * @returns a promise that resolves to the Muid for the exclusion
      */
-    async exclude(key: Muid|Container, change?: Bundler|string): Promise<Muid> {
+    async exclude(key: Muid | Container, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 
@@ -53,7 +53,7 @@ export class Role extends Container {
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to a boolean stating whether the key is included
      */
-    async contains(key: Muid|Container, asOf?: AsOf): Promise<boolean> {
+    async contains(key: Muid | Container, asOf?: AsOf): Promise<boolean> {
         if ("address" in key) {
             key = key.address;
         }
@@ -69,7 +69,7 @@ export class Role extends Container {
     get_members(asOf?: AsOf): AsyncGenerator<Container, void, unknown> {
         const thisRole = this;
         let container;
-        return (async function*(){
+        return (async function* () {
             const entries = await thisRole.ginkInstance.store.getKeyedEntries(thisRole.address, asOf);
             for (const [key, entry] of entries) {
                 container = await interpret(entry, thisRole.ginkInstance);
@@ -123,7 +123,7 @@ export class Role extends Container {
         for (const container of asArray) {
             if (first) {
                 first = false;
-            }   else {
+            } else {
                 returning += ",";
             }
             returning += await toJson(container, indent === false ? false : +indent + 1, asOf, seen);

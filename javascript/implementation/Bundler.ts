@@ -8,8 +8,8 @@ export class Bundler {
     private serialized: Uint8Array | null = null;
     private bundleBuilder = new BundleBuilder();
     private countItems = 0;
- 
-    constructor(private pendingComment?: string, readonly preAssignedMedallion?: Medallion) { 
+
+    constructor(private pendingComment?: string, readonly preAssignedMedallion?: Medallion) {
     }
 
     private requireNotSealed() {
@@ -61,7 +61,7 @@ export class Bundler {
         // are undefined until the associated bundle is finalized, then all the
         // components of the address become well-defined.
         return new class {
-            constructor(private bundler: Bundler, readonly offset: number) {}
+            constructor(private bundler: Bundler, readonly offset: number) { }
             get medallion() { return this.bundler.medallion; }
             get timestamp() { return this.bundler.timestamp; }
         }(this, offset);
@@ -84,7 +84,7 @@ export class Bundler {
         if (this.preAssignedMedallion && this.preAssignedMedallion != commitInfo.medallion) {
             throw new Error("specified commitInfo doesn't match pre-assigned medallion");
         }
-        this.commitInfo = {...commitInfo};
+        this.commitInfo = { ...commitInfo };
         this.commitInfo.comment = this.pendingComment;
         this.bundleBuilder.setTimestamp(commitInfo.timestamp);
         this.bundleBuilder.setPrevious(commitInfo.priorTime);

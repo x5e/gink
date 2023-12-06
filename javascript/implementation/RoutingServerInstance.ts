@@ -13,7 +13,7 @@ import { ensure } from "./utils";
 export class RoutingServerInstance extends GinkInstance {
 
     constructor(readonly filePath: FilePath, readonly logger: CallBack = console.log) {
-        super(new LogBackedStore(filePath, false, logger), {software: `routing server for ${filePath}`}, logger);
+        super(new LogBackedStore(filePath, false, logger), { software: `routing server for ${filePath}` }, logger);
     }
 
     async onConnection(connection: WebSocketConnection) {
@@ -22,7 +22,7 @@ export class RoutingServerInstance extends GinkInstance {
         const sendFunc = (data: Uint8Array) => connection.sendBytes(Buffer.from(data));
         const closeFunc = () => { connection.close(); };
         const connectionId = this.createConnectionId();
-        ensure(typeof(connectionId) === "number" && connectionId > 0);
+        ensure(typeof (connectionId) === "number" && connectionId > 0);
         const peer = new Peer(sendFunc, closeFunc);
         this.peers.set(connectionId, peer);
         connection.on('close', this.onClose.bind(this, connectionId));

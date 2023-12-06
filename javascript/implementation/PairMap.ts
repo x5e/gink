@@ -30,7 +30,7 @@ export class PairMap extends Container {
      * @param change an optional bundler to put this change in
      * @returns a promise that resolves to the address (Muid) of the newly created entry
      */
-    async set(key: [Muid|Container, Muid|Container], value: Value|Container, change?: Bundler|string): Promise<Muid> {
+    async set(key: [Muid | Container, Muid | Container], value: Value | Container, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, value, change);
     }
 
@@ -40,7 +40,7 @@ export class PairMap extends Container {
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to the value or container associated with the key.
      */
-    async get(key: [Muid|Container, Muid|Container], asOf?: AsOf): Promise<Value|Container> {
+    async get(key: [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Value | Container> {
         const found = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
         if (found && !found.deletion) return found.value;
     }
@@ -51,7 +51,7 @@ export class PairMap extends Container {
      * @param change an optional bundler to put this change in
      * @returns a promise that resolves to the address (Muid) of the change.
      */
-    async delete(key: [Muid|Container, Muid|Container], change?: Bundler|string): Promise<Muid> {
+    async delete(key: [Muid | Container, Muid | Container], change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 
@@ -61,7 +61,7 @@ export class PairMap extends Container {
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to a boolean - true if key is in the pair map
      */
-    async has(key: [Muid|Container, Muid|Container], asOf?: AsOf): Promise<boolean> {
+    async has(key: [Muid | Container, Muid | Container], asOf?: AsOf): Promise<boolean> {
         const found = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
         return (found && !found.deletion);
     }
@@ -86,10 +86,10 @@ export class PairMap extends Container {
         const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
         for (const [key, entry] of entries) {
             if (!entry.deletion) {
-                if (typeof(entry.effectiveKey)=="string") {
+                if (typeof (entry.effectiveKey) == "string") {
                     toMap.set(pairKeyToArray(entry.effectiveKey), entry.value);
                 } else {
-                    throw Error(`${typeof(entry.effectiveKey)} key shouldn't be here.`);
+                    throw Error(`${typeof (entry.effectiveKey)} key shouldn't be here.`);
                 }
             }
         }
@@ -117,11 +117,11 @@ export class PairMap extends Container {
         for (const [key, value] of asMap) {
             if (first) {
                 first = false;
-            }   else {
+            } else {
                 returning += ", ";
             }
             returning += `["${stringMuidToHex(muidToString(key[0]))}", "${stringMuidToHex(muidToString(key[1]))}"]:`;
-            returning += await toJson(value,indent === false ? false : +indent + 1, asOf, seen);
+            returning += await toJson(value, indent === false ? false : +indent + 1, asOf, seen);
         }
         returning += "}";
         return returning;

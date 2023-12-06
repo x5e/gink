@@ -2,8 +2,6 @@
 import { GinkInstance, Bundler, IndexedDbStore, Vertex, Verb } from "../implementation";
 import { ensure } from "../implementation/utils";
 
-
-
 it('isAlive and remove', async function () {
     const store = new IndexedDbStore('vertex1', true);
     const instance = new GinkInstance(store);

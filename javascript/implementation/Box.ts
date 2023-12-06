@@ -4,7 +4,7 @@ import { Value, Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure } from "./utils";
 import { toJson, interpret } from "./factories";
-import { Behavior, ContainerBuilder} from "./builders";
+import { Behavior, ContainerBuilder } from "./builders";
 
 export class Box extends Container {
 
@@ -12,7 +12,7 @@ export class Box extends Container {
         super(ginkInstance, address, Behavior.BOX);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
-            ensure(address.offset == Behavior.BOX);            
+            ensure(address.offset == Behavior.BOX);
         } else {
             ensure(containerBuilder.getBehavior() == Behavior.BOX);
         }
@@ -30,7 +30,7 @@ export class Box extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created entry  
      */
-    async set(value: Value | Container, change?: Bundler|string): Promise<Muid> {
+    async set(value: Value | Container, change?: Bundler | string): Promise<Muid> {
         return this.addEntry(undefined, value, change);
     }
 

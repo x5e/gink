@@ -1,5 +1,5 @@
-import {GinkInstance} from "./GinkInstance";
-import {Muid} from "./typedefs";
+import { GinkInstance } from "./GinkInstance";
+import { Muid } from "./typedefs";
 
 
 export class Addressable {

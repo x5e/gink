@@ -17,11 +17,11 @@ export class Property extends Container {
         }
     }
 
-    async set(subject: Addressable, value: Value | Addressable, bundlerOrComment?: Bundler|string): Promise<Muid> {
+    async set(subject: Addressable, value: Value | Addressable, bundlerOrComment?: Bundler | string): Promise<Muid> {
         return await this.addEntry(subject, value, bundlerOrComment);
     }
 
-    async delete(subject: Addressable, change?: Bundler|string): Promise<Muid> {
+    async delete(subject: Addressable, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(subject, Container.DELETION, change);
     }
 

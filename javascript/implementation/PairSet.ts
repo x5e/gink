@@ -23,7 +23,7 @@ export class PairSet extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the inclusion
      */
-    async include(key: [Muid|Container, Muid|Container], change?: Bundler|string): Promise<Muid> {
+    async include(key: [Muid | Container, Muid | Container], change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.INCLUSION, change);
     }
 
@@ -33,7 +33,7 @@ export class PairSet extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the exclusion
      */
-    async exclude(key: [Muid|Container, Muid|Container], change?: Bundler|string): Promise<Muid> {
+    async exclude(key: [Muid | Container, Muid | Container], change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 
@@ -43,7 +43,7 @@ export class PairSet extends Container {
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to a boolean, true if the key is included, false if not
      */
-    async contains(key: [Muid|Container, Muid|Container], asOf?: AsOf): Promise<boolean> {
+    async contains(key: [Muid | Container, Muid | Container], asOf?: AsOf): Promise<boolean> {
         const found = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
         if (found && found.deletion) return false;
         return Boolean(found);
@@ -69,7 +69,7 @@ export class PairSet extends Container {
         const toSet = new Set<Array<Muid>>();
         for (const [key, entry] of entries) {
             if (!entry.deletion) {
-                if (typeof(entry.effectiveKey) == "string") {
+                if (typeof (entry.effectiveKey) == "string") {
                     const pair = entry.effectiveKey.split("-");
                     toSet.add([stringToMuid(pair[0]), stringToMuid(pair[1])]);
                 }
@@ -99,11 +99,11 @@ export class PairSet extends Container {
         for (const key of asSet) {
             if (first) {
                 first = false;
-            }   else {
+            } else {
                 returning += ",";
             }
             returning += await toJson(`[${muidToString(key[0])}, ${muidToString(key[1])}]`,
-            indent === false ? false : +indent + 1, asOf, seen);
+                indent === false ? false : +indent + 1, asOf, seen);
         }
         returning += "]";
         return returning;

@@ -1,7 +1,7 @@
-import {BundleBytes, BundleInfo, CallBack} from "./typedefs";
-import {ensure, noOp} from "./utils";
-import {ChainTracker} from "./ChainTracker";
-import {AckBuilder, SyncMessageBuilder} from "./builders";
+import { BundleBytes, BundleInfo, CallBack } from "./typedefs";
+import { ensure, noOp } from "./utils";
+import { ChainTracker } from "./ChainTracker";
+import { AckBuilder, SyncMessageBuilder } from "./builders";
 
 
 export class Peer {
@@ -20,7 +20,7 @@ export class Peer {
             thisPeer.callWhenReady = resolve;
             thisPeer.callOnTimeout = reject;
         });
-        setTimeout(()=>{thisPeer.callOnTimeout();}, 1000);
+        setTimeout(() => { thisPeer.callOnTimeout(); }, 1000);
     }
 
     close() {

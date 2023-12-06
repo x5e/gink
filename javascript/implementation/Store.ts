@@ -1,7 +1,9 @@
 import { ChainTracker } from "./ChainTracker";
 import { Container } from "./Container";
-import { Medallion, ChainStart, SeenThrough, Muid, Bytes, KeyType, BundleInfo,
-    ClaimedChains, Entry, AsOf} from "./typedefs";
+import {
+    Medallion, ChainStart, SeenThrough, Muid, Bytes, KeyType, BundleInfo,
+    ClaimedChains, Entry, AsOf
+} from "./typedefs";
 
 export interface Store {
 
@@ -22,7 +24,7 @@ export interface Store {
     /**
      * Check the store to see how far along a given chain it has data for.
      */
-    getSeenThrough: (key: [Medallion, ChainStart]) => Promise<SeenThrough | undefined>
+    getSeenThrough: (key: [Medallion, ChainStart]) => Promise<SeenThrough | undefined>;
 
     /**
      * Returns a set of chains that may be appended to.
@@ -79,8 +81,8 @@ export interface Store {
     getBackRefs(pointingTo: Muid): Promise<Entry[]>;
 
     getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined>;
-    getEntryByKey(container: Muid, key?: KeyType | Muid | [Muid|Container, Muid|Container], asOf?: AsOf): Promise<Entry | undefined>;
-    getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>>;
+    getEntryByKey(container: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined>;
+    getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>>;
     getOrderedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Entry[]>;
     getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]>;
 
