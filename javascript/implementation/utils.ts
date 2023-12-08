@@ -264,7 +264,13 @@ export function muidToString(muid: Muid): string {
 }
 
 export function muidTupleToString(muidTuple: MuidTuple): string {
-    let timestamp = (`0` + byteToHex(muidTuple[0]));
+    let timestamp: string;
+    if (muidTuple[0] == Infinity) {
+        timestamp = 'FFFFFFFFFFFFFF';
+    }
+    else {
+        timestamp = (`0` + byteToHex(muidTuple[0]));
+    }
     let medallion = (byteToHex(muidTuple[1]));
     let offset = (byteToHex(muidTuple[2]));
     return `${timestamp}-${medallion}-${offset}`;
