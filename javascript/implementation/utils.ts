@@ -279,7 +279,7 @@ export function strToMuid(value: string): Muid {
     };
 }
 
-function byteToHex(byte: number) {
+export function byteToHex(byte: number) {
     const returning = byte.toString(16).toUpperCase();
     return byte < 0x10 ? '0' + returning : returning;
 }
