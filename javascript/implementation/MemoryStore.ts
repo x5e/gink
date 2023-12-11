@@ -203,6 +203,10 @@ export class MemoryStore implements Store {
                                 if (muidTupleToString(entry.effectiveKey) == muidTupleToString(effectiveKey)) {
                                     search = entry;
                                 }
+                            } else if (typeof effectiveKey == "object" && typeof entry.effectiveKey == "object") {
+                                if (effectiveKey.toString() == entry.effectiveKey.toString()) {
+                                    search = entry;
+                                }
                             } else {
                                 if (entry.effectiveKey == effectiveKey) {
                                     search = entry;
@@ -220,6 +224,9 @@ export class MemoryStore implements Store {
                                 entryId: search.entryId
                             };
                             this.removals.set(muidTupleToString(removal.removalId), removal);
+                            const entryToMark = this.entries.get(muidTupleToString(search.entryId));
+                            entryToMark.deletion = true;
+                            this.entries.set(muidTupleToString(placementId), entryToMark);
                         } else {
                             this.entries.delete(muidTupleToString(placementId));
                         }
@@ -346,17 +353,18 @@ export class MemoryStore implements Store {
         const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         let clearanceTime: Timestamp = 0;
-        const clearancesSearch = this.clearances.get(muidTupleToString(desiredSrc));
+        const clearancesSearch = this.clearances.last();
         if (clearancesSearch) {
-            clearanceTime = clearancesSearch.clearanceId[0];
+            clearanceTime = clearancesSearch[1].clearanceId[0];
         }
 
         const semanticKey = keyToSemanticKey(key);
         const lower = this.entries.lowerBound(muidTupleToString(desiredSrc));
-        const upper = this.entries.upperBound(muidTupleToString([asOfTs - 1, desiredSrc[1], desiredSrc[2]]));
+        const upper = this.entries.upperBound(muidTupleToString([asOfTs, desiredSrc[1], desiredSrc[2]]));
         let entry: Entry | undefined = undefined;
         while (!lower.equals(upper)) {
-            if (lower.value.effectiveKey.toString() == semanticKey.toString() && !(lower.value.placementId[0] < clearanceTime)) {
+            if (lower.value.effectiveKey.toString() == semanticKey.toString() && !(lower.value.placementId[0] < clearanceTime)
+                && !lower.value.deletion) {
                 entry = lower.value;
                 break;
             }
@@ -393,31 +401,32 @@ export class MemoryStore implements Store {
         while (lower) {
             const entry = <Entry>lower.value;
             if (entry) {
-                ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
-                    entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP);
-                let key: Muid | string | number | Uint8Array | [];
+                if (entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
+                    entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP) {
+                    let key: Muid | string | number | Uint8Array | [];
 
-                if (typeof (entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof (entry.effectiveKey) == "number") {
-                    key = entry.effectiveKey;
-                } else if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
-                    // If the key is a MuidTuple
-                    key = muidToString(muidTupleToMuid(entry.effectiveKey));
+                    if (typeof (entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof (entry.effectiveKey) == "number") {
+                        key = entry.effectiveKey;
+                    } else if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
+                        // If the key is a MuidTuple
+                        key = muidToString(muidTupleToMuid(entry.effectiveKey));
 
-                } else {
-                    throw Error(`not sure what to do with a ${typeof (key)} key`);
-                }
-                ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
-                const asOfBeforeClear = asOfTs <= clearanceTime;
-                const entryAfterClearance = entry.entryId[0] >= clearanceTime;
-                // If asOf timestamp is before or at the last clearance, we can ignore the clearance
-                // time, and just look for entries up to the asOf timestamp.
-                // Otherwise, we need to find entries between clearance and asOf.
-                if (entry.entryId[0] < asOfTs && (asOfBeforeClear ? true : entryAfterClearance) &&
-                    muidTupleToString(entry.containerId) == muidToString(container)) {
-                    if (entry.deletion) {
-                        result.delete(key);
                     } else {
-                        result.set(key, entry);
+                        throw Error(`not sure what to do with a ${typeof (key)} key`);
+                    }
+                    ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
+                    const asOfBeforeClear = asOfTs <= clearanceTime;
+                    const entryAfterClearance = entry.entryId[0] >= clearanceTime;
+                    // If asOf timestamp is before or at the last clearance, we can ignore the clearance
+                    // time, and just look for entries up to the asOf timestamp.
+                    // Otherwise, we need to find entries between clearance and asOf.
+                    if (entry.entryId[0] < asOfTs && (asOfBeforeClear ? true : entryAfterClearance) &&
+                        muidTupleToString(entry.containerId) == muidToString(container)) {
+                        if (entry.deletion) {
+                            result.delete(key);
+                        } else {
+                            result.set(key, entry);
+                        }
                     }
                 }
             }
@@ -479,13 +488,13 @@ export class MemoryStore implements Store {
     }
 
     // for debugging, not part of the api/interface
-    getAllEntryKeys(): IterableIterator<string> {
-        return this.entries.keys();
+    getAllEntryKeys(): Array<string> {
+        return Array.from(this.entries.keys());
     }
 
     // for debugging, not part of the api/interface
-    getAllEntries(): TreeMap<string, Entry> {
-        return this.entries;
+    getAllEntries(): Array<Entry> {
+        return Array.from(this.entries.values());
     }
 
     // for debugging, not part of the api/interface
