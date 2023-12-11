@@ -168,18 +168,16 @@ it('Directory.purge', async function () {
 });
 
 it('Directory.clear', async function () {
-    for (const store of [new MemoryStore(true)]) {//new IndexedDbStore('Directory.clear', true), 
+    for (const store of [new IndexedDbStore('Directory.clear', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
         const directory = await instance.createDirectory();
         await directory.set('A', 99);
         const clearMuid = await directory.clear();
         await directory.set('B', false);
-        // const asMap = await directory.toMap();
-
-        // ensure(asMap.has("B") && !asMap.has("A"), "did not clear");
+        const asMap = await directory.toMap();
+        ensure(asMap.has("B") && !asMap.has("A"), "did not clear");
         const asMapBeforeClear = await directory.toMap(clearMuid.timestamp);
         if (asMapBeforeClear.has("B") || !asMapBeforeClear.has("A")) {
-            console.log(asMapBeforeClear);
             throw new Error("busted");
         }
         await store.close();

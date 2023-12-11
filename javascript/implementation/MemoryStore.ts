@@ -388,12 +388,8 @@ export class MemoryStore implements Store {
             clearanceTime = upperClearance[1].clearanceId[0];
         }
         const lower = this.entries.lowerBound(muidTupleToString([desiredSrc[0], desiredSrc[1], Behavior.DIRECTORY]));
-        const upper = this.entries.upperBound(muidTupleToString([asOfTs - 1, desiredSrc[1], Behavior.DIRECTORY]));
+        const upper = this.entries.upperBound(muidTupleToString([asOfTs, desiredSrc[1], Behavior.DIRECTORY]));
         const result = new Map();
-        console.log(asOfTs);
-        console.log(upper.value);
-
-
         while (lower) {
             const entry = <Entry>lower.value;
             if (entry) {
@@ -411,7 +407,12 @@ export class MemoryStore implements Store {
                     throw Error(`not sure what to do with a ${typeof (key)} key`);
                 }
                 ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
-                if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime &&
+                const asOfBeforeClear = asOfTs <= clearanceTime;
+                const entryAfterClearance = entry.entryId[0] >= clearanceTime;
+                // If asOf timestamp is before or at the last clearance, we can ignore the clearance
+                // time, and just look for entries up to the asOf timestamp.
+                // Otherwise, we need to find entries between clearance and asOf.
+                if (entry.entryId[0] < asOfTs && (asOfBeforeClear ? true : entryAfterClearance) &&
                     muidTupleToString(entry.containerId) == muidToString(container)) {
                     if (entry.deletion) {
                         result.delete(key);
