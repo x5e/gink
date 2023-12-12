@@ -3,7 +3,7 @@ import { Container } from "./Container";
 import { Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure, muidToString } from "./utils";
-import { toJson, interpret } from "./factories"
+import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class Role extends Container {
@@ -38,27 +38,22 @@ export class Role extends Container {
     }
 
     /**
-     * The number of items in the role.
-     * @param asOf optional timestamp to look back to
-     * @returns a promise that resolves to the number of entries
-     */
-    async size(asOf?: AsOf): Promise<number> {
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
-        return entries.size;
-    }
-
-    /**
      * Whether or not the given key is included in the role.
      * @param key either a Muid or container to check if it is included
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to a boolean stating whether the key is included
      */
-    async contains(key: Muid | Container, asOf?: AsOf): Promise<boolean> {
+    async isIncluded(key: Muid | Container, asOf?: AsOf): Promise<boolean> {
         if ("address" in key) {
             key = key.address;
         }
         const entry = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
-        return Boolean(entry);
+        if (entry) {
+            if (!entry.deletion) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
