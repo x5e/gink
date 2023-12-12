@@ -11,8 +11,10 @@ it('include and exclude work as intended', async function () {
     await role1.include(box1);
     ensure(await role1.isIncluded(box1), `Doesn't contain box1`);
     ensure(await role1.isIncluded(box1.address));
+    ensure(!(await role1.isExcluded(box1)));
 
     await role1.exclude(box1);
+    ensure(await role1.isExcluded(box1));
     ensure(!(await role1.isIncluded(box1)), `Still contains box1 after exclude`);
 
     // Testing a container can be excluded before it was included.
@@ -42,8 +44,8 @@ it('contains, toArray, and get_members work properly', async function () {
     ensure(await role1.isIncluded(box1));
     ensure(!(await role1.isIncluded(box3)));
 
-    ensure((await role1.toArray()).length == 2);
-    ensure((await role1.toArray())[0].behavior);
+    ensure((await role1.includedAsArray()).length == 2);
+    ensure((await role1.includedAsArray())[0].behavior);
 
     for await (const member of role1.get_members()) {
         ensure(member.address && member.behavior && member.ginkInstance);

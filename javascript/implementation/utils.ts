@@ -246,7 +246,7 @@ export function stringMuidToHex(string: String) {
 
 export function stringToMuid(string: String): Muid {
     const split = string.split(",");
-    ensure(split.length == 3, `This is not a Muid: ${split}`)
+    ensure(split.length == 3, `This is not a Muid: ${split}`);
     const muid = new MuidBuilder();
     muid.setTimestamp(split[0]);
     muid.setMedallion(split[1]);
@@ -275,7 +275,7 @@ export function strToMuid(value: string): Muid {
         timestamp: Number(nums[0]),
         medallion: Number(nums[1]),
         offset: Number(nums[2])
-    }
+    };
 }
 
 function byteToHex(byte: number) {
@@ -379,7 +379,7 @@ export function entryToEdgeData(entry: Entry): EdgeData {
         value: entry.value,
         action: muidTupleToMuid(entry.containerId),
         effective: <number>entry.effectiveKey,
-    }
+    };
 }
 
 export const dehydrate = muidToTuple;
