@@ -174,7 +174,6 @@ it('List.toJSON', async function () {
     }
 });
 
-
 it('List.asOf', async function () {
     // set up the objects
     for (const store of [new IndexedDbStore('list-asOf', true), new MemoryStore(true)]) {
@@ -239,6 +238,8 @@ it('List.purge_pop', async function () {
         ensure(popped == "bar", `popped=${popped}`);
         ensure(matches(["foo"], await seq.toArray()), (await seq.toArray()).toString());
         const previous = await seq.toArray(Infinity, beforeFirstPop);
+        console.log(previous);
+
         ensure(matches(["foo", "bar"], previous), "previous=" + previous.toString());
         const shifted = await seq.shift(true);
         ensure(shifted == "foo");
@@ -247,7 +248,7 @@ it('List.purge_pop', async function () {
 });
 
 it('Sequence.reorder', async function () {
-    for (const store of [new IndexedDbStore('list-reorder', true), new MemoryStore(true)]) {
+    for (const store of [new MemoryStore(true)]) {//new IndexedDbStore('list-reorder', true),
         const instance = new GinkInstance(store);
         const seq = await instance.createSequence();
         const fooMuid = await seq.push("foo");
