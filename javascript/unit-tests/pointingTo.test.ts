@@ -21,7 +21,7 @@ it('pointingTo', async function () {
         const refs = await store.getBackRefs(target.address);
 
         const containers = refs.map((entry) => `Container(${entry.containerId.toString()})`);
-
+        
         ensure(containers.includes(directory.toString()));
         ensure(containers.includes(list.toString()));
         ensure(containers.includes(box.toString()));

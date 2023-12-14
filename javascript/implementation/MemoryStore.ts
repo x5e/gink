@@ -104,8 +104,14 @@ export class MemoryStore implements Store {
     async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
         const backRefs: Entry[] = [];
         for (const [muidTupleString, entry] of this.entries.entries()) {
-            if (muidTupleString == muidToString(pointingTo) && entry.pointeeList) {
-                backRefs.push(entry);
+            if (entry.pointeeList) {
+                for (const pointee of entry.pointeeList) {
+                    if (muidTupleToString(pointee) == muidToString(pointingTo)) {
+                        backRefs.push(entry);
+                        break;
+                    }
+                }
+                
             }
         }
         return Promise.resolve(backRefs);
@@ -466,8 +472,6 @@ export class MemoryStore implements Store {
         const needed = through < 0 ? -through : through + 1;
         const asOfBeforeClear = asOfTs <= clearanceTime;
         while (returning.length < needed) {
-            console.log(from);
-
             const entry: Entry = from.value;
             // Specifically checking whether timestamp is before asOf, because treemap always finds
             // the entry GREATER than upper bound.

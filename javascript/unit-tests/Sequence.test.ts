@@ -236,7 +236,6 @@ it('List.purge_pop', async function () {
         ensure(popped == "bar", `popped=${popped}`);
         ensure(matches(["foo"], await seq.toArray()), (await seq.toArray()).toString());
         const previous = await seq.toArray(Infinity, beforeFirstPop);
-        console.log(previous);
 
         ensure(matches(["foo", "bar"], previous), "previous=" + previous.toString());
         const shifted = await seq.shift(true);
