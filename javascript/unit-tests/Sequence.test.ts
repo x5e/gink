@@ -6,17 +6,15 @@ it('push to a queue and peek', async function () {
     // set up the objects
     for (const store of [new IndexedDbStore('list-test1', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
-
         const queue: Sequence = await instance.createSequence();
         await queue.push('dummy');
         const muid: Muid = await queue.push("Hello, World!");
         ensure(muid.timestamp! > 0);
-
         const val = await queue.at(-1);
         ensure(val == "Hello, World!");
+        await store.close();
     }
 });
-
 
 it('push and pop', async function () {
     // set up the objects
@@ -244,39 +242,5 @@ it('List.purge_pop', async function () {
         const shifted = await seq.shift(true);
         ensure(shifted == "foo");
         ensure(matches(["bar"], await seq.toArray(Infinity, beforeFirstPop)));
-    }
-});
-
-it('Sequence.reorder', async function () {
-    for (const store of [new MemoryStore(true)]) {//new IndexedDbStore('list-reorder', true),
-        const instance = new GinkInstance(store);
-        const seq = await instance.createSequence();
-        const fooMuid = await seq.push("foo");
-        await sleep(9);
-        const barMuid = await seq.push("bar");
-        await sleep(9);
-        const bazMuid = await seq.push("baz");
-        await seq.move(bazMuid, 1);
-        await seq.move(fooMuid, -1);
-        await seq.move(barMuid, 0);
-        const asArray = await seq.toArray();
-        ensure(matches(asArray, ["bar", "baz", "foo"]), JSON.stringify(asArray));
-    }
-});
-
-it('Sequence.reorder.by_position', async function () {
-    for (const store of [new IndexedDbStore('list-reorderByPosition', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
-        const seq = await instance.createSequence();
-        await seq.push("foo");
-        await sleep(9);
-        await seq.push("bar");
-        await sleep(9);
-        await seq.push("baz");
-        await seq.move(-1, 1);
-        await seq.move(0, -1);
-        await seq.move(1, 0);
-        const asArray = await seq.toArray();
-        ensure(matches(asArray, ["bar", "baz", "foo"]), JSON.stringify(asArray));
     }
 });

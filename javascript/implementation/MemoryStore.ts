@@ -449,11 +449,10 @@ export class MemoryStore implements Store {
      * @returns a promise of a list of ChangePairs
      */
     async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
-        const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp() - 1;
+        const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const containerId: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const lower = this.entries.lowerBound(muidTupleToString(containerId));
         const upper = this.entries.upperBound(muidTupleToString([asOfTs, containerId[1], containerId[2]]));
-
         let clearanceTime: Timestamp = 0;
         const upperClearance = this.clearances.last();
         if (upperClearance) {
@@ -463,9 +462,12 @@ export class MemoryStore implements Store {
 
         let to = through < 0 ? lower : upper;
         let from = through < 0 ? upper : lower;
+        
         const needed = through < 0 ? -through : through + 1;
         const asOfBeforeClear = asOfTs <= clearanceTime;
         while (returning.length < needed) {
+            console.log(from);
+
             const entry: Entry = from.value;
             // Specifically checking whether timestamp is before asOf, because treemap always finds
             // the entry GREATER than upper bound.
@@ -479,7 +481,7 @@ export class MemoryStore implements Store {
             }
             if (from.equals(to)) break;
             through < 0 ? from.prev() : from.next();
-        }
+        }        
         return returning;
     }
 
