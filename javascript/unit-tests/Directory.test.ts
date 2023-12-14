@@ -138,9 +138,7 @@ it('Directory.asOf', async function () {
 
         const asJsonBack = await directory.toJson(false, -1);
         ensure(asJsonBack == `{"A":"B"}`);
-
         ensure((await directory.get('cheese', -1)) === undefined);
-
         ensure((await directory.get('A', -1)) === 'B');
         await store.close();
     }

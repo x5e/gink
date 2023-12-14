@@ -24,9 +24,17 @@ it('complex.toJSON', async function () {
         await directory.set("tuple", ["yes"]);
 
         const asJson = await directory.toJson();
-        const expected = `{"bar":3,"document":{"a date":"2022-10-16T03:50:49.196Z","an array":[1,3,` +
-            `true,false,null],"some bytes":"5E20","sub object":{"key":"value"}},"foo":"bar","tuple":["yes"]}`;
-        ensure(asJson == expected, asJson);
+        const fromJson = JSON.parse(asJson);
+        // This is a little awkward, but MemoryStore holds entries in order,
+        // so toJson comes out in a different order than IndexedDb.
+        ensure(fromJson.foo == "bar", fromJson.foo);
+        ensure(fromJson.bar == 3, fromJson.bar);
+        ensure(fromJson.document["a date"] == "2022-10-16T03:50:49.196Z", fromJson.document);
+        // null won't be included in array.toString()
+        ensure(fromJson.document["an array"].toString() == "1,3,true,false,", fromJson.document["an array"].toString());
+        ensure(fromJson.document["some bytes"].toString() == "5E20", fromJson.document);
+        ensure(fromJson.document["sub object"].key == "value", fromJson.document);
+        ensure(fromJson.tuple.toString() == 'yes', fromJson.tuple);
 
         // TODO: figure out why Map objects don't come out properly
         const pulledOut = await directory.get("document");

@@ -111,7 +111,7 @@ export class MemoryStore implements Store {
                         break;
                     }
                 }
-                
+
             }
         }
         return Promise.resolve(backRefs);
@@ -372,12 +372,16 @@ export class MemoryStore implements Store {
         const semanticKey = keyToSemanticKey(key);
         const lower = this.entries.lowerBound(muidTupleToString(desiredSrc));
         const upper = this.entries.upperBound(muidTupleToString([asOfTs, desiredSrc[1], desiredSrc[2]]));
+        const asOfBeforeClear = asOfTs <= clearanceTime;
         let entry: Entry | undefined = undefined;
         while (!lower.equals(upper)) {
-            if (lower.value.effectiveKey.toString() == semanticKey.toString() && !(lower.value.placementId[0] < clearanceTime)
-                && !lower.value.deletion) {
-                entry = lower.value;
-                break;
+            if (lower.value && lower.value.effectiveKey.toString() == semanticKey.toString() && !lower.value.deletion &&
+                lower.value.entryId[0] < asOfTs) {
+                const entryAfterClearance = lower.value.entryId[0] >= clearanceTime;
+                if (asOfBeforeClear ? true : entryAfterClearance) {
+                    entry = lower.value;
+                    break;
+                }
             }
             lower.next();
         }
@@ -468,7 +472,7 @@ export class MemoryStore implements Store {
 
         let to = through < 0 ? lower : upper;
         let from = through < 0 ? upper : lower;
-        
+
         const needed = through < 0 ? -through : through + 1;
         const asOfBeforeClear = asOfTs <= clearanceTime;
         while (returning.length < needed) {
@@ -485,7 +489,7 @@ export class MemoryStore implements Store {
             }
             if (from.equals(to)) break;
             through < 0 ? from.prev() : from.next();
-        }        
+        }
         return returning;
     }
 
