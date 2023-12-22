@@ -15,6 +15,7 @@ containerTemplate.innerHTML = `
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            min-height: min-content;
             background-color: gray;
             color: white;
             border-radius: 10px;

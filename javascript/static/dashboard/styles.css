@@ -20,6 +20,17 @@ nav a {
     padding-left: 50px;
 }
 
+table {
+    text-align: center;
+}
+
+th,
+td {
+    padding-left: 50px;
+    padding-right: 50px;
+    padding-top: 25px;
+}
+
 #dashboard-page {
     margin-top: 0;
     display: flex;
@@ -31,16 +42,13 @@ nav a {
 
 #all-containers {
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    flex-direction: row;
+    justify-content: center;
     flex-wrap: wrap;
+    flex: 1;
+    overflow: auto;
     gap: 50px;
     width: 80vw;
     height: 80vh;
     margin-top: 3rem;
-}
-
-.key-val-container {
-    display: flex;
-    flex-direction: row;
 }

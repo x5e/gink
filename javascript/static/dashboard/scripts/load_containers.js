@@ -46,38 +46,61 @@ async function displayContents(container) {
         const p = allContainersDiv.appendChild(document.createElement('p'));
         p.innerText = "No entries.";
     } else {
-        // For now, only working for directories
-        if (!Array.isArray(entries) || entries instanceof Set) {
+        const table = allContainersDiv.appendChild(document.createElement('table'));
+        if (entries instanceof Map) {
+            table.innerHTML = `
+            <tr>
+                <th>Key</th>
+                <th>Value</th>
+                <th>Blame</th>
+            </tr>`;
             for (const [key, val] of entries) {
-                const keyValPair = allContainersDiv.appendChild(document.createElement('div'));
-                keyValPair.setAttribute('class', 'key-val-container');
+                const row = table.appendChild(document.createElement('tr'));
+                const keyCell = row.appendChild(document.createElement('td'));
+                const valCell = row.appendChild(document.createElement('td'));
+                const blameCell = row.appendChild(document.createElement('td'));
+                blameCell.innerText = "null";
                 if (key instanceof Object) {
-                    const containerBox = keyValPair.appendChild(document.createElement('container-box'));
-                    containerBox.innerText = container.constructor.name;
+                    const containerBox = keyCell.appendChild(document.createElement('container-box'));
+                    containerBox.innerText = key.constructor.name;
                     containerBox.onclick = async () => {
                         displayContents(key);
                     };
                 } else {
-                    const entryBox = keyValPair.appendChild(document.createElement('entry-box'));
-                    entryBox.innerText = key;
+                    keyCell.innerText = key;
                 }
-                const arrow = keyValPair.appendChild(document.createElement('p'));
-                arrow.innerText = "->";
                 if (val instanceof Object) {
-                    const containerBox = keyValPair.appendChild(document.createElement('container-box'));
+                    const containerBox = valCell.appendChild(document.createElement('container-box'));
                     containerBox.innerText = val.constructor.name;
                     containerBox.onclick = async () => {
                         displayContents(val);
                     };
                 } else {
-                    const entryBox = keyValPair.appendChild(document.createElement('entry-box'));
-                    entryBox.innerText = val;
+                    valCell.innerText = key;
                 }
             }
         } else {
+            // entries is an Array or Set
+            table.innerHTML = `
+            <table>
+                <th>Value</th>
+                <th>Blame</th>
+            </table>
+            `;
             for (const element of entries) {
-                const entryBox = allContainersDiv.appendChild(document.createElement('entry-box'));
-                entryBox.innerText = element;
+                const row = table.appendChild(document.createElement('tr'));
+                const valCell = row.appendChild(document.createElement('td'));
+                const blameCell = row.appendChild(document.createElement('td'));
+                blameCell.innerText = 'null';
+                if (element instanceof Object) {
+                    const containerBox = valCell.appendChild(document.createElement('container-box'));
+                    containerBox.innerText = element.constructor.name;
+                    containerBox.onclick = async () => {
+                        displayContents(val);
+                    };
+                } else {
+                    valCell.innerText = element;
+                }
             }
         }
     }
