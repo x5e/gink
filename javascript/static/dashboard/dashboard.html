@@ -9,26 +9,17 @@
         integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <script src="../../webpack.out/packed.js"></script>
     <script src="./scripts/ContainerBox.js"></script>
+    <script src="./scripts/EntryBox.js"></script>
     <script src="./scripts/load_containers.js"></script>
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg bg-body-tertiary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Gink</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
-                aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
-                <div class="navbar-nav">
-                    <a class="nav-link active" aria-current="page" onclick="loadContainers()">Home</a>
-                </div>
-            </div>
-        </div>
+    <nav>
+        <h2>Gink</h2>
+        <a onclick="loadAllContainers()">Home</a>
     </nav>
     <div id="dashboard-page">
-        <div id="all-containers">
+        <div class="grid-container" id="all-containers">
         </div>
     </div>
 
@@ -41,11 +32,15 @@
         window.store = new gink.IndexedDbStore();
         window.instance = new gink.GinkInstance(store);
         const globalDir = window.instance.getGlobalDirectory();
-        globalDir.set('test', 'testval');
         (async () => {
             await instance.connectTo('ws://localhost:8080');
-        });
-        loadContainers();
+            for (let i = 0; i < 5; i++) {
+                await globalDir.set(`key${i}`, `test${i}`);
+            }
+            const subDir = await window.instance.createDirectory();
+            await globalDir.set("new dir", subDir);
+        })();
+        loadAllContainers();
     });
 </script>
 

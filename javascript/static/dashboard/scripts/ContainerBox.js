@@ -1,7 +1,16 @@
-const template = document.createElement('template');
-template.innerHTML = `
+/**
+ * This file holds the class and styling for 
+ * the element that links to a Gink container.
+ * The onclick callback displays the contents
+ * of the container.
+ */
+
+const containerTemplate = document.createElement('template');
+containerTemplate.innerHTML = `
     <style> 
         div {
+            cursor: pointer;
+            transition: box-shadow .3s;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -11,6 +20,9 @@ template.innerHTML = `
             border-radius: 10px;
             height: 2rem;
             width: 8rem;
+        }
+        div:hover {
+            box-shadow: 0 0 10px rgba(33,33,33,.5);
         }
     </style>
     <div>
@@ -22,7 +34,7 @@ class ContainerBox extends HTMLElement {
     constructor() {
         super();
         const shadow = this.attachShadow({ mode: "open" });
-        shadow.append(template.content.cloneNode(true));
+        shadow.append(containerTemplate.content.cloneNode(true));
 
     }
 }
