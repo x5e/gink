@@ -38,21 +38,17 @@ function createContainerBox(container) {
  */
 async function displayContents(container) {
     const allContainersDiv = document.getElementById('all-containers');
-    let entries;
-    if (container.behavior == 4) {
-        console.log(container);
-        entries = await container.toMap();
-    }
+    const entries = await getEntries(container);
+
     clearChildren(allContainersDiv);
 
-    if (entries.length == 0) {
+    if (entries.size == 0) {
         const p = allContainersDiv.appendChild(document.createElement('p'));
         p.innerText = "No entries.";
     } else {
         // For now, only working for directories
-        if (container.behavior == 4) {
+        if (!Array.isArray(entries) || entries instanceof Set) {
             for (const [key, val] of entries) {
-                console.log(val);
                 const keyValPair = allContainersDiv.appendChild(document.createElement('div'));
                 keyValPair.setAttribute('class', 'key-val-container');
                 if (key instanceof Object) {
@@ -69,7 +65,7 @@ async function displayContents(container) {
                 arrow.innerText = "->";
                 if (val instanceof Object) {
                     const containerBox = keyValPair.appendChild(document.createElement('container-box'));
-                    containerBox.innerText = container.constructor.name;
+                    containerBox.innerText = val.constructor.name;
                     containerBox.onclick = async () => {
                         displayContents(val);
                     };
@@ -78,8 +74,48 @@ async function displayContents(container) {
                     entryBox.innerText = val;
                 }
             }
+        } else {
+            for (const element of entries) {
+                const entryBox = allContainersDiv.appendChild(document.createElement('entry-box'));
+                entryBox.innerText = element;
+            }
         }
     }
+}
+
+/**
+ * Gets entries from the container via the primary entries method,
+ * for example, asMap(), entries(), etc.
+ * @param {Container} container 
+ * @returns EITHER an Set/Array OR Map, depending on whether the
+ * container's method.
+ */
+async function getEntries(container) {
+    let entries;
+    switch (container.behavior) {
+        case 1: // Box
+            entries = [await container.get()];
+            break;
+        case 2: // Sequence
+            entries = await container.toArray();
+            break;
+        case 3: // KeySet
+            entries = await container.toSet();
+            break;
+        case 4: // Directory
+            entries = await container.toMap();
+            break;
+        case 5: // KeySet
+            entries = await container.get_pairs();
+            break;
+        case 6: // PairMap
+            entries = await container.items();
+            break;
+        default:
+            throw new Error(`not sure how to get entries for ${container.constructor.name}`);
+    }
+
+    return entries;
 }
 
 /**
