@@ -20,7 +20,7 @@ containerTemplate.innerHTML = `
             color: white;
             border-radius: 10px;
             height: 2rem;
-            width: 8rem;
+            width: 7rem;
         }
         div:hover {
             box-shadow: 0 0 10px rgba(33,33,33,.5);

@@ -2,6 +2,7 @@
  * Load and display all containers for a GinkInstance.
  */
 async function loadAllContainers() {
+    window.previousContainer = undefined;
     const allContainersDiv = document.getElementById('all-containers');
     clearChildren(allContainersDiv);
     const allContainers = [];
@@ -27,7 +28,7 @@ function createContainerBox(container) {
     const containerBox = allContainersDiv.appendChild(document.createElement('container-box'));
     containerBox.innerText = container.constructor.name;
     containerBox.onclick = async () => {
-        displayContents(container);
+        await displayContents(container);
     };
 }
 
@@ -64,7 +65,8 @@ async function displayContents(container) {
                     const containerBox = keyCell.appendChild(document.createElement('container-box'));
                     containerBox.innerText = key.constructor.name;
                     containerBox.onclick = async () => {
-                        displayContents(key);
+                        window.previousContainer = container;
+                        await displayContents(key);
                     };
                 } else {
                     keyCell.innerText = key;
@@ -73,7 +75,8 @@ async function displayContents(container) {
                     const containerBox = valCell.appendChild(document.createElement('container-box'));
                     containerBox.innerText = val.constructor.name;
                     containerBox.onclick = async () => {
-                        displayContents(val);
+                        window.previousContainer = container;
+                        await displayContents(val);
                     };
                 } else {
                     valCell.innerText = key;
@@ -96,13 +99,26 @@ async function displayContents(container) {
                     const containerBox = valCell.appendChild(document.createElement('container-box'));
                     containerBox.innerText = element.constructor.name;
                     containerBox.onclick = async () => {
-                        displayContents(val);
+                        window.previousContainer = container;
+                        await displayContents(val);
                     };
                 } else {
                     valCell.innerText = element;
                 }
             }
         }
+    }
+}
+
+/**
+ * Go back one level. Returns to parent container for
+ * a container entry within a container.
+ */
+async function displayPrevious() {
+    if (window.previousContainer) {
+        await displayContents(window.previousContainer);
+    } else {
+        await loadAllContainers();
     }
 }
 
