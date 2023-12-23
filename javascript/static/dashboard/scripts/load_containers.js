@@ -2,7 +2,16 @@
  * Load and display all containers for a GinkInstance.
  */
 async function loadAllContainers() {
-    window.previousContainer = undefined;
+    const pathContainer = document.getElementById('path-container');
+    const pathItem = pathContainer.appendChild(document.createElement('path-item'));
+    pathItem.innerText = "^";
+    pathItem.onclick = async () => {
+        while (pathContainer.lastChild) {
+            pathContainer.removeChild(pathContainer.lastChild);
+        }
+        await loadAllContainers();
+    };
+
     const allContainersDiv = document.getElementById('all-containers');
     clearChildren(allContainersDiv);
     const allContainers = [];
@@ -26,7 +35,8 @@ async function loadAllContainers() {
 function createContainerBox(container) {
     const allContainersDiv = document.getElementById('all-containers');
     const containerBox = allContainersDiv.appendChild(document.createElement('container-box'));
-    containerBox.innerText = container.constructor.name;
+    const tsAsString = String(container.address.timestamp);
+    containerBox.innerText = `${container.constructor.name.substring(0, 3)}-${tsAsString.substring(tsAsString.length - 4)}`;
     containerBox.onclick = async () => {
         await displayContents(container);
     };
@@ -38,6 +48,26 @@ function createContainerBox(container) {
  * container, or displays the data otherwise. 
  */
 async function displayContents(container) {
+    const pathContainer = document.getElementById('path-container');
+    pathContainer.appendChild(document.createElement('div')).innerText = "/";
+    const pathItem = pathContainer.appendChild(document.createElement('path-item'));
+    const tsAsString = String(container.address.timestamp);
+    // Setting this attribute to keep track of where we are, and
+    // to not duplicate divs in the file path.
+    pathItem.setAttribute('muid', gink.muidToString(container.address));
+    pathItem.innerText = `${container.constructor.name.substring(0, 3)}-${tsAsString.substring(tsAsString.length - 4)}`;
+    pathItem.onclick = async () => {
+        while (pathContainer.lastChild.getAttribute('muid') != gink.muidToString(container.address)) {
+            pathContainer.removeChild(pathContainer.lastChild);
+        }
+        // These children will be the container node itself, and the slash before it. 
+        // Easiest to just remove it and add back with displayContents().
+        // there is probably a better way to do this.
+        pathContainer.removeChild(pathContainer.lastChild);
+        pathContainer.removeChild(pathContainer.lastChild);
+        await displayContents(container);
+    };
+
     const allContainersDiv = document.getElementById('all-containers');
     const entries = await getEntries(container);
 
@@ -65,7 +95,6 @@ async function displayContents(container) {
                     const containerBox = keyCell.appendChild(document.createElement('container-box'));
                     containerBox.innerText = key.constructor.name;
                     containerBox.onclick = async () => {
-                        window.previousContainer = container;
                         await displayContents(key);
                     };
                 } else {
@@ -73,9 +102,9 @@ async function displayContents(container) {
                 }
                 if (val instanceof Object) {
                     const containerBox = valCell.appendChild(document.createElement('container-box'));
-                    containerBox.innerText = val.constructor.name;
+                    const tsAsString = String(val.address.timestamp);
+                    containerBox.innerText = `${val.constructor.name.substring(0, 3)}-${tsAsString.substring(tsAsString.length - 4)}`;
                     containerBox.onclick = async () => {
-                        window.previousContainer = container;
                         await displayContents(val);
                     };
                 } else {
@@ -107,18 +136,6 @@ async function displayContents(container) {
                 }
             }
         }
-    }
-}
-
-/**
- * Go back one level. Returns to parent container for
- * a container entry within a container.
- */
-async function displayPrevious() {
-    if (window.previousContainer) {
-        await displayContents(window.previousContainer);
-    } else {
-        await loadAllContainers();
     }
 }
 

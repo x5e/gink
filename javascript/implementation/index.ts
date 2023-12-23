@@ -15,5 +15,11 @@ export { Container } from "./Container";
 export { Vertex } from "./Vertex";
 export { Verb } from "./Verb";
 export { Edge } from "./Edge";
-export { logToStdErr, generateTimestamp, ensure, muidTupleToMuid } from "./utils";
+export {
+    logToStdErr,
+    generateTimestamp,
+    ensure,
+    muidTupleToMuid,
+    muidToString
+} from "./utils";
 export { construct } from './factories';
