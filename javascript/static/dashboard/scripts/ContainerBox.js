@@ -36,7 +36,19 @@ class ContainerBox extends HTMLElement {
         super();
         const shadow = this.attachShadow({ mode: "open" });
         shadow.append(containerTemplate.content.cloneNode(true));
+    }
 
+    static createAndAppend(appendTo, object) {
+        let containerInnerText;
+        if ("address" in object) {
+            containerInnerText = createContainerText(object);
+        } else {
+            containerInnerText = object.constructor.name;
+        }
+        const containerBox = appendTo.appendChild(document.createElement('container-box'));
+        containerBox.innerText = containerInnerText;
+
+        return containerBox;
     }
 }
 customElements.define('container-box', ContainerBox);
