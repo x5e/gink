@@ -7,7 +7,6 @@ import {
     muidToTuple,
     muidTupleToMuid,
     sameData,
-    unwrapKey,
     unwrapValue
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB } from 'idb';
@@ -31,9 +30,10 @@ import {
     SeenThrough,
     Timestamp,
 } from "./typedefs";
+import { extractCommitInfo, extractContainerMuid, getEffectiveKey, extractMovementInfo, buildPairLists, buildPointeeList, muidPairToSemanticKey, buildChainTracker, keyToSemanticKey, commitKeyToInfo, commitInfoToKey } from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder, MuidBuilder, } from "./builders";
+import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { Container } from './Container';
 
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
@@ -200,11 +200,9 @@ export class IndexedDbStore implements Store {
 
     async getChainTracker(): Promise<ChainTracker> {
         await this.ready;
-        const hasMap: ChainTracker = new ChainTracker({});
-        (await this.getChainInfos()).map((value) => {
-            hasMap.markAsHaving(value);
-        });
-        return hasMap;
+        const chainInfos = await this.getChainInfos();
+        const chainTracker = buildChainTracker(chainInfos);
+        return chainTracker;
     }
 
     async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
@@ -218,23 +216,10 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction(['chainInfos']).objectStore('chainInfos').getAll();
     }
 
-    private static extractCommitInfo(bundleData: Uint8Array | BundleBuilder): BundleInfo {
-        if (bundleData instanceof Uint8Array) {
-            bundleData = <BundleBuilder>BundleBuilder.deserializeBinary(bundleData);
-        }
-        return {
-            timestamp: bundleData.getTimestamp(),
-            medallion: bundleData.getMedallion(),
-            chainStart: bundleData.getChainStart(),
-            priorTime: bundleData.getPrevious() || undefined,
-            comment: bundleData.getComment() || undefined,
-        };
-    }
-
     async addBundle(bundleBytes: BundleBytes): Promise<[BundleInfo, boolean]> {
         await this.ready;
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = IndexedDbStore.extractCommitInfo(bundleBuilder);
+        const bundleInfo = extractCommitInfo(bundleBuilder);
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const wrappedTransaction = this.wrapped.transaction(
             ['trxns', 'chainInfos', 'containers', 'entries', 'removals', 'clearances']
@@ -252,7 +237,7 @@ export class IndexedDbStore implements Store {
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring parsing again.
-        const commitKey: BundleInfoTuple = IndexedDbStore.commitInfoToKey(bundleInfo);
+        const commitKey: BundleInfoTuple = commitInfoToKey(bundleInfo);
         await wrappedTransaction.objectStore("trxns").add(bundleBytes, commitKey);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
@@ -266,73 +251,22 @@ export class IndexedDbStore implements Store {
             if (changeBuilder.hasEntry()) {
                 const entryBuilder: EntryBuilder = changeBuilder.getEntry();
                 // TODO(https://github.com/google/gink/issues/55): explain root
-                const containerId: MuidTuple = [0, 0, 0];
+                let containerId: MuidTuple = [0, 0, 0];
                 if (entryBuilder.hasContainer()) {
-                    const srcMuid: MuidBuilder = entryBuilder.getContainer();
-                    containerId[0] = srcMuid.getTimestamp() || bundleInfo.timestamp;
-                    containerId[1] = srcMuid.getMedallion() || bundleInfo.medallion;
-                    containerId[2] = srcMuid.getOffset();
+                    containerId = extractContainerMuid(entryBuilder, bundleInfo);
                 }
-                const behavior: Behavior = entryBuilder.getBehavior();
-                let effectiveKey: KeyType | Timestamp | MuidTuple | [Muid, Muid] | [];
-                let replacing = true;
-                if (behavior == Behavior.DIRECTORY || behavior == Behavior.KEY_SET) {
-                    ensure(entryBuilder.hasKey());
-                    effectiveKey = unwrapKey(entryBuilder.getKey());
-                } else if (behavior == Behavior.SEQUENCE) {
-                    effectiveKey = entryBuilder.getEffective() || timestamp;
-                    replacing = false;
-                } else if (behavior == Behavior.BOX || behavior == Behavior.VERTEX) {
-                    effectiveKey = [];
-                } else if (behavior == Behavior.PROPERTY) {
-                    ensure(entryBuilder.hasDescribing());
-                    const describing = builderToMuid(entryBuilder.getDescribing());
-                    effectiveKey = muidToTuple(describing);
-                } else if (behavior == Behavior.ROLE) {
-                    ensure(entryBuilder.hasDescribing());
-                    const describing = builderToMuid(entryBuilder.getDescribing());
-                    effectiveKey = muidToTuple(describing);
-                } else if (behavior == Behavior.VERB) {
-                    ensure(entryBuilder.hasPair());
-                    effectiveKey = entryBuilder.getEffective() || timestamp;
-                } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
-                    ensure(entryBuilder.hasPair());
-                    const pair = entryBuilder.getPair();
-                    const left = pair.getLeft();
-                    const rite = pair.getRite();
-                    // There's probably a better way of doing this
-                    effectiveKey = `${muidToString(builderToMuid(left))}-${muidToString(builderToMuid(rite))}`;
-                } else {
-                    throw new Error(`unexpected behavior: ${behavior}`)
-                }
+                const [effectiveKey, replacing] = getEffectiveKey(entryBuilder, timestamp);
                 const entryId: MuidTuple = [timestamp, medallion, offset];
+                const behavior: Behavior = entryBuilder.getBehavior();
                 const placementId: MuidTuple = entryId;
-                const pointeeList = <Indexable[]>[];
+                let pointeeList = <Indexable[]>[];
                 if (entryBuilder.hasPointee()) {
-                    const pointeeMuidBuilder: MuidBuilder = entryBuilder.getPointee();
-                    const pointee = dehydrate({
-                        timestamp: pointeeMuidBuilder.getTimestamp() || bundleInfo.timestamp,
-                        medallion: pointeeMuidBuilder.getMedallion() || bundleInfo.medallion,
-                        offset: pointeeMuidBuilder.getOffset(),
-                    });
-                    pointeeList.push(pointee);
+                    pointeeList = buildPointeeList(entryBuilder, bundleInfo);
                 }
-                const sourceList = <Indexable[]>[];
-                const targetList = <Indexable[]>[];
+                let sourceList = <Indexable[]>[];
+                let targetList = <Indexable[]>[];
                 if (entryBuilder.hasPair()) {
-                    const pairBuilder = entryBuilder.getPair();
-                    const source = dehydrate({
-                        timestamp: pairBuilder.getLeft().getTimestamp() || bundleInfo.timestamp,
-                        medallion: pairBuilder.getLeft().getMedallion() || bundleInfo.medallion,
-                        offset: pairBuilder.getLeft().getOffset()
-                    });
-                    sourceList.push(source);
-                    const target = dehydrate({
-                        timestamp: pairBuilder.getRite().getTimestamp() || bundleInfo.timestamp,
-                        medallion: pairBuilder.getRite().getMedallion() || bundleInfo.medallion,
-                        offset: pairBuilder.getRite().getOffset()
-                    });
-                    targetList.push(target);
+                    [sourceList, targetList] = buildPairLists(entryBuilder, bundleInfo);
                 }
                 const value = entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined;
                 const expiry = entryBuilder.getExpiry() || undefined;
@@ -373,21 +307,7 @@ export class IndexedDbStore implements Store {
                 continue;
             }
             if (changeBuilder.hasMovement()) {
-                const movementBuilder: MovementBuilder = changeBuilder.getMovement();
-                const entryMuid = movementBuilder.getEntry();
-                const entryId: MuidTuple = [
-                    entryMuid.getTimestamp() || timestamp,
-                    entryMuid.getMedallion() || medallion,
-                    entryMuid.getOffset()];
-                const movementId: MuidTuple = [timestamp, medallion, offset];
-                const containerId: MuidTuple = [0, 0, 0];
-                if (movementBuilder.hasContainer()) {
-                    const srcMuid: MuidBuilder = movementBuilder.getContainer();
-                    containerId[0] = srcMuid.getTimestamp() || bundleInfo.timestamp;
-                    containerId[1] = srcMuid.getMedallion() || bundleInfo.medallion;
-                    containerId[2] = srcMuid.getOffset();
-                }
-
+                const { movementBuilder, entryId, movementId, containerId } = extractMovementInfo(changeBuilder, bundleInfo, offset);
                 const range = IDBKeyRange.bound([entryId, [0]], [entryId, [Infinity]]);
                 const search = await wrappedTransaction.objectStore("entries").index("locations").openCursor(range, "prev");
                 if (!search) {
@@ -474,8 +394,6 @@ export class IndexedDbStore implements Store {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.wrapped.transaction(["entries", "clearances"]);
-
-
         let clearanceTime: Timestamp = 0;
         const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]])
         const clearancesCursor = await trxn.objectStore("clearances").openCursor(clearancesSearch, "prev");
@@ -483,31 +401,8 @@ export class IndexedDbStore implements Store {
             clearanceTime = clearancesCursor.value.clearanceId[0];
         }
 
-
-        let semanticKey: KeyType | MuidTuple | [] = [];
         let upperTuple = [asOfTs];
-        if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
-            semanticKey = key;
-        } else if (Array.isArray(key)) {
-            let riteMuid: Muid;
-            let leftMuid: Muid;
-            if ("address" in key[0]) { // Left is a container
-                leftMuid = key[0].address;
-            }
-            if ("address" in key[1]) { // Right is a container
-                riteMuid = key[1].address;
-            }
-            if (!("address" in key[0])) { // Left is a muid
-                leftMuid = key[0];
-            }
-            if (!("address" in key[1])) { // Right is a Muid
-                riteMuid = key[1];
-            }
-            semanticKey = `${muidToString(leftMuid)}-${muidToString(riteMuid)}`;
-        } else if (key) {
-            const muidKey = <Muid>key;
-            semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];
-        }
+        const semanticKey = keyToSemanticKey(key);
         const lower = [desiredSrc];
         const upper = [desiredSrc, semanticKey, upperTuple];
         const searchRange = IDBKeyRange.bound(lower, upper);
@@ -659,21 +554,6 @@ export class IndexedDbStore implements Store {
         return entry;
     }
 
-    private static commitKeyToInfo(commitKey: BundleInfoTuple) {
-        return {
-            timestamp: commitKey[0],
-            medallion: commitKey[1],
-            chainStart: commitKey[2],
-            priorTime: commitKey[3],
-            comment: commitKey[4],
-        };
-    }
-
-    private static commitInfoToKey(commitInfo: BundleInfo): BundleInfoTuple {
-        return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
-        commitInfo.priorTime || 0, commitInfo.comment || ""];
-    }
-
     // for debugging, not part of the api/interface
     async getAllEntryKeys() {
         return await this.wrapped.transaction(["entries"]).objectStore("entries").getAllKeys();
@@ -698,7 +578,7 @@ export class IndexedDbStore implements Store {
         for (let cursor = await this.wrapped.transaction("trxns").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
             const commitKey = <BundleInfoTuple>cursor.key;
-            const commitInfo = IndexedDbStore.commitKeyToInfo(commitKey);
+            const commitInfo = commitKeyToInfo(commitKey);
             const commitBytes: BundleBytes = cursor.value;
             callBack(commitBytes, commitInfo);
         }
