@@ -5,7 +5,7 @@ import {
 import { GinkInstance } from "./GinkInstance";
 import { Peer } from './Peer';
 import { Buffer } from "buffer";
-import { Store,  } from "./Store";
+import { Store, } from "./Store";
 import { CallBack, NumberStr, FilePath, DirPath, AuthFunction } from "./typedefs";
 import { Listener } from "./Listener";
 
@@ -26,7 +26,7 @@ export class SimpleServer extends GinkInstance {
         software?: string;
         authFunction?: AuthFunction;
     }) {
-        super(store, {software: args.software || "SimpleServer"}, args.logger || (() => null));
+        super(store, { software: args.software || "SimpleServer" }, args.logger || (() => null));
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this),
             instance: this,

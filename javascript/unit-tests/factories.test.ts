@@ -1,6 +1,5 @@
 import { GinkInstance, IndexedDbStore } from "../implementation";
-import { Property } from "../implementation/Property";
-import { ensure } from "../implementation/utils"
+import { ensure } from "../implementation/utils";
 
 it('complex.toJSON', async function () {
     const instance = new GinkInstance(new IndexedDbStore('toJSON', true));

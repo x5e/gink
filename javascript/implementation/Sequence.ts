@@ -1,9 +1,9 @@
-import {GinkInstance} from "./GinkInstance";
-import {Container} from "./Container";
-import {AsOf, Entry, Muid, Value} from "./typedefs";
-import {Bundler} from "./Bundler";
-import {ensure, generateTimestamp, muidToBuilder, muidToString, muidTupleToMuid} from "./utils";
-import {interpret, toJson} from "./factories";
+import { GinkInstance } from "./GinkInstance";
+import { Container } from "./Container";
+import { AsOf, Entry, Muid, Value } from "./typedefs";
+import { Bundler } from "./Bundler";
+import { ensure, generateTimestamp, muidToBuilder, muidToString, muidTupleToMuid } from "./utils";
+import { interpret, toJson } from "./factories";
 import { Behavior, ChangeBuilder, MovementBuilder, ContainerBuilder } from "./builders";
 
 /**
@@ -28,7 +28,7 @@ export class Sequence extends Container {
      * @param change change set to apply the change to or comment to put in
      * @returns
      */
-    async push(value: Value | Container, change?: Bundler|string): Promise<Muid> {
+    async push(value: Value | Container, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(true, value, change);
     }
 
@@ -37,11 +37,11 @@ export class Sequence extends Container {
         dest: number,
         purge?: boolean,
         bundlerOrComment?: Bundler | string) {
-            const store = this.ginkInstance.store;
-            const muid = (typeof(muidOrPosition) == "object") ? muidOrPosition :
-                muidTupleToMuid((await store.getOrderedEntries(this.address, muidOrPosition)).pop().entryId);
-            ensure(muid.timestamp && muid.medallion && muid.offset);
-            return this.movementHelper(muid, await this.findDest(dest), purge, bundlerOrComment);
+        const store = this.ginkInstance.store;
+        const muid = (typeof (muidOrPosition) == "object") ? muidOrPosition :
+            muidTupleToMuid((await store.getOrderedEntries(this.address, muidOrPosition)).pop().entryId);
+        ensure(muid.timestamp && muid.medallion && muid.offset);
+        return this.movementHelper(muid, await this.findDest(dest), purge, bundlerOrComment);
     }
 
     private async findDest(dest: number): Promise<number> {
@@ -51,8 +51,8 @@ export class Sequence extends Container {
             const thereNow = await this.getEntryAt(dest);
             if (!thereNow) { dest = -1; break; } // move to end
             const before = await this.getEntryAt(dest - 1);
-            const nowTs = <number> thereNow.effectiveKey;
-            const beforeTs = <number> before.effectiveKey;
+            const nowTs = <number>thereNow.effectiveKey;
+            const beforeTs = <number>before.effectiveKey;
             if (nowTs - beforeTs < 2)
                 throw new Error("no space between entries");
             const intended = beforeTs + Math.floor(1 + Math.random() * (nowTs - beforeTs));
@@ -74,7 +74,7 @@ export class Sequence extends Container {
      * @param purge - If true, removes so data cannot be recovered with "asOf" query
      * @param bundlerOrComment
      */
-    async pop(what?: Muid | number, purge?: boolean, bundlerOrComment?: Bundler|string): Promise<Container | Value | undefined> {
+    async pop(what?: Muid | number, purge?: boolean, bundlerOrComment?: Bundler | string): Promise<Container | Value | undefined> {
         let returning: Container | Value;
         let muid: Muid;
         if (what && typeof (what) == "object") {
@@ -123,7 +123,7 @@ export class Sequence extends Container {
     /**
      * Alias for this.pop(0, purge, bundlerOrComment)
      */
-    async shift(purge?: boolean, bundlerOrComment?: Bundler|string): Promise<Container | Value | undefined> {
+    async shift(purge?: boolean, bundlerOrComment?: Bundler | string): Promise<Container | Value | undefined> {
         return await this.pop(0, purge, bundlerOrComment);
     }
 
@@ -143,7 +143,7 @@ export class Sequence extends Container {
      * @returns value at the position of the list, or undefined if list is too small
      */
     async at(position: number, asOf?: AsOf): Promise<Container | Value | undefined> {
-        if (typeof(position) == "number") {
+        if (typeof (position) == "number") {
             const entry = await this.getEntryAt(position, asOf);
             return await interpret(entry, this.ginkInstance);
         }
@@ -176,9 +176,9 @@ export class Sequence extends Container {
      * @param asOf effective time to get the contents for
      * @returns an async iterator across everything in the list, with values returned being pairs of Muid, (Value|Container),
      */
-    entries(through=Infinity, asOf?: AsOf): AsyncGenerator<[Muid,Value|Container], void, unknown> {
+    entries(through = Infinity, asOf?: AsOf): AsyncGenerator<[Muid, Value | Container], void, unknown> {
         const thisList = this;
-        return (async function*(){
+        return (async function* () {
             // Note: I'm loading all entries memory despite using an async generator due to shitty IndexedDb
             // behavior of closing transactions when you await on something else.  Hopefully they'll fix that in
             // the future and I can improve this.  Alternative, it might make sense to hydrate everything in a single pass.
@@ -198,7 +198,7 @@ export class Sequence extends Container {
      * @param seen (internal use only! This prevents cycles from breaking things)
      * @returns a JSON string
      */
-    async toJson(indent: number|boolean=false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+    async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
         if (seen === undefined) seen = new Set();
         ensure(indent === false, "indent not implemented");
         const mySig = muidToString(this.address);

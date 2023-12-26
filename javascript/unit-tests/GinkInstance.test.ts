@@ -1,6 +1,6 @@
 import { GinkInstance, IndexedDbStore, Bundler, BundleInfo } from "../implementation";
 import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
-import { ensure } from "../implementation/utils"
+import { ensure } from "../implementation/utils";
 import { BundleBytes } from "../implementation/typedefs";
 import { BundleBuilder } from "../implementation/builders";
 

@@ -1,11 +1,11 @@
-import {Addressable} from "./Addressable";
-import {GinkInstance} from "./GinkInstance";
-import {AsOf, EdgeData, Muid, Value} from "./typedefs";
-import {Vertex} from "./Vertex";
-import {Verb} from "./Verb";
-import {muidToBuilder, entryToEdgeData} from "./utils";
-import {Bundler} from "./Bundler";
-import {ChangeBuilder, MovementBuilder} from "./builders";
+import { Addressable } from "./Addressable";
+import { GinkInstance } from "./GinkInstance";
+import { AsOf, EdgeData, Muid, Value } from "./typedefs";
+import { Vertex } from "./Vertex";
+import { Verb } from "./Verb";
+import { muidToBuilder, entryToEdgeData } from "./utils";
+import { Bundler } from "./Bundler";
+import { ChangeBuilder, MovementBuilder } from "./builders";
 
 export class Edge extends Addressable {
 
@@ -23,7 +23,7 @@ export class Edge extends Addressable {
         this.setFromEdgeData(data);
     }
 
-    private setFromEdgeData(data: EdgeData)  {
+    private setFromEdgeData(data: EdgeData) {
         this.source = data.source;
         this.target = data.target;
         this.action = data.action;
@@ -64,7 +64,7 @@ export class Edge extends Addressable {
         if (!entry) {
             return 0;
         } else {
-            return <number> entry.effectiveKey;
+            return <number>entry.effectiveKey;
         }
     }
 

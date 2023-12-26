@@ -1,5 +1,5 @@
 import { Behavior } from "./builders";
-import {DBSchema} from "idb";
+import { DBSchema } from "idb";
 
 export type Bytes = Uint8Array;
 export type BundleBytes = Bytes;
@@ -131,14 +131,14 @@ export interface IndexedDbStoreSchema extends DBSchema {
         key: [MuidTuple, MuidTuple]; // ["containerId", "clearanceId"]
     };
     entries: {
-      value: Entry;
-      key: MuidTuple;
-      indexes: {
-          "by-container-key-placement": [MuidTuple,  KeyType | Timestamp | MuidTuple | [], MuidTuple];
-          'pointees': Indexable;
-          'locations': [MuidTuple, MuidTuple];
-          'sources': Indexable;
-          'targets': Indexable;
-      };
+        value: Entry;
+        key: MuidTuple;
+        indexes: {
+            "by-container-key-placement": [MuidTuple, KeyType | Timestamp | MuidTuple | [], MuidTuple];
+            'pointees': Indexable;
+            'locations': [MuidTuple, MuidTuple];
+            'sources': Indexable;
+            'targets': Indexable;
+        };
     };
 }

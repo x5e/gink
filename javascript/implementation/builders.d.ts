@@ -1,5 +1,4 @@
 import { Message } from "google-protobuf";
-import {Entry} from "./typedefs";
 
 declare class ImplementedMessage extends Message {
     serializeBinary(): Uint8Array;
@@ -8,20 +7,20 @@ declare class ImplementedMessage extends Message {
 
 export declare enum Behavior {
     UNSPECIFIED,
-    BOX=1,
-    SEQUENCE=2,
-    KEY_SET=3,
-    DIRECTORY=4,
-    PAIR_SET=5,
-    PAIR_MAP=6,
+    BOX = 1,
+    SEQUENCE = 2,
+    KEY_SET = 3,
+    DIRECTORY = 4,
+    PAIR_SET = 5,
+    PAIR_MAP = 6,
     VERTEX = 7,
     VERB = 8,
-    PROPERTY=9,
-    ROLE=10
+    PROPERTY = 9,
+    ROLE = 10
 }
 export declare enum Special {
-    MISSING=0,
-    NULL=3, TRUE=1, FALSE=2,
+    MISSING = 0,
+    NULL = 3, TRUE = 1, FALSE = 2,
 }
 export class ContainerBuilder extends ImplementedMessage {
     getBehavior(): Behavior;

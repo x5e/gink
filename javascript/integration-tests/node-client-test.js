@@ -2,7 +2,7 @@
 const Expector = require("./Expector");
 (async () => {
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", [], {env: {GINK_PORT: "8080", ...process.env}});
+    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: "8080", ...process.env } });
     await server.expect("ready", 60000);
     const client = new Expector("./tsc.out/implementation/main.js", ["ws://127.0.0.1:8080/"]);
     await client.expect("ready", 60000);
@@ -20,4 +20,4 @@ const Expector = require("./Expector");
     client.close();
     console.log("ok!");
     process.exit(0);
-})().catch((reason) => { console.error(reason); process.exit(1); })
+})().catch((reason) => { console.error(reason); process.exit(1); });

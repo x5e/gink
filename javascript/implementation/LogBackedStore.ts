@@ -9,7 +9,7 @@ const open = promises.open;
 import { flock } from "fs-ext";
 import { assert } from "console";
 import { ChainTracker } from "./ChainTracker";
-import {ChainEntryBuilder, LogFileBuilder} from "./builders";
+import { ChainEntryBuilder, LogFileBuilder } from "./builders";
 
 /*
     At time of writing, there's only an in-memory implementation of
@@ -44,7 +44,7 @@ export class LogBackedStore implements Store {
     private async openAndLock(filename: string, truncate?: boolean): Promise<FileHandle> {
         const fh = await open(filename, "a+");
         if (truncate) await fh.truncate();
-        return new Promise( (resolve, reject) => {
+        return new Promise((resolve, reject) => {
 
             // It's better to truncate rather than unlink, because an unlink could result
             // in two instances thinking that they have a lock on the same file.
@@ -75,7 +75,7 @@ export class LogBackedStore implements Store {
             if (size) {
                 const uint8Array = new Uint8Array(size);
                 await this.fileHandle.read(uint8Array, 0, size, 0);
-                const logFileBuilder = <LogFileBuilder> LogFileBuilder.deserializeBinary(uint8Array);
+                const logFileBuilder = <LogFileBuilder>LogFileBuilder.deserializeBinary(uint8Array);
                 const commits = logFileBuilder.getCommitsList();
                 for (const commit of commits) {
                     const [_info, added] = await this.indexedDbStore.addBundle(commit);
@@ -91,7 +91,7 @@ export class LogBackedStore implements Store {
         this.logger(`LogBackedStore.ready for ${this.filename}`);
     }
 
-    async getOrderedEntries(container: Muid, through=Infinity, asOf?: AsOf): Promise<Entry[]> {
+    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
         await this.ready;
         return this.indexedDbStore.getOrderedEntries(container, through, asOf);
     }
@@ -148,7 +148,7 @@ export class LogBackedStore implements Store {
         await this.indexedDbStore.getCommits(callBack);
     }
 
-    async getContainerBytes(address: Muid): Promise<Bytes|undefined> {
+    async getContainerBytes(address: Muid): Promise<Bytes | undefined> {
         await this.ready;
         return this.indexedDbStore.getContainerBytes(address);
     }
@@ -158,7 +158,7 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getEntryByKey(container, key, asOf);
     }
 
-    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType,Entry>> {
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
         await this.ready;
         return this.indexedDbStore.getKeyedEntries(container, asOf);
     }

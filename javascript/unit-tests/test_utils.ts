@@ -20,7 +20,7 @@ export function makeChainStart(comment: string, medallion: Medallion, chainStart
 }
 
 export function extendChain(comment: string, previous: BundleBytes, timestamp: Timestamp): BundleBytes {
-    const parsedPrevious = <BundleBuilder> BundleBuilder.deserializeBinary(previous);
+    const parsedPrevious = <BundleBuilder>BundleBuilder.deserializeBinary(previous);
     const subsequent = new BundleBuilder();
     subsequent.setMedallion(parsedPrevious.getMedallion());
     subsequent.setPrevious(parsedPrevious.getTimestamp());
@@ -44,6 +44,6 @@ export async function addTrxns(store: Store) {
 
 export async function sleep(ms: number) {
     return new Promise((resolve) => {
-      setTimeout(resolve, ms);
+        setTimeout(resolve, ms);
     });
-  }
+}
