@@ -5,8 +5,8 @@ module.exports = {
     mode: "development",
     devtool: "inline-source-map",
     output: {
-      filename: 'packed.js',
-      path: path.resolve(__dirname, 'webpack.out'),
+        filename: 'packed.js',
+        path: path.resolve(__dirname, 'webpack.out'),
     },
     resolve: {
         extensions: [".ts", ".tsx", ".js"]

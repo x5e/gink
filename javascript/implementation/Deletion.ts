@@ -1,2 +1,2 @@
 
-export class Deletion {}
+export class Deletion { }

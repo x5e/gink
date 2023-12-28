@@ -29,7 +29,7 @@ export class KeySet extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created entry
      */
-    async add(key: KeyType, change?: Bundler|string): Promise<Muid> {
+    async add(key: KeyType, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.INCLUSION, change);
     }
 
@@ -39,7 +39,7 @@ export class KeySet extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to a Bundler object for the created entries.
      */
-    async update(keys: Iterable<KeyType>, change?: Bundler|string): Promise<Bundler> {
+    async update(keys: Iterable<KeyType>, change?: Bundler | string): Promise<Bundler> {
         let bundler: Bundler;
         if (change instanceof Bundler) {
             bundler = change;
@@ -60,7 +60,7 @@ export class KeySet extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
-    async delete(key: KeyType, change?: Bundler|string): Promise<Muid> {
+    async delete(key: KeyType, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 
@@ -69,9 +69,9 @@ export class KeySet extends Container {
      * @param asOf
      * @returns an async iterator across everything in the key set, with values returned as pairs of Key, Key
      */
-    entries(asOf?: AsOf): AsyncGenerator<[KeyType,KeyType], void, unknown> {
+    entries(asOf?: AsOf): AsyncGenerator<[KeyType, KeyType], void, unknown> {
         const thisSet = this;
-        return (async function*(){
+        return (async function* () {
             const entries = await thisSet.ginkInstance.store.getKeyedEntries(thisSet.address, asOf);
             for (const [key, entry] of entries) {
                 yield [key, key]
@@ -138,7 +138,7 @@ export class KeySet extends Container {
         for (const key of asSet) {
             if (first) {
                 first = false;
-            }   else {
+            } else {
                 returning += ",";
             }
             // returning += `"${key}"`;

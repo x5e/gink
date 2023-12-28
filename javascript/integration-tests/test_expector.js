@@ -9,7 +9,7 @@ const Expector = require("./Expector");
         } catch {
             break;
         }
-        throw Error("wtf")
+        throw Error("wtf");
     }
     const catTest = new Expector("cat");
     catTest.send("hello world");

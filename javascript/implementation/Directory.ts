@@ -33,7 +33,7 @@ export class Directory extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created entry
      */
-    async set(key: KeyType, value: Value | Container, change?: Bundler|string): Promise<Muid> {
+    async set(key: KeyType, value: Value | Container, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, value, change);
     }
 
@@ -44,7 +44,7 @@ export class Directory extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
-    async delete(key: KeyType, change?: Bundler|string): Promise<Muid> {
+    async delete(key: KeyType, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 

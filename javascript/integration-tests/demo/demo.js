@@ -1,5 +1,4 @@
 
-
 function getWebsocketTarget() {
     const loc = window.location;
     let target = "";

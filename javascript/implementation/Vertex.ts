@@ -1,9 +1,9 @@
 import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
-import {Muid, AsOf, Entry} from "./typedefs";
-import { Behavior, ContainerBuilder} from "./builders";
+import { Muid, AsOf, Entry } from "./typedefs";
+import { Behavior, ContainerBuilder } from "./builders";
 import { Bundler } from "./Bundler";
-import {ensure, entryToEdgeData, muidTupleToMuid} from "./utils";
+import { ensure, entryToEdgeData, muidTupleToMuid } from "./utils";
 import { Edge } from "./Edge";
 
 export class Vertex extends Container {
@@ -30,11 +30,11 @@ export class Vertex extends Container {
     /**
      * Performs a soft delete of this graph node.
      */
-    async remove(change?: Bundler|string): Promise<Muid> {
+    async remove(change?: Bundler | string): Promise<Muid> {
         return this.addEntry(undefined, Container.DELETION, change);
     }
 
-    async getEdgesFrom(asOf?: AsOf){
+    async getEdgesFrom(asOf?: AsOf) {
         return this.getEdges(true);
     }
 
@@ -46,7 +46,7 @@ export class Vertex extends Container {
         const entries = await this.ginkInstance.store.getEntriesBySourceOrTarget(this.address, source, asOf);
         const thisVertex = this;
         const edges = entries.map(
-            function(entry: Entry) {
+            function (entry: Entry) {
                 return new Edge(thisVertex.ginkInstance, muidTupleToMuid(entry.entryId), entryToEdgeData(entry));
             }
         )
