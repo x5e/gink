@@ -24,15 +24,22 @@ async function loadAllContainers() {
  * Creates a ContainerBox custom element for a given container.
  * Adds an onclick callback to this element that displays its contents.
  * @param {Container} container
+ * @returns a Node pointing to the containerBox custom HTML element
  */
 function createContainerBox(container) {
     const allContainersDiv = document.getElementById('all-containers');
     const containerBox = allContainersDiv.appendChild(document.createElement('container-box'));
     const tsAsString = String(container.address.timestamp);
     containerBox.innerText = `${container.constructor.name.substring(0, 3)}-${tsAsString.substring(tsAsString.length - 4)}`;
-    containerBox.onclick = async () => {
-        await displayContents(container);
-    };
+
+    // If container is a Property, Verb, or Vertex, they won't have contents to display.
+    if (!([7, 8, 9].includes(container.behavior))) {
+        containerBox.onclick = async () => {
+            await displayContents(container);
+        };
+    }
+
+    return containerBox;
 }
 
 /**

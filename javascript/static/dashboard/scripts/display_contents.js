@@ -4,10 +4,10 @@
  * container, or displays the data otherwise. 
  */
 async function displayContents(container) {
-    createPathItem(container);
     const allContainersDiv = document.getElementById('all-containers');
     const entries = await getEntries(container);
 
+    createPathItem(container);
     clearChildren(allContainersDiv);
 
     if (entries.size == 0 || !entries) {
