@@ -10,7 +10,7 @@ it('test basic operations', async () => {
     const beforeSecondSet = generateTimestamp();
     await dir.set("foo", "baz");
     const entries = memStore.getAllEntries();
-    ensure(entries.size == 2);
+    ensure(entries.length == 2);
     const removals = memStore.getAllRemovals();
     ensure(removals.size == 1);
     await memStore.dropHistory();
