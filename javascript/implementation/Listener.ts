@@ -40,29 +40,36 @@ export class Listener {
             };
             this.httpServer = createHttpsServer(options, function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
-                if (url.pathname == "/") {
-                    request.addListener('end', function () {
+                request.addListener('end', async function () {
+                    if (url.pathname == "/") {
                         staticServer.serveFile("./connections.html", 200, {}, request, response);
-                    }).resume();
-                }
-                else if (url.pathname == "/list_connections") {
-                    request.addListener('end', function () {
+                    }
+                    else if (url.pathname == "/list_connections") {
                         let connections = Object.fromEntries(args.instance.connections);
                         response.end(JSON.stringify(connections));
-                    }).resume();
-                }
-                else if (url.pathname == "/create_connection") {
-                    request.addListener('end', function () {
+                    }
+                    else if (url.pathname == "/create_connection") {
                         if (request.method == 'POST') {
                             const ipAddress = url.searchParams.get("ipAddress");
-                            thisListener.handleConnection(ipAddress, args.instance, args.logger);
-                            response.end(JSON.stringify({ "status": 201, "message": "Connection created successfully" }));
+                            const created = await thisListener.handleConnection(ipAddress, args.instance, args.logger);
+                            if (created) {
+                                response.writeHead(201);
+                                response.end(JSON.stringify({ "status": 201, "message": "Connection created successfully" }));
+                            }
+                            else {
+                                response.writeHead(400);
+                                response.end(JSON.stringify({ "status": 400, "message": "Error. Connection not created." }));
+                            }
                         }
                         else {
                             response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }));
                         }
-                    }).resume();
-                }
+                    }
+                    else if (url.pathname == "/dashboard") {
+                        // staticServer.serve(request, response);
+                        staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
+                    }
+                }).resume();
             }).listen(port, () => {
                 args?.logger(`Secure server is listening on port ${port}`);
                 callWhenReady();
@@ -88,12 +95,14 @@ export class Listener {
                                 response.writeHead(400);
                                 response.end(JSON.stringify({ "status": 400, "message": "Error. Connection not created." }));
                             }
-
                         }
                         else {
                             response.writeHead(405);
                             response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }));
                         }
+                    }
+                    else if (url.pathname == "/dashboard") {
+                        staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
                     }
                     else {
                         staticServer.serve(request, response);
