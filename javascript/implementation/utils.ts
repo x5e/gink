@@ -244,41 +244,48 @@ export function stringMuidToHex(string: String) {
     return returning;
 }
 
-export function stringToMuid(string: String): Muid {
-    const split = string.split(",");
-    ensure(split.length == 3, `This is not a Muid: ${split}`)
-    const muid = new MuidBuilder();
-    muid.setTimestamp(split[0]);
-    muid.setMedallion(split[1]);
-    muid.setOffset(split[2]);
-    return builderToMuid(muid);
-}
-
 export function pairKeyToArray(effectiveKey: String): Array<Muid> {
-    const split = effectiveKey.split("-");
+    const split = effectiveKey.split(",");
     ensure(split.length == 2);
-    return [stringToMuid(split[0]), stringToMuid(split[1])];
+    return [strToMuid(split[0]), strToMuid(split[1])];
 }
 
+/**
+ * Converts a Muid object to its canonical string representation
+ * Refer to docs/muid.md
+ * @param muid 
+ * @returns a string of the canonical string representation
+ */
 export function muidToString(muid: Muid): string {
-    // TODO(https://github.com/google/gink/issues/61): return canonical representation
-    return `${muid.timestamp},${muid.medallion},${muid.offset}`;
+    let timestamp = (`0` + byteToHex(muid.timestamp));
+    let medallion = (byteToHex(muid.medallion));
+    let offset = (byteToHex(muid.offset));
+    return `${timestamp}-${medallion}-${offset}`;
 }
 
 export function muidTupleToString(muidTuple: MuidTuple): string {
-    return `${muidTuple[0]},${muidTuple[1]},${muidTuple[2]}`;
+    let timestamp: string;
+    if (muidTuple[0] == Infinity) {
+        timestamp = 'FFFFFFFFFFFFFF';
+    }
+    else {
+        timestamp = (`0` + byteToHex(muidTuple[0]));
+    }
+    let medallion = (byteToHex(muidTuple[1]));
+    let offset = (byteToHex(muidTuple[2]));
+    return `${timestamp}-${medallion}-${offset}`;
 }
 
 export function strToMuid(value: string): Muid {
-    const nums = value.split(",");
+    const nums = value.split("-");
     return {
-        timestamp: Number(nums[0]),
-        medallion: Number(nums[1]),
-        offset: Number(nums[2])
-    }
+        timestamp: parseInt(nums[0], 16),
+        medallion: parseInt(nums[1], 16),
+        offset: parseInt(nums[2], 16)
+    };
 }
 
-function byteToHex(byte: number) {
+export function byteToHex(byte: number) {
     const returning = byte.toString(16).toUpperCase();
     return byte < 0x10 ? '0' + returning : returning;
 }
@@ -379,7 +386,7 @@ export function entryToEdgeData(entry: Entry): EdgeData {
         value: entry.value,
         action: muidTupleToMuid(entry.containerId),
         effective: <number>entry.effectiveKey,
-    }
+    };
 }
 
 export const dehydrate = muidToTuple;

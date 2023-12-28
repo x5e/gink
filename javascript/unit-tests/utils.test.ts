@@ -1,4 +1,4 @@
-import { ensure, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous } from "../implementation/utils";
+import { ensure, muidTupleToString, muidToString, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous } from "../implementation/utils";
 
 it('document', async function () {
     const wrapped = wrapValue((new Map()).set("fee", "parking").set("cost", 1000));
@@ -13,6 +13,16 @@ it('document', async function () {
     }
 });
 
+it('canonical string representation of muids', async () => {
+    const muidTuple: [number, number, number] = [1642579230975519, 555027746660010, 11];
+    const muid = {
+        timestamp: 1642579230975519,
+        medallion: 555027746660010,
+        offset: 11
+    };
+    ensure(muidTupleToString(muidTuple) == "05D5EAC793E61F-1F8CB77AE1EAA-0B");
+    ensure(muidToString(muid) == "05D5EAC793E61F-1F8CB77AE1EAA-0B");
+});
 
 it('tuple', async function () {
     const wrapped = wrapValue(["yes", 32, null, (new Map()).set("cheese", "fries"), []]);

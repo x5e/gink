@@ -7,7 +7,8 @@ import {
     builderToMuid,
     muidToTuple,
     muidToString,
-    dehydrate
+    dehydrate,
+    byteToHex
 } from "./utils";
 import { Container } from "./Container";
 
@@ -41,11 +42,11 @@ export function getEffectiveKey(entryBuilder: EntryBuilder, timestamp: Timestamp
         const left = pair.getLeft();
         const rite = pair.getRite();
         // There's probably a better way of doing this
-        effectiveKey = `${muidToString(builderToMuid(left))}-${muidToString(builderToMuid(rite))}`;
+        effectiveKey = `${muidToString(builderToMuid(left))},${muidToString(builderToMuid(rite))}`;
     } else {
-        throw new Error(`unexpected behavior: ${behavior}`)
+        throw new Error(`unexpected behavior: ${behavior}`);
     }
-    return [effectiveKey, replacing]
+    return [effectiveKey, replacing];
 }
 
 export function extractMovementInfo(changeBuilder: ChangeBuilder, bundleInfo: BundleInfo, offset: number) {
@@ -68,7 +69,7 @@ export function extractMovementInfo(changeBuilder: ChangeBuilder, bundleInfo: Bu
         entryId,
         movementId,
         containerId
-    }
+    };
 }
 
 export function extractContainerMuid(entryBuilder: EntryBuilder, bundleInfo: BundleInfo): MuidTuple {
@@ -109,12 +110,12 @@ export function buildPairLists(entryBuilder: EntryBuilder, bundleInfo: BundleInf
     });
     targetList.push(target);
 
-    return [sourceList, targetList]
+    return [sourceList, targetList];
 }
 
 export function medallionChainStartToString(tuple: [number, number]): string {
     // this is for [Medallion, ChainStart] keys
-    return `${tuple[0]}, ${tuple[1]}`;
+    return `${byteToHex(tuple[0])}-${byteToHex(tuple[1])}`;
 }
 
 export function muidPairToSemanticKey(key: [Muid | Container, Muid | Container]): string {
@@ -132,7 +133,7 @@ export function muidPairToSemanticKey(key: [Muid | Container, Muid | Container])
     if (!("address" in key[1])) { // Right is a Muid
         riteMuid = key[1];
     }
-    return `${muidToString(leftMuid)}-${muidToString(riteMuid)}`;
+    return `${muidToString(leftMuid)},${muidToString(riteMuid)}`;
 }
 
 export function extractCommitInfo(bundleData: Uint8Array | BundleBuilder): BundleInfo {

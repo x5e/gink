@@ -2,8 +2,8 @@ import { GinkInstance } from "./GinkInstance";
 import { Container } from "./Container";
 import { Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, stringToMuid } from "./utils";
-import { toJson } from "./factories"
+import { ensure, muidToString, strToMuid } from "./utils";
+import { toJson } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class PairSet extends Container {
@@ -70,8 +70,8 @@ export class PairSet extends Container {
         for (const [key, entry] of entries) {
             if (!entry.deletion) {
                 if (typeof (entry.effectiveKey) == "string") {
-                    const pair = entry.effectiveKey.split("-");
-                    toSet.add([stringToMuid(pair[0]), stringToMuid(pair[1])]);
+                    const pair = entry.effectiveKey.split(",");
+                    toSet.add([strToMuid(pair[0]), strToMuid(pair[1])]);
                 }
             }
         }
