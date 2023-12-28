@@ -42,7 +42,7 @@ async function displayContents(container) {
                         await displayContents(val);
                     };
                 } else {
-                    valCell.innerText = key;
+                    valCell.innerText = val;
                 }
             }
         } else {
@@ -80,9 +80,12 @@ async function displayContents(container) {
  * isn't a method to get entries on a container, such as a Vertex, return undefined.
  */
 async function getEntries(container) {
-    // This is a little confusing and will probably have to change
-    if (Array.isArray(container) || container instanceof Map) {
+    // This function is a little confusing and will probably have to change
+    if (Array.isArray(container)) {
         return container;
+    }
+    else if (!("behavior" in container) && container instanceof Object) {
+        return Object.entries(container);
     }
 
     let entries;
@@ -103,7 +106,12 @@ async function getEntries(container) {
             entries = await container.get_pairs();
             break;
         case 6: // PairMap
-            entries = await container.items();
+            entries = new Map();
+            let items = await container.items();
+            for (const [key, val] of items) {
+                // Need Muids to be converted to containers to display their contents.
+                entries.set([await gink.construct(window.instance, key[0]), await gink.construct(window.instance, key[1])], val);
+            }
             break;
         case 7: // Vertex
             entries = undefined;
@@ -131,31 +139,15 @@ async function getEntries(container) {
  * @returns a String in the form of Dir-0000, or just the name of the object.
  */
 function createContainerText(container) {
-    let nameString, returning;
+    let returning;
     if ("behavior" in container) {
         const tsAsString = String(container.address.timestamp);
-        switch (container.behavior) {
-            // Some special cases where 3 letters won't work.
-            case 3:
-                nameString = 'KS';
-                break;
-            case 5:
-                nameString = 'PS';
-                break;
-            case 6:
-                nameString = 'PM';
-                break;
-            case 7:
-                nameString = 'Vert';
-                break;
-            case 8:
-                nameString = 'Verb';
-                break;
-            default:
-                nameString = container.constructor.name.substring(0, 3);
-                break;
-        }
+        let nameString = containerAbbrev(container);
         returning = `${nameString}-${tsAsString.substring(tsAsString.length - 4)}`;
+    }
+    else if (Array.isArray(container) && container.length == 2 && "behavior" in container[0]) {
+        // This is a Pair in a PairMap or PairSet
+        returning = containerAbbrev(container[0]) + "-" + containerAbbrev(container[1]);
     }
     else if (typeof container == "object") {
         returning = container.constructor.name;
@@ -164,4 +156,35 @@ function createContainerText(container) {
         throw new Error(`${container.constructor.name} is not a container.`);
     }
     return returning;
+}
+
+/**
+ * Creates a shortened name for a Gink container for displaying in
+ * a ContainerBox
+ * @param {Container} container 
+ * @returns a string with an abbreviation for the Gink container
+ */
+function containerAbbrev(container) {
+    switch (container.behavior) {
+        // Some special cases where 3 letters won't work.
+        case 3:
+            nameString = 'KS';
+            break;
+        case 5:
+            nameString = 'PS';
+            break;
+        case 6:
+            nameString = 'PM';
+            break;
+        case 7:
+            nameString = 'Vert';
+            break;
+        case 8:
+            nameString = 'Verb';
+            break;
+        default:
+            nameString = container.constructor.name.substring(0, 3);
+            break;
+    }
+    return nameString;
 }

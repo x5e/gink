@@ -39,12 +39,7 @@ class ContainerBox extends HTMLElement {
     }
 
     static createAndAppend(appendTo, object) {
-        let containerInnerText;
-        if ("address" in object) {
-            containerInnerText = createContainerText(object);
-        } else {
-            containerInnerText = object.constructor.name;
-        }
+        let containerInnerText = createContainerText(object);
         const containerBox = appendTo.appendChild(document.createElement('container-box'));
         containerBox.innerText = containerInnerText;
 
