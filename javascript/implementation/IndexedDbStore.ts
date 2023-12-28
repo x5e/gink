@@ -251,11 +251,13 @@ export class IndexedDbStore implements Store {
             }
             if (changeBuilder.hasEntry()) {
                 const entryBuilder: EntryBuilder = changeBuilder.getEntry();
+
                 // TODO(https://github.com/google/gink/issues/55): explain root
                 let containerId: MuidTuple = [0, 0, 0];
                 if (entryBuilder.hasContainer()) {
                     containerId = extractContainerMuid(entryBuilder, bundleInfo);
                 }
+                if (containerId[2] == 6) console.log(entryBuilder);
                 const [effectiveKey, replacing] = getEffectiveKey(entryBuilder, timestamp);
                 const entryId: MuidTuple = [timestamp, medallion, offset];
                 const behavior: Behavior = entryBuilder.getBehavior();

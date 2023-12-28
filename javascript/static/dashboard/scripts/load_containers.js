@@ -29,8 +29,7 @@ async function loadAllContainers() {
 function createContainerBox(container) {
     const allContainersDiv = document.getElementById('all-containers');
     const containerBox = allContainersDiv.appendChild(document.createElement('container-box'));
-    const tsAsString = String(container.address.timestamp);
-    containerBox.innerText = `${container.constructor.name.substring(0, 3)}-${tsAsString.substring(tsAsString.length - 4)}`;
+    containerBox.innerText = createContainerText(container);
 
     // If container is a Property, Verb, or Vertex, they won't have contents to display.
     if (!([7, 8, 9].includes(container.behavior))) {
@@ -38,7 +37,6 @@ function createContainerBox(container) {
             await displayContents(container);
         };
     }
-
     return containerBox;
 }
 
@@ -51,13 +49,12 @@ function createPathItem(container) {
     if (container) pathContainer.appendChild(document.createElement('div')).innerText = "/";
     const pathItem = pathContainer.appendChild(document.createElement('path-item'));
     if (container) {
-        const tsAsString = String(container.address.timestamp);
         // Setting this attribute to keep track of where we are, and
         // to not duplicate divs in the file path.
-        pathItem.setAttribute('muid', gink.muidToString(container.address));
-        pathItem.innerText = `${container.constructor.name.substring(0, 3)}-${tsAsString.substring(tsAsString.length - 4)}`;
+        pathItem.dataset["id"] = gink.muidToString(container.address);
+        pathItem.innerText = createContainerText(container);
         pathItem.onclick = async () => {
-            while (pathContainer.lastChild.getAttribute('muid') != gink.muidToString(container.address)) {
+            while (pathContainer.lastChild.dataset["id"] != gink.muidToString(container.address)) {
                 pathContainer.removeChild(pathContainer.lastChild);
             }
             // These children will be the container node itself, and the slash before it. 
@@ -75,16 +72,5 @@ function createPathItem(container) {
             }
             await loadAllContainers();
         };
-    }
-}
-
-/**
- * Utility function to clear the children of
- * an HTMLElement.
- * @param {HTMLElement} node 
- */
-function clearChildren(node) {
-    while (node.firstChild) {
-        node.removeChild(node.firstChild);
     }
 }

@@ -81,6 +81,10 @@ async function displayContents(container) {
  */
 async function getEntries(container) {
     // This is a little confusing and will probably have to change
+    if (Array.isArray(container) || container instanceof Map) {
+        return container;
+    }
+
     let entries;
     switch (container.behavior) {
         case 1: // Box
@@ -111,7 +115,8 @@ async function getEntries(container) {
             entries = undefined;
             break;
         case 10: // Role
-            entries = await container.get_members();
+            entries = await container.includedAsArray();
+            break;
         default:
             throw new Error(`not sure how to get entries for ${container.constructor.name}`);
     }

@@ -74,7 +74,7 @@ export class Role extends Container {
     }
 
     /**
-     * Dumps the contents of this role to a javascript array.Only includes explicitly included members.
+     * Dumps the contents of this role to a javascript array. Only includes explicitly included members.
      * useful for debugging and could also be used to export data by walking the tree
      * @param asOf effective time to get the dump for: leave undefined to get data as of the present
      * @returns an array containing Values (e.g. numbers, strings) and Containers (e.g. other Lists, Boxes, Directories)

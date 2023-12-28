@@ -11,6 +11,7 @@
     <script src="/dashboard/scripts/PathItem.js"></script>
     <script src="/dashboard/scripts/load_containers.js"></script>
     <script src="/dashboard/scripts/display_contents.js"></script>
+    <script src="/dashboard/scripts/utility.js"></script>
 </head>
 
 <body>
@@ -28,10 +29,27 @@
 </body>
 <script>
     window.addEventListener('DOMContentLoaded', async () => {
-        window.store = new gink.IndexedDbStore();
+        window.store = new gink.IndexedDbStore(true);
         window.instance = new gink.GinkInstance(store);
         await window.instance.connectTo(`ws://${window.location.host}`);
-        loadAllContainers();
+        await loadAllContainers();
+
+        (async () => {
+            const ks = await window.instance.createKeySet();
+            const pm = await window.instance.createPairMap();
+            const ps = await window.instance.createPairSet();
+            const role = await window.instance.createRole();
+            const box = await window.instance.createBox();
+            for (let i = 0; i < 50; i++) {
+                await ks.add(`test${i}`);
+            }
+            await box.set('TEST VAL');
+            await pm.set([ks, box], "keyset and box");
+            await ps.include([ks, box]);
+            await role.include(box);
+        })();
+
+
     });
 </script>
 
