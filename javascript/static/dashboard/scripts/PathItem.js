@@ -6,10 +6,7 @@ pathTemplate.innerHTML = `
             cursor: pointer;
             justify-content: center;
             border-radius: 6px;
-            width: auto;
-            height: auto;
-            background-color: gray;
-            color: white;
+            color: gray;
             margin-right: 5px;
             margin-left: 5px;
             padding-left: 2px;
@@ -17,6 +14,8 @@ pathTemplate.innerHTML = `
         }
         .path-item:hover {
             box-shadow: 0 0 10px rgba(33,33,33,.5);
+            background-color: gray;
+            color: white;
         }
     </style>
     <div class='path-item'>
@@ -29,7 +28,6 @@ class PathItem extends HTMLElement {
         super();
         const shadow = this.attachShadow({ mode: "open" });
         shadow.append(pathTemplate.content.cloneNode(true));
-
     }
 }
 customElements.define('path-item', PathItem);

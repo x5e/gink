@@ -4,20 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gink Dashboard</title>
+    <!-- src needs /dashboard due to node-static serving from the static folder -->
     <link rel="stylesheet" href="/dashboard/styles.css">
-    <script src="../../webpack.out/packed.js"></script>
+    <script src="/dashboard/packed.js"></script>
     <script src="/dashboard/scripts/ContainerBox.js"></script>
     <script src="/dashboard/scripts/PathItem.js"></script>
     <script src="/dashboard/scripts/load_containers.js"></script>
     <script src="/dashboard/scripts/display_contents.js"></script>
-    <script src="/dashboard/scripts/get_ws_url.js"></script>
 </head>
 
 <body>
     <nav>
-        <h2>Gink</h2>
-        <div id="path-container"></div>
-        <div id="connect">Connect</div>
+        <div class="nav-col justify-left">
+            <h2>Gink</h2>
+        </div>
+        <div class="nav-col" id="path-container"></div>
+        <div class="nav-col justify-right"><a href="https://www.x5e.com/gink/" target="_blank">Docs</a></div>
     </nav>
     <div id="dashboard-page">
         <div class="grid-container" id="all-containers">
@@ -26,10 +28,9 @@
 </body>
 <script>
     window.addEventListener('DOMContentLoaded', async () => {
-        window.store = new gink.IndexedDbStore(true);
+        window.store = new gink.IndexedDbStore();
         window.instance = new gink.GinkInstance(store);
-        await window.instance.connectTo(window.location.origin);
-        console.log(getWsUrl());
+        await window.instance.connectTo(`ws://${window.location.host}`);
         loadAllContainers();
     });
 </script>
