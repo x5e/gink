@@ -7,14 +7,12 @@
     <link rel="stylesheet" href="/dashboard/styles.css">
     <script type="text/javascript" src="/dashboard/packed.js"></script>
     <script src="/dashboard/scripts/display_container.js"></script>
+    <script src="/dashboard/scripts/utility.js"></script>
 </head>
 
 <body>
 
     <div id="container-contents">
-        <div>
-
-        </div>
 
     </div>
 
@@ -25,9 +23,12 @@
         window.instance = new gink.GinkInstance(store);
         await window.instance.connectTo(`ws://${window.location.host}`);
 
-        const globalDir = window.instance.getGlobalDirectory();
-        await globalDir.set('testkey', 'testval');
-        await displayContainer(gink.muidToString(globalDir.address));
+        if (!window.location.hash) {
+            await displayContainer(window.instance.getGlobalDirectory().address);
+        } else {
+            console.log(window.location.hash.substring(1));
+            await displayContainer(window.location.hash.substring(1));
+        }
     });
 </script>
 
