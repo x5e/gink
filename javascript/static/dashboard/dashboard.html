@@ -26,7 +26,6 @@
         if (!window.location.hash) {
             await displayContainer(window.instance.getGlobalDirectory().address);
         } else {
-            console.log(window.location.hash.substring(1));
             await displayContainer(window.location.hash.substring(1));
         }
     });
