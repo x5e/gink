@@ -23,8 +23,8 @@ async function testWriteFresh(count) {
     const results = {
         "total_time": writeTotalTime,
         "writes_per_second": writesPerSecond
-    }
-    database.close()
+    };
+    database.close();
     return results;
 }
 
@@ -35,7 +35,7 @@ async function testWriteOccupied(count) {
         }
     });
     console.log(`Testing IDB writing performance to occupied database with ${count} entries.`);
-    console.log(`Filling fresh database with ${count} entries.`)
+    console.log(`Filling fresh database with ${count} entries.`);
     let txn = database.transaction('test-store', 'readwrite');
     let writeStore = txn.objectStore('test-store');
     for (let i = 0; i < count; i++) {
@@ -60,8 +60,8 @@ async function testWriteOccupied(count) {
     const results = {
         "total_time": writeTotalTime,
         "writes_per_second": writesPerSecond
-    }
-    database.close()
+    };
+    database.close();
     return results;
 }
 
@@ -71,7 +71,7 @@ async function testRead(count) {
             db.createObjectStore('test-store');
         }
     });
-    console.log(`Filling fresh database with ${count} entries.`)
+    console.log(`Filling fresh database with ${count} entries.`);
     let txn = database.transaction('test-store', 'readwrite');
     let writeStore = txn.objectStore('test-store');
     for (let i = 0; i < count; i++) {
@@ -96,8 +96,8 @@ async function testRead(count) {
     const results = {
         "total_time": readTotalTime,
         "reads_per_second": readsPerSecond
-    }
-    database.close()
+    };
+    database.close();
     return results;
 }
 
@@ -127,8 +127,8 @@ async function testReadWrite(count) {
     const results = {
         "total_time": txnTotalTime,
         "txns_per_second": txnsPerSecond
-    }
-    database.close()
+    };
+    database.close();
     return results;
 }
 
@@ -139,7 +139,7 @@ async function testDelete(count) {
         }
     });
     console.log(`Testing IDB deletion performance to database with ${count} entries.`);
-    console.log(`Filling fresh database with ${count} entries.`)
+    console.log(`Filling fresh database with ${count} entries.`);
     let txn = database.transaction('test-store', 'readwrite');
     let store = txn.objectStore('test-store');
     for (let i = 0; i < count; i++) {
@@ -164,13 +164,13 @@ async function testDelete(count) {
     const results = {
         "total_time": deleteTotalTime,
         "deletes_per_second": deletesPerSecond
-    }
-    database.close()
+    };
+    database.close();
     return results;
 }
 
 async function testRandomRead(count) {
-    const howMany = 1000
+    const howMany = 1000;
     const database = await idb.openDB('random_read', 1, {
         upgrade(db, _oldVersion, _newVersion, _transaction) {
             db.createObjectStore('test-store');
@@ -259,21 +259,21 @@ async function testIncreasing(count, num_inc_tests = 5) {
                 "total_time": readTotalTime,
                 "reads_per_second": readsPerSecond
             }
-        }
+        };
 
         currentEntries = count * r;
     }
-    database.close()
+    database.close();
     return results;
 }
 
 async function testAll(count, num_inc_tests) {
-    const results = {}
+    const results = {};
     results["write_fresh"] = await testWriteFresh(count);
     results["write_big_commit"] = {
         "total_time": 0,
         "writes_per_second": 0
-    } // this is a placeholder until I can figure out the best way
+    }; // this is a placeholder until I can figure out the best way
     // to run this test for idb.
     results["write_occupied"] = await testWriteOccupied(count);
     results["read"] = await testRead(count);

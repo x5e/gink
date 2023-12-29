@@ -184,7 +184,7 @@ async function testDelete(count, keepHistory) {
 }
 
 async function testRandomRead(count, keepHistory) {
-    const howMany = 1000
+    const howMany = 1000;
     const instance = new gink.GinkInstance(new gink.IndexedDbStore('random_read', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript reading performance to database with ${count} entries.`);
@@ -220,7 +220,7 @@ async function testIncreasing(count, num_inc_tests, keepHistory) {
     const instance = new gink.GinkInstance(new gink.IndexedDbStore('increasing', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     let currentEntries = 0;
-    let results = {}
+    let results = {};
     console.log("Testing Gink TypeScript writing and reading performance as database size increases.");
 
     for (let r = 1; r < num_inc_tests + 1; r++) {
@@ -259,7 +259,7 @@ async function testIncreasing(count, num_inc_tests, keepHistory) {
                 "total_time": readTotalTime,
                 "reads_per_second": readsPerSecond
             }
-        }
+        };
 
         currentEntries = count * r;
     }
@@ -268,7 +268,7 @@ async function testIncreasing(count, num_inc_tests, keepHistory) {
 }
 
 async function testAll(count, num_inc_tests, keepHistory) {
-    const results = {}
+    const results = {};
     results["write_fresh"] = await testWriteFresh(count);
     results["write_big_commit"] = await testWriteBigCommit(count);
     results["write_occupied"] = await testWriteOccupied(count);
@@ -283,36 +283,36 @@ async function testAll(count, num_inc_tests, keepHistory) {
 
 async function main(tests, count, increasing, keepHistory) {
     if (tests == "all") {
-        results = await testAll(count, increasing, keepHistory)
+        results = await testAll(count, increasing, keepHistory);
     }
     else {
-        results = {}
+        results = {};
         if (tests.includes("write_fresh")) {
-            results["write_fresh"] = await testWriteFresh(count, keepHistory)
+            results["write_fresh"] = await testWriteFresh(count, keepHistory);
         }
         if (tests.includes("write_big_commit")) {
-            results["write_big_commit"] = await testWriteBigCommit(count, keepHistory)
+            results["write_big_commit"] = await testWriteBigCommit(count, keepHistory);
         }
         if (tests.includes("write_occupied")) {
-            results["write_occupied"] = await testWriteOccupied(count, keepHistory)
+            results["write_occupied"] = await testWriteOccupied(count, keepHistory);
         }
         if (tests.includes("sequence_append")) {
-            results["sequence_append"] = await testSequenceAppend(count, keepHistory)
+            results["sequence_append"] = await testSequenceAppend(count, keepHistory);
         }
         if (tests.includes("read")) {
-            results["read"] = await testRead(count, keepHistory)
+            results["read"] = await testRead(count, keepHistory);
         }
         if (tests.includes("read_write")) {
-            results["read_write"] = await testReadWrite(count, keepHistory)
+            results["read_write"] = await testReadWrite(count, keepHistory);
         }
         if (tests.includes("delete")) {
-            results["delete"] = await testDelete(count, keepHistory)
+            results["delete"] = await testDelete(count, keepHistory);
         }
         if (tests.includes("random_read")) {
-            results["random_read"] = await testRandomRead(count, keepHistory)
+            results["random_read"] = await testRandomRead(count, keepHistory);
         }
         if (tests.includes("increasing")) {
-            results["increasing"] = await testIncreasing(count, increasing, keepHistory)
+            results["increasing"] = await testIncreasing(count, increasing, keepHistory);
         }
     }
     return results;
@@ -323,15 +323,15 @@ if (require.main === module) {
     const fs = require('fs');
 
     const parser = new ArgumentParser();
-    parser.add_argument("-c", "--count", { help: "number of records", type: 'int', default: 100 })
-    parser.add_argument("-o", "--output", { help: "json file to save output. default to no file, stdout" })
-    parser.add_argument("-k", "--keepHistory", { help: "keep history?", default: false, type: Boolean })
+    parser.add_argument("-c", "--count", { help: "number of records", type: 'int', default: 100 });
+    parser.add_argument("-o", "--output", { help: "json file to save output. default to no file, stdout" });
+    parser.add_argument("-k", "--keepHistory", { help: "keep history?", default: false, type: Boolean });
 
     const helpIncreasing = `
         Number of intervals to run the increasing test.
         Max entries will be -> this flag * count.
-        `
-    parser.add_argument("-i", "--increasing", { help: helpIncreasing, type: 'int', default: 5 })
+        `;
+    parser.add_argument("-i", "--increasing", { help: helpIncreasing, type: 'int', default: 5 });
 
     const helpTests = `
         Each test has an isolated instance of a store,
@@ -348,15 +348,15 @@ if (require.main === module) {
         delete
         random_read
         increasing
-        `
-    const choicesTests = ["write_fresh", "write_big_commit", "write_occupied", "sequence_append", "read", "read_write", "delete", "random_read", "increasing"]
-    parser.add_argument("-t", "--tests", { help: helpTests, nargs: "+", choices: choicesTests, default: "all" })
+        `;
+    const choicesTests = ["write_fresh", "write_big_commit", "write_occupied", "sequence_append", "read", "read_write", "delete", "random_read", "increasing"];
+    parser.add_argument("-t", "--tests", { help: helpTests, nargs: "+", choices: choicesTests, default: "all" });
     const args = parser.parse_args();
     (async () => {
-        const results = await main(args.tests, args.count, args.increasing, args.keepHistory)
+        const results = await main(args.tests, args.count, args.increasing, args.keepHistory);
         if (args.output) {
             try {
-                const fileData = fs.readFileSync(args.output)
+                const fileData = fs.readFileSync(args.output);
                 data = JSON.parse(fileData);
                 data["gink_node"] = results;
             }

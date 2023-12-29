@@ -47,7 +47,7 @@ export class Bundler {
     }
 
     /**
-     * 
+     *
      * @param changeBuilder a protobuf Change ready to be serialized
      * @returns an Address who's offset is immediately available and whose medallion and
      * timestamp become defined when this Bundle is sealed.
@@ -57,7 +57,7 @@ export class Bundler {
         const offset = ++this.countItems;
         this.bundleBuilder.getChangesMap().set(offset, changeBuilder);
         // Using an anonymous class here because I only need the interface of Address,
-        // but I need some non-trivial behavior: the timestamp and possibly medallion 
+        // but I need some non-trivial behavior: the timestamp and possibly medallion
         // are undefined until the associated bundle is finalized, then all the
         // components of the address become well-defined.
         return new class {
@@ -77,7 +77,7 @@ export class Bundler {
     /**
      * Intended to be called by a GinkInstance to finalize a commit.
      * @param commitInfo the commit metadata to add when serializing
-     * @returns serialized 
+     * @returns serialized
      */
     seal(commitInfo: BundleInfo): BundleInfo {
         this.requireNotSealed();

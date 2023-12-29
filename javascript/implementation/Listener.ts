@@ -59,7 +59,7 @@ export class Listener {
                             response.end(JSON.stringify({ "status": 201, "message": "Connection created successfully" }));
                         }
                         else {
-                            response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }))
+                            response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }));
                         }
                     }).resume();
                 }
@@ -114,14 +114,14 @@ export class Listener {
             // this will obviously change eventually, but adding some validation for now
             const validURL = /^ws:\/\/\d{3}.\d{1}.\d{1}.\d{1}:\d{4}/;
             if (!validURL.test(ipAddress)) {
-                logger("Needs to be a valid websocket connection.")
+                logger("Needs to be a valid websocket connection.");
             } else {
                 logger("Connecting to " + ipAddress);
                 await instance.connectTo(ipAddress);
                 return true;
             }
         } else if (!instance) {
-            logger("No instance provided.")
+            logger("No instance provided.");
         }
         return false;
     }

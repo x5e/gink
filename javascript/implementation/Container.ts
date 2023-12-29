@@ -26,7 +26,7 @@ export class Container extends Addressable {
         ginkInstance: GinkInstance,
         address: Muid,
         readonly behavior: Behavior) {
-        super(ginkInstance, address)
+        super(ginkInstance, address);
     }
 
     /**

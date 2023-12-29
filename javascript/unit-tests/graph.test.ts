@@ -54,8 +54,8 @@ it('from_to', async function () {
 
     const edgesFrom2 = await vertex2.getEdgesFrom();
     ensure(edgesFrom2.length == 3);
-    edgesFrom2.sort(function (a, b) { return a.getOriginalPosition() < b.getOriginalPosition() ? -1 : +1 });
+    edgesFrom2.sort(function (a, b) { return a.getOriginalPosition() < b.getOriginalPosition() ? -1 : +1; });
     ensure(edgesFrom2[0].equals(edge21));
     ensure(edgesFrom2[1].equals(edge22));
     ensure(edgesFrom2[2].equals(edge23));
-})
+});

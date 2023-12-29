@@ -7,7 +7,7 @@ async function test_gink_browser_performance() {
     const server = new Expector("node", ["javascript/tsc.out/implementation/main.js"],
         { env: { GINK_PORT: "8081", GINK_STATIC_PATH: ".", ...process.env } });
     await server.expect("ready");
-    const all_results = {}
+    const all_results = {};
     for (const product of ["chrome", "firefox"]) {
         console.log(`Testing gink ${product}...`);
         let browser = await puppeteer.launch({
@@ -38,7 +38,7 @@ async function test_idb_browser_performance() {
     const server = new Expector("node", ["javascript/tsc.out/implementation/main.js"],
         { env: { GINK_PORT: "8081", GINK_STATIC_PATH: ".", ...process.env } });
     await server.expect("ready");
-    const all_results = {}
+    const all_results = {};
     for (const product of ["chrome", "firefox"]) {
         console.log(`Testing idb ${product}...`);
         let browser = await puppeteer.launch({
@@ -78,7 +78,7 @@ if (require.main == module) {
         console.log("Browser performance tests finished.");
         if (args.output) {
             try {
-                const fileData = fs.readFileSync(args.output)
+                const fileData = fs.readFileSync(args.output);
                 data = JSON.parse(fileData);
                 data["gink_chrome"] = gink_results["chrome"];
                 data["gink_firefox"] = gink_results["firefox"];
@@ -91,7 +91,7 @@ if (require.main == module) {
                     "gink_firefox": gink_results["firefox"],
                     "idb_chrome": idb_results["chrome"],
                     "idb_firefox": idb_results["firefox"]
-                }
+                };
             }
             fs.writeFileSync(args.output, JSON.stringify(data));
         }

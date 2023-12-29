@@ -7,7 +7,7 @@ export class PromiseChainLock {
 
     /**
      * An async function that waits to acquire the lock, then provides a function to unlock.
-     * Use like: 
+     * Use like:
      * const unlockingFunction = await promiseChainLock.acquireLock();
      * try {
      *   // Do some stuff.

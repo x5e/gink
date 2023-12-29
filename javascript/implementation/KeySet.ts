@@ -3,7 +3,7 @@ import { Container } from "./Container";
 import { KeyType, Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure, muidToString } from "./utils";
-import { toJson } from "./factories"
+import { toJson } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class KeySet extends Container {
@@ -74,7 +74,7 @@ export class KeySet extends Container {
         return (async function* () {
             const entries = await thisSet.ginkInstance.store.getKeyedEntries(thisSet.address, asOf);
             for (const [key, entry] of entries) {
-                yield [key, key]
+                yield [key, key];
             }
         })();
     }

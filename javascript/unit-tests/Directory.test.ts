@@ -97,7 +97,7 @@ it('Directory.toJSON', async function () {
         await other.set("xxx", "yyy");
         await directory.set("blue", other);
         const asJSON = await directory.toJson();
-        // MemoryStore returns entries in the order they were set, 
+        // MemoryStore returns entries in the order they were set,
         // so comparing an exact string won't work
         const fromJSON = JSON.parse(asJSON);
         ensure(fromJSON.bar == 3 && fromJSON.foo == "bar", fromJSON);

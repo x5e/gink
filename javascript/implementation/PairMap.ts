@@ -3,7 +3,7 @@ import { Container } from "./Container";
 import { Muid, AsOf, Value } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure, stringMuidToHex, muidToString, pairKeyToArray } from "./utils";
-import { toJson } from "./factories"
+import { toJson } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class PairMap extends Container {

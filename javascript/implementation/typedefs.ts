@@ -120,11 +120,11 @@ export interface IndexedDbStoreSchema extends DBSchema {
     };
     removals: {
         value: Removal;
-        key: MuidTuple // movementId
+        key: MuidTuple; // movementId
         indexes: {
             'by-container-movement': [MuidTuple, MuidTuple]; // containerId, movementId
             'by-removing': [MuidTuple, MuidTuple]; // removing, removalId
-        }
+        };
     };
     clearances: {
         value: Clearance;

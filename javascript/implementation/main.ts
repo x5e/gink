@@ -5,7 +5,7 @@ export { LogBackedStore } from "./LogBackedStore";
 export { SimpleServer } from "./SimpleServer";
 export { RoutingServer } from "./RoutingServer";
 import { CommandLineInterface } from "./CommandLineInterace";
-export { CommandLineInterface }
+export { CommandLineInterface };
 
 // Run the CLI if run as a script.
 if (require.main === module) {

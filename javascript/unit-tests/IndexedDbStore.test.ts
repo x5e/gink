@@ -19,4 +19,4 @@ it('use methods', async () => {
     const entriesAfterDrop = await indexedDbStore.getAllEntryKeys();
     ensure(entriesAfterDrop.length == 1);
     ensure(!await dir.has("foo", beforeSecondSet));
-})
+});

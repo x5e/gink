@@ -147,7 +147,7 @@ export class Sequence extends Container {
             const entry = await this.getEntryAt(position, asOf);
             return await interpret(entry, this.ginkInstance);
         }
-        throw Error("unexpected")
+        throw Error("unexpected");
     }
 
     /**
