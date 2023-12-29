@@ -59,7 +59,7 @@ export class Role extends Container {
      * @param asOf optional timestamp to look back to
      * @returns an async iterator across all containers in the role
      */
-    get_members(asOf?: AsOf): AsyncGenerator<Container, void, unknown> {
+    getMembers(asOf?: AsOf): AsyncGenerator<Container, void, unknown> {
         const thisRole = this;
         let container;
         return (async function* () {
