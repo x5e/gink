@@ -42,7 +42,10 @@ export class Listener {
                 const url = new URL(request.url, `http://${request.headers.host}`);
                 request.addListener('end', function () {
                     if (url.pathname == "/") {
-                        staticServer.serveFile("./connections.html", 200, {}, request, response);
+                        staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
+                    }
+                    else if (url.pathname == "/connections") {
+                        staticServer.serveFile("/list_connections.html", 200, {}, request, response);
                     }
                     else if (url.pathname == "/list_connections") {
                         let connections = Object.fromEntries(args.instance.connections);
@@ -58,9 +61,6 @@ export class Listener {
                             response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }));
                         }
                     }
-                    else if (url.pathname == "/dashboard") {
-                        staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
-                    }
                     else {
                         staticServer.serve(request, response);
                     }
@@ -74,7 +74,10 @@ export class Listener {
                 const url = new URL(request.url, `http://${request.headers.host}`);
                 request.addListener('end', async function () {
                     if (url.pathname == "/") {
-                        staticServer.serveFile("./connections.html", 200, {}, request, response);
+                        staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
+                    }
+                    else if (url.pathname == "/connections") {
+                        staticServer.serveFile("/list_connections.html", 200, {}, request, response);
                     }
                     else if (url.pathname == "/list_connections") {
                         let connections = Object.fromEntries(args.instance.connections);
@@ -93,19 +96,13 @@ export class Listener {
                                 response.writeHead(400);
                                 response.end(JSON.stringify({ "status": 400, "message": "Error. Connection not created." }));
                             }
-
                         }
                         else {
                             response.writeHead(405);
                             response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }));
                         }
                     }
-                    else if (url.pathname == "/dashboard") {
-                        staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
-                    }
                     else {
-                        console.log('here', url.pathname);
-
                         staticServer.serve(request, response);
                     }
                 }).resume();
