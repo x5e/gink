@@ -19,13 +19,16 @@
 </body>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
-        window.store = new gink.IndexedDbStore(true);
-        window.instance = new gink.GinkInstance(store);
+        window.store = new gink.IndexedDbStore(reset = true);
+        window.instance = new gink.GinkInstance(store, info = { fullName: 'Charlie' });
         await window.instance.connectTo(`ws://${window.location.host}`);
 
         if (!window.location.hash) {
             await displayContainer(window.instance.getGlobalDirectory().address);
-        } else {
+        } else if (window.location.hash == '#self') {
+            await displayContainer(window.instance.getMedallionDirectory().address);
+        }
+        else {
             await displayContainer(window.location.hash.substring(1));
         }
     });

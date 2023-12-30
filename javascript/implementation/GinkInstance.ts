@@ -96,6 +96,10 @@ export class GinkInstance {
         return new Property(this, { timestamp: -1, medallion: -1, offset: Behavior.PROPERTY });
     }
 
+    getMedallionDirectory(): Directory {
+        return new Directory(this, { timestamp: -1, medallion: this.myChain[0], offset: Behavior.DIRECTORY });
+    }
+
     /**
      * Creates a new box container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
