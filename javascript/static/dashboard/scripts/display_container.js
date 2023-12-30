@@ -18,21 +18,37 @@ async function displayContainer(muid) {
         return;
     }
     writeTitle(container);
-    const asMap = await container.toMap();
-    if (asMap.size == 0) {
-        const p = containerContents.appendChild(document.createElement('p'));
-        p.innerText = "No entries.";
-        return;
-    }
     const thisContainerTable = containerContents.appendChild(document.createElement('table'));
     thisContainerTable.setAttribute('id', 'container-table');
-    thisContainerTable.innerHTML = `
+    if ([4, 6].includes(container.behavior)) { // Container has key entries (Directory or PairMap)
+        const asMap = await keyValContainerAsMap(container);
+        if (asMap.size == 0) {
+            const p = containerContents.appendChild(document.createElement('p'));
+            p.innerText = "No entries.";
+            return;
+        }
+        thisContainerTable.innerHTML = `
             <tr>
                 <th>Key</th>
                 <th>Value</th>
             </tr>`;
-    for (const [key, val] of asMap.entries()) {
-        createRow(key, val);
+        for (const [key, val] of asMap.entries()) {
+            createRow(key, val);
+        }
+    } else {
+        const asArray = await valContainerAsArray(container);
+        if (asArray.length == 0) {
+            const p = containerContents.appendChild(document.createElement('p'));
+            p.innerText = "No entries.";
+            return;
+        }
+        thisContainerTable.innerHTML = `
+            <tr>
+                <th>Value</th>
+            </tr>`;
+        for (const val of asArray) {
+            createRow(undefined, val);
+        }
     }
 }
 
@@ -54,49 +70,65 @@ function writeTitle(container) {
  * @param {*} val
  */
 function createRow(key, val) {
-    key = unwrapToString(key);
-    val = unwrapToString(val);
     const table = document.getElementById('container-table');
     const row = table.appendChild(document.createElement('tr'));
-    const keyCell = row.appendChild(document.createElement('td'));
-    const valCell = row.appendChild(document.createElement('td'));
-    keyCell.dataset['state'] = 'long';
-    valCell.dataset['state'] = 'long';
-
-    if (key.length > 20) {
-        keyCell.style.cursor = "pointer";
-        let longKey = key;
-        key = shortenedString(key);
-        keyCell.dataset['state'] = 'short';
-        keyCell.onclick = () => {
-            if (keyCell.dataset["state"] == 'short') {
-                keyCell.innerText = longKey;
-                keyCell.dataset['state'] = 'long';
-            }
-            else if (keyCell.dataset["state"] == 'long') {
-                keyCell.innerText = key;
+    if (key) {
+        const keyCell = row.appendChild(document.createElement('td'));
+        keyCell.dataset['state'] = 'long';
+        if (key instanceof gink.Container) {
+            keyCell.style.cursor = "pointer";
+            keyCell.onclick = () => {
+                window.location.hash = '#' + gink.muidToString(key.address);
+                window.location.reload();
+            };
+        } else {
+            key = unwrapToString(key);
+            if (key.length > 20) {
+                keyCell.style.cursor = "pointer";
+                let longKey = key;
+                key = shortenedString(key);
                 keyCell.dataset['state'] = 'short';
+                keyCell.onclick = () => {
+                    if (keyCell.dataset["state"] == 'short') {
+                        keyCell.innerText = longKey;
+                        keyCell.dataset['state'] = 'long';
+                    }
+                    else if (keyCell.dataset["state"] == 'long') {
+                        keyCell.innerText = key;
+                        keyCell.dataset['state'] = 'short';
+                    }
+                };
             }
-        };
+        }
+        keyCell.innerText = key;
     }
 
-    if (val.length > 20) {
+    const valCell = row.appendChild(document.createElement('td'));
+    valCell.dataset['state'] = 'long';
+    if (val instanceof gink.Container) {
         valCell.style.cursor = "pointer";
-        let longVal = val;
-        val = shortenedString(val);
-        valCell.dataset['state'] = 'short';
         valCell.onclick = () => {
-            if (valCell.dataset["state"] == 'short') {
-                valCell.innerText = longVal;
-                valCell.dataset['state'] = 'long';
-            }
-            else if (valCell.dataset["state"] == 'long') {
-                valCell.innerText = val;
-                valCell.dataset['state'] = 'short';
-            }
+            window.location.hash = '#' + gink.muidToString(val.address);
+            window.location.reload();
         };
+    } else {
+        val = unwrapToString(val);
+        if (val.length > 20) {
+            valCell.style.cursor = "pointer";
+            let longVal = val;
+            val = shortenedString(val);
+            valCell.dataset['state'] = 'short';
+            valCell.onclick = () => {
+                if (valCell.dataset["state"] == 'short') {
+                    valCell.innerText = longVal;
+                    valCell.dataset['state'] = 'long';
+                }
+                else if (valCell.dataset["state"] == 'long') {
+                    valCell.innerText = val;
+                    valCell.dataset['state'] = 'short';
+                }
+            };
+        }
     }
-
-    keyCell.innerText = key;
     valCell.innerText = val;
 }
