@@ -64,7 +64,7 @@ export class PairSet extends Container {
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to a set of pairs [Muid, Muid]
      */
-    async get_pairs(asOf?: AsOf): Promise<Set<Array<Muid>>> {
+    async getPairs(asOf?: AsOf): Promise<Set<Array<Muid>>> {
         const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
         const toSet = new Set<Array<Muid>>();
         for (const [key, entry] of entries) {
@@ -93,7 +93,7 @@ export class PairSet extends Container {
         const mySig = muidToString(this.address);
         if (seen.has(mySig)) return "null";
         seen.add(mySig);
-        const asSet = await this.get_pairs(asOf);
+        const asSet = await this.getPairs(asOf);
         let returning = "[";
         let first = true;
         for (const key of asSet) {
