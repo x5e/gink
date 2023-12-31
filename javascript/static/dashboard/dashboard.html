@@ -19,8 +19,8 @@
 </body>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
-        window.store = new gink.IndexedDbStore(reset = true);
-        window.instance = new gink.GinkInstance(store, info = { fullName: 'Charlie' });
+        window.store = new gink.IndexedDbStore();
+        window.instance = new gink.GinkInstance(store);
         await window.instance.connectTo(`ws://${window.location.host}`);
 
         if (!window.location.hash) {
