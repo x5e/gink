@@ -48,7 +48,7 @@ module.exports = class Expector {
         const thisExpector = this;
         const returning = new Promise((resolve, reject) => {
             thisExpector.onHit = resolve;
-            setTimeout(() => { reject(`expected ${what}, had ${thisExpector.captured}`) }, timeout);
+            setTimeout(() => { reject(`expected ${what}, had ${thisExpector.captured}`); }, timeout);
         });
         this.notify();
         return returning;
@@ -75,4 +75,4 @@ module.exports = class Expector {
         this.proc.kill();
         return returning;
     }
-}
+};

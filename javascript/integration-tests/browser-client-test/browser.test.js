@@ -15,7 +15,7 @@ it('connect to server and display commits', async () => {
                 "--no-sandbox",
                 "--disable-gpu",
             ]
-        }
+        };
     }
     else {
         // if path to chrome is not specified, try to find it.
@@ -26,7 +26,7 @@ it('connect to server and display commits', async () => {
                 "--no-sandbox",
                 "--disable-gpu",
             ]
-        }
+        };
     }
     let browser = await puppeteer.launch(launch_options);
 
@@ -60,6 +60,6 @@ it('connect to server and display commits', async () => {
     await server.close();
     await browser.close();
 
-    const expectedMessages = /Messages go here\..*Hello, Universe!.*start: SimpleServer/s
+    const expectedMessages = /Messages go here\..*Hello, Universe!.*start: SimpleServer/s;
     expect(messages).toMatch(expectedMessages);
 }, 13000);

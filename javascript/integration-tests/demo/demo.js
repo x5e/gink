@@ -19,9 +19,9 @@ function getWebsocketTarget() {
     globalThis.root = instance.getGlobalDirectory();
     instance.addListener(
         async function (changeSetInfo) {
-            console.log(changeSetInfo)
+            console.log(changeSetInfo);
             if (document == null) { throw new Error("unexpected"); }
-            document.getElementById('dump').innerHTML = await globalThis.root.toJson()
+            document.getElementById('dump').innerHTML = await globalThis.root.toJson();
         }
     );
     await instance.connectTo("ws://127.0.0.1:8081/");

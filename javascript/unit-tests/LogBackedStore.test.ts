@@ -24,4 +24,4 @@ it('test locks', async () => {
         throw new Error("locking broken");
     }
     await lbs1.close();
-})
+});

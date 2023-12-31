@@ -1,5 +1,5 @@
-import { BundleBytes, Entry } from "../implementation/typedefs"
-import { ChainTracker } from "../implementation/ChainTracker"
+import { BundleBytes, Entry } from "../implementation/typedefs";
+import { ChainTracker } from "../implementation/ChainTracker";
 import { Store } from "../implementation/Store";
 import { Behavior, EntryBuilder, ContainerBuilder, ChangeBuilder, BundleBuilder } from "../implementation/builders";
 import {
@@ -18,7 +18,7 @@ it('placeholder', () => {
 
 
 /**
- * 
+ *
  * @param storeMaker must return a fresh (empty) store on each invocation
  * @param implName name of this implementation
  * @param replacer thing to check when using persistence

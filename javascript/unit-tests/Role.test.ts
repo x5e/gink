@@ -30,7 +30,7 @@ it('include and exclude work as intended', async function () {
     }
 });
 
-it('contains, toArray, and get_members work properly', async function () {
+it('contains, toArray, and getMembers work properly', async function () {
     for (const store of [new IndexedDbStore('Role.test2', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
         const role1 = await instance.createRole();
@@ -46,7 +46,7 @@ it('contains, toArray, and get_members work properly', async function () {
         ensure((await role1.includedAsArray()).length == 2);
         ensure((await role1.includedAsArray())[0].behavior);
 
-        for await (const member of role1.get_members()) {
+        for await (const member of role1.getMembers()) {
             ensure(member.address && member.behavior && member.ginkInstance);
         }
     }

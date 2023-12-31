@@ -15,7 +15,7 @@ import { Listener } from "./Listener";
 export class SimpleServer extends GinkInstance {
 
     private listener: Listener;
-    public connections: Map<number, WebSocketConnection>
+    public connections: Map<number, WebSocketConnection>;
 
     constructor(store: Store, args: {
         port?: NumberStr;

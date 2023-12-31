@@ -14,7 +14,7 @@ import { Listener } from './Listener';
 /**
  * A class that listens on a port, and then serves either static content over HTTP(S)
  * or opens websocket connections and hands it off to the appropriate RoutingServerInstance.
- * 
+ *
  * The user passes in a dataFilesRoot, which should be a writable directory on the local system.
  * The RoutingServer will create a RoutingServerInstance for each file/requested resource.
  */
@@ -48,7 +48,7 @@ export class RoutingServer {
     }
 
     /**
-     * 
+     *
      * @param path absolute path to the datafile
      * @returns a promise of an instance that will manage that file
      */

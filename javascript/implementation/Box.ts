@@ -19,16 +19,16 @@ export class Box extends Container {
     }
 
     /**
-     * Puts a value or a reference to another container in this box. 
-     * If a bundler is supplied, the function will add the entry to that bundler 
+     * Puts a value or a reference to another container in this box.
+     * If a bundler is supplied, the function will add the entry to that bundler
      * and return immediately (presumably you know what to do with a CS if you passed it in).
      * If the caller does not supply a bundler, then one is created on the fly, and
      * then this method will await on the CS being added to the database instance.
      * This is to allow simple console usage like:
      *      await myBox.put("some value");
-     * @param value 
+     * @param value
      * @param change an optional bundler to put this in.
-     * @returns a promise that resolves to the address of the newly created entry  
+     * @returns a promise that resolves to the address of the newly created entry
      */
     async set(value: Value | Container, change?: Bundler | string): Promise<Muid> {
         return this.addEntry(undefined, value, change);
@@ -55,7 +55,7 @@ export class Box extends Container {
 
     /**
      * checks to see if something is in the box
-     * @param asOf 
+     * @param asOf
      * @returns true if no value or container is in the box
      */
     async isEmpty(asOf?: AsOf): Promise<boolean> {
