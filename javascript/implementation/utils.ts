@@ -257,10 +257,12 @@ export function pairKeyToArray(effectiveKey: String): Array<Muid> {
  * @returns a string of the canonical string representation
  */
 export function muidToString(muid: Muid): string {
-    let timestamp = (`0` + byteToHex(muid.timestamp));
-    let medallion = (byteToHex(muid.medallion));
-    let offset = (byteToHex(muid.offset));
-    return `${timestamp}-${medallion}-${offset}`;
+    let timestamp = toHex(muid.timestamp, 14);
+    let medallion = toHex(muid.medallion, 13);
+    let offset = toHex(muid.offset, 5);
+    let result = `${timestamp}-${medallion}-${offset}`;
+    ensure(result.length == 34);
+    return result;
 }
 
 export function muidTupleToString(muidTuple: MuidTuple): string {
@@ -269,25 +271,49 @@ export function muidTupleToString(muidTuple: MuidTuple): string {
         timestamp = 'FFFFFFFFFFFFFF';
     }
     else {
-        timestamp = (`0` + byteToHex(muidTuple[0]));
+        timestamp = toHex(muidTuple[0], 14);
     }
-    let medallion = (byteToHex(muidTuple[1]));
-    let offset = (byteToHex(muidTuple[2]));
+    let medallion = toHex(muidTuple[1], 13);
+    let offset = toHex(muidTuple[2], 5);
     return `${timestamp}-${medallion}-${offset}`;
 }
 
 export function strToMuid(value: string): Muid {
     const nums = value.split("-");
+    let timestamp = BigInt(parseInt(nums[0], 16));
+    let medallion = BigInt(parseInt(nums[1], 16));
+    let offset = BigInt(parseInt(nums[2], 16));
+
+    let timestampMod = BigInt(16 ** 14);
+    let medallionMod = BigInt(16 ** 13);
+    let offsetMod = BigInt(16 ** 5);
+
+    let ts = Number(timestamp - timestampMod * ((timestamp > (timestampMod >> BigInt(1))) ? BigInt(1) : BigInt(0)));
+    let med = Number(medallion - medallionMod * ((medallion > (medallionMod >> BigInt(1))) ? BigInt(1) : BigInt(0)));
+    let os = Number(offset - offsetMod * ((offset > (offsetMod >> BigInt(1))) ? BigInt(1) : BigInt(0)));
+
     return {
-        timestamp: parseInt(nums[0], 16),
-        medallion: parseInt(nums[1], 16),
-        offset: parseInt(nums[2], 16)
+        timestamp: ts,
+        medallion: med,
+        offset: os
     };
 }
 
+function toHex(value: number, padding?: number) {
+    const digits = padding || Math.ceil(64 / Math.log2(16));
+    const twosComplement = value < 0
+        ? BigInt(16) ** BigInt(digits) + BigInt(value)
+        : value;
+
+    return twosComplement.toString(16).padStart(digits, '0').toUpperCase();
+}
+
 export function byteToHex(byte: number) {
+    if (byte < 0) {
+        byte = byte >>> 0;
+    }
     const returning = byte.toString(16).toUpperCase();
-    return byte < 0x10 ? '0' + returning : returning;
+    return returning;
 }
 
 export function valueToJson(value: Value): string {
