@@ -181,7 +181,7 @@ class Page {
         const pageButtonsDiv = containerContents.appendChild(document.createElement('div'));
         pageButtonsDiv.setAttribute('id', 'page-buttons-container');
         const prevPage = pageButtonsDiv.appendChild(document.createElement('a'));
-        prevPage.setAttribute('class', 'page-btn');
+        prevPage.setAttribute('class', 'page-btn no-select');
         if (!this.isFirstPage()) {
             prevPage.innerText = '<';
             prevPage.onclick = async () => {
@@ -190,8 +190,9 @@ class Page {
         }
         const thisPage = pageButtonsDiv.appendChild(document.createElement('p'));
         thisPage.innerText = this.currentPage + 1;
+        thisPage.setAttribute('class', 'no-select');
         const nextPage = pageButtonsDiv.appendChild(document.createElement('a'));
-        nextPage.setAttribute('class', 'page-btn');
+        nextPage.setAttribute('class', 'page-btn no-select');
         if (!this.isLastPage()) {
             nextPage.innerText = '>';
             nextPage.onclick = async () => {
@@ -201,7 +202,6 @@ class Page {
     }
 
     /**
-     *
      * @returns true if there are no previous pages.
      */
     isFirstPage() {
@@ -209,7 +209,6 @@ class Page {
     }
 
     /**
-     *
      * @returns true if there are no following pages.
      */
     isLastPage() {
