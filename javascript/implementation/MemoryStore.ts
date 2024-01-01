@@ -132,15 +132,11 @@ export class MemoryStore implements Store {
         return Promise.resolve(chainTracker);
     }
 
-    async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
-        return Promise.resolve(this.chainInfos.get(medallionChainStartToString(key)).timestamp);
-    }
-
     private getChainInfos(): Iterable<BundleInfo> {
         return this.chainInfos.values();
     }
 
-    async addBundle(bundleBytes: BundleBytes): Promise<[BundleInfo, boolean]> {
+    async addBundle(bundleBytes: BundleBytes): Promise<BundleInfo> {
         await this.ready;
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
         const bundleInfo = extractCommitInfo(bundleBuilder);
@@ -148,7 +144,7 @@ export class MemoryStore implements Store {
         const oldChainInfo = this.chainInfos.get(medallionChainStartToString([medallion, chainStart]));
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
-                return [bundleInfo, false];
+                return bundleInfo;
             }
             if (oldChainInfo?.timestamp != priorTime) {
                 throw new Error(`missing prior chain entry for ${bundleInfo}, have ${oldChainInfo}`);
@@ -326,7 +322,7 @@ export class MemoryStore implements Store {
             }
             throw new Error("don't know how to apply this kind of change");
         }
-        return [bundleInfo, true];
+        return bundleInfo;
     }
 
     private static commitInfoToKey(commitInfo: BundleInfo): BundleInfoTuple {

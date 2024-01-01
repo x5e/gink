@@ -223,13 +223,17 @@ export class GinkInstance {
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
     public async addBundler(bundler: Bundler): Promise<BundleInfo> {
+        //console.log("before this.ready");
+        await this.ready;
         let unlockingFunction: CallBack;
         let resultInfo: BundleInfo;
         try {
+            //console.log("before locking");
             unlockingFunction = await this.processingLock.acquireLock();
-            await this.ready;
+            //console.log("after locking");
             const nowMicros = generateTimestamp();
-            const seenThrough = await this.store.getSeenThrough(this.myChain);
+            const lastBundleInfo = this.iHave.getCommitInfo(this.myChain);
+            const seenThrough = lastBundleInfo.timestamp;
             ensure(seenThrough > 0 && (seenThrough < nowMicros));
             const commitInfo: BundleInfo = {
                 medallion: this.myChain[0],
@@ -238,6 +242,7 @@ export class GinkInstance {
                 priorTime: seenThrough,
             };
             resultInfo = bundler.seal(commitInfo);
+            this.iHave.markAsHaving(commitInfo);
             await this.receiveCommit(bundler.bytes);
         } finally {
             unlockingFunction();
@@ -279,22 +284,21 @@ export class GinkInstance {
      */
     private async receiveCommit(commitBytes: BundleBytes, fromConnectionId?: number): Promise<void> {
         await this.ready;
-        const [bundleInfo, novel] = await this.store.addBundle(commitBytes);
-        this.iHave.markAsHaving(bundleInfo);
-        this.logger(`got ${novel} novel commit from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
-        const peer = this.peers.get(fromConnectionId);
-        if (peer) {
-            peer.hasMap?.markAsHaving(bundleInfo);
-            peer._sendAck(bundleInfo);
-        }
-        if (!novel) return;
-        for (const [peerId, peer] of this.peers) {
-            if (peerId != fromConnectionId)
-                peer._sendIfNeeded(commitBytes, bundleInfo);
-        }
-        for (const listener of this.listeners) {
-            await listener(bundleInfo);
-        }
+        return this.store.addBundle(commitBytes).then((bundleInfo) => {
+            this.logger(`commit from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
+            const peer = this.peers.get(fromConnectionId);
+            if (peer) {
+                peer.hasMap?.markAsHaving(bundleInfo);
+                peer._sendAck(bundleInfo);
+            }
+            for (const [peerId, peer] of this.peers) {
+                if (peerId != fromConnectionId)
+                    peer._sendIfNeeded(commitBytes, bundleInfo);
+            }
+            for (const listener of this.listeners) {
+                listener(bundleInfo);
+            }
+        });
     }
 
     /**

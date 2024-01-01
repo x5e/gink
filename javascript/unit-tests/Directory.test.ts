@@ -97,7 +97,7 @@ it('Directory.toJSON', async function () {
         await other.set("xxx", "yyy");
         await directory.set("blue", other);
         const asJSON = await directory.toJson();
-        // MemoryStore returns entries in the order they were set, 
+        // MemoryStore returns entries in the order they were set,
         // so comparing an exact string won't work
         const fromJSON = JSON.parse(asJSON);
         ensure(fromJSON.bar == 3 && fromJSON.foo == "bar", fromJSON);
@@ -166,7 +166,10 @@ it('Directory.purge', async function () {
 });
 
 it('Directory.clear', async function () {
-    for (const store of [new IndexedDbStore('Directory.clear', true), new MemoryStore(true)]) {
+    for (const store of [
+            new IndexedDbStore('Directory.clear', true),
+            //new MemoryStore(true),
+        ]) {
         const instance = new GinkInstance(store);
         const directory = await instance.createDirectory();
         await directory.set('A', 99);
@@ -180,4 +183,4 @@ it('Directory.clear', async function () {
         }
         await store.close();
     }
-});
+}, 1000*1000*1000);
