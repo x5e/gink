@@ -233,17 +233,6 @@ export function matches(a: any[], b: any[]) {
     return true;
 }
 
-export function stringMuidToHex(string: String) {
-    let returning = "";
-    const split = string.split(",");
-    ensure(split.length == 3);
-    for (let i = 0; i < 3; i++) {
-        returning += Number(split[i]).toString(16).toUpperCase();
-        if (i != 2) returning += "-";
-    }
-    return returning;
-}
-
 export function pairKeyToArray(effectiveKey: String): Array<Muid> {
     const split = effectiveKey.split(",");
     ensure(split.length == 2);
@@ -287,6 +276,12 @@ export function strToMuid(value: string): Muid {
     };
 }
 
+/**
+ * Converts a hexadecimal string to an integer. String should
+ * not contain more than 14 characters.
+ * @param hexString hexadecimal string <= 14 characters
+ * @returns a signed integer.
+ */
 function muidHexToInt(hexString: string): number {
     ensure(hexString.length <= 14);
     let beginningAddition = BigInt(0);
@@ -304,21 +299,19 @@ function muidHexToInt(hexString: string): number {
     return Number(num + beginningAddition - mod);
 }
 
-export function intToHex(value: number, padding?: number) {
-    const digits = padding || Math.ceil(64 / Math.log2(16));
+/**
+ * Converts a number to its hexadecimal equivalent.
+ * @param value
+ * @param padding maximum size of hex string, padded by 0s.
+ * @returns a hexadecimal string
+ */
+export function intToHex(value: number, padding?: number): string {
+    const digits = padding || 0;
     const twosComplement = value < 0
         ? BigInt(16) ** BigInt(digits) + BigInt(value)
         : value;
 
     return twosComplement.toString(16).padStart(digits, '0').toUpperCase();
-}
-
-export function byteToHex(byte: number) {
-    if (byte < 0) {
-        byte = byte >>> 0;
-    }
-    const returning = byte.toString(16).toUpperCase();
-    return returning;
 }
 
 export function valueToJson(value: Value): string {
@@ -331,7 +324,7 @@ export function valueToJson(value: Value): string {
         return `${value}`;
     }
     if (value instanceof Uint8Array) {
-        const hexString = Array.from(value).map(byteToHex).join("");
+        const hexString = Array.from(value).map(intToHex).join("");
         return `"${hexString}"`;
     }
     if ("function" === typeof value["toISOString"]) {
