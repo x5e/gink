@@ -257,9 +257,9 @@ export function pairKeyToArray(effectiveKey: String): Array<Muid> {
  * @returns a string of the canonical string representation
  */
 export function muidToString(muid: Muid): string {
-    let timestamp = toHex(muid.timestamp, 14);
-    let medallion = toHex(muid.medallion, 13);
-    let offset = toHex(muid.offset, 5);
+    let timestamp = intToHex(muid.timestamp, 14);
+    let medallion = intToHex(muid.medallion, 13);
+    let offset = intToHex(muid.offset, 5);
     let result = `${timestamp}-${medallion}-${offset}`;
     ensure(result.length == 34);
     return result;
@@ -271,35 +271,40 @@ export function muidTupleToString(muidTuple: MuidTuple): string {
         timestamp = 'FFFFFFFFFFFFFF';
     }
     else {
-        timestamp = toHex(muidTuple[0], 14);
+        timestamp = intToHex(muidTuple[0], 14);
     }
-    let medallion = toHex(muidTuple[1], 13);
-    let offset = toHex(muidTuple[2], 5);
+    let medallion = intToHex(muidTuple[1], 13);
+    let offset = intToHex(muidTuple[2], 5);
     return `${timestamp}-${medallion}-${offset}`;
 }
 
 export function strToMuid(value: string): Muid {
     const nums = value.split("-");
-    let timestamp = BigInt(parseInt(nums[0], 16));
-    let medallion = BigInt(parseInt(nums[1], 16));
-    let offset = BigInt(parseInt(nums[2], 16));
-
-    let timestampMod = BigInt(16 ** 14);
-    let medallionMod = BigInt(16 ** 13);
-    let offsetMod = BigInt(16 ** 5);
-
-    let ts = Number(timestamp - timestampMod * ((timestamp > (timestampMod >> BigInt(1))) ? BigInt(1) : BigInt(0)));
-    let med = Number(medallion - medallionMod * ((medallion > (medallionMod >> BigInt(1))) ? BigInt(1) : BigInt(0)));
-    let os = Number(offset - offsetMod * ((offset > (offsetMod >> BigInt(1))) ? BigInt(1) : BigInt(0)));
-
     return {
-        timestamp: ts,
-        medallion: med,
-        offset: os
+        timestamp: muidHexToInt(nums[0]),
+        medallion: muidHexToInt(nums[1]),
+        offset: muidHexToInt(nums[2])
     };
 }
 
-function toHex(value: number, padding?: number) {
+function muidHexToInt(hexString: string): number {
+    ensure(hexString.length <= 14);
+    let beginningAddition = BigInt(0);
+    if (hexString.length == 14) {
+        let beginning = hexString.substring(0, 1);
+        hexString = hexString.substring(1);
+        if (beginning == '1') {
+            beginningAddition = BigInt(16) ** BigInt(14);
+        }
+    }
+    let len = hexString.length;
+    let mod = BigInt(16) ** BigInt(len);
+    let num = BigInt(parseInt(hexString, 16));
+    mod = mod * ((num > (mod >> BigInt(1))) ? BigInt(1) : BigInt(0));
+    return Number(num + beginningAddition - mod);
+}
+
+export function intToHex(value: number, padding?: number) {
     const digits = padding || Math.ceil(64 / Math.log2(16));
     const twosComplement = value < 0
         ? BigInt(16) ** BigInt(digits) + BigInt(value)
