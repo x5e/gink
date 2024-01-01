@@ -11,6 +11,11 @@ table {
     border-spacing: 8rem 20px;
 }
 
+td {
+    word-break: break-all;
+    text-align: center;
+}
+
 /* IDs */
 #container-contents {
     margin: 0;
@@ -20,7 +25,6 @@ table {
     align-items: center;
     padding-left: 2rem;
     padding-right: 2rem;
-
 }
 
 #container-box {

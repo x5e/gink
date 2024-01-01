@@ -39,24 +39,26 @@ class Page {
         const numEntries = containerContents.appendChild(document.createElement('p'));
         numEntries.innerText = `Total entries: ${this.entries.length}`;
 
+        if (this.entries.length > 10) {
+            const itemsPerPageSelect = containerContents.appendChild(document.createElement('select'));
+            const options = ['10', '25', '50', '100', '250', '500', '1000'];
+            for (const option of options) {
+                if (Number(option) > this.entries.length) break;
+                const currentOption = itemsPerPageSelect.appendChild(document.createElement('option'));
+                currentOption.innerText = option;
+                currentOption.value = option;
+            }
+            itemsPerPageSelect.value = `${this.itemsPerPage}`;
+            itemsPerPageSelect.onchange = async () => {
+                this.setItemsPerPage(Number(itemsPerPageSelect.value));
+                await this.displayPage();
+            };
+        }
+
         const showing = containerContents.appendChild(document.createElement('p'));
         const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
         const maxEntries = upperBound >= this.entries.length ? this.entries.length : upperBound;
         showing.innerText = `Showing entries ${this.currentPage * this.itemsPerPage}-${maxEntries}`;
-
-        const itemsPerPageSelect = containerContents.appendChild(document.createElement('select'));
-        const options = ['10', '25', '50', '100', '250', '500', '1000'];
-        for (const option of options) {
-            if (Number(option) > this.entries.length) break;
-            const currentOption = itemsPerPageSelect.appendChild(document.createElement('option'));
-            currentOption.innerText = option;
-            currentOption.value = option;
-        }
-        itemsPerPageSelect.value = `${this.itemsPerPage}`;
-        itemsPerPageSelect.onchange = async () => {
-            this.setItemsPerPage(Number(itemsPerPageSelect.value));
-            await this.displayPage();
-        };
     }
 
     /**
@@ -83,9 +85,16 @@ class Page {
             p.innerText = "No entries.";
             return;
         }
-        for (const [key, val] of this.getPageOfEntries()) {
-            this.createRow(key, val);
+        if (this.hasKeys) {
+            for (const [key, val] of this.getPageOfEntries()) {
+                this.createRow(key, val);
+            }
+        } else {
+            for (const val of this.getPageOfEntries()) {
+                this.createRow(undefined, val);
+            }
         }
+
         this.writePageButtons();
     }
 
@@ -111,65 +120,51 @@ class Page {
     createRow(key, val) {
         const table = document.getElementById('container-table');
         const row = table.appendChild(document.createElement('tr'));
-        if (key) {
-            const keyCell = row.appendChild(document.createElement('td'));
-            keyCell.dataset['state'] = 'long';
-            if (key instanceof gink.Container) {
-                keyCell.style.cursor = "pointer";
-                keyCell.onclick = () => {
-                    window.location.hash = '#' + gink.muidToString(key.address);
-                    window.location.reload();
-                };
-            } else {
-                key = unwrapToString(key);
-                if (key.length > 20) {
-                    keyCell.style.cursor = "pointer";
-                    let longKey = key;
-                    key = shortenedString(key);
-                    keyCell.dataset['state'] = 'short';
-                    keyCell.onclick = () => {
-                        if (keyCell.dataset["state"] == 'short') {
-                            keyCell.innerText = longKey;
-                            keyCell.dataset['state'] = 'long';
-                        }
-                        else if (keyCell.dataset["state"] == 'long') {
-                            keyCell.innerText = key;
-                            keyCell.dataset['state'] = 'short';
-                        }
-                    };
-                }
-            }
-            keyCell.innerText = key;
-        }
+        if (key) this.createCell(row, key);
+        if (val) this.createCell(row, val);
+    }
 
-        const valCell = row.appendChild(document.createElement('td'));
-        valCell.dataset['state'] = 'long';
-        if (val instanceof gink.Container) {
-            valCell.style.cursor = "pointer";
-            valCell.onclick = () => {
-                window.location.hash = '#' + gink.muidToString(val.address);
+    /**
+     * Creates a cell in a row within a table.
+     * @param {HTMLRowElement} row an HTML row node.
+     * @param {*} content a key or value to place into the row.
+     */
+    createCell(row, content) {
+        let showing; // the initial preview shown
+        const cell = row.appendChild(document.createElement('td'));
+        cell.dataset['state'] = 'long';
+        if (content instanceof gink.Container) {
+            cell.style.fontWeight = "bold";
+            cell.style.cursor = "pointer";
+            cell.onclick = () => {
+                console.log(content);
+                window.location.hash = '#' + gink.muidToString(content.address);
                 window.location.reload();
             };
+            showing = `${content.constructor.name}(${gink.muidToString(content.address)})`;
         } else {
-            val = unwrapToString(val);
-            if (val.length > 20) {
-                valCell.style.cursor = "pointer";
-                let longVal = val;
-                val = shortenedString(val);
-                valCell.dataset['state'] = 'short';
-                valCell.onclick = () => {
-                    if (valCell.dataset["state"] == 'short') {
-                        valCell.innerText = longVal;
-                        valCell.dataset['state'] = 'long';
+            content = unwrapToString(content);
+            if (content.length > 20) {
+                cell.style.cursor = "pointer";
+                let longContent = content;
+                showing = shortenedString(content);
+                cell.dataset['state'] = 'short';
+                cell.onclick = () => {
+                    if (cell.dataset["state"] == 'short') {
+                        cell.innerText = longContent;
+                        cell.dataset['state'] = 'long';
                     }
-                    else if (valCell.dataset["state"] == 'long') {
-                        valCell.innerText = val;
-                        valCell.dataset['state'] = 'short';
+                    else if (cell.dataset["state"] == 'long') {
+                        cell.innerText = showing;
+                        cell.dataset['state'] = 'short';
                     }
                 };
             }
+            else {
+                showing = content;
+            }
         }
-        valCell.innerText = val;
+        cell.innerText = showing;
     }
 
     /**

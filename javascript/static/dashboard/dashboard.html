@@ -22,6 +22,7 @@
         window.store = new gink.IndexedDbStore();
         window.instance = new gink.GinkInstance(store);
         await window.instance.connectTo(`ws://${window.location.host}`);
+
         let muid;
         if (!window.location.hash) {
             muid = window.instance.getGlobalDirectory().address;
