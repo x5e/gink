@@ -13,17 +13,22 @@ class Page {
             this.entries = Array.from(asMap.entries());
             this.hasKeys = true;
         } else {
+            // Container uses value entries only
             this.entries = await valContainerAsArray(this.container);
             this.hasKeys = false;
         }
     }
 
+    /**
+     * Gets a subset of the entries array based on the current page and the items per page.
+     * @returns a sub Array containing the entries for the current page.
+     */
     getPageOfEntries() {
         return this.entries.slice(this.currentPage * this.itemsPerPage, this.currentPage * this.itemsPerPage + this.itemsPerPage);
     }
 
     /**
-     * Changes the title of the container page.
+     * Changes the title and header elements of the container page.
      */
     async writeTitle() {
         const containerContents = document.getElementById('container-contents');
@@ -32,10 +37,26 @@ class Page {
         const muid = this.container.address;
         titleBar.innerHTML = `<h2>${this.container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})</h2>`;
         const numEntries = containerContents.appendChild(document.createElement('p'));
-        numEntries.innerText = `Total entries: ${await this.container.size()}`;
+        numEntries.innerText = `Total entries: ${this.entries.length}`;
 
         const showing = containerContents.appendChild(document.createElement('p'));
-        showing.innerText = `Showing entries ${this.currentPage * this.itemsPerPage}-${this.currentPage * this.itemsPerPage + this.itemsPerPage}`;
+        const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
+        const maxEntries = upperBound >= this.entries.length ? this.entries.length : upperBound;
+        showing.innerText = `Showing entries ${this.currentPage * this.itemsPerPage}-${maxEntries}`;
+
+        const itemsPerPageSelect = containerContents.appendChild(document.createElement('select'));
+        const options = ['10', '25', '50', '100', '250', '500', '1000'];
+        for (const option of options) {
+            if (Number(option) > this.entries.length) break;
+            const currentOption = itemsPerPageSelect.appendChild(document.createElement('option'));
+            currentOption.innerText = option;
+            currentOption.value = option;
+        }
+        itemsPerPageSelect.value = `${this.itemsPerPage}`;
+        itemsPerPageSelect.onchange = async () => {
+            this.setItemsPerPage(Number(itemsPerPageSelect.value));
+            await this.displayPage();
+        };
     }
 
     /**
@@ -80,7 +101,6 @@ class Page {
 
     async setItemsPerPage(itemsPerPage) {
         this.itemsPerPage = itemsPerPage;
-        await this.displayPage();
     }
 
     /**
@@ -152,6 +172,10 @@ class Page {
         valCell.innerText = val;
     }
 
+    /**
+     * Creates page buttons at the bottom of the table, and manages
+     * their onclick functionality to display the correct page.
+     */
     writePageButtons() {
         const containerContents = document.getElementById('container-contents');
         const pageButtonsDiv = containerContents.appendChild(document.createElement('div'));
@@ -176,11 +200,19 @@ class Page {
         }
     }
 
+    /**
+     *
+     * @returns true if there are no previous pages.
+     */
     isFirstPage() {
         return this.currentPage * this.itemsPerPage == 0;
     }
 
+    /**
+     *
+     * @returns true if there are no following pages.
+     */
     isLastPage() {
-        return this.currentPage * this.itemsPerPage + this.itemsPerPage == this.entries.length;
+        return this.currentPage * this.itemsPerPage + this.itemsPerPage >= this.entries.length;
     }
 }
