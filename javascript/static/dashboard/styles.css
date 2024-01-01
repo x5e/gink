@@ -40,4 +40,16 @@ table {
     height: 4rem;
 }
 
+#page-buttons-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 5rem;
+}
+
 /* Classes */
+
+.page-btn {
+    cursor: pointer;
+}
