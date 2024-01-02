@@ -51,6 +51,26 @@ function shortenedString(string) {
 }
 
 /**
+ * Combines keyValContainerAsMap and valContainerAsArray to
+ * standardize getting entries from any container.
+ * @param {gink.Container} container
+ * @returns an Array of either [key, value] or values
+ */
+async function containerAsArray(container) {
+    let entries;
+    if ([4, 6].includes(container.behavior)) {
+        // Container has key and value (Directory or PairMap)
+        const asMap = await keyValContainerAsMap(container);
+        entries = Array.from(asMap.entries());
+    }
+    else {
+        // Container uses value entries only
+        entries = await valContainerAsArray(container);
+    }
+    return entries;
+}
+
+/**
  * Converts a key, value container to a JavaScript Map.
  * Throws an error if the Gink container does not hold keys,
  * like a Sequence, for example.
@@ -106,4 +126,85 @@ async function valContainerAsArray(container) {
             throw new Error(`not sure how to get entries for ${container.constructor.name}`);
     }
     return arr;
+}
+
+
+/**
+ * Standardizes adding entries to gink containers.
+ * @param {*} key optional key if adding to a key, value container.
+ * @param {*} val optional value to add to database.
+ */
+async function addContainerEntry(key, val, container) {
+    gink.ensure(key || val, 'Need to specify key or value');
+    gink.ensure(container, 'Need to specify container.');
+    if (key) gink.ensure(hasKeysOrValues(container)[0] == true, 'container doesnt use keys');
+    if (val) gink.ensure(hasKeysOrValues(container)[1] == true, 'container doesnt use values');
+    switch (container.behavior) {
+        case 1: // Box
+            await container.set(val);
+            break;
+        case 2: // Sequence
+            await container.push(val);
+            break;
+        case 3: // KeySet
+            await container.add(key);
+            break;
+        case 4: // Directory
+            await container.set(key, val);
+            break;
+        case 5: // PairSet
+            gink.ensure(Array.isArray(key) && key.length == 2);
+            gink.ensure(key[0] instanceof gink.Container || "timestamp" in key[0]);
+            gink.ensure(key[1] instanceof gink.Container || "timestamp" in key[1]);
+            await container.include(key);
+            break;
+        case 6: // PairMap
+            gink.ensure(Array.isArray(key) && key.length == 2);
+            gink.ensure(key[0] instanceof gink.Container || "timestamp" in key[0]);
+            gink.ensure(key[1] instanceof gink.Container || "timestamp" in key[1]);
+            await container.set(key, val);
+        case 10: // Role
+            gink.ensure(key instanceof gink.Container || "timestamp" in key);
+            await container.include(key);
+            break;
+        default:
+            throw new Error(`not sure how to add entry to ${container.constructor.name}`);
+    }
+}
+
+/**
+ * Determines whether a container uses keys, values, or both.
+ * @param {gink.Container} container
+ */
+function hasKeysOrValues(container) {
+    let hasKeys = false;
+    let hasValues = false;
+    switch (container.behavior) {
+        case 1: // Box
+            hasValues = true;
+            break;
+        case 2: // Sequence
+            hasValues = true;
+            break;
+        case 3: // KeySet
+            hasKeys = true;
+            break;
+        case 4: // Directory
+            hasKeys = true;
+            hasValues = true;
+            break;
+        case 5: // PairSet
+            hasKeys = true;
+            break;
+        case 6: // PairMap
+            hasKeys = true;
+            hasValues = true;
+            break;
+        case 10: // Role
+            hasKeys = true;
+            break;
+        default:
+            throw new Error(`Either invalid behavior or container is verb, or vertex, which don't have entries.`);
+    }
+    return [hasKeys, hasValues];
 }

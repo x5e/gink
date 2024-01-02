@@ -1,3 +1,8 @@
+/**
+ * This class assumes the existence of a div element
+ * with an id of container-contents.
+ */
+
 class Page {
     constructor(muid, currentPage = 0, itemsPerPage = 10) {
         this.currentPage = currentPage;
@@ -7,16 +12,9 @@ class Page {
 
     async init(muid) {
         this.container = await gink.construct(window.instance, muid);
-        if ([4, 6].includes(this.container.behavior)) {
-            // Container has key entries (Directory or PairMap)
-            const asMap = await keyValContainerAsMap(this.container);
-            this.entries = Array.from(asMap.entries());
-            this.hasKeys = true;
-        } else {
-            // Container uses value entries only
-            this.entries = await valContainerAsArray(this.container);
-            this.hasKeys = false;
-        }
+        this.entries = await containerAsArray(this.container);
+        [this.hasKeys, this.hasValues] = hasKeysOrValues(this.container);
+        gink.ensure(this.hasKeys || this.hasValues);
     }
 
     /**
@@ -38,6 +36,9 @@ class Page {
         title.innerText = `${this.container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
     }
 
+    /**
+     * Adds info about the current page below the title.
+     */
     async writeRangeInfo() {
         const containerContents = document.getElementById('container-contents');
         const numEntries = containerContents.appendChild(document.createElement('p'));
@@ -91,7 +92,7 @@ class Page {
         thisContainerTable.innerHTML = `
         <tr>
             ${this.hasKeys ? '<th>Key</th>' : ''}
-            <th>Value</th>
+            ${this.hasValues ? '<th>Value</th>' : ''}
         </tr>`;
 
         if (this.entries.length == 0) {
@@ -99,11 +100,17 @@ class Page {
             p.innerText = "No entries.";
             return;
         }
-        if (this.hasKeys) {
+        if (this.hasKeys && this.hasValues) {
             for (const [key, val] of this.getPageOfEntries()) {
                 this.createRow(key, val);
             }
-        } else {
+        }
+        else if (this.hasKeys && !this.hasValues) {
+            for (const key of this.getPageOfEntries()) {
+                this.createRow(key);
+            }
+        }
+        else if (!this.hasKeys && this.hasValues) {
             for (const val of this.getPageOfEntries()) {
                 this.createRow(undefined, val);
             }
@@ -123,8 +130,12 @@ class Page {
 
     async setItemsPerPage(itemsPerPage) {
         this.itemsPerPage = itemsPerPage;
+        this.currentPage = 0;
     }
 
+    /**
+     * Displays the page to add a new entry to the database.
+     */
     async displayAddEntry() {
         await this.ready;
         const containerContents = document.getElementById('container-contents');
@@ -147,22 +158,23 @@ class Page {
             </div>
             `;
         }
-        entryFields.innerHTML += `
+        if (this.hasValues) {
+            entryFields.innerHTML += `
             <div class="input-container">
                 <label for="val">Value</label>
                 <input type="text" name="val" id="val-input" />
             </div>
             `;
-
+        }
         const submitButton = entryFields.appendChild(document.createElement('button'));
         submitButton.innerText = 'Commit Entry';
         submitButton.onclick = async () => {
-            const key = document.getElementById('key-input').value;
-            const val = document.getElementById('val-input').value;
-            if (key && val) {
-                await this.container.set(key, val);
-                await this.displayPage(true);
-            }
+            let key = document.getElementById('key-input');
+            key = key ? key.value : undefined;
+            let val = document.getElementById('val-input');
+            val = val ? val.value : undefined;
+            await addContainerEntry(key, val, this.container);
+            await this.displayPage(true);
         };
     }
 
