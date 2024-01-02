@@ -22,11 +22,6 @@ export interface Store {
     getChainTracker: () => Promise<ChainTracker>;
 
     /**
-     * Check the store to see how far along a given chain it has data for.
-     */
-    getSeenThrough: (key: [Medallion, ChainStart]) => Promise<SeenThrough | undefined>;
-
-    /**
      * Returns a set of chains that may be appended to.
      * You'll need to getChainTracker to figure out the last
      * commit for any chain you want to add to though.
@@ -57,7 +52,7 @@ export interface Store {
      *
      * Implicitly awaits on this.ready;
      */
-    addBundle(bundleBytes: Bytes): Promise<[BundleInfo, boolean]>;
+    addBundle(bundleBytes: Bytes): Promise<BundleInfo>;
 
     /**
      * Get all commits from a store ordered by [timestamp, medallion].

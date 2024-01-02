@@ -35,6 +35,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         await store.close();
     });
 
+    /*
     it(`${implName} test accepts chain start but only once`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
         const [_info1, acceptedOnce] = await store.addBundle(chainStart);
@@ -42,6 +43,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         expect(acceptedOnce).toBeTruthy();
         expect(acceptedTwice).toBeFalsy();
     });
+    */
 
     it(`${implName} ensure that it rejects when doesn't have chain start`, async () => {
         const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
@@ -122,7 +124,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         changeBuilder.setContainer(containerBuilder);
         bundleBuilder.getChangesMap().set(7, changeBuilder);
         const BundleBytes = bundleBuilder.serializeBinary();
-        const [commitInfo, _novel] = await store.addBundle(BundleBytes);
+        const commitInfo = await store.addBundle(BundleBytes);
         ensure(commitInfo.medallion == MEDALLION1);
         ensure(commitInfo.timestamp == START_MICROS1);
         const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });

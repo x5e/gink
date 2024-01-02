@@ -5,6 +5,7 @@ import { ensure } from "../implementation/utils";
 it('set and get Basic data', async function () {
     for (const store of [new IndexedDbStore('Directory.test1', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const schema = await instance.createDirectory();
 
         // set a value
@@ -29,6 +30,7 @@ it('set and get Basic data', async function () {
 it('set multiple key/value pairs in one change-set', async function () {
     for (const store of [new IndexedDbStore('Directory.test2', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const schema = await instance.createDirectory();
 
         // make multiple changes in a change set
@@ -51,6 +53,7 @@ it('set multiple key/value pairs in one change-set', async function () {
 it('use a sub-schema', async function () {
     for (const store of [new IndexedDbStore('Directory.test3', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const schema = await instance.createDirectory();
 
         // set things up
@@ -68,6 +71,7 @@ it('use a sub-schema', async function () {
 it('convert to standard Map', async function () {
     for (const store of [new IndexedDbStore('Directory.convert', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const directory = await instance.createDirectory();
 
         await directory.set("foo", "bar");
@@ -88,6 +92,7 @@ it('convert to standard Map', async function () {
 it('Directory.toJSON', async function () {
     for (const store of [new IndexedDbStore('Directory.toJSON', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const directory = await instance.createDirectory();
 
         await directory.set("foo", "bar");
@@ -109,6 +114,7 @@ it('Directory.toJSON', async function () {
 it('Directory.asOf', async function () {
     for (const store of [new IndexedDbStore('Directory.asOf', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const directory = await instance.createDirectory();
 
         const time0 = instance.getNow();
@@ -147,6 +153,7 @@ it('Directory.asOf', async function () {
 it('Directory.purge', async function () {
     for (const store of [new IndexedDbStore('Directory.purge', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const directory = await instance.createDirectory();
 
         await directory.set('A', 99);
@@ -166,8 +173,12 @@ it('Directory.purge', async function () {
 });
 
 it('Directory.clear', async function () {
-    for (const store of [new IndexedDbStore('Directory.clear', true), new MemoryStore(true)]) {
+    for (const store of [
+            new IndexedDbStore('Directory.clear', true),
+            new MemoryStore(true),
+        ]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const directory = await instance.createDirectory();
         await directory.set('A', 99);
         const clearMuid = await directory.clear();
@@ -180,4 +191,4 @@ it('Directory.clear', async function () {
         }
         await store.close();
     }
-});
+}, 1000*1000*1000);

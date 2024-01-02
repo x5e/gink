@@ -2,12 +2,8 @@ import { BundleBytes, Medallion, ChainStart, SeenThrough, Bytes, AsOf, KeyType }
 import { BundleInfo, Muid, Entry, CallBack } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
-//import { FileHandle, open } from "fs/promises"; // broken on node-12 ???
-const promises = require("fs").promises;
-type FileHandle = any;
-const open = promises.open;
+import { FileHandle, open } from "fs/promises";
 import { flock } from "fs-ext";
-import { assert } from "console";
 import { ChainTracker } from "./ChainTracker";
 import { ChainEntryBuilder, LogFileBuilder } from "./builders";
 
@@ -29,9 +25,11 @@ export class LogBackedStore implements Store {
     private commitsProcessed = 0;
     private fileHandle: FileHandle;
     private indexedDbStore: IndexedDbStore;
+    private chainTracker: ChainTracker;
 
     constructor(readonly filename: string, reset = false, protected logger: CallBack = (() => null)) {
         // console.error(`opening ${filename}`);
+        this.chainTracker = new ChainTracker({});
         this.ready = this.initialize(filename, reset);
     }
 
@@ -78,8 +76,8 @@ export class LogBackedStore implements Store {
                 const logFileBuilder = <LogFileBuilder>LogFileBuilder.deserializeBinary(uint8Array);
                 const commits = logFileBuilder.getCommitsList();
                 for (const commit of commits) {
-                    const [_info, added] = await this.indexedDbStore.addBundle(commit);
-                    assert(added);
+                    const info = await this.indexedDbStore.addBundle(commit);
+                    this.chainTracker.markAsHaving(info);
                     this.commitsProcessed += 1;
                 }
                 const chainEntries = logFileBuilder.getChainEntriesList();
@@ -106,25 +104,23 @@ export class LogBackedStore implements Store {
         return this.commitsProcessed;
     }
 
-    async addBundle(commitBytes: BundleBytes): Promise<[BundleInfo, boolean]> {
-        await this.ready;
-        const [info, added] = await this.indexedDbStore.addBundle(commitBytes);
-        if (added) {
-            const logFragment = new LogFileBuilder();
-            logFragment.setCommitsList([commitBytes]);
-            await this.fileHandle.appendFile(logFragment.serializeBinary());
-        }
-        return [info, added];
+    async addBundle(commitBytes: BundleBytes): Promise<BundleInfo> {
+        return this.ready.then(() => {
+            return this.indexedDbStore.addBundle(commitBytes).then((info) => {
+                const added = this.chainTracker.markAsHaving(info);
+                if (added) {
+                    const logFragment = new LogFileBuilder();
+                    logFragment.setCommitsList([commitBytes]);
+                    return this.fileHandle.appendFile(logFragment.serializeBinary()).then(() => info);
+                }
+                return Promise.resolve(info);
+            });
+        });
     }
 
     async getClaimedChains() {
         await this.ready;
         return this.indexedDbStore.getClaimedChains();
-    }
-
-    async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
-        await this.ready;
-        return this.indexedDbStore.getSeenThrough(key);
     }
 
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {

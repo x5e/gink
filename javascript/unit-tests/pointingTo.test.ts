@@ -4,6 +4,7 @@ import { ensure } from "../implementation/utils";
 it('pointingTo', async function () {
     for (const store of [new IndexedDbStore('pointingTo', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
 
         const target = await instance.createBox();
 
