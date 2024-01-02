@@ -251,7 +251,7 @@ export class IndexedDbStore implements Store {
 
     private async addBundleHelper(bundleBytes: BundleBytes, bundleInfo: BundleInfo, bundleBuilder: BundleBuilder):
     Promise<Transaction> {
-        console.log(`starting addBundleHelper for: ` + JSON.stringify(bundleInfo));
+        // console.log(`starting addBundleHelper for: ` + JSON.stringify(bundleInfo));
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const wrappedTransaction = this.getTransaction();
         const oldChainInfo: BundleInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
@@ -411,7 +411,7 @@ export class IndexedDbStore implements Store {
             }
             throw new Error("don't know how to apply this kind of change");
         }
-        console.log(`finished addBundleHelper for: ` + JSON.stringify(bundleInfo));
+        // console.log(`finished addBundleHelper for: ` + JSON.stringify(bundleInfo));
         return wrappedTransaction;
     }
 

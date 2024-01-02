@@ -238,7 +238,7 @@ export class GinkInstance {
         };
         bundler.seal(commitInfo);
         this.iHave.markAsHaving(commitInfo);
-        console.log(`sending: ` + JSON.stringify(commitInfo));
+        // console.log(`sending: ` + JSON.stringify(commitInfo));
         return this.receiveCommit(bundler.bytes);
     }
 
@@ -302,7 +302,7 @@ export class GinkInstance {
         await this.ready;
         const peer = this.peers.get(fromConnectionId);
         if (!peer) throw Error("Got a message from a peer I don't have a proxy for?");
-        const unlockingFunction = await this.processingLock.acquireLock();
+        //const unlockingFunction = await this.processingLock.acquireLock();
         try {
             const parsed = <SyncMessageBuilder>SyncMessageBuilder.deserializeBinary(messageBytes);
             if (parsed.hasBundle()) {
@@ -332,7 +332,7 @@ export class GinkInstance {
             this.peers.get(fromConnectionId)?.close();
             this.peers.delete(fromConnectionId);
         } finally {
-            unlockingFunction();
+            //unlockingFunction();
         }
     }
 
