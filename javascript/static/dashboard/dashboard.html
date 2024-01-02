@@ -23,6 +23,27 @@
         window.instance = new gink.GinkInstance(store);
         await window.instance.connectTo(`ws://${window.location.host}`);
 
+        // const medallionDir = window.instance.getMedallionDirectory();
+        // const keySet = await window.instance.createKeySet();
+        // await keySet.update(["value1", "value2", "value3", "more"]);
+        // const role = await window.instance.createRole();
+        // await role.include(keySet);
+        // await role.include(medallionDir);
+        // const pairSet = await window.instance.createPairSet();
+        // await pairSet.include([keySet, medallionDir]);
+        // await pairSet.include([role, keySet]);
+
+        // const pairMap = await window.instance.createPairMap();
+        // await pairMap.set([keySet, medallionDir], "ks->medallion");
+        // await pairMap.set([role, keySet], "role->keyset");
+        // const box = await window.instance.createBox();
+        // await box.set('this is the value in the box');
+        // await medallionDir.set('keyset', keySet);
+        // await medallionDir.set('role', role);
+        // await medallionDir.set('pairset', pairSet);
+        // await medallionDir.set('pairmap', pairMap);
+        // await medallionDir.set('box', box);
+
         let muid;
         if (!window.location.hash) {
             muid = window.instance.getGlobalDirectory().address;

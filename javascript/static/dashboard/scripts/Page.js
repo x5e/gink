@@ -67,8 +67,8 @@ class Page {
 
         const addEntryButton = containerContents.appendChild(document.createElement('button'));
         addEntryButton.innerText = "Add Entry";
-        addEntryButton.onclick = () => {
-            this.displayAddEntry();
+        addEntryButton.onclick = async () => {
+            await this.displayAddEntry();
         };
     }
 
@@ -102,17 +102,17 @@ class Page {
         }
         if (this.hasKeys && this.hasValues) {
             for (const [key, val] of this.getPageOfEntries()) {
-                this.createRow(key, val);
+                await this.createRow(key, val);
             }
         }
         else if (this.hasKeys && !this.hasValues) {
             for (const key of this.getPageOfEntries()) {
-                this.createRow(key);
+                await this.createRow(key);
             }
         }
         else if (!this.hasKeys && this.hasValues) {
             for (const val of this.getPageOfEntries()) {
-                this.createRow(undefined, val);
+                await this.createRow(undefined, val);
             }
         }
         this.writePageButtons();
@@ -183,11 +183,11 @@ class Page {
      * @param {*} key
      * @param {*} val
      */
-    createRow(key, val) {
+    async createRow(key, val) {
         const table = document.getElementById('container-table');
         const row = table.appendChild(document.createElement('tr'));
-        if (key) this.createCell(row, key);
-        if (val) this.createCell(row, val);
+        if (key) await this.createCell(row, key);
+        if (val) await this.createCell(row, val);
     }
 
     /**
@@ -195,11 +195,19 @@ class Page {
      * @param {HTMLRowElement} row an HTML row node.
      * @param {*} content a key or value to place into the row.
      */
-    createCell(row, content) {
+    async createCell(row, content) {
         let showing; // the initial preview shown
         const cell = row.appendChild(document.createElement('td'));
         cell.dataset['state'] = 'long';
-        if (content instanceof gink.Container) {
+        if (Array.isArray(content) && content.length == 2 && content[0].timestamp) {
+            let container1 = await gink.construct(window.instance, content[0]);
+            let container2 = await gink.construct(window.instance, content[1]);
+            cell.style.fontWeight = "bold";
+            cell.innerHTML = `
+            <a href="#${gink.muidToString(container1.address)}">${container1.constructor.name}</a>-<a href="${gink.muidToString(container2.address)}">${container2.constructor.name}</a>
+            `;
+        }
+        else if (content instanceof gink.Container) {
             cell.style.fontWeight = "bold";
             cell.style.cursor = "pointer";
             cell.onclick = () => {
@@ -207,13 +215,13 @@ class Page {
                 window.location.hash = '#' + gink.muidToString(content.address);
                 window.location.reload();
             };
-            showing = `${content.constructor.name}(${gink.muidToString(content.address)})`;
+            cell.innerText = `${content.constructor.name}(${gink.muidToString(content.address)})`;
         } else {
             content = unwrapToString(content);
             if (content.length > 20) {
                 cell.style.cursor = "pointer";
                 let longContent = content;
-                showing = shortenedString(content);
+                cell.innerText = shortenedString(content);
                 cell.dataset['state'] = 'short';
                 cell.onclick = () => {
                     if (cell.dataset["state"] == 'short') {
@@ -227,10 +235,9 @@ class Page {
                 };
             }
             else {
-                showing = content;
+                cell.innerText = content;
             }
         }
-        cell.innerText = showing;
     }
 
     /**

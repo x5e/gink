@@ -57,6 +57,9 @@ function shortenedString(string) {
  * @returns an Array of either [key, value] or values
  */
 async function containerAsArray(container) {
+    // This is a little confusing as containers like a Role
+    // actually use "keys", but for the purpose of this function
+    // they will just be called values.
     let entries;
     if ([4, 6].includes(container.behavior)) {
         // Container has key and value (Directory or PairMap)
@@ -127,7 +130,6 @@ async function valContainerAsArray(container) {
     }
     return arr;
 }
-
 
 /**
  * Standardizes adding entries to gink containers.
