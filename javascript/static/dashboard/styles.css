@@ -52,6 +52,27 @@ td {
     width: 5rem;
 }
 
+#cancel-button {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    width: 35px;
+    height: 35px;
+}
+
+#entry-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 20svh;
+    text-align: right;
+}
+
+#key-input,
+#val-input {
+    width: 10rem;
+}
+
 /* Classes */
 
 .page-btn {

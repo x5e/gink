@@ -32,10 +32,14 @@ class Page {
      */
     async writeTitle() {
         const containerContents = document.getElementById('container-contents');
-        const titleBar = containerContents.appendChild(document.createElement('div'));
-        titleBar.setAttribute('id', 'title-bar');
+        const title = containerContents.appendChild(document.createElement('h2'));
+        title.setAttribute('id', 'title-bar');
         const muid = this.container.address;
-        titleBar.innerHTML = `<h2>${this.container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})</h2>`;
+        title.innerText = `${this.container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
+    }
+
+    async writeRangeInfo() {
+        const containerContents = document.getElementById('container-contents');
         const numEntries = containerContents.appendChild(document.createElement('p'));
         numEntries.innerText = `Total entries: ${this.entries.length}`;
 
@@ -59,19 +63,29 @@ class Page {
         const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
         const maxEntries = upperBound >= this.entries.length ? this.entries.length : upperBound;
         showing.innerText = `Showing entries ${this.currentPage * this.itemsPerPage}-${maxEntries}`;
+
+        const addEntryButton = containerContents.appendChild(document.createElement('button'));
+        addEntryButton.innerText = "Add Entry";
+        addEntryButton.onclick = () => {
+            this.displayAddEntry();
+        };
     }
 
     /**
      * Edits the HTML to display the contents of a container.
      * Can take either the Muid object itself, or the canonical
      * string muid.
+     * @param {boolean} reloadContainer should the container be refreshed?
+     * useful if data was just added or removed.
      */
-    async displayPage() {
+    async displayPage(reloadContainer) {
+        if (reloadContainer) await this.init(this.container.address);
         await this.ready;
-        clearChildren(document.getElementById('container-contents'));
         const containerContents = document.getElementById('container-contents');
+        clearChildren(containerContents);
 
-        await this.writeTitle(this.container);
+        await this.writeTitle();
+        await this.writeRangeInfo();
         const thisContainerTable = containerContents.appendChild(document.createElement('table'));
         thisContainerTable.setAttribute('id', 'container-table');
         thisContainerTable.innerHTML = `
@@ -94,7 +108,6 @@ class Page {
                 this.createRow(undefined, val);
             }
         }
-
         this.writePageButtons();
     }
 
@@ -110,6 +123,47 @@ class Page {
 
     async setItemsPerPage(itemsPerPage) {
         this.itemsPerPage = itemsPerPage;
+    }
+
+    async displayAddEntry() {
+        await this.ready;
+        const containerContents = document.getElementById('container-contents');
+        clearChildren(containerContents);
+        await this.writeTitle();
+        const cancelButton = containerContents.appendChild(document.createElement('button'));
+        cancelButton.setAttribute('id', 'cancel-button');
+        cancelButton.innerText = 'X';
+        cancelButton.onclick = () => {
+            this.displayPage();
+        };
+
+        const entryFields = containerContents.appendChild(document.createElement('div'));
+        entryFields.setAttribute('id', 'entry-container');
+        if (this.hasKeys) {
+            entryFields.innerHTML += `
+            <div class="input-container">
+                <label for="key">Key</label>
+                <input type="text" name="key" id="key-input" />
+            </div>
+            `;
+        }
+        entryFields.innerHTML += `
+            <div class="input-container">
+                <label for="val">Value</label>
+                <input type="text" name="val" id="val-input" />
+            </div>
+            `;
+
+        const submitButton = entryFields.appendChild(document.createElement('button'));
+        submitButton.innerText = 'Commit Entry';
+        submitButton.onclick = async () => {
+            const key = document.getElementById('key-input').value;
+            const val = document.getElementById('val-input').value;
+            if (key && val) {
+                await this.container.set(key, val);
+                await this.displayPage(true);
+            }
+        };
     }
 
     /**
