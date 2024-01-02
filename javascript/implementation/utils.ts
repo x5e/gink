@@ -233,17 +233,6 @@ export function matches(a: any[], b: any[]) {
     return true;
 }
 
-export function stringMuidToHex(string: String) {
-    let returning = "";
-    const split = string.split(",");
-    ensure(split.length == 3);
-    for (let i = 0; i < 3; i++) {
-        returning += Number(split[i]).toString(16).toUpperCase();
-        if (i != 2) returning += "-";
-    }
-    return returning;
-}
-
 export function pairKeyToArray(effectiveKey: String): Array<Muid> {
     const split = effectiveKey.split(",");
     ensure(split.length == 2);
@@ -257,10 +246,12 @@ export function pairKeyToArray(effectiveKey: String): Array<Muid> {
  * @returns a string of the canonical string representation
  */
 export function muidToString(muid: Muid): string {
-    let timestamp = (`0` + byteToHex(muid.timestamp));
-    let medallion = (byteToHex(muid.medallion));
-    let offset = (byteToHex(muid.offset));
-    return `${timestamp}-${medallion}-${offset}`;
+    let timestamp = intToHex(muid.timestamp, 14);
+    let medallion = intToHex(muid.medallion, 13);
+    let offset = intToHex(muid.offset, 5);
+    let result = `${timestamp}-${medallion}-${offset}`;
+    ensure(result.length == 34);
+    return result;
 }
 
 export function muidTupleToString(muidTuple: MuidTuple): string {
@@ -269,25 +260,58 @@ export function muidTupleToString(muidTuple: MuidTuple): string {
         timestamp = 'FFFFFFFFFFFFFF';
     }
     else {
-        timestamp = (`0` + byteToHex(muidTuple[0]));
+        timestamp = intToHex(muidTuple[0], 14);
     }
-    let medallion = (byteToHex(muidTuple[1]));
-    let offset = (byteToHex(muidTuple[2]));
+    let medallion = intToHex(muidTuple[1], 13);
+    let offset = intToHex(muidTuple[2], 5);
     return `${timestamp}-${medallion}-${offset}`;
 }
 
 export function strToMuid(value: string): Muid {
     const nums = value.split("-");
     return {
-        timestamp: parseInt(nums[0], 16),
-        medallion: parseInt(nums[1], 16),
-        offset: parseInt(nums[2], 16)
+        timestamp: muidHexToInt(nums[0]),
+        medallion: muidHexToInt(nums[1]),
+        offset: muidHexToInt(nums[2])
     };
 }
 
-export function byteToHex(byte: number) {
-    const returning = byte.toString(16).toUpperCase();
-    return byte < 0x10 ? '0' + returning : returning;
+/**
+ * Converts a hexadecimal string to an integer. String should
+ * not contain more than 14 characters.
+ * @param hexString hexadecimal string <= 14 characters
+ * @returns a signed integer.
+ */
+function muidHexToInt(hexString: string): number {
+    ensure(hexString.length <= 14);
+    let beginningAddition = BigInt(0);
+    if (hexString.length == 14) {
+        let beginning = hexString.substring(0, 1);
+        hexString = hexString.substring(1);
+        if (beginning == '1') {
+            beginningAddition = BigInt(16) ** BigInt(14);
+        }
+    }
+    let len = hexString.length;
+    let mod = BigInt(16) ** BigInt(len);
+    let num = BigInt(parseInt(hexString, 16));
+    mod = mod * ((num > (mod >> BigInt(1))) ? BigInt(1) : BigInt(0));
+    return Number(num + beginningAddition - mod);
+}
+
+/**
+ * Converts a number to its hexadecimal equivalent.
+ * @param value
+ * @param padding maximum size of hex string, padded by 0s.
+ * @returns a hexadecimal string
+ */
+export function intToHex(value: number, padding?: number): string {
+    const digits = padding || 0;
+    const twosComplement = value < 0
+        ? BigInt(16) ** BigInt(digits) + BigInt(value)
+        : value;
+
+    return twosComplement.toString(16).padStart(digits, '0').toUpperCase();
 }
 
 export function valueToJson(value: Value): string {
@@ -300,7 +324,7 @@ export function valueToJson(value: Value): string {
         return `${value}`;
     }
     if (value instanceof Uint8Array) {
-        const hexString = Array.from(value).map(byteToHex).join("");
+        const hexString = Array.from(value).map(intToHex).join("");
         return `"${hexString}"`;
     }
     if ("function" === typeof value["toISOString"]) {

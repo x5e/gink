@@ -5,6 +5,7 @@ testStore('MemoryStore', async () => new MemoryStore(true));
 it('test basic operations', async () => {
     const memStore = new MemoryStore(true);
     const instance = new GinkInstance(memStore);
+    await instance.ready;
     const dir = instance.getGlobalDirectory();
     await dir.set("foo", "bar");
     const beforeSecondSet = generateTimestamp();
@@ -22,6 +23,7 @@ it('test basic operations', async () => {
 it('tests getEntryByKey and getKeyedEntries', async () => {
     const memStore = new MemoryStore(true);
     const instance = new GinkInstance(memStore);
+    await instance.ready;
     const dir = instance.getGlobalDirectory();
     const id = await dir.set("foo", "bar");
     await dir.set("bar", "foo");

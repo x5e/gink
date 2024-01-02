@@ -34,6 +34,7 @@ export class GinkInstance {
     private countConnections = 0; // Includes disconnected clients.
     private myChain: [Medallion, ChainStart];
     private processingLock = new PromiseChainLock();
+    private initilized = false;
     protected iHave: ChainTracker;
 
     //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
@@ -81,7 +82,8 @@ export class GinkInstance {
             await this.store.claimChain(medallion, chainStart);
         }
         this.iHave = await this.store.getChainTracker();
-        this.logger(`GinkInstance.ready`);
+        this.initilized = true;
+        //this.logger(`GinkInstance.ready`);
     }
 
     /**
@@ -226,27 +228,22 @@ export class GinkInstance {
      * @param bundler a PendingCommit ready to be sealed
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
-    public async addBundler(bundler: Bundler): Promise<BundleInfo> {
-        let unlockingFunction: CallBack;
-        let resultInfo: BundleInfo;
-        try {
-            unlockingFunction = await this.processingLock.acquireLock();
-            await this.ready;
-            const nowMicros = generateTimestamp();
-            const seenThrough = await this.store.getSeenThrough(this.myChain);
-            ensure(seenThrough > 0 && (seenThrough < nowMicros));
-            const commitInfo: BundleInfo = {
-                medallion: this.myChain[0],
-                chainStart: this.myChain[1],
-                timestamp: seenThrough >= nowMicros ? seenThrough + 1 : nowMicros,
-                priorTime: seenThrough,
-            };
-            resultInfo = bundler.seal(commitInfo);
-            await this.receiveCommit(bundler.bytes);
-        } finally {
-            unlockingFunction();
-        }
-        return resultInfo;
+    public addBundler(bundler: Bundler): Promise<BundleInfo> {
+        if (!this.initilized) throw new Error("GinkInstance not ready");
+        const nowMicros = generateTimestamp();
+        const lastBundleInfo = this.iHave.getCommitInfo(this.myChain);
+        const seenThrough = lastBundleInfo.timestamp;
+        ensure(seenThrough > 0 && (seenThrough < nowMicros));
+        const commitInfo: BundleInfo = {
+            medallion: this.myChain[0],
+            chainStart: this.myChain[1],
+            timestamp: seenThrough >= nowMicros ? seenThrough + 1 : nowMicros,
+            priorTime: seenThrough,
+        };
+        bundler.seal(commitInfo);
+        this.iHave.markAsHaving(commitInfo);
+        // console.log(`sending: ` + JSON.stringify(commitInfo));
+        return this.receiveCommit(bundler.bytes);
     }
 
     /**
@@ -281,24 +278,23 @@ export class GinkInstance {
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns
      */
-    private async receiveCommit(commitBytes: BundleBytes, fromConnectionId?: number): Promise<void> {
-        await this.ready;
-        const [bundleInfo, novel] = await this.store.addBundle(commitBytes);
-        this.iHave.markAsHaving(bundleInfo);
-        this.logger(`got ${novel} novel commit from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
-        const peer = this.peers.get(fromConnectionId);
-        if (peer) {
-            peer.hasMap?.markAsHaving(bundleInfo);
-            peer._sendAck(bundleInfo);
-        }
-        if (!novel) return;
-        for (const [peerId, peer] of this.peers) {
-            if (peerId != fromConnectionId)
-                peer._sendIfNeeded(commitBytes, bundleInfo);
-        }
-        for (const listener of this.listeners) {
-            await listener(bundleInfo);
-        }
+    private receiveCommit(commitBytes: BundleBytes, fromConnectionId?: number): Promise<BundleInfo> {
+        return this.store.addBundle(commitBytes).then((bundleInfo) => {
+            this.logger(`commit from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
+            const peer = this.peers.get(fromConnectionId);
+            if (peer) {
+                peer.hasMap?.markAsHaving(bundleInfo);
+                peer._sendAck(bundleInfo);
+            }
+            for (const [peerId, peer] of this.peers) {
+                if (peerId != fromConnectionId)
+                    peer._sendIfNeeded(commitBytes, bundleInfo);
+            }
+            for (const listener of this.listeners) {
+                listener(bundleInfo);
+            }
+            return bundleInfo
+        });
     }
 
     /**
@@ -310,7 +306,7 @@ export class GinkInstance {
         await this.ready;
         const peer = this.peers.get(fromConnectionId);
         if (!peer) throw Error("Got a message from a peer I don't have a proxy for?");
-        const unlockingFunction = await this.processingLock.acquireLock();
+        //const unlockingFunction = await this.processingLock.acquireLock();
         try {
             const parsed = <SyncMessageBuilder>SyncMessageBuilder.deserializeBinary(messageBytes);
             if (parsed.hasBundle()) {
@@ -340,7 +336,7 @@ export class GinkInstance {
             this.peers.get(fromConnectionId)?.close();
             this.peers.delete(fromConnectionId);
         } finally {
-            unlockingFunction();
+            //unlockingFunction();
         }
     }
 

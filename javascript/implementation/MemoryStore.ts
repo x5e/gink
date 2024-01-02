@@ -132,15 +132,11 @@ export class MemoryStore implements Store {
         return Promise.resolve(chainTracker);
     }
 
-    async getSeenThrough(key: [Medallion, ChainStart]): Promise<SeenThrough> {
-        return Promise.resolve(this.chainInfos.get(medallionChainStartToString(key)).timestamp);
-    }
-
     private getChainInfos(): Iterable<BundleInfo> {
         return this.chainInfos.values();
     }
 
-    async addBundle(bundleBytes: BundleBytes): Promise<[BundleInfo, boolean]> {
+    async addBundle(bundleBytes: BundleBytes): Promise<BundleInfo> {
         await this.ready;
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
         const bundleInfo = extractCommitInfo(bundleBuilder);
@@ -148,7 +144,7 @@ export class MemoryStore implements Store {
         const oldChainInfo = this.chainInfos.get(medallionChainStartToString([medallion, chainStart]));
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
-                return [bundleInfo, false];
+                return bundleInfo;
             }
             if (oldChainInfo?.timestamp != priorTime) {
                 throw new Error(`missing prior chain entry for ${bundleInfo}, have ${oldChainInfo}`);
@@ -326,7 +322,7 @@ export class MemoryStore implements Store {
             }
             throw new Error("don't know how to apply this kind of change");
         }
-        return [bundleInfo, true];
+        return bundleInfo;
     }
 
     private static commitInfoToKey(commitInfo: BundleInfo): BundleInfoTuple {
@@ -410,8 +406,8 @@ export class MemoryStore implements Store {
         if (upperClearance) {
             clearanceTime = upperClearance[1].clearanceId[0];
         }
-        const lower = this.entries.lowerBound(muidTupleToString([desiredSrc[0], desiredSrc[1], Behavior.DIRECTORY]));
-        const upper = this.entries.upperBound(muidTupleToString([asOfTs, desiredSrc[1], Behavior.DIRECTORY]));
+        const lower = this.entries.lowerBound(muidTupleToString([Math.abs(desiredSrc[0]), Math.abs(desiredSrc[1]), Behavior.DIRECTORY]));
+        const upper = this.entries.upperBound(muidTupleToString([asOfTs, Math.abs(desiredSrc[1]), Behavior.DIRECTORY]));
         const result = new Map();
         while (lower) {
             const entry = <Entry>lower.value;
@@ -425,7 +421,6 @@ export class MemoryStore implements Store {
                     } else if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
                         // If the key is a MuidTuple
                         key = muidToString(muidTupleToMuid(entry.effectiveKey));
-
                     } else {
                         throw Error(`not sure what to do with a ${typeof (key)} key`);
                     }

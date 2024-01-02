@@ -7,6 +7,7 @@ import { BundleBuilder } from "../implementation/builders";
 it('test commit', async () => {
     for (const store of [new IndexedDbStore('GinkInstance.commit', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const commitInfo = await instance.addBundler(new Bundler("hello world"));
         ensure(commitInfo.comment == "hello world");
         const chainTracker = await store.getChainTracker();

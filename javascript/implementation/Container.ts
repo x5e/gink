@@ -76,7 +76,7 @@ export class Container extends Addressable {
      * @param bundlerOrComment Bundler to add this change to, or empty to apply immediately.
      * @returns a promise the resolves to the muid of the change
      */
-    protected async addEntry(
+    protected addEntry(
         key?: KeyType | true | Addressable | Muid | [Muid | Container, Muid | Container],
         value?: Value | Addressable | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string):
@@ -141,8 +141,8 @@ export class Container extends Addressable {
         changeBuilder.setEntry(entryBuilder);
         const address = bundler.addChange(changeBuilder);
         if (immediate) {
-            await this.ginkInstance.addBundler(bundler);
+            return this.ginkInstance.addBundler(bundler).then((_) => address);
         }
-        return address;
+        return Promise.resolve(address);
     }
 }
