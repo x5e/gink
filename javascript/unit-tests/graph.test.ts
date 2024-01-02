@@ -5,6 +5,7 @@ import { ensure } from "../implementation/utils";
 it('isAlive and remove', async function () {
     const store = new IndexedDbStore('vertex1', true);
     const instance = new GinkInstance(store);
+    await instance.ready;
     const vertex = await instance.createVertex();
     const aliveTime = instance.getNow();
     ensure(await vertex.isAlive());
@@ -16,6 +17,7 @@ it('isAlive and remove', async function () {
 it('verb.createEdge', async function () {
     const store = new IndexedDbStore('verb.createEdge', true);
     const instance = new GinkInstance(store);
+    await instance.ready;
     const vertex1 = await instance.createVertex();
     const vertex2 = await instance.createVertex();
     const verb1 = await instance.createVerb();
@@ -29,6 +31,7 @@ it('verb.createEdge', async function () {
 it('from_to', async function () {
     const store = new IndexedDbStore('source.target', true);
     const instance = new GinkInstance(store);
+    await instance.ready;
     const vertex1 = await instance.createVertex();
     const vertex2 = await instance.createVertex();
     const vertex3 = await instance.createVertex();

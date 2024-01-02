@@ -7,6 +7,7 @@ export const result = 1;
 it('use methods', async () => {
     const indexedDbStore = new IndexedDbStore('IndexedDbStore.test.1');
     const ginkInstance = new GinkInstance(indexedDbStore);
+    await ginkInstance.ready;
     const dir = ginkInstance.getGlobalDirectory();
     await dir.set("foo", "bar");
     const beforeSecondSet = generateTimestamp();

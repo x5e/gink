@@ -34,6 +34,7 @@ export class GinkInstance {
     private countConnections = 0; // Includes disconnected clients.
     private myChain: [Medallion, ChainStart];
     private processingLock = new PromiseChainLock();
+    private initilized = false;
     protected iHave: ChainTracker;
 
     //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
@@ -81,7 +82,8 @@ export class GinkInstance {
             await this.store.claimChain(medallion, chainStart);
         }
         this.iHave = await this.store.getChainTracker();
-        this.logger(`GinkInstance.ready`);
+        this.initilized = true;
+        //this.logger(`GinkInstance.ready`);
     }
 
     /**
@@ -222,32 +224,21 @@ export class GinkInstance {
      * @param bundler a PendingCommit ready to be sealed
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
-    public async addBundler(bundler: Bundler): Promise<BundleInfo> {
-        //console.log("before this.ready");
-        await this.ready;
-        let unlockingFunction: CallBack;
-        let resultInfo: BundleInfo;
-        try {
-            //console.log("before locking");
-            unlockingFunction = await this.processingLock.acquireLock();
-            //console.log("after locking");
-            const nowMicros = generateTimestamp();
-            const lastBundleInfo = this.iHave.getCommitInfo(this.myChain);
-            const seenThrough = lastBundleInfo.timestamp;
-            ensure(seenThrough > 0 && (seenThrough < nowMicros));
-            const commitInfo: BundleInfo = {
-                medallion: this.myChain[0],
-                chainStart: this.myChain[1],
-                timestamp: seenThrough >= nowMicros ? seenThrough + 1 : nowMicros,
-                priorTime: seenThrough,
-            };
-            resultInfo = bundler.seal(commitInfo);
-            this.iHave.markAsHaving(commitInfo);
-            await this.receiveCommit(bundler.bytes);
-        } finally {
-            unlockingFunction();
-        }
-        return resultInfo;
+    public addBundler(bundler: Bundler): Promise<BundleInfo> {
+        if (!this.initilized) throw new Error("GinkInstance not ready");
+        const nowMicros = generateTimestamp();
+        const lastBundleInfo = this.iHave.getCommitInfo(this.myChain);
+        const seenThrough = lastBundleInfo.timestamp;
+        ensure(seenThrough > 0 && (seenThrough < nowMicros));
+        const commitInfo: BundleInfo = {
+            medallion: this.myChain[0],
+            chainStart: this.myChain[1],
+            timestamp: seenThrough >= nowMicros ? seenThrough + 1 : nowMicros,
+            priorTime: seenThrough,
+        };
+        bundler.seal(commitInfo);
+        this.iHave.markAsHaving(commitInfo);
+        return this.receiveCommit(bundler.bytes);
     }
 
     /**
@@ -282,8 +273,7 @@ export class GinkInstance {
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns
      */
-    private async receiveCommit(commitBytes: BundleBytes, fromConnectionId?: number): Promise<void> {
-        await this.ready;
+    private receiveCommit(commitBytes: BundleBytes, fromConnectionId?: number): Promise<BundleInfo> {
         return this.store.addBundle(commitBytes).then((bundleInfo) => {
             this.logger(`commit from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
             const peer = this.peers.get(fromConnectionId);
@@ -298,6 +288,7 @@ export class GinkInstance {
             for (const listener of this.listeners) {
                 listener(bundleInfo);
             }
+            return bundleInfo
         });
     }
 

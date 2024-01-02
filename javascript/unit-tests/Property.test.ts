@@ -4,6 +4,7 @@ import { ensure, sameData } from "../implementation/utils";
 it('Property.basics', async function () {
     for (const store of [new IndexedDbStore('Property.basics', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const gd = instance.getGlobalDirectory();
         const property = await instance.createProperty();
         await property.set(gd, "foobar");

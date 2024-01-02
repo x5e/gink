@@ -6,6 +6,7 @@ it('push to a queue and peek', async function () {
     // set up the objects
     for (const store of [new IndexedDbStore('list-test1', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const queue: Sequence = await instance.createSequence();
         await queue.push('dummy');
         const muid: Muid = await queue.push("Hello, World!");
@@ -20,6 +21,7 @@ it('push and pop', async function () {
     // set up the objects
     for (const store of [new IndexedDbStore('list-test2', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
 
         const list: Sequence = await instance.createSequence();
         await list.push('A');
@@ -62,6 +64,7 @@ it('size and at', async function () {
     // set up the objects
     for (const store of [new IndexedDbStore('list-test3', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
 
         const list: Sequence = await instance.createSequence();
         await list.push('A');
@@ -99,6 +102,7 @@ it('entries', async function () {
     // set up the objects
     for (const store of [new IndexedDbStore('list-test4', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
 
         const list: Sequence = await instance.createSequence();
         await list.push('A');
@@ -118,6 +122,7 @@ it('entries', async function () {
 it('list-changeset', async function () {
     for (const store of [new IndexedDbStore('list-test5', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
 
         const bundler = new Bundler();
         const list: Sequence = await instance.createSequence(bundler);
@@ -146,6 +151,7 @@ it('List.toJSON', async function () {
     // set up the objects
     for (const store of [new IndexedDbStore('list-toJSON', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
 
         const list: Sequence = await instance.createSequence();
         await list.push('A');
@@ -176,7 +182,7 @@ it('List.asOf', async function () {
     // set up the objects
     for (const store of [new IndexedDbStore('list-asOf', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
-
+        await instance.ready;
         const list: Sequence = await instance.createSequence();
         const time0 = Date.now() * 1000;
         await sleep(10);
@@ -206,6 +212,7 @@ it('List.asOf', async function () {
 it('List.clear', async function () {
     for (const store of [new IndexedDbStore('list-clear', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const list: Sequence = await instance.createSequence();
         await list.push("hello");
         await list.push("world");
@@ -228,6 +235,7 @@ it('List.clear', async function () {
 it('List.purge_pop', async function () {
     for (const store of [new IndexedDbStore('list-purgePop', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const seq = await instance.createSequence();
         await seq.push("foo");
         await seq.push("bar");

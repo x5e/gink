@@ -5,6 +5,7 @@ import { sleep } from "./test_utils";
 it('include, exclude, and contains work as intended', async function () {
     for (const store of [new IndexedDbStore('PS.test1', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const ps1 = await instance.createPairSet();
         const box1 = await instance.createBox();
         const box2 = await instance.createBox();
@@ -32,6 +33,7 @@ it('include, exclude, and contains work as intended', async function () {
 it('asOf and get_pairs work properly', async function () {
     for (const store of [new IndexedDbStore('PS.test2', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
         const ps1 = await instance.createPairSet();
         const box1 = await instance.createBox();
         const box2 = await instance.createBox();

@@ -4,6 +4,7 @@ import { ensure } from "../implementation/utils";
 it('pointingTo', async function () {
     for (const store of [new IndexedDbStore('pointingTo', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
+        await instance.ready;
 
         const target = await instance.createBox();
 
@@ -21,7 +22,7 @@ it('pointingTo', async function () {
         const refs = await store.getBackRefs(target.address);
 
         const containers = refs.map((entry) => `Container(${entry.containerId.toString()})`);
-        
+
         ensure(containers.includes(directory.toString()));
         ensure(containers.includes(list.toString()));
         ensure(containers.includes(box.toString()));
