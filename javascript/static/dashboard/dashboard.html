@@ -1,0 +1,34 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gink Dashboard</title>
+    <link rel="stylesheet" href="/dashboard/styles.css">
+    <script type="text/javascript" src="/dashboard/packed.js"></script>
+    <script src="/dashboard/scripts/display_container.js"></script>
+    <script src="/dashboard/scripts/utility.js"></script>
+</head>
+
+<body>
+
+    <div id="container-contents">
+
+    </div>
+
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        window.store = new gink.IndexedDbStore();
+        window.instance = new gink.GinkInstance(store);
+        await window.instance.connectTo(`ws://${window.location.host}`);
+
+        if (!window.location.hash) {
+            await displayContainer(window.instance.getGlobalDirectory().address);
+        } else {
+            await displayContainer(window.location.hash.substring(1));
+        }
+    });
+</script>
+
+</html>

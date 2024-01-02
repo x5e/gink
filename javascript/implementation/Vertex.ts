@@ -49,7 +49,7 @@ export class Vertex extends Container {
             function (entry: Entry) {
                 return new Edge(thisVertex.ginkInstance, muidTupleToMuid(entry.entryId), entryToEdgeData(entry));
             }
-        )
+        );
         return edges;
     }
 }

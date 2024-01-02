@@ -18,7 +18,7 @@
             // have to edit the parameters here for now
             let results = await testAll(1000, 5, false);
             resultsHtml.textContent = JSON.stringify(results, undefined, 2);
-            let done = document.querySelector('body').appendChild(document.createElement('p'))
+            let done = document.querySelector('body').appendChild(document.createElement('p'));
             done.setAttribute('id', 'done');
         })();
     </script>

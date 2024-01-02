@@ -40,29 +40,31 @@ export class Listener {
             };
             this.httpServer = createHttpsServer(options, function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
-                if (url.pathname == "/") {
-                    request.addListener('end', function () {
-                        staticServer.serveFile("./connections.html", 200, {}, request, response);
-                    }).resume();
-                }
-                else if (url.pathname == "/list_connections") {
-                    request.addListener('end', function () {
+                request.addListener('end', function () {
+                    if (url.pathname == "/") {
+                        staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
+                    }
+                    else if (url.pathname == "/connections") {
+                        staticServer.serveFile("/list_connections.html", 200, {}, request, response);
+                    }
+                    else if (url.pathname == "/list_connections") {
                         let connections = Object.fromEntries(args.instance.connections);
                         response.end(JSON.stringify(connections));
-                    }).resume();
-                }
-                else if (url.pathname == "/create_connection") {
-                    request.addListener('end', function () {
+                    }
+                    else if (url.pathname == "/create_connection") {
                         if (request.method == 'POST') {
                             const ipAddress = url.searchParams.get("ipAddress");
                             thisListener.handleConnection(ipAddress, args.instance, args.logger);
                             response.end(JSON.stringify({ "status": 201, "message": "Connection created successfully" }));
                         }
                         else {
-                            response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }))
+                            response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }));
                         }
-                    }).resume();
-                }
+                    }
+                    else {
+                        staticServer.serve(request, response);
+                    }
+                }).resume();
             }).listen(port, () => {
                 args?.logger(`Secure server is listening on port ${port}`);
                 callWhenReady();
@@ -71,7 +73,13 @@ export class Listener {
             this.httpServer = createHttpServer(function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
                 request.addListener('end', async function () {
-                    if (url.pathname == "/list_connections") {
+                    if (url.pathname == "/") {
+                        staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
+                    }
+                    else if (url.pathname == "/connections") {
+                        staticServer.serveFile("/list_connections.html", 200, {}, request, response);
+                    }
+                    else if (url.pathname == "/list_connections") {
                         let connections = Object.fromEntries(args.instance.connections);
                         response.writeHead(200);
                         response.end(JSON.stringify(connections));
@@ -88,7 +96,6 @@ export class Listener {
                                 response.writeHead(400);
                                 response.end(JSON.stringify({ "status": 400, "message": "Error. Connection not created." }));
                             }
-
                         }
                         else {
                             response.writeHead(405);
@@ -114,14 +121,14 @@ export class Listener {
             // this will obviously change eventually, but adding some validation for now
             const validURL = /^ws:\/\/\d{3}.\d{1}.\d{1}.\d{1}:\d{4}/;
             if (!validURL.test(ipAddress)) {
-                logger("Needs to be a valid websocket connection.")
+                logger("Needs to be a valid websocket connection.");
             } else {
                 logger("Connecting to " + ipAddress);
                 await instance.connectTo(ipAddress);
                 return true;
             }
         } else if (!instance) {
-            logger("No instance provided.")
+            logger("No instance provided.");
         }
         return false;
     }

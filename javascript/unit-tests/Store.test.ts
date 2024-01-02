@@ -1,5 +1,5 @@
-import { BundleBytes, Entry } from "../implementation/typedefs"
-import { ChainTracker } from "../implementation/ChainTracker"
+import { BundleBytes, Entry } from "../implementation/typedefs";
+import { ChainTracker } from "../implementation/ChainTracker";
 import { Store } from "../implementation/Store";
 import { Behavior, EntryBuilder, ContainerBuilder, ChangeBuilder, BundleBuilder } from "../implementation/builders";
 import {

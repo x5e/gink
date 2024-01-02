@@ -87,7 +87,7 @@ export class ChainTracker {
     /**
      * Constructs the greeting for use during the initial handshake.  Note that
      * the priorTimes aren't included, so recipient should not markIfNovel using
-     * @returns 
+     * @returns
      */
     private constructGreeting(): GreetingBuilder {
         const greeting = new GreetingBuilder();

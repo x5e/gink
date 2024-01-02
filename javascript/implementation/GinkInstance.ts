@@ -125,7 +125,7 @@ export class GinkInstance {
      */
     async createKeySet(change?: Bundler | string): Promise<KeySet> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.KEY_SET, change);
-        return new KeySet(this, muid, containerBuilder)
+        return new KeySet(this, muid, containerBuilder);
     }
 
     /**
@@ -135,7 +135,7 @@ export class GinkInstance {
      */
     async createRole(change?: Bundler | string): Promise<Role> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.ROLE, change);
-        return new Role(this, muid, containerBuilder)
+        return new Role(this, muid, containerBuilder);
     }
 
     /**
@@ -145,7 +145,7 @@ export class GinkInstance {
      */
     async createPairSet(change?: Bundler | string): Promise<PairSet> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_SET, change);
-        return new PairSet(this, muid, containerBuilder)
+        return new PairSet(this, muid, containerBuilder);
     }
 
     /**
@@ -155,7 +155,7 @@ export class GinkInstance {
      */
     async createPairMap(change?: Bundler | string): Promise<PairMap> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_MAP, change);
-        return new PairMap(this, muid, containerBuilder)
+        return new PairMap(this, muid, containerBuilder);
     }
 
     /**

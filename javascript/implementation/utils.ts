@@ -253,7 +253,7 @@ export function pairKeyToArray(effectiveKey: String): Array<Muid> {
 /**
  * Converts a Muid object to its canonical string representation
  * Refer to docs/muid.md
- * @param muid 
+ * @param muid
  * @returns a string of the canonical string representation
  */
 export function muidToString(muid: Muid): string {

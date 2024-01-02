@@ -326,7 +326,7 @@ export class IndexedDbStore implements Store {
                                 containerId: containerId,
                                 dest: 0,
                                 entryId: search.value.entryId
-                            }
+                            };
                             await wrappedTransaction.objectStore("removals").add(removal);
                         } else {
                             await wrappedTransaction.objectStore("entries").delete(placementId);
@@ -358,7 +358,7 @@ export class IndexedDbStore implements Store {
                         placementId: movementId,
                         sourceList: found.sourceList,
                         targetList: found.targetList,
-                    }
+                    };
                     await wrappedTransaction.objectStore("entries").add(destEntry);
                 }
                 if (movementBuilder.getPurge() || !this.keepingHistory) {
@@ -425,7 +425,7 @@ export class IndexedDbStore implements Store {
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.getTransaction();
         let clearanceTime: Timestamp = 0;
-        const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]])
+        const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]]);
         const clearancesCursor = await trxn.objectStore("clearances").openCursor(clearancesSearch, "prev");
         if (clearancesCursor) {
             clearanceTime = clearancesCursor.value.clearanceId[0];
@@ -458,7 +458,7 @@ export class IndexedDbStore implements Store {
         const trxn = this.getTransaction();
 
         let clearanceTime: Timestamp = 0;
-        const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]])
+        const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]]);
         const clearancesCursor = await trxn.objectStore("clearances").openCursor(clearancesSearch, "prev");
         if (clearancesCursor) {
             clearanceTime = clearancesCursor.value.clearanceId[0];
@@ -542,7 +542,7 @@ export class IndexedDbStore implements Store {
         const trxn = this.getTransaction();
 
         let clearanceTime: Timestamp = 0;
-        const clearancesSearch = IDBKeyRange.bound([containerId], [containerId, [asOfTs]])
+        const clearancesSearch = IDBKeyRange.bound([containerId], [containerId, [asOfTs]]);
         const clearancesCursor = await trxn.objectStore("clearances").openCursor(clearancesSearch, "prev");
         if (clearancesCursor) {
             clearanceTime = clearancesCursor.value.clearanceId[0];
@@ -576,7 +576,7 @@ export class IndexedDbStore implements Store {
             return undefined;
         }
         const entry: Entry = entryCursor.value;
-        const removalRange = IDBKeyRange.bound([entry.placementId], [entry.placementId, [asOfTs]])
+        const removalRange = IDBKeyRange.bound([entry.placementId], [entry.placementId, [asOfTs]]);
         const removalCursor = await trxn.objectStore("removals").openCursor(removalRange);
         if (removalCursor) {
             return undefined;

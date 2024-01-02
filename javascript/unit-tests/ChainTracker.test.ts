@@ -1,6 +1,6 @@
 import { BundleInfo } from "../implementation";
 import { ChainTracker } from "../implementation/ChainTracker";
-import { ensure } from "../implementation/utils"
+import { ensure } from "../implementation/utils";
 
 it('track two commits', async () => {
     const chainTracker = new ChainTracker({});
@@ -13,7 +13,7 @@ it('track two commits', async () => {
 
     const commitInfo2: BundleInfo = {
         "timestamp": secondTime, medallion, chainStart, "priorTime": chainStart, "comment": "hello"
-    }
+    };
     chainTracker.markAsHaving(commitInfo2, true);
 
     const commitInfo3 = chainTracker.getCommitInfo([medallion, chainStart]);
