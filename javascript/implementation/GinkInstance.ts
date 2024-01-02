@@ -238,6 +238,7 @@ export class GinkInstance {
         };
         bundler.seal(commitInfo);
         this.iHave.markAsHaving(commitInfo);
+        console.log(`sending: ` + JSON.stringify(commitInfo));
         return this.receiveCommit(bundler.bytes);
     }
 

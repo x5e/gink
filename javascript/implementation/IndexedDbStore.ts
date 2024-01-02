@@ -35,6 +35,7 @@ import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { Container } from './Container';
+import { PromiseChainLock } from "./PromiseChainLock";
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, ("trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries")[], "readwrite">;
 
@@ -56,6 +57,7 @@ export class IndexedDbStore implements Store {
     private transaction: Transaction|null = null;
     private countTrxns: number = 0;
     private initialized = false;
+    private processingLock = new PromiseChainLock();
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
     constructor(indexedDbName = "gink-default", reset = false, private keepingHistory = true) {
@@ -133,6 +135,10 @@ export class IndexedDbStore implements Store {
             });
         }
         return this.transaction;
+    }
+
+    getTransactionCount(): number {
+        return this.countTrxns;
     }
 
     async dropHistory(container?: Muid, before?: AsOf): Promise<void> {
@@ -231,16 +237,21 @@ export class IndexedDbStore implements Store {
         return await this.getTransaction().objectStore('chainInfos').getAll();
     }
 
-    async addBundle(bundleBytes: BundleBytes): Promise<BundleInfo> {
+    addBundle(bundleBytes: BundleBytes): Promise<BundleInfo> {
         if (!this.initialized) throw new Error("not initialized! need to await on .ready");
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
         const bundleInfo = extractCommitInfo(bundleBuilder);
         //console.log(`got ${JSON.stringify(bundleInfo)}`);
-        return this.addBundleHelper(bundleBytes, bundleInfo, bundleBuilder).then(() => bundleInfo);
+
+        return this.processingLock.acquireLock().then((unlock) => {
+            return this.addBundleHelper(bundleBytes, bundleInfo, bundleBuilder).then((trxn) => {
+                unlock(); return trxn.done.then(() => bundleInfo); }).finally(unlock);
+        });
     }
 
     private async addBundleHelper(bundleBytes: BundleBytes, bundleInfo: BundleInfo, bundleBuilder: BundleBuilder):
-    Promise<void> {
+    Promise<Transaction> {
+        console.log(`starting addBundleHelper for: ` + JSON.stringify(bundleInfo));
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const wrappedTransaction = this.getTransaction();
         const oldChainInfo: BundleInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
@@ -250,7 +261,7 @@ export class IndexedDbStore implements Store {
             }
             if (oldChainInfo?.timestamp != priorTime) {
                 //TODO(https://github.com/google/gink/issues/27): Need to explicitly close?
-                throw new Error(`missing prior chain entry for ${bundleInfo}, have ${oldChainInfo}`);
+                throw new Error(`missing, have ${JSON.stringify(bundleInfo)}, have ${JSON.stringify(oldChainInfo)}`);
             }
         }
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
@@ -400,7 +411,8 @@ export class IndexedDbStore implements Store {
             }
             throw new Error("don't know how to apply this kind of change");
         }
-        return wrappedTransaction.done;
+        console.log(`finished addBundleHelper for: ` + JSON.stringify(bundleInfo));
+        return wrappedTransaction;
     }
 
     async getContainerBytes(address: Muid): Promise<Bytes | undefined> {
