@@ -406,8 +406,8 @@ export class MemoryStore implements Store {
         if (upperClearance) {
             clearanceTime = upperClearance[1].clearanceId[0];
         }
-        const lower = this.entries.lowerBound(muidTupleToString([desiredSrc[0], desiredSrc[1], Behavior.DIRECTORY]));
-        const upper = this.entries.upperBound(muidTupleToString([asOfTs, desiredSrc[1], Behavior.DIRECTORY]));
+        const lower = this.entries.lowerBound(muidTupleToString([Math.abs(desiredSrc[0]), Math.abs(desiredSrc[1]), Behavior.DIRECTORY]));
+        const upper = this.entries.upperBound(muidTupleToString([asOfTs, Math.abs(desiredSrc[1]), Behavior.DIRECTORY]));
         const result = new Map();
         while (lower) {
             const entry = <Entry>lower.value;
@@ -421,7 +421,6 @@ export class MemoryStore implements Store {
                     } else if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
                         // If the key is a MuidTuple
                         key = muidToString(muidTupleToMuid(entry.effectiveKey));
-
                     } else {
                         throw Error(`not sure what to do with a ${typeof (key)} key`);
                     }

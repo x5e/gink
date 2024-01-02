@@ -8,7 +8,7 @@ import {
     muidToTuple,
     muidToString,
     dehydrate,
-    byteToHex
+    intToHex
 } from "./utils";
 import { Container } from "./Container";
 
@@ -115,7 +115,7 @@ export function buildPairLists(entryBuilder: EntryBuilder, bundleInfo: BundleInf
 
 export function medallionChainStartToString(tuple: [number, number]): string {
     // this is for [Medallion, ChainStart] keys
-    return `${byteToHex(tuple[0])}-${byteToHex(tuple[1])}`;
+    return `${intToHex(tuple[0])}-${intToHex(tuple[1])}`;
 }
 
 export function muidPairToSemanticKey(key: [Muid | Container, Muid | Container]): string {
