@@ -33,7 +33,13 @@ class Page {
         const title = containerContents.appendChild(document.createElement('h2'));
         title.setAttribute('id', 'title-bar');
         const muid = this.container.address;
-        title.innerText = `${this.container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
+        let containerName;
+        if (muid.timestamp == -1 && muid.medallion == -1) {
+            containerName = "Root Directory";
+        } else {
+            containerName = `${this.container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
+        }
+        title.innerHTML = `<h2>${containerName}</h2>`;
     }
 
     /**
