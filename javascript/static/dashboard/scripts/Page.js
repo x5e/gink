@@ -189,7 +189,7 @@ class Page {
         const entryContainer = containerContents.appendChild(document.createElement('div'));
         entryContainer.setAttribute('id', 'view-entry');
         entryContainer.setAttribute('class', 'entry-container');
-        if (key) {
+        if (key != undefined) {
             entryContainer.innerHTML += `
             <div>
                 <h2>Key</h2>
@@ -197,7 +197,7 @@ class Page {
             </div>
             `;
         }
-        if (value) {
+        if (value != undefined) {
             entryContainer.innerHTML += `
             <div>
                 <h2>Value</h2>
@@ -205,13 +205,24 @@ class Page {
             </div>
             `;
         }
-        const buttonContainer = entryContainer.appendChild(document.createElement('div'));
+        const buttonContainer = containerContents.appendChild(document.createElement('div'));
         buttonContainer.setAttribute('id', 'update-delete-container');
+
         const updateButton = buttonContainer.appendChild(document.createElement('button'));
         updateButton.innerText = "Update Entry";
+        updateButton.onclick = () => {
+            // bring up text box for key and/or value
+            // replace buttons with commit or abort
+        };
 
         const deleteButton = buttonContainer.appendChild(document.createElement('button'));
         deleteButton.innerText = "Delete Entry";
+        deleteButton.onclick = async () => {
+            if (confirm("Delete and commit?")) {
+                await deleteContainerEntry(key, this.container);
+            }
+            await this.displayPage(true);
+        };
     }
 
     /**
@@ -314,7 +325,7 @@ class Page {
             prevPage.style.cursor = "auto";
         }
         const thisPage = pageButtonsDiv.appendChild(document.createElement('p'));
-        thisPage.innerText = this.currentPage + 1;
+        thisPage.innerText = `Page ${this.currentPage + 1}`;
         thisPage.setAttribute('class', 'no-select');
         const nextPage = pageButtonsDiv.appendChild(document.createElement('a'));
         nextPage.setAttribute('class', 'page-btn no-select');
