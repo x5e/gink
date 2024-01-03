@@ -22,13 +22,13 @@ class Page {
      * @returns a sub Array containing the entries for the current page.
      */
     getPageOfEntries() {
-        return this.entries.slice(this.currentPage * this.itemsPerPage, this.currentPage * this.itemsPerPage + this.itemsPerPage);
+        return this.entries.slice(this.currentPage * this.itemsPerPage + 1, this.currentPage * this.itemsPerPage + this.itemsPerPage + 1);
     }
 
     /**
      * Changes the title and header elements of the container page.
      */
-    async writeTitle() {
+    writeTitle() {
         const containerContents = document.getElementById('container-contents');
         const title = containerContents.appendChild(document.createElement('h2'));
         title.setAttribute('id', 'title-bar');
@@ -69,7 +69,7 @@ class Page {
         const showing = containerContents.appendChild(document.createElement('p'));
         const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
         const maxEntries = upperBound >= this.entries.length ? this.entries.length : upperBound;
-        showing.innerText = `Showing entries ${this.currentPage * this.itemsPerPage}-${maxEntries}`;
+        showing.innerText = `Showing entries ${this.currentPage * this.itemsPerPage + 1}-${maxEntries}`;
 
         const addEntryButton = containerContents.appendChild(document.createElement('button'));
         addEntryButton.innerText = "Add Entry";
@@ -91,8 +91,9 @@ class Page {
         const containerContents = document.getElementById('container-contents');
         clearChildren(containerContents);
 
-        await this.writeTitle();
+        this.writeTitle();
         await this.writeRangeInfo();
+        this.writePageButtons();
         const thisContainerTable = containerContents.appendChild(document.createElement('table'));
         thisContainerTable.setAttribute('id', 'container-table');
         thisContainerTable.innerHTML = `
@@ -121,7 +122,6 @@ class Page {
                 await this.createRow(undefined, val);
             }
         }
-        this.writePageButtons();
     }
 
     async displayNextPage() {
@@ -146,34 +146,29 @@ class Page {
         await this.ready;
         const containerContents = document.getElementById('container-contents');
         clearChildren(containerContents);
-        await this.writeTitle();
-        const cancelButton = containerContents.appendChild(document.createElement('button'));
-        cancelButton.setAttribute('id', 'cancel-button');
-        cancelButton.innerText = 'X';
-        cancelButton.onclick = () => {
-            this.displayPage();
-        };
+        this.writeTitle();
+        this.writeCancelButton();
 
         const entryFields = containerContents.appendChild(document.createElement('div'));
-        entryFields.setAttribute('id', 'entry-container');
+        entryFields.setAttribute('id', 'add-entry-container');
+        entryFields.setAttribute('class', 'entry-container');
         if (this.hasKeys) {
             entryFields.innerHTML += `
             <div class="input-container">
-                <label for="key">Key</label>
-                <input type="text" name="key" id="key-input" />
+                <input type="text" name="key" class="commit-input" placeholder="Key" />
             </div>
             `;
         }
         if (this.hasValues) {
             entryFields.innerHTML += `
             <div class="input-container">
-                <label for="val">Value</label>
-                <input type="text" name="val" id="val-input" />
+                <input type="text" name="val" class="commit-input" placeholder="Value" />
             </div>
             `;
         }
         const submitButton = entryFields.appendChild(document.createElement('button'));
         submitButton.innerText = 'Commit Entry';
+        submitButton.setAttribute('id', 'commit-button');
         submitButton.onclick = async () => {
             let key = document.getElementById('key-input');
             key = key ? key.value : undefined;
@@ -181,6 +176,52 @@ class Page {
             val = val ? val.value : undefined;
             await addContainerEntry(key, val, this.container);
             await this.displayPage(true);
+        };
+    }
+
+    async displayEntry(key, value) {
+        const containerContents = document.getElementById('container-contents');
+        clearChildren(containerContents);
+        this.writeTitle();
+        this.writeCancelButton();
+        const entryContainer = containerContents.appendChild(document.createElement('div'));
+        entryContainer.setAttribute('id', 'view-entry');
+        entryContainer.setAttribute('class', 'entry-container');
+        if (key) {
+            entryContainer.innerHTML += `
+            <div>
+                <h2>Key</h2>
+                <p>${key}</p>
+            </div>
+            `;
+        }
+        if (value) {
+            entryContainer.innerHTML += `
+            <div>
+                <h2>Value</h2>
+                <p>${value}</p>
+            </div>
+            `;
+        }
+        const buttonContainer = entryContainer.appendChild(document.createElement('div'));
+        buttonContainer.setAttribute('id', 'update-delete-container');
+        const updateButton = buttonContainer.appendChild(document.createElement('button'));
+        updateButton.innerText = "Update Entry";
+
+        const deleteButton = buttonContainer.appendChild(document.createElement('button'));
+        deleteButton.innerText = "Delete Entry";
+    }
+
+    /**
+     * Puts an X button at the top left of #container-contents.
+     */
+    writeCancelButton() {
+        const containerContents = document.getElementById('container-contents');
+        const cancelButton = containerContents.appendChild(document.createElement('button'));
+        cancelButton.setAttribute('id', 'cancel-button');
+        cancelButton.innerText = 'X';
+        cancelButton.onclick = async () => {
+            await this.displayPage();
         };
     }
 
@@ -192,6 +233,10 @@ class Page {
     async createRow(key, val) {
         const table = document.getElementById('container-table');
         const row = table.appendChild(document.createElement('tr'));
+        row.setAttribute('class', 'entry-row');
+        row.onclick = async () => {
+            await this.displayEntry(key, val);
+        };
         if (key) await this.createCell(row, key);
         if (val) await this.createCell(row, val);
     }
@@ -202,7 +247,6 @@ class Page {
      * @param {*} content a key or value to place into the row.
      */
     async createCell(row, content) {
-        let showing; // the initial preview shown
         const cell = row.appendChild(document.createElement('td'));
         cell.dataset['state'] = 'long';
         if (Array.isArray(content) && content.length == 2 && content[0].timestamp) {
@@ -254,25 +298,32 @@ class Page {
     writePageButtons() {
         const containerContents = document.getElementById('container-contents');
         const pageButtonsDiv = containerContents.appendChild(document.createElement('div'));
+        pageButtonsDiv.style.fontWeight = "bold";
         pageButtonsDiv.setAttribute('id', 'page-buttons-container');
         const prevPage = pageButtonsDiv.appendChild(document.createElement('a'));
         prevPage.setAttribute('class', 'page-btn no-select');
+        prevPage.innerText = '<';
         if (!this.isFirstPage()) {
-            prevPage.innerText = '<';
             prevPage.onclick = async () => {
                 await this.displayPrevPage();
             };
+        } else {
+            prevPage.style.opacity = 0;
+            prevPage.style.cursor = "auto";
         }
         const thisPage = pageButtonsDiv.appendChild(document.createElement('p'));
         thisPage.innerText = this.currentPage + 1;
         thisPage.setAttribute('class', 'no-select');
         const nextPage = pageButtonsDiv.appendChild(document.createElement('a'));
         nextPage.setAttribute('class', 'page-btn no-select');
+        nextPage.innerText = '>';
         if (!this.isLastPage()) {
-            nextPage.innerText = '>';
             nextPage.onclick = async () => {
                 await this.displayNextPage();
             };
+        } else {
+            nextPage.style.opacity = 0;
+            nextPage.style.cursor = "auto";
         }
     }
 

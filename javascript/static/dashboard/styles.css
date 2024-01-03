@@ -65,17 +65,25 @@ a {
     height: 35px;
 }
 
-#entry-container {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 20svh;
+#add-entry-container {
     text-align: right;
 }
 
-#key-input,
-#val-input {
-    width: 10rem;
+#view-entry {
+    margin-top: 3rem;
+    text-align: center;
+}
+
+#commit-button {
+    width: 8rem;
+    margin-top: 3rem;
+}
+
+#update-delete-container {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 3rem;
+    width: 15rem;
 }
 
 /* Classes */
@@ -96,4 +104,22 @@ a {
 .table-heading {
     height: 1rem;
     padding: 0px;
+}
+
+.commit-input {
+    width: 15rem;
+    height: 3rem;
+}
+
+.entry-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 20svh;
+}
+
+.entry-row:hover {
+    cursor: pointer;
+    box-shadow: 0px 2px 2px black;
 }
