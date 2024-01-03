@@ -20,7 +20,7 @@
 </body>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
-        window.store = new gink.IndexedDbStore(true);
+        window.store = new gink.IndexedDbStore();
         window.instance = new gink.GinkInstance(store);
         await window.instance.connectTo(`ws://${window.location.host}`);
 
