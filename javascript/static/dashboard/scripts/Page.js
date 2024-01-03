@@ -157,14 +157,14 @@ class Page {
         if (this.hasKeys) {
             entryFields.innerHTML += `
             <div class="input-container">
-                <input type="text" name="key" class="commit-input" placeholder="Key" />
+                <input type="text" name="key" class="commit-input" id="key-input" placeholder="Key" />
             </div>
             `;
         }
         if (this.hasValues) {
             entryFields.innerHTML += `
             <div class="input-container">
-                <input type="text" name="val" class="commit-input" placeholder="Value" />
+                <input type="text" name="val" class="commit-input" id="val-input" placeholder="Value" />
             </div>
             `;
         }
@@ -210,9 +210,8 @@ class Page {
 
         const updateButton = buttonContainer.appendChild(document.createElement('button'));
         updateButton.innerText = "Update Entry";
-        updateButton.onclick = () => {
-            // bring up text box for key and/or value
-            // replace buttons with commit or abort
+        updateButton.onclick = async () => {
+            await this.displayUpdateEntry(key, value);
         };
 
         const deleteButton = buttonContainer.appendChild(document.createElement('button'));
@@ -222,6 +221,72 @@ class Page {
                 await deleteContainerEntry(key, this.container);
             }
             await this.displayPage(true);
+        };
+    }
+
+    async displayUpdateEntry(oldKey, oldValue) {
+        const containerContents = document.getElementById('container-contents');
+        clearChildren(containerContents);
+        this.writeTitle();
+        this.writeCancelButton();
+        const entryContainer = containerContents.appendChild(document.createElement('div'));
+        entryContainer.setAttribute('id', 'view-entry');
+        entryContainer.setAttribute('class', 'entry-container');
+        if (oldKey != undefined) {
+            entryContainer.innerHTML += `
+            <div>
+                <h2>Key</h2>
+                <div id="entry-key"></div>
+            </div>
+            `;
+        }
+        if (oldValue != undefined) {
+            entryContainer.innerHTML += `
+            <div>
+                <h2>Value</h2>
+                <div id="entry-value"></div>
+            </div>
+            `;
+        }
+
+        let keyInput, valueInput;
+        const keyContainer = document.getElementById('entry-key');
+        if (keyContainer) {
+            keyContainer.innerText = '';
+            keyInput = keyContainer.appendChild(document.createElement('input'));
+            keyInput.setAttribute('id', 'key-input');
+            keyInput.setAttribute('class', 'commit-input');
+            keyInput.value = oldKey;
+        }
+        const valueContainer = document.getElementById('entry-value');
+        if (valueContainer) {
+            valueContainer.innerText = '';
+            valueInput = valueContainer.appendChild(document.createElement('input'));
+            valueInput.setAttribute('id', 'value-input');
+            valueInput.setAttribute('class', 'commit-input');
+            valueInput.value = oldValue;
+        }
+
+        const buttonContainer = containerContents.appendChild(document.createElement('div'));
+        buttonContainer.setAttribute('id', 'commit-abort-container');
+
+        const commitButton = buttonContainer.appendChild(document.createElement('button'));
+        commitButton.innerText = "Commit Entry";
+        commitButton.onclick = async () => {
+            let newKey, newValue;
+            if (keyContainer) newKey = keyInput.value;
+            if (valueContainer) newValue = valueInput.value;
+            if (confirm("Commit updated entry?")) {
+                await deleteContainerEntry(oldKey, this.container);
+                await addContainerEntry(newKey, newValue, this.container);
+            }
+            await this.displayPage(true);
+        };
+
+        const abortButton = buttonContainer.appendChild(document.createElement('button'));
+        abortButton.innerText = "Abort";
+        abortButton.onclick = async () => {
+            await this.displayEntry(oldKey, oldValue, this.container);
         };
     }
 
