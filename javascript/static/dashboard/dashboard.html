@@ -6,7 +6,7 @@
     <title>Gink Dashboard</title>
     <link rel="stylesheet" href="/dashboard/styles.css">
     <script type="text/javascript" src="/dashboard/packed.js"></script>
-    <script src="/dashboard/scripts/display_container.js"></script>
+    <script src="/dashboard/scripts/Page.js"></script>
     <script src="/dashboard/scripts/utility.js"></script>
 </head>
 
@@ -23,14 +23,17 @@
         window.instance = new gink.GinkInstance(store);
         await window.instance.connectTo(`ws://${window.location.host}`);
 
+        let muid;
         if (!window.location.hash) {
-            await displayContainer(window.instance.getGlobalDirectory().address);
+            muid = window.instance.getGlobalDirectory().address;
         } else if (window.location.hash == '#self') {
-            await displayContainer(window.instance.getMedallionDirectory().address);
+            muid = window.instance.getMedallionDirectory().address;
         }
         else {
-            await displayContainer(window.location.hash.substring(1));
+            muid = gink.strToMuid(window.location.hash.substring(1));
         }
+        const page = new Page(muid);
+        await page.displayPage();
     });
 </script>
 
