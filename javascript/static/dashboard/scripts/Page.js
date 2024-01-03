@@ -35,7 +35,13 @@ class Page {
         const titleBar = containerContents.appendChild(document.createElement('div'));
         titleBar.setAttribute('id', 'title-bar');
         const muid = this.container.address;
-        titleBar.innerHTML = `<h2>${this.container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})</h2>`;
+        let containerName;
+        if (muid.timestamp == -1 && muid.medallion == -1) {
+            containerName = "Root Directory";
+        } else {
+            containerName = `${this.container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
+        }
+        titleBar.innerHTML = `<h2>${containerName}</h2>`;
         const numEntries = containerContents.appendChild(document.createElement('p'));
         numEntries.innerText = `Total entries: ${this.entries.length}`;
 
