@@ -204,7 +204,7 @@ class Page {
             let container2 = await gink.construct(window.instance, content[1]);
             cell.style.fontWeight = "bold";
             cell.innerHTML = `
-            <a href="#${gink.muidToString(container1.address)}">${container1.constructor.name}</a>-<a href="${gink.muidToString(container2.address)}">${container2.constructor.name}</a>
+            <a href="#${gink.muidToString(container1.address)}">${container1.constructor.name}</a>-<a href="#${gink.muidToString(container2.address)}">${container2.constructor.name}</a>
             `;
         }
         else if (content instanceof gink.Container) {
@@ -221,7 +221,7 @@ class Page {
             if (content.length > 20) {
                 cell.style.cursor = "pointer";
                 let longContent = content;
-                cell.innerText = shortenedString(content);
+                let shortContent = shortenedString(content);
                 cell.dataset['state'] = 'short';
                 cell.onclick = () => {
                     if (cell.dataset["state"] == 'short') {
@@ -229,10 +229,11 @@ class Page {
                         cell.dataset['state'] = 'long';
                     }
                     else if (cell.dataset["state"] == 'long') {
-                        cell.innerText = showing;
+                        cell.innerText = shortContent;
                         cell.dataset['state'] = 'short';
                     }
                 };
+                cell.innerText = shortContent;
             }
             else {
                 cell.innerText = content;

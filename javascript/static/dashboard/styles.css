@@ -16,6 +16,11 @@ td {
     text-align: center;
 }
 
+a {
+    text-decoration: none;
+    color: black;
+}
+
 /* IDs */
 #container-contents {
     margin: 0;

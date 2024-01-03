@@ -137,6 +137,7 @@ async function valContainerAsArray(container) {
  * @param {*} val optional value to add to database.
  */
 async function addContainerEntry(key, val, container) {
+    let msg;
     gink.ensure(key || val, 'Need to specify key or value');
     gink.ensure(container, 'Need to specify container.');
     if (key) gink.ensure(hasKeysOrValues(container)[0] == true, 'container doesnt use keys');
@@ -155,19 +156,27 @@ async function addContainerEntry(key, val, container) {
             await container.set(key, val);
             break;
         case 5: // PairSet
-            gink.ensure(Array.isArray(key) && key.length == 2);
-            gink.ensure(key[0] instanceof gink.Container || "timestamp" in key[0]);
-            gink.ensure(key[1] instanceof gink.Container || "timestamp" in key[1]);
-            await container.include(key);
+            msg = `Expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
+            try {
+                await container.include([gink.strToMuid(key[0]), gink.strToMuid(key[1])]);
+            } catch {
+                console.error(msg);
+            }
             break;
         case 6: // PairMap
-            gink.ensure(Array.isArray(key) && key.length == 2);
-            gink.ensure(key[0] instanceof gink.Container || "timestamp" in key[0]);
-            gink.ensure(key[1] instanceof gink.Container || "timestamp" in key[1]);
-            await container.set(key, val);
+            msg = `Key is expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
+            try {
+                await container.set([gink.strToMuid(key[0]), gink.strToMuid(key[1])], val);
+            } catch {
+                console.error(msg);
+            }
+
         case 10: // Role
-            gink.ensure(key instanceof gink.Container || "timestamp" in key);
-            await container.include(key);
+            try {
+                await container.include(gink.strToMuid(key));
+            } catch {
+                console.error('Expecting muid as string. Ex:FFFFFFFFFFFFFF-6734543837984-00004');
+            }
             break;
         default:
             throw new Error(`not sure how to add entry to ${container.constructor.name}`);
