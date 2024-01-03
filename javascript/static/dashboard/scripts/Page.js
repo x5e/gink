@@ -81,9 +81,9 @@ class Page {
         const thisContainerTable = containerContents.appendChild(document.createElement('table'));
         thisContainerTable.setAttribute('id', 'container-table');
         thisContainerTable.innerHTML = `
-        <tr>
-            ${this.hasKeys ? '<th>Key</th>' : ''}
-            <th>Value</th>
+        <tr class="table-heading">
+            ${this.hasKeys ? '<th class="table-heading">Key</th>' : ''}
+            <th class="table-heading">Value</th>
         </tr>`;
 
         if (this.entries.length == 0) {
