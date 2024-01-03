@@ -185,7 +185,7 @@ class Page {
             let val = document.getElementById('val-input');
             val = val ? val.value : undefined;
             await addContainerEntry(key, val, this.container);
-            await this.displayPage(true);
+            await this.displayPage();
         };
     }
 
@@ -228,7 +228,7 @@ class Page {
             if (confirm("Delete and commit?")) {
                 await deleteContainerEntry(key, position, this.container);
             }
-            await this.displayPage(true);
+            await this.displayPage();
         };
     }
 
@@ -288,7 +288,7 @@ class Page {
                 await deleteContainerEntry(oldKey, position, this.container);
                 await addContainerEntry(newKey, newValue, this.container);
             }
-            await this.displayPage(true);
+            await this.displayPage();
         };
 
         const abortButton = buttonContainer.appendChild(document.createElement('button'));

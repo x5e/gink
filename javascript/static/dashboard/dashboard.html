@@ -28,6 +28,12 @@
         let page = new Page(muid);
         await page.displayPage();
 
+        const refreshContainer = async () => {
+            await page.init(page.container.address);
+        };
+
+        window.instance.addListener(refreshContainer);
+
         window.onhashchange = async (e) => {
             let newHash = e.newURL.split("#")[1];
             let muid = hashToMuid(newHash);
