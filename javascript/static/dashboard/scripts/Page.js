@@ -120,8 +120,16 @@ class Page {
             }
         }
         else if (!this.hasKeys && this.hasValues) {
-            for (const val of this.getPageOfEntries()) {
-                await this.createRow(undefined, val);
+            let pageOfEntries = this.getPageOfEntries();
+            for (let i = 0; i < pageOfEntries.length; i++) {
+                let val = pageOfEntries[i];
+                let position;
+                if (this.container.behavior == 2) {
+                    // If this is a sequence, we need to keep track of
+                    // each entry's position to delete or update it.
+                    position = this.currentPage * this.itemsPerPage + i;
+                }
+                await this.createRow(undefined, val, position);
             }
         }
     }
@@ -181,7 +189,7 @@ class Page {
         };
     }
 
-    async displayEntry(key, value) {
+    async displayEntry(key, value, position) {
         const containerContents = document.getElementById('container-contents');
         clearChildren(containerContents);
         this.writeTitle();
@@ -211,20 +219,20 @@ class Page {
         const updateButton = buttonContainer.appendChild(document.createElement('button'));
         updateButton.innerText = "Update Entry";
         updateButton.onclick = async () => {
-            await this.displayUpdateEntry(key, value);
+            await this.displayUpdateEntry(key, value, position);
         };
 
         const deleteButton = buttonContainer.appendChild(document.createElement('button'));
         deleteButton.innerText = "Delete Entry";
         deleteButton.onclick = async () => {
             if (confirm("Delete and commit?")) {
-                await deleteContainerEntry(key, this.container);
+                await deleteContainerEntry(key, position, this.container);
             }
             await this.displayPage(true);
         };
     }
 
-    async displayUpdateEntry(oldKey, oldValue) {
+    async displayUpdateEntry(oldKey, oldValue, position) {
         const containerContents = document.getElementById('container-contents');
         clearChildren(containerContents);
         this.writeTitle();
@@ -277,7 +285,7 @@ class Page {
             if (keyContainer) newKey = keyInput.value;
             if (valueContainer) newValue = valueInput.value;
             if (confirm("Commit updated entry?")) {
-                await deleteContainerEntry(oldKey, this.container);
+                await deleteContainerEntry(oldKey, position, this.container);
                 await addContainerEntry(newKey, newValue, this.container);
             }
             await this.displayPage(true);
@@ -286,7 +294,7 @@ class Page {
         const abortButton = buttonContainer.appendChild(document.createElement('button'));
         abortButton.innerText = "Abort";
         abortButton.onclick = async () => {
-            await this.displayEntry(oldKey, oldValue, this.container);
+            await this.displayEntry(oldKey, oldValue, position);
         };
     }
 
@@ -307,13 +315,18 @@ class Page {
      * Creates a row in the container contents table.
      * @param {*} key
      * @param {*} val
+     * @param {number} position optional, used for sequences to
+     * keep track of which entry to update/delete.
      */
-    async createRow(key, val) {
+    async createRow(key, val, position) {
         const table = document.getElementById('container-table');
         const row = table.appendChild(document.createElement('tr'));
+        if (position != undefined) {
+            row.dataset["position"] = position;
+        }
         row.setAttribute('class', 'entry-row');
         row.onclick = async () => {
-            await this.displayEntry(key, val);
+            await this.displayEntry(key, val, Number(row.dataset["position"]));
         };
         if (key != undefined) await this.createCell(row, key);
         if (val != undefined) await this.createCell(row, val);
@@ -339,29 +352,13 @@ class Page {
             cell.style.fontWeight = "bold";
             cell.style.cursor = "pointer";
             cell.onclick = () => {
-                console.log(content);
                 window.location.hash = '#' + gink.muidToString(content.address);
-                window.location.reload();
             };
             cell.innerText = `${content.constructor.name}(${gink.muidToString(content.address)})`;
         } else {
             content = unwrapToString(content);
             if (content.length > 20) {
-                cell.style.cursor = "pointer";
-                let longContent = content;
-                let shortContent = shortenedString(content);
-                cell.dataset['state'] = 'short';
-                cell.onclick = () => {
-                    if (cell.dataset["state"] == 'short') {
-                        cell.innerText = longContent;
-                        cell.dataset['state'] = 'long';
-                    }
-                    else if (cell.dataset["state"] == 'long') {
-                        cell.innerText = shortContent;
-                        cell.dataset['state'] = 'short';
-                    }
-                };
-                cell.innerText = shortContent;
+                cell.innerText = shortenedString(content);
             }
             else {
                 cell.innerText = content;

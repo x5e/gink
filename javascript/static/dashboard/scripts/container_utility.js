@@ -133,28 +133,30 @@ async function addContainerEntry(key, val, container) {
 
 /**
  * Standarizes deletion between containers.
- * @param {*} keyOrPosition EITHER the key to be deleted, or the position in a sequence.
+ * @param {*} key key to be deleted
+ * @param {number} position the position in the sequence to pop.
  * @param {*} container the Gink Container to perform the deletion.
  */
-async function deleteContainerEntry(keyOrPosition, container) {
+async function deleteContainerEntry(key, position, container) {
+    gink.ensure(!(key && position), "Cannot provide both key and position");
     switch (container.behavior) {
         case 1: // Box
             await container.clear();
             break;
         case 2: // Sequence
-            gink.ensure(typeof keyOrPosition == "number");
-            await container.pop(keyOrPosition);
+            gink.ensure(typeof position == "number", "invalid position arg");
+            await container.pop(position);
             break;
         case 3: // KeySet
-            await container.delete(keyOrPosition);
+            await container.delete(key);
             break;
         case 4: // Directory
-            await container.delete(keyOrPosition);
+            await container.delete(key);
             break;
         case 5: // PairSet
             msg = `Expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
             try {
-                await container.exclude([gink.strToMuid(keyOrPosition[0]), gink.strToMuid(keyOrPosition[1])]);
+                await container.exclude([gink.strToMuid(key[0]), gink.strToMuid(key[1])]);
             } catch {
                 console.error(msg);
             }
@@ -162,13 +164,13 @@ async function deleteContainerEntry(keyOrPosition, container) {
         case 6: // PairMap
             msg = `Key is expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
             try {
-                await container.delete([gink.strToMuid(keyOrPosition[0]), gink.strToMuid(keyOrPosition[1])], val);
+                await container.delete([gink.strToMuid(key[0]), gink.strToMuid(key[1])], val);
             } catch {
                 console.error(msg);
             }
         case 10: // Role
             try {
-                await container.exclude(gink.strToMuid(keyOrPosition));
+                await container.exclude(gink.strToMuid(key));
             } catch {
                 console.error('Expecting muid as string. Ex:FFFFFFFFFFFFFF-6734543837984-00004');
             }

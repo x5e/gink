@@ -24,20 +24,15 @@
         window.instance = new gink.GinkInstance(store);
         await window.instance.connectTo(`ws://${window.location.host}`);
 
-        let muid;
-        if (!window.location.hash) {
-            muid = window.instance.getGlobalDirectory().address;
-        } else if (window.location.hash == '#self') {
-            muid = window.instance.getMedallionDirectory().address;
-        }
-        else {
-            muid = gink.strToMuid(window.location.hash.substring(1));
-        }
-        const page = new Page(muid);
+        let muid = hashToMuid(window.location.hash);
+        let page = new Page(muid);
         await page.displayPage();
 
-        window.onhashchange = () => {
-            window.location.reload();
+        window.onhashchange = async (e) => {
+            let newHash = e.newURL.split("#")[1];
+            let muid = hashToMuid(newHash);
+            let page = new Page(muid);
+            await page.displayPage();
         };
     });
 </script>

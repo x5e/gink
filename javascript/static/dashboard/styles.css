@@ -68,11 +68,16 @@ a {
 
 #add-entry-container {
     text-align: right;
+    height: 20svh;
 }
 
 #view-entry {
     margin-top: 3rem;
     text-align: center;
+    width: 80%;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 #commit-button {
@@ -117,7 +122,6 @@ a {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    height: 20svh;
 }
 
 .entry-row:hover {

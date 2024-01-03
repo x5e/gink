@@ -1,4 +1,26 @@
 /**
+ * Determines the muid of the container to display based
+ * on the hash provided.
+ * #self returns the muid of the medallion directory
+ * undefined returns the muid of the root directory
+ * #(String-Muid) returns the Muid object of that container.
+ * @param {string} hash
+ * @returns a gink.Muid
+ */
+function hashToMuid(hash) {
+    let muid;
+    if (!hash) {
+        muid = window.instance.getGlobalDirectory().address;
+    } else if (window.location.hash == '#self') {
+        muid = window.instance.getMedallionDirectory().address;
+    }
+    else {
+        muid = gink.strToMuid(hash.substring(1));
+    }
+    return muid;
+}
+
+/**
  * Utility function to clear the children of
  * an HTMLElement.
  * @param {HTMLElement} node
