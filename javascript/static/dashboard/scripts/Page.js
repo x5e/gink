@@ -22,7 +22,9 @@ class Page {
      * @returns a sub Array containing the entries for the current page.
      */
     getPageOfEntries() {
-        return this.entries.slice(this.currentPage * this.itemsPerPage + 1, this.currentPage * this.itemsPerPage + this.itemsPerPage + 1);
+        const lowerBound = this.currentPage * this.itemsPerPage;
+        const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
+        return this.entries.slice(lowerBound, upperBound);
     }
 
     /**
@@ -237,8 +239,8 @@ class Page {
         row.onclick = async () => {
             await this.displayEntry(key, val);
         };
-        if (key) await this.createCell(row, key);
-        if (val) await this.createCell(row, val);
+        if (key != undefined) await this.createCell(row, key);
+        if (val != undefined) await this.createCell(row, val);
     }
 
     /**
