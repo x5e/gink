@@ -262,11 +262,7 @@ export class IndexedDbStore implements Store {
         Promise<Transaction> {
         // console.log(`starting addBundleHelper for: ` + JSON.stringify(bundleInfo));
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
-
-        // Issue here
-        /////////////////////////////////////////////
-        const wrappedTransaction = this.getTransaction(); // This instantly errors - check console.
-        /////////////////////////////////////////////
+        const wrappedTransaction = this.getTransaction();
 
         const oldChainInfo: BundleInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
