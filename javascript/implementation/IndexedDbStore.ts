@@ -134,6 +134,7 @@ export class IndexedDbStore implements Store {
         if (this.transaction === null || this.lastCaller != callerLine) {
             // console.log(`creating new transaction for ${callerLine}`)
             this.lastCaller = callerLine;
+            this.countTrxns += 1;
             this.transaction = this.wrapped.transaction(
                 ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains', 'containers'],
                 'readwrite');
