@@ -58,6 +58,7 @@ export class IndexedDbStore implements Store {
     private countTrxns: number = 0;
     private initialized = false;
     private processingLock = new PromiseChainLock();
+    private lastCaller: string = "";
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
     constructor(indexedDbName = "gink-default", reset = false, private keepingHistory = true) {
@@ -122,17 +123,23 @@ export class IndexedDbStore implements Store {
         this.initialized = true;
     }
 
+    private clearTransaction() {
+        // console.log("clearing transaction");
+        this.transaction = null;
+    }
+
     private getTransaction() {
-        if (this.transaction === null) {
+        const stackString = (new Error()).stack;
+        const callerLine = stackString ? stackString.split("\n")[2] : "";
+        if (this.transaction === null || this.lastCaller != callerLine) {
+            // console.log(`creating new transaction for ${callerLine}`)
+            this.lastCaller = callerLine;
             this.transaction = this.wrapped.transaction(
                 ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains', 'containers'],
                 'readwrite');
-            const thisIndexedDbStore = this;
-            this.transaction.done.finally(() => {
-                thisIndexedDbStore.transaction = null;
-                thisIndexedDbStore.countTrxns += 1;
-                // console.log(`finished transaction number ${thisIndexedDbStore.countTrxns}`);
-            });
+            this.transaction.done.finally(() => this.clearTransaction());
+        } else {
+            // console.log(`reusing transaction for ${callerLine}`);
         }
         return this.transaction;
     }
