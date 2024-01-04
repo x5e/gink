@@ -54,7 +54,7 @@ export class IndexedDbStore implements Store {
 
     ready: Promise<void>;
     private wrapped: IDBPDatabase<IndexedDbStoreSchema>;
-    private transaction: Transaction|null = null;
+    private transaction: Transaction | null = null;
     private countTrxns: number = 0;
     private initialized = false;
     private processingLock = new PromiseChainLock();
@@ -207,7 +207,7 @@ export class IndexedDbStore implements Store {
     }
 
     async getClaimedChains(): Promise<ClaimedChains> {
-        if (! this.initialized) throw new Error("not initilized");
+        if (!this.initialized) throw new Error("not initilized");
         const objectStore = this.getTransaction().objectStore("activeChains");
         const items = await objectStore.getAll();
         const result = new Map();
@@ -245,15 +245,24 @@ export class IndexedDbStore implements Store {
 
         return this.processingLock.acquireLock().then((unlock) => {
             return this.addBundleHelper(bundleBytes, bundleInfo, bundleBuilder).then((trxn) => {
-                unlock(); return trxn.done.then(() => bundleInfo); }).finally(unlock);
+                unlock(); return trxn.done.then(() => bundleInfo);
+            }).finally(unlock);
         });
     }
 
     private async addBundleHelper(bundleBytes: BundleBytes, bundleInfo: BundleInfo, bundleBuilder: BundleBuilder):
-    Promise<Transaction> {
+        Promise<Transaction> {
         // console.log(`starting addBundleHelper for: ` + JSON.stringify(bundleInfo));
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
-        const wrappedTransaction = this.getTransaction();
+
+        // Issue here
+        /////////////////////////////////////////////
+        // const wrappedTransaction = this.getTransaction(); // This instantly errors - check console.
+        const wrappedTransaction = this.wrapped.transaction(
+            ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains', 'containers'],
+            'readwrite'); // This retains the connection, but errors on page refresh
+        /////////////////////////////////////////////
+
         const oldChainInfo: BundleInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
