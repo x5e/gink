@@ -17,6 +17,10 @@ module.exports = class Expector {
         const appender = this.notify.bind(this);
         this.proc.stdout.on('data', appender);
         this.proc.stderr.on('data', appender);
+        this.proc.on('error', (e) => {
+            console.log(e);
+            this.proc.close();
+        });
     }
 
     /**

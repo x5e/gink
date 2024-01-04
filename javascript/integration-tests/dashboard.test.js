@@ -21,7 +21,7 @@ it('connect to server and display dashboard', async () => {
         // if path to chrome is not specified, try to find it.
         launch_options = {
             product: 'chrome',
-            headless: "false",
+            headless: "new",
             args: [
                 "--no-sandbox",
                 "--disable-gpu",
@@ -63,8 +63,12 @@ it('connect to server and display dashboard', async () => {
     await server.expect("Peer ::ffff:127.0.0.1 disconnected.");
 
     // Make sure server does not crash after page reload.
-    await server.expect("got ack from 2");
-
-    await server.close();
-    await browser.close();
+    try {
+        await server.expect("got ack from 2");
+    } catch (e) {
+        throw new Error(e);
+    } finally {
+        await server.close();
+        await browser.close();
+    }
 }, 13000);
