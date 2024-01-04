@@ -257,10 +257,7 @@ export class IndexedDbStore implements Store {
 
         // Issue here
         /////////////////////////////////////////////
-        // const wrappedTransaction = this.getTransaction(); // This instantly errors - check console.
-        const wrappedTransaction = this.wrapped.transaction(
-            ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains', 'containers'],
-            'readwrite'); // This retains the connection, but errors on page refresh
+        const wrappedTransaction = this.getTransaction(); // This instantly errors - check console.
         /////////////////////////////////////////////
 
         const oldChainInfo: BundleInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
