@@ -29,7 +29,10 @@
         await page.displayPage();
 
         const refreshContainer = async () => {
-            await page.init(page.container.address);
+            page.ready = page.init(page.container.address);
+            if (page.pageType == "container") {
+                await page.displayPage();
+            }
         };
 
         window.instance.addListener(refreshContainer);

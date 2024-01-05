@@ -5,6 +5,9 @@
 
 class Page {
     constructor(muid, currentPage = 0, itemsPerPage = 10) {
+        // pageType is used to determine whether to update the page
+        // contents again on database commit.
+        this.pageType = "none";
         this.currentPage = currentPage;
         this.itemsPerPage = itemsPerPage;
         this.ready = this.init(muid);
@@ -90,6 +93,7 @@ class Page {
     async displayPage(reloadContainer) {
         if (reloadContainer) await this.init(this.container.address);
         await this.ready;
+        this.pageType = "container";
         const containerContents = document.getElementById('container-contents');
         clearChildren(containerContents);
 
@@ -154,6 +158,7 @@ class Page {
      */
     async displayAddEntry() {
         await this.ready;
+        this.pageType = "add-entry";
         const containerContents = document.getElementById('container-contents');
         clearChildren(containerContents);
         this.writeTitle();
@@ -191,6 +196,7 @@ class Page {
 
     async displayEntry(key, value, position) {
         const containerContents = document.getElementById('container-contents');
+        this.pageType = "entry";
         clearChildren(containerContents);
         this.writeTitle();
         this.writeCancelButton();
@@ -234,6 +240,7 @@ class Page {
 
     async displayUpdateEntry(oldKey, oldValue, position) {
         const containerContents = document.getElementById('container-contents');
+        this.pageType = "update";
         clearChildren(containerContents);
         this.writeTitle();
         this.writeCancelButton();
