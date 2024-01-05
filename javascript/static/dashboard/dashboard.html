@@ -8,6 +8,7 @@
     <script type="text/javascript" src="/dashboard/packed.js"></script>
     <script src="/dashboard/scripts/Page.js"></script>
     <script src="/dashboard/scripts/utility.js"></script>
+    <script src="/dashboard/scripts/container_utility.js"></script>
 </head>
 
 <body>
@@ -19,24 +20,28 @@
 </body>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
-        window.store = new gink.IndexedDbStore(true);
+        window.store = new gink.IndexedDbStore();
         window.instance = new gink.GinkInstance(store);
         await window.instance.connectTo(`ws://${window.location.host}`);
 
-        let muid;
-        if (!window.location.hash) {
-            muid = window.instance.getGlobalDirectory().address;
-        } else if (window.location.hash == '#self') {
-            muid = window.instance.getMedallionDirectory().address;
-        }
-        else {
-            muid = gink.strToMuid(window.location.hash.substring(1));
-        }
-        const page = new Page(muid);
+        let muid = hashToMuid(window.location.hash);
+        let page = new Page(muid);
         await page.displayPage();
 
-        window.onhashchange = () => {
-            window.location.reload();
+        const refreshContainer = async () => {
+            page.ready = page.init(page.container.address);
+            if (page.pageType == "container") {
+                await page.displayPage();
+            }
+        };
+
+        window.instance.addListener(refreshContainer);
+
+        window.onhashchange = async (e) => {
+            let newHash = e.newURL.split("#")[1];
+            let muid = hashToMuid(newHash);
+            let page = new Page(muid);
+            await page.displayPage();
         };
     });
 </script>

@@ -293,7 +293,7 @@ export class GinkInstance {
             for (const listener of this.listeners) {
                 listener(bundleInfo);
             }
-            return bundleInfo
+            return bundleInfo;
         });
     }
 
@@ -333,6 +333,7 @@ export class GinkInstance {
             }
         } catch (e) {
             //TODO: Send some sensible code to the peer to say what went wrong.
+            console.error(e);
             this.peers.get(fromConnectionId)?.close();
             this.peers.delete(fromConnectionId);
         } finally {

@@ -5,6 +5,9 @@
 
 class Page {
     constructor(muid, currentPage = 0, itemsPerPage = 10) {
+        // pageType is used to determine whether to update the page
+        // contents again on database commit.
+        this.pageType = "none";
         this.currentPage = currentPage;
         this.itemsPerPage = itemsPerPage;
         this.ready = this.init(muid);
@@ -22,13 +25,15 @@ class Page {
      * @returns a sub Array containing the entries for the current page.
      */
     getPageOfEntries() {
-        return this.entries.slice(this.currentPage * this.itemsPerPage, this.currentPage * this.itemsPerPage + this.itemsPerPage);
+        const lowerBound = this.currentPage * this.itemsPerPage;
+        const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
+        return this.entries.slice(lowerBound, upperBound);
     }
 
     /**
      * Changes the title and header elements of the container page.
      */
-    async writeTitle() {
+    writeTitle() {
         const containerContents = document.getElementById('container-contents');
         const title = containerContents.appendChild(document.createElement('h2'));
         title.setAttribute('id', 'title-bar');
@@ -69,7 +74,7 @@ class Page {
         const showing = containerContents.appendChild(document.createElement('p'));
         const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
         const maxEntries = upperBound >= this.entries.length ? this.entries.length : upperBound;
-        showing.innerText = `Showing entries ${this.currentPage * this.itemsPerPage}-${maxEntries}`;
+        showing.innerText = `Showing entries ${this.currentPage * this.itemsPerPage + 1}-${maxEntries}`;
 
         const addEntryButton = containerContents.appendChild(document.createElement('button'));
         addEntryButton.innerText = "Add Entry";
@@ -88,11 +93,13 @@ class Page {
     async displayPage(reloadContainer) {
         if (reloadContainer) await this.init(this.container.address);
         await this.ready;
+        this.pageType = "container";
         const containerContents = document.getElementById('container-contents');
         clearChildren(containerContents);
 
-        await this.writeTitle();
+        this.writeTitle();
         await this.writeRangeInfo();
+        this.writePageButtons();
         const thisContainerTable = containerContents.appendChild(document.createElement('table'));
         thisContainerTable.setAttribute('id', 'container-table');
         thisContainerTable.innerHTML = `
@@ -117,11 +124,18 @@ class Page {
             }
         }
         else if (!this.hasKeys && this.hasValues) {
-            for (const val of this.getPageOfEntries()) {
-                await this.createRow(undefined, val);
+            let pageOfEntries = this.getPageOfEntries();
+            for (let i = 0; i < pageOfEntries.length; i++) {
+                let val = pageOfEntries[i];
+                let position;
+                if (this.container.behavior == 2) {
+                    // If this is a sequence, we need to keep track of
+                    // each entry's position to delete or update it.
+                    position = this.currentPage * this.itemsPerPage + i;
+                }
+                await this.createRow(undefined, val, position);
             }
         }
-        this.writePageButtons();
     }
 
     async displayNextPage() {
@@ -144,43 +158,163 @@ class Page {
      */
     async displayAddEntry() {
         await this.ready;
+        this.pageType = "add-entry";
         const containerContents = document.getElementById('container-contents');
         clearChildren(containerContents);
-        await this.writeTitle();
-        const cancelButton = containerContents.appendChild(document.createElement('button'));
-        cancelButton.setAttribute('id', 'cancel-button');
-        cancelButton.innerText = 'X';
-        cancelButton.onclick = () => {
-            this.displayPage();
-        };
+        this.writeTitle();
+        this.writeCancelButton();
 
         const entryFields = containerContents.appendChild(document.createElement('div'));
-        entryFields.setAttribute('id', 'entry-container');
+        entryFields.setAttribute('id', 'add-entry-container');
+        entryFields.setAttribute('class', 'entry-container');
         if (this.hasKeys) {
             entryFields.innerHTML += `
             <div class="input-container">
-                <label for="key">Key</label>
-                <input type="text" name="key" id="key-input" />
+                <input type="text" name="key" class="commit-input" id="key-input" placeholder="Key" />
             </div>
             `;
         }
         if (this.hasValues) {
             entryFields.innerHTML += `
             <div class="input-container">
-                <label for="val">Value</label>
-                <input type="text" name="val" id="val-input" />
+                <input type="text" name="val" class="commit-input" id="val-input" placeholder="Value" />
             </div>
             `;
         }
         const submitButton = entryFields.appendChild(document.createElement('button'));
         submitButton.innerText = 'Commit Entry';
+        submitButton.setAttribute('id', 'commit-button');
         submitButton.onclick = async () => {
             let key = document.getElementById('key-input');
             key = key ? key.value : undefined;
             let val = document.getElementById('val-input');
             val = val ? val.value : undefined;
             await addContainerEntry(key, val, this.container);
-            await this.displayPage(true);
+            await this.displayPage();
+        };
+    }
+
+    async displayEntry(key, value, position) {
+        const containerContents = document.getElementById('container-contents');
+        this.pageType = "entry";
+        clearChildren(containerContents);
+        this.writeTitle();
+        this.writeCancelButton();
+        const entryContainer = containerContents.appendChild(document.createElement('div'));
+        entryContainer.setAttribute('id', 'view-entry');
+        entryContainer.setAttribute('class', 'entry-container');
+        if (key != undefined) {
+            entryContainer.innerHTML += `
+            <div>
+                <h2>Key</h2>
+                <p>${key}</p>
+            </div>
+            `;
+        }
+        if (value != undefined) {
+            entryContainer.innerHTML += `
+            <div>
+                <h2>Value</h2>
+                <p>${value}</p>
+            </div>
+            `;
+        }
+        const buttonContainer = containerContents.appendChild(document.createElement('div'));
+        buttonContainer.setAttribute('id', 'update-delete-container');
+
+        const updateButton = buttonContainer.appendChild(document.createElement('button'));
+        updateButton.innerText = "Update Entry";
+        updateButton.onclick = async () => {
+            await this.displayUpdateEntry(key, value, position);
+        };
+
+        const deleteButton = buttonContainer.appendChild(document.createElement('button'));
+        deleteButton.innerText = "Delete Entry";
+        deleteButton.onclick = async () => {
+            if (confirm("Delete and commit?")) {
+                await deleteContainerEntry(key, position, this.container);
+            }
+            await this.displayPage();
+        };
+    }
+
+    async displayUpdateEntry(oldKey, oldValue, position) {
+        const containerContents = document.getElementById('container-contents');
+        this.pageType = "update";
+        clearChildren(containerContents);
+        this.writeTitle();
+        this.writeCancelButton();
+        const entryContainer = containerContents.appendChild(document.createElement('div'));
+        entryContainer.setAttribute('id', 'view-entry');
+        entryContainer.setAttribute('class', 'entry-container');
+        if (oldKey != undefined) {
+            entryContainer.innerHTML += `
+            <div>
+                <h2>Key</h2>
+                <div id="entry-key"></div>
+            </div>
+            `;
+        }
+        if (oldValue != undefined) {
+            entryContainer.innerHTML += `
+            <div>
+                <h2>Value</h2>
+                <div id="entry-value"></div>
+            </div>
+            `;
+        }
+
+        let keyInput, valueInput;
+        const keyContainer = document.getElementById('entry-key');
+        if (keyContainer) {
+            keyContainer.innerText = '';
+            keyInput = keyContainer.appendChild(document.createElement('input'));
+            keyInput.setAttribute('id', 'key-input');
+            keyInput.setAttribute('class', 'commit-input');
+            keyInput.value = oldKey;
+        }
+        const valueContainer = document.getElementById('entry-value');
+        if (valueContainer) {
+            valueContainer.innerText = '';
+            valueInput = valueContainer.appendChild(document.createElement('input'));
+            valueInput.setAttribute('id', 'value-input');
+            valueInput.setAttribute('class', 'commit-input');
+            valueInput.value = oldValue;
+        }
+
+        const buttonContainer = containerContents.appendChild(document.createElement('div'));
+        buttonContainer.setAttribute('id', 'commit-abort-container');
+
+        const commitButton = buttonContainer.appendChild(document.createElement('button'));
+        commitButton.innerText = "Commit Entry";
+        commitButton.onclick = async () => {
+            let newKey, newValue;
+            if (keyContainer) newKey = keyInput.value;
+            if (valueContainer) newValue = valueInput.value;
+            if (confirm("Commit updated entry?")) {
+                await deleteContainerEntry(oldKey, position, this.container);
+                await addContainerEntry(newKey, newValue, this.container);
+            }
+            await this.displayPage();
+        };
+
+        const abortButton = buttonContainer.appendChild(document.createElement('button'));
+        abortButton.innerText = "Abort";
+        abortButton.onclick = async () => {
+            await this.displayEntry(oldKey, oldValue, position);
+        };
+    }
+
+    /**
+     * Puts an X button at the top left of #container-contents.
+     */
+    writeCancelButton() {
+        const containerContents = document.getElementById('container-contents');
+        const cancelButton = containerContents.appendChild(document.createElement('button'));
+        cancelButton.setAttribute('id', 'cancel-button');
+        cancelButton.innerText = 'X';
+        cancelButton.onclick = async () => {
+            await this.displayPage();
         };
     }
 
@@ -188,12 +322,21 @@ class Page {
      * Creates a row in the container contents table.
      * @param {*} key
      * @param {*} val
+     * @param {number} position optional, used for sequences to
+     * keep track of which entry to update/delete.
      */
-    async createRow(key, val) {
+    async createRow(key, val, position) {
         const table = document.getElementById('container-table');
         const row = table.appendChild(document.createElement('tr'));
-        if (key) await this.createCell(row, key);
-        if (val) await this.createCell(row, val);
+        if (position != undefined) {
+            row.dataset["position"] = position;
+        }
+        row.setAttribute('class', 'entry-row');
+        row.onclick = async () => {
+            await this.displayEntry(key, val, Number(row.dataset["position"]));
+        };
+        if (key != undefined) await this.createCell(row, key);
+        if (val != undefined) await this.createCell(row, val);
     }
 
     /**
@@ -202,7 +345,6 @@ class Page {
      * @param {*} content a key or value to place into the row.
      */
     async createCell(row, content) {
-        let showing; // the initial preview shown
         const cell = row.appendChild(document.createElement('td'));
         cell.dataset['state'] = 'long';
         if (Array.isArray(content) && content.length == 2 && content[0].timestamp) {
@@ -217,29 +359,13 @@ class Page {
             cell.style.fontWeight = "bold";
             cell.style.cursor = "pointer";
             cell.onclick = () => {
-                console.log(content);
                 window.location.hash = '#' + gink.muidToString(content.address);
-                window.location.reload();
             };
             cell.innerText = `${content.constructor.name}(${gink.muidToString(content.address)})`;
         } else {
             content = unwrapToString(content);
             if (content.length > 20) {
-                cell.style.cursor = "pointer";
-                let longContent = content;
-                let shortContent = shortenedString(content);
-                cell.dataset['state'] = 'short';
-                cell.onclick = () => {
-                    if (cell.dataset["state"] == 'short') {
-                        cell.innerText = longContent;
-                        cell.dataset['state'] = 'long';
-                    }
-                    else if (cell.dataset["state"] == 'long') {
-                        cell.innerText = shortContent;
-                        cell.dataset['state'] = 'short';
-                    }
-                };
-                cell.innerText = shortContent;
+                cell.innerText = shortenedString(content);
             }
             else {
                 cell.innerText = content;
@@ -254,25 +380,32 @@ class Page {
     writePageButtons() {
         const containerContents = document.getElementById('container-contents');
         const pageButtonsDiv = containerContents.appendChild(document.createElement('div'));
+        pageButtonsDiv.style.fontWeight = "bold";
         pageButtonsDiv.setAttribute('id', 'page-buttons-container');
         const prevPage = pageButtonsDiv.appendChild(document.createElement('a'));
         prevPage.setAttribute('class', 'page-btn no-select');
+        prevPage.innerText = '<';
         if (!this.isFirstPage()) {
-            prevPage.innerText = '<';
             prevPage.onclick = async () => {
                 await this.displayPrevPage();
             };
+        } else {
+            prevPage.style.opacity = 0;
+            prevPage.style.cursor = "auto";
         }
         const thisPage = pageButtonsDiv.appendChild(document.createElement('p'));
-        thisPage.innerText = this.currentPage + 1;
+        thisPage.innerText = `Page ${this.currentPage + 1}`;
         thisPage.setAttribute('class', 'no-select');
         const nextPage = pageButtonsDiv.appendChild(document.createElement('a'));
         nextPage.setAttribute('class', 'page-btn no-select');
+        nextPage.innerText = '>';
         if (!this.isLastPage()) {
-            nextPage.innerText = '>';
             nextPage.onclick = async () => {
                 await this.displayNextPage();
             };
+        } else {
+            nextPage.style.opacity = 0;
+            nextPage.style.cursor = "auto";
         }
     }
 
