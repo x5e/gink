@@ -46,7 +46,7 @@ it('connect to server and display dashboard', async () => {
         const args = await Promise.all(e.args().map(a => a.jsonValue()));
     });
 
-    await page.goto('http://127.0.0.1:8081/');
+    await page.goto(`http://localhost:8081/`);
     await page.waitForSelector('#container-contents');
 
     // if you are using a RaspberryPi, or another low powered machine, make sure these are uncommented
@@ -57,7 +57,6 @@ it('connect to server and display dashboard', async () => {
 
     const title = await page.$eval("#title-bar", e => e.innerHTML);
     expect(title).toMatch("Root Directory");
-
 
     await page.reload();
     await server.expect("Peer ::ffff:127.0.0.1 disconnected.");
