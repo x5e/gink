@@ -63,7 +63,7 @@ it('connect to server and display dashboard', async () => {
 
     // Make sure server does not crash after page reload.
     try {
-        await server.expect("got ack from 2");
+        await server.expect("commit from 2:");
     } catch (e) {
         throw new Error(e);
     } finally {

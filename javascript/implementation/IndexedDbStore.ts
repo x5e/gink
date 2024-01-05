@@ -267,7 +267,7 @@ export class IndexedDbStore implements Store {
         const oldChainInfo: BundleInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
-                return;
+                return wrappedTransaction;
             }
             if (oldChainInfo?.timestamp != priorTime) {
                 //TODO(https://github.com/google/gink/issues/27): Need to explicitly close?
