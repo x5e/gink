@@ -1,4 +1,26 @@
 /**
+ * Determines the muid of the container to display based
+ * on the hash provided.
+ * #self returns the muid of the medallion directory
+ * undefined returns the muid of the root directory
+ * #(String-Muid) returns the Muid object of that container.
+ * @param {string} hash
+ * @returns a gink.Muid
+ */
+function hashToMuid(hash) {
+    let muid;
+    if (!hash) {
+        muid = window.instance.getGlobalDirectory().address;
+    } else if (window.location.hash == '#self') {
+        muid = window.instance.getMedallionDirectory().address;
+    }
+    else {
+        muid = gink.strToMuid(hash.substring(1));
+    }
+    return muid;
+}
+
+/**
  * Utility function to clear the children of
  * an HTMLElement.
  * @param {HTMLElement} node
@@ -48,62 +70,4 @@ function shortenedString(string) {
     else {
         return string.substring(0, 21) + "...";
     }
-}
-
-/**
- * Converts a key, value container to a JavaScript Map.
- * Throws an error if the Gink container does not hold keys,
- * like a Sequence, for example.
- * @param {Container} container
- * @returns the container's key, value pairs as a Map.
- */
-async function keyValContainerAsMap(container) {
-    let map;
-    if (container.behavior == 4) { // Directory
-        map = await container.toMap();
-    }
-    else if (container.behavior == 6) { // PairMap
-        map = await container.items();
-    }
-    else if ([1, 2, 3, 5, 10].includes(container.behavior)) {
-        throw new Error(`${container.constructor.name} does not use keys. Use valContainerAsArray() instead.`);
-    }
-    else {
-        throw new Error(`not sure how to get entries for ${container.constructor.name}`);
-    }
-    return map;
-}
-
-/**
- * Converts a value only container to a JavaScript Array.
- * Throws an error if the Gink container hold keys,
- * like a Directory, for example.
- * @param {Container} container
- * @returns the container's values as an Array.
- */
-async function valContainerAsArray(container) {
-    let arr;
-    switch (container.behavior) {
-        case 1: // Box
-            arr = [await container.get()];
-            break;
-        case 2: // Sequence
-            arr = await container.toArray();
-            break;
-        case 3: // KeySet
-            arr = Array.from(await container.toSet());
-            break;
-        case 5: // PairSet
-            arr = Array.from(await container.getPairs());
-            break;
-        case 10: // Role
-            arr = await container.includedAsArray();
-            break;
-        case 4: // Directory
-        case 6: // PairMap
-            throw new Error(`${container.constructor.name} uses keys. Use keyValContainerAsMap() instead.`);
-        default:
-            throw new Error(`not sure how to get entries for ${container.constructor.name}`);
-    }
-    return arr;
 }
