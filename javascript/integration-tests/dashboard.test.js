@@ -42,6 +42,11 @@ it('connect to server and display dashboard', async () => {
 }, 13000);
 
 it('share commits between two pages', async () => {
+    /**
+     * The idea here is to have two pages connected to the same server
+     * that can both send commits and have them reflected in the other
+     * page.
+     */
     const slowMachine = new Promise(r => setTimeout(r, 4000));
 
     let browser = await puppeteer.launch(getLaunchOptions());
@@ -67,6 +72,16 @@ it('share commits between two pages', async () => {
             expect(title).toMatch("Root Directory");
         }
 
+        // Looks a little confusing but really this is a loop that goes:
+        // Page1: set(key0, a value)
+        // Page2: set(key1, a value)
+        // Page1: set(key2, a value)
+        // Page1: delete(key1)
+        // Page2: set(key3, a value)
+        // Page2: delete(key2)
+
+        // This ensures the pages won't be missing any chain info after
+        // the other sends a commit.
         for (let i = 0; i < 4; i++) {
             const page = pages[i % 2 == 0 ? 1 : 0];
             page
