@@ -42,6 +42,8 @@ it('connect to server and display dashboard', async () => {
 }, 13000);
 
 it('share commits between two pages', async () => {
+    const slowMachine = new Promise(r => setTimeout(r, 4000));
+
     let browser = await puppeteer.launch(getLaunchOptions());
     let page1 = await browser.newPage();
     let page2 = await browser.newPage();
@@ -54,37 +56,37 @@ it('share commits between two pages', async () => {
     await waitForMessages;
     await server.expect("ready");
 
-    for (let i = 0; i < 4; i++) {
-        const page = pages[i % 2 == 0 ? 1 : 0];
-        page
-            .on('console', message =>
-                console.log(`${message.type().substring(0, 3).toUpperCase()} ${message.text()}`))
-            .on('pageerror', ({ message }) => console.error(message));
+    try {
+        for (const page of pages) {
+            await page.goto(`http://localhost:8081/`);
+            await page.waitForSelector('#container-contents');
 
-        await page.goto(`http://localhost:8081/`);
-        await page.waitForSelector('#container-contents');
+            await slowMachine;
 
-        const slowMachine = new Promise(r => setTimeout(r, 4000));
-        await slowMachine;
-
-        const title = await page.$eval("#title-bar", e => e.innerHTML);
-        expect(title).toMatch("Root Directory");
-
-        await page.evaluate(async (i) => {
-            const globalDir = window.instance.getGlobalDirectory();
-            await globalDir.set(`key${i}`, 'a value');
-        }, i);
-
-        if (i > 1) {
-            await page.evaluate(async (i) => {
-                const globalDir = window.instance.getGlobalDirectory();
-                await globalDir.delete(`key${i - 1}`);
-            }, i);
+            const title = await page.$eval("#title-bar", e => e.innerHTML);
+            expect(title).toMatch("Root Directory");
         }
-        await slowMachine;
-    }
 
-    const expectedContents = `<tbody><tr>
+        for (let i = 0; i < 4; i++) {
+            const page = pages[i % 2 == 0 ? 1 : 0];
+            page
+                .on('console', message =>
+                    console.log(`${message.type().substring(0, 3).toUpperCase()} ${message.text()}`))
+                .on('pageerror', ({ message }) => console.error(message));
+
+            await page.evaluate(async (i) => {
+                await window.instance.getGlobalDirectory().set(`key${i}`, 'a value');
+            }, i);
+
+            if (i > 1) {
+                await page.evaluate(async (i) => {
+                    await window.instance.getGlobalDirectory().delete(`key${i - 1}`);
+                }, i);
+            }
+            await slowMachine;
+        }
+
+        const expectedContents = `<tbody><tr>
                             <th>Key</th>
                             <th>Value</th>
                             </tr></tbody>
@@ -97,7 +99,7 @@ it('share commits between two pages', async () => {
                                 <td data-state="long">a value</td>
                             </tr>`.replace(/\s/g, '');
 
-    try {
+
         // Tables should both include the same keys and values:
         // key0: a value and key3: a value
         const table1 = await page1.$eval("#container-table", e => e.innerHTML);
