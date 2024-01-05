@@ -181,6 +181,11 @@ class Page {
             </div>
             `;
         }
+        entryFields.innerHTML += `
+            <div class="input-container">
+                <input type="text" name="msg" class="commit-input" id="msg-input" placeholder="Commit Message (Optional)" />
+            </div>
+            `;
         const submitButton = entryFields.appendChild(document.createElement('button'));
         submitButton.innerText = 'Commit Entry';
         submitButton.setAttribute('id', 'commit-button');
@@ -189,7 +194,9 @@ class Page {
             key = key ? key.value : undefined;
             let val = document.getElementById('val-input');
             val = val ? val.value : undefined;
-            await addContainerEntry(key, val, this.container);
+            let msg = document.getElementById('msg-input');
+            msg = msg ? msg.value : undefined;
+            await addContainerEntry(key, val, this.container, msg);
             await this.displayPage();
         };
     }
@@ -263,6 +270,11 @@ class Page {
             </div>
             `;
         }
+        entryContainer.innerHTML += `
+            <div>
+                <div id="entry-comment"><input class="commit-input" id="comment-input" placeholder="Commit Message (Optional)"></input></div>
+            </div>
+            `;
 
         let keyInput, valueInput;
         const keyContainer = document.getElementById('entry-key');
@@ -288,12 +300,14 @@ class Page {
         const commitButton = buttonContainer.appendChild(document.createElement('button'));
         commitButton.innerText = "Commit Entry";
         commitButton.onclick = async () => {
-            let newKey, newValue;
+            let newKey, newValue, newComment;
             if (keyContainer) newKey = keyInput.value;
             if (valueContainer) newValue = valueInput.value;
+            newComment = document.getElementById("comment-input").value;
+
             if (confirm("Commit updated entry?")) {
-                await deleteContainerEntry(oldKey, position, this.container);
-                await addContainerEntry(newKey, newValue, this.container);
+                await deleteContainerEntry(oldKey, position, this.container, newComment);
+                await addContainerEntry(newKey, newValue, this.container, newComment);
             }
             await this.displayPage();
         };
