@@ -54,10 +54,11 @@ export class IndexedDbStore implements Store {
 
     ready: Promise<void>;
     private wrapped: IDBPDatabase<IndexedDbStoreSchema>;
-    private transaction: Transaction|null = null;
+    private transaction: Transaction | null = null;
     private countTrxns: number = 0;
     private initialized = false;
     private processingLock = new PromiseChainLock();
+    private lastCaller: string = "";
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
     constructor(indexedDbName = "gink-default", reset = false, private keepingHistory = true) {
@@ -122,17 +123,24 @@ export class IndexedDbStore implements Store {
         this.initialized = true;
     }
 
+    private clearTransaction() {
+        // console.log("clearing transaction");
+        this.transaction = null;
+    }
+
     private getTransaction() {
-        if (this.transaction === null) {
+        const stackString = (new Error()).stack;
+        const callerLine = stackString ? stackString.split("\n")[2] : "";
+        if (this.transaction === null || this.lastCaller != callerLine) {
+            // console.log(`creating new transaction for ${callerLine}`)
+            this.lastCaller = callerLine;
+            this.countTrxns += 1;
             this.transaction = this.wrapped.transaction(
                 ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains', 'containers'],
                 'readwrite');
-            const thisIndexedDbStore = this;
-            this.transaction.done.finally(() => {
-                thisIndexedDbStore.transaction = null;
-                thisIndexedDbStore.countTrxns += 1;
-                // console.log(`finished transaction number ${thisIndexedDbStore.countTrxns}`);
-            });
+            this.transaction.done.finally(() => this.clearTransaction());
+        } else {
+            // console.log(`reusing transaction for ${callerLine}`);
         }
         return this.transaction;
     }
@@ -143,7 +151,7 @@ export class IndexedDbStore implements Store {
 
     async dropHistory(container?: Muid, before?: AsOf): Promise<void> {
         const beforeTs = before ? await this.asOfToTimestamp(before) : generateTimestamp();
-        const trxn = this.getTransaction();
+        const trxn = this.wrapped.transaction(["removals", "entries"], "readwrite");
         let removalsCursor = await trxn.objectStore("removals").openCursor(IDBKeyRange.upperBound([beforeTs]));
         if (container) {
             const containerTuple = muidToTuple(container);
@@ -192,7 +200,7 @@ export class IndexedDbStore implements Store {
         }
         if (asOf < 0 && asOf > -1000) {
             // Interpret as number of commits in the past.
-            let cursor = await this.getTransaction().objectStore("trxns").openCursor(undefined, "prev");
+            let cursor = await this.wrapped.transaction("trxns", "readonly").objectStore("trxns").openCursor(undefined, "prev");
             let commitsToTraverse = -asOf;
             for (; cursor; cursor = await cursor.continue()) {
                 if (--commitsToTraverse == 0) {
@@ -207,8 +215,8 @@ export class IndexedDbStore implements Store {
     }
 
     async getClaimedChains(): Promise<ClaimedChains> {
-        if (! this.initialized) throw new Error("not initilized");
-        const objectStore = this.getTransaction().objectStore("activeChains");
+        if (!this.initialized) throw new Error("not initilized");
+        const objectStore = this.wrapped.transaction("activeChains", "readonly").objectStore("activeChains");
         const items = await objectStore.getAll();
         const result = new Map();
         for (let i = 0; i < items.length; i++) {
@@ -220,7 +228,7 @@ export class IndexedDbStore implements Store {
     async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
         //TODO(https://github.com/google/gink/issues/29): check for medallion reuse
         await this.ready;
-        const wrappedTransaction = this.getTransaction();
+        const wrappedTransaction = this.wrapped.transaction("activeChains", "readwrite");
         await wrappedTransaction.objectStore('activeChains').add({ chainStart, medallion });
         return wrappedTransaction.done;
     }
@@ -234,7 +242,7 @@ export class IndexedDbStore implements Store {
 
     private async getChainInfos(): Promise<Array<BundleInfo>> {
         await this.ready;
-        return await this.getTransaction().objectStore('chainInfos').getAll();
+        return await this.wrapped.transaction("chainInfos", "readonly").objectStore('chainInfos').getAll();
     }
 
     addBundle(bundleBytes: BundleBytes): Promise<BundleInfo> {
@@ -245,15 +253,17 @@ export class IndexedDbStore implements Store {
 
         return this.processingLock.acquireLock().then((unlock) => {
             return this.addBundleHelper(bundleBytes, bundleInfo, bundleBuilder).then((trxn) => {
-                unlock(); return trxn.done.then(() => bundleInfo); }).finally(unlock);
+                unlock(); return trxn.done.then(() => bundleInfo);
+            }).finally(unlock);
         });
     }
 
     private async addBundleHelper(bundleBytes: BundleBytes, bundleInfo: BundleInfo, bundleBuilder: BundleBuilder):
-    Promise<Transaction> {
+        Promise<Transaction> {
         // console.log(`starting addBundleHelper for: ` + JSON.stringify(bundleInfo));
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const wrappedTransaction = this.getTransaction();
+
         const oldChainInfo: BundleInfo = await wrappedTransaction.objectStore("chainInfos").get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
@@ -417,13 +427,13 @@ export class IndexedDbStore implements Store {
 
     async getContainerBytes(address: Muid): Promise<Bytes | undefined> {
         const addressTuple = [address.timestamp, address.medallion, address.offset];
-        return await this.getTransaction().objectStore('containers').get(<MuidTuple>addressTuple);
+        return await this.wrapped.transaction("containers", "readonly").objectStore('containers').get(<MuidTuple>addressTuple);
     }
 
     async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
-        const trxn = this.getTransaction();
+        const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
         let clearanceTime: Timestamp = 0;
         const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]]);
         const clearancesCursor = await trxn.objectStore("clearances").openCursor(clearancesSearch, "prev");
@@ -455,7 +465,7 @@ export class IndexedDbStore implements Store {
     async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
-        const trxn = this.getTransaction();
+        const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
 
         let clearanceTime: Timestamp = 0;
         const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]]);
@@ -507,7 +517,7 @@ export class IndexedDbStore implements Store {
         } else {
             unfiltered = await this.wrapped.getAllFromIndex("entries", "targets", indexable);
         }
-        const trxn = this.getTransaction();
+        const trxn = this.wrapped.transaction(["removals"], "readonly");
         const returning: Entry[] = [];
         const removals = trxn.objectStore("removals");
         for (let i = 0; i < unfiltered.length; i++) {
@@ -539,7 +549,7 @@ export class IndexedDbStore implements Store {
         const lower = [containerId, 0];
         const upper = [containerId, asOfTs];
         const range = IDBKeyRange.bound(lower, upper);
-        const trxn = this.getTransaction();
+        const trxn = this.wrapped.transaction(["clearances", "entries", "removals"], "readonly");
 
         let clearanceTime: Timestamp = 0;
         const clearancesSearch = IDBKeyRange.bound([containerId], [containerId, [asOfTs]]);
@@ -570,7 +580,7 @@ export class IndexedDbStore implements Store {
         const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp();
         const entryId = [entryMuid.timestamp ?? 0, entryMuid.medallion ?? 0, entryMuid.offset ?? 0];
         const entryRange = IDBKeyRange.bound([entryId, [0]], [entryId, [asOfTs]]);
-        const trxn = this.getTransaction();
+        const trxn = this.wrapped.transaction(["entries", "removals"], "readonly");
         const entryCursor = await trxn.objectStore("entries").index("locations").openCursor(entryRange, "prev");
         if (!entryCursor) {
             return undefined;
@@ -586,17 +596,17 @@ export class IndexedDbStore implements Store {
 
     // for debugging, not part of the api/interface
     async getAllEntryKeys() {
-        return await this.getTransaction().objectStore("entries").getAllKeys();
+        return await this.wrapped.transaction("entries", "readonly").objectStore("entries").getAllKeys();
     }
 
     // for debugging, not part of the api/interface
     async getAllEntries(): Promise<Entry[]> {
-        return await this.getTransaction().objectStore("entries").getAll();
+        return await this.wrapped.transaction("entries", "readonly").objectStore("entries").getAll();
     }
 
     // for debugging, not part of the api/interface
     async getAllRemovals() {
-        return await this.getTransaction().objectStore("removals").getAll();
+        return await this.wrapped.transaction("removals", "readonly").objectStore("removals").getAll();
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated
@@ -605,7 +615,7 @@ export class IndexedDbStore implements Store {
         await this.ready;
 
         // We loop through all commits and send those the peer doesn't have.
-        for (let cursor = await this.getTransaction().objectStore("trxns").openCursor();
+        for (let cursor = await this.wrapped.transaction("trxns", "readonly").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
             const commitKey = <BundleInfoTuple>cursor.key;
             const commitInfo = commitKeyToInfo(commitKey);
