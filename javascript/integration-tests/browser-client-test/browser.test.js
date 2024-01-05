@@ -1,34 +1,10 @@
 const puppeteer = require('puppeteer');
 const Expector = require("../Expector");
 const { expect } = require('@jest/globals');
+const getLaunchOptions = require("../browser_test_utilities");
 
 it('connect to server and display commits', async () => {
-    let launch_options;
-    // for this test to run as intended, set env CHROME_BIN
-    // to the path to the chrome binary. Chromium works too.
-    // ex: export CHROME_BIN=/bin/chromium-browser
-    if (process.env.CHROME_BIN) {
-        launch_options = {
-            executablePath: process.env.CHROME_BIN,
-            headless: "new",
-            args: [
-                "--no-sandbox",
-                "--disable-gpu",
-            ]
-        };
-    }
-    else {
-        // if path to chrome is not specified, try to find it.
-        launch_options = {
-            product: 'chrome',
-            headless: "new",
-            args: [
-                "--no-sandbox",
-                "--disable-gpu",
-            ]
-        };
-    }
-    let browser = await puppeteer.launch(launch_options);
+    let browser = await puppeteer.launch(getLaunchOptions());
 
     let page = await browser.newPage();
 
@@ -49,11 +25,8 @@ it('connect to server and display commits', async () => {
     await page.goto('http://127.0.0.1:8081/integration-tests/browser-client-test');
     await page.waitForSelector('#messages');
 
-    // if you are using a RaspberryPi, or another low powered machine, make sure these are uncommented
-    const slowMachine = new Promise(r => setTimeout(r, 3000));
+    const slowMachine = new Promise(r => setTimeout(r, 4000));
     await slowMachine;
-
-    await waitForMessages;
 
     const messages = await page.$eval("#messages", e => e.innerHTML);
 
