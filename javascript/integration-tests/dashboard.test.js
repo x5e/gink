@@ -90,12 +90,12 @@ it('share commits between two pages', async () => {
                 .on('pageerror', ({ message }) => console.error(message));
 
             await page.evaluate(async (i) => {
-                await window.instance.getGlobalDirectory().set(`key${i}`, 'a value');
+                await window.instance.getGlobalDirectory().set(`key${i}`, 'a value', `setting key${i}`);
             }, i);
 
             if (i > 1) {
                 await page.evaluate(async (i) => {
-                    await window.instance.getGlobalDirectory().delete(`key${i - 1}`);
+                    await window.instance.getGlobalDirectory().delete(`key${i - 1}`, `deleting key${i}`);
                 }, i);
             }
             await slowMachine;

@@ -271,7 +271,7 @@ export class IndexedDbStore implements Store {
             }
             if (oldChainInfo?.timestamp != priorTime) {
                 //TODO(https://github.com/google/gink/issues/27): Need to explicitly close?
-                throw new Error(`missing, have ${JSON.stringify(bundleInfo)}, have ${JSON.stringify(oldChainInfo)}`);
+                throw new Error(`missing ${JSON.stringify(bundleInfo)}, have ${JSON.stringify(oldChainInfo)}`);
             }
         }
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
