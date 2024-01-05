@@ -32,7 +32,7 @@
     "build": "tsc",
     "test": "jest -- unit-tests",
     "browser-unit": "karma start",
-    "browser-integration": "jest -- browser.test.js",
+    "browser-integration": "jest --detectOpenHandles browser.test.js dashboard.test.js",
     "browser-performance": "node performance-tests/browser-performance-test.js"
   },
   "homepage": "https://github.com/x5e/gink#readme",
