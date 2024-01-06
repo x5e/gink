@@ -27,9 +27,11 @@ it('connect to server and display dashboard', async () => {
     await page.reload();
     await server.expect("disconnected.");
 
+    await sleep(4000);
+
     // Make sure server does not crash after page reload.
     try {
-        await server.expect("commit from 2:");
+        await server.expect("got greeting from 2");
     } catch (e) {
         throw new Error(e);
     } finally {
