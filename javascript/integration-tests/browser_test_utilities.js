@@ -1,4 +1,4 @@
-module.exports = function getLaunchOptions(headless = true) {
+function getLaunchOptions(headless = true) {
     if (headless == true) {
         headless = "new";
     } else {
@@ -30,4 +30,13 @@ module.exports = function getLaunchOptions(headless = true) {
         };
     }
     return launchOptions;
+};
+
+async function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+};
+
+module.exports = {
+    getLaunchOptions: getLaunchOptions,
+    sleep: sleep
 };

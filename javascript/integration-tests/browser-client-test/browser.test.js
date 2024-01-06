@@ -1,18 +1,16 @@
 const puppeteer = require('puppeteer');
 const Expector = require("../Expector");
 const { expect } = require('@jest/globals');
-const getLaunchOptions = require("../browser_test_utilities");
+const { getLaunchOptions, sleep } = require("../browser_test_utilities");
 
 it('connect to server and display commits', async () => {
     let browser = await puppeteer.launch(getLaunchOptions());
 
     let page = await browser.newPage();
 
-    const waitForMessages = new Promise(r => setTimeout(r, 1000));
-
     const server = new Expector("node", ["./tsc.out/implementation/main.js"],
         { env: { GINK_PORT: "8081", GINK_STATIC_PATH: ".", ...process.env } });
-    await waitForMessages;
+    await sleep(1000);
     await server.expect("ready");
 
     // For some reason if I don't handle console output, this test fails because
@@ -25,8 +23,7 @@ it('connect to server and display commits', async () => {
     await page.goto('http://127.0.0.1:8081/integration-tests/browser-client-test');
     await page.waitForSelector('#messages');
 
-    const slowMachine = new Promise(r => setTimeout(r, 4000));
-    await slowMachine;
+    await sleep(4000);
 
     const messages = await page.$eval("#messages", e => e.innerHTML);
 

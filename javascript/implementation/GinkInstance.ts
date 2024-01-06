@@ -281,6 +281,7 @@ export class GinkInstance {
     private receiveCommit(commitBytes: BundleBytes, fromConnectionId?: number): Promise<BundleInfo> {
         return this.store.addBundle(commitBytes).then((bundleInfo) => {
             this.logger(`commit from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
+            this.iHave.markAsHaving(bundleInfo);
             const peer = this.peers.get(fromConnectionId);
             if (peer) {
                 peer.hasMap?.markAsHaving(bundleInfo);

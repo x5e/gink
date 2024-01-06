@@ -1,17 +1,15 @@
 const puppeteer = require('puppeteer');
 const Expector = require("./Expector");
 const { expect } = require('@jest/globals');
-const getLaunchOptions = require("./browser_test_utilities");
+const { getLaunchOptions, sleep } = require("./browser_test_utilities");
 
 it('connect to server and display dashboard', async () => {
     let browser = await puppeteer.launch(getLaunchOptions());
     let page = await browser.newPage();
 
-    const waitForMessages = new Promise(r => setTimeout(r, 1000));
-
     const server = new Expector("node", ["./tsc.out/implementation/main.js"],
         { env: { GINK_PORT: "8081", ...process.env } });
-    await waitForMessages;
+    await sleep(1000);
     await server.expect("ready");
 
     page.on('console', async e => {
@@ -21,8 +19,7 @@ it('connect to server and display dashboard', async () => {
     await page.goto(`http://localhost:8081/`);
     await page.waitForSelector('#container-contents');
 
-    const slowMachine = new Promise(r => setTimeout(r, 4000));
-    await slowMachine;
+    await sleep(4000);
 
     const title = await page.$eval("#title-bar", e => e.innerHTML);
     expect(title).toMatch("Root Directory");
@@ -47,18 +44,14 @@ it('share commits between two pages', async () => {
      * that can both send commits and have them reflected in the other
      * page.
      */
-    const slowMachine = new Promise(r => setTimeout(r, 4000));
-
     let browser = await puppeteer.launch(getLaunchOptions());
     let page1 = await browser.newPage();
     let page2 = await browser.newPage();
     const pages = [page1, page2];
 
-    const waitForMessages = new Promise(r => setTimeout(r, 1000));
-
     const server = new Expector("node", ["./tsc.out/implementation/main.js"],
         { env: { GINK_PORT: "8081", ...process.env } });
-    await waitForMessages;
+    await sleep(1000);
     await server.expect("ready");
 
     try {
@@ -66,7 +59,7 @@ it('share commits between two pages', async () => {
             await page.goto(`http://localhost:8081/`);
             await page.waitForSelector('#container-contents');
 
-            await slowMachine;
+            await sleep(4000);
 
             const title = await page.$eval("#title-bar", e => e.innerHTML);
             expect(title).toMatch("Root Directory");
@@ -98,7 +91,7 @@ it('share commits between two pages', async () => {
                     await window.instance.getGlobalDirectory().delete(`key${i - 1}`, `deleting key${i}`);
                 }, i);
             }
-            await slowMachine;
+            await sleep(4000);
         }
 
         const expectedContents = `<tbody><tr>
@@ -127,4 +120,4 @@ it('share commits between two pages', async () => {
         await server.close();
         await browser.close();
     }
-}, 20000);
+}, 30000);
