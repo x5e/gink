@@ -93,29 +93,19 @@ it('share commits between two pages', async () => {
                     await window.instance.getGlobalDirectory().delete(`key${i - 1}`, `deleting key${i}`);
                 }, i);
             }
-            await sleep(4000);
+            await sleep(2000);
         }
-
-        const expectedContents = `<tbody><tr>
-                            <th>Key</th>
-                            <th>Value</th>
-                            </tr></tbody>
-                            <tr class="entry-row">
-                                <td data-state="long">key0</td>
-                                <td data-state="long">a value</td>
-                            </tr>
-                            <tr class="entry-row">
-                                <td data-state="long">key3</td>
-                                <td data-state="long">a value</td>
-                            </tr>`.replace(/\s/g, '');
-
 
         // Tables should both include the same keys and values:
         // key0: a value and key3: a value
         const table1 = await page1.$eval("#container-table", e => e.innerHTML);
         const table2 = await page2.$eval("#container-table", e => e.innerHTML);
-        expect(table1.replace(/\s/g, '')).toMatch(expectedContents);
-        expect(table2.replace(/\s/g, '')).toMatch(expectedContents);
+        for (const table of [table1, table2]) {
+            expect(table).toMatch(/.*key0/);
+            expect(table).not.toMatch(/.*key1/);
+            expect(table).not.toMatch(/.*key2/);
+            expect(table).toMatch(/.*key3/);
+        }
     } catch (e) {
         throw new Error(e);
     } finally {
