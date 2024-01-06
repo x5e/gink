@@ -72,9 +72,10 @@ class Page {
         }
 
         const showing = containerContents.appendChild(document.createElement('p'));
+        const lowerBound = this.currentPage * this.itemsPerPage + (this.entries.length == 0 ? 0 : 1);
         const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
         const maxEntries = upperBound >= this.entries.length ? this.entries.length : upperBound;
-        showing.innerText = `Showing entries ${this.currentPage * this.itemsPerPage + 1}-${maxEntries}`;
+        showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
 
         const addEntryButton = containerContents.appendChild(document.createElement('button'));
         addEntryButton.innerText = "Add Entry";
