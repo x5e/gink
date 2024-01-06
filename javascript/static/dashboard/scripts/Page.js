@@ -213,17 +213,17 @@ class Page {
         entryContainer.setAttribute('class', 'entry-container');
         if (key != undefined) {
             entryContainer.innerHTML += `
-            <div>
+            <div class="entry-page-kv">
                 <h2>Key</h2>
-                <p>${key}</p>
+                ${await entryValueAsHtml(key)}
             </div>
             `;
         }
         if (value != undefined) {
             entryContainer.innerHTML += `
-            <div>
+            <div class="entry-page-kv">
                 <h2>Value</h2>
-                <p>${value}</p>
+                ${await entryValueAsHtml(value)}
             </div>
             `;
         }
@@ -350,41 +350,13 @@ class Page {
         row.onclick = async () => {
             await this.displayEntry(key, val, Number(row.dataset["position"]));
         };
-        if (key != undefined) await this.createCell(row, key);
-        if (val != undefined) await this.createCell(row, val);
-    }
-
-    /**
-     * Creates a cell in a row within a table.
-     * @param {HTMLRowElement} row an HTML row node.
-     * @param {*} content a key or value to place into the row.
-     */
-    async createCell(row, content) {
-        const cell = row.appendChild(document.createElement('td'));
-        cell.dataset['state'] = 'long';
-        if (Array.isArray(content) && content.length == 2 && content[0].timestamp) {
-            let container1 = await gink.construct(window.instance, content[0]);
-            let container2 = await gink.construct(window.instance, content[1]);
-            cell.style.fontWeight = "bold";
-            cell.innerHTML = `
-            <a href="#${gink.muidToString(container1.address)}">${container1.constructor.name}</a>-<a href="#${gink.muidToString(container2.address)}">${container2.constructor.name}</a>
-            `;
+        if (key != undefined) {
+            const keyCell = row.appendChild(document.createElement('td'));
+            keyCell.innerHTML = await getCellValue(key);
         }
-        else if (content instanceof gink.Container) {
-            cell.style.fontWeight = "bold";
-            cell.style.cursor = "pointer";
-            cell.onclick = () => {
-                window.location.hash = '#' + gink.muidToString(content.address);
-            };
-            cell.innerText = `${content.constructor.name}(${gink.muidToString(content.address)})`;
-        } else {
-            content = unwrapToString(content);
-            if (content.length > 20) {
-                cell.innerText = shortenedString(content);
-            }
-            else {
-                cell.innerText = content;
-            }
+        if (val != undefined) {
+            const valCell = row.appendChild(document.createElement('td'));
+            valCell.innerHTML = await getCellValue(val);
         }
     }
 
