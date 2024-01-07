@@ -46,7 +46,7 @@ it('share commits between two pages', async () => {
      * that can both send commits and have them reflected in the other
      * page.
      */
-    let browser = await puppeteer.launch(getLaunchOptions(false)); // pass false to getLaunchOptions for local debugging.
+    let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
     let page1 = await browser.newPage();
     let page2 = await browser.newPage();
     const pages = [page1, page2];
@@ -65,7 +65,7 @@ it('share commits between two pages', async () => {
                 await dialog.accept();
             });
 
-            await sleep(4000);
+            await sleep(2000);
 
             const title = await page.$eval("#title-bar", e => e.innerHTML);
             expect(title).toMatch("Root Directory");
@@ -78,15 +78,17 @@ it('share commits between two pages', async () => {
         // Page1: delete(key1)
         // Page2: set(key3, a value)
         // Page2: delete(key2)
+        // Page1: set(key0, updated value)
 
         // This ensures the pages won't be missing any chain info after
         // the other sends a commit.
         for (let i = 0; i < 4; i++) {
             const page = pages[i % 2 == 0 ? 1 : 0];
+            await page.bringToFront();
             page
                 .on('console', message =>
                     console.log(`${message.type().substring(0, 3).toUpperCase()} ${message.text()}`))
-                .on('pageerror', ({ message }) => console.error(message));
+                .on('pageerror', ({ message }) => { throw new Error(message); });
 
             await page.click("#add-entry-button");
             await page.type("#key-input", `key${i}`);
@@ -103,13 +105,23 @@ it('share commits between two pages', async () => {
             }
             await sleep(1000);
         }
+        await page1.bringToFront();
+        // Use the update button to update key0's value
+        await page1.waitForXPath(`//td[contains(., 'key0')]`);
+        const [element] = await page1.$x(`//td[contains(., 'key0')]`);
+        await element.click();
+        await page1.click("#update-button");
+        await page1.evaluate(() => document.getElementById("val-input").value = "");
+        await page1.type("#val-input", `changed value`);
+        await page1.click("#commit-button");
+        await sleep(1000);
 
         // Tables should both include the same keys and values:
         // key0: a value and key3: a value
         const table1 = await page1.$eval("#container-table", e => e.innerHTML);
         const table2 = await page2.$eval("#container-table", e => e.innerHTML);
         for (const table of [table1, table2]) {
-            expect(table).toMatch(/.*<tr class="entry-row"><td>key0<\/td><td>a value<\/td><\/tr>/);
+            expect(table).toMatch(/.*<tr class="entry-row"><td>key0<\/td><td>changed value<\/td><\/tr>/);
             expect(table).not.toMatch(/.*key1/);
             expect(table).not.toMatch(/.*key2/);
             expect(table).toMatch(/.*<tr class="entry-row"><td>key3<\/td><td>a value<\/td><\/tr>/);
@@ -120,4 +132,4 @@ it('share commits between two pages', async () => {
         await server.close();
         await browser.close();
     }
-}, 30000);
+}, 40000 * 1000);

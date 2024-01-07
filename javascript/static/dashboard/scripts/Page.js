@@ -262,7 +262,7 @@ class Page {
             entryContainer.innerHTML += `
             <div>
                 <h2>Key</h2>
-                <div id="entry-key"></div>
+                <div id="entry-key"><input class="commit-input" id="key-input" placeholder="Key" /></div>
             </div>
             `;
         }
@@ -270,43 +270,37 @@ class Page {
             entryContainer.innerHTML += `
             <div>
                 <h2>Value</h2>
-                <div id="entry-value"></div>
+                <div id="entry-value"><input class="commit-input" id="val-input" placeholder="Value" /></div>
             </div>
             `;
         }
         entryContainer.innerHTML += `
             <div>
-                <div id="entry-comment"><input class="commit-input" id="comment-input" placeholder="Commit Message (Optional)"></input></div>
+                <div id="entry-comment"><input class="commit-input" id="comment-input" placeholder="Commit Message (Optional)" /></div>
             </div>
             `;
 
-        let keyInput, valueInput;
-        const keyContainer = document.getElementById('entry-key');
-        if (keyContainer) {
-            keyContainer.innerText = '';
-            keyInput = keyContainer.appendChild(document.createElement('input'));
-            keyInput.setAttribute('id', 'key-input');
-            keyInput.setAttribute('class', 'commit-input');
+        const keyInput = document.getElementById('key-input');
+        if (keyInput) {
+            // keyContainer.innerText = '';
             keyInput.value = oldKey;
         }
-        const valueContainer = document.getElementById('entry-value');
-        if (valueContainer) {
-            valueContainer.innerText = '';
-            valueInput = valueContainer.appendChild(document.createElement('input'));
-            valueInput.setAttribute('id', 'value-input');
-            valueInput.setAttribute('class', 'commit-input');
-            valueInput.value = oldValue;
+        const valInput = document.getElementById('val-input');
+        if (valInput) {
+            // valueContainer.innerText = '';
+            valInput.value = oldValue;
         }
 
         const buttonContainer = containerContents.appendChild(document.createElement('div'));
         buttonContainer.setAttribute('id', 'commit-abort-container');
 
         const commitButton = buttonContainer.appendChild(document.createElement('button'));
+        commitButton.setAttribute("id", "commit-button");
         commitButton.innerText = "Commit Entry";
         commitButton.onclick = async () => {
             let newKey, newValue, newComment;
-            if (keyContainer) newKey = keyInput.value;
-            if (valueContainer) newValue = valueInput.value;
+            if (keyInput) newKey = keyInput.value;
+            if (valInput) newValue = valInput.value;
             newComment = document.getElementById("comment-input").value;
 
             if (confirm("Commit updated entry?")) {
