@@ -50,8 +50,15 @@ it('test listeners', async () => {
         const sequence = await instance.createSequence();
         const box = await instance.createBox();
 
-        const globalDirListener = jest.fn(async () => { });
-        const allContainersListener = jest.fn(async () => { });
+        const globalDirListener = async () => {
+            globalDirListener.calledTimes++;
+        };
+        globalDirListener.calledTimes = 0;
+
+        const allContainersListener = async () => {
+            allContainersListener.calledTimes++;
+        };
+        allContainersListener.calledTimes = 0;
 
         instance.addListener(globalDirListener, globalDir.address);
         instance.addListener(allContainersListener);
@@ -60,8 +67,8 @@ it('test listeners', async () => {
         await sequence.push("foo");
         await box.set("test");
 
-        expect(globalDirListener).toHaveBeenCalledTimes(1);
-        expect(allContainersListener).toHaveBeenCalledTimes(3);
+        ensure(globalDirListener.calledTimes == 1);
+        ensure(allContainersListener.calledTimes == 3);
     }
 });
 
