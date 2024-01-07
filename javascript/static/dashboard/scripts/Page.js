@@ -78,6 +78,7 @@ class Page {
         showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
 
         const addEntryButton = containerContents.appendChild(document.createElement('button'));
+        addEntryButton.setAttribute('id', 'add-entry-button');
         addEntryButton.innerText = "Add Entry";
         addEntryButton.onclick = async () => {
             await this.displayAddEntry();
@@ -231,12 +232,14 @@ class Page {
         buttonContainer.setAttribute('id', 'update-delete-container');
 
         const updateButton = buttonContainer.appendChild(document.createElement('button'));
+        updateButton.setAttribute("id", "update-button");
         updateButton.innerText = "Update Entry";
         updateButton.onclick = async () => {
             await this.displayUpdateEntry(key, value, position);
         };
 
         const deleteButton = buttonContainer.appendChild(document.createElement('button'));
+        deleteButton.setAttribute("id", "delete-button");
         deleteButton.innerText = "Delete Entry";
         deleteButton.onclick = async () => {
             if (confirm("Delete and commit?")) {
