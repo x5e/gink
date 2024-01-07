@@ -219,6 +219,8 @@ export class GinkInstance {
     /**
     * Adds a listener that will be called every time a commit is received with the
     * CommitInfo (which contains chain information, timestamp, and commit comment).
+    * @param listener a callback to be invoked when a change occurs in the database or container
+    * @param containerMuid the Muid of a container to subscribe to. If left out, subscribe to all containers.
     */
     public addListener(listener: CommitListener, containerMuid?: Muid) {
         const key = containerMuid ? muidToString(containerMuid) : "all";
@@ -307,7 +309,7 @@ export class GinkInstance {
             const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
             for (const changeBuilder of changesMap.values()) {
                 const entry = changeBuilder.getEntry();
-                if (entry) {
+                if (entry && entry.getContainer().getTimestamp()) {
                     const muid = builderToMuid(entry.getContainer());
                     const stringMuid = muidToString(muid);
                     changedContainers.add(stringMuid);
