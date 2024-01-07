@@ -309,10 +309,13 @@ export class GinkInstance {
             const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
             for (const changeBuilder of changesMap.values()) {
                 const entry = changeBuilder.getEntry();
-                if (entry && entry.getContainer().getTimestamp()) {
-                    const muid = builderToMuid(entry.getContainer());
-                    const stringMuid = muidToString(muid);
-                    changedContainers.add(stringMuid);
+                if (entry) {
+                    const container = entry.getContainer();
+                    if (container.getTimestamp() && container.getMedallion() && container.getOffset()) {
+                        const muid = builderToMuid(entry.getContainer());
+                        const stringMuid = muidToString(muid);
+                        changedContainers.add(stringMuid);
+                    }
                 }
             }
             // Send to listeners specifically subscribed to each container.
