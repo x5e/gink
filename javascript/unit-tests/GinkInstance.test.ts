@@ -40,4 +40,27 @@ it('uses claimed chain', async () => {
     }
 });
 
+it('test listeners', async () => {
+    for (const store of [new IndexedDbStore('GinkInstance.listeners.test', true)]) {
+        await store.ready;
+        const instance = new GinkInstance(store);
+        await instance.ready;
+
+        const globalDir = instance.getGlobalDirectory();
+        const sequence = await instance.createSequence();
+
+        const globalDirListener = jest.fn(async () => { });
+        const allContainersListener = jest.fn(async () => { });
+
+        instance.addListener(globalDirListener, globalDir.address);
+        instance.addListener(allContainersListener);
+
+        await globalDir.set("foo", "bar");
+        await sequence.push("foo");
+
+        expect(globalDirListener).toHaveBeenCalledTimes(1);
+        expect(allContainersListener).toHaveBeenCalledTimes(2);
+    }
+});
+
 export const result = 1;

@@ -1,6 +1,6 @@
 import { Peer } from "./Peer";
-import { makeMedallion, ensure, noOp, generateTimestamp } from "./utils";
-import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, } from "./typedefs";
+import { makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid } from "./utils";
+import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, Offset, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
 import { PromiseChainLock } from "./PromiseChainLock";
@@ -14,10 +14,11 @@ import { Box } from "./Box";
 import { Sequence } from "./Sequence";
 import { Role } from "./Role";
 import { Store } from "./Store";
-import { Behavior, ContainerBuilder, SyncMessageBuilder } from "./builders";
+import { Behavior, ChangeBuilder, ContainerBuilder, SyncMessageBuilder } from "./builders";
 import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 import { Verb } from "./Verb";
+import { BundleBuilder } from "./builders";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -30,7 +31,7 @@ export class GinkInstance {
     readonly peers: Map<number, Peer> = new Map();
     static readonly PROTOCOL = "gink";
 
-    private listeners: CommitListener[] = [];
+    private listeners: Map<string, CommitListener[]> = new Map();
     private countConnections = 0; // Includes disconnected clients.
     private myChain: [Medallion, ChainStart];
     private processingLock = new PromiseChainLock();
@@ -83,6 +84,7 @@ export class GinkInstance {
         }
         this.iHave = await this.store.getChainTracker();
         this.initilized = true;
+        this.listeners.set("all", []);
         //this.logger(`GinkInstance.ready`);
     }
 
@@ -218,8 +220,12 @@ export class GinkInstance {
     * Adds a listener that will be called every time a commit is received with the
     * CommitInfo (which contains chain information, timestamp, and commit comment).
     */
-    public addListener(listener: CommitListener) {
-        this.listeners.push(listener);
+    public addListener(listener: CommitListener, containerMuid?: Muid) {
+        const key = containerMuid ? muidToString(containerMuid) : "all";
+        if (!this.listeners.has(key)) {
+            this.listeners.set(key, []);
+        }
+        this.listeners.get(key).push(listener);
     }
 
     /**
@@ -290,8 +296,31 @@ export class GinkInstance {
                 if (peerId != fromConnectionId)
                     peer._sendIfNeeded(commitBytes, bundleInfo);
             }
-            for (const listener of this.listeners) {
+            // Send to listeners subscribed to all containers.
+            for (const listener of this.listeners.get("all")) {
                 listener(bundleInfo);
+            }
+
+            // Loop through changes and gather a set of changed containers.
+            const changedContainers: Set<string> = new Set();
+            const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(commitBytes);
+            const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
+            for (const changeBuilder of changesMap.values()) {
+                const entry = changeBuilder.getEntry();
+                if (entry) {
+                    const muid = builderToMuid(entry.getContainer());
+                    const stringMuid = muidToString(muid);
+                    changedContainers.add(stringMuid);
+                }
+            }
+            // Send to listeners specifically subscribed to each container.
+            for (const strMuid of changedContainers) {
+                const containerListeners = this.listeners.get(strMuid);
+                if (containerListeners) {
+                    for (const listener of containerListeners) {
+                        listener(bundleInfo);
+                    }
+                }
             }
             return bundleInfo;
         });
