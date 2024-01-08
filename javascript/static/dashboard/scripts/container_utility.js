@@ -84,44 +84,48 @@ async function valContainerAsArray(container) {
  * @param {*} key optional key if adding to a key, value container.
  * @param {*} val optional value to add to database.
  */
-async function addContainerEntry(key, val, container) {
-    let msg;
+async function addContainerEntry(key, val, container, comment) {
+    if (!comment) {
+        comment = "entry added from dashboard";
+    }
+
+    let errMsg;
     gink.ensure(key || val, 'Need to specify key or value');
     gink.ensure(container, 'Need to specify container.');
     if (key) gink.ensure(hasKeysOrValues(container)[0] == true, 'container doesnt use keys');
     if (val) gink.ensure(hasKeysOrValues(container)[1] == true, 'container doesnt use values');
     switch (container.behavior) {
         case 1: // Box
-            await container.set(val);
+            await container.set(val, comment);
             break;
         case 2: // Sequence
-            await container.push(val);
+            await container.push(val, comment);
             break;
         case 3: // KeySet
-            await container.add(key);
+            await container.add(key, comment);
             break;
         case 4: // Directory
-            await container.set(key, val);
+            await container.set(key, val, comment);
             break;
         case 5: // PairSet
-            msg = `Expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
+            errMsg = `Expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
             try {
-                await container.include([gink.strToMuid(key[0]), gink.strToMuid(key[1])]);
+                await container.include([gink.strToMuid(key[0]), gink.strToMuid(key[1])], comment);
             } catch {
-                console.error(msg);
+                console.error(errMsg);
             }
             break;
         case 6: // PairMap
-            msg = `Key is expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
+            errMsg = `Key is expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
             try {
-                await container.set([gink.strToMuid(key[0]), gink.strToMuid(key[1])], val);
+                await container.set([gink.strToMuid(key[0]), gink.strToMuid(key[1])], val, comment);
             } catch {
-                console.error(msg);
+                console.error(errMsg);
             }
 
         case 10: // Role
             try {
-                await container.include(gink.strToMuid(key));
+                await container.include(gink.strToMuid(key), comment);
             } catch {
                 console.error('Expecting muid as string. Ex:FFFFFFFFFFFFFF-6734543837984-00004');
             }
@@ -137,26 +141,30 @@ async function addContainerEntry(key, val, container) {
  * @param {number} position the position in the sequence to pop.
  * @param {*} container the Gink Container to perform the deletion.
  */
-async function deleteContainerEntry(key, position, container) {
+async function deleteContainerEntry(key, position, container, comment) {
+    if (!comment) {
+        comment = "deleted from dashboard";
+    }
+
     gink.ensure(!(key && position), "Cannot provide both key and position");
     switch (container.behavior) {
         case 1: // Box
-            await container.clear();
+            await container.clear(bundlerOrComment = comment);
             break;
         case 2: // Sequence
             gink.ensure(typeof position == "number", "invalid position arg");
-            await container.pop(position);
+            await container.pop(position, bundlerOrComment = comment);
             break;
         case 3: // KeySet
-            await container.delete(key);
+            await container.delete(key, bundlerOrComment = comment);
             break;
         case 4: // Directory
-            await container.delete(key);
+            await container.delete(key, bundlerOrComment = comment);
             break;
         case 5: // PairSet
             msg = `Expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
             try {
-                await container.exclude([gink.strToMuid(key[0]), gink.strToMuid(key[1])]);
+                await container.exclude([gink.strToMuid(key[0]), gink.strToMuid(key[1])], bundlerOrComment = comment);
             } catch {
                 console.error(msg);
             }
@@ -164,13 +172,13 @@ async function deleteContainerEntry(key, position, container) {
         case 6: // PairMap
             msg = `Key is expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
             try {
-                await container.delete([gink.strToMuid(key[0]), gink.strToMuid(key[1])], val);
+                await container.delete([gink.strToMuid(key[0]), gink.strToMuid(key[1])], val, bundlerOrComment = comment);
             } catch {
                 console.error(msg);
             }
         case 10: // Role
             try {
-                await container.exclude(gink.strToMuid(key));
+                await container.exclude(gink.strToMuid(key), bundlerOrComment = comment);
             } catch {
                 console.error('Expecting muid as string. Ex:FFFFFFFFFFFFFF-6734543837984-00004');
             }

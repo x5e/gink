@@ -271,7 +271,7 @@ export class IndexedDbStore implements Store {
             }
             if (oldChainInfo?.timestamp != priorTime) {
                 //TODO(https://github.com/google/gink/issues/27): Need to explicitly close?
-                throw new Error(`missing, have ${JSON.stringify(bundleInfo)}, have ${JSON.stringify(oldChainInfo)}`);
+                throw new Error(`missing ${JSON.stringify(bundleInfo)}, have ${JSON.stringify(oldChainInfo)}`);
             }
         }
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
@@ -483,7 +483,7 @@ export class IndexedDbStore implements Store {
             const entry = <Entry>cursor.value;
 
             ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
-                entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP);
+                entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
             let key: Muid | string | number | Uint8Array | [];
 
             if (typeof (entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof (entry.effectiveKey) == "number") {

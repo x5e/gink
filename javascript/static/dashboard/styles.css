@@ -128,3 +128,10 @@ a {
     cursor: pointer;
     box-shadow: 0px 2px 2px black;
 }
+
+.entry-page-kv {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}

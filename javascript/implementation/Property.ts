@@ -1,9 +1,9 @@
 import { Container } from "./Container";
-import { Value, Muid, KeyType, AsOf } from "./typedefs";
+import { Value, Muid, KeyType, AsOf, Entry } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString } from "./utils";
+import { ensure } from "./utils";
 import { GinkInstance } from "./GinkInstance";
-import { toJson, interpret } from "./factories";
+import { interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 import { Addressable } from "./Addressable";
 
@@ -33,6 +33,11 @@ export class Property extends Container {
     async has(subject: Addressable, asOf?: AsOf): Promise<boolean> {
         const result = await this.ginkInstance.store.getEntryByKey(this.address, subject.address, asOf);
         return result !== undefined;
+    }
+
+    async getAll(asOf?: AsOf): Promise<Map<KeyType, Entry>> {
+        const result = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        return result;
     }
 
 
