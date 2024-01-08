@@ -483,7 +483,7 @@ export class IndexedDbStore implements Store {
             const entry = <Entry>cursor.value;
 
             ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
-                entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP);
+                entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
             let key: Muid | string | number | Uint8Array | [];
 
             if (typeof (entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof (entry.effectiveKey) == "number") {
