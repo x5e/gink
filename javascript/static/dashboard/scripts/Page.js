@@ -72,11 +72,13 @@ class Page {
         }
 
         const showing = containerContents.appendChild(document.createElement('p'));
+        const lowerBound = this.currentPage * this.itemsPerPage + (this.entries.length == 0 ? 0 : 1);
         const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
         const maxEntries = upperBound >= this.entries.length ? this.entries.length : upperBound;
-        showing.innerText = `Showing entries ${this.currentPage * this.itemsPerPage + 1}-${maxEntries}`;
+        showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
 
         const addEntryButton = containerContents.appendChild(document.createElement('button'));
+        addEntryButton.setAttribute('id', 'add-entry-button');
         addEntryButton.innerText = "Add Entry";
         addEntryButton.onclick = async () => {
             await this.displayAddEntry();
@@ -212,17 +214,17 @@ class Page {
         entryContainer.setAttribute('class', 'entry-container');
         if (key != undefined) {
             entryContainer.innerHTML += `
-            <div>
+            <div class="entry-page-kv">
                 <h2>Key</h2>
-                <p>${key}</p>
+                ${await entryValueAsHtml(key)}
             </div>
             `;
         }
         if (value != undefined) {
             entryContainer.innerHTML += `
-            <div>
+            <div class="entry-page-kv">
                 <h2>Value</h2>
-                <p>${value}</p>
+                ${await entryValueAsHtml(value)}
             </div>
             `;
         }
@@ -230,12 +232,14 @@ class Page {
         buttonContainer.setAttribute('id', 'update-delete-container');
 
         const updateButton = buttonContainer.appendChild(document.createElement('button'));
+        updateButton.setAttribute("id", "update-button");
         updateButton.innerText = "Update Entry";
         updateButton.onclick = async () => {
             await this.displayUpdateEntry(key, value, position);
         };
 
         const deleteButton = buttonContainer.appendChild(document.createElement('button'));
+        deleteButton.setAttribute("id", "delete-button");
         deleteButton.innerText = "Delete Entry";
         deleteButton.onclick = async () => {
             if (confirm("Delete and commit?")) {
@@ -258,7 +262,7 @@ class Page {
             entryContainer.innerHTML += `
             <div>
                 <h2>Key</h2>
-                <div id="entry-key"></div>
+                <div id="entry-key"><input class="commit-input" id="key-input" placeholder="Key" /></div>
             </div>
             `;
         }
@@ -266,43 +270,37 @@ class Page {
             entryContainer.innerHTML += `
             <div>
                 <h2>Value</h2>
-                <div id="entry-value"></div>
+                <div id="entry-value"><input class="commit-input" id="val-input" placeholder="Value" /></div>
             </div>
             `;
         }
         entryContainer.innerHTML += `
             <div>
-                <div id="entry-comment"><input class="commit-input" id="comment-input" placeholder="Commit Message (Optional)"></input></div>
+                <div id="entry-comment"><input class="commit-input" id="comment-input" placeholder="Commit Message (Optional)" /></div>
             </div>
             `;
 
-        let keyInput, valueInput;
-        const keyContainer = document.getElementById('entry-key');
-        if (keyContainer) {
-            keyContainer.innerText = '';
-            keyInput = keyContainer.appendChild(document.createElement('input'));
-            keyInput.setAttribute('id', 'key-input');
-            keyInput.setAttribute('class', 'commit-input');
+        const keyInput = document.getElementById('key-input');
+        if (keyInput) {
+            // keyContainer.innerText = '';
             keyInput.value = oldKey;
         }
-        const valueContainer = document.getElementById('entry-value');
-        if (valueContainer) {
-            valueContainer.innerText = '';
-            valueInput = valueContainer.appendChild(document.createElement('input'));
-            valueInput.setAttribute('id', 'value-input');
-            valueInput.setAttribute('class', 'commit-input');
-            valueInput.value = oldValue;
+        const valInput = document.getElementById('val-input');
+        if (valInput) {
+            // valueContainer.innerText = '';
+            valInput.value = oldValue;
         }
 
         const buttonContainer = containerContents.appendChild(document.createElement('div'));
         buttonContainer.setAttribute('id', 'commit-abort-container');
 
         const commitButton = buttonContainer.appendChild(document.createElement('button'));
+        commitButton.setAttribute("id", "commit-button");
         commitButton.innerText = "Commit Entry";
         commitButton.onclick = async () => {
             let newKey, newValue, newComment;
-            if (keyContainer) newKey = keyInput.value;
-            if (valueContainer) newValue = valueInput.value;
+            if (keyInput) newKey = keyInput.value;
+            if (valInput) newValue = valInput.value;
             newComment = document.getElementById("comment-input").value;
 
             if (confirm("Commit updated entry?")) {
@@ -349,41 +347,13 @@ class Page {
         row.onclick = async () => {
             await this.displayEntry(key, val, Number(row.dataset["position"]));
         };
-        if (key != undefined) await this.createCell(row, key);
-        if (val != undefined) await this.createCell(row, val);
-    }
-
-    /**
-     * Creates a cell in a row within a table.
-     * @param {HTMLRowElement} row an HTML row node.
-     * @param {*} content a key or value to place into the row.
-     */
-    async createCell(row, content) {
-        const cell = row.appendChild(document.createElement('td'));
-        cell.dataset['state'] = 'long';
-        if (Array.isArray(content) && content.length == 2 && content[0].timestamp) {
-            let container1 = await gink.construct(window.instance, content[0]);
-            let container2 = await gink.construct(window.instance, content[1]);
-            cell.style.fontWeight = "bold";
-            cell.innerHTML = `
-            <a href="#${gink.muidToString(container1.address)}">${container1.constructor.name}</a>-<a href="#${gink.muidToString(container2.address)}">${container2.constructor.name}</a>
-            `;
+        if (key != undefined) {
+            const keyCell = row.appendChild(document.createElement('td'));
+            keyCell.innerHTML = await getCellValue(key);
         }
-        else if (content instanceof gink.Container) {
-            cell.style.fontWeight = "bold";
-            cell.style.cursor = "pointer";
-            cell.onclick = () => {
-                window.location.hash = '#' + gink.muidToString(content.address);
-            };
-            cell.innerText = `${content.constructor.name}(${gink.muidToString(content.address)})`;
-        } else {
-            content = unwrapToString(content);
-            if (content.length > 20) {
-                cell.innerText = shortenedString(content);
-            }
-            else {
-                cell.innerText = content;
-            }
+        if (val != undefined) {
+            const valCell = row.appendChild(document.createElement('td'));
+            valCell.innerHTML = await getCellValue(val);
         }
     }
 
