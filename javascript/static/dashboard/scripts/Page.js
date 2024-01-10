@@ -1,193 +1,199 @@
-/**
- * This class assumes the existence of a div element
- * with an id of container-contents.
- */
-
 class Page {
-    constructor(muid, currentPage = 0, itemsPerPage = 10) {
-        // pageType is used to determine whether to update the page
-        // contents again on database commit.
-        this.pageType = "none";
-        this.currentPage = currentPage;
-        this.itemsPerPage = itemsPerPage;
-        this.ready = this.init(muid);
-    }
-
-    async init(muid) {
-        this.container = await gink.construct(window.instance, muid);
-        this.entries = await containerAsArray(this.container);
-        [this.hasKeys, this.hasValues] = hasKeysOrValues(this.container);
-        gink.ensure(this.hasKeys || this.hasValues);
-    }
-
-    /**
-     * Gets a subset of the entries array based on the current page and the items per page.
-     * @returns a sub Array containing the entries for the current page.
-     */
-    getPageOfEntries() {
-        const lowerBound = this.currentPage * this.itemsPerPage;
-        const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
-        return this.entries.slice(lowerBound, upperBound);
+    constructor() {
+        this.pageType = undefined;
+        this.root = this.getElement("#root");
     }
 
     /**
      * Changes the title and header elements of the container page.
      */
-    writeTitle() {
-        const containerContents = document.getElementById('container-contents');
-        const title = containerContents.appendChild(document.createElement('h2'));
-        title.setAttribute('id', 'title-bar');
-        const muid = this.container.address;
+    writeTitle(container) {
+        const title = this.createElement("h2", this.root, "title-bar");
+        const muid = container.address;
         let containerName;
         if (muid.timestamp == -1 && muid.medallion == -1) {
             containerName = "Root Directory";
         } else {
-            containerName = `${this.container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
+            containerName = `${container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
         }
-        title.innerHTML = `<h2>${containerName}</h2>`;
-    }
-
-    /**
-     * Adds info about the current page below the title.
-     */
-    async writeRangeInfo() {
-        const containerContents = document.getElementById('container-contents');
-        const numEntries = containerContents.appendChild(document.createElement('p'));
-        numEntries.innerText = `Total entries: ${this.entries.length}`;
-
-        if (this.entries.length > 10) {
-            const itemsPerPageSelect = containerContents.appendChild(document.createElement('select'));
-            const options = ['10', '25', '50', '100', '250', '500', '1000'];
-            for (const option of options) {
-                if (Number(option) > this.entries.length) break;
-                const currentOption = itemsPerPageSelect.appendChild(document.createElement('option'));
-                currentOption.innerText = option;
-                currentOption.value = option;
-            }
-            itemsPerPageSelect.value = `${this.itemsPerPage}`;
-            itemsPerPageSelect.onchange = async () => {
-                this.setItemsPerPage(Number(itemsPerPageSelect.value));
-                await this.displayPage();
-            };
-        }
-
-        const showing = containerContents.appendChild(document.createElement('p'));
-        const lowerBound = this.currentPage * this.itemsPerPage + (this.entries.length == 0 ? 0 : 1);
-        const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
-        const maxEntries = upperBound >= this.entries.length ? this.entries.length : upperBound;
-        showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
-
-        const addEntryButton = containerContents.appendChild(document.createElement('button'));
-        addEntryButton.setAttribute('id', 'add-entry-button');
-        addEntryButton.innerText = "Add Entry";
-        addEntryButton.onclick = async () => {
-            await this.displayAddEntry();
-        };
+        title.innerText = containerName;
     }
 
     /**
      * Edits the HTML to display the contents of a container.
-     * Can take either the Muid object itself, or the canonical
-     * string muid.
-     * @param {boolean} reloadContainer should the container be refreshed?
-     * useful if data was just added or removed.
      */
-    async displayPage(reloadContainer) {
-        if (reloadContainer) await this.init(this.container.address);
-        await this.ready;
+    async displayPage(args) {
+        const { container, pageOfEntries, currentPage, itemsPerPage, totalEntries } = args;
         this.pageType = "container";
-        const containerContents = document.getElementById('container-contents');
-        clearChildren(containerContents);
+
+        const [keyType, valueType] = determineContainerStorage(container);
+
+        this.clearChildren(this.root);
 
         this.writeTitle();
-        await this.writeRangeInfo();
-        this.writePageButtons();
-        const thisContainerTable = containerContents.appendChild(document.createElement('table'));
-        thisContainerTable.setAttribute('id', 'container-table');
-        thisContainerTable.innerHTML = `
-        <tr>
-            ${this.hasKeys ? '<th>Key</th>' : ''}
-            ${this.hasValues ? '<th>Value</th>' : ''}
-        </tr>`;
 
-        if (this.entries.length == 0) {
-            const p = containerContents.appendChild(document.createElement('p'));
+        // Total entries
+        const numEntries = this.createElement("p", this.root);
+        numEntries.innerText = `Total entries: ${totalEntries}`;
+
+        // Items per page selector
+        if (totalEntries > 10) {
+            const itemsPerPageSelect = this.createElement("select", this.root);
+            const options = ['10', '25', '50', '100', '250', '500', '1000'];
+            for (const option of options) {
+                if (Number(option) > totalEntries) break;
+                const currentOption = this.createElement("option", itemsPerPageSelect);
+                currentOption.innerText = option;
+                currentOption.value = option;
+            }
+            itemsPerPageSelect.value = `${itemsPerPage}`;
+            itemsPerPageSelect.onchange = async () => {
+                window.location.hash = `${gink.muidToString(container.address)}+${currentPage}+${itemsPerPageSelect.value}`;
+            };
+        }
+
+        // Range information
+        const showing = this.createElement("p", this.root);
+        const lowerBound = currentPage * itemsPerPage + (totalEntries == 0 ? 0 : 1);
+        const upperBound = currentPage * itemsPerPage + itemsPerPage;
+        const maxEntries = upperBound >= totalEntries ? totalEntries : upperBound;
+        showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
+
+        // Add entry button
+        const addEntryButton = this.createElement("button", this.root, "add-entry-button");
+        addEntryButton.innerText = "Add Entry";
+        addEntryButton.onclick = async () => {
+            await this.displayAddEntry(container);
+        };
+
+        // Create the paging buttons
+        const pageButtonsDiv = this.createElement("div", this.root, "page-buttons-container");
+        pageButtonsDiv.style.fontWeight = "bold";
+        const prevPage = this.createElement("a", pageButtonsDiv, undefined, "page-btn no-select");
+        prevPage.innerText = '<';
+        if (!this.isFirstPage(currentPage, itemsPerPage)) {
+            prevPage.onclick = async () => {
+                window.location.hash = `${gink.muidToString(container.address)}+${currentPage - 1}+${itemsPerPage}`;
+            };
+        } else {
+            prevPage.style.opacity = 0;
+            prevPage.style.cursor = "auto";
+        }
+        const thisPage = this.createElement("p", pageButtonsDiv, undefined, "no-select");
+        thisPage.innerText = `Page ${currentPage}`;
+        const nextPage = this.createElement("a", pageButtonsDiv, undefined, "page-btn no-select");
+        nextPage.innerText = '>';
+        if (!this.isLastPage(currentPage, itemsPerPage, totalEntries)) {
+            nextPage.onclick = async () => {
+                window.location.hash = `${gink.muidToString(container.address)}+${currentPage + 1}+${itemsPerPage}`;
+            };
+        } else {
+            nextPage.style.opacity = 0;
+            nextPage.style.cursor = "auto";
+        }
+
+        // If there are no entries, don't bother making the table
+        if (totalEntries == 0) {
+            const p = this.createElement("p", this.root);
             p.innerText = "No entries.";
             return;
         }
-        if (this.hasKeys && this.hasValues) {
-            for (const [key, val] of this.getPageOfEntries()) {
-                await this.createRow(key, val);
-            }
-        }
-        else if (this.hasKeys && !this.hasValues) {
-            for (const key of this.getPageOfEntries()) {
-                await this.createRow(key);
-            }
-        }
-        else if (!this.hasKeys && this.hasValues) {
-            let pageOfEntries = this.getPageOfEntries();
-            for (let i = 0; i < pageOfEntries.length; i++) {
-                let val = pageOfEntries[i];
-                let position;
-                if (this.container.behavior == 2) {
-                    // If this is a sequence, we need to keep track of
-                    // each entry's position to delete or update it.
-                    position = this.currentPage * this.itemsPerPage + i;
-                }
-                await this.createRow(undefined, val, position);
-            }
-        }
-    }
 
-    async displayNextPage() {
-        this.currentPage += 1;
-        await this.displayPage();
-    };
+        // Create table based on page of entries.
+        const containerTable = this.createElement("table".root, "container-table");
+        const headerRow = this.createElement("tr", containerTable);
+        if (keyType != "none") {
+            const keyHeader = this.createElement("th", headerRow);
+            keyHeader.innerText = "Key";
+        }
+        if (valueType != "none") {
+            const valueHeader = this.createElement("th", headerRow);
+            valueHeader.innerText = "Value";
+        }
 
-    async displayPrevPage() {
-        this.currentPage -= 1;
-        await this.displayPage();
-    };
+        // Make sure nothing is broken
+        if (containerKeyType == "none") gink.ensure(pageOfEntries[0][0] == undefined);
+        else if (containerKeyType != "none") gink.ensure(pageOfEntries[0][0] != undefined);
+        if (containerValueType == "none") gink.ensure(pageOfEntries[0][1] == undefined);
+        else if (containerValueType != "none") gink.ensure(pageOfEntries[0][1] != undefined);
 
-    async setItemsPerPage(itemsPerPage) {
-        this.itemsPerPage = itemsPerPage;
-        this.currentPage = 0;
+        // Loop through entries to create table rows
+        let position = 0;
+        for (const [key, value] of pageOfEntries) {
+            const row = this.createElement("tr", containerTable, undefined, "entry-row");
+            row.dataset["position"] = position;
+            row.onclick = async () => {
+                await this.displayEntry(key, value, Number(row.dataset["position"]));
+            };
+            if (key != undefined) {
+                const keyCell = this.createElement("td", row);
+                keyCell.innerText = await getCellValue(key);
+            }
+            if (value != undefined) {
+                const valCell = row.appendChild(document.createElement('td'));
+                valCell.innerText = await getCellValue(val);
+            }
+            position++;
+        }
     }
 
     /**
      * Displays the page to add a new entry to the database.
      */
-    async displayAddEntry() {
-        await this.ready;
+    async displayAddEntry(args) {
+        const { container, pageOfEntries, currentPage, itemsPerPage, totalEntries } = args;
+        const [keyType, valueType] = determineContainerStorage(container);
         this.pageType = "add-entry";
-        const containerContents = document.getElementById('container-contents');
-        clearChildren(containerContents);
+        this.clearChildren(this.root);
         this.writeTitle();
-        this.writeCancelButton();
 
-        const entryFields = containerContents.appendChild(document.createElement('div'));
-        entryFields.setAttribute('id', 'add-entry-container');
-        entryFields.setAttribute('class', 'entry-container');
-        if (this.hasKeys) {
-            entryFields.innerHTML += `
-            <div class="input-container">
-                <input type="text" name="key" class="commit-input" id="key-input" placeholder="Key" />
-            </div>
-            `;
+        const cancelButton = this.createElement("button", this.root, "cancel-button");
+        cancelButton.innerText = 'X';
+        cancelButton.onclick = async () => {
+            // Just reload to get back to container page where we left off.
+            window.location.reload();
+        };
+
+        const entryFields = this.createElement("div", this.root, "add-entry-container", "entry-container");
+        let keyInput1, keyInput2, valueInput;
+        // Key inputs - if container uses keys.
+        if (keyType != "none") {
+            const keyContainer = this.createElement("div", entryFields, undefined, "input-container");
+            const keyH2 = this.createElement("h2", keyContainer);
+            keyH2.innerText = "Key";
+            keyInput1 = this.createElement("input", keyContainer, "key-input-1", "commit-input");
+            keyInput1.setAttribute("type", "text");
+            keyInput1.setAttribute("placeholder", "Key");
+            if (keyType == "muid" || keyType == "pair") {
+                keyInput1.setAttribute("placeholder", "Muid");
+                // TODO: create a datalist with all container muids
+                // await enableContainerAutofill(datalist1);
+            }
+            if (keyType == "pair") {
+                keyInput2 = this.createElement("input", keyContainer, "key-input-2", "commit-input");
+                keyInput2.setAttribute("type", "text");
+                keyInput2.setAttribute("placeholder", "Muid");
+                // await enableContainerAutofill(datalist2);
+            }
         }
-        if (this.hasValues) {
-            entryFields.innerHTML += `
-            <div class="input-container">
-                <input type="text" name="val" class="commit-input" id="val-input" placeholder="Value" />
-            </div>
-            `;
+
+        // Value inputs - if container uses values.
+        if (valueType != "none") {
+            const valueContainer = this.createElement("div", entryFields, undefined, "input-container");
+            const valueH2 = this.createElement("h2", valueContainer);
+            valueH2.innerText = "Value";
+            valueInput = this.createElement("input", valueContainer, "value-input", "commit-input");
+            valueInput.setAttribute("type", "text");
+            valueInput.setAttribute("placeholder", "Value");
         }
-        entryFields.innerHTML += `
-            <div class="input-container">
-                <input type="text" name="msg" class="commit-input" id="msg-input" placeholder="Commit Message (Optional)" />
-            </div>
-            `;
+
+        const commentContainer = this.createElement("div", entryFields, undefined, "input-container");
+        const commentH2 = this.createElement("h2", commentContainer);
+        commentH2.innerText = "Comment";
+        const commentInput = this.createElement("input", commentContainer, "comment-input", "commit-input");
+        commentInput.setAttribute("type", "text");
+        commentInput.setAttribute("placeholder", "Commit message (optional)");
+
         const submitButton = entryFields.appendChild(document.createElement('button'));
         submitButton.innerText = 'Commit Entry';
         submitButton.setAttribute('id', 'commit-button');
@@ -318,92 +324,57 @@ class Page {
     }
 
     /**
-     * Puts an X button at the top left of #container-contents.
-     */
-    writeCancelButton() {
-        const containerContents = document.getElementById('container-contents');
-        const cancelButton = containerContents.appendChild(document.createElement('button'));
-        cancelButton.setAttribute('id', 'cancel-button');
-        cancelButton.innerText = 'X';
-        cancelButton.onclick = async () => {
-            await this.displayPage();
-        };
-    }
-
-    /**
-     * Creates a row in the container contents table.
-     * @param {*} key
-     * @param {*} val
-     * @param {number} position optional, used for sequences to
-     * keep track of which entry to update/delete.
-     */
-    async createRow(key, val, position) {
-        const table = document.getElementById('container-table');
-        const row = table.appendChild(document.createElement('tr'));
-        if (position != undefined) {
-            row.dataset["position"] = position;
-        }
-        row.setAttribute('class', 'entry-row');
-        row.onclick = async () => {
-            await this.displayEntry(key, val, Number(row.dataset["position"]));
-        };
-        if (key != undefined) {
-            const keyCell = row.appendChild(document.createElement('td'));
-            keyCell.innerHTML = await getCellValue(key);
-        }
-        if (val != undefined) {
-            const valCell = row.appendChild(document.createElement('td'));
-            valCell.innerHTML = await getCellValue(val);
-        }
-    }
-
-    /**
-     * Creates page buttons at the bottom of the table, and manages
-     * their onclick functionality to display the correct page.
-     */
-    writePageButtons() {
-        const containerContents = document.getElementById('container-contents');
-        const pageButtonsDiv = containerContents.appendChild(document.createElement('div'));
-        pageButtonsDiv.style.fontWeight = "bold";
-        pageButtonsDiv.setAttribute('id', 'page-buttons-container');
-        const prevPage = pageButtonsDiv.appendChild(document.createElement('a'));
-        prevPage.setAttribute('class', 'page-btn no-select');
-        prevPage.innerText = '<';
-        if (!this.isFirstPage()) {
-            prevPage.onclick = async () => {
-                await this.displayPrevPage();
-            };
-        } else {
-            prevPage.style.opacity = 0;
-            prevPage.style.cursor = "auto";
-        }
-        const thisPage = pageButtonsDiv.appendChild(document.createElement('p'));
-        thisPage.innerText = `Page ${this.currentPage + 1}`;
-        thisPage.setAttribute('class', 'no-select');
-        const nextPage = pageButtonsDiv.appendChild(document.createElement('a'));
-        nextPage.setAttribute('class', 'page-btn no-select');
-        nextPage.innerText = '>';
-        if (!this.isLastPage()) {
-            nextPage.onclick = async () => {
-                await this.displayNextPage();
-            };
-        } else {
-            nextPage.style.opacity = 0;
-            nextPage.style.cursor = "auto";
-        }
-    }
-
-    /**
      * @returns true if there are no previous pages.
      */
-    isFirstPage() {
-        return this.currentPage * this.itemsPerPage == 0;
+    isFirstPage(currentPage, itemsPerPage) {
+        return currentPage * itemsPerPage == 0;
     }
 
     /**
      * @returns true if there are no following pages.
      */
-    isLastPage() {
-        return this.currentPage * this.itemsPerPage + this.itemsPerPage >= this.entries.length;
+    isLastPage(currentPage, itemsPerPage, totalEntries) {
+        return currentPage * itemsPerPage + itemsPerPage >= totalEntries;
+    }
+
+    // HTML Utility Methods
+
+    /**
+     * Gets an HTML element in the DOM based on the selector.
+     * @param {string} selector HTML selector
+     * @returns an HTMLElement if found, else undefined.
+     */
+    getElement(selector) {
+        return document.querySelector(selector);
+    }
+
+    /**
+     * Creates an HTML Element based on the provided tag.
+     * Optionally appends to a provided element.
+     * @param {string} tag type of element to create.
+     * @param {HTMLElement} appendTo optional HTMLElement to append to.
+     * @param {string} id optional id for newly created element.
+     * @param {string} className optional class for newly created element.
+     * @returns the newly created HTMLElement.
+     */
+    createElement(tag, appendTo, id, className) {
+        const element = document.createElement(tag);
+        if (id) element.setAttribute("id", id);
+        if (className) element.setAttribute("class", className);
+        if (appendTo) {
+            appendTo.appendChild(element);
+        }
+        return element;
+    }
+
+    /**
+     * Utility function to clear the children of
+     * an HTMLElement.
+     * @param {HTMLElement} node
+     */
+    clearChildren(node) {
+        while (node.firstChild) {
+            node.removeChild(node.firstChild);
+        }
     }
 }
