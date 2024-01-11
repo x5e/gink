@@ -1,5 +1,6 @@
 class Page {
-    constructor() {
+    constructor(database) {
+        this.database = database;
         this.pageType = undefined;
         this.root = this.getElement("#root");
     }
@@ -22,15 +23,19 @@ class Page {
     /**
      * Edits the HTML to display the contents of a container.
      */
-    async displayPage(args) {
-        const { container, pageOfEntries, currentPage, itemsPerPage, totalEntries } = args;
+    async displayPage(strMuid, currentPage, itemsPerPage) {
+        // Get data from database
+        const container = await this.database.getContainer(strMuid);
+        const pageOfEntries = await this.database.getPageOfEntries(container, currentPage, itemsPerPage);
+        const totalEntries = await container.size();
+
         this.pageType = "container";
 
         const [keyType, valueType] = determineContainerStorage(container);
 
         this.clearChildren(this.root);
 
-        this.writeTitle();
+        this.writeTitle(container);
 
         // Total entries
         const numEntries = this.createElement("p", this.root);
@@ -140,8 +145,8 @@ class Page {
     /**
      * Displays the page to add a new entry to the database.
      */
-    async displayAddEntry(args) {
-        const { container, pageOfEntries, currentPage, itemsPerPage, totalEntries } = args;
+    async displayAddEntry(container) {
+
         const [keyType, valueType] = determineContainerStorage(container);
         this.pageType = "add-entry";
         this.clearChildren(this.root);
@@ -150,8 +155,7 @@ class Page {
         const cancelButton = this.createElement("button", this.root, "cancel-button");
         cancelButton.innerText = 'X';
         cancelButton.onclick = async () => {
-            // Just reload to get back to container page where we left off.
-            window.location.reload();
+            await this.displayPage(unwrapHash(window.location.hash));
         };
 
         const entryFields = this.createElement("div", this.root, "add-entry-container", "entry-container");
@@ -197,9 +201,21 @@ class Page {
         const submitButton = this.createElement("button", entryFields, "commit-button");
         submitButton.innerText = 'Commit Entry';
         submitButton.onclick = async () => {
-            // stuff here to add entry
-            await addContainerEntry(key, val, this.container, msg);
-            await this.displayPage();
+            // If any field is empty, stop now.
+            if (keyInput1 && !keyInput1.value) return;
+            if (keyInput2 && !keyInput2.value) return;
+            if (valueInput && !valueInput.value) return;
+
+            let newKey, newValue, newComment;
+            if (keyInput1 && !keyInput2) newKey = keyInput1.value;
+            else if (keyInput1 && keyInput2) newKey = [keyInput1.value, keyInput2.value];
+            if (valueInput) newValue = valueInput.value;
+            newComment = commentInput.value;
+
+            if (confirm("Commit entry?")) {
+                await addContainerEntry(newKey, newValue, container, newComment);
+            }
+            await this.displayPage(unwrapHash(window.location.hash));
         };
     }
 
@@ -207,7 +223,13 @@ class Page {
         this.pageType = "entry";
         this.clearChildren(this.root);
         this.writeTitle();
-        this.writeCancelButton();
+
+        const cancelButton = this.createElement("button", this.root, "cancel-button");
+        cancelButton.innerText = 'X';
+        cancelButton.onclick = async () => {
+            await this.displayPage(unwrapHash(window.location.hash));
+        };
+
         const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
         if (key != undefined) {
             const keyContainer = this.createElement("div", entryContainer, undefined, "input-container");
@@ -254,7 +276,13 @@ class Page {
         const [keyType, valueType] = determineContainerStorage(container);
         this.clearChildren(this.root);
         this.writeTitle();
-        this.writeCancelButton();
+
+        const cancelButton = this.createElement("button", this.root, "cancel-button");
+        cancelButton.innerText = 'X';
+        cancelButton.onclick = async () => {
+            await this.displayPage(unwrapHash(window.location.hash));
+        };
+
         const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
         let keyInput1, keyInput2, valueInput;
         if (oldKey != undefined) {
@@ -301,7 +329,7 @@ class Page {
                 await deleteContainerEntry(oldKey, position, this.container, newComment);
                 await addContainerEntry(newKey, newValue, this.container, newComment);
             }
-            await this.displayPage();
+            await this.displayPage(unwrapHash(window.location.hash));
         };
 
         const abortButton = this.createElement("button", buttonContainer);

@@ -48,6 +48,34 @@ function determineContainerStorage(container) {
     return [keyType, valueType];
 }
 
+/**
+ * Unwraps an expected hash into:
+ * string muid, page, items per page
+ * Expecting : FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00004+3+10
+ * 3 = page, 10 = items per page
+ * If only a muid is present, assume page 1, 10 items.
+ * @param {string} hash
+ * @returns an Array of [stringMuid, pageNumber, itemsPerPage]
+ */
+function unwrapHash(hash) {
+    let stringMuid = "FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00004";
+    let pageNumber = 1;
+    let itemsPerPage = 10;
+    if (window.location.hash == '#self') {
+        stringMuid = gink.muidToString(this.instance.getMedallionDirectory().address);
+    }
+    else if (hash) {
+        hash = hash.substring(1);
+        let splitHash = hash.split("+");
+        stringMuid = splitHash[0];
+        if (!(splitHash.length == 1)) {
+            pageNumber = splitHash[1];
+            itemsPerPage = splitHash[2];
+        }
+    }
+    return [stringMuid, pageNumber, itemsPerPage];
+}
+
 
 
 /**
@@ -64,28 +92,6 @@ async function enableContainersAutofill(htmlDatalistElement) {
     //     htmlDatalistElement.appendChild(option);
     // }
     throw new Error("not yet implemented");
-}
-
-/**
- * Determines the muid of the container to display based
- * on the hash provided.
- * #self returns the muid of the medallion directory
- * undefined returns the muid of the root directory
- * #(String-Muid) returns the Muid object of that container.
- * @param {string} hash
- * @returns a gink.Muid
- */
-function hashToMuid(hash) {
-    let muid;
-    if (!hash) {
-        muid = window.instance.getGlobalDirectory().address;
-    } else if (window.location.hash == '#self') {
-        muid = window.instance.getMedallionDirectory().address;
-    }
-    else {
-        muid = gink.strToMuid(hash.substring(1));
-    }
-    return muid;
 }
 
 /**

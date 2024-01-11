@@ -1,7 +1,13 @@
-class Model {
-    constructor() {
-        this.store = new gink.IndexedDbStore();
-        this.instance = new gink.GinkInstance(store);
+class Database {
+    constructor(store, instance) {
+        if (!store) {
+            store = new gink.IndexedDbStore();
+        }
+        if (!instance) {
+            instance = new gink.GinkInstance(store);
+        }
+        this.store = store;
+        this.instance = instance;
     }
 
     /**
@@ -10,6 +16,18 @@ class Model {
      */
     getRootContainer() {
         return this.instance.getGlobalDirectory();
+    }
+
+    /**
+     * Takes a string muid or Muid object and returns it
+     * constructed as a container from the instance.
+     * @param {string || Container} muid
+     */
+    async getContainer(muid) {
+        if (typeof muid == "string") {
+            muid = gink.strToMuid(muid);
+        }
+        return await gink.construct(this.instance, muid);
     }
 
     /**
@@ -28,6 +46,16 @@ class Model {
             allContainers[gink.muidTupleToString(tuple)] = await gink.construct(this.instance, gink.muidTupleToMuid(tuple));
         }
         return Object.entries(allContainers);
+    }
+
+    /**
+     * Gets a subset of the entries array based on the current page and the items per page.
+     * @returns a sub Array containing the entries for the current page.
+     */
+    async getPageOfEntries(container, page, itemsPerPage) {
+        const lowerBound = page * itemsPerPage;
+        const upperBound = page * itemsPerPage + itemsPerPage;
+        return (await this.containerAsArray(container)).slice(lowerBound, upperBound);
     }
 
     /**

@@ -7,41 +7,41 @@
     <link rel="stylesheet" href="/dashboard/styles.css">
     <script type="text/javascript" src="/dashboard/packed.js"></script>
     <script src="/dashboard/scripts/Page.js"></script>
+    <script src="/dashboard/scripts/Database.js"></script>
     <script src="/dashboard/scripts/utility.js"></script>
-    <script src="/dashboard/scripts/container_utility.js"></script>
 </head>
 
 <body>
 
-    <div id="container-contents">
+    <div id="root">
 
     </div>
 
 </body>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
-        window.store = new gink.IndexedDbStore();
-        window.instance = new gink.GinkInstance(store);
-        await window.instance.connectTo(`ws://${window.location.host}`);
+        // Initialize and connect database store and instance
+        const store = new gink.IndexedDbStore();
+        const instance = new gink.GinkInstance(store);
+        // Connect to server
+        await instance.connectTo(`ws://${window.location.host}`);
+        // Initialize interface for interacting with database
+        const database = new Database(store, instance);
 
-        let muid = hashToMuid(window.location.hash);
-        let page = new Page(muid);
-        await page.displayPage();
+        const [strMuid, pageNumber, itemsPerPage] = unwrapHash(window.location.hash);
+
+        const page = new Page(database);
+        await page.displayPage(strMuid, pageNumber, itemsPerPage);
 
         const refreshContainer = async () => {
-            page.ready = page.init(page.container.address);
             if (page.pageType == "container") {
-                await page.displayPage();
+                await page.displayPage(strMuid, pageNumber, itemsPerPage);
             }
         };
-
-        window.instance.addListener(refreshContainer);
+        database.instance.addListener(refreshContainer);
 
         window.onhashchange = async (e) => {
-            let newHash = e.newURL.split("#")[1];
-            let muid = hashToMuid(newHash);
-            let page = new Page(muid);
-            await page.displayPage();
+            await page.displayPage(unwrapHash(window.location.hash));
         };
     });
 </script>
