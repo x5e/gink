@@ -91,11 +91,11 @@ a {
     width: 15rem;
 }
 
-/* Classes */
-
-.input-container {
-    text-align: center;
+#pair-key-container {
+    display: flex;
 }
+
+/* Classes */
 
 .page-btn {
     cursor: pointer;

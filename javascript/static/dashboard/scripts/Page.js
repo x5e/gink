@@ -380,7 +380,9 @@ class Page {
             let container1 = await this.database.getContainer(value[0]);
             let container2 = await this.database.getContainer(value[1]);
             asHtml = `
-        <strong><a href="#${gink.muidToString(container1.address)}+1+10">${container1.constructor.name}</a></strong>, <strong><a href="#${gink.muidToString(container2.address)}+1+10">${container2.constructor.name}</a></strong>
+            <div id="pair-key-container">
+                <strong><a href="#${gink.muidToString(container1.address)}+1+10">${container1.constructor.name}</a></strong>, <strong><a href="#${gink.muidToString(container2.address)}+1+10">${container2.constructor.name}</a></strong>
+            </div>
         `;
         }
         else if (value instanceof gink.Container) {
