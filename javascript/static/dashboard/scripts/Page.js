@@ -298,16 +298,35 @@ class Page {
         const commitButton = this.createElement("button", buttonContainer, "commit-button");
         commitButton.innerText = "Commit Entry";
         commitButton.onclick = async () => {
-            // If any field is empty, stop now.
-            if (keyInput1 && !keyInput1.value) return;
-            if (keyInput2 && !keyInput2.value) return;
-            if (valueInput && !valueInput.value) return;
+            // Assume nothing has changed until we see what user has input.
+            let newKey = oldKey;
+            if (keyType == "pair") {
+                gink.ensure(keyInput1 && keyInput2);
+                let muid1 = oldKey[0];
+                let muid2 = oldKey[1];
+                if (keyInput1.value) {
+                    muid1 = keyInput1.value;
+                }
+                if (keyInput2.value) {
+                    muid2 = keyInput2.value;
+                }
+                newKey = [muid1, muid2];
+            } else if (keyType != "none") {
+                gink.ensure(keyInput1 && !keyInput2);
+                if (keyInput1.value) {
+                    newKey = keyInput1.value;
+                }
 
-            let newKey, newValue, newComment;
-            if (keyInput1 && !keyInput2) newKey = keyInput1.value;
-            else if (keyInput1 && keyInput2) newKey = [keyInput1.value, keyInput2.value];
-            if (valueInput) newValue = valueInput.value;
-            newComment = commentInput.value;
+            }
+            let newValue = oldValue;
+            if (valueType != "none") {
+                gink.ensure(valueInput);
+                if (valueInput.value) {
+                    newValue = valueInput.value;
+                }
+            }
+            // Its ok if comment has no value, the database will handle that.
+            let newComment = commentInput.value;
 
             // Nothing has changed. Should this go back to container screen?
             if ((newKey == oldKey) && (newValue == oldValue)) return;
