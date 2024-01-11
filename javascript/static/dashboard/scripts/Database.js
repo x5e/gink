@@ -165,25 +165,24 @@ class Database {
         if (!comment) {
             comment = "deleted from dashboard";
         }
-        gink.ensure(!(key && position), "Cannot provide both key and position");
         switch (container.behavior) {
             case 1: // Box
-                await container.clear(bundlerOrComment = comment);
+                await container.clear(false, comment);
                 break;
             case 2: // Sequence
                 gink.ensure(typeof position == "number", "invalid position arg");
-                await container.pop(position, bundlerOrComment = comment);
+                await container.pop(position, false, comment);
                 break;
             case 3: // KeySet
-                await container.delete(key, bundlerOrComment = comment);
+                await container.delete(key, comment);
                 break;
             case 4: // Directory
-                await container.delete(key, bundlerOrComment = comment);
+                await container.delete(key, comment);
                 break;
             case 5: // PairSet
                 msg = `Expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
                 try {
-                    await container.exclude([gink.strToMuid(key[0]), gink.strToMuid(key[1])], bundlerOrComment = comment);
+                    await container.exclude([gink.strToMuid(key[0]), gink.strToMuid(key[1])], comment);
                 } catch {
                     console.error(msg);
                 }
@@ -191,13 +190,13 @@ class Database {
             case 6: // PairMap
                 msg = `Key is expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
                 try {
-                    await container.delete([gink.strToMuid(key[0]), gink.strToMuid(key[1])], bundlerOrComment = comment);
+                    await container.delete([gink.strToMuid(key[0]), gink.strToMuid(key[1])], comment);
                 } catch {
                     console.error(msg);
                 }
             case 10: // Role
                 try {
-                    await container.exclude(gink.strToMuid(key), bundlerOrComment = comment);
+                    await container.exclude(gink.strToMuid(key), comment);
                 } catch {
                     console.error('Expecting muid as string. Ex:FFFFFFFFFFFFFF-6734543837984-00004');
                 }

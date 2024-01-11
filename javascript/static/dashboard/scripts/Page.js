@@ -6,21 +6,6 @@ class Page {
     }
 
     /**
-     * Changes the title and header elements of the container page.
-     */
-    writeTitle(container) {
-        const title = this.createElement("h2", this.root, "title-bar");
-        const muid = container.address;
-        let containerName;
-        if (muid.timestamp == -1 && muid.medallion == -1) {
-            containerName = "Root Directory";
-        } else {
-            containerName = `${container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
-        }
-        title.innerText = containerName;
-    }
-
-    /**
      * Edits the HTML to display the contents of a container.
      */
     async displayPage(strMuid, currentPage, itemsPerPage) {
@@ -75,7 +60,6 @@ class Page {
         pageButtonsDiv.style.fontWeight = "bold";
         const prevPage = this.createElement("a", pageButtonsDiv, undefined, "page-btn no-select");
         prevPage.innerText = '<';
-        console.log(currentPage);
         if (!this.isFirstPage(currentPage)) {
             prevPage.onclick = async () => {
                 window.location.hash = `${gink.muidToString(container.address)}+${currentPage - 1}+${itemsPerPage}`;
@@ -128,7 +112,7 @@ class Page {
             const row = this.createElement("tr", containerTable, undefined, "entry-row");
             row.dataset["position"] = position;
             row.onclick = async () => {
-                await this.displayEntry(key, value, Number(row.dataset["position"]));
+                await this.displayEntry(key, value, Number(row.dataset["position"]), container);
             };
             if (key != undefined) {
                 const keyCell = this.createElement("td", row);
@@ -146,7 +130,6 @@ class Page {
      * Displays the page to add a new entry to the database.
      */
     async displayAddEntry(container) {
-
         const [keyType, valueType] = determineContainerStorage(container);
         this.pageType = "add-entry";
         this.clearChildren(this.root);
@@ -219,15 +202,16 @@ class Page {
         };
     }
 
-    async displayEntry(key, value, position) {
-        this.pageType = "entry";
+    async displayEntry(key, value, position, container) {
         this.clearChildren(this.root);
+        this.pageType = "entry";
+
         this.writeTitle(container);
 
         const cancelButton = this.createElement("button", this.root, "cancel-button");
         cancelButton.innerText = 'X';
         cancelButton.onclick = async () => {
-            await this.displayPage(unwrapHash(window.location.hash));
+            await this.displayPage(...unwrapHash(window.location.hash));
         };
 
         const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
@@ -252,7 +236,7 @@ class Page {
         const updateButton = this.createElement("button", buttonContainer, "update-button");
         updateButton.innerText = "Update Entry";
         updateButton.onclick = async () => {
-            await this.displayUpdateEntry(key, value, position);
+            await this.displayUpdateEntry(key, value, position, container);
         };
 
         const deleteButton = this.createElement("button", buttonContainer, "delete-button");
@@ -261,7 +245,7 @@ class Page {
             if (confirm("Delete and commit?")) {
                 await this.database.deleteEntry(key, position, container);
             }
-            await this.displayPage();
+            await this.displayPage(...unwrapHash(window.location.hash));
         };
     }
 
@@ -306,7 +290,7 @@ class Page {
         }
         const commentH2 = this.createElement("h2", entryContainer);
         commentH2.innerText = "Comment";
-        commentInput = this.createElement("input", entryContainer, "comment-input", "commit-input");
+        const commentInput = this.createElement("input", entryContainer, "comment-input", "commit-input");
         commentInput.setAttribute("placeholder", "Commit Message (optional)");
 
         const buttonContainer = this.createElement("div", this.root, "commit-abort-container");
@@ -326,16 +310,16 @@ class Page {
             newComment = commentInput.value;
 
             if (confirm("Commit updated entry?")) {
-                await deleteContainerEntry(oldKey, position, this.container, newComment);
-                await addContainerEntry(newKey, newValue, this.container, newComment);
+                await this.database.deleteEntry(oldKey, position, container, newComment);
+                await this.database.addEntry(newKey, newValue, container, newComment);
             }
-            await this.displayPage(unwrapHash(window.location.hash));
+            await this.displayPage(...unwrapHash(window.location.hash));
         };
 
         const abortButton = this.createElement("button", buttonContainer);
         abortButton.innerText = "Abort";
         abortButton.onclick = async () => {
-            await this.displayEntry(oldKey, oldValue, position);
+            await this.displayEntry(oldKey, oldValue, position, container);
         };
     }
 
@@ -351,6 +335,21 @@ class Page {
      */
     isLastPage(currentPage, itemsPerPage, totalEntries) {
         return currentPage * itemsPerPage + itemsPerPage >= totalEntries;
+    }
+
+    /**
+     * Changes the title and header elements of the container page.
+     */
+    writeTitle(container) {
+        const title = this.createElement("h2", this.root, "title-bar");
+        const muid = container.address;
+        let containerName;
+        if (muid.timestamp == -1 && muid.medallion == -1) {
+            containerName = "Root Directory";
+        } else {
+            containerName = `${container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
+        }
+        title.innerText = containerName;
     }
 
     // HTML Utility Methods
