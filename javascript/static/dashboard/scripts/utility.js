@@ -73,7 +73,7 @@ function unwrapHash(hash) {
             itemsPerPage = splitHash[2];
         }
     }
-    return [stringMuid, pageNumber, itemsPerPage];
+    return [stringMuid, Number(pageNumber), Number(itemsPerPage)];
 }
 
 
@@ -144,54 +144,4 @@ function shortenedString(string) {
     else {
         return string.substring(0, 21) + "...";
     }
-}
-
-/**
- * For the entry page - interprets the value and converts it into fitting html
- * For example, takes a gink.Container and makes it a link to its container page.
- * @param {*} value a string, container, or array of 2 containers (pair)
- * @returns a string of HTML
- */
-async function entryValueAsHtml(value) {
-    let asHtml;
-    if (Array.isArray(value) && value.length == 2 && value[0].timestamp) {
-        let container1 = await gink.construct(window.instance, value[0]);
-        let container2 = await gink.construct(window.instance, value[1]);
-        asHtml = `
-        <strong><a href="#${gink.muidToString(container1.address)}">${container1.constructor.name}</a></strong>, <strong><a href="#${gink.muidToString(container2.address)}">${container2.constructor.name}</a></strong>
-        `;
-    }
-    else if (value instanceof gink.Container) {
-        asHtml = `<strong><a href="#${gink.muidToString(value.address)}">${value.constructor.name}(${gink.muidToString(value.address)})</a></strong>`;
-    } else {
-        value = unwrapToString(value);
-        asHtml = `<p>${value}</p>`;
-    }
-    return asHtml;
-}
-
-/**
- * Takes a value of a number, string, or gink.Container,
- * and decides how the value should be displayed in the cell.
- * @param {*} value
- */
-async function getCellValue(value) {
-    let cellValue;
-    if (Array.isArray(value) && value.length == 2 && value[0].timestamp) {
-        let container1 = await gink.construct(window.instance, value[0]);
-        let container2 = await gink.construct(window.instance, value[1]);
-        cellValue = `${container1.constructor.name}-${container2.constructor.name}`;
-    }
-    else if (value instanceof gink.Container) {
-        cellValue = `${value.constructor.name}(${gink.muidToString(value.address)})`;
-    } else {
-        value = unwrapToString(value);
-        if (value.length > 20) {
-            cellValue = shortenedString(value);
-        }
-        else {
-            cellValue = value;
-        }
-    }
-    return cellValue;
 }

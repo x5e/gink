@@ -55,39 +55,79 @@ class Database {
     async getPageOfEntries(container, page, itemsPerPage) {
         // IMPORTANT: A page, in this context, starts at 1, not 0.
         // Need to subtract 1 from the page to avoid errors.
-        const lowerBound = (page - 1) * itemsPerPage;
-        const upperBound = page * itemsPerPage + itemsPerPage;
-        return (await this.containerAsArray(container)).slice(lowerBound, upperBound);
+        gink.ensure(container instanceof gink.Container);
+        gink.ensure(typeof page == "number" && typeof itemsPerPage == "number");
+        const entries = await this.containerAsArray(container);
+
+        let lowerBound = (page - 1) * itemsPerPage;
+        if (lowerBound < 0) lowerBound = 0;
+        else if (lowerBound > entries.length) lowerBound = entries.length;
+
+        let upperBound = (page - 1) * itemsPerPage + itemsPerPage;
+        if (upperBound < 0) upperBound = 0;
+        else if (upperBound > entries.length) upperBound = entries.length;
+
+        return entries.slice(lowerBound, upperBound);
     }
 
     /**
-     * Returns a container's contents as an array.
+     * Get the total number of entries in a gink container.
+     * @param {Container} container
+     * @returns the number of entries in a container.
+     */
+    async getTotalEntries(container) {
+        return (await this.containerAsArray(container)).length;
+    }
+
+    /**
+     * Returns a container's contents as an array. To standardize how these arrays will be
+     * iterable, every array, regardless of whether they actually have both keys and values,
+     * will use the form [[key, value],...]
+     * if the container does not use keys, key will be undefined.
+     * This is to ensure we can always loop through entries with [key, value] and we don't
+     * need to perform any annoying checking for type of container.
      * @param {Container} container
      * @returns an Array of the container's contents.
      */
     async containerAsArray(container) {
-        let arr;
+        let arr, tmp;
         switch (container.behavior) {
             case 1: // Box
-                arr = [await container.get()];
+                arr = [[undefined, await container.get()]];
                 break;
             case 2: // Sequence
-                arr = await container.toArray();
+                tmp = await container.toArray();
+                arr = [];
+                for (const value of tmp) {
+                    arr.push([undefined, value]);
+                }
                 break;
             case 3: // KeySet
-                arr = Array.from(await container.toSet());
+                tmp = await container.toSet();
+                arr = [];
+                for (const key of tmp) {
+                    arr.push([key, undefined]);
+                }
                 break;
             case 4:
                 arr = Array.from((await container.toMap()).entries());
                 break;
             case 5: // PairSet
-                arr = Array.from(await container.getPairs());
+                tmp = await container.getPairs();
+                arr = [];
+                for (const key of tmp) {
+                    arr.push([key, undefined]);
+                }
                 break;
             case 6: // PairMap
                 arr = Array.from((await container.items()).entries());
                 break;
             case 10: // Role
-                arr = await container.includedAsArray();
+                tmp = await container.includedAsArray();
+                arr = [];
+                for (const key of tmp) {
+                    arr.push([key, undefined]);
+                }
                 break;
             default:
                 throw new Error(`not sure how to get entries for ${container.constructor.name}`);

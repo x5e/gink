@@ -67,8 +67,7 @@ a {
 }
 
 #add-entry-container {
-    text-align: right;
-    height: 20svh;
+    text-align: center;
 }
 
 #view-entry {
@@ -93,6 +92,10 @@ a {
 }
 
 /* Classes */
+
+.input-container {
+    text-align: center;
+}
 
 .page-btn {
     cursor: pointer;

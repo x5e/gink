@@ -14,8 +14,15 @@ class Page {
 
         // Get data from database
         const container = await this.database.getContainer(strMuid);
+        const totalEntries = await this.database.getTotalEntries(container);
+
+        // Before we display anything, make sure the page and items per page actually makes sense.
+        if (((currentPage - 1) * itemsPerPage) >= totalEntries) {
+            // Eventually want a better solution than this, since the hash will be wrong
+            currentPage = Math.floor(totalEntries / itemsPerPage);
+        }
+
         const pageOfEntries = await this.database.getPageOfEntries(container, currentPage, itemsPerPage);
-        const totalEntries = await container.size();
 
         const [keyType, valueType] = determineContainerStorage(container);
 
@@ -101,10 +108,12 @@ class Page {
         }
 
         // Make sure nothing is broken
-        if (keyType == "none") gink.ensure(pageOfEntries[0][0] == undefined);
-        else if (keyType != "none") gink.ensure(pageOfEntries[0][0] != undefined);
-        if (valueType == "none") gink.ensure(pageOfEntries[0][1] == undefined);
-        else if (valueType != "none") gink.ensure(pageOfEntries[0][1] != undefined);
+        if (pageOfEntries.length) {
+            if (keyType == "none") gink.ensure(pageOfEntries[0][0] == undefined);
+            else if (keyType != "none") gink.ensure(pageOfEntries[0][0] != undefined);
+            if (valueType == "none") gink.ensure(pageOfEntries[0][1] == undefined);
+            else if (valueType != "none") gink.ensure(pageOfEntries[0][1] != undefined);
+        }
 
         // Loop through entries to create table rows
         let position = 0;
@@ -116,11 +125,11 @@ class Page {
             };
             if (key != undefined) {
                 const keyCell = this.createElement("td", row);
-                keyCell.innerText = await getCellValue(key);
+                keyCell.innerText = await this.getCellValue(key);
             }
             if (value != undefined) {
                 const valCell = this.createElement("td", row);
-                valCell.innerText = await getCellValue(value);
+                valCell.innerText = await this.getCellValue(value);
             }
             position++;
         }
@@ -221,7 +230,7 @@ class Page {
             const keyH2 = this.createElement("h2", keyContainer);
             keyH2.innerText = "Key";
             // Determines whether value needs to be a link to another container, etc.
-            keyContainer.innerHTML += await entryValueAsHtml(key);
+            keyContainer.innerHTML += await this.entryValueAsHtml(key);
         }
 
         if (value != undefined) {
@@ -229,7 +238,7 @@ class Page {
             const valueH2 = this.createElement("h2", valueContainer);
             valueH2.innerText = "Value";
             // Determines whether value needs to be a link to another container, etc.
-            valueContainer.innerHTML += await entryValueAsHtml(value);
+            valueContainer.innerHTML += await this.entryValueAsHtml(value);
         }
 
         // Update and Delete buttons
@@ -356,7 +365,57 @@ class Page {
      * @returns true if there are no following pages.
      */
     isLastPage(currentPage, itemsPerPage, totalEntries) {
-        return currentPage * itemsPerPage + itemsPerPage >= totalEntries;
+        return currentPage * itemsPerPage + itemsPerPage > totalEntries;
+    }
+
+    /**
+     * For the entry page - interprets the value and converts it into fitting html
+     * For example, takes a gink.Container and makes it a link to its container page.
+     * @param {*} value a string, container, or array of 2 containers (pair)
+     * @returns a string of HTML
+     */
+    async entryValueAsHtml(value) {
+        let asHtml;
+        if (Array.isArray(value) && value.length == 2 && value[0].timestamp) {
+            let container1 = await this.database.getContainer(value[0]);
+            let container2 = await this.database.getContainer(value[1]);
+            asHtml = `
+        <strong><a href="#${gink.muidToString(container1.address)}+1+10">${container1.constructor.name}</a></strong>, <strong><a href="#${gink.muidToString(container2.address)}+1+10">${container2.constructor.name}</a></strong>
+        `;
+        }
+        else if (value instanceof gink.Container) {
+            asHtml = `<strong><a href="#${gink.muidToString(value.address)}+1+10">${value.constructor.name}(${gink.muidToString(value.address)})</a></strong>`;
+        } else {
+            value = unwrapToString(value);
+            asHtml = `<p>${value}</p>`;
+        }
+        return asHtml;
+    }
+
+    /**
+     * Takes a value of a number, string, or gink.Container,
+     * and decides how the value should be displayed in the cell.
+     * @param {*} value
+     */
+    async getCellValue(value) {
+        let cellValue;
+        if (Array.isArray(value) && value.length == 2 && value[0].timestamp) {
+            let container1 = await this.database.getContainer(value[0]);
+            let container2 = await this.database.getContainer(value[1]);
+            cellValue = `${container1.constructor.name}-${container2.constructor.name}`;
+        }
+        else if (value instanceof gink.Container) {
+            cellValue = `${value.constructor.name}(${gink.muidToString(value.address)})`;
+        } else {
+            value = unwrapToString(value);
+            if (value.length > 20) {
+                cellValue = shortenedString(value);
+            }
+            else {
+                cellValue = value;
+            }
+        }
+        return cellValue;
     }
 
     /**

@@ -18,33 +18,6 @@
     </div>
 
 </body>
-<script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        // Initialize and connect database store and instance
-        const store = new gink.IndexedDbStore();
-        const instance = new gink.GinkInstance(store);
-        // Connect to server
-        await instance.connectTo(`ws://${window.location.host}`);
-        // Initialize interface for interacting with database
-        const database = new Database(store, instance);
-
-        // Initialize and display page
-        const page = new Page(database);
-        await page.displayPage(...unwrapHash(window.location.hash));
-
-        const refreshContainer = async () => {
-            if (page.pageType == "container") {
-                await page.displayPage(...unwrapHash(window.location.hash));
-            }
-        };
-        // Add a listener to refresh when a new commit comes through
-        // Eventually make sure this is only for specific containers.
-        database.instance.addListener(refreshContainer);
-
-        window.onhashchange = async (e) => {
-            await page.displayPage(...unwrapHash(window.location.hash));
-        };
-    });
-</script>
+<script src="/dashboard/scripts/init.js"></script>
 
 </html>
