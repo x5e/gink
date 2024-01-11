@@ -28,20 +28,21 @@
         // Initialize interface for interacting with database
         const database = new Database(store, instance);
 
-        const [strMuid, pageNumber, itemsPerPage] = unwrapHash(window.location.hash);
-
+        // Initialize and display page
         const page = new Page(database);
-        await page.displayPage(strMuid, pageNumber, itemsPerPage);
+        await page.displayPage(...unwrapHash(window.location.hash));
 
         const refreshContainer = async () => {
             if (page.pageType == "container") {
-                await page.displayPage(strMuid, pageNumber, itemsPerPage);
+                await page.displayPage(...unwrapHash(window.location.hash));
             }
         };
+        // Add a listener to refresh when a new commit comes through
+        // Eventually make sure this is only for specific containers.
         database.instance.addListener(refreshContainer);
 
         window.onhashchange = async (e) => {
-            await page.displayPage(unwrapHash(window.location.hash));
+            await page.displayPage(...unwrapHash(window.location.hash));
         };
     });
 </script>

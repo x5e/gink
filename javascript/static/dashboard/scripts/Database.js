@@ -53,7 +53,9 @@ class Database {
      * @returns a sub Array containing the entries for the current page.
      */
     async getPageOfEntries(container, page, itemsPerPage) {
-        const lowerBound = page * itemsPerPage;
+        // IMPORTANT: A page, in this context, starts at 1, not 0.
+        // Need to subtract 1 from the page to avoid errors.
+        const lowerBound = (page - 1) * itemsPerPage;
         const upperBound = page * itemsPerPage + itemsPerPage;
         return (await this.containerAsArray(container)).slice(lowerBound, upperBound);
     }
@@ -106,8 +108,9 @@ class Database {
         let errMsg;
         gink.ensure(key || val, 'Need to specify key or value');
         gink.ensure(container, 'Need to specify container.');
-        if (key) gink.ensure(hasKeysOrValues(container)[0] == true, 'container doesnt use keys');
-        if (val) gink.ensure(hasKeysOrValues(container)[1] == true, 'container doesnt use values');
+        const [keyType, valueType] = determineContainerStorage(container);
+        if (key) gink.ensure(keyType != "none", 'container doesnt use keys');
+        if (val) gink.ensure(valueType != "none", 'container doesnt use values');
         switch (container.behavior) {
             case 1: // Box
                 await container.set(val, comment);
@@ -136,6 +139,9 @@ class Database {
                 } catch {
                     console.error(errMsg);
                 }
+                break;
+            case 9:
+                // REMEMBER TO ADD PROPERTY HERE!!
                 break;
             case 10: // Role
                 try {

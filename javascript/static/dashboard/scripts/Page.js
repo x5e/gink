@@ -24,6 +24,7 @@ class Page {
      * Edits the HTML to display the contents of a container.
      */
     async displayPage(strMuid, currentPage, itemsPerPage) {
+        this.clearChildren(this.root);
         // Get data from database
         const container = await this.database.getContainer(strMuid);
         const pageOfEntries = await this.database.getPageOfEntries(container, currentPage, itemsPerPage);
@@ -32,8 +33,6 @@ class Page {
         this.pageType = "container";
 
         const [keyType, valueType] = determineContainerStorage(container);
-
-        this.clearChildren(this.root);
 
         this.writeTitle(container);
 
@@ -59,7 +58,7 @@ class Page {
 
         // Range information
         const showing = this.createElement("p", this.root);
-        const lowerBound = currentPage * itemsPerPage + (totalEntries == 0 ? 0 : 1);
+        const lowerBound = (currentPage - 1) * itemsPerPage + (totalEntries == 0 ? 0 : 1);
         const upperBound = currentPage * itemsPerPage + itemsPerPage;
         const maxEntries = upperBound >= totalEntries ? totalEntries : upperBound;
         showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
@@ -76,7 +75,8 @@ class Page {
         pageButtonsDiv.style.fontWeight = "bold";
         const prevPage = this.createElement("a", pageButtonsDiv, undefined, "page-btn no-select");
         prevPage.innerText = '<';
-        if (!this.isFirstPage(currentPage, itemsPerPage)) {
+        console.log(currentPage);
+        if (!this.isFirstPage(currentPage)) {
             prevPage.onclick = async () => {
                 window.location.hash = `${gink.muidToString(container.address)}+${currentPage - 1}+${itemsPerPage}`;
             };
@@ -105,7 +105,7 @@ class Page {
         }
 
         // Create table based on page of entries.
-        const containerTable = this.createElement("table".root, "container-table");
+        const containerTable = this.createElement("table", this.root, "container-table");
         const headerRow = this.createElement("tr", containerTable);
         if (keyType != "none") {
             const keyHeader = this.createElement("th", headerRow);
@@ -117,10 +117,10 @@ class Page {
         }
 
         // Make sure nothing is broken
-        if (containerKeyType == "none") gink.ensure(pageOfEntries[0][0] == undefined);
-        else if (containerKeyType != "none") gink.ensure(pageOfEntries[0][0] != undefined);
-        if (containerValueType == "none") gink.ensure(pageOfEntries[0][1] == undefined);
-        else if (containerValueType != "none") gink.ensure(pageOfEntries[0][1] != undefined);
+        if (keyType == "none") gink.ensure(pageOfEntries[0][0] == undefined);
+        else if (keyType != "none") gink.ensure(pageOfEntries[0][0] != undefined);
+        if (valueType == "none") gink.ensure(pageOfEntries[0][1] == undefined);
+        else if (valueType != "none") gink.ensure(pageOfEntries[0][1] != undefined);
 
         // Loop through entries to create table rows
         let position = 0;
@@ -135,8 +135,8 @@ class Page {
                 keyCell.innerText = await getCellValue(key);
             }
             if (value != undefined) {
-                const valCell = row.appendChild(document.createElement('td'));
-                valCell.innerText = await getCellValue(val);
+                const valCell = this.createElement("td", row);
+                valCell.innerText = await getCellValue(value);
             }
             position++;
         }
@@ -150,12 +150,12 @@ class Page {
         const [keyType, valueType] = determineContainerStorage(container);
         this.pageType = "add-entry";
         this.clearChildren(this.root);
-        this.writeTitle();
+        this.writeTitle(container);
 
         const cancelButton = this.createElement("button", this.root, "cancel-button");
         cancelButton.innerText = 'X';
         cancelButton.onclick = async () => {
-            await this.displayPage(unwrapHash(window.location.hash));
+            await this.displayPage(...unwrapHash(window.location.hash));
         };
 
         const entryFields = this.createElement("div", this.root, "add-entry-container", "entry-container");
@@ -213,16 +213,16 @@ class Page {
             newComment = commentInput.value;
 
             if (confirm("Commit entry?")) {
-                await addContainerEntry(newKey, newValue, container, newComment);
+                await this.database.addEntry(newKey, newValue, container, newComment);
             }
-            await this.displayPage(unwrapHash(window.location.hash));
+            await this.displayPage(...unwrapHash(window.location.hash));
         };
     }
 
     async displayEntry(key, value, position) {
         this.pageType = "entry";
         this.clearChildren(this.root);
-        this.writeTitle();
+        this.writeTitle(container);
 
         const cancelButton = this.createElement("button", this.root, "cancel-button");
         cancelButton.innerText = 'X';
@@ -259,7 +259,7 @@ class Page {
         deleteButton.innerText = "Delete Entry";
         deleteButton.onclick = async () => {
             if (confirm("Delete and commit?")) {
-                await deleteContainerEntry(key, position, this.container);
+                await this.database.deleteEntry(key, position, container);
             }
             await this.displayPage();
         };
@@ -275,7 +275,7 @@ class Page {
         this.pageType = "update";
         const [keyType, valueType] = determineContainerStorage(container);
         this.clearChildren(this.root);
-        this.writeTitle();
+        this.writeTitle(container);
 
         const cancelButton = this.createElement("button", this.root, "cancel-button");
         cancelButton.innerText = 'X';
@@ -342,8 +342,8 @@ class Page {
     /**
      * @returns true if there are no previous pages.
      */
-    isFirstPage(currentPage, itemsPerPage) {
-        return currentPage * itemsPerPage == 0;
+    isFirstPage(currentPage) {
+        return currentPage == 1;
     }
 
     /**
