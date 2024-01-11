@@ -1,34 +1,67 @@
 /**
- * Determines the muid of the container to display based
- * on the hash provided.
- * #self returns the muid of the medallion directory
- * undefined returns the muid of the root directory
- * #(String-Muid) returns the Muid object of that container.
- * @param {string} hash
- * @returns a gink.Muid
+ * Determines whether a container stores keys as any value, a muid, a muid pair,
+ * or not at all. Same thing for values.
+ *
+ * Valid keyType options:
+ * "none", "any", "pair", "muid"
+ *
+ * Valid valueType options:
+ *  "none", "any"
+ *
+ * @param {gink.Container} container
+ * @returns an Array of [keyType, valueType] strings
  */
-function hashToMuid(hash) {
-    let muid;
-    if (!hash) {
-        muid = window.instance.getGlobalDirectory().address;
-    } else if (window.location.hash == '#self') {
-        muid = window.instance.getMedallionDirectory().address;
+function determineContainerStorage(container) {
+    let keyType = 'none';
+    let valueType = 'none';
+    switch (container.behavior) {
+        case 1: // Box
+            valueType = "any";
+            break;
+        case 2: // Sequence
+            valueType = "any";
+            break;
+        case 3: // KeySet
+            keyType = "any";
+            break;
+        case 4: // Directory
+            keyType = "any";
+            valueType = "any";
+            break;
+        case 5: // PairSet
+            keyType = "pair";
+            break;
+        case 6: // PairMap
+            keyType = "pair";
+            valueType = "any";
+            break;
+        case 9: // Property
+            keyType = "muid";
+            valueType = "any";
+            break;
+        case 10: // Role
+            keyType = "muid";
+            break;
+        default:
+            throw new Error(`Either invalid behavior or container is verb, or vertex, which don't have entries.`);
     }
-    else {
-        muid = gink.strToMuid(hash.substring(1));
-    }
-    return muid;
+    return [keyType, valueType];
 }
 
 /**
- * Utility function to clear the children of
- * an HTMLElement.
- * @param {HTMLElement} node
+ * Fills a datalist element with options of all containers that exist
+ * in the store.
+ * @param {HTMLDataListElement} htmlDatalistElement
  */
-function clearChildren(node) {
-    while (node.firstChild) {
-        node.removeChild(node.firstChild);
-    }
+async function enableContainersAutofill(htmlDatalistElement) {
+    // gink.ensure(htmlDatalistElement instanceof HTMLDataListElement, "Can only fill datalist");
+    // const containers = await getAllContainers();
+    // for (const [strMuid, container] of containers) {
+    //     const option = document.createElement("option");
+    //     option.value = strMuid;
+    //     htmlDatalistElement.appendChild(option);
+    // }
+    throw new Error("not yet implemented");
 }
 
 /**
@@ -70,54 +103,4 @@ function shortenedString(string) {
     else {
         return string.substring(0, 21) + "...";
     }
-}
-
-/**
- * For the entry page - interprets the value and converts it into fitting html
- * For example, takes a gink.Container and makes it a link to its container page.
- * @param {*} value a string, container, or array of 2 containers (pair)
- * @returns a string of HTML
- */
-async function entryValueAsHtml(value) {
-    let asHtml;
-    if (Array.isArray(value) && value.length == 2 && value[0].timestamp) {
-        let container1 = await gink.construct(window.instance, value[0]);
-        let container2 = await gink.construct(window.instance, value[1]);
-        asHtml = `
-        <strong><a href="#${gink.muidToString(container1.address)}">${container1.constructor.name}</a></strong>, <strong><a href="#${gink.muidToString(container2.address)}">${container2.constructor.name}</a></strong>
-        `;
-    }
-    else if (value instanceof gink.Container) {
-        asHtml = `<strong><a href="#${gink.muidToString(value.address)}">${value.constructor.name}(${gink.muidToString(value.address)})</a></strong>`;
-    } else {
-        value = unwrapToString(value);
-        asHtml = `<p>${value}</p>`;
-    }
-    return asHtml;
-}
-
-/**
- * Takes a value of a number, string, or gink.Container,
- * and decides how the value should be displayed in the cell.
- * @param {*} value
- */
-async function getCellValue(value) {
-    let cellValue;
-    if (Array.isArray(value) && value.length == 2 && value[0].timestamp) {
-        let container1 = await gink.construct(window.instance, value[0]);
-        let container2 = await gink.construct(window.instance, value[1]);
-        cellValue = `${container1.constructor.name}-${container2.constructor.name}`;
-    }
-    else if (value instanceof gink.Container) {
-        cellValue = `${value.constructor.name}(${gink.muidToString(value.address)})`;
-    } else {
-        value = unwrapToString(value);
-        if (value.length > 20) {
-            cellValue = shortenedString(value);
-        }
-        else {
-            cellValue = value;
-        }
-    }
-    return cellValue;
 }

@@ -1,409 +1,517 @@
-/**
- * This class assumes the existence of a div element
- * with an id of container-contents.
- */
-
 class Page {
-    constructor(muid, currentPage = 0, itemsPerPage = 10) {
-        // pageType is used to determine whether to update the page
-        // contents again on database commit.
-        this.pageType = "none";
-        this.currentPage = currentPage;
-        this.itemsPerPage = itemsPerPage;
-        this.ready = this.init(muid);
-    }
-
-    async init(muid) {
-        this.container = await gink.construct(window.instance, muid);
-        this.entries = await containerAsArray(this.container);
-        [this.hasKeys, this.hasValues] = hasKeysOrValues(this.container);
-        gink.ensure(this.hasKeys || this.hasValues);
-    }
-
-    /**
-     * Gets a subset of the entries array based on the current page and the items per page.
-     * @returns a sub Array containing the entries for the current page.
-     */
-    getPageOfEntries() {
-        const lowerBound = this.currentPage * this.itemsPerPage;
-        const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
-        return this.entries.slice(lowerBound, upperBound);
-    }
-
-    /**
-     * Changes the title and header elements of the container page.
-     */
-    writeTitle() {
-        const containerContents = document.getElementById('container-contents');
-        const title = containerContents.appendChild(document.createElement('h2'));
-        title.setAttribute('id', 'title-bar');
-        const muid = this.container.address;
-        let containerName;
-        if (muid.timestamp == -1 && muid.medallion == -1) {
-            containerName = "Root Directory";
-        } else {
-            containerName = `${this.container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
-        }
-        title.innerHTML = `<h2>${containerName}</h2>`;
-    }
-
-    /**
-     * Adds info about the current page below the title.
-     */
-    async writeRangeInfo() {
-        const containerContents = document.getElementById('container-contents');
-        const numEntries = containerContents.appendChild(document.createElement('p'));
-        numEntries.innerText = `Total entries: ${this.entries.length}`;
-
-        if (this.entries.length > 10) {
-            const itemsPerPageSelect = containerContents.appendChild(document.createElement('select'));
-            const options = ['10', '25', '50', '100', '250', '500', '1000'];
-            for (const option of options) {
-                if (Number(option) > this.entries.length) break;
-                const currentOption = itemsPerPageSelect.appendChild(document.createElement('option'));
-                currentOption.innerText = option;
-                currentOption.value = option;
-            }
-            itemsPerPageSelect.value = `${this.itemsPerPage}`;
-            itemsPerPageSelect.onchange = async () => {
-                this.setItemsPerPage(Number(itemsPerPageSelect.value));
-                await this.displayPage();
-            };
-        }
-
-        const showing = containerContents.appendChild(document.createElement('p'));
-        const lowerBound = this.currentPage * this.itemsPerPage + (this.entries.length == 0 ? 0 : 1);
-        const upperBound = this.currentPage * this.itemsPerPage + this.itemsPerPage;
-        const maxEntries = upperBound >= this.entries.length ? this.entries.length : upperBound;
-        showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
-
-        const addEntryButton = containerContents.appendChild(document.createElement('button'));
-        addEntryButton.setAttribute('id', 'add-entry-button');
-        addEntryButton.innerText = "Add Entry";
-        addEntryButton.onclick = async () => {
-            await this.displayAddEntry();
-        };
+    constructor(database) {
+        this.database = database;
+        this.pageType = undefined;
+        this.root = this.getElement("#root");
     }
 
     /**
      * Edits the HTML to display the contents of a container.
-     * Can take either the Muid object itself, or the canonical
-     * string muid.
-     * @param {boolean} reloadContainer should the container be refreshed?
-     * useful if data was just added or removed.
      */
-    async displayPage(reloadContainer) {
-        if (reloadContainer) await this.init(this.container.address);
-        await this.ready;
+    async displayPage(strMuid, currentPage, itemsPerPage) {
+        this.clearChildren(this.root);
         this.pageType = "container";
-        const containerContents = document.getElementById('container-contents');
-        clearChildren(containerContents);
 
-        this.writeTitle();
-        await this.writeRangeInfo();
-        this.writePageButtons();
-        const thisContainerTable = containerContents.appendChild(document.createElement('table'));
-        thisContainerTable.setAttribute('id', 'container-table');
-        thisContainerTable.innerHTML = `
-        <tr>
-            ${this.hasKeys ? '<th>Key</th>' : ''}
-            ${this.hasValues ? '<th>Value</th>' : ''}
-        </tr>`;
+        // Get data from database
+        const container = await this.database.getContainer(strMuid);
+        const totalEntries = await this.database.getTotalEntries(container);
 
-        if (this.entries.length == 0) {
-            const p = containerContents.appendChild(document.createElement('p'));
-            p.innerText = "No entries.";
-            return;
-        }
-        if (this.hasKeys && this.hasValues) {
-            for (const [key, val] of this.getPageOfEntries()) {
-                await this.createRow(key, val);
+        const [keyType, valueType] = determineContainerStorage(container);
+
+        this.writeTitle(container);
+
+        // Total entries
+        const numEntries = this.createElement("p", this.root);
+        numEntries.innerText = `Total entries: ${totalEntries}`;
+
+        // Items per page selector
+        if (totalEntries > 10) {
+            const itemsPerPageSelect = this.createElement("select", this.root);
+            const options = ['10', '25', '50', '100', '250', '500', '1000'];
+            for (const option of options) {
+                if (Number(option) > totalEntries) break;
+                const currentOption = this.createElement("option", itemsPerPageSelect);
+                currentOption.innerText = option;
+                currentOption.value = option;
             }
+            itemsPerPageSelect.value = `${itemsPerPage}`;
+            itemsPerPageSelect.onchange = async () => {
+                window.location.hash = `${gink.muidToString(container.address)}+${currentPage}+${itemsPerPageSelect.value}`;
+            };
         }
-        else if (this.hasKeys && !this.hasValues) {
-            for (const key of this.getPageOfEntries()) {
-                await this.createRow(key);
-            }
-        }
-        else if (!this.hasKeys && this.hasValues) {
-            let pageOfEntries = this.getPageOfEntries();
-            for (let i = 0; i < pageOfEntries.length; i++) {
-                let val = pageOfEntries[i];
-                let position;
-                if (this.container.behavior == 2) {
-                    // If this is a sequence, we need to keep track of
-                    // each entry's position to delete or update it.
-                    position = this.currentPage * this.itemsPerPage + i;
-                }
-                await this.createRow(undefined, val, position);
-            }
-        }
-    }
 
-    async displayNextPage() {
-        this.currentPage += 1;
-        await this.displayPage();
-    };
+        // Range information
+        const showing = this.createElement("p", this.root);
+        const lowerBound = (currentPage - 1) * itemsPerPage + (totalEntries == 0 ? 0 : 1);
+        const upperBound = (currentPage - 1) * itemsPerPage + itemsPerPage;
+        const maxEntries = upperBound >= totalEntries ? totalEntries : upperBound;
+        showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
 
-    async displayPrevPage() {
-        this.currentPage -= 1;
-        await this.displayPage();
-    };
-
-    async setItemsPerPage(itemsPerPage) {
-        this.itemsPerPage = itemsPerPage;
-        this.currentPage = 0;
-    }
-
-    /**
-     * Displays the page to add a new entry to the database.
-     */
-    async displayAddEntry() {
-        await this.ready;
-        this.pageType = "add-entry";
-        const containerContents = document.getElementById('container-contents');
-        clearChildren(containerContents);
-        this.writeTitle();
-        this.writeCancelButton();
-
-        const entryFields = containerContents.appendChild(document.createElement('div'));
-        entryFields.setAttribute('id', 'add-entry-container');
-        entryFields.setAttribute('class', 'entry-container');
-        if (this.hasKeys) {
-            entryFields.innerHTML += `
-            <div class="input-container">
-                <input type="text" name="key" class="commit-input" id="key-input" placeholder="Key" />
-            </div>
-            `;
-        }
-        if (this.hasValues) {
-            entryFields.innerHTML += `
-            <div class="input-container">
-                <input type="text" name="val" class="commit-input" id="val-input" placeholder="Value" />
-            </div>
-            `;
-        }
-        entryFields.innerHTML += `
-            <div class="input-container">
-                <input type="text" name="msg" class="commit-input" id="msg-input" placeholder="Commit Message (Optional)" />
-            </div>
-            `;
-        const submitButton = entryFields.appendChild(document.createElement('button'));
-        submitButton.innerText = 'Commit Entry';
-        submitButton.setAttribute('id', 'commit-button');
-        submitButton.onclick = async () => {
-            let key = document.getElementById('key-input');
-            key = key ? key.value : undefined;
-            let val = document.getElementById('val-input');
-            val = val ? val.value : undefined;
-            let msg = document.getElementById('msg-input');
-            msg = msg ? msg.value : undefined;
-            await addContainerEntry(key, val, this.container, msg);
-            await this.displayPage();
-        };
-    }
-
-    async displayEntry(key, value, position) {
-        const containerContents = document.getElementById('container-contents');
-        this.pageType = "entry";
-        clearChildren(containerContents);
-        this.writeTitle();
-        this.writeCancelButton();
-        const entryContainer = containerContents.appendChild(document.createElement('div'));
-        entryContainer.setAttribute('id', 'view-entry');
-        entryContainer.setAttribute('class', 'entry-container');
-        if (key != undefined) {
-            entryContainer.innerHTML += `
-            <div class="entry-page-kv">
-                <h2>Key</h2>
-                ${await entryValueAsHtml(key)}
-            </div>
-            `;
-        }
-        if (value != undefined) {
-            entryContainer.innerHTML += `
-            <div class="entry-page-kv">
-                <h2>Value</h2>
-                ${await entryValueAsHtml(value)}
-            </div>
-            `;
-        }
-        const buttonContainer = containerContents.appendChild(document.createElement('div'));
-        buttonContainer.setAttribute('id', 'update-delete-container');
-
-        const updateButton = buttonContainer.appendChild(document.createElement('button'));
-        updateButton.setAttribute("id", "update-button");
-        updateButton.innerText = "Update Entry";
-        updateButton.onclick = async () => {
-            await this.displayUpdateEntry(key, value, position);
+        // Add entry button
+        const addEntryButton = this.createElement("button", this.root, "add-entry-button");
+        addEntryButton.innerText = "Add Entry";
+        addEntryButton.onclick = async () => {
+            await this.displayAddEntry(container);
         };
 
-        const deleteButton = buttonContainer.appendChild(document.createElement('button'));
-        deleteButton.setAttribute("id", "delete-button");
-        deleteButton.innerText = "Delete Entry";
-        deleteButton.onclick = async () => {
-            if (confirm("Delete and commit?")) {
-                await deleteContainerEntry(key, position, this.container);
-            }
-            await this.displayPage();
-        };
-    }
-
-    async displayUpdateEntry(oldKey, oldValue, position) {
-        const containerContents = document.getElementById('container-contents');
-        this.pageType = "update";
-        clearChildren(containerContents);
-        this.writeTitle();
-        this.writeCancelButton();
-        const entryContainer = containerContents.appendChild(document.createElement('div'));
-        entryContainer.setAttribute('id', 'view-entry');
-        entryContainer.setAttribute('class', 'entry-container');
-        if (oldKey != undefined) {
-            entryContainer.innerHTML += `
-            <div>
-                <h2>Key</h2>
-                <div id="entry-key"><input class="commit-input" id="key-input" placeholder="Key" /></div>
-            </div>
-            `;
-        }
-        if (oldValue != undefined) {
-            entryContainer.innerHTML += `
-            <div>
-                <h2>Value</h2>
-                <div id="entry-value"><input class="commit-input" id="val-input" placeholder="Value" /></div>
-            </div>
-            `;
-        }
-        entryContainer.innerHTML += `
-            <div>
-                <div id="entry-comment"><input class="commit-input" id="comment-input" placeholder="Commit Message (Optional)" /></div>
-            </div>
-            `;
-
-        const keyInput = document.getElementById('key-input');
-        if (keyInput) {
-            // keyContainer.innerText = '';
-            keyInput.value = oldKey;
-        }
-        const valInput = document.getElementById('val-input');
-        if (valInput) {
-            // valueContainer.innerText = '';
-            valInput.value = oldValue;
-        }
-
-        const buttonContainer = containerContents.appendChild(document.createElement('div'));
-        buttonContainer.setAttribute('id', 'commit-abort-container');
-
-        const commitButton = buttonContainer.appendChild(document.createElement('button'));
-        commitButton.setAttribute("id", "commit-button");
-        commitButton.innerText = "Commit Entry";
-        commitButton.onclick = async () => {
-            let newKey, newValue, newComment;
-            if (keyInput) newKey = keyInput.value;
-            if (valInput) newValue = valInput.value;
-            newComment = document.getElementById("comment-input").value;
-
-            if (confirm("Commit updated entry?")) {
-                await deleteContainerEntry(oldKey, position, this.container, newComment);
-                await addContainerEntry(newKey, newValue, this.container, newComment);
-            }
-            await this.displayPage();
-        };
-
-        const abortButton = buttonContainer.appendChild(document.createElement('button'));
-        abortButton.innerText = "Abort";
-        abortButton.onclick = async () => {
-            await this.displayEntry(oldKey, oldValue, position);
-        };
-    }
-
-    /**
-     * Puts an X button at the top left of #container-contents.
-     */
-    writeCancelButton() {
-        const containerContents = document.getElementById('container-contents');
-        const cancelButton = containerContents.appendChild(document.createElement('button'));
-        cancelButton.setAttribute('id', 'cancel-button');
-        cancelButton.innerText = 'X';
-        cancelButton.onclick = async () => {
-            await this.displayPage();
-        };
-    }
-
-    /**
-     * Creates a row in the container contents table.
-     * @param {*} key
-     * @param {*} val
-     * @param {number} position optional, used for sequences to
-     * keep track of which entry to update/delete.
-     */
-    async createRow(key, val, position) {
-        const table = document.getElementById('container-table');
-        const row = table.appendChild(document.createElement('tr'));
-        if (position != undefined) {
-            row.dataset["position"] = position;
-        }
-        row.setAttribute('class', 'entry-row');
-        row.onclick = async () => {
-            await this.displayEntry(key, val, Number(row.dataset["position"]));
-        };
-        if (key != undefined) {
-            const keyCell = row.appendChild(document.createElement('td'));
-            keyCell.innerHTML = await getCellValue(key);
-        }
-        if (val != undefined) {
-            const valCell = row.appendChild(document.createElement('td'));
-            valCell.innerHTML = await getCellValue(val);
-        }
-    }
-
-    /**
-     * Creates page buttons at the bottom of the table, and manages
-     * their onclick functionality to display the correct page.
-     */
-    writePageButtons() {
-        const containerContents = document.getElementById('container-contents');
-        const pageButtonsDiv = containerContents.appendChild(document.createElement('div'));
+        // Create the paging buttons
+        const pageButtonsDiv = this.createElement("div", this.root, "page-buttons-container");
         pageButtonsDiv.style.fontWeight = "bold";
-        pageButtonsDiv.setAttribute('id', 'page-buttons-container');
-        const prevPage = pageButtonsDiv.appendChild(document.createElement('a'));
-        prevPage.setAttribute('class', 'page-btn no-select');
+        const prevPage = this.createElement("a", pageButtonsDiv, undefined, "page-btn no-select");
         prevPage.innerText = '<';
-        if (!this.isFirstPage()) {
+        if (!this.isFirstPage(currentPage)) {
             prevPage.onclick = async () => {
-                await this.displayPrevPage();
+                window.location.hash = `${gink.muidToString(container.address)}+${currentPage - 1}+${itemsPerPage}`;
             };
         } else {
             prevPage.style.opacity = 0;
             prevPage.style.cursor = "auto";
         }
-        const thisPage = pageButtonsDiv.appendChild(document.createElement('p'));
-        thisPage.innerText = `Page ${this.currentPage + 1}`;
-        thisPage.setAttribute('class', 'no-select');
-        const nextPage = pageButtonsDiv.appendChild(document.createElement('a'));
-        nextPage.setAttribute('class', 'page-btn no-select');
+        const thisPage = this.createElement("p", pageButtonsDiv, undefined, "no-select");
+        thisPage.innerText = `Page ${currentPage}`;
+        const nextPage = this.createElement("a", pageButtonsDiv, undefined, "page-btn no-select");
         nextPage.innerText = '>';
-        if (!this.isLastPage()) {
+        if (!this.isLastPage(currentPage, itemsPerPage, totalEntries)) {
             nextPage.onclick = async () => {
-                await this.displayNextPage();
+                window.location.hash = `${gink.muidToString(container.address)}+${currentPage + 1}+${itemsPerPage}`;
             };
         } else {
             nextPage.style.opacity = 0;
             nextPage.style.cursor = "auto";
         }
+
+        // If there are no entries, don't bother making the table
+        if (totalEntries == 0) {
+            const p = this.createElement("p", this.root);
+            p.innerText = "No entries.";
+            return;
+        }
+
+        // Before we display anything, make sure the page and items per page actually makes sense.
+        if (((currentPage - 1) * itemsPerPage) >= totalEntries) {
+            // Eventually want a better solution than this, since the hash will be wrong
+            currentPage = Math.floor(totalEntries / itemsPerPage);
+        }
+
+        const pageOfEntries = await this.database.getPageOfEntries(container, currentPage, itemsPerPage);
+
+        // Create table based on page of entries.
+        const containerTable = this.createElement("table", this.root, "container-table");
+        const headerRow = this.createElement("tr", containerTable);
+        if (keyType != "none") {
+            const keyHeader = this.createElement("th", headerRow);
+            keyHeader.innerText = "Key";
+        }
+        if (valueType != "none") {
+            const valueHeader = this.createElement("th", headerRow);
+            valueHeader.innerText = "Value";
+        }
+
+        // Make sure nothing is broken
+        if (pageOfEntries.length) {
+            if (keyType == "none") gink.ensure(pageOfEntries[0][0] == undefined);
+            else if (keyType != "none") gink.ensure(pageOfEntries[0][0] != undefined);
+            if (valueType == "none") gink.ensure(pageOfEntries[0][1] == undefined);
+            else if (valueType != "none") gink.ensure(pageOfEntries[0][1] != undefined);
+        }
+
+        // Loop through entries to create table rows
+        let position = 0;
+        for (const [key, value] of pageOfEntries) {
+            const row = this.createElement("tr", containerTable, undefined, "entry-row");
+            row.dataset["position"] = position;
+            row.onclick = async () => {
+                await this.displayEntry(key, value, Number(row.dataset["position"]), container);
+            };
+            if (key != undefined) {
+                const keyCell = this.createElement("td", row);
+                keyCell.innerText = await this.getCellValue(key);
+            }
+            if (value != undefined) {
+                const valCell = this.createElement("td", row);
+                valCell.innerText = await this.getCellValue(value);
+            }
+            position++;
+        }
+    }
+
+    /**
+     * Displays the page to add a new entry to the database.
+     * @param {Container} container gink container as context for displaying entry.
+     */
+    async displayAddEntry(container) {
+        this.clearChildren(this.root);
+        this.pageType = "add-entry";
+        const [keyType, valueType] = determineContainerStorage(container);
+
+        this.writeTitle(container);
+        this.writeCancelButton();
+
+        const entryFields = this.createElement("div", this.root, "add-entry-container", "entry-container");
+        let keyInput1, keyInput2, valueInput;
+        // Key inputs - if container uses keys.
+        if (keyType != "none") {
+            const keyContainer = this.createElement("div", entryFields, undefined, "input-container");
+            const keyH2 = this.createElement("h2", keyContainer);
+            keyH2.innerText = "Key";
+            keyInput1 = this.createElement("input", keyContainer, "key-input-1", "commit-input");
+            keyInput1.setAttribute("type", "text");
+            keyInput1.setAttribute("placeholder", "Key");
+            if (keyType == "muid" || keyType == "pair") {
+                keyInput1.setAttribute("placeholder", "Muid");
+                // TODO: create a datalist with all container muids
+                // await enableContainerAutofill(datalist1);
+            }
+            if (keyType == "pair") {
+                keyInput2 = this.createElement("input", keyContainer, "key-input-2", "commit-input");
+                keyInput2.setAttribute("type", "text");
+                keyInput2.setAttribute("placeholder", "Muid");
+                // await enableContainerAutofill(datalist2);
+            }
+        }
+
+        // Value inputs - if container uses values.
+        if (valueType != "none") {
+            const valueContainer = this.createElement("div", entryFields, undefined, "input-container");
+            const valueH2 = this.createElement("h2", valueContainer);
+            valueH2.innerText = "Value";
+            valueInput = this.createElement("input", valueContainer, "value-input", "commit-input");
+            valueInput.setAttribute("type", "text");
+            valueInput.setAttribute("placeholder", "Value");
+        }
+
+        // Comment inputs
+        const commentContainer = this.createElement("div", entryFields, undefined, "input-container");
+        const commentH2 = this.createElement("h2", commentContainer);
+        commentH2.innerText = "Comment";
+        const commentInput = this.createElement("input", commentContainer, "comment-input", "commit-input");
+        commentInput.setAttribute("type", "text");
+        commentInput.setAttribute("placeholder", "Commit message (optional)");
+
+        // Button to commit entry
+        const submitButton = this.createElement("button", entryFields, "commit-button");
+        submitButton.innerText = 'Commit Entry';
+        submitButton.onclick = async () => {
+            // If any field is empty don't let submission go any further.
+            if (keyInput1 && !keyInput1.value) return;
+            if (keyInput2 && !keyInput2.value) return;
+            if (valueInput && !valueInput.value) return;
+
+            let newKey, newValue, newComment;
+            if (keyInput1 && !keyInput2) newKey = keyInput1.value;
+            else if (keyInput1 && keyInput2) newKey = [keyInput1.value, keyInput2.value];
+            if (valueInput) newValue = valueInput.value;
+            newComment = commentInput.value;
+
+            if (confirm("Commit entry?")) {
+                await this.database.addEntry(newKey, newValue, container, newComment);
+            }
+            await this.displayPage(...this.unwrapHash(window.location.hash));
+        };
+    }
+
+    /**
+     * Display a particular entry within a gink container.
+     * @param {*} key the key of the entry (may be undefined if container doesn't use keys)
+     * @param {*} value the value of the entry (may be undefined if container doesn't use values)
+     * @param {number} position the position of the entry. this is only used for sequences.
+     * @param {Container} container the gink container as context for the entry.
+     */
+    async displayEntry(key, value, position, container) {
+        this.clearChildren(this.root);
+        this.pageType = "entry";
+
+        this.writeTitle(container);
+        this.writeCancelButton();
+
+        const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
+        if (key != undefined) {
+            const keyContainer = this.createElement("div", entryContainer, undefined, "input-container");
+            const keyH2 = this.createElement("h2", keyContainer);
+            keyH2.innerText = "Key";
+            // Determines whether value needs to be a link to another container, etc.
+            keyContainer.innerHTML += await this.entryValueAsHtml(key);
+        }
+
+        if (value != undefined) {
+            const valueContainer = this.createElement("div", entryContainer, undefined, "input-container");
+            const valueH2 = this.createElement("h2", valueContainer);
+            valueH2.innerText = "Value";
+            // Determines whether value needs to be a link to another container, etc.
+            valueContainer.innerHTML += await this.entryValueAsHtml(value);
+        }
+
+        // Update and Delete buttons
+        const buttonContainer = this.createElement("div", this.root, "update-delete-container");
+        const updateButton = this.createElement("button", buttonContainer, "update-button");
+        updateButton.innerText = "Update Entry";
+        updateButton.onclick = async () => {
+            await this.displayUpdateEntry(key, value, position, container);
+        };
+
+        const deleteButton = this.createElement("button", buttonContainer, "delete-button");
+        deleteButton.innerText = "Delete Entry";
+        deleteButton.onclick = async () => {
+            if (confirm("Delete and commit?")) {
+                await this.database.deleteEntry(key, position, container);
+            }
+            await this.displayPage(...this.unwrapHash(window.location.hash));
+        };
+    }
+
+    /**
+     * Displays the page to update an existing entry.
+     * @param {*} oldKey previous key from entry page.
+     * @param {*} oldValue previous value from entry page.
+     * @param {number} position position of the entry. only used if container is a sequence.
+     * @param {Container} container gink container for context.
+     */
+    async displayUpdateEntry(oldKey, oldValue, position, container) {
+        this.clearChildren(this.root);
+        this.pageType = "update";
+        const [keyType, valueType] = determineContainerStorage(container);
+
+        this.writeTitle(container);
+        this.writeCancelButton();
+
+        // Main entry container
+        const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
+        let keyInput1, keyInput2, valueInput;
+        // Key - 2 inputs if container uses pairs, 1 input if container uses keys
+        if (oldKey != undefined) {
+            const keyH2 = this.createElement("h2", entryContainer);
+            keyH2.innerText = "Key";
+            keyInput1 = this.createElement("input", entryContainer, "key-input-1", "commit-input");
+            keyInput1.setAttribute("placeholder", oldKey);
+            if (keyType == "pair") {
+                keyInput2 = this.createElement("input", entryContainer, "key-input-2", "commit-input");
+                keyInput1.setAttribute("placeholder", oldKey[0]);
+                keyInput2.setAttribute("placeholder", oldKey[1]);
+            }
+        }
+        // Value  - 1 input if container uses values
+        if (oldValue != undefined) {
+            const valueH2 = this.createElement("h2", entryContainer);
+            valueH2.innerText = "Value";
+            valueInput = this.createElement("input", entryContainer, "value-input", "commit-input");
+            valueInput.setAttribute("placeholder", oldValue);
+        }
+        // Comment - optional for user
+        const commentH2 = this.createElement("h2", entryContainer);
+        commentH2.innerText = "Comment";
+        const commentInput = this.createElement("input", entryContainer, "comment-input", "commit-input");
+        commentInput.setAttribute("placeholder", "Commit Message (optional)");
+
+        // Commit and Abort buttons
+        const buttonContainer = this.createElement("div", this.root, "commit-abort-container");
+        const commitButton = this.createElement("button", buttonContainer, "commit-button");
+        commitButton.innerText = "Commit Entry";
+        commitButton.onclick = async () => {
+            // Assume nothing has changed until we see what user has input.
+            let newKey = oldKey;
+            if (keyType == "pair") {
+                gink.ensure(keyInput1 && keyInput2);
+                let muid1 = oldKey[0];
+                let muid2 = oldKey[1];
+                if (keyInput1.value) {
+                    muid1 = keyInput1.value;
+                }
+                if (keyInput2.value) {
+                    muid2 = keyInput2.value;
+                }
+                newKey = [muid1, muid2];
+            } else if (keyType != "none") {
+                gink.ensure(keyInput1 && !keyInput2);
+                if (keyInput1.value) {
+                    newKey = keyInput1.value;
+                }
+
+            }
+            let newValue = oldValue;
+            if (valueType != "none") {
+                gink.ensure(valueInput);
+                if (valueInput.value) {
+                    newValue = valueInput.value;
+                }
+            }
+            // Its ok if comment has no value, the database will handle that.
+            let newComment = commentInput.value;
+
+            // Nothing has changed. Should this go back to container screen?
+            if ((newKey == oldKey) && (newValue == oldValue)) return;
+
+            if (confirm("Commit updated entry?")) {
+                await this.database.deleteEntry(oldKey, position, container, newComment);
+                await this.database.addEntry(newKey, newValue, container, newComment);
+            }
+            await this.displayPage(...this.unwrapHash(window.location.hash));
+        };
+
+        const abortButton = this.createElement("button", buttonContainer);
+        abortButton.innerText = "Abort";
+        abortButton.onclick = async () => {
+            await this.displayEntry(oldKey, oldValue, position, container);
+        };
     }
 
     /**
      * @returns true if there are no previous pages.
      */
-    isFirstPage() {
-        return this.currentPage * this.itemsPerPage == 0;
+    isFirstPage(currentPage) {
+        return currentPage == 1;
     }
 
     /**
      * @returns true if there are no following pages.
      */
-    isLastPage() {
-        return this.currentPage * this.itemsPerPage + this.itemsPerPage >= this.entries.length;
+    isLastPage(currentPage, itemsPerPage, totalEntries) {
+        return currentPage * itemsPerPage + itemsPerPage > totalEntries;
+    }
+
+    /**
+     * Unwraps an expected hash into:
+     * string muid, page, items per page
+     * Expecting : FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00004+3+10
+     * 3 = page, 10 = items per page
+     * If only a muid is present, assume page 1, 10 items.
+     * @param {string} hash
+     * @returns an Array of [stringMuid, pageNumber, itemsPerPage]
+     */
+    unwrapHash(hash) {
+        let stringMuid = "FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00004";
+        let pageNumber = 1;
+        let itemsPerPage = 10;
+        if (window.location.hash == '#self') {
+            stringMuid = gink.muidToString(this.database.getSelfContainer().address);
+        }
+        else if (hash) {
+            hash = hash.substring(1);
+            let splitHash = hash.split("+");
+            stringMuid = splitHash[0];
+            if (!(splitHash.length == 1)) {
+                pageNumber = splitHash[1];
+                itemsPerPage = splitHash[2];
+            }
+        }
+        return [stringMuid, Number(pageNumber), Number(itemsPerPage)];
+    }
+
+    /**
+     * For the entry page - interprets the value and converts it into fitting html
+     * For example, takes a gink.Container and makes it a link to its container page.
+     * @param {*} value a string, container, or array of 2 containers (pair)
+     * @returns a string of HTML
+     */
+    async entryValueAsHtml(value) {
+        let asHtml;
+        if (Array.isArray(value) && value.length == 2 && value[0].timestamp) {
+            let container1 = await this.database.getContainer(value[0]);
+            let container2 = await this.database.getContainer(value[1]);
+            asHtml = `
+            <div id="pair-key-container">
+                <strong><a href="#${gink.muidToString(container1.address)}+1+10">${container1.constructor.name}</a></strong>, <strong><a href="#${gink.muidToString(container2.address)}+1+10">${container2.constructor.name}</a></strong>
+            </div>
+        `;
+        }
+        else if (value instanceof gink.Container) {
+            asHtml = `<strong><a href="#${gink.muidToString(value.address)}+1+10">${value.constructor.name}(${gink.muidToString(value.address)})</a></strong>`;
+        } else {
+            value = unwrapToString(value);
+            asHtml = `<p>${value}</p>`;
+        }
+        return asHtml;
+    }
+
+    /**
+     * Takes a value of a number, string, or gink.Container,
+     * and decides how the value should be displayed in the cell.
+     * @param {*} value
+     */
+    async getCellValue(value) {
+        let cellValue;
+        if (Array.isArray(value) && value.length == 2 && value[0].timestamp) {
+            let container1 = await this.database.getContainer(value[0]);
+            let container2 = await this.database.getContainer(value[1]);
+            cellValue = `${container1.constructor.name}-${container2.constructor.name}`;
+        }
+        else if (value instanceof gink.Container) {
+            cellValue = `${value.constructor.name}(${gink.muidToString(value.address)})`;
+        } else {
+            value = unwrapToString(value);
+            if (value.length > 20) {
+                cellValue = shortenedString(value);
+            }
+            else {
+                cellValue = value;
+            }
+        }
+        return cellValue;
+    }
+
+    /**
+     * Changes the title and header elements of the container page.
+     */
+    writeTitle(container) {
+        const title = this.createElement("h2", this.root, "title-bar");
+        const muid = container.address;
+        let containerName;
+        if (muid.timestamp == -1 && muid.medallion == -1) {
+            containerName = "Root Directory";
+        } else {
+            containerName = `${container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
+        }
+        title.innerText = containerName;
+    }
+
+    /**
+     * Creates an X button at the top left corner of #root.
+     */
+    writeCancelButton() {
+        const cancelButton = this.createElement("button", this.root, "cancel-button");
+        cancelButton.innerText = 'X';
+        cancelButton.onclick = async () => {
+            await this.displayPage(...this.unwrapHash(window.location.hash));
+        };
+    }
+
+    // HTML Utility Methods
+
+    /**
+     * Gets an HTML element in the DOM based on the selector.
+     * @param {string} selector HTML selector
+     * @returns an HTMLElement if found, else undefined.
+     */
+    getElement(selector) {
+        return document.querySelector(selector);
+    }
+
+    /**
+     * Creates an HTML Element based on the provided tag.
+     * Optionally appends to a provided element.
+     * @param {string} tag type of element to create.
+     * @param {HTMLElement} appendTo optional HTMLElement to append to.
+     * @param {string} id optional id for newly created element.
+     * @param {string} className optional class for newly created element.
+     * @returns the newly created HTMLElement.
+     */
+    createElement(tag, appendTo, id, className) {
+        const element = document.createElement(tag);
+        if (id) element.setAttribute("id", id);
+        if (className) element.setAttribute("class", className);
+        if (appendTo) {
+            appendTo.appendChild(element);
+        }
+        return element;
+    }
+
+    /**
+     * Utility function to clear the children of
+     * an HTMLElement.
+     * @param {HTMLElement} node
+     */
+    clearChildren(node) {
+        while (node.firstChild) {
+            node.removeChild(node.firstChild);
+        }
     }
 }

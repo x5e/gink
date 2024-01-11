@@ -7,43 +7,17 @@
     <link rel="stylesheet" href="/dashboard/styles.css">
     <script type="text/javascript" src="/dashboard/packed.js"></script>
     <script src="/dashboard/scripts/Page.js"></script>
+    <script src="/dashboard/scripts/Database.js"></script>
     <script src="/dashboard/scripts/utility.js"></script>
-    <script src="/dashboard/scripts/container_utility.js"></script>
 </head>
 
 <body>
 
-    <div id="container-contents">
+    <div id="root">
 
     </div>
 
 </body>
-<script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        window.store = new gink.IndexedDbStore();
-        window.instance = new gink.GinkInstance(store);
-        await window.instance.connectTo(`ws://${window.location.host}`);
-
-        let muid = hashToMuid(window.location.hash);
-        let page = new Page(muid);
-        await page.displayPage();
-
-        const refreshContainer = async () => {
-            page.ready = page.init(page.container.address);
-            if (page.pageType == "container") {
-                await page.displayPage();
-            }
-        };
-
-        window.instance.addListener(refreshContainer);
-
-        window.onhashchange = async (e) => {
-            let newHash = e.newURL.split("#")[1];
-            let muid = hashToMuid(newHash);
-            let page = new Page(muid);
-            await page.displayPage();
-        };
-    });
-</script>
+<script src="/dashboard/scripts/init.js"></script>
 
 </html>

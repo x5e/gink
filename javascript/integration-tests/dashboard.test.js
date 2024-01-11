@@ -17,7 +17,7 @@ it('connect to server and display dashboard', async () => {
     });
 
     await page.goto(`http://localhost:8081/`);
-    await page.waitForSelector('#container-contents');
+    await page.waitForSelector('#root');
 
     await sleep(4000);
 
@@ -59,7 +59,7 @@ it('share commits between two pages', async () => {
     try {
         for (const page of pages) {
             await page.goto(`http://localhost:8081/`);
-            await page.waitForSelector('#container-contents');
+            await page.waitForSelector('#root');
 
             page.on('dialog', async dialog => {
                 await dialog.accept();
@@ -91,9 +91,9 @@ it('share commits between two pages', async () => {
                 .on('pageerror', ({ message }) => { throw new Error(message); });
 
             await page.click("#add-entry-button");
-            await page.type("#key-input", `key${i}`);
-            await page.type("#val-input", `a value`);
-            await page.type("#msg-input", `setting key${i}`);
+            await page.type("#key-input-1", `key${i}`);
+            await page.type("#value-input", `a value`);
+            await page.type("#comment-input", `setting key${i}`);
             await page.click("#commit-button");
 
             if (i > 1) {
@@ -111,8 +111,7 @@ it('share commits between two pages', async () => {
         const [element] = await page1.$x(`//td[contains(., 'key0')]`);
         await element.click();
         await page1.click("#update-button");
-        await page1.evaluate(() => document.getElementById("val-input").value = "");
-        await page1.type("#val-input", `changed value`);
+        await page1.type("#value-input", `changed value`);
         await page1.click("#commit-button");
         await sleep(1000);
 
@@ -121,10 +120,10 @@ it('share commits between two pages', async () => {
         const table1 = await page1.$eval("#container-table", e => e.innerHTML);
         const table2 = await page2.$eval("#container-table", e => e.innerHTML);
         for (const table of [table1, table2]) {
-            expect(table).toMatch(/.*<tr class="entry-row"><td>key0<\/td><td>changed value<\/td><\/tr>/);
+            expect(table).toMatch(/.*<tr class="entry-row" data-position="0"><td>key0<\/td><td>changed value<\/td><\/tr>/);
             expect(table).not.toMatch(/.*key1/);
             expect(table).not.toMatch(/.*key2/);
-            expect(table).toMatch(/.*<tr class="entry-row"><td>key3<\/td><td>a value<\/td><\/tr>/);
+            expect(table).toMatch(/.*<tr class="entry-row" data-position="1"><td>key3<\/td><td>a value<\/td><\/tr>/);
         }
     } catch (e) {
         throw new Error(e);
@@ -132,4 +131,4 @@ it('share commits between two pages', async () => {
         await server.close();
         await browser.close();
     }
-}, 40000 * 1000);
+}, 40000);
