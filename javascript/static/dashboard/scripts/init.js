@@ -11,11 +11,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initialize and display page
     const page = new Page(database);
-    await page.displayPage(...unwrapHash(window.location.hash));
+    await page.displayPage(...page.unwrapHash(window.location.hash));
 
     const refreshContainer = async () => {
         if (page.pageType == "container") {
-            await page.displayPage(...unwrapHash(window.location.hash));
+            await page.displayPage(...page.unwrapHash(window.location.hash));
         }
     };
     // Add a listener to refresh when a new commit comes through
@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     database.instance.addListener(refreshContainer);
 
     window.onhashchange = async () => {
-        await page.displayPage(...unwrapHash(window.location.hash));
+        await page.displayPage(...page.unwrapHash(window.location.hash));
     };
 });
 

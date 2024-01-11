@@ -49,36 +49,6 @@ function determineContainerStorage(container) {
 }
 
 /**
- * Unwraps an expected hash into:
- * string muid, page, items per page
- * Expecting : FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00004+3+10
- * 3 = page, 10 = items per page
- * If only a muid is present, assume page 1, 10 items.
- * @param {string} hash
- * @returns an Array of [stringMuid, pageNumber, itemsPerPage]
- */
-function unwrapHash(hash) {
-    let stringMuid = "FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00004";
-    let pageNumber = 1;
-    let itemsPerPage = 10;
-    if (window.location.hash == '#self') {
-        stringMuid = gink.muidToString(this.instance.getMedallionDirectory().address);
-    }
-    else if (hash) {
-        hash = hash.substring(1);
-        let splitHash = hash.split("+");
-        stringMuid = splitHash[0];
-        if (!(splitHash.length == 1)) {
-            pageNumber = splitHash[1];
-            itemsPerPage = splitHash[2];
-        }
-    }
-    return [stringMuid, Number(pageNumber), Number(itemsPerPage)];
-}
-
-
-
-/**
  * Fills a datalist element with options of all containers that exist
  * in the store.
  * @param {HTMLDataListElement} htmlDatalistElement
@@ -92,17 +62,6 @@ async function enableContainersAutofill(htmlDatalistElement) {
     //     htmlDatalistElement.appendChild(option);
     // }
     throw new Error("not yet implemented");
-}
-
-/**
- * Utility function to clear the children of
- * an HTMLElement.
- * @param {HTMLElement} node
- */
-function clearChildren(node) {
-    while (node.firstChild) {
-        node.removeChild(node.firstChild);
-    }
 }
 
 /**

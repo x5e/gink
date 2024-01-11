@@ -16,14 +16,6 @@ class Page {
         const container = await this.database.getContainer(strMuid);
         const totalEntries = await this.database.getTotalEntries(container);
 
-        // Before we display anything, make sure the page and items per page actually makes sense.
-        if (((currentPage - 1) * itemsPerPage) >= totalEntries) {
-            // Eventually want a better solution than this, since the hash will be wrong
-            currentPage = Math.floor(totalEntries / itemsPerPage);
-        }
-
-        const pageOfEntries = await this.database.getPageOfEntries(container, currentPage, itemsPerPage);
-
         const [keyType, valueType] = determineContainerStorage(container);
 
         this.writeTitle(container);
@@ -51,7 +43,7 @@ class Page {
         // Range information
         const showing = this.createElement("p", this.root);
         const lowerBound = (currentPage - 1) * itemsPerPage + (totalEntries == 0 ? 0 : 1);
-        const upperBound = currentPage * itemsPerPage + itemsPerPage;
+        const upperBound = (currentPage - 1) * itemsPerPage + itemsPerPage;
         const maxEntries = upperBound >= totalEntries ? totalEntries : upperBound;
         showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
 
@@ -94,6 +86,14 @@ class Page {
             p.innerText = "No entries.";
             return;
         }
+
+        // Before we display anything, make sure the page and items per page actually makes sense.
+        if (((currentPage - 1) * itemsPerPage) >= totalEntries) {
+            // Eventually want a better solution than this, since the hash will be wrong
+            currentPage = Math.floor(totalEntries / itemsPerPage);
+        }
+
+        const pageOfEntries = await this.database.getPageOfEntries(container, currentPage, itemsPerPage);
 
         // Create table based on page of entries.
         const containerTable = this.createElement("table", this.root, "container-table");
@@ -206,7 +206,7 @@ class Page {
             if (confirm("Commit entry?")) {
                 await this.database.addEntry(newKey, newValue, container, newComment);
             }
-            await this.displayPage(...unwrapHash(window.location.hash));
+            await this.displayPage(...this.unwrapHash(window.location.hash));
         };
     }
 
@@ -255,7 +255,7 @@ class Page {
             if (confirm("Delete and commit?")) {
                 await this.database.deleteEntry(key, position, container);
             }
-            await this.displayPage(...unwrapHash(window.location.hash));
+            await this.displayPage(...this.unwrapHash(window.location.hash));
         };
     }
 
@@ -344,7 +344,7 @@ class Page {
                 await this.database.deleteEntry(oldKey, position, container, newComment);
                 await this.database.addEntry(newKey, newValue, container, newComment);
             }
-            await this.displayPage(...unwrapHash(window.location.hash));
+            await this.displayPage(...this.unwrapHash(window.location.hash));
         };
 
         const abortButton = this.createElement("button", buttonContainer);
@@ -366,6 +366,34 @@ class Page {
      */
     isLastPage(currentPage, itemsPerPage, totalEntries) {
         return currentPage * itemsPerPage + itemsPerPage > totalEntries;
+    }
+
+    /**
+     * Unwraps an expected hash into:
+     * string muid, page, items per page
+     * Expecting : FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00004+3+10
+     * 3 = page, 10 = items per page
+     * If only a muid is present, assume page 1, 10 items.
+     * @param {string} hash
+     * @returns an Array of [stringMuid, pageNumber, itemsPerPage]
+     */
+    unwrapHash(hash) {
+        let stringMuid = "FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00004";
+        let pageNumber = 1;
+        let itemsPerPage = 10;
+        if (window.location.hash == '#self') {
+            stringMuid = gink.muidToString(this.database.getSelfContainer().address);
+        }
+        else if (hash) {
+            hash = hash.substring(1);
+            let splitHash = hash.split("+");
+            stringMuid = splitHash[0];
+            if (!(splitHash.length == 1)) {
+                pageNumber = splitHash[1];
+                itemsPerPage = splitHash[2];
+            }
+        }
+        return [stringMuid, Number(pageNumber), Number(itemsPerPage)];
     }
 
     /**
@@ -442,7 +470,7 @@ class Page {
         const cancelButton = this.createElement("button", this.root, "cancel-button");
         cancelButton.innerText = 'X';
         cancelButton.onclick = async () => {
-            await this.displayPage(...unwrapHash(window.location.hash));
+            await this.displayPage(...this.unwrapHash(window.location.hash));
         };
     }
 

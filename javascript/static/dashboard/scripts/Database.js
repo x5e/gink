@@ -19,6 +19,15 @@ class Database {
     }
 
     /**
+     * Get the self container from the instance.
+     * Accessed quickly by #self
+     * @returns the self container for this instance.
+     */
+    getSelfContainer() {
+        return this.instance.getMedallionDirectory();
+    }
+
+    /**
      * Takes a string muid or Muid object and returns it
      * constructed as a container from the instance.
      * @param {string || Container} muid
