@@ -10,12 +10,12 @@ class Page {
      */
     async displayPage(strMuid, currentPage, itemsPerPage) {
         this.clearChildren(this.root);
+        this.pageType = "container";
+
         // Get data from database
         const container = await this.database.getContainer(strMuid);
         const pageOfEntries = await this.database.getPageOfEntries(container, currentPage, itemsPerPage);
         const totalEntries = await container.size();
-
-        this.pageType = "container";
 
         const [keyType, valueType] = determineContainerStorage(container);
 
@@ -128,18 +128,15 @@ class Page {
 
     /**
      * Displays the page to add a new entry to the database.
+     * @param {Container} container gink container as context for displaying entry.
      */
     async displayAddEntry(container) {
-        const [keyType, valueType] = determineContainerStorage(container);
-        this.pageType = "add-entry";
         this.clearChildren(this.root);
-        this.writeTitle(container);
+        this.pageType = "add-entry";
+        const [keyType, valueType] = determineContainerStorage(container);
 
-        const cancelButton = this.createElement("button", this.root, "cancel-button");
-        cancelButton.innerText = 'X';
-        cancelButton.onclick = async () => {
-            await this.displayPage(...unwrapHash(window.location.hash));
-        };
+        this.writeTitle(container);
+        this.writeCancelButton();
 
         const entryFields = this.createElement("div", this.root, "add-entry-container", "entry-container");
         let keyInput1, keyInput2, valueInput;
@@ -174,6 +171,7 @@ class Page {
             valueInput.setAttribute("placeholder", "Value");
         }
 
+        // Comment inputs
         const commentContainer = this.createElement("div", entryFields, undefined, "input-container");
         const commentH2 = this.createElement("h2", commentContainer);
         commentH2.innerText = "Comment";
@@ -181,10 +179,11 @@ class Page {
         commentInput.setAttribute("type", "text");
         commentInput.setAttribute("placeholder", "Commit message (optional)");
 
+        // Button to commit entry
         const submitButton = this.createElement("button", entryFields, "commit-button");
         submitButton.innerText = 'Commit Entry';
         submitButton.onclick = async () => {
-            // If any field is empty, stop now.
+            // If any field is empty don't let submission go any further.
             if (keyInput1 && !keyInput1.value) return;
             if (keyInput2 && !keyInput2.value) return;
             if (valueInput && !valueInput.value) return;
@@ -202,17 +201,19 @@ class Page {
         };
     }
 
+    /**
+     * Display a particular entry within a gink container.
+     * @param {*} key the key of the entry (may be undefined if container doesn't use keys)
+     * @param {*} value the value of the entry (may be undefined if container doesn't use values)
+     * @param {number} position the position of the entry. this is only used for sequences.
+     * @param {Container} container the gink container as context for the entry.
+     */
     async displayEntry(key, value, position, container) {
         this.clearChildren(this.root);
         this.pageType = "entry";
 
         this.writeTitle(container);
-
-        const cancelButton = this.createElement("button", this.root, "cancel-button");
-        cancelButton.innerText = 'X';
-        cancelButton.onclick = async () => {
-            await this.displayPage(...unwrapHash(window.location.hash));
-        };
+        this.writeCancelButton();
 
         const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
         if (key != undefined) {
@@ -251,50 +252,49 @@ class Page {
 
     /**
      * Displays the page to update an existing entry.
-     * @param {*} oldKey
-     * @param {*} oldValue
-     * @param {*} position
+     * @param {*} oldKey previous key from entry page.
+     * @param {*} oldValue previous value from entry page.
+     * @param {number} position position of the entry. only used if container is a sequence.
+     * @param {Container} container gink container for context.
      */
     async displayUpdateEntry(oldKey, oldValue, position, container) {
+        this.clearChildren(this.root);
         this.pageType = "update";
         const [keyType, valueType] = determineContainerStorage(container);
-        this.clearChildren(this.root);
+
         this.writeTitle(container);
+        this.writeCancelButton();
 
-        const cancelButton = this.createElement("button", this.root, "cancel-button");
-        cancelButton.innerText = 'X';
-        cancelButton.onclick = async () => {
-            await this.displayPage(unwrapHash(window.location.hash));
-        };
-
+        // Main entry container
         const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
         let keyInput1, keyInput2, valueInput;
+        // Key - 2 inputs if container uses pairs, 1 input if container uses keys
         if (oldKey != undefined) {
             const keyH2 = this.createElement("h2", entryContainer);
             keyH2.innerText = "Key";
             keyInput1 = this.createElement("input", entryContainer, "key-input-1", "commit-input");
-            keyInput1.setAttribute("placeholder", "Key");
-            if (keyType == "muid" || keyType == "pair") {
-                keyInput1.setAttribute("placeholder", "Muid");
-            }
+            keyInput1.setAttribute("placeholder", oldKey);
             if (keyType == "pair") {
                 keyInput2 = this.createElement("input", entryContainer, "key-input-2", "commit-input");
-                keyInput2.setAttribute("placeholder", "Muid");
+                keyInput1.setAttribute("placeholder", oldKey[0]);
+                keyInput2.setAttribute("placeholder", oldKey[1]);
             }
         }
+        // Value  - 1 input if container uses values
         if (oldValue != undefined) {
             const valueH2 = this.createElement("h2", entryContainer);
             valueH2.innerText = "Value";
             valueInput = this.createElement("input", entryContainer, "value-input", "commit-input");
-            valueInput.setAttribute("placeholder", "Value");
+            valueInput.setAttribute("placeholder", oldValue);
         }
+        // Comment - optional for user
         const commentH2 = this.createElement("h2", entryContainer);
         commentH2.innerText = "Comment";
         const commentInput = this.createElement("input", entryContainer, "comment-input", "commit-input");
         commentInput.setAttribute("placeholder", "Commit Message (optional)");
 
+        // Commit and Abort buttons
         const buttonContainer = this.createElement("div", this.root, "commit-abort-container");
-
         const commitButton = this.createElement("button", buttonContainer, "commit-button");
         commitButton.innerText = "Commit Entry";
         commitButton.onclick = async () => {
@@ -308,6 +308,9 @@ class Page {
             else if (keyInput1 && keyInput2) newKey = [keyInput1.value, keyInput2.value];
             if (valueInput) newValue = valueInput.value;
             newComment = commentInput.value;
+
+            // Nothing has changed. Should this go back to container screen?
+            if ((newKey == oldKey) && (newValue == oldValue)) return;
 
             if (confirm("Commit updated entry?")) {
                 await this.database.deleteEntry(oldKey, position, container, newComment);
@@ -350,6 +353,17 @@ class Page {
             containerName = `${container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
         }
         title.innerText = containerName;
+    }
+
+    /**
+     * Creates an X button at the top left corner of #root.
+     */
+    writeCancelButton() {
+        const cancelButton = this.createElement("button", this.root, "cancel-button");
+        cancelButton.innerText = 'X';
+        cancelButton.onclick = async () => {
+            await this.displayPage(...unwrapHash(window.location.hash));
+        };
     }
 
     // HTML Utility Methods
