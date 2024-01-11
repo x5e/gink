@@ -194,58 +194,46 @@ class Page {
         commentInput.setAttribute("type", "text");
         commentInput.setAttribute("placeholder", "Commit message (optional)");
 
-        const submitButton = entryFields.appendChild(document.createElement('button'));
+        const submitButton = this.createElement("button", entryFields, "commit-button");
         submitButton.innerText = 'Commit Entry';
-        submitButton.setAttribute('id', 'commit-button');
         submitButton.onclick = async () => {
-            let key = document.getElementById('key-input');
-            key = key ? key.value : undefined;
-            let val = document.getElementById('val-input');
-            val = val ? val.value : undefined;
-            let msg = document.getElementById('msg-input');
-            msg = msg ? msg.value : undefined;
+            // stuff here to add entry
             await addContainerEntry(key, val, this.container, msg);
             await this.displayPage();
         };
     }
 
     async displayEntry(key, value, position) {
-        const containerContents = document.getElementById('container-contents');
         this.pageType = "entry";
-        clearChildren(containerContents);
+        this.clearChildren(this.root);
         this.writeTitle();
         this.writeCancelButton();
-        const entryContainer = containerContents.appendChild(document.createElement('div'));
-        entryContainer.setAttribute('id', 'view-entry');
-        entryContainer.setAttribute('class', 'entry-container');
+        const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
         if (key != undefined) {
-            entryContainer.innerHTML += `
-            <div class="entry-page-kv">
-                <h2>Key</h2>
-                ${await entryValueAsHtml(key)}
-            </div>
-            `;
+            const keyContainer = this.createElement("div", entryContainer, undefined, "input-container");
+            const keyH2 = this.createElement("h2", keyContainer);
+            keyH2.innerText = "Key";
+            // Determines whether value needs to be a link to another container, etc.
+            keyContainer.innerHTML += await entryValueAsHtml(key);
         }
-        if (value != undefined) {
-            entryContainer.innerHTML += `
-            <div class="entry-page-kv">
-                <h2>Value</h2>
-                ${await entryValueAsHtml(value)}
-            </div>
-            `;
-        }
-        const buttonContainer = containerContents.appendChild(document.createElement('div'));
-        buttonContainer.setAttribute('id', 'update-delete-container');
 
-        const updateButton = buttonContainer.appendChild(document.createElement('button'));
-        updateButton.setAttribute("id", "update-button");
+        if (value != undefined) {
+            const valueContainer = this.createElement("div", entryContainer, undefined, "input-container");
+            const valueH2 = this.createElement("h2", valueContainer);
+            valueH2.innerText = "Value";
+            // Determines whether value needs to be a link to another container, etc.
+            valueContainer.innerHTML += await entryValueAsHtml(value);
+        }
+
+        // Update and Delete buttons
+        const buttonContainer = this.createElement("div", this.root, "update-delete-container");
+        const updateButton = this.createElement("button", buttonContainer, "update-button");
         updateButton.innerText = "Update Entry";
         updateButton.onclick = async () => {
             await this.displayUpdateEntry(key, value, position);
         };
 
-        const deleteButton = buttonContainer.appendChild(document.createElement('button'));
-        deleteButton.setAttribute("id", "delete-button");
+        const deleteButton = this.createElement("button", buttonContainer, "delete-button");
         deleteButton.innerText = "Delete Entry";
         deleteButton.onclick = async () => {
             if (confirm("Delete and commit?")) {
@@ -255,59 +243,59 @@ class Page {
         };
     }
 
-    async displayUpdateEntry(oldKey, oldValue, position) {
-        const containerContents = document.getElementById('container-contents');
+    /**
+     * Displays the page to update an existing entry.
+     * @param {*} oldKey
+     * @param {*} oldValue
+     * @param {*} position
+     */
+    async displayUpdateEntry(oldKey, oldValue, position, container) {
         this.pageType = "update";
-        clearChildren(containerContents);
+        const [keyType, valueType] = determineContainerStorage(container);
+        this.clearChildren(this.root);
         this.writeTitle();
         this.writeCancelButton();
-        const entryContainer = containerContents.appendChild(document.createElement('div'));
-        entryContainer.setAttribute('id', 'view-entry');
-        entryContainer.setAttribute('class', 'entry-container');
+        const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
+        let keyInput1, keyInput2, valueInput;
         if (oldKey != undefined) {
-            entryContainer.innerHTML += `
-            <div>
-                <h2>Key</h2>
-                <div id="entry-key"><input class="commit-input" id="key-input" placeholder="Key" /></div>
-            </div>
-            `;
+            const keyH2 = this.createElement("h2", entryContainer);
+            keyH2.innerText = "Key";
+            keyInput1 = this.createElement("input", entryContainer, "key-input-1", "commit-input");
+            keyInput1.setAttribute("placeholder", "Key");
+            if (keyType == "muid" || keyType == "pair") {
+                keyInput1.setAttribute("placeholder", "Muid");
+            }
+            if (keyType == "pair") {
+                keyInput2 = this.createElement("input", entryContainer, "key-input-2", "commit-input");
+                keyInput2.setAttribute("placeholder", "Muid");
+            }
         }
         if (oldValue != undefined) {
-            entryContainer.innerHTML += `
-            <div>
-                <h2>Value</h2>
-                <div id="entry-value"><input class="commit-input" id="val-input" placeholder="Value" /></div>
-            </div>
-            `;
+            const valueH2 = this.createElement("h2", entryContainer);
+            valueH2.innerText = "Value";
+            valueInput = this.createElement("input", entryContainer, "value-input", "commit-input");
+            valueInput.setAttribute("placeholder", "Value");
         }
-        entryContainer.innerHTML += `
-            <div>
-                <div id="entry-comment"><input class="commit-input" id="comment-input" placeholder="Commit Message (Optional)" /></div>
-            </div>
-            `;
+        const commentH2 = this.createElement("h2", entryContainer);
+        commentH2.innerText = "Comment";
+        commentInput = this.createElement("input", entryContainer, "comment-input", "commit-input");
+        commentInput.setAttribute("placeholder", "Commit Message (optional)");
 
-        const keyInput = document.getElementById('key-input');
-        if (keyInput) {
-            // keyContainer.innerText = '';
-            keyInput.value = oldKey;
-        }
-        const valInput = document.getElementById('val-input');
-        if (valInput) {
-            // valueContainer.innerText = '';
-            valInput.value = oldValue;
-        }
+        const buttonContainer = this.createElement("div", this.root, "commit-abort-container");
 
-        const buttonContainer = containerContents.appendChild(document.createElement('div'));
-        buttonContainer.setAttribute('id', 'commit-abort-container');
-
-        const commitButton = buttonContainer.appendChild(document.createElement('button'));
-        commitButton.setAttribute("id", "commit-button");
+        const commitButton = this.createElement("button", buttonContainer, "commit-button");
         commitButton.innerText = "Commit Entry";
         commitButton.onclick = async () => {
+            // If any field is empty, stop now.
+            if (keyInput1 && !keyInput1.value) return;
+            if (keyInput2 && !keyInput2.value) return;
+            if (valueInput && !valueInput.value) return;
+
             let newKey, newValue, newComment;
-            if (keyInput) newKey = keyInput.value;
-            if (valInput) newValue = valInput.value;
-            newComment = document.getElementById("comment-input").value;
+            if (keyInput1 && !keyInput2) newKey = keyInput1.value;
+            else if (keyInput1 && keyInput2) newKey = [keyInput1.value, keyInput2.value];
+            if (valueInput) newValue = valueInput.value;
+            newComment = commentInput.value;
 
             if (confirm("Commit updated entry?")) {
                 await deleteContainerEntry(oldKey, position, this.container, newComment);
@@ -316,7 +304,7 @@ class Page {
             await this.displayPage();
         };
 
-        const abortButton = buttonContainer.appendChild(document.createElement('button'));
+        const abortButton = this.createElement("button", buttonContainer);
         abortButton.innerText = "Abort";
         abortButton.onclick = async () => {
             await this.displayEntry(oldKey, oldValue, position);
