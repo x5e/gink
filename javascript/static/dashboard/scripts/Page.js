@@ -282,11 +282,14 @@ class Page {
             const keyH2 = this.createElement("h2", entryContainer);
             keyH2.innerText = "Key";
             keyInput1 = this.createElement("input", entryContainer, "key-input-1", "commit-input");
-            keyInput1.setAttribute("placeholder", oldKey);
             if (keyType == "pair") {
                 keyInput2 = this.createElement("input", entryContainer, "key-input-2", "commit-input");
-                keyInput1.setAttribute("placeholder", oldKey[0]);
-                keyInput2.setAttribute("placeholder", oldKey[1]);
+                keyInput1.setAttribute("placeholder", gink.muidToString(oldKey[0]));
+                keyInput2.setAttribute("placeholder", gink.muidToString(oldKey[1]));
+            } else if (keyType == "muid") {
+                keyInput1.setAttribute("placeholder", gink.muidToString(oldKey.address));
+            } else {
+                keyInput1.setAttribute("placeholder", oldKey);
             }
         }
         // Value  - 1 input if container uses values
