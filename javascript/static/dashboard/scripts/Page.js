@@ -16,6 +16,12 @@ class Page {
         const container = await this.database.getContainer(strMuid);
         const totalEntries = await this.database.getTotalEntries(container);
 
+        // Before we display anything, make sure the page and items per page actually makes sense.
+        if (((currentPage - 1) * itemsPerPage) >= totalEntries) {
+            // Eventually want a better solution than this, since the hash will be wrong
+            currentPage = Math.floor(totalEntries / itemsPerPage);
+        }
+
         const [keyType, valueType] = determineContainerStorage(container);
 
         this.writeTitle(container);
@@ -85,12 +91,6 @@ class Page {
         } else {
             nextPage.style.opacity = 0;
             nextPage.style.cursor = "auto";
-        }
-
-        // Before we display anything, make sure the page and items per page actually makes sense.
-        if (((currentPage - 1) * itemsPerPage) >= totalEntries) {
-            // Eventually want a better solution than this, since the hash will be wrong
-            currentPage = Math.floor(totalEntries / itemsPerPage);
         }
 
         const pageOfEntries = await this.database.getPageOfEntries(container, currentPage, itemsPerPage);
@@ -201,13 +201,20 @@ class Page {
             if (valueInput && !valueInput.value) return;
 
             let newKey, newValue, newComment;
-            if (keyInput1 && !keyInput2) newKey = keyInput1.value;
-            else if (keyInput1 && keyInput2) newKey = [keyInput1.value, keyInput2.value];
+            if (keyInput1 && !keyInput2) {
+                if (keyType == "muid") {
+                    newKey = gink.strToMuid(keyInput1.value);
+                }
+                else {
+                    newKey = keyInput1.value;
+                }
+            }
+            else if (keyInput1 && keyInput2) newKey = [gink.strToMuid(keyInput1.value), gink.strToMuid(keyInput2.value)];
             if (valueInput) newValue = valueInput.value;
             newComment = commentInput.value;
 
             if (confirm("Commit entry?")) {
-                await this.database.addEntry(newKey, newValue, container, newComment);
+                await this.database.addEntry(interpretKey(newKey, container), newValue, container, newComment);
             }
             await this.displayPage(...this.unwrapHash(window.location.hash));
         };
@@ -256,7 +263,7 @@ class Page {
         deleteButton.innerText = "Delete Entry";
         deleteButton.onclick = async () => {
             if (confirm("Delete and commit?")) {
-                await this.database.deleteEntry(key, position, container);
+                await this.database.deleteEntry(interpretKey(key, container), position, container);
             }
             await this.displayPage(...this.unwrapHash(window.location.hash));
         };
@@ -359,8 +366,8 @@ class Page {
             if ((newKey == oldKey) && (newValue == oldValue)) return;
 
             if (confirm("Commit updated entry?")) {
-                await this.database.deleteEntry(oldKey, position, container, newComment);
-                await this.database.addEntry(newKey, newValue, container, newComment);
+                await this.database.deleteEntry(interpretKey(oldKey, container), position, container, newComment);
+                await this.database.addEntry(interpretKey(newKey, container), newValue, container, newComment);
             }
             await this.displayPage(...this.unwrapHash(window.location.hash));
         };
@@ -383,7 +390,7 @@ class Page {
      * @returns true if there are no following pages.
      */
     isLastPage(currentPage, itemsPerPage, totalEntries) {
-        return (currentPage - 1) * itemsPerPage + itemsPerPage > totalEntries;
+        return (currentPage - 1) * itemsPerPage + itemsPerPage >= totalEntries;
     }
 
     /**

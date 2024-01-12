@@ -153,8 +153,6 @@ class Database {
         if (!comment) {
             comment = "entry added from dashboard";
         }
-
-        let errMsg;
         gink.ensure(key || val, 'Need to specify key or value');
         gink.ensure(container, 'Need to specify container.');
         const [keyType, valueType] = determineContainerStorage(container);
@@ -174,30 +172,21 @@ class Database {
                 await container.set(key, val, comment);
                 break;
             case 5: // PairSet
-                errMsg = `Expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
-                try {
-                    await container.include([gink.strToMuid(key[0]), gink.strToMuid(key[1])], comment);
-                } catch {
-                    console.error(errMsg);
-                }
+                gink.ensure(Array.isArray(key) && key.length == 2);
+                gink.ensure("timestamp" in key[0] && "timestamp" in key[1], 'Expecting array of 2 muids for key.');
+                await container.include([key[0], key[1]], comment);
                 break;
             case 6: // PairMap
-                errMsg = `Key is expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
-                try {
-                    await container.set([gink.strToMuid(key[0]), gink.strToMuid(key[1])], val, comment);
-                } catch {
-                    console.error(errMsg);
-                }
+                gink.ensure(Array.isArray(key) && key.length == 2);
+                gink.ensure("timestamp" in key[0] && "timestamp" in key[1], 'Expecting array of 2 muids for key.');
+                await container.set([key[0], key[1]], val, comment);
                 break;
             case 9:
                 // REMEMBER TO ADD PROPERTY HERE!!
                 break;
             case 10: // Role
-                try {
-                    await container.include(gink.strToMuid(key), comment);
-                } catch {
-                    console.error('Expecting muid as string. Ex:FFFFFFFFFFFFFF-6734543837984-00004');
-                }
+                gink.ensure("timestamp" in key, 'Expecting muid for key.');
+                await container.include(key, comment);
                 break;
             default:
                 throw new Error(`not sure how to add entry to ${container.constructor.name}`);
