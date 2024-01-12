@@ -20,6 +20,20 @@ class Page {
 
         this.writeTitle(container);
 
+        // Add entry button
+        const addEntryButton = this.createElement("button", this.root, "add-entry-button");
+        addEntryButton.innerText = "Add Entry";
+        addEntryButton.onclick = async () => {
+            await this.displayAddEntry(container);
+        };
+
+        // If there are no entries, stop here.
+        if (totalEntries == 0) {
+            const p = this.createElement("p", this.root);
+            p.innerText = "No entries.";
+            return;
+        }
+
         // Total entries
         const numEntries = this.createElement("p", this.root);
         numEntries.innerText = `Total entries: ${totalEntries}`;
@@ -47,13 +61,6 @@ class Page {
         const maxEntries = upperBound >= totalEntries ? totalEntries : upperBound;
         showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
 
-        // Add entry button
-        const addEntryButton = this.createElement("button", this.root, "add-entry-button");
-        addEntryButton.innerText = "Add Entry";
-        addEntryButton.onclick = async () => {
-            await this.displayAddEntry(container);
-        };
-
         // Create the paging buttons
         const pageButtonsDiv = this.createElement("div", this.root, "page-buttons-container");
         pageButtonsDiv.style.fontWeight = "bold";
@@ -78,13 +85,6 @@ class Page {
         } else {
             nextPage.style.opacity = 0;
             nextPage.style.cursor = "auto";
-        }
-
-        // If there are no entries, don't bother making the table
-        if (totalEntries == 0) {
-            const p = this.createElement("p", this.root);
-            p.innerText = "No entries.";
-            return;
         }
 
         // Before we display anything, make sure the page and items per page actually makes sense.
