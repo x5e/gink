@@ -365,7 +365,7 @@ class Page {
      * @returns true if there are no following pages.
      */
     isLastPage(currentPage, itemsPerPage, totalEntries) {
-        return currentPage * itemsPerPage + itemsPerPage > totalEntries;
+        return (currentPage - 1) * itemsPerPage + itemsPerPage > totalEntries;
     }
 
     /**
