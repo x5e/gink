@@ -49,22 +49,6 @@ function determineContainerStorage(container) {
 }
 
 /**
- * Fills a datalist element with options of all containers that exist
- * in the store.
- * @param {HTMLDataListElement} htmlDatalistElement
- */
-async function enableContainersAutofill(htmlDatalistElement) {
-    // gink.ensure(htmlDatalistElement instanceof HTMLDataListElement, "Can only fill datalist");
-    // const containers = await getAllContainers();
-    // for (const [strMuid, container] of containers) {
-    //     const option = document.createElement("option");
-    //     option.value = strMuid;
-    //     htmlDatalistElement.appendChild(option);
-    // }
-    throw new Error("not yet implemented");
-}
-
-/**
  * "Unwraps" a key or value. This is used to convert
  * JavaScript objects to strings.
  * @param {*} element

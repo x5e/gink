@@ -21,6 +21,7 @@ export {
     ensure,
     muidTupleToMuid,
     muidToString,
+    muidTupleToString,
     strToMuid
 } from "./utils";
 export { construct } from './factories';

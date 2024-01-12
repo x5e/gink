@@ -27,10 +27,9 @@ import {
     MuidTuple,
     Offset,
     Removal,
-    SeenThrough,
     Timestamp,
 } from "./typedefs";
-import { extractCommitInfo, extractContainerMuid, getEffectiveKey, extractMovementInfo, buildPairLists, buildPointeeList, muidPairToSemanticKey, buildChainTracker, keyToSemanticKey, commitKeyToInfo, commitInfoToKey } from "./store_utils";
+import { extractCommitInfo, extractContainerMuid, getEffectiveKey, extractMovementInfo, buildPairLists, buildPointeeList, buildChainTracker, keyToSemanticKey, commitKeyToInfo, commitInfoToKey } from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
@@ -607,6 +606,11 @@ export class IndexedDbStore implements Store {
     // for debugging, not part of the api/interface
     async getAllRemovals() {
         return await this.wrapped.transaction("removals", "readonly").objectStore("removals").getAll();
+    }
+
+    // for debugging, not part of the api/interface
+    async getAllContainerTuples() {
+        return await this.wrapped.transaction("containers", "readonly").objectStore("containers").getAllKeys();
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated

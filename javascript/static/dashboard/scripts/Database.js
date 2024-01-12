@@ -229,25 +229,24 @@ class Database {
                 await container.delete(key, comment);
                 break;
             case 5: // PairSet
-                msg = `Expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
                 try {
-                    await container.exclude([gink.strToMuid(key[0]), gink.strToMuid(key[1])], comment);
+                    await container.exclude([key[0], key[1]], comment);
                 } catch {
-                    console.error(msg);
+                    console.error(`Expecting array of 2 muids.`);
                 }
                 break;
             case 6: // PairMap
-                msg = `Key is expecting array of 2 string muids. Ex: [FFFFFFFFFFFFFF-6734543837984-00004,FFFFFFFFFFFFFF-6734543837984-00004]`;
                 try {
-                    await container.delete([gink.strToMuid(key[0]), gink.strToMuid(key[1])], comment);
+                    await container.delete([key[0], key[1]], comment);
                 } catch {
-                    console.error(msg);
+                    console.error(`Key is expecting array of 2 muids.`);
                 }
+                break;
             case 10: // Role
                 try {
-                    await container.exclude(gink.strToMuid(key), comment);
+                    await container.exclude(key, comment);
                 } catch {
-                    console.error('Expecting muid as string. Ex:FFFFFFFFFFFFFF-6734543837984-00004');
+                    console.error('Expecting muid key.');
                 }
                 break;
             default:

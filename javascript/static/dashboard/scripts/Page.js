@@ -159,14 +159,17 @@ class Page {
             keyInput1.setAttribute("placeholder", "Key");
             if (keyType == "muid" || keyType == "pair") {
                 keyInput1.setAttribute("placeholder", "Muid");
-                // TODO: create a datalist with all container muids
-                // await enableContainerAutofill(datalist1);
+                keyInput1.setAttribute("list", "datalist-1");
+                const datalist1 = this.createElement("datalist", keyInput1, "datalist-1");
+                await this.enableContainersAutofill(datalist1);
             }
             if (keyType == "pair") {
                 keyInput2 = this.createElement("input", keyContainer, "key-input-2", "commit-input");
                 keyInput2.setAttribute("type", "text");
                 keyInput2.setAttribute("placeholder", "Muid");
-                // await enableContainerAutofill(datalist2);
+                keyInput2.setAttribute("list", "datalist-2");
+                const datalist2 = this.createElement("datalist", keyInput2, "datalist-2");
+                await this.enableContainersAutofill(datalist2);
             }
         }
 
@@ -286,8 +289,20 @@ class Page {
                 keyInput2 = this.createElement("input", entryContainer, "key-input-2", "commit-input");
                 keyInput1.setAttribute("placeholder", gink.muidToString(oldKey[0]));
                 keyInput2.setAttribute("placeholder", gink.muidToString(oldKey[1]));
+
+                keyInput1.setAttribute("list", "datalist-1");
+                const datalist1 = this.createElement("datalist", keyInput1, "datalist-1");
+                await this.enableContainersAutofill(datalist1);
+
+                keyInput2.setAttribute("list", "datalist-2");
+                const datalist2 = this.createElement("datalist", keyInput2, "datalist-2");
+                await this.enableContainersAutofill(datalist2);
             } else if (keyType == "muid") {
                 keyInput1.setAttribute("placeholder", gink.muidToString(oldKey.address));
+
+                keyInput1.setAttribute("list", "datalist-1");
+                const datalist1 = this.createElement("datalist", keyInput1, "datalist-1");
+                await this.enableContainersAutofill(datalist1);
             } else {
                 keyInput1.setAttribute("placeholder", oldKey);
             }
@@ -397,6 +412,21 @@ class Page {
             }
         }
         return [stringMuid, Number(pageNumber), Number(itemsPerPage)];
+    }
+
+    /**
+     * Fills a datalist element with options of all containers that exist
+     * in the store.
+     * @param {HTMLDataListElement} htmlDatalistElement
+     */
+    async enableContainersAutofill(htmlDatalistElement) {
+        gink.ensure(htmlDatalistElement instanceof HTMLDataListElement, "Can only fill datalist");
+        const containers = await this.database.getAllContainers();
+        for (const [strMuid, container] of containers) {
+            const option = document.createElement("option");
+            option.value = strMuid;
+            htmlDatalistElement.appendChild(option);
+        }
     }
 
     /**
