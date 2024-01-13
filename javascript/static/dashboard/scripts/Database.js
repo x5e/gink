@@ -28,6 +28,26 @@ class Database {
     }
 
     /**
+     * Get the name of a container from the global property.
+     * @param {Muid} container container to find its name.
+     * @returns a string of the name if found, otherwise undefined.
+     */
+    async getContainerName(container) {
+        const names = this.instance.getGlobalProperty();
+        return await names.get(container);
+    }
+
+    /**
+     * Change the name of a container.
+     * @param {Muid} container the container to change.
+     * @param {*} name the new name for the container.
+     */
+    async setContainerName(container, name) {
+        const names = this.instance.getGlobalProperty();
+        await names.set(container, name);
+    }
+
+    /**
      * Takes a string muid or Muid object and returns it
      * constructed as a container from the instance.
      * @param {string || Container} muid
