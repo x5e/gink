@@ -49,19 +49,41 @@ function determineContainerStorage(container) {
 }
 
 /**
- * Fills a datalist element with options of all containers that exist
- * in the store.
- * @param {HTMLDataListElement} htmlDatalistElement
+ * Interpret a key - determines whether the key needs to be converted
+ * to a muid, a muid array, or remain as a string/number/object.
+ * @param {*} key key to interpret
+ * @param {Container} container gink Container as context
  */
-async function enableContainersAutofill(htmlDatalistElement) {
-    // gink.ensure(htmlDatalistElement instanceof HTMLDataListElement, "Can only fill datalist");
-    // const containers = await getAllContainers();
-    // for (const [strMuid, container] of containers) {
-    //     const option = document.createElement("option");
-    //     option.value = strMuid;
-    //     htmlDatalistElement.appendChild(option);
-    // }
-    throw new Error("not yet implemented");
+function interpretKey(key, container) {
+    const [keyType, valueType] = determineContainerStorage(container);
+    let returning;
+    if (keyType == "muid") {
+        if (typeof key == "string") {
+            // Ensure string key is a valid muid format
+            gink.ensure(key.length == 34, "Key is not a valid muid.");
+            returning = gink.strToMuid(key);
+        }
+        else if ("timestamp" in key) returning = key;
+        else throw new Error("Muid key type got unexpected key");
+    }
+    else if (keyType == "pair") {
+        gink.ensure(Array.isArray(key) && key.length == 2);
+        if (typeof key[0] == "string" && typeof key[1] == "string") {
+            // Ensure string keys are valid muid format
+            gink.ensure(key[0].length == 34 && key[1].length == 34);
+            returning = [gink.strToMuid(key[0]), gink.strToMuid(key[1])];
+        }
+        else if ("timestamp" in key[0] && "timestamp" in key[1]) returning = key;
+        else throw new Error("Pair key type got unexpected key");
+
+    }
+    else if (keyType == "any") {
+        returning = key;
+    }
+    else {
+        throw new Error("This container doesn't use keys.");
+    }
+    return returning;
 }
 
 /**

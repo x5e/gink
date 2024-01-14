@@ -16,9 +16,29 @@ class Page {
         const container = await this.database.getContainer(strMuid);
         const totalEntries = await this.database.getTotalEntries(container);
 
+        // Before we display anything, make sure the page and items per page actually makes sense.
+        if (((currentPage - 1) * itemsPerPage) >= totalEntries) {
+            // Eventually want a better solution than this, since the hash will be wrong
+            currentPage = Math.floor(totalEntries / itemsPerPage);
+        }
+
         const [keyType, valueType] = determineContainerStorage(container);
 
-        this.writeTitle(container);
+        await this.writeTitle(container);
+
+        // Add entry button
+        const addEntryButton = this.createElement("button", this.root, "add-entry-button");
+        addEntryButton.innerText = "Add Entry";
+        addEntryButton.onclick = async () => {
+            await this.displayAddEntry(container);
+        };
+
+        // If there are no entries, stop here.
+        if (totalEntries == 0) {
+            const p = this.createElement("p", this.root);
+            p.innerText = "No entries.";
+            return;
+        }
 
         // Total entries
         const numEntries = this.createElement("p", this.root);
@@ -47,13 +67,6 @@ class Page {
         const maxEntries = upperBound >= totalEntries ? totalEntries : upperBound;
         showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
 
-        // Add entry button
-        const addEntryButton = this.createElement("button", this.root, "add-entry-button");
-        addEntryButton.innerText = "Add Entry";
-        addEntryButton.onclick = async () => {
-            await this.displayAddEntry(container);
-        };
-
         // Create the paging buttons
         const pageButtonsDiv = this.createElement("div", this.root, "page-buttons-container");
         pageButtonsDiv.style.fontWeight = "bold";
@@ -78,19 +91,6 @@ class Page {
         } else {
             nextPage.style.opacity = 0;
             nextPage.style.cursor = "auto";
-        }
-
-        // If there are no entries, don't bother making the table
-        if (totalEntries == 0) {
-            const p = this.createElement("p", this.root);
-            p.innerText = "No entries.";
-            return;
-        }
-
-        // Before we display anything, make sure the page and items per page actually makes sense.
-        if (((currentPage - 1) * itemsPerPage) >= totalEntries) {
-            // Eventually want a better solution than this, since the hash will be wrong
-            currentPage = Math.floor(totalEntries / itemsPerPage);
         }
 
         const pageOfEntries = await this.database.getPageOfEntries(container, currentPage, itemsPerPage);
@@ -144,7 +144,7 @@ class Page {
         this.pageType = "add-entry";
         const [keyType, valueType] = determineContainerStorage(container);
 
-        this.writeTitle(container);
+        await this.writeTitle(container);
         this.writeCancelButton();
 
         const entryFields = this.createElement("div", this.root, "add-entry-container", "entry-container");
@@ -159,14 +159,17 @@ class Page {
             keyInput1.setAttribute("placeholder", "Key");
             if (keyType == "muid" || keyType == "pair") {
                 keyInput1.setAttribute("placeholder", "Muid");
-                // TODO: create a datalist with all container muids
-                // await enableContainerAutofill(datalist1);
+                keyInput1.setAttribute("list", "datalist-1");
+                const datalist1 = this.createElement("datalist", keyInput1, "datalist-1");
+                await this.enableContainersAutofill(datalist1);
             }
             if (keyType == "pair") {
                 keyInput2 = this.createElement("input", keyContainer, "key-input-2", "commit-input");
                 keyInput2.setAttribute("type", "text");
                 keyInput2.setAttribute("placeholder", "Muid");
-                // await enableContainerAutofill(datalist2);
+                keyInput2.setAttribute("list", "datalist-2");
+                const datalist2 = this.createElement("datalist", keyInput2, "datalist-2");
+                await this.enableContainersAutofill(datalist2);
             }
         }
 
@@ -198,13 +201,20 @@ class Page {
             if (valueInput && !valueInput.value) return;
 
             let newKey, newValue, newComment;
-            if (keyInput1 && !keyInput2) newKey = keyInput1.value;
-            else if (keyInput1 && keyInput2) newKey = [keyInput1.value, keyInput2.value];
+            if (keyInput1 && !keyInput2) {
+                if (keyType == "muid") {
+                    newKey = gink.strToMuid(keyInput1.value);
+                }
+                else {
+                    newKey = keyInput1.value;
+                }
+            }
+            else if (keyInput1 && keyInput2) newKey = [gink.strToMuid(keyInput1.value), gink.strToMuid(keyInput2.value)];
             if (valueInput) newValue = valueInput.value;
             newComment = commentInput.value;
 
             if (confirm("Commit entry?")) {
-                await this.database.addEntry(newKey, newValue, container, newComment);
+                await this.database.addEntry(interpretKey(newKey, container), newValue, container, newComment);
             }
             await this.displayPage(...this.unwrapHash(window.location.hash));
         };
@@ -221,7 +231,7 @@ class Page {
         this.clearChildren(this.root);
         this.pageType = "entry";
 
-        this.writeTitle(container);
+        await this.writeTitle(container);
         this.writeCancelButton();
 
         const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
@@ -253,7 +263,7 @@ class Page {
         deleteButton.innerText = "Delete Entry";
         deleteButton.onclick = async () => {
             if (confirm("Delete and commit?")) {
-                await this.database.deleteEntry(key, position, container);
+                await this.database.deleteEntry(interpretKey(key, container), position, container);
             }
             await this.displayPage(...this.unwrapHash(window.location.hash));
         };
@@ -271,7 +281,7 @@ class Page {
         this.pageType = "update";
         const [keyType, valueType] = determineContainerStorage(container);
 
-        this.writeTitle(container);
+        await this.writeTitle(container);
         this.writeCancelButton();
 
         // Main entry container
@@ -282,11 +292,26 @@ class Page {
             const keyH2 = this.createElement("h2", entryContainer);
             keyH2.innerText = "Key";
             keyInput1 = this.createElement("input", entryContainer, "key-input-1", "commit-input");
-            keyInput1.setAttribute("placeholder", oldKey);
             if (keyType == "pair") {
                 keyInput2 = this.createElement("input", entryContainer, "key-input-2", "commit-input");
-                keyInput1.setAttribute("placeholder", oldKey[0]);
-                keyInput2.setAttribute("placeholder", oldKey[1]);
+                keyInput1.setAttribute("placeholder", gink.muidToString(oldKey[0]));
+                keyInput2.setAttribute("placeholder", gink.muidToString(oldKey[1]));
+
+                keyInput1.setAttribute("list", "datalist-1");
+                const datalist1 = this.createElement("datalist", keyInput1, "datalist-1");
+                await this.enableContainersAutofill(datalist1);
+
+                keyInput2.setAttribute("list", "datalist-2");
+                const datalist2 = this.createElement("datalist", keyInput2, "datalist-2");
+                await this.enableContainersAutofill(datalist2);
+            } else if (keyType == "muid") {
+                keyInput1.setAttribute("placeholder", gink.muidToString(oldKey.address));
+
+                keyInput1.setAttribute("list", "datalist-1");
+                const datalist1 = this.createElement("datalist", keyInput1, "datalist-1");
+                await this.enableContainersAutofill(datalist1);
+            } else {
+                keyInput1.setAttribute("placeholder", oldKey);
             }
         }
         // Value  - 1 input if container uses values
@@ -341,8 +366,8 @@ class Page {
             if ((newKey == oldKey) && (newValue == oldValue)) return;
 
             if (confirm("Commit updated entry?")) {
-                await this.database.deleteEntry(oldKey, position, container, newComment);
-                await this.database.addEntry(newKey, newValue, container, newComment);
+                await this.database.deleteEntry(interpretKey(oldKey, container), position, container, newComment);
+                await this.database.addEntry(interpretKey(newKey, container), newValue, container, newComment);
             }
             await this.displayPage(...this.unwrapHash(window.location.hash));
         };
@@ -365,7 +390,7 @@ class Page {
      * @returns true if there are no following pages.
      */
     isLastPage(currentPage, itemsPerPage, totalEntries) {
-        return currentPage * itemsPerPage + itemsPerPage > totalEntries;
+        return (currentPage - 1) * itemsPerPage + itemsPerPage >= totalEntries;
     }
 
     /**
@@ -394,6 +419,21 @@ class Page {
             }
         }
         return [stringMuid, Number(pageNumber), Number(itemsPerPage)];
+    }
+
+    /**
+     * Fills a datalist element with options of all containers that exist
+     * in the store.
+     * @param {HTMLDataListElement} htmlDatalistElement
+     */
+    async enableContainersAutofill(htmlDatalistElement) {
+        gink.ensure(htmlDatalistElement instanceof HTMLDataListElement, "Can only fill datalist");
+        const containers = await this.database.getAllContainers();
+        for (const [strMuid, container] of containers) {
+            const option = document.createElement("option");
+            option.value = strMuid;
+            htmlDatalistElement.appendChild(option);
+        }
     }
 
     /**
@@ -451,16 +491,57 @@ class Page {
     /**
      * Changes the title and header elements of the container page.
      */
-    writeTitle(container) {
-        const title = this.createElement("h2", this.root, "title-bar");
-        const muid = container.address;
-        let containerName;
-        if (muid.timestamp == -1 && muid.medallion == -1) {
-            containerName = "Root Directory";
+    async writeTitle(container) {
+        let titleContainer = this.getElement("#title-container");
+        if (titleContainer != undefined) {
+            this.clearChildren(titleContainer);
         } else {
-            containerName = `${container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
+            titleContainer = this.createElement("div", this.root, "title-container");
+        }
+
+        const title = this.createElement("h2", titleContainer, "title-bar");
+        const muid = container.address;
+
+        let containerName = await this.database.getContainerName(container);
+
+        if (containerName == undefined) {
+            if (muid.timestamp == -1 && muid.medallion == -1 && muid.offset == 4) {
+                containerName = "Root Directory";
+            } else {
+                containerName = `${container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
+            }
         }
         title.innerText = containerName;
+
+        title.onclick = async () => {
+            await this.writeContainerNameInput(containerName, container);
+        };
+    }
+
+    async writeContainerNameInput(previousName, container) {
+        const titleContainer = this.getElement("#title-container");
+        this.clearChildren(titleContainer);
+
+        const containerNameInput = this.createElement("input", titleContainer, "title-input");
+        containerNameInput.setAttribute("type", "text");
+        containerNameInput.setAttribute("placeholder", previousName);
+
+        const submitButton = this.createElement("button", titleContainer, undefined, "container-name-btn");
+        submitButton.innerText = "✓";
+        submitButton.onclick = async () => {
+            let newName;
+            if (!containerNameInput.value) newName = previousName;
+            else {
+                await this.database.setContainerName(container, containerNameInput.value);
+            }
+            await this.writeTitle(container);
+        };
+
+        const cancelButton = this.createElement("button", titleContainer, undefined, "container-name-btn");
+        cancelButton.innerText = "X";
+        cancelButton.onclick = async () => {
+            await this.writeTitle(container);
+        };
     }
 
     /**
