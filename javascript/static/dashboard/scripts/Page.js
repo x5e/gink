@@ -24,7 +24,7 @@ class Page {
 
         const [keyType, valueType] = determineContainerStorage(container);
 
-        this.writeTitle(container);
+        await this.writeTitle(container);
 
         // Add entry button
         const addEntryButton = this.createElement("button", this.root, "add-entry-button");
@@ -144,7 +144,7 @@ class Page {
         this.pageType = "add-entry";
         const [keyType, valueType] = determineContainerStorage(container);
 
-        this.writeTitle(container);
+        await this.writeTitle(container);
         this.writeCancelButton();
 
         const entryFields = this.createElement("div", this.root, "add-entry-container", "entry-container");
@@ -231,7 +231,7 @@ class Page {
         this.clearChildren(this.root);
         this.pageType = "entry";
 
-        this.writeTitle(container);
+        await this.writeTitle(container);
         this.writeCancelButton();
 
         const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
@@ -281,7 +281,7 @@ class Page {
         this.pageType = "update";
         const [keyType, valueType] = determineContainerStorage(container);
 
-        this.writeTitle(container);
+        await this.writeTitle(container);
         this.writeCancelButton();
 
         // Main entry container
@@ -491,16 +491,57 @@ class Page {
     /**
      * Changes the title and header elements of the container page.
      */
-    writeTitle(container) {
-        const title = this.createElement("h2", this.root, "title-bar");
-        const muid = container.address;
-        let containerName;
-        if (muid.timestamp == -1 && muid.medallion == -1) {
-            containerName = "Root Directory";
+    async writeTitle(container) {
+        let titleContainer = this.getElement("#title-container");
+        if (titleContainer != undefined) {
+            this.clearChildren(titleContainer);
         } else {
-            containerName = `${container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
+            titleContainer = this.createElement("div", this.root, "title-container");
+        }
+
+        const title = this.createElement("h2", titleContainer, "title-bar");
+        const muid = container.address;
+
+        let containerName = await this.database.getContainerName(container);
+
+        if (containerName == undefined) {
+            if (muid.timestamp == -1 && muid.medallion == -1 && muid.offset == 4) {
+                containerName = "Root Directory";
+            } else {
+                containerName = `${container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;
+            }
         }
         title.innerText = containerName;
+
+        title.onclick = async () => {
+            await this.writeContainerNameInput(containerName, container);
+        };
+    }
+
+    async writeContainerNameInput(previousName, container) {
+        const titleContainer = this.getElement("#title-container");
+        this.clearChildren(titleContainer);
+
+        const containerNameInput = this.createElement("input", titleContainer, "title-input");
+        containerNameInput.setAttribute("type", "text");
+        containerNameInput.setAttribute("placeholder", previousName);
+
+        const submitButton = this.createElement("button", titleContainer, undefined, "container-name-btn");
+        submitButton.innerText = "✓";
+        submitButton.onclick = async () => {
+            let newName;
+            if (!containerNameInput.value) newName = previousName;
+            else {
+                await this.database.setContainerName(container, containerNameInput.value);
+            }
+            await this.writeTitle(container);
+        };
+
+        const cancelButton = this.createElement("button", titleContainer, undefined, "container-name-btn");
+        cancelButton.innerText = "X";
+        cancelButton.onclick = async () => {
+            await this.writeTitle(container);
+        };
     }
 
     /**
