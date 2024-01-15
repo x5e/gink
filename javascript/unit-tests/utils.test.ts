@@ -1,4 +1,4 @@
-import { ensure, muidTupleToString, muidToString, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous, strToMuid } from "../implementation/utils";
+import { ensure, muidTupleToString, muidToString, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous, strToMuid, encodeToken, decodeToken } from "../implementation/utils";
 
 it('document', async function () {
     const wrapped = wrapValue((new Map()).set("fee", "parking").set("cost", 1000));
@@ -83,4 +83,13 @@ it('isPathDangerous', function () {
     ensure(isPathDangerous("/foo/.bar") == true);
     ensure(isPathDangerous("/user123@example.com/some.file") == false);
     ensure(isPathDangerous("/normal-file-1234") == false);
+});
+
+it('encodeToken and decodeToken', function () {
+    const token = "adjhbajhfbajb21j4b4b5b5jkn5kj1n5kjn1";
+    const asHex = encodeToken(token);
+    const backToToken = decodeToken(asHex);
+
+    ensure(backToToken.includes("token "));
+    ensure(token == backToToken.substring(7), `original: '${token}' | fromHex: '${backToToken.substring(7)}'`);
 });

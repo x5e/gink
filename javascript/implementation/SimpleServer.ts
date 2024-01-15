@@ -8,6 +8,7 @@ import { Buffer } from "buffer";
 import { Store, } from "./Store";
 import { CallBack, NumberStr, FilePath, DirPath, AuthFunction } from "./typedefs";
 import { Listener } from "./Listener";
+import { decodeToken } from './utils';
 
 /**
  * A server that connects all inbound websocket connections to a single database instance.
@@ -15,6 +16,7 @@ import { Listener } from "./Listener";
 export class SimpleServer extends GinkInstance {
 
     private listener: Listener;
+    readonly authFunc: AuthFunction;
     public connections: Map<number, WebSocketConnection>;
 
     constructor(store: Store, args: {
@@ -24,7 +26,7 @@ export class SimpleServer extends GinkInstance {
         staticContentRoot?: DirPath;
         logger?: CallBack;
         software?: string;
-        authFunction?: AuthFunction;
+        authFunc?: AuthFunction;
     }) {
         super(store, { software: args.software || "SimpleServer" }, args.logger || (() => null));
         this.listener = new Listener({
@@ -33,6 +35,7 @@ export class SimpleServer extends GinkInstance {
             ...args
         });
         this.connections = new Map();
+        this.authFunc = args.authFunc || (() => true);
         this.ready = Promise.all([this.ready, this.listener.ready]).then(() => args.logger(`SimpleServer.ready`));
     }
 
@@ -40,12 +43,24 @@ export class SimpleServer extends GinkInstance {
         await this.ready;
         const thisServer = this; // pass into closures
         let protocol: string | null = null;
+        let token: string | null = null;
         if (request.requestedProtocols.length) {
+            for (const protocol of request.requestedProtocols) {
+                if (protocol.match(/0x.*/)) {
+                    token = decodeToken(protocol).split("token ")[1];
+                }
+            }
+
             if (request.requestedProtocols.includes(GinkInstance.PROTOCOL))
                 protocol = GinkInstance.PROTOCOL;
             else
                 return request.reject(400, "bad protocol");
         }
+
+        if (!this.authFunc(token)) {
+            return request.reject(401, "authentication failed");
+        }
+
         const connection: WebSocketConnection = request.accept(protocol, request.origin);
         this.logger(`Connection accepted.`);
         const sendFunc = (data: Uint8Array) => { connection.sendBytes(Buffer.from(data)); };

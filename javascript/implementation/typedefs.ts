@@ -35,7 +35,7 @@ export interface Indexer {
 }
 
 export interface AuthFunction {
-    (cookies: Cookies, resource: string): boolean;
+    (token: string): boolean;
 }
 
 export interface Muid {

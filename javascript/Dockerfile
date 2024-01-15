@@ -39,4 +39,5 @@ COPY static ./static
 RUN npm run browser-unit
 RUN npm run browser-integration
 RUN ./integration-tests/node-client-test.js
+RUN ./integration-tests/authentication-test.js
 RUN ./integration-tests/routing-server-test.js

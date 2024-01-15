@@ -6,7 +6,7 @@ import {
 import { AuthFunction, CallBack, DirPath, NumberStr, FilePath } from "./typedefs";
 import { GinkInstance } from "./GinkInstance";
 import { RoutingServerInstance } from './RoutingServerInstance';
-import { ensure, isPathDangerous } from './utils';
+import { ensure, decodeToken, isPathDangerous } from './utils';
 import { existsSync } from 'fs';
 import { join } from "path";
 import { Listener } from './Listener';
@@ -34,10 +34,10 @@ export class RoutingServer {
         sslCertFilePath?: FilePath;
         staticContentRoot?: DirPath;
         logger?: CallBack;
-        authFunction?: AuthFunction;
+        authFunc?: AuthFunction;
     }) {
         const logger = this.logger = args.logger || (() => null);
-        this.authFunc = args.authFunction || (() => true);
+        this.authFunc = args.authFunc || (() => true);
         this.dataFilesRoot = args.dataFilesRoot;
         ensure(existsSync(this.dataFilesRoot), "data root not there");
         this.listener = new Listener({
@@ -69,7 +69,14 @@ export class RoutingServer {
      */
     private async onRequest(request: WebSocketRequest) {
         let protocol: string | null = null;
+        let token: string | null = null;
         if (request.requestedProtocols.length) {
+            for (const protocol of request.requestedProtocols) {
+                if (protocol.match(/0x.*/)) {
+                    token = decodeToken(protocol).split("token ")[1];
+                }
+            }
+
             if (request.requestedProtocols.includes(GinkInstance.PROTOCOL))
                 protocol = GinkInstance.PROTOCOL;
             else
@@ -79,8 +86,8 @@ export class RoutingServer {
         if (isPathDangerous(request.resource))
             return request.reject(400, "bad path");
 
-        if (!this.authFunc(new Map(), request.resource)) {
-            return request.reject(400, "auth failed"); //TODO: fix to correct HTTP code
+        if (!this.authFunc(token)) {
+            return request.reject(401, "authentication failed");
         }
         const connection: WebSocketConnection = request.accept(protocol, request.origin);
         const instanceKey = join(this.dataFilesRoot, request.resource);
