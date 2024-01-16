@@ -13,7 +13,6 @@ import { google } from 'googleapis';
  * Just a utility class to wrap websocket.server.
  */
 export class Listener {
-
     ready: Promise<any>;
     private websocketServer: WebSocketServer;
     readonly httpServer: HttpServer | HttpsServer;
@@ -35,7 +34,6 @@ export class Listener {
             callWhenReady = resolve;
         });
 
-
         // Google OAuth info for use in both servers
         const oAuthClientID = process.env["OAUTH_CLIENT_ID"];
         const oAuthClientSecret = process.env["OAUTH_CLIENT_SECRET"];
@@ -49,8 +47,7 @@ export class Listener {
         google.options({ auth: oauth2Client });
         const authorizeUrl = oauth2Client.generateAuthUrl({
             access_type: 'offline',
-            // redirect_uri: "http://localhost:8080",
-            scope: scopes.join(' '),
+            scope: scopes
         });
 
 
@@ -94,42 +91,35 @@ export class Listener {
             this.httpServer = createHttpServer(function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
                 request.addListener('end', async function () {
-                    if (url.pathname == "/auth") {
-                        response.writeHead(302, {
-                            Location: authorizeUrl
-                        });
-                        response.end();
-                    }
-
-                    else if (url.pathname == "/oauth2callback") {
+                    // This is where Google redirects to after the user gives permissions
+                    if (url.pathname == "/oauth2callback") {
                         const code = url.searchParams.get("code");
                         const { tokens } = await oauth2Client.getToken(code);
-                        console.log(tokens);
-
-                        oauth2Client.credentials = tokens;
+                        oauth2Client.setCredentials(tokens);
 
                         response.writeHead(302, {
                             Location: "http://localhost:8080/list_connections"
                         });
                         response.end();
+                        return;
                     }
-                    else if (url.pathname == "/") {
+
+                    // no access token, need to authorize
+                    if (!oauth2Client.credentials.access_token) {
+                        response.writeHead(302, {
+                            Location: authorizeUrl
+                        });
+                        response.end();
+                        return;
+                    }
+
+                    if (url.pathname == "/") {
                         staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
                     }
                     else if (url.pathname == "/connections") {
                         staticServer.serveFile("/list_connections.html", 200, {}, request, response);
                     }
                     else if (url.pathname == "/list_connections") {
-
-                        console.log(!!oauth2Client.credentials);
-
-                        if (!oauth2Client.credentials) {
-                            response.writeHead(302, {
-                                Location: authorizeUrl
-                            });
-                            response.end();
-                        }
-
                         let connections = Object.fromEntries(args.instance.connections);
                         response.writeHead(200);
                         response.end(JSON.stringify(connections));
