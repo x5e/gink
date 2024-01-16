@@ -7,6 +7,7 @@ import {
 } from 'websocket';
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { SimpleServer } from './SimpleServer';
+import { google } from 'googleapis';
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -33,6 +34,26 @@ export class Listener {
         this.ready = new Promise((resolve) => {
             callWhenReady = resolve;
         });
+
+
+        // Google OAuth info for use in both servers
+        const oAuthClientID = process.env["OAUTH_CLIENT_ID"];
+        const oAuthClientSecret = process.env["OAUTH_CLIENT_SECRET"];
+        const scopes = ["https://www.googleapis.com/auth/userinfo.profile"];
+
+        const oauth2Client = new google.auth.OAuth2(
+            oAuthClientID,
+            oAuthClientSecret,
+            "http://localhost:8080/oauth2callback",
+        );
+        google.options({ auth: oauth2Client });
+        const authorizeUrl = oauth2Client.generateAuthUrl({
+            access_type: 'offline',
+            // redirect_uri: "http://localhost:8080",
+            scope: scopes.join(' '),
+        });
+
+
         if (args.sslKeyFilePath && args.sslCertFilePath) {
             const options = {
                 key: readFileSync(args.sslKeyFilePath),
@@ -73,13 +94,42 @@ export class Listener {
             this.httpServer = createHttpServer(function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
                 request.addListener('end', async function () {
-                    if (url.pathname == "/") {
+                    if (url.pathname == "/auth") {
+                        response.writeHead(302, {
+                            Location: authorizeUrl
+                        });
+                        response.end();
+                    }
+
+                    else if (url.pathname == "/oauth2callback") {
+                        const code = url.searchParams.get("code");
+                        const { tokens } = await oauth2Client.getToken(code);
+                        console.log(tokens);
+
+                        oauth2Client.credentials = tokens;
+
+                        response.writeHead(302, {
+                            Location: "http://localhost:8080/list_connections"
+                        });
+                        response.end();
+                    }
+                    else if (url.pathname == "/") {
                         staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
                     }
                     else if (url.pathname == "/connections") {
                         staticServer.serveFile("/list_connections.html", 200, {}, request, response);
                     }
                     else if (url.pathname == "/list_connections") {
+
+                        console.log(!!oauth2Client.credentials);
+
+                        if (!oauth2Client.credentials) {
+                            response.writeHead(302, {
+                                Location: authorizeUrl
+                            });
+                            response.end();
+                        }
+
                         let connections = Object.fromEntries(args.instance.connections);
                         response.writeHead(200);
                         response.end(JSON.stringify(connections));
