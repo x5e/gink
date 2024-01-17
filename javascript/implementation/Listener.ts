@@ -109,8 +109,11 @@ export class Listener {
 
                         // no access token, need to authorize
                         if (!thisListener.oauth2Client.credentials.access_token) {
+                            const scopesStr: string = process.env["OAUTH_SCOPES"];
+                            if (!scopesStr) throw new Error("Need to provide OAuth scopes (separated by a ',') in env variable OAUTH_SCOPES");
+                            const scopes = scopesStr.split(",");
                             response.writeHead(302, {
-                                Location: thisListener.oauth2Client.generateAuthUrl({ access_type: 'offline', scope: ["https://www.googleapis.com/auth/userinfo.profile"] })
+                                Location: thisListener.oauth2Client.generateAuthUrl({ access_type: 'offline', scope: scopes })
                             });
                             response.end();
                             return;
