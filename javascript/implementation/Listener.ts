@@ -8,6 +8,7 @@ import {
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { SimpleServer } from './SimpleServer';
 import { google } from 'googleapis';
+import { OAuth2Client } from 'google-auth-library';
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -17,6 +18,8 @@ export class Listener {
     private websocketServer: WebSocketServer;
     readonly httpServer: HttpServer | HttpsServer;
 
+    private oauth2Client: OAuth2Client;
+
     constructor(args: {
         requestHandler: (request: WebSocketRequest) => void,
         instance?: SimpleServer,
@@ -25,6 +28,7 @@ export class Listener {
         logger?: CallBack,
         sslKeyFilePath?: FilePath,
         sslCertFilePath?: FilePath,
+        useOAuth?: boolean;
     }) {
         const thisListener = this;
         const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot) : new StaticServer("./static");
@@ -34,22 +38,20 @@ export class Listener {
             callWhenReady = resolve;
         });
 
-        // Google OAuth info for use in both servers
-        const oAuthClientID = process.env["OAUTH_CLIENT_ID"];
-        const oAuthClientSecret = process.env["OAUTH_CLIENT_SECRET"];
-        const scopes = ["https://www.googleapis.com/auth/userinfo.profile"];
+        if (args.useOAuth) {
+            // Set up Google OAuth client
+            const oAuthClientID = process.env["OAUTH_CLIENT_ID"];
+            const oAuthClientSecret = process.env["OAUTH_CLIENT_SECRET"];
+            if (!oAuthClientID) throw new Error("Provide Google Client ID in env OAUTH_CLIENT_ID to use OAuth");
+            if (!oAuthClientSecret) throw new Error("Provide Google Client Secret in env OAUTH_CLIENT_SECRET to use OAuth");
 
-        const oauth2Client = new google.auth.OAuth2(
-            oAuthClientID,
-            oAuthClientSecret,
-            "http://localhost:8080/oauth2callback",
-        );
-        google.options({ auth: oauth2Client });
-        const authorizeUrl = oauth2Client.generateAuthUrl({
-            access_type: 'offline',
-            scope: scopes
-        });
-
+            this.oauth2Client = new google.auth.OAuth2(
+                oAuthClientID,
+                oAuthClientSecret,
+                "http://localhost:8080/oauth2callback",
+            );
+            google.options({ auth: this.oauth2Client });
+        }
 
         if (args.sslKeyFilePath && args.sslCertFilePath) {
             const options = {
@@ -91,26 +93,28 @@ export class Listener {
             this.httpServer = createHttpServer(function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
                 request.addListener('end', async function () {
-                    // This is where Google redirects to after the user gives permissions
-                    if (url.pathname == "/oauth2callback") {
-                        const code = url.searchParams.get("code");
-                        const { tokens } = await oauth2Client.getToken(code);
-                        oauth2Client.setCredentials(tokens);
+                    if (args.useOAuth) {
+                        // This is where Google redirects to after the user gives permissions
+                        if (url.pathname == "/oauth2callback") {
+                            const code = url.searchParams.get("code");
+                            const { tokens } = await thisListener.oauth2Client.getToken(code);
+                            thisListener.oauth2Client.setCredentials(tokens);
 
-                        response.writeHead(302, {
-                            Location: "http://localhost:8080/list_connections"
-                        });
-                        response.end();
-                        return;
-                    }
+                            response.writeHead(302, {
+                                Location: "http://localhost:8080/"
+                            });
+                            response.end();
+                            return;
+                        }
 
-                    // no access token, need to authorize
-                    if (!oauth2Client.credentials.access_token) {
-                        response.writeHead(302, {
-                            Location: authorizeUrl
-                        });
-                        response.end();
-                        return;
+                        // no access token, need to authorize
+                        if (!thisListener.oauth2Client.credentials.access_token) {
+                            response.writeHead(302, {
+                                Location: thisListener.oauth2Client.generateAuthUrl({ access_type: 'offline', scope: ["https://www.googleapis.com/auth/userinfo.profile"] })
+                            });
+                            response.end();
+                            return;
+                        }
                     }
 
                     if (url.pathname == "/") {

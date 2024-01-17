@@ -65,7 +65,8 @@ export class CommandLineInterface {
                 sslCertFilePath: process.env["GINK_SSL_CERT"],
                 staticContentRoot: process.env["GINK_STATIC_PATH"],
                 logger: logToStdErr,
-                authFunc: authFunc
+                authFunc: authFunc,
+                useOAuth: false
             };
             if (dataRoot) {
                 this.routingServer = new RoutingServer({

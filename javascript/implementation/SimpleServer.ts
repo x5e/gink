@@ -27,6 +27,7 @@ export class SimpleServer extends GinkInstance {
         logger?: CallBack;
         software?: string;
         authFunc?: AuthFunction;
+        useOAuth?: boolean;
     }) {
         super(store, { software: args.software || "SimpleServer" }, args.logger || (() => null));
         this.listener = new Listener({
