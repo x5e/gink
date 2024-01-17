@@ -403,6 +403,7 @@ Configure a new credential and save the id and secret<br>
 Put the client id and client secret in these ENV variables:<br>
 OAUTH_CLIENT_ID=your_client_id<br>
 OAUTH_CLIENT_SECRET=your_client_secret<br>
+OAUTH_SCOPES=your_scopes,separated_by_comma,no_spaces<br>
 <br>
 
 **Step 1**: New Project<br>
@@ -413,7 +414,7 @@ If you haven't already, create a new Google Cloud Project from the Console.<br>
 In the search bar at the top of the console, type "**OAuth consent screen**" and click on the first option.<br>
 I prefer setting user type to "**External**" to begin, but it is up to you.
 On the first page, add "googleusercontent.com" to **Authorized domain 1**. Also, add a developer email to **Developer contact info**. The rest of this page is optional, so continue to the next page when you are done.<br>
-The scopes are very important, but they are also completely dependent on what type of application you are developing. Have a look through the list and identify scopes you will need to access.<br>
+The scopes are very important, but they are also completely dependent on what type of application you are developing. Have a look through the list and identify scopes you will need to access. Make note of these urls, as you will need to add them as an ENV variable for Gink.<br>
 Head to the next page, add a few test users (probably just your team), then you are done with the consent screen.<br>
 
 **Step 3**: Add new a credential
@@ -429,4 +430,5 @@ Open the JSON file you just downloaded.
 Here are the environment variables you need to set for Gink:<br>
 OAUTH_CLIENT_ID=your_client_id<br>
 OAUTH_CLIENT_SECRET=your_client_secret<br>
+OAUTH_SCOPES=your_scopes,separated_by_comma,no_spaces<br>
 That's it!
