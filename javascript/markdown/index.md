@@ -386,3 +386,47 @@ await instance.addBundler(bundler);
 
 ### Connecting to other instances
 TODO
+
+### Setting up Google OAuth for your application
+Gink allows for Google OAuth to login users to your application. All of the backend code and implementation has been done for you, as long as you supply the Client ID, Client Secret, and set the correct redirect URI in Google Cloud.<br>
+<br>
+
+Head to [this link](https://console.cloud.google.com/) to get started.<br>
+<br>
+If you are already familiar with Google Cloud:<br>
+
+**TLDR**:<br>
+Create a new Google Cloud project,<br>
+Configure the consent screen,<br>
+Configure a new credential and save the id and secret<br>
+**IMPORTANT**: Add 'http://localhost:8080/oauth2callback' and (if applicable) 'https://yourginkserver.com/oauth2callback' the Authorized Redirect URIs.<br>
+Put the client id and client secret in these ENV variables:<br>
+OAUTH_CLIENT_ID=your_client_id<br>
+OAUTH_CLIENT_SECRET=your_client_secret<br>
+<br>
+
+**Step 1**: New Project<br>
+If you haven't already, create a new Google Cloud Project from the Console.<br>
+<br>
+
+**Step 2**: Consent screen setup<br>
+In the search bar at the top of the console, type "**OAuth consent screen**" and click on the first option.<br>
+I prefer setting user type to "**External**" to begin, but it is up to you.
+On the first page, add "googleusercontent.com" to **Authorized domain 1**. Also, add a developer email to **Developer contact info**. The rest of this page is optional, so continue to the next page when you are done.<br>
+The scopes are very important, but they are also completely dependent on what type of application you are developing. Have a look through the list and identify scopes you will need to access.<br>
+Head to the next page, add a few test users (probably just your team), then you are done with the consent screen.<br>
+
+**Step 3**: Add new a credential
+In the search bar at the top of the console, type "**Credentials**" and click on the first link that pops up.
+Select **OAuth client ID**.
+Set Application Type to the type of application you are developing (probably **Web Application**) and name your client whatever your project is called.
+Add 'http://localhost:8080' and 'yourginkserver.com' to Authorized JavaScript origins.
+In **Authorized Redirect URIs**, add 'http://localhost:8080/oauth2callback' and (if your server is already live somewhere), 'yourginkserver.com/oauth2callback'. **THIS IS REALLY IMPORTANT**.
+Click **Create** - download the JSON file and keep it safe!
+
+**Step 4**: Save client ID and client secret in ENV variables
+Open the JSON file you just downloaded.
+Here are the environment variables you need to set for Gink:<br>
+OAUTH_CLIENT_ID=your_client_id<br>
+OAUTH_CLIENT_SECRET=your_client_secret<br>
+That's it!
