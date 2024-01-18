@@ -7,6 +7,9 @@ from socket import (
     SHUT_WR, SHUT_RDWR
 )
 from select import select
+from os import environ
+
+from .utilities import decodeToken, encodeToken
 
 # modules from requirements.txt
 from wsproto import WSConnection, ConnectionType
@@ -52,11 +55,16 @@ class WebsocketConnection(Connection):
         self._ws = WSConnection(connection_type=connection_type)
         self._buffered: bytes = b""
         self._ready = False
+        self.auth_token = environ.get("GINK_AUTH_TOKEN")
         if force_to_be_client:
-            # TODO [P3]: add cookie auth stuff into extra_headers
+            subprotocols = [self.PROTOCOL]
+
+            if self.auth_token:
+                subprotocols.append(encodeToken(self.auth_token))
+
             host = host or "localhost"
             path = path or "/"
-            request = Request(host=host, target=path, subprotocols=[self.PROTOCOL])
+            request = Request(host=host, target=path, subprotocols=subprotocols)
             self._socket.send(self._ws.send(request))
         self._logger.debug("finished setup")
         self._socket.settimeout(0.2)
@@ -74,6 +82,10 @@ class WebsocketConnection(Connection):
         self._ws.receive_data(data)
         for event in self._ws.events():
             if isinstance(event, Request):
+                if self.auth_token and encodeToken(self.auth_token) not in event.subprotocols:
+                    self._logger.warning("invalid authentication token")
+                    self._socket.send(self._ws.send(RejectConnection()))
+
                 if "gink" not in event.subprotocols:
                     self._logger.warning("got a non gink connection attempt")
                     self._socket.send(self._ws.send(RejectConnection()))
