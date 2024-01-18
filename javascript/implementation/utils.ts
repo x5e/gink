@@ -170,6 +170,40 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
 }
 
 /**
+ * Converts a hex string (presumably encoded previously) to
+ * an authentication token, prefixed with 'token '
+ * @param {string} hex hexadecimal string to convert
+ * @returns a string 'token {token}'
+ */
+export function decodeToken(hex: string): string {
+    ensure(hex.substring(0, 2) == "0x", "Hex string should start with 0x");
+    let token: string = "";
+    for (let i = 0; i < hex.length; i += 2) {
+        let hexValue = hex.substring(i, i + 2);
+        token += String.fromCharCode(parseInt(hexValue, 16));
+    }
+    ensure(token.includes("token "), `Token '${token}' does not begin with 'token '`);
+    return token;
+}
+
+/**
+ * Encodes an authentication token as hexadecimal, prefixed by '0x'.
+ * @param {string} token the token to encode
+ * @returns an encoded hexadecimal string
+ */
+export function encodeToken(token: string): string {
+    let result: string = "0x";
+    if (!token.includes("token ")) {
+        token = "token " + token;
+    }
+    for (let i = 0; i < token.length; i++) {
+        let hex = token.charCodeAt(i).toString(16);
+        result += hex.padStart(2, "0");
+    }
+    return result;
+}
+
+/**
  * Converts from any javascript value Gink can store into the corresponding proto builder.
  * @param arg Any Javascript value Gink can store
  * @returns

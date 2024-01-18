@@ -2,7 +2,7 @@ import { RoutingServer } from "./RoutingServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { Store } from "./Store";
 import { GinkInstance } from "./GinkInstance";
-import { BundleInfo } from "./typedefs";
+import { AuthFunction, BundleInfo, CallBack } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { SimpleServer } from "./SimpleServer";
 import { ensure, logToStdErr } from "./utils";
@@ -32,6 +32,20 @@ export class CommandLineInterface {
         const dataFile = process.env["GINK_DATA_FILE"];
         const reset = !!process.env["GINK_RESET"];
 
+        /*
+        If an auth key is found in the server's environment variable
+        GINK_AUTH_KEY, then all clients will be required to have
+        'token {key}' in their websocket subprotocol list.
+        Otherwise, just accept all connections with the gink subprotocol.
+        */
+        const authKey = process.env["GINK_AUTH_KEY"];
+
+        let authFunc: AuthFunction | null = null;
+        if (authKey) {
+            authFunc = (token: string) => {
+                return token == authKey;
+            };
+        }
 
         if (dataRoot) {
             logToStdErr(`using data root ${dataRoot}`);
@@ -51,6 +65,8 @@ export class CommandLineInterface {
                 sslCertFilePath: process.env["GINK_SSL_CERT"],
                 staticContentRoot: process.env["GINK_STATIC_PATH"],
                 logger: logToStdErr,
+                authFunc: authFunc,
+                useOAuth: false
             };
             if (dataRoot) {
                 this.routingServer = new RoutingServer({
@@ -77,8 +93,12 @@ export class CommandLineInterface {
             this.instance.addListener(CommandLineInterface.onCommit);
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
-                await this.instance.connectTo(target, logToStdErr);
-                logToStdErr(`connected!`);
+                try {
+                    await this.instance.connectTo(target, logToStdErr);
+                    logToStdErr(`connected!`);
+                } catch (e) {
+                    logToStdErr(`**** Failed connection to ${target}. Bath Auth token? ****`);
+                }
             }
             logToStdErr("ready (type a comment and press enter to create a commit)");
             const readlineInterface = readline.createInterface(process.stdin, process.stdout);

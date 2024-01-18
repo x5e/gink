@@ -41,6 +41,7 @@
     "fake-indexeddb": "^4.0.1",
     "fs-ext": "^2.0.0",
     "google-protobuf": "^3.21.2",
+    "googleapis": "^130.0.0",
     "idb": "^7.1.1",
     "jstreemap": "^1.28.2",
     "karma": "^6.4.2",

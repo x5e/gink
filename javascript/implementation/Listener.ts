@@ -7,15 +7,18 @@ import {
 } from 'websocket';
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { SimpleServer } from './SimpleServer';
+import { google } from 'googleapis';
+import { OAuth2Client } from 'google-auth-library';
 
 /**
  * Just a utility class to wrap websocket.server.
  */
 export class Listener {
-
     ready: Promise<any>;
     private websocketServer: WebSocketServer;
     readonly httpServer: HttpServer | HttpsServer;
+
+    private oauth2Client: OAuth2Client;
 
     constructor(args: {
         requestHandler: (request: WebSocketRequest) => void,
@@ -25,6 +28,7 @@ export class Listener {
         logger?: CallBack,
         sslKeyFilePath?: FilePath,
         sslCertFilePath?: FilePath,
+        useOAuth?: boolean;
     }) {
         const thisListener = this;
         const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot) : new StaticServer("./static");
@@ -33,6 +37,22 @@ export class Listener {
         this.ready = new Promise((resolve) => {
             callWhenReady = resolve;
         });
+
+        if (args.useOAuth) {
+            // Set up Google OAuth client
+            const oAuthClientID = process.env["OAUTH_CLIENT_ID"];
+            const oAuthClientSecret = process.env["OAUTH_CLIENT_SECRET"];
+            if (!oAuthClientID) throw new Error("Provide Google Client ID in env OAUTH_CLIENT_ID to use OAuth");
+            if (!oAuthClientSecret) throw new Error("Provide Google Client Secret in env OAUTH_CLIENT_SECRET to use OAuth");
+
+            this.oauth2Client = new google.auth.OAuth2(
+                oAuthClientID,
+                oAuthClientSecret,
+                "http://localhost:8080/oauth2callback",
+            );
+            google.options({ auth: this.oauth2Client });
+        }
+
         if (args.sslKeyFilePath && args.sslCertFilePath) {
             const options = {
                 key: readFileSync(args.sslKeyFilePath),
@@ -73,6 +93,33 @@ export class Listener {
             this.httpServer = createHttpServer(function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
                 request.addListener('end', async function () {
+                    if (args.useOAuth) {
+                        // This is where Google redirects to after the user gives permissions
+                        if (url.pathname == "/oauth2callback") {
+                            const code = url.searchParams.get("code");
+                            const { tokens } = await thisListener.oauth2Client.getToken(code);
+                            thisListener.oauth2Client.setCredentials(tokens);
+
+                            response.writeHead(302, {
+                                Location: "http://localhost:8080/"
+                            });
+                            response.end();
+                            return;
+                        }
+
+                        // no access token, need to authorize
+                        if (!thisListener.oauth2Client.credentials.access_token) {
+                            const scopesStr: string = process.env["OAUTH_SCOPES"];
+                            if (!scopesStr) throw new Error("Need to provide OAuth scopes (separated by a ',') in env variable OAUTH_SCOPES");
+                            const scopes = scopesStr.split(",");
+                            response.writeHead(302, {
+                                Location: thisListener.oauth2Client.generateAuthUrl({ access_type: 'offline', scope: scopes })
+                            });
+                            response.end();
+                            return;
+                        }
+                    }
+
                     if (url.pathname == "/") {
                         staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
                     }

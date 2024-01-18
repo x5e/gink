@@ -1,5 +1,5 @@
 import { Peer } from "./Peer";
-import { makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid } from "./utils";
+import { makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid, encodeToken, decodeToken } from "./utils";
 import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, Offset, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
@@ -388,12 +388,21 @@ export class GinkInstance {
         await this.ready;
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
+            let protocols = [GinkInstance.PROTOCOL];
+
+            // Probably need to pass auth token into here?
+            // const authToken = process.env["GINK_AUTH_TOKEN"];
+            // let authToken = encodeToken("abc");
+            let authToken; // figure this out later :)
+
+            if (authToken) protocols.push(authToken);
             const connectionId = this.createConnectionId();
-            const websocketClient: WebSocket = new GinkInstance.W3cWebSocket(target, GinkInstance.PROTOCOL);
+            let websocketClient: WebSocket = new GinkInstance.W3cWebSocket(target, protocols);
             websocketClient.binaryType = "arraybuffer";
             const peer = new Peer(
                 websocketClient.send.bind(websocketClient),
                 websocketClient.close.bind(websocketClient));
+
             websocketClient.onopen = function (_ev: Event) {
                 // called once the new connection has been established
                 websocketClient.send(thisClient.iHave.getGreetingMessageBytes());
