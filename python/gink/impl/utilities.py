@@ -1,20 +1,15 @@
-def encodeToken(token: str) -> str:
+def encodeToHex(string: str) -> str:
     """
-    Takes an authentication token and encodes it into a hex
-    string so it may be passed as a subprotocol in a websocket connection.
+    Takes a string and encodes it into a hex string prefixed with '0x'.
     """
-    if not token.startswith("token "):
-        token = f"token {token}"
+    # Adding 0x so we can easily determine if a subprotocol is a hex string
+    return "0x" + string.encode("utf-8").hex()
 
-    return token.encode("utf-8").hex()
-
-def decodeToken(hexStr: str) -> str:
+def decodeFromHex(hexStr: str) -> str:
     """
-    Converts a hex string into a gink authentication token
-    If the newly decoded token does not start with "token ",
-    throws an error.
+    Decodes a hex string into a string using utf-8.
     """
+    hexStr = hexStr[2:] # Cut off the '0x'
     bytes_obj = bytes.fromhex(hexStr)
-    token = bytes_obj.decode('utf-8')
-    assert token.startswith("token "), "token does not start with 'token '"
-    return token
+    string = bytes_obj.decode('utf-8')
+    return string

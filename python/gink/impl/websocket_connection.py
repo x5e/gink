@@ -9,7 +9,7 @@ from socket import (
 from select import select
 from os import environ
 
-from .utilities import decodeToken, encodeToken
+from .utilities import decodeFromHex, encodeToHex
 
 # modules from requirements.txt
 from wsproto import WSConnection, ConnectionType
@@ -60,7 +60,8 @@ class WebsocketConnection(Connection):
             subprotocols = [self.PROTOCOL]
 
             if self.auth_token:
-                subprotocols.append(encodeToken(self.auth_token))
+                assert self.auth_token.lower().startswith("token "), "auth token should start with 'token '"
+                subprotocols.append(encodeToHex(self.auth_token))
 
             host = host or "localhost"
             path = path or "/"
@@ -82,9 +83,20 @@ class WebsocketConnection(Connection):
         self._ws.receive_data(data)
         for event in self._ws.events():
             if isinstance(event, Request):
-                if self.auth_token and encodeToken(self.auth_token) not in event.subprotocols:
-                    self._logger.warning("invalid authentication token")
-                    self._socket.send(self._ws.send(RejectConnection()))
+                if self.auth_token:
+                    # Ensures any capitalization of 'Token' and any number of spaces works
+                    key = self.auth_token.lower().split("token ")[1].lstrip()
+                    token = None
+                    for protocol in event.subprotocols:
+                        # if we find a hex string in the subprotocols, see if its an auth token
+                        if protocol.lower().startswith("0x"):
+                            decoded = decodeFromHex(protocol)
+                            if decoded.lower().startswith("token "):
+                                token = decoded.lower().split("token ")[1].lstrip()
+                                break
+                    if not token or token != key:
+                        self._logger.warning("invalid authentication token")
+                        self._socket.send(self._ws.send(RejectConnection()))
 
                 if "gink" not in event.subprotocols:
                     self._logger.warning("got a non gink connection attempt")
