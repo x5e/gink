@@ -1,11 +1,10 @@
 """Contains the LmdbStore class."""
 
 # Standard Python Stuff
-import sys
 import os
-from logging import basicConfig, getLogger
+from logging import getLogger
 import uuid
-from typing import Tuple, Callable, Iterable, Optional, Set, Union, Container
+from typing import Tuple, Callable, Iterable, Optional, Set, Union
 from struct import pack
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
 
@@ -23,8 +22,6 @@ from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, de
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
                      LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_MAP, PAIR_SET, KEY_SET)
-
-basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "INFO"))
 
 
 class LmdbStore(AbstractStore):

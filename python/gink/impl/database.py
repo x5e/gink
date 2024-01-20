@@ -3,17 +3,17 @@
 
 # standard python modules
 from random import randint
-from typing import Optional, Set, Union, Iterable, Tuple, Dict, Any, List
+from typing import Optional, Set, Union, Iterable, Tuple, Dict, List
 from datetime import datetime, date, timedelta
 from threading import Lock
 from select import select
 from pwd import getpwuid
 from socket import gethostname
-from os import getuid, getpid, environ
+from os import getuid, getpid
 from time import time, sleep
 from sys import stdout, argv
 from math import floor
-from logging import getLogger, basicConfig, FileHandler
+from logging import getLogger
 from re import fullmatch, IGNORECASE
 
 # builders
@@ -34,8 +34,6 @@ from .chain_tracker import ChainTracker
 from .attribution import Attribution
 from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
-
-basicConfig(level=environ.get("GINK_LOG_LEVEL", "INFO"))
 
 
 class Database:
