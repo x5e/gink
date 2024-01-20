@@ -256,3 +256,5 @@ class Directory(Container):
             print(str(att), file=file)
             if isinstance(limit, int):
                 limit -= 1
+
+Database.register_container_type(Directory)

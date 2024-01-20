@@ -49,6 +49,7 @@ class Database:
     _sent_but_not_acked: Set[BundleInfo]
     _trackers: Dict[Connection, ChainTracker]  # tracks what we know a peer has *received*
     _last_link: Optional[BundleInfo]
+    _container_types = {}
 
     def __init__(self, store: Union[AbstractStore, str, None] = None):
         setattr(Database, "_last", self)
@@ -72,6 +73,10 @@ class Database:
         last = getattr(Database, "_last")
         assert isinstance(last, Database)
         return last
+
+    @classmethod
+    def register_container_type(cls, container_cls: type):
+        cls._container_types[container_cls.get_behavior()] = container_cls
 
     def get_store(self) -> AbstractStore:
         """ returns the store managed by this database """
@@ -342,17 +347,41 @@ class Database:
             self.commit(bundler=bundler)
         return bundler
 
-    def get_container(self, muid: Muid, *,
-                      behavior: Optional[int] = None,
-                      container_builder: Optional[ContainerBuilder] = None) -> Any:
-        """ gets (already created) container associated with a particular muid """
-        _ = (self, muid, container_builder, behavior)
-        raise Exception("not patched")
+    def get_container(
+            self,
+            muid: Muid, *,
+            container_builder: Optional[ContainerBuilder] = None,
+            behavior: Optional[int] = None,
+        ):
+        """ Gets a pre-existing container associated with a particular muid """
+        if muid.timestamp == -1:
+            behavior = muid.offset
+        elif behavior is None:
+            container_builder = container_builder or self._store.get_container(muid)
+            behavior = getattr(container_builder, "behavior")
+        cls = self._container_types.get(behavior)
+        if not cls:
+            raise AssertionError(f"behavior not recognized: {behavior}")
+        return cls(muid=muid, database=self)
 
-    def dump(self, as_of: GenericTimestamp = None, file=stdout) -> None:
-        """ writes to file a pythonic representation of the database contents at the time """
-        _ = (self, as_of, file)
-        raise Exception("not patched")
+    def dump(self, *,
+             include_global_containers=True,
+             as_of: GenericTimestamp = None,
+             file=stdout,
+             ):
+        """ writes the contents of the database to file """
+        from .container import Container
+        for muid, container_builder in self._store.list_containers():
+            container = self.get_container(muid, container_builder=container_builder)
+            assert isinstance(container, Container)
+            if container.size(as_of=as_of):
+                container.dump(as_of=as_of, file=file)
+        if include_global_containers:
+            for cls in self._container_types.values():
+                container = cls.get_global_instance(self)
+                assert isinstance(container, Container)
+                if container.size(as_of=as_of):
+                    container.dump(as_of=as_of, file=file)
 
     def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_
     ) -> Attribution:

@@ -111,3 +111,5 @@ class PairSet(Container):
         result += "\n\t"
         result += "".join(stuffing) + "])"
         return result
+
+Database.register_container_type(PairSet)

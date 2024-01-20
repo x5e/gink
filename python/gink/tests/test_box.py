@@ -10,9 +10,6 @@ from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
-from ..impl.patch import PATCHED
-
-assert PATCHED
 
 def test_creation():
     """ test that I can create new boxes as well as proxies for existing ones """
@@ -93,7 +90,7 @@ def test_dumps():
 
             global_box.set("test value")
             result = global_box.dumps()
-            
+
             if global_box._muid.medallion != -1 and global_box._muid.timestamp != -1:
                 identifier = repr(str(global_box._muid))
             else:
@@ -101,7 +98,7 @@ def test_dumps():
 
             assert result == f"""{global_box.__class__.__name__}({identifier}, contents='test value')"""
 
-                
+
 
 def test_size():
     """ tests size method of Box class, returns either 1 or 0 """
@@ -152,4 +149,3 @@ def test_as_of():
             assert box1.get(as_of=-2) == "first"
             assert box1.get(as_of=-1) == "second"
             assert box1.get() == "third"
-            

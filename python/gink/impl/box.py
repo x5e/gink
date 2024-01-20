@@ -51,26 +51,26 @@ class Box(Container):
 
         """
         return self._add_entry(value=value, bundler=bundler, comment=comment)
-        
+
     def get(self, default=None, *, as_of: GenericTimestamp = None):
         """ gets the value in the box, optionally as_of a time """
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(container=self._muid, key=None, as_of=as_of)
-        
+
         if found is None or found.builder.deletion: #type: ignore
                     return default
 
         contents = self._get_occupant(found.builder, found.address)
-        
+
         return contents
-    
+
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this box to a string. """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "root=True"
         else:
             identifier = repr(str(self._muid))
-        
+
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(container=self._muid, key=None, as_of=as_of)
 
@@ -82,15 +82,15 @@ class Box(Container):
 
         result = f"""{self.__class__.__name__}({identifier}, contents={repr(contents)})"""
         return result
-        
+
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(container=self._muid, key=None, as_of=as_of)
 
         return 1 if found else 0
-        
-    def isEmpty(self, *, as_of: GenericTimestamp = None) -> int:
 
+    def isEmpty(self, *, as_of: GenericTimestamp = None) -> int:
         return True if self.size(as_of=as_of) == 0 else False
-        
+
+Database.register_container_type(Box)

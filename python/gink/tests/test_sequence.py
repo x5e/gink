@@ -9,9 +9,6 @@ from ..impl.sequence import Sequence
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
-from ..impl.patch import PATCHED
-
-assert PATCHED
 
 
 def test_creation():

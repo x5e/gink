@@ -176,11 +176,6 @@
 ```
 <hr>
 
-```{eval-rst}
-.. automodule:: python.gink.impl.patch
-   :members:
-```
-<hr>
 
 ```{eval-rst}
 .. automodule:: python.gink.impl.tuples

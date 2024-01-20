@@ -298,3 +298,5 @@ class Sequence(Container):
         if p2 - p1 < 2:
             raise ValueError("not enough space between them")
         return randint(p1 + 1, p2 - 1)
+
+Database.register_container_type(Sequence)

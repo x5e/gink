@@ -118,3 +118,5 @@ class Property(Container):
             return default
         value = self._get_occupant(found.builder, found.address)
         return value
+
+Database.register_container_type(Property)
