@@ -54,38 +54,14 @@ def get_container(
 setattr(Database, "get_container", get_container)
 
 
-def get_attribution(
-        self: Database, timestamp: MuTimestamp, medallion: Medallion, *_
-) -> Attribution:
-    """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
 
-        After the timestamp and medallion it will ignore other ordered arguments, so
-        that it can be used via ``get_attribution(*muid)``.
-    """
-    medallion_directory = Directory.get_medallion_instance(
-        medallion=medallion, database=self)
-    comment = self._store.get_comment(
-        medallion=medallion, timestamp=timestamp)
-    return Attribution(
-        timestamp=timestamp,
-        medallion=medallion,
-        username=medallion_directory.get(".user.name", as_of=timestamp),
-        hostname=medallion_directory.get(".host.name", as_of=timestamp),
-        fullname=medallion_directory.get(".full.name", as_of=timestamp),
-        software=medallion_directory.get(".software", as_of=timestamp),
-        comment=comment,
-    )
-
-
-setattr(Database, "get_attribution", get_attribution)
-
-
-def dump(self: Database, as_of: GenericTimestamp = None, file=stdout):
+def dump(self: Database, *, include_global_containers=True, as_of: GenericTimestamp = None, file=stdout):
     """ writes the contents of the database to file """
-    for muid, container_builder in self._store.get_all_containers():
+    for muid, container_builder in self._store.list_containers():
         container = self.get_container(muid, container_builder=container_builder)
         if container.size(as_of=as_of):
             container.dump(as_of=as_of, file=file)
+
 
 
 setattr(Database, "dump", dump)

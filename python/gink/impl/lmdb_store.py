@@ -187,9 +187,7 @@ class LmdbStore(AbstractStore):
             entry_builder.ParseFromString(found)
             return entry_builder
 
-    def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
-        yield Muid(-1, -1, 7), ContainerBuilder()
-        yield Muid(-1, -1, 8), ContainerBuilder()
+    def list_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
         with self._handle.begin() as trxn:
             container_cursor: Cursor = trxn.cursor(self._containers)
             positioned = container_cursor.first()

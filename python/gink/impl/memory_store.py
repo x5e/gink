@@ -58,7 +58,7 @@ class MemoryStore(AbstractStore):
     def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
         return self._containers.get(container)
 
-    def get_all_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
+    def list_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
         for key, val in self._containers.items():
             assert isinstance(key, Muid)
             assert isinstance(val, ContainerBuilder)

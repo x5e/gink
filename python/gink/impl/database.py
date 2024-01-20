@@ -354,14 +354,27 @@ class Database:
         _ = (self, as_of, file)
         raise Exception("not patched")
 
-    def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
+    def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_
+    ) -> Attribution:
         """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
 
             After the timestamp and medallion it will ignore other ordered arguments, so
             that it can be used via get_attribution(*muid).
         """
-        _ = (self, timestamp, medallion)
-        raise NotImplementedError()
+        from .directory import Directory
+        medallion_directory = Directory.get_medallion_instance(
+            medallion=medallion, database=self)
+        comment = self._store.get_comment(
+            medallion=medallion, timestamp=timestamp)
+        return Attribution(
+            timestamp=timestamp,
+            medallion=medallion,
+            username=medallion_directory.get(".user.name", as_of=timestamp),
+            hostname=medallion_directory.get(".host.name", as_of=timestamp),
+            fullname=medallion_directory.get(".full.name", as_of=timestamp),
+            software=medallion_directory.get(".software", as_of=timestamp),
+            comment=comment,
+        )
 
     def log(self, limit: Optional[int] = -10) -> Iterable[Attribution]:
         """ Gets a list of attributions representing all bundles stored by the db. """
