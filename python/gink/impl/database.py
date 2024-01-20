@@ -49,7 +49,7 @@ class Database:
     _sent_but_not_acked: Set[BundleInfo]
     _trackers: Dict[Connection, ChainTracker]  # tracks what we know a peer has *received*
     _last_link: Optional[BundleInfo]
-    _container_types = {}
+    _container_types: dict = {}
 
     def __init__(self, store: Union[AbstractStore, str, None] = None):
         setattr(Database, "_last", self)
@@ -76,7 +76,9 @@ class Database:
 
     @classmethod
     def register_container_type(cls, container_cls: type):
-        cls._container_types[container_cls.get_behavior()] = container_cls
+        assert hasattr(container_cls, "BEHAVIOR")
+        behavior = getattr(container_cls, "BEHAVIOR")
+        cls._container_types[behavior] = container_cls
 
     def get_store(self) -> AbstractStore:
         """ returns the store managed by this database """
