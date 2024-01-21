@@ -2,6 +2,8 @@
 import logging
 from socket import socketpair
 
+import os
+
 # builders
 from ..impl.builders import SyncMessage, Parse
 
@@ -54,6 +56,30 @@ def test_chit_chat():
 
     assert client.is_closed() and server.is_closed()
 
+def test_auth():
+    """ tests authentication """
+    server_socket, client_socket = socketpair()
+
+    os.environ["GINK_AUTH_TOKEN"] = "Token    kjnakjnfakjnfakjnwadhbhbadab"
+    # creating a client connection implicitly sends a request
+    server = WebsocketConnection(socket=server_socket)
+
+    os.environ["GINK_AUTH_TOKEN"] = "Token WRONGAUTHTOKENDONTLETTHROUGH"
+
+    client = WebsocketConnection(socket=client_socket, force_to_be_client=True)
+    getattr(client, "_logger").setLevel(logging.ERROR)
+
+    let_auth_through = False
+    try:
+        # force the server to receive the initial request and send a response
+        for _ in server.receive():
+            pass
+        # The above should error when the connection gets rejected,
+        # so let_auth_through should remain false.
+        let_auth_through = True
+    except:
+        pass
+    assert not let_auth_through, "Server let bad auth token through"
 
 if __name__ == "__main__":
     test_chit_chat()
