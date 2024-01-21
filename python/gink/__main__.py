@@ -115,7 +115,7 @@ if args.listen_on:
         ip_addr = args.listen_on
     if ip_addr == "*":
         ip_addr = ""
-    database.start_listening(ip_addr=ip_addr, port=args.listen)
+    database.start_listening(ip_addr=ip_addr, port=port)
 
 for target in (args.connect_to or []):
     database.connect_to(target)
