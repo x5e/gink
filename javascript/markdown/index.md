@@ -12,11 +12,11 @@ npm install @x5e/gink
 
 ## Quickstart
 
-Example - create a directory\
+Example - create a `Directory`\
 Take a look at other examples below for a more in depth look at all of the available data structures.
 
-```ts
-import { GinkInstance, IndexedDbStore } from "@x5e/gink";
+```js
+const { IndexedDbStore, GinkInstance } = require("@x5e/gink");
 
 // Initialize document store and database
 const store = new IndexedDbStore('directory-example');
@@ -34,9 +34,9 @@ const result = await directory.get("key1");
 ```
 
 # Examples
-All examples will need a store and `GinkInstance`:
-```ts
-import { IndexedDbStore, GinkInstance } from "@x5e/gink";
+All examples will need a `Store` and `GinkInstance`:
+```js
+const { IndexedDbStore, GinkInstance } = require("@x5e/gink");
 
 const store = new IndexedDbStore('examples');
 const instance = new GinkInstance(store);
@@ -48,7 +48,7 @@ const instance = new GinkInstance(store);
 A `Box` is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.
 ```ts
 // Create a Box
-const aBox: Box = await instance.createBox();
+const aBox = await instance.createBox();
 
 // Set the value in the box
 await aBox.set("example value");
@@ -67,8 +67,8 @@ const no_result = await aBox.get();
 ```
 
 ### Directory
-The `Directory` aims to mimic the functionality of a TypeScript object. If you know how to use an Object, you should already know how to use the directory!
-```ts
+The `Directory` aims to mimic the functionality and API of a JavaScript Map.
+```js
 const directory = await instance.createDirectory();
 
 // As seen in the quick start, some of the basic
@@ -121,7 +121,11 @@ const beginning = await seq.at(0);
 // A Muid is basically the ID of that change in the db.
 // Just as you saw numbers used as the index to retrieve values,
 // the muid of the entry can also be used to retrieve the value.
-const entries = await seq.entries();
+const entries = seq.entries();
+// Iterate through entries like this:
+for await (const entry of entries) {
+    console.log(entry);
+}
 
 // Reordering sequences
 // Moves position 0 ("B") to the last position
