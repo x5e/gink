@@ -1,87 +1,123 @@
 #!/usr/bin/env python3
 """ command line interface for Gink """
-import sys
-import os
-import copy
-import code
-import logging
-import readline
-from . import LmdbStore, LogBackedStore, Directory, Database, Sequence, AbstractStore
+from logging import basicConfig, getLogger
+from sys import exit, stdin
+from re import fullmatch
+from argparse import ArgumentParser, Namespace
 
-assert readline
-logging.basicConfig(level=os.environ.get("GINK_LOG_LEVEL", "INFO"))
-gink_file = os.environ.get("GINK_FILE", "/tmp/gink.mdb")
+from . import *
+
+parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
+parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
+parser.add_argument("--verbosity", default="INFO", help="the log level to use, e.g. INFO or DEBUG")
+parser.add_argument("--format", default="lmdb", help="storage file format", choices=["lmdb", "binlog"])
+parser.add_argument("--set", help="set key in directory, using --value or stdin")
+parser.add_argument("--get", help="get a value in the database (default root)")
+parser.add_argument("--value", help="value to use for --set")
+parser.add_argument("--dump", nargs="?", const=True,
+                    help="dump contents to stdout and exit (path or muid, or everything if blank)")
+parser.add_argument("--blame", action="store_true", help="show blame information")
+parser.add_argument("--as_of", help="as-of time to use for dump or get opperation")
+parser.add_argument("--mkdir", help="create a directory using path notation")
+parser.add_argument("--comment", help="comment to add to modifications (set or mkdir)")
+parser.add_argument("--log", nargs="?", const="-10", type=int,
+                    help="show LOG entries from log (express last ten entries as -10)")
+parser.add_argument("--listen_on", "-l", nargs="?", const=True,
+                    help="start listening on ip:port (default *:8080)")
+parser.add_argument("--connect_to", "-c", nargs="+", help="remote instances to connect to")
+parser.add_argument("--show_arguments", action="store_true")
+args: Namespace = parser.parse_args()
+if args.show_arguments:
+    print(args)
+    exit(0)
+basicConfig(level=args.verbosity)
+logger = getLogger()
+
 store: AbstractStore
-if gink_file.endswith(".mdb"):
-    store = LmdbStore(gink_file)
-elif gink_file.endswith(".binaryproto"):
-    store = LogBackedStore(gink_file)
+if args.db_path is None:
+    logger.warning("Using transient in-memory database!")
+    store = MemoryStore()
+elif args.format == "lmdb":
+    store = LmdbStore(args.db_path)
 else:
-    raise SystemExit(f"don't know file type of: {gink_file}")
+    store = LogBackedStore(args.db_path)
+
 database = Database(store)
 root = Directory.get_global_instance(database=database)
-queue = Sequence.get_global_instance(database=database)
-args = copy.copy(sys.argv)
-args.pop(0)  # remove script
 
-cmd = args.pop(0) if args else None
-if cmd == "demo":
-    pass
-elif cmd == "blame":
-    root.show_blame()
-elif cmd == "get":
-    if not args:
-        raise SystemExit("Key not specified.")
-    gotten = root.get(args[0])
-    if gotten:
-        print(gotten)
+if args.dump:
+    if args.dump is True:
+        database.dump(as_of=args.as_of)
     else:
-        raise SystemExit("No entry under that key.")
-elif cmd == "set":
-    if not args:
-        raise SystemExit("Key not specified.")
-    root[args[0]] = sys.stdin.read().rstrip()
-elif cmd == "shell":
-    code.InteractiveConsole(globals()).interact()
-elif cmd in ("run", "serve"):
-    if cmd == "serve":
-        os.environ.setdefault("GINK_PORT", "8080")
-    port = os.environ.get("GINK_PORT")
-    if port:
-        database.start_listening(port=port)
-    for arg in args:
-        database.connect_to(arg)
-    database.run()
-elif cmd == "dump":
-    database.dump()
-elif cmd in ("help", "--help", "-h"):
-    print("""
-    Show this help text:
-        python3 -m gink help
+        dumping: str = args.dump
+        if dumping.startswith("/"):
+            path_components = args.dump.split("/")
+            container = root
+            for component in path_components:
+                if not component:
+                    continue
+                container = container.get(component, as_of=args.as_of)
+        else:
+            muid = Muid.from_str(args.dump)
+            container = database.get_container(muid=muid)
+        container.dump(as_of=args.as_of)
+    exit(0)
 
-    The remaining commands operate on a gink database file, which defaults
-    to using /tmp/gink.mdb but can be set with GINK_FILE environment variable.
+if args.set:
+    value = args.value or stdin.read().rstrip()
+    container = root
+    key = args.set
+    container.set(key, value, comment=args.comment)
+    exit(0)
 
-    Set key "foo" to value "bar" in the root directory:
-        python3 -m gink set foo <<< 'bar'
+if args.get:
+    container = root
+    result = container.get(args.get, as_of=args.as_of)
+    print(result)
 
-    Get the value stored at key "foo" in the root directory:
-        python3 -m gink get foo
+if args.blame:
+    if args.blame is True:
+        root.show_blame(as_of=args.as_of)
+    else:
+        old_directory = root
+        path_components = args.get.split("/")
+        for component in path_components:
+            old_directory = old_directory.get(component, as_of=args.as_of)
+            assert isinstance(old_directory, Directory)
+        old_directory.show_blame()
+    exit(0)
 
-    Dump the contents of the database in a human friendly format:
-        python3 -m gink dump
+if args.mkdir:
+    path_components = args.mkdir.split("/")
+    old_directory = root
+    for component in path_components[:-1]:
+        if not component: continue
+        old_directory = old_directory.get(component, as_of=args.as_of)
+        assert isinstance(old_directory, Directory)
+    new_directory = Directory.create(database=database)
+    old_directory.set(path_components[-1], new_directory, comment=args.comment)
+    exit(0)
 
-    Connect to a remotely running peers (port defaults to 8080):
-        python3 -m gink run 192.168.1.1 example.com:8081
+if args.log:
+    database.show_log(args.log)
+    exit(0)
 
-    Listen on port 8080 for incomming connections:
-        GINK_PORT=8080 python3 -m gink run
+if args.listen_on:
+    ip_addr = "*"
+    port = "8080"
+    if args.listen_on is True:
+        pass
+    elif ":" in args.listen_on:
+        ip_addr, port = args.listen_on.split(":")
+    elif fullmatch(r"\d+", args.listen_on):
+        port = args.listen_on
+    else:
+        ip_addr = args.listen_on
+    if ip_addr == "*":
+        ip_addr = ""
+    database.start_listening(ip_addr=ip_addr, port=args.listen)
 
-    The command 'serve' is an alias to run plus ensure that GINK_PORT is set.
-        python3 -m gink serve
+for target in (args.connect_to or []):
+    database.connect_to(target)
 
-    Listen on port 8080 for incomming connections and also connect to example.com:
-        python3 -m gink serve example.com
-    """, file=sys.stderr)
-else:
-    raise SystemExit("command not recognized, try --help")
+database.run()
