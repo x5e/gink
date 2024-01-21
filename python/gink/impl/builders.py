@@ -86,7 +86,7 @@ if TYPE_CHECKING:
         PROPERTY = 9
         ROLE = 10
 else:
-    from ..builders.bundle_pb2 import Bundle
+    from ..builders.bundle_pb2 import Bundle as BundleBuilder
     from ..builders.sync_message_pb2 import SyncMessage
     from ..builders.change_pb2 import Change as ChangeBuilder
     from ..builders.entry_pb2 import Entry as EntryBuilder
