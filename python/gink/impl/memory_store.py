@@ -1,10 +1,8 @@
 """ Contains the MemoryStore class, and implementation of the AbstractStore interface. """
 
 # standard python stuff
-import sys
 import struct
-from os import environ
-from logging import basicConfig, getLogger
+from logging import getLogger
 from typing import Tuple, Callable, Optional, Iterable, Union, Dict
 from sortedcontainers import SortedDict  # type: ignore
 
@@ -20,8 +18,6 @@ from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
                      Placement, decode_key, decode_entry_occupant)
-
-basicConfig(level=environ.get("GINK_LOG_LEVEL", "INFO"))
 
 
 class MemoryStore(AbstractStore):

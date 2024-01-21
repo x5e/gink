@@ -2,8 +2,7 @@
 ##################################################################################################0
 from typing import Union, Optional, Iterable, Dict
 from sys import stdout
-from os import environ
-from logging import getLogger, basicConfig
+from logging import getLogger
 
 # gink implementation
 from .muid import Muid
@@ -13,8 +12,6 @@ from .coding import decode_key, DIRECTORY, deletion
 from .bundler import Bundler
 from .typedefs import UserKey, GenericTimestamp
 from .attribution import Attribution
-
-basicConfig(level=environ.get("GINK_LOG_LEVEL", "INFO"))
 
 
 class Directory(Container):
