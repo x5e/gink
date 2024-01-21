@@ -23,3 +23,5 @@ example.db*
 sqlite.db
 venv
 data.json
+*.db
+*.db-lock

@@ -67,6 +67,8 @@ class Muid(NamedTuple):
         medallion_mod = 16 ** 13
         offset_mod = 16 ** 5
         hexed = hexed.replace("-", "")
+        if len(hexed) != 32:
+            raise ValueError("doesn't look like a valid muid: %r" % hexed)
         time_part = int(hexed[0:14], 16)
         medl_part = int(hexed[14:27], 16)
         off_part = int(hexed[27:32], 16)

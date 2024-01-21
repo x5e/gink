@@ -137,7 +137,10 @@ class Database:
         if timestamp is None:
             return self.get_now()
         if isinstance(timestamp, str):
-            timestamp = datetime.fromisoformat(timestamp)
+            if fullmatch(r"-?\d+", timestamp):
+                timestamp = int(timestamp)
+            else:
+                timestamp = datetime.fromisoformat(timestamp)
         if isinstance(timestamp, Muid):
             muid_timestamp = timestamp.timestamp
             if not isinstance(muid_timestamp, MuTimestamp):
