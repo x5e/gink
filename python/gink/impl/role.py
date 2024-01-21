@@ -98,3 +98,5 @@ class Role(Container):
             what = what._muid
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=what, as_of=ts)
         return bool(found and not found.builder.deletion)
+
+Database.register_container_type(Role)

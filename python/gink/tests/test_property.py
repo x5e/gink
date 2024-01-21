@@ -9,10 +9,6 @@ from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
-from ..impl.patch import PATCHED
-
-assert PATCHED
-
 
 def test_property_set_get():
     """ Test the basic set/get functionality of properties works as expected. """

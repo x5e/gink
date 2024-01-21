@@ -88,6 +88,8 @@ class Vertex(Container):
             self._database.commit(bundler)
         return result
 
+Database.register_container_type(Vertex)
+
 
 class Verb(Container):
     BEHAVIOR = VERB
@@ -155,6 +157,8 @@ class Verb(Container):
         result += "\n\n"
         result += ",\n\n".join(stuffing) + ",\n\n])"
         return result
+
+Database.register_container_type(Verb)
 
 
 class Edge(Addressable):

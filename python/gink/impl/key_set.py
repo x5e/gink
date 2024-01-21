@@ -228,3 +228,5 @@ class KeySet(Container):
 
     def __contains__(self, key: UserKey) -> bool:
         return self.contains(key)
+
+Database.register_container_type(KeySet)

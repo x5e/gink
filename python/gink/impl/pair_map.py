@@ -146,3 +146,5 @@ class PairMap(Container):
                 continue
             count += 1
         return count
+
+Database.register_container_type(PairMap)
