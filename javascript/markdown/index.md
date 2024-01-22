@@ -424,7 +424,7 @@ If you are already familiar with Google Cloud:<br>
 Create a new Google Cloud project,<br>
 Configure the consent screen,<br>
 Configure a new credential and save the id and secret<br>
-**IMPORTANT**: Add 'http://localhost:8080/oauth2callback' and (if applicable) 'https://yourginkserver.com/oauth2callback' the Authorized Redirect URIs.<br>
+**IMPORTANT**: Add 'http://localhost:8080/oauth2callback' and (if applicable) 'https://yourginkserver.com/oauth2callback' to Authorized Redirect URIs.<br>
 Put the client id and client secret in these ENV variables:<br>
 OAUTH_CLIENT_ID=your_client_id<br>
 OAUTH_CLIENT_SECRET=your_client_secret<br>
@@ -442,7 +442,7 @@ On the first page, add "googleusercontent.com" to **Authorized domain 1**. Also,
 The scopes are very important, but they are also completely dependent on what type of application you are developing. Have a look through the list and identify scopes you will need to access. Make note of these urls, as you will need to add them as an ENV variable for Gink.<br>
 Head to the next page, add a few test users (probably just your team), then you are done with the consent screen.<br>
 
-**Step 3**: Add new a credential
+**Step 3**: Add new a credential<br>
 In the search bar at the top of the console, type "**Credentials**" and click on the first link that pops up.
 Select **OAuth client ID**.
 Set Application Type to the type of application you are developing (probably **Web Application**) and name your client whatever your project is called.
