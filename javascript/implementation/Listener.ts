@@ -7,7 +7,6 @@ import {
 } from 'websocket';
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { SimpleServer } from './SimpleServer';
-import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 
 /**
@@ -18,7 +17,7 @@ export class Listener {
     private websocketServer: WebSocketServer;
     readonly httpServer: HttpServer | HttpsServer;
 
-    private oauth2Client: OAuth2Client;
+    private oAuth2Client: OAuth2Client;
 
     constructor(args: {
         requestHandler: (request: WebSocketRequest) => void,
@@ -42,15 +41,17 @@ export class Listener {
             // Set up Google OAuth client
             const oAuthClientID = process.env["OAUTH_CLIENT_ID"];
             const oAuthClientSecret = process.env["OAUTH_CLIENT_SECRET"];
+
+            // Don't need scopes until a request is made, but it's better to throw the error up front
+            if (!process.env["OAUTH_SCOPES"]) throw new Error("Need to provide OAuth scopes (separated by a ',') in env variable OAUTH_SCOPES");
             if (!oAuthClientID) throw new Error("Provide Google Client ID in env OAUTH_CLIENT_ID to use OAuth");
             if (!oAuthClientSecret) throw new Error("Provide Google Client Secret in env OAUTH_CLIENT_SECRET to use OAuth");
 
-            this.oauth2Client = new google.auth.OAuth2(
+            this.oAuth2Client = new OAuth2Client(
                 oAuthClientID,
                 oAuthClientSecret,
                 "http://localhost:8080/oauth2callback",
             );
-            google.options({ auth: this.oauth2Client });
         }
 
         if (args.sslKeyFilePath && args.sslCertFilePath) {
@@ -97,8 +98,8 @@ export class Listener {
                         // This is where Google redirects to after the user gives permissions
                         if (url.pathname == "/oauth2callback") {
                             const code = url.searchParams.get("code");
-                            const { tokens } = await thisListener.oauth2Client.getToken(code);
-                            thisListener.oauth2Client.setCredentials(tokens);
+                            const { tokens } = await thisListener.oAuth2Client.getToken(code);
+                            thisListener.oAuth2Client.setCredentials(tokens);
 
                             response.writeHead(302, {
                                 Location: "http://localhost:8080/"
@@ -108,12 +109,11 @@ export class Listener {
                         }
 
                         // no access token, need to authorize
-                        if (!thisListener.oauth2Client.credentials.access_token) {
+                        if (!thisListener.oAuth2Client.credentials.access_token) {
                             const scopesStr: string = process.env["OAUTH_SCOPES"];
-                            if (!scopesStr) throw new Error("Need to provide OAuth scopes (separated by a ',') in env variable OAUTH_SCOPES");
-                            const scopes = scopesStr.split(",");
+                            const oAuthScopes = scopesStr.split(",");
                             response.writeHead(302, {
-                                Location: thisListener.oauth2Client.generateAuthUrl({ access_type: 'offline', scope: scopes })
+                                Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthScopes })
                             });
                             response.end();
                             return;

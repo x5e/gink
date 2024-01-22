@@ -6,6 +6,7 @@ from re import fullmatch
 from argparse import ArgumentParser, Namespace
 
 from . import *
+from .impl.builders import BundleBuilder
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
@@ -26,6 +27,7 @@ parser.add_argument("--listen_on", "-l", nargs="?", const=True,
                     help="start listening on ip:port (default *:8080)")
 parser.add_argument("--connect_to", "-c", nargs="+", help="remote instances to connect to")
 parser.add_argument("--show_arguments", action="store_true")
+parser.add_argument("--show_bundles", action="store_true")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -61,6 +63,16 @@ if args.dump:
             muid = Muid.from_str(args.dump)
             container = database.get_container(muid=muid)
         container.dump(as_of=args.as_of)
+    exit(0)
+
+if args.show_bundles:
+    builder = BundleBuilder()
+    def show(data: bytes, _: BundleInfo):
+        builder.ParseFromString(data)  # type: ignore
+        print("=" * 79)
+        print(builder)
+    store.get_bundles(show)
+    store.close()
     exit(0)
 
 if args.set:
@@ -115,7 +127,7 @@ if args.listen_on:
         ip_addr = args.listen_on
     if ip_addr == "*":
         ip_addr = ""
-    database.start_listening(ip_addr=ip_addr, port=args.listen)
+    database.start_listening(ip_addr=ip_addr, port=port)
 
 for target in (args.connect_to or []):
     database.connect_to(target)
