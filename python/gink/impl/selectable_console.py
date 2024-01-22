@@ -5,7 +5,8 @@ from typing import Optional, TextIO
 
 class SelectableConsole:
 
-    def __init__(self, input_handle: TextIO = stdin, output_handle: TextIO = stderr):
+    def __init__(self, locals, input_handle: TextIO = stdin, output_handle: TextIO = stderr):
+        self._locals = locals
         self._buffer: list[str] = []
         self._input: TextIO = input_handle
         self._output: TextIO = output_handle
@@ -25,16 +26,25 @@ class SelectableConsole:
     def call_when_ready(self):
         self.on_character(self._input.read(1))
 
+    def refresh(self):
+        self._output.write("\rpython+gink> " + "".join(self._buffer))
+        self._output.flush()
+
+
     def on_character(self, character: str) -> None:
         if character in ('\r'):  # return/enter
             if self._buffer:
-                print("\r\n", repr("".join(self._buffer)), sep="", file=self._output, end="\r\n")
+                print(end="\r\n", file=self._output)
+                print(repr("".join(self._buffer)), sep="", file=self._output, end="\r\n")
                 self._buffer = []
+            else:
+                print(file=self._output)
         elif character == '\x04':  # control-D
             if self._buffer:
                 self._output.write('\a')  # bell
                 self._output.flush()
             else:
+                print(file=self._output, end="\r\n")
                 raise EOFError()
         elif character in ('\x03'):  # control-C
             raise KeyboardInterrupt()

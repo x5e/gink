@@ -303,14 +303,14 @@ class Database:
         self._connections.add(connection)
         self._logger.debug("connection added")
 
-    def run(self, until: GenericTimestamp = None, repl=False):
+    def run(self,
+            until: GenericTimestamp = None,
+            console: Optional[SelectableConsole]=None):
         """ Waits for activity on ports then exchanges data with peers. """
         self._logger.debug("starting run loop until %r", until)
-        fd = stdin.fileno()
-
         if until is not None:
             until = self.resolve_timestamp(until)
-        context_manager = SelectableConsole() if repl else nullcontext
+        context_manager = console or nullcontext
         with context_manager:
             while until is None or self.get_now() < until:
                 # eventually will want to support epoll on platforms where its supported
@@ -322,8 +322,10 @@ class Database:
                         self._connections.remove(connection)
                     else:
                         readers.append(connection)
-                if isinstance(context_manager, SelectableConsole):
-                    readers.append(context_manager)
+                if isinstance(console, SelectableConsole):
+                    readers.append(console)
+                if console:
+                    console.refresh()
                 ready_readers, _, _ = select(readers, [], [], 0.1)
                 for ready_reader in ready_readers:
                     if isinstance(ready_reader, Connection):
