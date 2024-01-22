@@ -41,9 +41,18 @@ module.exports = function (config) {
                     "fs": false,
                     "http": false,
                     "url": false,
+                    "util": false,
                     "https": false,
                     "readline": false,
                     "console": false,
+                    "stream": false,
+                    "assert": false,
+                    "crypto": false,
+                    "os": false,
+                    "querystring": false,
+                    "child_process": false,
+                    "net": false,
+                    "tls": false
                 }
             },
 
