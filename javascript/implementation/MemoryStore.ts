@@ -456,7 +456,10 @@ export class MemoryStore implements Store {
      */
     async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
         const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
-        const containerId: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
+        // container.timestamp - 10000 is a temporary fix for a bigger problem:
+        // Moving an entry to position 0 CAN (SOMETIMES) generate a timestamp that is less than the
+        // timestamp of the container itself, which would not be found without this (temporary) change.
+        const containerId: [number, number, number] = [container?.timestamp ? container.timestamp - 10000 : 0, container?.medallion ?? 0, container?.offset ?? 0];
         const lower = this.entries.lowerBound(muidTupleToString(containerId));
         const upper = this.entries.upperBound(muidTupleToString([asOfTs, containerId[1], containerId[2]]));
         let clearanceTime: Timestamp = 0;
