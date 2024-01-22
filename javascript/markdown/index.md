@@ -391,7 +391,26 @@ await instance.addBundler(bundler);
 ```
 
 ### Connecting to other instances
-TODO
+Start a Gink server that listens for websocket connections:
+```sh
+export GINK_PORT=8080 # or a different port you want to listen on
+npx gink
+```
+Once you have a server running, create a new instance and connect it to the server:
+```ts
+const store = new IndexedDbStore('example');
+const instance = new GinkInstance(store);
+
+await instance.connectTo("ws://localhost:8080"); // or wherever your server is hosted
+```
+The server and client should now sync commits. <br>
+<br>
+Clients can also connect to multiple Gink servers, which can ensure a very high degree of  availability if they are hosted using different providers.<br>
+
+```ts
+await instance.connectTo("ws://host1");
+await instance.connectTo("ws://host2");
+```
 
 ### Setting up Google OAuth for your application
 Gink allows for Google OAuth to login users to your application. All of the backend code and implementation has been done for you, as long as you supply the Client ID, Client Secret, and set the correct redirect URI in Google Cloud.<br>
