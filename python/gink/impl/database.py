@@ -11,10 +11,12 @@ from pwd import getpwuid
 from socket import gethostname
 from os import getuid, getpid
 from time import time, sleep
-from sys import stdout, argv
+from sys import stdout, argv, stdin, stderr
 from math import floor
 from logging import getLogger
 from re import fullmatch, IGNORECASE
+from termios import TCSADRAIN, tcsetattr, tcgetattr
+from tty import setraw
 
 # builders
 from .builders import SyncMessage, EntryBuilder, ContainerBuilder
@@ -264,6 +266,7 @@ class Database:
                         from_peer.send(outgoing_builder)
 
                 self._store.get_bundles(callback=callback)
+                from_peer.set_replied_to_greeting()
             elif sync_message.HasField("ack"):
                 acked_info = BundleInfo.from_ack(sync_message)
                 tracker = self._trackers.get(from_peer)
@@ -299,37 +302,63 @@ class Database:
         self._connections.add(connection)
         self._logger.debug("connection added")
 
-    def run(self, until: GenericTimestamp = None):
+    def run(self, until: GenericTimestamp = None, repl=False):
         """ Waits for activity on ports then exchanges data with peers. """
         self._logger.debug("starting run loop until %r", until)
+        fd = stdin.fileno()
+        input_buffer = []
+        old_settings = tcgetattr(fd)
         if until is not None:
             until = self.resolve_timestamp(until)
-        while until is None or self.get_now() < until:
-            # eventually will want to support epoll on platforms where its supported
-            readers: List[Union[Listener, Connection]] = []
-            for listener in self._listeners:
-                readers.append(listener)
-            for connection in list(self._connections):
-                if connection.is_closed():
-                    self._connections.remove(connection)
-                else:
-                    readers.append(connection)
-            try:
-                ready = select(readers, [], [], 0.1)
-            except KeyboardInterrupt:
-                return
-            for ready_reader in ready[0]:
-                if isinstance(ready_reader, Connection):
-                    for data in ready_reader.receive():
-                        self._receive_data(data, ready_reader)
-                elif isinstance(ready_reader, Listener):
-                    sync_message = self._store.get_chain_tracker().to_greeting_message()
-                    new_connection: Connection = ready_reader.accept(sync_message)
-                    self._connections.add(new_connection)
-                    self._logger.debug("accepted incoming connection from %s", new_connection)
-            for info, bundle_bytes in self._store.read_through_outbox():
-                if info not in self._sent_but_not_acked:
-                    self._broadcast_bundle(bundle_bytes, info, None)
+        if repl:
+            setraw(fd)
+        try:
+            while until is None or self.get_now() < until:
+                # eventually will want to support epoll on platforms where its supported
+                readers: List[Union[Listener, Connection]] = []
+                for listener in self._listeners:
+                    readers.append(listener)
+                for connection in list(self._connections):
+                    if connection.is_closed():
+                        self._connections.remove(connection)
+                    else:
+                        readers.append(connection)
+                if repl:
+                    readers.append(stdin)
+                try:
+                    ready_readers, _, _ = select(readers, [], [], 0.1)
+                except KeyboardInterrupt:
+                    return
+                for ready_reader in ready_readers:
+                    if isinstance(ready_reader, Connection):
+                        for data in ready_reader.receive():
+                            self._receive_data(data, ready_reader)
+                    elif isinstance(ready_reader, Listener):
+                        sync_message = self._store.get_chain_tracker().to_greeting_message()
+                        new_connection: Connection = ready_reader.accept(sync_message)
+                        self._connections.add(new_connection)
+                        self._logger.debug("accepted incoming connection from %s", new_connection)
+                    elif ready_reader is stdin:
+                        character = stdin.read(1)
+                        if character == '\r':
+                            print("\n\r", repr("".join(input_buffer)), sep="", file=stderr)
+                            input_buffer = []
+                        elif character == '\x03':
+                            return
+                        else:
+                            if len(repr(character)) == 3:
+                                input_buffer.append(character)
+                                stderr.write(character)
+                            else:
+                                stderr.write(repr(character))
+                            stderr.flush()
+                if bool([conn for conn in self._connections if conn.get_replied_to_greeting()]):
+                    for info, bundle_bytes in self._store.read_through_outbox():
+                        if info not in self._sent_but_not_acked:
+                            self._broadcast_bundle(bundle_bytes, info, None)
+        finally:
+            tcsetattr(fd, TCSADRAIN, old_settings)
+
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):
         """ Resets the database to a specific point in time.
