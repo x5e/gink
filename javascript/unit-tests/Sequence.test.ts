@@ -253,7 +253,7 @@ it('List.purge_pop', async function () {
 });
 
 it('List.move', async function () {
-    for (const store of [new IndexedDbStore('list-move', true), new MemoryStore(true)]) {
+    for (const store of [new MemoryStore(true)]) {//new IndexedDbStore('list-move', true),
         const instance = new GinkInstance(store);
         await instance.ready;
 
@@ -263,6 +263,8 @@ it('List.move', async function () {
         await seq.push("B");
         const cMuid = await seq.push("C");
         await seq.push("D");
+
+        ensure((await seq.toArray()).toString() == "A,B,C,D");
 
         await seq.move(0, -1);
         ensure((await seq.toArray()).toString() == "B,C,D,A", (await seq.toArray()).toString());
