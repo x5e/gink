@@ -285,12 +285,12 @@ class Database:
             Note that you'll still need to call "run" to actually accept those connections.
         """
         port = int(port)
-        self._logger.debug("starting to listen on %r:%r", ip_addr, port)
+        self._logger.info("starting to listen on %r:%r", ip_addr, port)
         self._listeners.add(Listener(WebsocketConnection, ip_addr=ip_addr, port=port))
 
     def connect_to(self, target: str):
         """ initiate a connection to another gink instance """
-        self._logger.debug("initating connection to %s", target)
+        self._logger.info("initating connection to %s", target)
         match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()
@@ -310,7 +310,7 @@ class Database:
         self._logger.debug("starting run loop until %r", until)
         if until is not None:
             until = self.resolve_timestamp(until)
-        context_manager = console or nullcontext
+        context_manager = console or nullcontext()
         with context_manager:
             while until is None or self.get_now() < until:
                 # eventually will want to support epoll on platforms where its supported

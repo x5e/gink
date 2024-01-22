@@ -11,7 +11,7 @@ from .impl.selectable_console import SelectableConsole
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", help="path to a database; created if doesn't exist")
-parser.add_argument("--verbosity", default="INFO", help="the log level to use, e.g. INFO or DEBUG")
+parser.add_argument("--verbosity", "-v", default="INFO", help="the log level to use, e.g. INFO or DEBUG")
 parser.add_argument("--format", default="lmdb", help="storage file format", choices=["lmdb", "binlog"])
 parser.add_argument("--set", help="set key/value in directory (default root) reading value from stdin")
 parser.add_argument("--get", help="get a value in the database (default root) and print to stdout")
@@ -28,12 +28,13 @@ parser.add_argument("--listen_on", "-l", nargs="?", const=True,
 parser.add_argument("--connect_to", "-c", nargs="+", help="remote instances to connect to")
 parser.add_argument("--show_arguments", action="store_true")
 parser.add_argument("--show_bundles", action="store_true")
-parser.add_argument("--repl", action="store_true", help="read-eval-print-loop")
+parser.add_argument("--repr", action="store_true", help="show repr of stored value when using --get")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
     exit(0)
-basicConfig(level=args.verbosity)
+basicConfig(format="\r[%(asctime)s.%(msecs)03d %(name)s:%(levelname)s] %(message)s",
+            level=args.verbosity, datefmt='%I:%M:%S')
 logger = getLogger()
 
 store: AbstractStore
@@ -77,7 +78,7 @@ if args.show_bundles:
     exit(0)
 
 if args.set:
-    value = args.value or stdin.read().rstrip()
+    value = stdin.read().rstrip()
     container = root
     key = args.set
     container.set(key, value, comment=args.comment)
@@ -86,7 +87,8 @@ if args.set:
 if args.get:
     container = root
     result = container.get(args.get, as_of=args.as_of)
-    print(result)
+    print(repr(result))
+    exit(0)
 
 if args.blame:
     if args.blame is True:
