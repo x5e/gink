@@ -195,7 +195,7 @@ await ps.include([box2.address, box3]);
 const is_contained = ps.contains([box1, box2])
 
 // returns a JavaScript Set of {[Muid, Muid],[Muid, Muid]...}
-const toSet = await ps.get_pairs();
+const toSet = await ps.getPairs();
 ```
 
 ### PairMap
@@ -253,16 +253,16 @@ await role.exclude(directory1);
 await role.exclude(box2);
 
 // returns true
-const is_contained = await role.contains(box1);
+const isIncluded = await role.isIncluded(box1);
 
 // returns a JavaScript Array of Gink Containers
-const asArray = await role.toArray();
+const asArray = await role.includedAsArray();
 
 // returns an async generator of all containers in the role.
-const members = await role.get_members();
+const members = role.getMembers();
 
 // iterating through the role members
-for (const member of members) {
+for await (const member of members) {
     const address = member.address;
     const instance = member.ginkInstance;
 
@@ -277,11 +277,11 @@ const property = await instance.createProperty();
 
 const directory = await instance.createDirectory();
 
-await property.set(directory, {"property": "example", "last_changed": "now"});
+await property.set(directory, new Map([["property", "example"], ["last_changed", "now"]]));
 
 // gets the property for this directory
 // in this case, {"property": "example", "last_changed": "now"}
-const dir_property = await property.get(directory);
+const dirProperty = await property.get(directory);
 
 // check if a property exists for a Container
 // returns true
@@ -292,14 +292,14 @@ await property.delete(directory);
 ```
 
 ### All Containers
-Most of these examples use a `Directory` for simplicity, but these operations can be performed on any container and have many applications.
+Most of these examples use a `Directory` for simplicity, but the following operations can be performed on any container and have many applications.
 
-#### Back in time
+#### As-Of Queries
 A parameter you may come across in many different functions of Gink is `asOf`. asOf can be used to look back to a specific time, or just look back to a specfic number of changes ago.
 ```ts
 // using a directory for this example,
 // but all containers can make use of timestamps.
-const directory = instance.createDirectory();
+const directory = await instance.createDirectory();
 
 // saving a timestamp before anything is added
 const time0 = instance.getNow();
@@ -311,22 +311,22 @@ await directory.set("A", "B");
 
 // at time0, the directory was empty.
 // this will return Map{}
-const emptyMap = directory.toMap(time0);
+const emptyMap = await directory.toMap(time0);
 
 // at time1, the directory did not have the key "A"
 // this will return false
-let hasA = directory.has("A", time1);
+let hasAMuid = await directory.has("A", time1);
 
 // instead of saving timestamps, you can
 // use negative numbers to indicate how
 // many changes back you'd like to look.
 // Since adding "A": "B" was the last change,
 // this looks back before it, so it will return false.
-let hasA = directory.has("A", -1);
+let hasALast = await directory.has("A", -1);
 
 // to visualize, the map at asOf=-1 would look like
 // Map{"foo"=>"bar"}
-const fooMap = directory.toMap(-1);
+const asMap = await directory.toMap(-1);
 ```
 
 #### Clear
@@ -346,7 +346,7 @@ const hasA = await directory.has("A");
 
 // using the timestamp of the muid to look back before the clearance.
 // returns true
-const hasABeforeClear = await directory.has("A", clearMuid.timestamp)
+const hasABeforeClear = await directory.has("A", clearMuid.timestamp);
 ```
 
 #### toJson
@@ -372,6 +372,8 @@ const asJSON = await directory.toJson();
 Without specifying a bundler when performing an action, Gink defaults to immediately committing each change as they happen.\
 If you would like to control which changes are bundled together and control when the bundle is committed to the database, here is an example:
 ```ts
+const{ Bundler } = require("@x5e/gink");
+
 const directory = await instance.createDirectory();
 
 const bundler = new Bundler();
@@ -435,4 +437,5 @@ Here are the environment variables you need to set for Gink:<br>
 OAUTH_CLIENT_ID=your_client_id<br>
 OAUTH_CLIENT_SECRET=your_client_secret<br>
 OAUTH_SCOPES=your_scopes,separated_by_comma,no_spaces<br>
+<br>
 That's it!
