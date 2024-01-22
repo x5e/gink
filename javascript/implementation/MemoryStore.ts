@@ -261,7 +261,8 @@ export class MemoryStore implements Store {
                         sourceList: found.sourceList,
                         targetList: found.targetList,
                     };
-                    this.entries.set(muidTupleToString(destEntry.placementId), destEntry);
+                    // Need to store keys using destinations to order
+                    this.entries.set(muidTupleToString([dest, destEntry.placementId[1], destEntry.placementId[2]]), destEntry);
                 }
                 if (movementBuilder.getPurge() || !this.keepingHistory) {
                     this.entries.delete(muidTupleToString(entryId));
