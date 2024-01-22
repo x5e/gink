@@ -15,8 +15,8 @@ from sys import stdout, argv, stdin, stderr
 from math import floor
 from logging import getLogger
 from re import fullmatch, IGNORECASE
-from termios import TCSADRAIN, tcsetattr, tcgetattr
-from tty import setraw
+from contextlib import nullcontext
+
 
 # builders
 from .builders import SyncMessage, EntryBuilder, ContainerBuilder
@@ -36,6 +36,7 @@ from .chain_tracker import ChainTracker
 from .attribution import Attribution
 from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
+from .selectable_console import SelectableConsole
 
 
 class Database:
@@ -306,13 +307,11 @@ class Database:
         """ Waits for activity on ports then exchanges data with peers. """
         self._logger.debug("starting run loop until %r", until)
         fd = stdin.fileno()
-        input_buffer = []
-        old_settings = tcgetattr(fd)
+
         if until is not None:
             until = self.resolve_timestamp(until)
-        if repl:
-            setraw(fd)
-        try:
+        context_manager = SelectableConsole() if repl else nullcontext
+        with context_manager:
             while until is None or self.get_now() < until:
                 # eventually will want to support epoll on platforms where its supported
                 readers: List[Union[Listener, Connection]] = []
@@ -323,12 +322,9 @@ class Database:
                         self._connections.remove(connection)
                     else:
                         readers.append(connection)
-                if repl:
-                    readers.append(stdin)
-                try:
-                    ready_readers, _, _ = select(readers, [], [], 0.1)
-                except KeyboardInterrupt:
-                    return
+                if isinstance(context_manager, SelectableConsole):
+                    readers.append(context_manager)
+                ready_readers, _, _ = select(readers, [], [], 0.1)
                 for ready_reader in ready_readers:
                     if isinstance(ready_reader, Connection):
                         for data in ready_reader.receive():
@@ -337,27 +333,13 @@ class Database:
                         sync_message = self._store.get_chain_tracker().to_greeting_message()
                         new_connection: Connection = ready_reader.accept(sync_message)
                         self._connections.add(new_connection)
-                        self._logger.debug("accepted incoming connection from %s", new_connection)
-                    elif ready_reader is stdin:
-                        character = stdin.read(1)
-                        if character == '\r':
-                            print("\n\r", repr("".join(input_buffer)), sep="", file=stderr)
-                            input_buffer = []
-                        elif character == '\x03':
-                            return
-                        else:
-                            if len(repr(character)) == 3:
-                                input_buffer.append(character)
-                                stderr.write(character)
-                            else:
-                                stderr.write(repr(character))
-                            stderr.flush()
+                        self._logger.info("accepted incoming connection from %s", new_connection)
+                    elif isinstance(ready_reader, SelectableConsole):
+                        ready_reader.call_when_ready()
                 if bool([conn for conn in self._connections if conn.get_replied_to_greeting()]):
                     for info, bundle_bytes in self._store.read_through_outbox():
                         if info not in self._sent_but_not_acked:
                             self._broadcast_bundle(bundle_bytes, info, None)
-        finally:
-            tcsetattr(fd, TCSADRAIN, old_settings)
 
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):

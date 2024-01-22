@@ -132,4 +132,4 @@ if args.listen_on:
 for target in (args.connect_to or []):
     database.connect_to(target)
 
-database.run(repl=True)
+database.run(repl=stdin.isatty())
