@@ -245,7 +245,7 @@ export class GinkInstance {
         const commitInfo: BundleInfo = {
             medallion: this.myChain[0],
             chainStart: this.myChain[1],
-            timestamp: seenThrough >= nowMicros ? seenThrough + 1 : nowMicros,
+            timestamp: seenThrough >= nowMicros ? seenThrough + 10 : nowMicros,
             priorTime: seenThrough,
         };
         bundler.seal(commitInfo);

@@ -251,3 +251,26 @@ it('List.purge_pop', async function () {
         ensure(matches(["bar"], await seq.toArray(Infinity, beforeFirstPop)));
     }
 });
+
+it('List.move', async function () {
+    for (const store of [new IndexedDbStore('list-move', true), new MemoryStore(true)]) {
+        const instance = new GinkInstance(store);
+        await instance.ready;
+
+        const seq = await instance.createSequence();
+
+        await seq.push("A");
+        await seq.push("B");
+        const cMuid = await seq.push("C");
+        await seq.push("D");
+
+        await seq.move(0, -1);
+        ensure((await seq.toArray()).toString() == "B,C,D,A", (await seq.toArray()).toString());
+
+        await seq.move(2, 0);
+        ensure((await seq.toArray()).toString() == "D,B,C,A", (await seq.toArray()).toString());
+
+        await seq.move(cMuid, 1);
+        ensure((await seq.toArray()).toString() == "D,C,B,A", (await seq.toArray()).toString());
+    }
+});
