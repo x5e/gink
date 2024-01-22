@@ -253,7 +253,7 @@ it('List.purge_pop', async function () {
 });
 
 it('List.move', async function () {
-    for (const store of [new MemoryStore(true)]) {//new IndexedDbStore('list-move', true),
+    for (const store of [new IndexedDbStore('list-move', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
         await instance.ready;
 
