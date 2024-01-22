@@ -170,7 +170,7 @@ await ks.update(["key2", 3, "key4"]);
 const entries = ks.entries();
 
 // returns this key set as a JavaScript Set
-const asSet = ks.toSet();
+const asSet = await ks.toSet();
 ```
 
 ### PairSet
