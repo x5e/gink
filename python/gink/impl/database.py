@@ -11,10 +11,12 @@ from pwd import getpwuid
 from socket import gethostname
 from os import getuid, getpid
 from time import time, sleep
-from sys import stdout, argv
+from sys import stdout, argv, stdin, stderr
 from math import floor
 from logging import getLogger
 from re import fullmatch, IGNORECASE
+from contextlib import nullcontext
+
 
 # builders
 from .builders import SyncMessage, EntryBuilder, ContainerBuilder
@@ -34,6 +36,7 @@ from .chain_tracker import ChainTracker
 from .attribution import Attribution
 from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
+from .selectable_console import SelectableConsole
 
 
 class Database:
@@ -264,6 +267,7 @@ class Database:
                         from_peer.send(outgoing_builder)
 
                 self._store.get_bundles(callback=callback)
+                from_peer.set_replied_to_greeting()
             elif sync_message.HasField("ack"):
                 acked_info = BundleInfo.from_ack(sync_message)
                 tracker = self._trackers.get(from_peer)
@@ -281,12 +285,12 @@ class Database:
             Note that you'll still need to call "run" to actually accept those connections.
         """
         port = int(port)
-        self._logger.debug("starting to listen on %r:%r", ip_addr, port)
+        self._logger.info("starting to listen on %r:%r", ip_addr, port)
         self._listeners.add(Listener(WebsocketConnection, ip_addr=ip_addr, port=port))
 
     def connect_to(self, target: str):
         """ initiate a connection to another gink instance """
-        self._logger.debug("initating connection to %s", target)
+        self._logger.info("initating connection to %s", target)
         match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()
@@ -299,37 +303,46 @@ class Database:
         self._connections.add(connection)
         self._logger.debug("connection added")
 
-    def run(self, until: GenericTimestamp = None):
+    def run(self,
+            until: GenericTimestamp = None,
+            console: Optional[SelectableConsole]=None):
         """ Waits for activity on ports then exchanges data with peers. """
         self._logger.debug("starting run loop until %r", until)
         if until is not None:
             until = self.resolve_timestamp(until)
-        while until is None or self.get_now() < until:
-            # eventually will want to support epoll on platforms where its supported
-            readers: List[Union[Listener, Connection]] = []
-            for listener in self._listeners:
-                readers.append(listener)
-            for connection in list(self._connections):
-                if connection.is_closed():
-                    self._connections.remove(connection)
-                else:
-                    readers.append(connection)
-            try:
-                ready = select(readers, [], [], 0.1)
-            except KeyboardInterrupt:
-                return
-            for ready_reader in ready[0]:
-                if isinstance(ready_reader, Connection):
-                    for data in ready_reader.receive():
-                        self._receive_data(data, ready_reader)
-                elif isinstance(ready_reader, Listener):
-                    sync_message = self._store.get_chain_tracker().to_greeting_message()
-                    new_connection: Connection = ready_reader.accept(sync_message)
-                    self._connections.add(new_connection)
-                    self._logger.debug("accepted incoming connection from %s", new_connection)
-            for info, bundle_bytes in self._store.read_through_outbox():
-                if info not in self._sent_but_not_acked:
-                    self._broadcast_bundle(bundle_bytes, info, None)
+        context_manager = console or nullcontext()
+        with context_manager:
+            while until is None or self.get_now() < until:
+                # eventually will want to support epoll on platforms where its supported
+                readers: List[Union[Listener, Connection, SelectableConsole]] = []
+                for listener in self._listeners:
+                    readers.append(listener)
+                for connection in list(self._connections):
+                    if connection.is_closed():
+                        self._connections.remove(connection)
+                    else:
+                        readers.append(connection)
+                if isinstance(console, SelectableConsole):
+                    readers.append(console)
+                if console:
+                    console.refresh()
+                ready_readers, _, _ = select(readers, [], [], 0.1)
+                for ready_reader in ready_readers:
+                    if isinstance(ready_reader, Connection):
+                        for data in ready_reader.receive():
+                            self._receive_data(data, ready_reader)
+                    elif isinstance(ready_reader, Listener):
+                        sync_message = self._store.get_chain_tracker().to_greeting_message()
+                        new_connection: Connection = ready_reader.accept(sync_message)
+                        self._connections.add(new_connection)
+                        self._logger.info("accepted incoming connection from %s", new_connection)
+                    elif isinstance(ready_reader, SelectableConsole):
+                        ready_reader.call_when_ready()
+                if bool([conn for conn in self._connections if conn.get_replied_to_greeting()]):
+                    for info, bundle_bytes in self._store.read_through_outbox():
+                        if info not in self._sent_but_not_acked:
+                            self._broadcast_bundle(bundle_bytes, info, None)
+
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):
         """ Resets the database to a specific point in time.

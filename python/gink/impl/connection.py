@@ -33,6 +33,7 @@ class Connection(ABC):
         self._port = port
         self._logger = getLogger(self.__class__.__name__)
         self._closed = False
+        self._replied_to_greeting = False
 
     def fileno(self):
         """ Return the file descriptor of the underlying socket.
@@ -42,6 +43,12 @@ class Connection(ABC):
     def is_closed(self) -> bool:
         """ a way to check if the connection is still active """
         return self._closed
+
+    def set_replied_to_greeting(self):
+        self._replied_to_greeting = True
+
+    def get_replied_to_greeting(self) -> bool:
+        return self._replied_to_greeting
 
     @abstractmethod
     def receive(self) -> Iterable[SyncMessage]:
