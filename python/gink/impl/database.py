@@ -314,7 +314,7 @@ class Database:
         with context_manager:
             while until is None or self.get_now() < until:
                 # eventually will want to support epoll on platforms where its supported
-                readers: List[Union[Listener, Connection]] = []
+                readers: List[Union[Listener, Connection, SelectableConsole]] = []
                 for listener in self._listeners:
                     readers.append(listener)
                 for connection in list(self._connections):
