@@ -59,6 +59,7 @@ export class MemoryStore implements Store {
     private removals: TreeMap<string, Removal>; // RemovalId => Removal
     private removalsByPlacementId: Map<string, Removal>; // EntryId => Removal
     private entries: TreeMap<string, Entry>; // PlacementId => Entry
+    private entriesByContainerKeyPlacement: TreeMap<string, string>; // ContainerID,Key,PlacementId => PlacementId
 
     constructor(private keepingHistory = true) {
         this.ready = this.initialize();
@@ -75,7 +76,7 @@ export class MemoryStore implements Store {
         }
 
         while (!lower.equals(upper)) {
-            this.entries.delete(lower.key);
+            this.removeEntry(lower.key);
             lower.next();
         }
     }
@@ -98,6 +99,7 @@ export class MemoryStore implements Store {
         this.removals = new TreeMap();
         this.removalsByPlacementId = new Map();
         this.entries = new TreeMap();
+        this.entriesByContainerKeyPlacement = new TreeMap();
         return Promise.resolve();
     }
 
@@ -231,13 +233,13 @@ export class MemoryStore implements Store {
                             this.removalsByPlacementId.set(muidTupleToString(placementId), removal);
                             const entryToMark = this.entries.get(muidTupleToString(search.entryId));
                             entryToMark.deletion = true;
-                            this.entries.set(muidTupleToString(placementId), entryToMark);
+                            this.addEntry(entryToMark);
                         } else {
-                            this.entries.delete(muidTupleToString(placementId));
+                            this.removeEntry(muidTupleToString(placementId));
                         }
                     }
                 }
-                this.entries.set(muidTupleToString(placementId), entry);
+                this.addEntry(entry);
                 continue;
             }
             if (changeBuilder.hasMovement()) {
@@ -262,10 +264,10 @@ export class MemoryStore implements Store {
                         targetList: found.targetList,
                     };
                     // Need to store keys using destinations to order
-                    this.entries.set(muidTupleToString([dest, destEntry.placementId[1], destEntry.placementId[2]]), destEntry);
+                    this.addEntry(destEntry);
                 }
                 if (movementBuilder.getPurge() || !this.keepingHistory) {
-                    this.entries.delete(muidTupleToString(entryId));
+                    this.removeEntry(muidTupleToString(entryId));
                 } else {
                     const removal: Removal = {
                         containerId,
@@ -292,7 +294,7 @@ export class MemoryStore implements Store {
                         // Have to delete the previous key, because iteration will be broken if the
                         // current key is deleted.
                         if (prevKey && muidTupleToString(prevEntry.containerId) == muidToString(container)) {
-                            this.entries.delete(prevKey);
+                            this.removeEntry(prevKey);
                         }
                         if (it.equals(this.entries.end())) break;
                         prevKey = it.key;
@@ -456,12 +458,10 @@ export class MemoryStore implements Store {
      */
     async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
         const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
-        // container.timestamp - 10000 is a temporary fix for a bigger problem:
-        // Moving an entry to position 0 CAN (SOMETIMES) generate a timestamp that is less than the
-        // timestamp of the container itself, which would not be found without this (temporary) change.
-        const containerId: [number, number, number] = [container?.timestamp ? container.timestamp - 10000 : 0, container?.medallion ?? 0, container?.offset ?? 0];
-        const lower = this.entries.lowerBound(muidTupleToString(containerId));
-        const upper = this.entries.upperBound(muidTupleToString([asOfTs, containerId[1], containerId[2]]));
+        const containerId: [number, number, number] = [container?.timestamp ? container.timestamp : 0, container?.medallion ?? 0, container?.offset ?? 0];
+        const lower = this.entriesByContainerKeyPlacement.lowerBound(muidTupleToString(containerId));
+        const upper = this.entriesByContainerKeyPlacement.upperBound(`${muidTupleToString(containerId)},${asOfTs}`);
+
         let clearanceTime: Timestamp = 0;
         const upperClearance = this.clearances.last();
         if (upperClearance) {
@@ -475,10 +475,11 @@ export class MemoryStore implements Store {
         const needed = through < 0 ? -through : through + 1;
         const asOfBeforeClear = asOfTs <= clearanceTime;
         while (returning.length < needed) {
-            const entry: Entry = from.value;
+            const entryKey: string = from.value;
             // Specifically checking whether timestamp is before asOf, because treemap always finds
             // the entry GREATER than upper bound.
-            if (entry) {
+            if (entryKey) {
+                const entry = this.entries.get(entryKey);
                 const entryAfterClearance = entry.entryId[0] >= clearanceTime;
                 if (entry.entryId[0] < asOfTs && (asOfBeforeClear ? true : entryAfterClearance) &&
                     muidToString(container) == muidTupleToString(entry.containerId)) {
@@ -490,6 +491,23 @@ export class MemoryStore implements Store {
             through < 0 ? from.prev() : from.next();
         }
         return returning;
+    }
+
+    /**
+     * Since we have to use multiple maps to act as indexes, this method
+     * should eliminate some of the pain of adding entries to multiple maps.
+     */
+    addEntry(entry: Entry) {
+        this.entries.set(muidTupleToString(entry.placementId), entry);
+        const indexedKey = `${muidTupleToString(entry.containerId)},${entry.effectiveKey},${muidTupleToString(entry.placementId)}`;
+        this.entriesByContainerKeyPlacement.set(indexedKey, muidTupleToString(entry.placementId));
+    }
+
+    removeEntry(entryId: string) {
+        const entry = this.entries.get(entryId);
+        const indexedKey = `${muidTupleToString(entry.containerId)},${entry.effectiveKey},${muidTupleToString(entry.placementId)}`;
+        this.entries.delete(entryId);
+        this.entriesByContainerKeyPlacement.delete(indexedKey);
     }
 
     async getEntriesBySourceOrTarget(): Promise<Entry[]> {
