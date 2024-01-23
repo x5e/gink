@@ -3,7 +3,10 @@ import { GinkInstance, Bundler, IndexedDbStore, Directory, MemoryStore } from ".
 import { ensure } from "../implementation/utils";
 
 it('set and get Basic data', async function () {
-    for (const store of [new IndexedDbStore('Directory.test1', true), new MemoryStore(true)]) {
+    for (const store of [
+            new IndexedDbStore('Directory.test1', true),
+            new MemoryStore(true),
+        ]) {
         const instance = new GinkInstance(store);
         await instance.ready;
         const schema = await instance.createDirectory();
@@ -26,6 +29,41 @@ it('set and get Basic data', async function () {
         await store.close();
     }
 });
+
+it('set and get data in two directories', async function () {
+    for (const store of
+            [
+                new IndexedDbStore('two.directories', true),
+                new MemoryStore(true),
+            ]) {
+        const instance = new GinkInstance(store);
+        await instance.ready;
+        const dir1 = await instance.createDirectory();
+        const dir2 = await instance.createDirectory();
+
+        // set a value
+        await dir1.set("key-a", "value1");
+        await dir2.set("key-a", "value2");
+        await dir1.set("key-b", "value3")
+
+        // check that the desired result exists in the database
+        const result1 = await dir1.get("key-a");
+        ensure(result1 == "value1");
+
+        const result2 = await dir2.get("key-a");
+        ensure(result2 == "value2");
+
+        const result3 = await dir1.size();
+        ensure(result3 == 2);
+
+        const result4 = await dir2.has("key-b");
+        ensure(!result4);
+
+        await store.close();
+    }
+});
+
+
 
 it('set multiple key/value pairs in one change-set', async function () {
     for (const store of [new IndexedDbStore('Directory.test2', true), new MemoryStore(true)]) {
