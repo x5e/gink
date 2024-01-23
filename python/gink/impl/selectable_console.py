@@ -1,8 +1,7 @@
 from sys import stdin, stderr
 from termios import TCSADRAIN, tcsetattr, tcgetattr
 from tty import setraw
-from typing import Optional, TextIO
-from codeop import CommandCompiler, compile_command
+from typing import Optional, TextIO, List
 from code import InteractiveInterpreter
 from logging import getLogger
 
@@ -10,7 +9,7 @@ class SelectableConsole(InteractiveInterpreter):
 
     def __init__(self, locals, input_handle: TextIO = stdin, output_handle: TextIO = stderr):
         super().__init__(locals)
-        self._buffer: list[str] = []
+        self._buffer: List[str] = []
         self._input: TextIO = input_handle
         self._output: TextIO = output_handle
         self._settings: Optional[list] = None
