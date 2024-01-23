@@ -12,11 +12,11 @@ npm install @x5e/gink
 
 ## Quickstart
 
-Example - create a directory\
+Example - create a `Directory`\
 Take a look at other examples below for a more in depth look at all of the available data structures.
 
-```ts
-import { GinkInstance, IndexedDbStore } from "@x5e/gink";
+```js
+const { IndexedDbStore, GinkInstance } = require("@x5e/gink");
 
 // Initialize document store and database
 const store = new IndexedDbStore('directory-example');
@@ -34,9 +34,9 @@ const result = await directory.get("key1");
 ```
 
 # Examples
-All examples will need a store and `GinkInstance`:
-```ts
-import { IndexedDbStore, GinkInstance } from "@x5e/gink";
+All examples will need a `Store` and `GinkInstance`:
+```js
+const { IndexedDbStore, GinkInstance } = require("@x5e/gink");
 
 const store = new IndexedDbStore('examples');
 const instance = new GinkInstance(store);
@@ -48,7 +48,7 @@ const instance = new GinkInstance(store);
 A `Box` is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.
 ```ts
 // Create a Box
-const aBox: Box = await instance.createBox();
+const aBox = await instance.createBox();
 
 // Set the value in the box
 await aBox.set("example value");
@@ -67,8 +67,8 @@ const no_result = await aBox.get();
 ```
 
 ### Directory
-The `Directory` aims to mimic the functionality of a TypeScript object. If you know how to use an Object, you should already know how to use the directory!
-```ts
+The `Directory` aims to mimic the functionality and API of a JavaScript Map.
+```js
 const directory = await instance.createDirectory();
 
 // As seen in the quick start, some of the basic
@@ -121,7 +121,11 @@ const beginning = await seq.at(0);
 // A Muid is basically the ID of that change in the db.
 // Just as you saw numbers used as the index to retrieve values,
 // the muid of the entry can also be used to retrieve the value.
-const entries = await seq.entries();
+const entries = seq.entries();
+// Iterate through entries like this:
+for await (const entry of entries) {
+    console.log(entry);
+}
 
 // Reordering sequences
 // Moves position 0 ("B") to the last position
@@ -166,7 +170,7 @@ await ks.update(["key2", 3, "key4"]);
 const entries = ks.entries();
 
 // returns this key set as a JavaScript Set
-const asSet = ks.toSet();
+const asSet = await ks.toSet();
 ```
 
 ### PairSet
@@ -191,7 +195,7 @@ await ps.include([box2.address, box3]);
 const is_contained = ps.contains([box1, box2])
 
 // returns a JavaScript Set of {[Muid, Muid],[Muid, Muid]...}
-const toSet = await ps.get_pairs();
+const toSet = await ps.getPairs();
 ```
 
 ### PairMap
@@ -249,16 +253,16 @@ await role.exclude(directory1);
 await role.exclude(box2);
 
 // returns true
-const is_contained = await role.contains(box1);
+const isIncluded = await role.isIncluded(box1);
 
 // returns a JavaScript Array of Gink Containers
-const asArray = await role.toArray();
+const asArray = await role.includedAsArray();
 
 // returns an async generator of all containers in the role.
-const members = await role.get_members();
+const members = role.getMembers();
 
 // iterating through the role members
-for (const member of members) {
+for await (const member of members) {
     const address = member.address;
     const instance = member.ginkInstance;
 
@@ -273,11 +277,11 @@ const property = await instance.createProperty();
 
 const directory = await instance.createDirectory();
 
-await property.set(directory, {"property": "example", "last_changed": "now"});
+await property.set(directory, new Map([["property", "example"], ["last_changed", "now"]]));
 
 // gets the property for this directory
 // in this case, {"property": "example", "last_changed": "now"}
-const dir_property = await property.get(directory);
+const dirProperty = await property.get(directory);
 
 // check if a property exists for a Container
 // returns true
@@ -288,14 +292,14 @@ await property.delete(directory);
 ```
 
 ### All Containers
-Most of these examples use a `Directory` for simplicity, but these operations can be performed on any container and have many applications.
+Most of these examples use a `Directory` for simplicity, but the following operations can be performed on any container and have many applications.
 
-#### Back in time
+#### As-Of Queries
 A parameter you may come across in many different functions of Gink is `asOf`. asOf can be used to look back to a specific time, or just look back to a specfic number of changes ago.
 ```ts
 // using a directory for this example,
 // but all containers can make use of timestamps.
-const directory = instance.createDirectory();
+const directory = await instance.createDirectory();
 
 // saving a timestamp before anything is added
 const time0 = instance.getNow();
@@ -307,22 +311,22 @@ await directory.set("A", "B");
 
 // at time0, the directory was empty.
 // this will return Map{}
-const emptyMap = directory.toMap(time0);
+const emptyMap = await directory.toMap(time0);
 
 // at time1, the directory did not have the key "A"
 // this will return false
-let hasA = directory.has("A", time1);
+let hasAMuid = await directory.has("A", time1);
 
 // instead of saving timestamps, you can
 // use negative numbers to indicate how
 // many changes back you'd like to look.
 // Since adding "A": "B" was the last change,
 // this looks back before it, so it will return false.
-let hasA = directory.has("A", -1);
+let hasALast = await directory.has("A", -1);
 
 // to visualize, the map at asOf=-1 would look like
 // Map{"foo"=>"bar"}
-const fooMap = directory.toMap(-1);
+const asMap = await directory.toMap(-1);
 ```
 
 #### Clear
@@ -342,7 +346,7 @@ const hasA = await directory.has("A");
 
 // using the timestamp of the muid to look back before the clearance.
 // returns true
-const hasABeforeClear = await directory.has("A", clearMuid.timestamp)
+const hasABeforeClear = await directory.has("A", clearMuid.timestamp);
 ```
 
 #### toJson
@@ -368,6 +372,8 @@ const asJSON = await directory.toJson();
 Without specifying a bundler when performing an action, Gink defaults to immediately committing each change as they happen.\
 If you would like to control which changes are bundled together and control when the bundle is committed to the database, here is an example:
 ```ts
+const{ Bundler } = require("@x5e/gink");
+
 const directory = await instance.createDirectory();
 
 const bundler = new Bundler();
@@ -385,7 +391,26 @@ await instance.addBundler(bundler);
 ```
 
 ### Connecting to other instances
-TODO
+Start a Gink server that listens for websocket connections:
+```sh
+export GINK_PORT=8080 # or a different port you want to listen on
+npx gink
+```
+Once you have a server running, create a new instance and connect it to the server:
+```ts
+const store = new IndexedDbStore('example');
+const instance = new GinkInstance(store);
+
+await instance.connectTo("ws://localhost:8080"); // or wherever your server is hosted
+```
+The server and client should now sync commits. <br>
+<br>
+Clients can also connect to multiple Gink servers, which can ensure a very high degree of  availability if they are hosted using different providers.<br>
+
+```ts
+await instance.connectTo("ws://host1");
+await instance.connectTo("ws://host2");
+```
 
 ### Setting up Google OAuth for your application
 Gink allows for Google OAuth to login users to your application. All of the backend code and implementation has been done for you, as long as you supply the Client ID, Client Secret, and set the correct redirect URI in Google Cloud.<br>
@@ -399,7 +424,7 @@ If you are already familiar with Google Cloud:<br>
 Create a new Google Cloud project,<br>
 Configure the consent screen,<br>
 Configure a new credential and save the id and secret<br>
-**IMPORTANT**: Add 'http://localhost:8080/oauth2callback' and (if applicable) 'https://yourginkserver.com/oauth2callback' the Authorized Redirect URIs.<br>
+**IMPORTANT**: Add 'http://localhost:8080/oauth2callback' and (if applicable) 'https://yourginkserver.com/oauth2callback' to Authorized Redirect URIs.<br>
 Put the client id and client secret in these ENV variables:<br>
 OAUTH_CLIENT_ID=your_client_id<br>
 OAUTH_CLIENT_SECRET=your_client_secret<br>
@@ -417,7 +442,7 @@ On the first page, add "googleusercontent.com" to **Authorized domain 1**. Also,
 The scopes are very important, but they are also completely dependent on what type of application you are developing. Have a look through the list and identify scopes you will need to access. Make note of these urls, as you will need to add them as an ENV variable for Gink.<br>
 Head to the next page, add a few test users (probably just your team), then you are done with the consent screen.<br>
 
-**Step 3**: Add new a credential
+**Step 3**: Add new a credential<br>
 In the search bar at the top of the console, type "**Credentials**" and click on the first link that pops up.
 Select **OAuth client ID**.
 Set Application Type to the type of application you are developing (probably **Web Application**) and name your client whatever your project is called.
@@ -431,4 +456,5 @@ Here are the environment variables you need to set for Gink:<br>
 OAUTH_CLIENT_ID=your_client_id<br>
 OAUTH_CLIENT_SECRET=your_client_secret<br>
 OAUTH_SCOPES=your_scopes,separated_by_comma,no_spaces<br>
+<br>
 That's it!
