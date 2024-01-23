@@ -367,24 +367,30 @@ export class MemoryStore implements Store {
         if (clearancesSearch) {
             clearanceTime = clearancesSearch[1].clearanceId[0];
         }
-
         const semanticKey = keyToSemanticKey(key);
-        const lower = this.entries.lowerBound(muidTupleToString(desiredSrc));
-        const upper = this.entries.upperBound(muidTupleToString([asOfTs, desiredSrc[1], desiredSrc[2]]));
+        const lower = this.entriesByContainerKeyPlacement.lowerBound(muidTupleToString(desiredSrc));
+        // Using a tilde ~ to signify a max value for that section of the key
+        // Since we are dealing with string comparisons, "Infinity" is a pretty low value,
+        // where ~ should have a higher value than everything but DEL.
+        const upper = this.entriesByContainerKeyPlacement.upperBound(`${muidTupleToString(desiredSrc)},~,${asOfTs == Infinity ? "~" : asOfTs}`);
         const asOfBeforeClear = asOfTs <= clearanceTime;
-        let entry: Entry | undefined = undefined;
-        while (!lower.equals(upper)) {
-            if (lower.value && lower.value.effectiveKey.toString() == semanticKey.toString() && !lower.value.deletion &&
-                lower.value.entryId[0] < asOfTs) {
-                const entryAfterClearance = lower.value.entryId[0] >= clearanceTime;
-                if (asOfBeforeClear ? true : entryAfterClearance) {
-                    entry = lower.value;
-                    break;
+        let found: Entry | undefined = undefined;
+        while (lower) {
+            if (lower.value) {
+                const entry = this.entries.get(lower.value);
+                if (entry.effectiveKey.toString() == semanticKey.toString() && !entry.deletion
+                    && entry.entryId[0] < asOfTs) {
+                    const entryAfterClearance = entry.entryId[0] >= clearanceTime;
+                    if (asOfBeforeClear ? true : entryAfterClearance) {
+                        found = entry;
+                        break;
+                    }
                 }
             }
+            if (lower.equals(upper)) break;
             lower.next();
         }
-        return entry;
+        return found;
     }
 
     async getCommits(callBack: (commitBytes: BundleBytes, commitInfo: BundleInfo) => void) {
@@ -409,12 +415,17 @@ export class MemoryStore implements Store {
         if (upperClearance) {
             clearanceTime = upperClearance[1].clearanceId[0];
         }
-        const lower = this.entries.lowerBound(muidTupleToString([Math.abs(desiredSrc[0]), Math.abs(desiredSrc[1]), Behavior.DIRECTORY]));
-        const upper = this.entries.upperBound(muidTupleToString([asOfTs, Math.abs(desiredSrc[1]), Behavior.DIRECTORY]));
+        const lower = this.entriesByContainerKeyPlacement.lowerBound(muidTupleToString(desiredSrc));
+
         const result = new Map();
         while (lower) {
-            const entry = <Entry>lower.value;
-            if (entry) {
+            if (lower.key) {
+                // Break if we enter the entries for another container
+                if (lower.key.split(",")[0] != muidTupleToString(desiredSrc)) break;
+            }
+            const entryKey: string = lower.value;
+            if (entryKey) {
+                const entry = this.entries.get(entryKey);
                 if (entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
                     entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY) {
                     let key: Muid | string | number | Uint8Array | [];
@@ -443,7 +454,7 @@ export class MemoryStore implements Store {
                     }
                 }
             }
-            if (lower.equals(upper)) break;
+            if (lower.equals(this.entriesByContainerKeyPlacement.end())) break;
             lower.next();
         }
         return result;
@@ -460,6 +471,8 @@ export class MemoryStore implements Store {
         const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const containerId: [number, number, number] = [container?.timestamp ? container.timestamp : 0, container?.medallion ?? 0, container?.offset ?? 0];
         const lower = this.entriesByContainerKeyPlacement.lowerBound(muidTupleToString(containerId));
+        // In getKeyedEntries I used a ~ to represent a max value in the key,
+        // but sequences only use timestamps for effective keys.
         const upper = this.entriesByContainerKeyPlacement.upperBound(`${muidTupleToString(containerId)},${asOfTs}`);
 
         let clearanceTime: Timestamp = 0;
@@ -511,7 +524,7 @@ export class MemoryStore implements Store {
     }
 
     async getEntriesBySourceOrTarget(): Promise<Entry[]> {
-        throw Error("not implemented");
+        throw new Error("not implemented");
     }
 
     async close(): Promise<void> {
@@ -522,7 +535,9 @@ export class MemoryStore implements Store {
         delete this.clearances;
         delete this.containers;
         delete this.removals;
+        delete this.removalsByPlacementId;
         delete this.entries;
+        delete this.entriesByContainerKeyPlacement;
         return Promise.resolve();
     }
 

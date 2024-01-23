@@ -7,7 +7,9 @@ all: python/gink/builders javascript/proto javascript/tsc.out javascript/webpack
 .PHONY: clean running-as-root install-dependencies install-debian-packages
 
 clean:
-	rm -rf javascript/proto javascript/webpack.out javascript/tsc.out python/gink/builders 
+	rm -rf javascript/proto javascript/webpack.out javascript/tsc.out python/gink/builders
+
+rebuild: clean all
 
 running-as-root:
 	bash -c 'test `id -u` -eq 0'
