@@ -227,6 +227,9 @@ it('Directory.clear', async function () {
         if (asMapBeforeClear.has("B") || !asMapBeforeClear.has("A")) {
             throw new Error("busted");
         }
+        // Ensure getEntryByKey works the same way
+        ensure(await directory.get("A", clearMuid.timestamp));
+        ensure(!(await directory.get("B", clearMuid.timestamp)));
         await store.close();
     }
 }, 1000 * 1000 * 1000);

@@ -6,7 +6,8 @@ import {
     muidToTuple,
     muidTupleToMuid,
     muidTupleToString,
-    unwrapValue
+    unwrapValue,
+    sameData
 } from "./utils";
 import {
     AsOf,
@@ -368,27 +369,20 @@ export class MemoryStore implements Store {
             clearanceTime = clearancesSearch[1].clearanceId[0];
         }
         const semanticKey = keyToSemanticKey(key);
-        const lower = this.entriesByContainerKeyPlacement.lowerBound(muidTupleToString(desiredSrc));
-        // Using a tilde ~ to signify a max value for that section of the key
-        // Since we are dealing with string comparisons, "Infinity" is a pretty low value,
-        // where ~ should have a higher value than everything but DEL.
-        const upper = this.entriesByContainerKeyPlacement.upperBound(`${muidTupleToString(desiredSrc)},~,${asOfTs == Infinity ? "~" : asOfTs}`);
+        const upper = this.entriesByContainerKeyPlacement.upperBound(`${muidTupleToString(desiredSrc)},${semanticKey},${asOfTs == Infinity ? "~" : asOfTs}`);
+        // TreeMap upperBound always fetches the entry GREATER than the provided key (if there is nothing greater, it will be undefined)
+        // By calling prev() initially, the cursor will be at the right spot.
+        upper.prev();
+        const entry = this.entries.get(upper.value);
         const asOfBeforeClear = asOfTs <= clearanceTime;
         let found: Entry | undefined = undefined;
-        while (lower) {
-            if (lower.value) {
-                const entry = this.entries.get(lower.value);
-                if (entry.effectiveKey.toString() == semanticKey.toString() && !entry.deletion
-                    && entry.entryId[0] < asOfTs) {
-                    const entryAfterClearance = entry.entryId[0] >= clearanceTime;
-                    if (asOfBeforeClear ? true : entryAfterClearance) {
-                        found = entry;
-                        break;
-                    }
-                }
+        if (entry && sameData(entry.effectiveKey, semanticKey) &&
+            !entry.deletion && entry.entryId[0] < asOfTs) {
+            const entryAfterClearance = entry.entryId[0] >= clearanceTime;
+            // If we are querying before the clearance, we can disregard it.
+            if (asOfBeforeClear ? true : entryAfterClearance) {
+                found = entry;
             }
-            if (lower.equals(upper)) break;
-            lower.next();
         }
         return found;
     }
@@ -458,7 +452,7 @@ export class MemoryStore implements Store {
             lower.next();
         }
         return result;
-    }
+    };
 
     /**
      * Returns entry data for a List.
@@ -539,17 +533,17 @@ export class MemoryStore implements Store {
         delete this.entries;
         delete this.entriesByContainerKeyPlacement;
         return Promise.resolve();
-    }
+    };
 
     // for debugging, not part of the api/interface
     getAllEntryKeys(): Array<string> {
         return Array.from(this.entries.keys());
-    }
+    };
 
     // for debugging, not part of the api/interface
     getAllEntries(): Array<Entry> {
         return Array.from(this.entries.values());
-    }
+    };
 
     // for debugging, not part of the api/interface
     getAllRemovals(): TreeMap<string, Removal> {
