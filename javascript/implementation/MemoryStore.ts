@@ -15,7 +15,7 @@ import {
     BundleInfoTuple,
     Bytes,
     ChainStart,
-    ClaimedChains,
+    ClaimedChain,
     Clearance,
     Entry,
     Indexable,
@@ -53,7 +53,7 @@ export class MemoryStore implements Store {
     // have the original reference to use.
     private trxns: TreeMap<BundleInfoTuple, Uint8Array>; // BundleInfoTuple => bytes
     private chainInfos: TreeMap<string, BundleInfo>; // [Medallion, ChainStart] => BundleInfo
-    private activeChains: Map<Medallion, ChainStart>;
+    private activeChains: ClaimedChain[];
     private clearances: TreeMap<string, Clearance>; // ClearanceId => Clearance
     private containers: TreeMap<string, Uint8Array>; // ContainerId => bytes
     private removals: TreeMap<string, Removal>; // RemovalId => Removal
@@ -92,7 +92,7 @@ export class MemoryStore implements Store {
     private async initialize(): Promise<void> {
         this.trxns = new TreeMap();
         this.chainInfos = new TreeMap();
-        this.activeChains = new Map();
+        this.activeChains = [];
         this.clearances = new TreeMap();
         this.containers = new TreeMap();
         this.removals = new TreeMap();
@@ -117,13 +117,19 @@ export class MemoryStore implements Store {
         return Promise.resolve(backRefs);
     }
 
-    async getClaimedChains(): Promise<ClaimedChains> {
+    async getClaimedChains(): Promise<ClaimedChain[]> {
         return Promise.resolve(this.activeChains);
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
-        this.activeChains.set(medallion, chainStart);
-        return Promise.resolve();
+    async claimChain(medallion: Medallion, chainStart: ChainStart, processId: number): Promise<ClaimedChain> {
+        const claim = {
+            medallion,
+            chainStart,
+            processId,
+            claimedTime: generateTimestamp()
+        }
+        this.activeChains.push(claim);
+        return Promise.resolve(claim);
     }
 
     async getChainTracker(): Promise<ChainTracker> {

@@ -1,8 +1,8 @@
 import { ChainTracker } from "./ChainTracker";
 import { Container } from "./Container";
 import {
-    Medallion, ChainStart, SeenThrough, Muid, Bytes, KeyType, BundleInfo,
-    ClaimedChains, Entry, AsOf
+    Medallion, ChainStart, Muid, Bytes, KeyType, BundleInfo,
+    ClaimedChain, Entry, AsOf
 } from "./typedefs";
 
 export interface Store {
@@ -28,14 +28,14 @@ export interface Store {
      *
      * Implicitly awaits on this.ready;
      */
-    getClaimedChains: () => Promise<ClaimedChains>;
+    getClaimedChains: () => Promise<ClaimedChain[]>;
 
     /**
      * Mark a chain as being owned by this store.
      *
      * Implicitly awaits on this.ready;
      */
-    claimChain: (medallion: Medallion, chainStart: ChainStart) => Promise<void>;
+    claimChain: (medallion: Medallion, chainStart: ChainStart, processId: number) => Promise<ClaimedChain>;
 
     /**
      * Mark a chain as being closed and unavailable for new commits.

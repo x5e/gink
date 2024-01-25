@@ -17,7 +17,7 @@ import {
     BundleInfoTuple,
     Bytes,
     ChainStart,
-    ClaimedChains,
+    ClaimedChain,
     Clearance,
     Entry, Indexable,
     IndexedDbStoreSchema,
@@ -99,7 +99,7 @@ export class IndexedDbStore implements Store {
                     easier because the getAll() interface is a bit nicer than
                     working with the cursor interface.
                 */
-                db.createObjectStore('activeChains', { keyPath: "medallion" });
+                db.createObjectStore('activeChains', { keyPath: ["medallion", "chainStart"] });
 
                 db.createObjectStore("clearances", { keyPath: ["containerId", "clearanceId"] });
 
@@ -213,23 +213,24 @@ export class IndexedDbStore implements Store {
         throw new Error(`don't know how to interpret asOf=${asOf}`);
     }
 
-    async getClaimedChains(): Promise<ClaimedChains> {
+    async getClaimedChains(): Promise<ClaimedChain[]> {
         if (!this.initialized) throw new Error("not initilized");
         const objectStore = this.wrapped.transaction("activeChains", "readonly").objectStore("activeChains");
         const items = await objectStore.getAll();
-        const result = new Map();
-        for (let i = 0; i < items.length; i++) {
-            result.set(items[i].medallion, items[i].chainStart);
-        }
-        return result;
+        return items;
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
-        //TODO(https://github.com/google/gink/issues/29): check for medallion reuse
+    async claimChain(medallion: Medallion, chainStart: ChainStart, processId: number): Promise<ClaimedChain> {
         await this.ready;
         const wrappedTransaction = this.wrapped.transaction("activeChains", "readwrite");
-        await wrappedTransaction.objectStore('activeChains').add({ chainStart, medallion });
-        return wrappedTransaction.done;
+        const claim = {
+            chainStart,
+            medallion,
+            processId,
+            claimedTime: generateTimestamp(),
+         };
+        await wrappedTransaction.objectStore('activeChains').add(claim);
+        return wrappedTransaction.done.then(() => claim);
     }
 
     async getChainTracker(): Promise<ChainTracker> {

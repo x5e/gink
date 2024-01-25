@@ -1,8 +1,9 @@
-import { BundleBytes, Medallion, ChainStart, SeenThrough, Bytes, AsOf, KeyType } from "./typedefs";
+import { BundleBytes, Medallion, ChainStart, SeenThrough, Bytes, AsOf, KeyType, ClaimedChain } from "./typedefs";
 import { BundleInfo, Muid, Entry, CallBack } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { Store } from "./Store";
 import { FileHandle, open } from "fs/promises";
+
 import { flock } from "fs-ext";
 import { ChainTracker } from "./ChainTracker";
 import { ChainEntryBuilder, LogFileBuilder } from "./builders";
@@ -25,68 +26,60 @@ export class LogBackedStore implements Store {
     private commitsProcessed = 0;
     private fileHandle: FileHandle;
     private indexedDbStore: IndexedDbStore;
-    private chainTracker: ChainTracker;
-
-    constructor(readonly filename: string, reset = false, protected logger: CallBack = (() => null)) {
-        // console.error(`opening ${filename}`);
-        this.chainTracker = new ChainTracker({});
-        this.ready = this.initialize(filename, reset);
-    }
+    private chainTracker: ChainTracker = new ChainTracker({});
+    private chainEntries: ChainEntryBuilder[];
+    private locked: boolean = false;
 
     async close() {
-        // console.error(`closing ${this.filename}`);
-        await this.fileHandle.close().catch();
         await this.ready.catch();
+        await this.fileHandle.close().catch();
         await this.indexedDbStore.close().catch();
     }
-    private async openAndLock(filename: string, truncate?: boolean): Promise<FileHandle> {
-        const fh = await open(filename, "a+");
-        if (truncate) await fh.truncate();
+
+    /**
+     *
+     * @param filename file to store transactions and chain ownership information
+     * @param hold_lock if true, lock the file until closing store, otherwise only lock as-needed.
+     */
+    constructor(readonly filename: string, readonly hold_lock: boolean = false) {
+        this.ready = this.initialize();
+    }
+
+    private async lock(block: boolean): Promise<boolean> {
         return new Promise((resolve, reject) => {
-
-            // It's better to truncate rather than unlink, because an unlink could result
-            // in two instances thinking that they have a lock on the same file.
-
-            flock(fh.fd, "exnb", async (err) => {
+            flock(this.fileHandle.fd, (block ? "exnb" : "ex"), async (err) => {
                 if (err) {
-                    await fh.close();
                     return reject(err);
                 }
-                resolve(fh);
+                resolve(true);
             });
         });
     }
 
-    private async initialize(filename: string, reset: boolean): Promise<void> {
-
-        // Try (and maybe fail) to get a lock on the file before resetting the in-memory store,
-        // so that we don't mess things up if another LogBackedStore has this file open.
-        this.fileHandle = await this.openAndLock(filename, reset);
+    private async initialize(): Promise<void> {
+        this.fileHandle = await open(this.filename, "a+");
+        if (this.hold_lock) {
+            this.locked = await this.lock(false);
+        }
 
         // Assuming we have the lock, clear the in memory store and then re-populate it.
-        this.indexedDbStore = new IndexedDbStore(filename, true);
+        this.indexedDbStore = new IndexedDbStore(this.filename, true);
         await this.indexedDbStore.ready;
 
-        if (!reset) {
-            const stats = await this.fileHandle.stat();
-            const size = stats.size;
-            if (size) {
-                const uint8Array = new Uint8Array(size);
-                await this.fileHandle.read(uint8Array, 0, size, 0);
-                const logFileBuilder = <LogFileBuilder>LogFileBuilder.deserializeBinary(uint8Array);
-                const commits = logFileBuilder.getCommitsList();
-                for (const commit of commits) {
-                    const info = await this.indexedDbStore.addBundle(commit);
-                    this.chainTracker.markAsHaving(info);
-                    this.commitsProcessed += 1;
-                }
-                const chainEntries = logFileBuilder.getChainEntriesList();
-                for (const entry of chainEntries) {
-                    await this.indexedDbStore.claimChain(entry.getMedallion(), entry.getChainStart());
-                }
+        const stats = await this.fileHandle.stat();
+        const size = stats.size;
+        if (size) {
+            const uint8Array = new Uint8Array(size);
+            await this.fileHandle.read(uint8Array, 0, size, 0);
+            const logFileBuilder = <LogFileBuilder>LogFileBuilder.deserializeBinary(uint8Array);
+            const commits = logFileBuilder.getCommitsList();
+            for (const commit of commits) {
+                const info = await this.indexedDbStore.addBundle(commit);
+                this.chainTracker.markAsHaving(info)
+                this.commitsProcessed += 1;
             }
+            this.chainEntries = logFileBuilder.getChainEntriesList();
         }
-        this.logger(`LogBackedStore.ready for ${this.filename}`);
     }
 
     async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
@@ -123,15 +116,17 @@ export class LogBackedStore implements Store {
         return this.indexedDbStore.getClaimedChains();
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
+    async claimChain(medallion: Medallion, chainStart: ChainStart, processId: number): Promise<ClaimedChain> {
         await this.ready;
+        await this.lock(true);
+        await this.indexedDbStore.claimChain(medallion, chainStart, processId);
         const fragment = new LogFileBuilder();
         const entry = new ChainEntryBuilder();
         entry.setChainStart(chainStart);
         entry.setMedallion(medallion);
+        entry.setProcessId(process.pid)
         fragment.setChainEntriesList([entry]);
         await this.fileHandle.appendFile(fragment.serializeBinary());
-        await this.indexedDbStore.claimChain(medallion, chainStart);
     }
 
     async getChainTracker(): Promise<ChainTracker> {
