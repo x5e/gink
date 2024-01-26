@@ -3,7 +3,7 @@
   "version": "${VERSION}",
   "description": "an eventually consistent database",
   "main": "tsc.out/implementation/main.js",
-  "browser": "webpack.out/packed.js",
+  "browser": "content_root/generated/packed.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/x5e/gink.git"
@@ -22,9 +22,8 @@
   },
   "files": [
     "package.json",
-    "static/**",
+    "content_root/**",
     "tsc.out/**",
-    "webpack.out/**",
     "README.md"
   ],
   "bin": "./tsc.out/implementation/main.js",

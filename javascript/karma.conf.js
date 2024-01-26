@@ -31,7 +31,7 @@ module.exports = function (config) {
         webpack: {
             output: {
                 filename: 'packed-tests.js',
-                path: path.resolve(__dirname, 'webpack.out/unit-tests'),
+                path: path.resolve(__dirname, 'content_root/generated/unit-tests'),
             },
             resolve: {
                 extensions: [".ts", ".tsx", ".js", ".node"],
