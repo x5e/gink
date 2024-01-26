@@ -17,7 +17,6 @@ export class Listener {
     ready: Promise<any>;
     private websocketServer: WebSocketServer;
     readonly httpServer: HttpServer | HttpsServer;
-
     private oAuth2Client: OAuth2Client;
 
     constructor(args: {
@@ -31,7 +30,7 @@ export class Listener {
         useOAuth?: boolean;
     }) {
         const thisListener = this;
-        const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot) : new StaticServer(join(__dirname, "../../static"));
+        const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot) : new StaticServer(join(__dirname, "../../content_root"));
         const port = args.port || "8080";
         let callWhenReady: CallBack;
         this.ready = new Promise((resolve) => {
@@ -85,10 +84,10 @@ export class Listener {
                 }
 
                 if (url.pathname == "/") {
-                    staticServer.serveFile('/dashboard/dashboard.html', 200, {}, request, response);
+                    staticServer.serveFile('/static/dashboard/dashboard.html', 200, {}, request, response);
                 }
                 else if (url.pathname == "/connections") {
-                    staticServer.serveFile("/list_connections.html", 200, {}, request, response);
+                    staticServer.serveFile("/static/list_connections.html", 200, {}, request, response);
                 }
                 else if (url.pathname == "/list_connections") {
                     let connections = Object.fromEntries(args.instance.connections);
