@@ -121,7 +121,7 @@ it('purge one directory leaving other untouched', async function () {
 
         await d1.clear(true);
 
-        // ensure(0 == await d1.size());
+        ensure(0 == await d1.size());
         const size = await d2.size();
         ensure(0 != size, "directory 2 has been purged!");
     }
