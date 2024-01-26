@@ -9,6 +9,19 @@ the other in Python.
 ```sh
 npm install @x5e/gink
 ```
+Or install from a CDN:
+```html
+<!-- Get the latest version -->
+<script src="https://cdn.jsdelivr.net/npm/@x5e/gink/webpack.out/packed.min.js"></script>
+
+<!-- Get a specific version -->
+<script src="https://cdn.jsdelivr.net/npm/@x5e/gink@0.20240121.1705881113/webpack.out/packed.min.js"></script>
+
+<script>
+    // Make sure to access the modules using gink.module if you go through the CDN.
+    const store = new gink.IndexedDbStore('example');
+</script>
+```
 [TypeScript Docs](https://www.x5e.com/gink/)\
 [NPM Package](https://www.npmjs.com/package/@x5e/gink)\
 \
