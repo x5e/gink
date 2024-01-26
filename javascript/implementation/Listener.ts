@@ -1,4 +1,4 @@
-import { createServer as createHttpServer, Server as HttpServer } from 'http';
+import { createServer as createHttpServer, Server as HttpServer, ServerResponse, IncomingMessage } from 'http';
 import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
 import { readFileSync } from 'fs';
 import { Server as StaticServer } from 'node-static';
@@ -31,8 +31,6 @@ export class Listener {
         useOAuth?: boolean;
     }) {
         const thisListener = this;
-        console.log(join(__dirname, "../../static"));
-
         const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot) : new StaticServer(join(__dirname, "../../static"));
         const port = args.port || "8080";
         let callWhenReady: CallBack;
@@ -57,133 +55,72 @@ export class Listener {
             );
         }
 
+        const requestListener = (request: IncomingMessage, response: ServerResponse) => {
+            const url = new URL(request.url, `http://${request.headers.host}`);
+            request.addListener('end', async function () {
+                if (args.useOAuth) {
+                    // This is where Google redirects to after the user gives permissions
+                    if (url.pathname == "/oauth2callback") {
+                        const code = url.searchParams.get("code");
+                        const { tokens } = await thisListener.oAuth2Client.getToken(code);
+                        thisListener.oAuth2Client.setCredentials(tokens);
+
+                        response.writeHead(302, {
+                            Location: "http://localhost:8080/"
+                        });
+                        response.end();
+                        return;
+                    }
+
+                    // no access token, need to authorize
+                    if (!thisListener.oAuth2Client.credentials.access_token) {
+                        const scopesStr: string = process.env["OAUTH_SCOPES"];
+                        const oAuthScopes = scopesStr.split(",");
+                        response.writeHead(302, {
+                            Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthScopes })
+                        });
+                        response.end();
+                        return;
+                    }
+                }
+
+                if (url.pathname == "/") {
+                    staticServer.serveFile('/dashboard/dashboard.html', 200, {}, request, response);
+                }
+                else if (url.pathname == "/connections") {
+                    staticServer.serveFile("/list_connections.html", 200, {}, request, response);
+                }
+                else if (url.pathname == "/list_connections") {
+                    let connections = Object.fromEntries(args.instance.connections);
+                    response.end(JSON.stringify(connections));
+                }
+                else if (url.pathname == "/create_connection") {
+                    if (request.method == 'POST') {
+                        const ipAddress = url.searchParams.get("ipAddress");
+                        thisListener.handleConnection(ipAddress, args.instance, args.logger);
+                        response.end(JSON.stringify({ "status": 201, "message": "Connection created successfully" }));
+                    }
+                    else {
+                        response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }));
+                    }
+                }
+                else {
+                    staticServer.serve(request, response);
+                }
+            }).resume();
+        };
+
         if (args.sslKeyFilePath && args.sslCertFilePath) {
             const options = {
                 key: readFileSync(args.sslKeyFilePath),
                 cert: readFileSync(args.sslCertFilePath),
             };
-            this.httpServer = createHttpsServer(options, function (request, response) {
-                const url = new URL(request.url, `http://${request.headers.host}`);
-                request.addListener('end', async function () {
-                    if (args.useOAuth) {
-                        // This is where Google redirects to after the user gives permissions
-                        if (url.pathname == "/oauth2callback") {
-                            const code = url.searchParams.get("code");
-                            const { tokens } = await thisListener.oAuth2Client.getToken(code);
-                            thisListener.oAuth2Client.setCredentials(tokens);
-
-                            response.writeHead(302, {
-                                Location: "http://localhost:8080/"
-                            });
-                            response.end();
-                            return;
-                        }
-
-                        // no access token, need to authorize
-                        if (!thisListener.oAuth2Client.credentials.access_token) {
-                            const scopesStr: string = process.env["OAUTH_SCOPES"];
-                            const oAuthScopes = scopesStr.split(",");
-                            response.writeHead(302, {
-                                Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthScopes })
-                            });
-                            response.end();
-                            return;
-                        }
-                    }
-
-                    if (url.pathname == "/") {
-                        staticServer.serveFile('/dashboard/dashboard.html', 200, {}, request, response);
-                    }
-                    else if (url.pathname == "/connections") {
-                        staticServer.serveFile("/list_connections.html", 200, {}, request, response);
-                    }
-                    else if (url.pathname == "/list_connections") {
-                        let connections = Object.fromEntries(args.instance.connections);
-                        response.end(JSON.stringify(connections));
-                    }
-                    else if (url.pathname == "/create_connection") {
-                        if (request.method == 'POST') {
-                            const ipAddress = url.searchParams.get("ipAddress");
-                            thisListener.handleConnection(ipAddress, args.instance, args.logger);
-                            response.end(JSON.stringify({ "status": 201, "message": "Connection created successfully" }));
-                        }
-                        else {
-                            response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }));
-                        }
-                    }
-                    else {
-                        staticServer.serve(request, response);
-                    }
-                }).resume();
-            }).listen(port, () => {
+            this.httpServer = createHttpsServer(options, requestListener).listen(port, () => {
                 args?.logger(`Secure server is listening on port ${port}`);
                 callWhenReady();
             });
         } else {
-            this.httpServer = createHttpServer(function (request, response) {
-                const url = new URL(request.url, `http://${request.headers.host}`);
-                request.addListener('end', async function () {
-                    if (args.useOAuth) {
-                        // This is where Google redirects to after the user gives permissions
-                        if (url.pathname == "/oauth2callback") {
-                            const code = url.searchParams.get("code");
-                            const { tokens } = await thisListener.oAuth2Client.getToken(code);
-                            thisListener.oAuth2Client.setCredentials(tokens);
-
-                            response.writeHead(302, {
-                                Location: "http://localhost:8080/"
-                            });
-                            response.end();
-                            return;
-                        }
-
-                        // no access token, need to authorize
-                        if (!thisListener.oAuth2Client.credentials.access_token) {
-                            const scopesStr: string = process.env["OAUTH_SCOPES"];
-                            const oAuthScopes = scopesStr.split(",");
-                            response.writeHead(302, {
-                                Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthScopes })
-                            });
-                            response.end();
-                            return;
-                        }
-                    }
-
-                    if (url.pathname == "/") {
-                        staticServer.serveFile('/dashboard/dashboard.html', 200, {}, request, response);
-                    }
-                    else if (url.pathname == "/connections") {
-                        staticServer.serveFile("/list_connections.html", 200, {}, request, response);
-                    }
-                    else if (url.pathname == "/list_connections") {
-                        let connections = Object.fromEntries(args.instance.connections);
-                        response.writeHead(200);
-                        response.end(JSON.stringify(connections));
-                    }
-                    else if (url.pathname == "/create_connection") {
-                        if (request.method == 'POST') {
-                            const ipAddress = url.searchParams.get("ipAddress");
-                            const created = await thisListener.handleConnection(ipAddress, args.instance, args.logger);
-                            if (created) {
-                                response.writeHead(201);
-                                response.end(JSON.stringify({ "status": 201, "message": "Connection created successfully" }));
-                            }
-                            else {
-                                response.writeHead(400);
-                                response.end(JSON.stringify({ "status": 400, "message": "Error. Connection not created." }));
-                            }
-                        }
-                        else {
-                            response.writeHead(405);
-                            response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }));
-                        }
-                    }
-                    else {
-                        staticServer.serve(request, response);
-                    }
-                }).resume();
-            });
-            this.httpServer.listen(port, function () {
+            this.httpServer = createHttpServer(requestListener).listen(port, function () {
                 args?.logger(`Insecure server is listening on port ${port}`);
                 callWhenReady();
             });
