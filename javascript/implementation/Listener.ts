@@ -8,6 +8,7 @@ import {
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { SimpleServer } from './SimpleServer';
 import { OAuth2Client } from 'google-auth-library';
+import { join } from 'path';
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -30,7 +31,9 @@ export class Listener {
         useOAuth?: boolean;
     }) {
         const thisListener = this;
-        const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot) : new StaticServer("./static");
+        console.log(join(__dirname, "../../static"));
+
+        const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot) : new StaticServer(join(__dirname, "../../static"));
         const port = args.port || "8080";
         let callWhenReady: CallBack;
         this.ready = new Promise((resolve) => {
@@ -61,9 +64,35 @@ export class Listener {
             };
             this.httpServer = createHttpsServer(options, function (request, response) {
                 const url = new URL(request.url, `http://${request.headers.host}`);
-                request.addListener('end', function () {
+                request.addListener('end', async function () {
+                    if (args.useOAuth) {
+                        // This is where Google redirects to after the user gives permissions
+                        if (url.pathname == "/oauth2callback") {
+                            const code = url.searchParams.get("code");
+                            const { tokens } = await thisListener.oAuth2Client.getToken(code);
+                            thisListener.oAuth2Client.setCredentials(tokens);
+
+                            response.writeHead(302, {
+                                Location: "http://localhost:8080/"
+                            });
+                            response.end();
+                            return;
+                        }
+
+                        // no access token, need to authorize
+                        if (!thisListener.oAuth2Client.credentials.access_token) {
+                            const scopesStr: string = process.env["OAUTH_SCOPES"];
+                            const oAuthScopes = scopesStr.split(",");
+                            response.writeHead(302, {
+                                Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthScopes })
+                            });
+                            response.end();
+                            return;
+                        }
+                    }
+
                     if (url.pathname == "/") {
-                        staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
+                        staticServer.serveFile('/dashboard/dashboard.html', 200, {}, request, response);
                     }
                     else if (url.pathname == "/connections") {
                         staticServer.serveFile("/list_connections.html", 200, {}, request, response);
@@ -121,7 +150,7 @@ export class Listener {
                     }
 
                     if (url.pathname == "/") {
-                        staticServer.serveFile('dashboard/dashboard.html', 200, {}, request, response);
+                        staticServer.serveFile('/dashboard/dashboard.html', 200, {}, request, response);
                     }
                     else if (url.pathname == "/connections") {
                         staticServer.serveFile("/list_connections.html", 200, {}, request, response);
