@@ -6,7 +6,7 @@ module.exports = {
     devtool: "inline-source-map",
     output: {
         filename: 'packed.js',
-        path: path.resolve(__dirname, 'webpack.out'),
+        path: path.resolve(__dirname, 'content_root', 'generated'),
     },
     resolve: {
         extensions: [".ts", ".tsx", ".js"]
