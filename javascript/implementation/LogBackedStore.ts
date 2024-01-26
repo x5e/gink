@@ -43,11 +43,11 @@ export class LogBackedStore implements Store {
     /**
      *
      * @param filename file to store transactions and chain ownership information
-     * @param holdLock if true, lock the file until closing store, otherwise only lock as-needed.
+     * @param exclusive if true, lock the file until closing store, otherwise only lock as-needed.
      */
     constructor(
         readonly filename: string,
-        readonly holdLock: boolean = false,
+        readonly exclusive: boolean = false,
         private internalStore = new IndexedDbStore(),
         ) {
         this.ready = this.initialize();
@@ -108,10 +108,9 @@ export class LogBackedStore implements Store {
     }
 
     private async initialize(): Promise<void> {
-        this.internalStore = new IndexedDbStore(this.filename, true);
         await this.internalStore.ready;
         this.fileHandle = await open(this.filename, "a+");
-        if (this.holdLock) {
+        if (this.exclusive) {
             await this.lock(false);
         }
         await this.pullDataFromFile();
@@ -134,7 +133,7 @@ export class LogBackedStore implements Store {
 
     async addBundle(commitBytes: BundleBytes): Promise<BundleInfo> {
         await this.ready;
-        if (!this.holdLock)
+        if (!this.exclusive)
             await this.lock(true);
         const info: BundleInfo = await this.internalStore.addBundle(commitBytes);
         const added = this.chainTracker.markAsHaving(info);
@@ -145,7 +144,7 @@ export class LogBackedStore implements Store {
             logFragment.setCommitsList([commitBytes]);
             await this.fileHandle.appendFile(logFragment.serializeBinary());
         }
-        if (!this.holdLock)
+        if (!this.exclusive)
             await this.unlock();
         return info;
     }
@@ -157,7 +156,7 @@ export class LogBackedStore implements Store {
 
     async claimChain(medallion: Medallion, chainStart: ChainStart, actorId: ActorId): Promise<ClaimedChain> {
         await this.ready;
-        if (! this.holdLock) {
+        if (! this.exclusive) {
             await this.lock(true);
         }
         ensure(this.locked);
@@ -170,7 +169,7 @@ export class LogBackedStore implements Store {
         entry.setClaimTime(claimTime);
         fragment.setChainEntriesList([entry]);
         await this.fileHandle.appendFile(fragment.serializeBinary());
-        if (! this.holdLock)
+        if (! this.exclusive)
             await this.unlock();
         return {
             medallion,

@@ -5,7 +5,7 @@ const TEST_FILE = "/tmp/test.store";
 
 testStore('LogBackedStore',
     async () => new LogBackedStore(TEST_FILE, true),
-    async () => new LogBackedStore(TEST_FILE, false)
+    async () => new LogBackedStore(TEST_FILE, true)
 );
 
 
