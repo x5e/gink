@@ -210,6 +210,8 @@ export class ChainEntryBuilder extends ImplementedMessage {
     setMedallion(number);
     getProcessId(): number;
     setProcessId(number);
+    getClaimTime(): number;
+    setClaimTime(number);
 }
 
 export class LogFileBuilder extends ImplementedMessage {

@@ -20,6 +20,7 @@ export type AsOf = Timestamp | Date | ChangeSetOffset;
 export type MuidTuple = [Timestamp, Medallion, Offset];
 export type Cookies = Map<string, string>;
 export type Indexable = MuidTuple;
+export type ActorId = number;
 
 export interface CommitListener {
     (commitInfo: BundleInfo): Promise<void>;
@@ -28,8 +29,8 @@ export interface CommitListener {
 export interface ClaimedChain {
     medallion: Medallion;
     chainStart: ChainStart;
-    processId: number;
-    claimedTime: Timestamp;
+    actorId: ActorId;
+    claimTime: Timestamp;
 }
 
 export interface CallBack {
