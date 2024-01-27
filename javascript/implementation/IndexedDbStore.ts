@@ -241,7 +241,8 @@ export class IndexedDbStore implements Store {
             claimTime: generateTimestamp(),
          };
         await wrappedTransaction.objectStore('activeChains').add(claim);
-        return wrappedTransaction.done.then(() => claim);
+        await wrappedTransaction.done;
+        return claim;
     }
 
     async getChainTracker(): Promise<ChainTracker> {

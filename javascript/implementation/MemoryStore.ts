@@ -158,7 +158,8 @@ export class MemoryStore implements Store {
                 return bundleInfo;
             }
             if (oldChainInfo?.timestamp != priorTime) {
-                throw new Error(`missing prior chain entry for ${bundleInfo}, have ${oldChainInfo}`);
+                throw new Error(`missing prior chain entry for ${JSON.stringify(bundleInfo)}, ` +
+                `have ${JSON.stringify(oldChainInfo)}`);
             }
         }
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);

@@ -75,6 +75,7 @@ export class GinkInstance {
         const commitBytes = bundler.bytes;
         await this.store.addBundle(commitBytes);
         this.myChain = await this.store.claimChain(medallion, chainStart, getActorId());
+        ensure(this.myChain.medallion > 0);
     }
 
     private async initialize(info?: {
@@ -95,6 +96,7 @@ export class GinkInstance {
         if (! this.myChain) {
             await this.startChain(info);
         }
+        ensure(this.myChain.medallion > 0);
         this.iHave = await this.store.getChainTracker();
         this.listeners.set("all", []);
         this.initilized = true;
@@ -250,14 +252,17 @@ export class GinkInstance {
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
-        if (!this.initilized) throw new Error("GinkInstance not ready");
+        if (!this.initilized)
+            throw new Error("GinkInstance not ready");
+        if (! (this.myChain.medallion > 0))
+            throw new Error("zero medallion?");
         const nowMicros = generateTimestamp();
         const lastBundleInfo = this.iHave.getCommitInfo([this.myChain.medallion, this.myChain.chainStart]);
         const seenThrough = lastBundleInfo.timestamp;
         ensure(seenThrough > 0 && (seenThrough < nowMicros));
         const commitInfo: BundleInfo = {
-            medallion: this.myChain[0],
-            chainStart: this.myChain[1],
+            medallion: this.myChain.medallion,
+            chainStart: this.myChain.chainStart,
             timestamp: seenThrough >= nowMicros ? seenThrough + 10 : nowMicros,
             priorTime: seenThrough,
         };
