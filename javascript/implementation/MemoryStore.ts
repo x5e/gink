@@ -27,6 +27,7 @@ import {
     Removal,
     SeenThrough,
     Timestamp,
+    ActorId,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
@@ -117,16 +118,20 @@ export class MemoryStore implements Store {
         return Promise.resolve(backRefs);
     }
 
-    async getClaimedChains(): Promise<ClaimedChain[]> {
-        return Promise.resolve(this.activeChains);
+    getClaimedChains(): Promise<Map<Medallion, ClaimedChain>> {
+        const result = new Map();
+        for (let chain of this.activeChains) {
+            result.set(chain.medallion, chain);
+        }
+        return Promise.resolve(result);
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart, processId: number): Promise<ClaimedChain> {
+    claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         const claim = {
             medallion,
             chainStart,
-            processId,
-            claimedTime: generateTimestamp()
+            actorId: actorId || 0,
+            claimTime: generateTimestamp()
         }
         this.activeChains.push(claim);
         return Promise.resolve(claim);

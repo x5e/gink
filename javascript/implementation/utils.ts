@@ -3,7 +3,7 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry, Indexer, Indexable } from "./typedefs";
+import { Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry, Indexer, Indexable, ActorId } from "./typedefs";
 import {
     MuidBuilder,
     ValueBuilder,
@@ -449,3 +449,14 @@ export function entryToEdgeData(entry: Entry): EdgeData {
 
 export const dehydrate = muidToTuple;
 export const rehydrate = muidTupleToMuid;
+
+export function getActorId(): ActorId {
+    if ("object" == typeof process)
+        return process.pid;
+    return generateTimestamp();
+}
+
+export function isAlive(actorId: ActorId): boolean {
+    // TODO: https://github.com/x5e/gink/issues/179
+    return actorId > 0;
+}

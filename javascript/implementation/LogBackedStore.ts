@@ -149,12 +149,16 @@ export class LogBackedStore implements Store {
         return info;
     }
 
-    async getClaimedChains(): Promise<ClaimedChain[]> {
+    async getClaimedChains(): Promise<Map<Medallion, ClaimedChain>> {
         await this.ready;
-        return this.claimedChains;
+        const result = new Map();
+        for (let chain of this.claimedChains) {
+            result.set(chain.medallion, chain);
+        }
+        return result;
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart, actorId: ActorId): Promise<ClaimedChain> {
+    async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         await this.ready;
         if (! this.exclusive) {
             await this.lock(true);
@@ -174,7 +178,7 @@ export class LogBackedStore implements Store {
         return {
             medallion,
             chainStart,
-            actorId,
+            actorId: actorId || 0,
             claimTime,
         }
     }

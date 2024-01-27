@@ -11,6 +11,7 @@ import {
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {
+    ActorId,
     AsOf,
     BundleBytes,
     BundleInfo,
@@ -60,7 +61,9 @@ export class IndexedDbStore implements Store {
     private lastCaller: string = "";
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
-    constructor(indexedDbName = "gink-default", reset = false, private keepingHistory = true) {
+    constructor(indexedDbName?: string, reset?: boolean, private keepingHistory = true) {
+        if (! indexedDbName)
+            indexedDbName = generateTimestamp().toString();
         this.ready = this.initialize(indexedDbName, reset);
     }
 
@@ -213,21 +216,29 @@ export class IndexedDbStore implements Store {
         throw new Error(`don't know how to interpret asOf=${asOf}`);
     }
 
-    async getClaimedChains(): Promise<ClaimedChain[]> {
+    async getClaimedChains(): Promise<Map<Medallion, ClaimedChain>> {
         if (!this.initialized) throw new Error("not initilized");
         const objectStore = this.wrapped.transaction("activeChains", "readonly").objectStore("activeChains");
         const items = await objectStore.getAll();
-        return items;
+        const result: Map<Medallion, ClaimedChain> = new Map();
+        let lastTs = 0;
+        for (let item of items) {
+            if (item.claimTime < lastTs)
+                throw new Error("claims not in order");
+            lastTs = item.claimTime;
+            result.set(item.medallion, item);
+        }
+        return result;
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart, processId: number): Promise<ClaimedChain> {
+    async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         await this.ready;
         const wrappedTransaction = this.wrapped.transaction("activeChains", "readwrite");
         const claim = {
             chainStart,
             medallion,
-            processId,
-            claimedTime: generateTimestamp(),
+            actorId: actorId || 0,
+            claimTime: generateTimestamp(),
          };
         await wrappedTransaction.objectStore('activeChains').add(claim);
         return wrappedTransaction.done.then(() => claim);

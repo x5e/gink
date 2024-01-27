@@ -24,7 +24,7 @@ it('uses claimed chain', async () => {
         await store.ready;
         const commitBytes = makeChainStart("chain start comment", MEDALLION1, START_MICROS1);
         await store.addBundle(commitBytes);
-        await store.claimChain(MEDALLION1, START_MICROS1);
+        await store.claimChain(MEDALLION1, START_MICROS1, 77);
         await store.getCommits((commitBytes: BundleBytes, _commitInfo: BundleInfo) => {
             const commit = <BundleBuilder>BundleBuilder.deserializeBinary(commitBytes);
             ensure(commit.getComment() == "chain start comment");

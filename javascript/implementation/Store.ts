@@ -36,14 +36,14 @@ export interface Store {
      *
      * Implicitly awaits on this.ready;
      */
-    getClaimedChains: () => Promise<ClaimedChain[]>;
+    getClaimedChains: () => Promise<Map<Medallion, ClaimedChain>>;
 
     /**
      * Mark a chain as being owned by this store.
      *
      * Implicitly awaits on this.ready;
      */
-    claimChain: (medallion: Medallion, chainStart: ChainStart, actorId: ActorId) => Promise<ClaimedChain>;
+    claimChain: (medallion: Medallion, chainStart: ChainStart, actorId?: ActorId) => Promise<ClaimedChain>;
 
     /**
      * Mark a chain as being closed and unavailable for new commits.
