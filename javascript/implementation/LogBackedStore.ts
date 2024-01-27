@@ -60,22 +60,26 @@ export class LogBackedStore implements Store {
     }
 
     private async lock(block: boolean): Promise<boolean> {
+        const thisLogBackedStore = this;
         return new Promise((resolve, reject) => {
-            flock(this.fileHandle.fd, (block ? "exnb" : "ex"), async (err) => {
+            flock(this.fileHandle.fd, (block ? "exnb" : "ex"), (err) => {
                 if (err) {
                     return reject(err);
                 }
+                thisLogBackedStore.locked = true;
                 resolve(true);
             });
         });
     }
 
     private async unlock(): Promise<boolean> {
+        const thisLogBackedStore = this;
         return new Promise((resolve, reject) => {
             flock(this.fileHandle.fd, ("un"), async (err) => {
                 if (err) {
                     return reject(err);
                 }
+                thisLogBackedStore.locked = false;
                 resolve(true);
             });
         });

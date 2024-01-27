@@ -11,9 +11,9 @@ testStore('LogBackedStore',
 
 it('test locks', async () => {
     const TEST_FILE_FOR_LOCKS = "/tmp/test_file_for_locks.store";
-    const lbs1 = new LogBackedStore(TEST_FILE_FOR_LOCKS);
+    const lbs1 = new LogBackedStore(TEST_FILE_FOR_LOCKS, true);
     await lbs1.ready;
-    const lbs2 = new LogBackedStore(TEST_FILE_FOR_LOCKS);
+    const lbs2 = new LogBackedStore(TEST_FILE_FOR_LOCKS, true);
     let result = "unknown";
     await lbs2.ready.then(() => {
         result = "acquired";
