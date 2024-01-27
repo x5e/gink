@@ -35,7 +35,7 @@ RUN if [ `uname -m` != aarch64 ]; then apt-get update && apt-get install gnupg w
   rm -rf /var/lib/apt/lists/* && export CHROME_BIN=/usr/bin/chrome; fi
 RUN if [ `uname -m` == aarch64 ]; then apt update && apt install chromium-browser && export CHROME_BIN=/usr/bin/chromium-browser; fi
 
-COPY static ./static
+COPY content_root ./content_root
 RUN npm run browser-unit
 RUN npm run browser-integration
 RUN ./integration-tests/node-client-test.js

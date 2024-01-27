@@ -9,6 +9,23 @@ Assuming you have node.js and npm installed already:
 ```sh
 npm install @x5e/gink
 ```
+Now you can import or require Gink like this:
+```js
+const { IndexedDbStore, GinkInstance } = require("@x5e/gink");
+```
+If you'd prefer to import from a CDN:
+```html
+<!-- Get the latest version -->
+<script src="https://cdn.jsdelivr.net/npm/@x5e/gink/content_root/generated/packed.min.js"></script>
+
+<!-- Get a specific version -->
+<script src="https://cdn.jsdelivr.net/npm/@x5e/gink@0.20240121.1705881113/content_root/generated/packed.min.js"></script>
+
+<script>
+    // Make sure to access the modules using gink.module if you go through the CDN.
+    const store = new gink.IndexedDbStore('example');
+</script>
+```
 
 ## Quickstart
 
