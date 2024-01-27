@@ -1,11 +1,22 @@
 import { LogBackedStore } from "../implementation/main";
 import { testStore } from "./Store.test";
+import { truncateSync } from "fs";
 
 const TEST_FILE = "/tmp/test.store";
 
+function createMaker(reset: boolean) {
+    return async function() {
+        if (reset) {
+            truncateSync(TEST_FILE);
+        }
+        return new LogBackedStore(TEST_FILE, true);
+    }
+}
+
+
 testStore('LogBackedStore',
-    async () => new LogBackedStore(TEST_FILE, true),
-    async () => new LogBackedStore(TEST_FILE, true)
+    createMaker(true),
+    createMaker(false),
 );
 
 
