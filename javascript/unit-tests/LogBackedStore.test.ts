@@ -9,7 +9,9 @@ function createMaker(reset: boolean) {
         if (reset && existsSync(TEST_FILE)) {
             truncateSync(TEST_FILE);
         }
-        return new LogBackedStore(TEST_FILE, true);
+        const new_store = new LogBackedStore(TEST_FILE, true);
+        await new_store.ready;
+        return new_store;
     }
 }
 

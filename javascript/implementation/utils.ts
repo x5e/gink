@@ -458,5 +458,5 @@ export function getActorId(): ActorId {
 
 export function isAlive(actorId: ActorId): boolean {
     // TODO: https://github.com/x5e/gink/issues/179
-    return actorId >= 0 || actorId < 0;
+    return actorId > 0;
 }

@@ -88,7 +88,8 @@ export class LogBackedStore implements Store {
     private async pullDataFromFile(): Promise<void> {
         const stats = await this.fileHandle.stat();
         const totalSize = stats.size;
-        if (totalSize < this.redTo) {
+        console.error(`totalSize=${totalSize}`);
+        if (this.redTo < totalSize) {
             const needToReed = totalSize - this.redTo;
             const uint8Array = new Uint8Array(needToReed);
             await this.fileHandle.read(uint8Array, 0, needToReed);
@@ -108,6 +109,7 @@ export class LogBackedStore implements Store {
                     claimTime: chainEntries[i].getClaimTime(),
                 });
             }
+            this.redTo = totalSize;
         }
     }
 
