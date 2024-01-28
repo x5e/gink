@@ -35,7 +35,6 @@ export class GinkInstance {
     private listeners: Map<string, CommitListener[]> = new Map();
     private countConnections = 0; // Includes disconnected clients.
     private myChain: ClaimedChain;
-    private processingLock = new PromiseChainLock();
     private initilized = false;
     protected iHave: ChainTracker;
 
