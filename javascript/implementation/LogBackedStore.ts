@@ -49,7 +49,7 @@ export class LogBackedStore implements Store {
     constructor(
         readonly filename: string,
         readonly exclusive: boolean = false,
-        private internalStore = new IndexedDbStore(),
+        private internalStore = new IndexedDbStore(generateTimestamp().toString()),
         ) {
         this.ready = this.initialize();
     }

@@ -73,9 +73,7 @@ export class IndexedDbStore implements Store {
     private lastCaller: string = "";
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
-    constructor(indexedDbName?: string, reset?: boolean, private keepingHistory = true) {
-        if (!indexedDbName)
-            indexedDbName = generateTimestamp().toString();
+    constructor(indexedDbName: string, reset?: boolean, private keepingHistory = true) {
         this.ready = this.initialize(indexedDbName, reset);
     }
 
