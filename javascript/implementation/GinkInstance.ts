@@ -42,7 +42,7 @@ export class GinkInstance {
     private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
         eval("require('websocket').w3cwebsocket");
 
-    constructor(readonly store: Store = new IndexedDbStore(), info?: {
+    constructor(readonly store: Store = new IndexedDbStore('GinkInstance-default'), info?: {
         fullName?: string,
         email?: string,
         software?: string,
