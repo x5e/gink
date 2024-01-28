@@ -30,14 +30,26 @@ import {
     Removal,
     Timestamp,
 } from "./typedefs";
-import { extractCommitInfo, extractContainerMuid, getEffectiveKey, extractMovementInfo, buildPairLists, buildPointeeList, buildChainTracker, keyToSemanticKey, commitKeyToInfo, commitInfoToKey } from "./store_utils";
+import {
+    extractCommitInfo,
+    extractContainerMuid,
+    getEffectiveKey,
+    extractMovementInfo,
+    buildPairLists,
+    buildPointeeList,
+    buildChainTracker,
+    keyToSemanticKey,
+    commitKeyToInfo,
+    commitInfoToKey
+} from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { Container } from './Container';
 import { PromiseChainLock } from "./PromiseChainLock";
 
-type Transaction = IDBPTransaction<IndexedDbStoreSchema, ("trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries")[], "readwrite">;
+type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
+    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries")[], "readwrite">;
 
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
@@ -62,7 +74,7 @@ export class IndexedDbStore implements Store {
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
     constructor(indexedDbName?: string, reset?: boolean, private keepingHistory = true) {
-        if (! indexedDbName)
+        if (!indexedDbName)
             indexedDbName = generateTimestamp().toString();
         this.ready = this.initialize(indexedDbName, reset);
     }
@@ -239,7 +251,7 @@ export class IndexedDbStore implements Store {
             medallion,
             actorId: actorId || 0,
             claimTime: generateTimestamp(),
-         };
+        };
         await wrappedTransaction.objectStore('activeChains').add(claim);
         await wrappedTransaction.done;
         return claim;
