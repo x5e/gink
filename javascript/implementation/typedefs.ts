@@ -20,7 +20,7 @@ export type AsOf = Timestamp | Date | ChangeSetOffset;
 export type MuidTuple = [Timestamp, Medallion, Offset];
 export type Cookies = Map<string, string>;
 export type Indexable = MuidTuple;
-export type ActorId = number;
+export type ActorId = number;  // process ID on the server side, something more complex in the browser
 
 export interface CommitListener {
     (commitInfo: BundleInfo): Promise<void>;
