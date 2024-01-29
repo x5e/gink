@@ -1,6 +1,7 @@
 import { Peer } from "./Peer";
-import { makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid, encodeToken, decodeToken } from "./utils";
-import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, Offset, } from "./typedefs";
+import { makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
+    encodeToken, decodeToken, getActorId, isAlive } from "./utils";
+import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
 import { PromiseChainLock } from "./PromiseChainLock";
@@ -33,8 +34,7 @@ export class GinkInstance {
 
     private listeners: Map<string, CommitListener[]> = new Map();
     private countConnections = 0; // Includes disconnected clients.
-    private myChain: [Medallion, ChainStart];
-    private processingLock = new PromiseChainLock();
+    private myChain: ClaimedChain;
     private initilized = false;
     protected iHave: ChainTracker;
 
@@ -42,7 +42,7 @@ export class GinkInstance {
     private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
         eval("require('websocket').w3cwebsocket");
 
-    constructor(readonly store: Store = new IndexedDbStore(), info?: {
+    constructor(readonly store: Store = new IndexedDbStore('GinkInstance-default'), info?: {
         fullName?: string,
         email?: string,
         software?: string,
@@ -50,6 +50,32 @@ export class GinkInstance {
         this.ready = this.initialize(info);
     }
 
+    private async startChain(info?: {
+        fullName?: string,
+        email?: string,
+        software?: string,
+    }) {
+        const medallion = makeMedallion();
+        const chainStart = generateTimestamp();
+        const bundler = new Bundler(`start: ${info?.software || "GinkInstance"}`, medallion);
+        const medallionInfo = new Directory(this, { timestamp: -1, medallion, offset: Behavior.DIRECTORY });
+        if (info?.email) {
+            await medallionInfo.set("email", info.email, bundler);
+        }
+        if (info?.fullName) {
+            await medallionInfo.set("full-name", info.fullName, bundler);
+        }
+        if (info?.software) {
+            await medallionInfo.set("software", info.software, bundler);
+        }
+        bundler.seal({
+            medallion, timestamp: chainStart, chainStart
+        });
+        const commitBytes = bundler.bytes;
+        await this.store.addBundle(commitBytes);
+        this.myChain = await this.store.claimChain(medallion, chainStart, getActorId());
+        ensure(this.myChain.medallion > 0);
+    }
 
     private async initialize(info?: {
         fullName?: string,
@@ -57,34 +83,22 @@ export class GinkInstance {
         software?: string,
     }): Promise<void> {
         await this.store.ready;
+        // TODO(181): make claiming of a chain as needed to facilitate read-only/relay use cases
         const claimedChains = await this.store.getClaimedChains();
-        if (claimedChains.size) {
-            this.myChain = claimedChains.entries().next().value;
-        } else {
-            const medallion = makeMedallion();
-            const chainStart = generateTimestamp();
-            this.myChain = [medallion, chainStart];
-            const bundler = new Bundler(`start: ${info?.software || "GinkInstance"}`, medallion);
-            const medallionInfo = new Directory(this, { timestamp: -1, medallion, offset: Behavior.DIRECTORY });
-            if (info?.email) {
-                await medallionInfo.set("email", info.email, bundler);
+        for (let value of claimedChains.values()) {
+            if (! isAlive(value.actorId)) {
+                // TODO: check to see if meta-data matches, and overwrite if not
+                this.myChain = value;
+                break;
             }
-            if (info?.fullName) {
-                await medallionInfo.set("full-name", info.fullName, bundler);
-            }
-            if (info?.software) {
-                await medallionInfo.set("software", info.software, bundler);
-            }
-            bundler.seal({
-                medallion, timestamp: chainStart, chainStart
-            });
-            const commitBytes = bundler.bytes;
-            await this.store.addBundle(commitBytes);
-            await this.store.claimChain(medallion, chainStart);
         }
+        if (! this.myChain) {
+            await this.startChain(info);
+        }
+        ensure(this.myChain.medallion > 0);
         this.iHave = await this.store.getChainTracker();
-        this.initilized = true;
         this.listeners.set("all", []);
+        this.initilized = true;
         //this.logger(`GinkInstance.ready`);
     }
 
@@ -237,14 +251,17 @@ export class GinkInstance {
      * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
-        if (!this.initilized) throw new Error("GinkInstance not ready");
+        if (!this.initilized)
+            throw new Error("GinkInstance not ready");
+        if (! (this.myChain.medallion > 0))
+            throw new Error("zero medallion?");
         const nowMicros = generateTimestamp();
-        const lastBundleInfo = this.iHave.getCommitInfo(this.myChain);
+        const lastBundleInfo = this.iHave.getCommitInfo([this.myChain.medallion, this.myChain.chainStart]);
         const seenThrough = lastBundleInfo.timestamp;
         ensure(seenThrough > 0 && (seenThrough < nowMicros));
         const commitInfo: BundleInfo = {
-            medallion: this.myChain[0],
-            chainStart: this.myChain[1],
+            medallion: this.myChain.medallion,
+            chainStart: this.myChain.chainStart,
             timestamp: seenThrough >= nowMicros ? seenThrough + 10 : nowMicros,
             priorTime: seenThrough,
         };

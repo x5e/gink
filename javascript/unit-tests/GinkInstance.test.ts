@@ -20,7 +20,10 @@ it('test commit', async () => {
 });
 
 it('uses claimed chain', async () => {
-    for (const store of [new IndexedDbStore('GinkInstance.test', true), new MemoryStore(true)]) {
+    for (const store of [
+            new IndexedDbStore('GinkInstance.test', true),
+            new MemoryStore(true),
+        ]) {
         await store.ready;
         const commitBytes = makeChainStart("chain start comment", MEDALLION1, START_MICROS1);
         await store.addBundle(commitBytes);

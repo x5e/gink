@@ -3,7 +3,7 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry, Indexer, Indexable } from "./typedefs";
+import { Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry, Indexer, Indexable, ActorId } from "./typedefs";
 import {
     MuidBuilder,
     ValueBuilder,
@@ -449,3 +449,25 @@ export function entryToEdgeData(entry: Entry): EdgeData {
 
 export const dehydrate = muidToTuple;
 export const rehydrate = muidTupleToMuid;
+
+export function getActorId(): ActorId {
+    if ("object" == typeof process)
+        return process.pid;
+    return generateTimestamp();
+}
+
+/**
+ * This function exists to determine if the process or window that previously wrote to a chain is still around.
+ * If not, then it's safe to append to that chain (to reduce the number of chain starts).  If the creator of a
+ * chain is still active, then you can't assume that the chain is free for reuse.  For right now, the function
+ * returns true for any non-zero actor Id, mostly to force the creation of a new chain as a "safe" fallback.
+ * Returning false when the actor ID is zero is done to allow testing for chain reuse.  At some point this
+ * needs to be flushed out with a test to see if the process ID is still alive (on backend/node) or if the
+ * window corresponding to the window ID is still alive.
+ * @param actorId
+ * @returns
+ */
+export function isAlive(actorId: ActorId): boolean {
+    // TODO: https://github.com/x5e/gink/issues/179
+    return actorId > 0;
+}

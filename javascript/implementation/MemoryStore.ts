@@ -16,7 +16,7 @@ import {
     BundleInfoTuple,
     Bytes,
     ChainStart,
-    ClaimedChains,
+    ClaimedChain,
     Clearance,
     Entry,
     Indexable,
@@ -28,6 +28,7 @@ import {
     Removal,
     SeenThrough,
     Timestamp,
+    ActorId,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
@@ -54,7 +55,7 @@ export class MemoryStore implements Store {
     // have the original reference to use.
     private trxns: TreeMap<BundleInfoTuple, Uint8Array>; // BundleInfoTuple => bytes
     private chainInfos: TreeMap<string, BundleInfo>; // [Medallion, ChainStart] => BundleInfo
-    private activeChains: Map<Medallion, ChainStart>;
+    private activeChains: ClaimedChain[];
     private clearances: TreeMap<string, Clearance>; // ContainerId,ClearanceId => Clearance
     private containers: TreeMap<string, Uint8Array>; // ContainerId => bytes
     private removals: TreeMap<string, Removal>; // RemovalId => Removal
@@ -94,7 +95,7 @@ export class MemoryStore implements Store {
     private async initialize(): Promise<void> {
         this.trxns = new TreeMap();
         this.chainInfos = new TreeMap();
-        this.activeChains = new Map();
+        this.activeChains = [];
         this.clearances = new TreeMap();
         this.containers = new TreeMap();
         this.removals = new TreeMap();
@@ -120,13 +121,23 @@ export class MemoryStore implements Store {
         return Promise.resolve(backRefs);
     }
 
-    async getClaimedChains(): Promise<ClaimedChains> {
-        return Promise.resolve(this.activeChains);
+    getClaimedChains(): Promise<Map<Medallion, ClaimedChain>> {
+        const result = new Map();
+        for (let chain of this.activeChains) {
+            result.set(chain.medallion, chain);
+        }
+        return Promise.resolve(result);
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
-        this.activeChains.set(medallion, chainStart);
-        return Promise.resolve();
+    claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
+        const claim = {
+            medallion,
+            chainStart,
+            actorId: actorId || 0,
+            claimTime: generateTimestamp()
+        };
+        this.activeChains.push(claim);
+        return Promise.resolve(claim);
     }
 
     async getChainTracker(): Promise<ChainTracker> {
@@ -150,7 +161,8 @@ export class MemoryStore implements Store {
                 return bundleInfo;
             }
             if (oldChainInfo?.timestamp != priorTime) {
-                throw new Error(`missing prior chain entry for ${bundleInfo}, have ${oldChainInfo}`);
+                throw new Error(`missing prior chain entry for ${JSON.stringify(bundleInfo)}, ` +
+                    `have ${JSON.stringify(oldChainInfo)}`);
             }
         }
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);

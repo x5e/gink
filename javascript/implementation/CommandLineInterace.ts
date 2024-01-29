@@ -5,7 +5,7 @@ import { GinkInstance } from "./GinkInstance";
 import { AuthFunction, BundleInfo, CallBack } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { SimpleServer } from "./SimpleServer";
-import { ensure, logToStdErr } from "./utils";
+import { ensure, generateTimestamp, logToStdErr } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
 
 
@@ -55,7 +55,7 @@ export class CommandLineInterface {
             this.store = new LogBackedStore(dataFile, reset);
         } else {
             logToStdErr(`using in-memory database`);
-            this.store = new IndexedDbStore();
+            this.store = new IndexedDbStore(generateTimestamp().toString());
         }
 
         if (process.env["GINK_PORT"]) {

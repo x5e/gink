@@ -8,7 +8,6 @@ export type Timestamp = number;
 export type ChainStart = Timestamp;
 export type SeenThrough = Timestamp;
 export type PriorTime = Timestamp;
-export type ClaimedChains = Map<Medallion, ChainStart>;
 export type Offset = number;
 export type DirPath = string;
 export type FilePath = string;
@@ -21,9 +20,17 @@ export type AsOf = Timestamp | Date | ChangeSetOffset;
 export type MuidTuple = [Timestamp, Medallion, Offset];
 export type Cookies = Map<string, string>;
 export type Indexable = MuidTuple;
+export type ActorId = number;  // process ID on the server side, something more complex in the browser
 
 export interface CommitListener {
     (commitInfo: BundleInfo): Promise<void>;
+}
+
+export interface ClaimedChain {
+    medallion: Medallion;
+    chainStart: ChainStart;
+    actorId: ActorId;
+    claimTime: Timestamp;
 }
 
 export interface CallBack {
@@ -43,12 +50,6 @@ export interface Muid {
     timestamp: Timestamp | undefined;
     offset: number;
 }
-
-export interface Chain {
-    medallion: Medallion;
-    chainStart: ChainStart;
-}
-
 
 export interface BundleInfo {
     timestamp: Timestamp;
@@ -111,8 +112,8 @@ export interface IndexedDbStoreSchema extends DBSchema {
         key: [number, number];
     };
     activeChains: {
-        value: Chain;
-        key: number; // medallion
+        value: ClaimedChain;
+        key: [number, number, number]; // medallion, chainStart, claimTime
     };
     containers: {
         key: MuidTuple;
