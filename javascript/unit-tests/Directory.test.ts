@@ -106,6 +106,27 @@ it('use a sub-schema', async function () {
     }
 });
 
+it('purge one directory leaving other untouched', async function () {
+    for (const store of [
+        new IndexedDbStore('purge etc.', true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new GinkInstance(store);
+        await instance.ready;
+        const d1 = await instance.createDirectory();
+        const d2 = await instance.createDirectory();
+
+        await d1.set("foo", "bar");
+        await d2.set("abc", "xyz");
+
+        await d1.clear(true);
+
+        ensure(0 == await d1.size());
+        const size = await d2.size();
+        ensure(0 != size, "directory 2 has been purged!");
+    }
+});
+
 it('convert to standard Map', async function () {
     for (const store of [new IndexedDbStore('Directory.convert', true), new MemoryStore(true)]) {
         const instance = new GinkInstance(store);
