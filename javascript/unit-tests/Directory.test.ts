@@ -3,7 +3,10 @@ import { GinkInstance, Bundler, IndexedDbStore, Directory, MemoryStore } from ".
 import { ensure } from "../implementation/utils";
 
 it('set and get Basic data', async function () {
-    for (const store of [new IndexedDbStore('Directory.test1', true), new MemoryStore(true)]) {
+    for (const store of [
+        new IndexedDbStore('Directory.test1', true),
+        new MemoryStore(true),
+    ]) {
         const instance = new GinkInstance(store);
         await instance.ready;
         const schema = await instance.createDirectory();
@@ -26,6 +29,41 @@ it('set and get Basic data', async function () {
         await store.close();
     }
 });
+
+it('set and get data in two directories', async function () {
+    for (const store of
+        [
+            new IndexedDbStore('two.directories', true),
+            new MemoryStore(true),
+        ]) {
+        const instance = new GinkInstance(store);
+        await instance.ready;
+        const dir1 = await instance.createDirectory();
+        const dir2 = await instance.createDirectory();
+
+        // set a value
+        await dir1.set("key-a", "value1");
+        await dir2.set("key-a", "value2");
+        await dir1.set("key-b", "value3");
+
+        // check that the desired result exists in the database;
+        const result1 = await dir1.get("key-a");
+        ensure(result1 == "value1");
+
+        const result2 = await dir2.get("key-a");
+        ensure(result2 == "value2", String(result2));
+
+        const result3 = await dir1.size();
+        ensure(result3 == 2, String(result3));
+
+        const result4 = await dir2.has("key-b");
+        ensure(!result4);
+
+        await store.close();
+    }
+});
+
+
 
 it('set multiple key/value pairs in one change-set', async function () {
     for (const store of [new IndexedDbStore('Directory.test2', true), new MemoryStore(true)]) {
@@ -65,6 +103,27 @@ it('use a sub-schema', async function () {
         if (!(anotherProxy instanceof Directory)) throw new Error("not a schema?");
         ensure("123" == await anotherProxy.get("xyz"));
         await store.close();
+    }
+});
+
+it('purge one directory leaving other untouched', async function () {
+    for (const store of [
+        new IndexedDbStore('purge etc.', true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new GinkInstance(store);
+        await instance.ready;
+        const d1 = await instance.createDirectory();
+        const d2 = await instance.createDirectory();
+
+        await d1.set("foo", "bar");
+        await d2.set("abc", "xyz");
+
+        await d1.clear(true);
+
+        ensure(0 == await d1.size());
+        const size = await d2.size();
+        ensure(0 != size, "directory 2 has been purged!");
     }
 });
 
@@ -174,9 +233,9 @@ it('Directory.purge', async function () {
 
 it('Directory.clear', async function () {
     for (const store of [
-            new IndexedDbStore('Directory.clear', true),
-            new MemoryStore(true),
-        ]) {
+        new IndexedDbStore('Directory.clear', true),
+        new MemoryStore(true),
+    ]) {
         const instance = new GinkInstance(store);
         await instance.ready;
         const directory = await instance.createDirectory();
@@ -189,6 +248,9 @@ it('Directory.clear', async function () {
         if (asMapBeforeClear.has("B") || !asMapBeforeClear.has("A")) {
             throw new Error("busted");
         }
+        // Ensure getEntryByKey works the same way
+        ensure(await directory.get("A", clearMuid.timestamp));
+        ensure(!(await directory.get("B", clearMuid.timestamp)));
         await store.close();
     }
-}, 1000*1000*1000);
+}, 1000 * 1000 * 1000);

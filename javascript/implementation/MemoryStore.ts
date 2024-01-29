@@ -6,7 +6,8 @@ import {
     muidToTuple,
     muidTupleToMuid,
     muidTupleToString,
-    unwrapValue
+    unwrapValue,
+    sameData
 } from "./utils";
 import {
     AsOf,
@@ -55,11 +56,12 @@ export class MemoryStore implements Store {
     private trxns: TreeMap<BundleInfoTuple, Uint8Array>; // BundleInfoTuple => bytes
     private chainInfos: TreeMap<string, BundleInfo>; // [Medallion, ChainStart] => BundleInfo
     private activeChains: ClaimedChain[];
-    private clearances: TreeMap<string, Clearance>; // ClearanceId => Clearance
+    private clearances: TreeMap<string, Clearance>; // ContainerId,ClearanceId => Clearance
     private containers: TreeMap<string, Uint8Array>; // ContainerId => bytes
     private removals: TreeMap<string, Removal>; // RemovalId => Removal
     private removalsByPlacementId: Map<string, Removal>; // EntryId => Removal
     private entries: TreeMap<string, Entry>; // PlacementId => Entry
+    private entriesByContainerKeyPlacement: TreeMap<string, string>; // ContainerID,Key,PlacementId => PlacementId
 
     constructor(private keepingHistory = true) {
         this.ready = this.initialize();
@@ -76,7 +78,7 @@ export class MemoryStore implements Store {
         }
 
         while (!lower.equals(upper)) {
-            this.entries.delete(lower.key);
+            this.removeEntry(lower.key);
             lower.next();
         }
     }
@@ -99,6 +101,7 @@ export class MemoryStore implements Store {
         this.removals = new TreeMap();
         this.removalsByPlacementId = new Map();
         this.entries = new TreeMap();
+        this.entriesByContainerKeyPlacement = new TreeMap();
         return Promise.resolve();
     }
 
@@ -132,7 +135,7 @@ export class MemoryStore implements Store {
             chainStart,
             actorId: actorId || 0,
             claimTime: generateTimestamp()
-        }
+        };
         this.activeChains.push(claim);
         return Promise.resolve(claim);
     }
@@ -159,7 +162,7 @@ export class MemoryStore implements Store {
             }
             if (oldChainInfo?.timestamp != priorTime) {
                 throw new Error(`missing prior chain entry for ${JSON.stringify(bundleInfo)}, ` +
-                `have ${JSON.stringify(oldChainInfo)}`);
+                    `have ${JSON.stringify(oldChainInfo)}`);
             }
         }
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
@@ -243,13 +246,13 @@ export class MemoryStore implements Store {
                             this.removalsByPlacementId.set(muidTupleToString(placementId), removal);
                             const entryToMark = this.entries.get(muidTupleToString(search.entryId));
                             entryToMark.deletion = true;
-                            this.entries.set(muidTupleToString(placementId), entryToMark);
+                            this.addEntry(entryToMark);
                         } else {
-                            this.entries.delete(muidTupleToString(placementId));
+                            this.removeEntry(muidTupleToString(placementId));
                         }
                     }
                 }
-                this.entries.set(muidTupleToString(placementId), entry);
+                this.addEntry(entry);
                 continue;
             }
             if (changeBuilder.hasMovement()) {
@@ -274,10 +277,10 @@ export class MemoryStore implements Store {
                         targetList: found.targetList,
                     };
                     // Need to store keys using destinations to order
-                    this.entries.set(muidTupleToString([dest, destEntry.placementId[1], destEntry.placementId[2]]), destEntry);
+                    this.addEntry(destEntry);
                 }
                 if (movementBuilder.getPurge() || !this.keepingHistory) {
-                    this.entries.delete(muidTupleToString(entryId));
+                    this.removeEntry(muidTupleToString(entryId));
                 } else {
                     const removal: Removal = {
                         containerId,
@@ -297,29 +300,35 @@ export class MemoryStore implements Store {
                 const containerMuidTuple: MuidTuple = [container.timestamp, container.medallion, container.offset];
                 if (clearanceBuilder.getPurge()) {
                     // When purging, remove all entries from the container.
-                    const lowerEntries = this.entries.lowerBound(muidTupleToString(containerMuidTuple));
+                    const lowerEntries = this.entriesByContainerKeyPlacement.lowerBound(muidTupleToString(containerMuidTuple));
+                    const upperEntries = this.entriesByContainerKeyPlacement.upperBound(`${muidTupleToString(containerMuidTuple)},~,~`);
                     let prevKey = undefined;
                     let prevEntry = undefined;
                     for (const it = lowerEntries; it; it.next()) {
                         // Have to delete the previous key, because iteration will be broken if the
                         // current key is deleted.
-                        if (prevKey && muidTupleToString(prevEntry.containerId) == muidToString(container)) {
-                            this.entries.delete(prevKey);
+                        if (prevKey) {
+                            ensure(muidTupleToString(this.entries.get(prevEntry).containerId) == muidToString(container));
+                            this.removeEntry(prevEntry);
                         }
-                        if (it.equals(this.entries.end())) break;
+                        if (it.equals(upperEntries)) break;
                         prevKey = it.key;
                         prevEntry = it.value;
                     }
                     // When doing a purging clear, remove previous clearances for the container.
-                    const lowerClearances = this.clearances.lowerBound(muidTupleToString(containerMuidTuple));
+                    const lowerClearances = this.clearances.lowerBound(`${muidTupleToString(containerMuidTuple)}`);
+                    const upperClearances = this.clearances.upperBound(`${muidTupleToString(containerMuidTuple)},~`);
                     while (lowerClearances) {
+                        if (lowerClearances.equals(upperClearances)) break;
+                        if (muidTupleToString(lowerClearances.value.containerId) != muidTupleToString(containerMuidTuple)) break;
                         this.clearances.delete(lowerClearances.key);
-                        if (lowerClearances.equals(this.clearances.end())) break;
                         lowerClearances.next();
                     }
                     // When doing a purging clear, remove all removals for the container.
                     const lowerRemovals = this.removals.lowerBound(muidTupleToString(containerMuidTuple));
                     while (lowerRemovals) {
+                        if (lowerRemovals.value &&
+                            muidTupleToString(lowerRemovals.value.containerId) != muidTupleToString(containerMuidTuple)) break;
                         this.removals.delete(lowerRemovals.key);
                         if (lowerRemovals.equals(this.removals.end())) break;
                         lowerRemovals.next();
@@ -330,7 +339,7 @@ export class MemoryStore implements Store {
                     clearanceId: changeAddressTuple,
                     purging: clearanceBuilder.getPurge()
                 };
-                this.clearances.set(muidTupleToString(clearance.clearanceId), clearance);
+                this.clearances.set(`${muidTupleToString(containerMuidTuple)},${muidTupleToString(clearance.clearanceId)}`, clearance);
                 continue;
             }
             throw new Error("don't know how to apply this kind of change");
@@ -370,31 +379,25 @@ export class MemoryStore implements Store {
     }
 
     async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined> {
-        const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : Infinity;
+        const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
-        let clearanceTime: Timestamp = 0;
-        const clearancesSearch = this.clearances.last();
-        if (clearancesSearch) {
-            clearanceTime = clearancesSearch[1].clearanceId[0];
-        }
-
+        const srcAsStr = muidTupleToString(desiredSrc);
+        let clearanceTime: Timestamp = this.getLastClearanceTimeForContainer(srcAsStr, asOfTs);
         const semanticKey = keyToSemanticKey(key);
-        const lower = this.entries.lowerBound(muidTupleToString(desiredSrc));
-        const upper = this.entries.upperBound(muidTupleToString([asOfTs, desiredSrc[1], desiredSrc[2]]));
-        const asOfBeforeClear = asOfTs <= clearanceTime;
-        let entry: Entry | undefined = undefined;
-        while (!lower.equals(upper)) {
-            if (lower.value && lower.value.effectiveKey.toString() == semanticKey.toString() && !lower.value.deletion &&
-                lower.value.entryId[0] < asOfTs) {
-                const entryAfterClearance = lower.value.entryId[0] >= clearanceTime;
-                if (asOfBeforeClear ? true : entryAfterClearance) {
-                    entry = lower.value;
-                    break;
-                }
+        const upper = this.entriesByContainerKeyPlacement.upperBound(`${srcAsStr},${semanticKey},${asOfTs}`);
+        // TreeMap upperBound always fetches the entry GREATER than the provided key (if there is nothing greater, it will be undefined)
+        // By calling prev() initially, the cursor will be at the right spot.
+        upper.prev();
+        const entry = this.entries.get(upper.value);
+        if (entry) {
+            const afterClearance = asOfTs > clearanceTime ?
+                (entry.entryId[0] >= clearanceTime && entry.entryId[0] < asOfTs) : entry.entryId[0] < asOfTs;
+
+            if (sameData(entry.effectiveKey, semanticKey) && !entry.deletion && afterClearance) {
+                return entry;
             }
-            lower.next();
         }
-        return entry;
+        return undefined;
     }
 
     async getCommits(callBack: (commitBytes: BundleBytes, commitInfo: BundleInfo) => void) {
@@ -412,52 +415,48 @@ export class MemoryStore implements Store {
     }
 
     async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
-        const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : Infinity;
+        const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
-        let clearanceTime: Timestamp = 0;
-        const upperClearance = this.clearances.last();
-        if (upperClearance) {
-            clearanceTime = upperClearance[1].clearanceId[0];
-        }
-        const lower = this.entries.lowerBound(muidTupleToString([Math.abs(desiredSrc[0]), Math.abs(desiredSrc[1]), Behavior.DIRECTORY]));
-        const upper = this.entries.upperBound(muidTupleToString([asOfTs, Math.abs(desiredSrc[1]), Behavior.DIRECTORY]));
+        const srcAsStr = muidTupleToString(desiredSrc);
+        let clearanceTime: Timestamp = this.getLastClearanceTimeForContainer(srcAsStr, asOfTs);
+        const lower = this.entriesByContainerKeyPlacement.lowerBound(srcAsStr);
+
         const result = new Map();
         while (lower) {
-            const entry = <Entry>lower.value;
-            if (entry) {
-                if (entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
-                    entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY) {
-                    let key: Muid | string | number | Uint8Array | [];
+            if (lower.key) {
+                // Break if we enter the entries for another container
+                if (lower.key.split(",")[0] != srcAsStr) break;
+            }
+            const entryKey: string = lower.value;
+            if (entryKey) {
+                const entry = this.entries.get(entryKey);
+                ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
+                    entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
 
-                    if (typeof (entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof (entry.effectiveKey) == "number") {
-                        key = entry.effectiveKey;
-                    } else if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
-                        // If the key is a MuidTuple
-                        key = muidToString(muidTupleToMuid(entry.effectiveKey));
-                    } else {
-                        throw Error(`not sure what to do with a ${typeof (key)} key`);
-                    }
-                    ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
-                    const asOfBeforeClear = asOfTs <= clearanceTime;
-                    const entryAfterClearance = entry.entryId[0] >= clearanceTime;
-                    // If asOf timestamp is before or at the last clearance, we can ignore the clearance
-                    // time, and just look for entries up to the asOf timestamp.
-                    // Otherwise, we need to find entries between clearance and asOf.
-                    if (entry.entryId[0] < asOfTs && (asOfBeforeClear ? true : entryAfterClearance) &&
-                        muidTupleToString(entry.containerId) == muidToString(container)) {
-                        if (entry.deletion) {
-                            result.delete(key);
-                        } else {
-                            result.set(key, entry);
-                        }
-                    }
+                let key: Muid | string | number | Uint8Array | [];
+                if (typeof (entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof (entry.effectiveKey) == "number") {
+                    key = entry.effectiveKey;
+                } else if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
+                    // If the key is a MuidTuple
+                    key = muidToString(muidTupleToMuid(entry.effectiveKey));
+                } else {
+                    throw Error(`not sure what to do with a ${typeof (entry.effectiveKey)} key`);
+                }
+                ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
+                // If asOf is after the clearance, then the entries need to be between the last clearance and the asOf timestamp.
+                // Otherwise, the entries just need to be before the asOf timestamp.
+                const afterClearance = asOfTs > clearanceTime ?
+                    (entry.entryId[0] >= clearanceTime && entry.entryId[0] < asOfTs) : entry.entryId[0] < asOfTs;
+
+                if (afterClearance && muidTupleToString(entry.containerId) == muidToString(container) && !entry.deletion) {
+                    result.set(key, entry);
                 }
             }
-            if (lower.equals(upper)) break;
+            if (lower.equals(this.entriesByContainerKeyPlacement.end())) break;
             lower.next();
         }
         return result;
-    }
+    };
 
     /**
      * Returns entry data for a List.
@@ -468,32 +467,26 @@ export class MemoryStore implements Store {
      */
     async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
         const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
-        // container.timestamp - 10000 is a temporary fix for a bigger problem:
-        // Moving an entry to position 0 CAN (SOMETIMES) generate a timestamp that is less than the
-        // timestamp of the container itself, which would not be found without this (temporary) change.
-        const containerId: [number, number, number] = [container?.timestamp ? container.timestamp - 10000 : 0, container?.medallion ?? 0, container?.offset ?? 0];
-        const lower = this.entries.lowerBound(muidTupleToString(containerId));
-        const upper = this.entries.upperBound(muidTupleToString([asOfTs, containerId[1], containerId[2]]));
-        let clearanceTime: Timestamp = 0;
-        const upperClearance = this.clearances.last();
-        if (upperClearance) {
-            clearanceTime = upperClearance[1].clearanceId[0];
-        }
+        const containerId: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
+        const lower = this.entriesByContainerKeyPlacement.lowerBound(muidTupleToString(containerId));
+        const upper = this.entriesByContainerKeyPlacement.upperBound(`${muidTupleToString(containerId)},${asOfTs}`);
+
+        let clearanceTime: Timestamp = this.getLastClearanceTimeForContainer(muidTupleToString(containerId), asOfTs);
         const returning = <Entry[]>[];
 
+        // If we need to iterate forward or backward
         let to = through < 0 ? lower : upper;
         let from = through < 0 ? upper : lower;
 
         const needed = through < 0 ? -through : through + 1;
-        const asOfBeforeClear = asOfTs <= clearanceTime;
         while (returning.length < needed) {
-            const entry: Entry = from.value;
-            // Specifically checking whether timestamp is before asOf, because treemap always finds
-            // the entry GREATER than upper bound.
-            if (entry) {
-                const entryAfterClearance = entry.entryId[0] >= clearanceTime;
-                if (entry.entryId[0] < asOfTs && (asOfBeforeClear ? true : entryAfterClearance) &&
-                    muidToString(container) == muidTupleToString(entry.containerId)) {
+            const entryKey: string = from.value;
+            if (entryKey) {
+                const entry = this.entries.get(entryKey);
+                const afterClearance = asOfTs > clearanceTime ?
+                    (entry.entryId[0] >= clearanceTime && entry.entryId[0] < asOfTs) : entry.entryId[0] < asOfTs;
+
+                if (afterClearance && muidToString(container) == muidTupleToString(entry.containerId)) {
                     const removal = this.removalsByPlacementId.get(muidTupleToString(entry.placementId));
                     if (!removal || removal.removalId[0] > asOfTs) returning.push(entry);
                 }
@@ -504,8 +497,45 @@ export class MemoryStore implements Store {
         return returning;
     }
 
+    /**
+     * Since we have to use multiple maps to act as indexes, this method
+     * should eliminate some of the pain of adding entries to multiple maps.
+     */
+    addEntry(entry: Entry) {
+        this.entries.set(muidTupleToString(entry.placementId), entry);
+        const indexedKey = `${muidTupleToString(entry.containerId)},${entry.effectiveKey},${muidTupleToString(entry.placementId)}`;
+        this.entriesByContainerKeyPlacement.set(indexedKey, muidTupleToString(entry.placementId));
+    }
+
+    /**
+     * Helper to remove entries from all maps/indexes.
+     */
+    removeEntry(entryId: string) {
+        const entry = this.entries.get(entryId);
+        ensure(entry, "entry not found - something is broken");
+        this.entries.delete(entryId);
+        const indexedKey = `${muidTupleToString(entry.containerId)},${entry.effectiveKey},${muidTupleToString(entry.placementId)}`;
+        this.entriesByContainerKeyPlacement.delete(indexedKey);
+    }
+
+    /**
+     * Returns the timestamp of the last clearance for any given container.
+     * @param containerId container muid as a string
+     * @param asOf optional timestamp to query - finds the last clearance within the timeframe.
+     * @returns the timestamp of the last clearance, or 0 if one wasn't found.
+     */
+    getLastClearanceTimeForContainer(containerId: string, asOf?: Timestamp): number {
+        const upperClearance = this.clearances.upperBound(`${containerId},${asOf ? asOf : "~"}`);
+        upperClearance.prev();
+        let clearanceTime: number = 0;
+        if (upperClearance.value && sameData(containerId, muidTupleToString(upperClearance.value.containerId))) {
+            clearanceTime = upperClearance.value.clearanceId[0];
+        }
+        return clearanceTime;
+    }
+
     async getEntriesBySourceOrTarget(): Promise<Entry[]> {
-        throw Error("not implemented");
+        throw new Error("not implemented");
     }
 
     async close(): Promise<void> {
@@ -516,19 +546,21 @@ export class MemoryStore implements Store {
         delete this.clearances;
         delete this.containers;
         delete this.removals;
+        delete this.removalsByPlacementId;
         delete this.entries;
+        delete this.entriesByContainerKeyPlacement;
         return Promise.resolve();
-    }
+    };
 
     // for debugging, not part of the api/interface
     getAllEntryKeys(): Array<string> {
         return Array.from(this.entries.keys());
-    }
+    };
 
     // for debugging, not part of the api/interface
     getAllEntries(): Array<Entry> {
         return Array.from(this.entries.values());
-    }
+    };
 
     // for debugging, not part of the api/interface
     getAllRemovals(): TreeMap<string, Removal> {
