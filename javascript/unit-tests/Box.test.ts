@@ -3,7 +3,10 @@ import { ensure } from "../implementation/utils";
 
 it('create a box; set and get data in it', async function () {
     // set up the objects
-    for (const store of [new IndexedDbStore('Box.test1', true), new MemoryStore(true)]) {
+    for (const store of [
+            new IndexedDbStore('Box.test1', true),
+            new MemoryStore(true),
+        ]) {
         const instance = new GinkInstance(store);
         await instance.ready;
         const aBox: Box = await instance.createBox();

@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize and connect database store and instance
-    const store = new gink.IndexedDbStore();
+    const store = new gink.IndexedDbStore("dashboard-test");
     const instance = new gink.GinkInstance(store);
     await instance.ready;
 

@@ -11,13 +11,14 @@ import {
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {
+    ActorId,
     AsOf,
     BundleBytes,
     BundleInfo,
     BundleInfoTuple,
     Bytes,
     ChainStart,
-    ClaimedChains,
+    ClaimedChain,
     Clearance,
     Entry, Indexable,
     IndexedDbStoreSchema,
@@ -29,14 +30,26 @@ import {
     Removal,
     Timestamp,
 } from "./typedefs";
-import { extractCommitInfo, extractContainerMuid, getEffectiveKey, extractMovementInfo, buildPairLists, buildPointeeList, buildChainTracker, keyToSemanticKey, commitKeyToInfo, commitInfoToKey } from "./store_utils";
+import {
+    extractCommitInfo,
+    extractContainerMuid,
+    getEffectiveKey,
+    extractMovementInfo,
+    buildPairLists,
+    buildPointeeList,
+    buildChainTracker,
+    keyToSemanticKey,
+    commitKeyToInfo,
+    commitInfoToKey
+} from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { Container } from './Container';
 import { PromiseChainLock } from "./PromiseChainLock";
 
-type Transaction = IDBPTransaction<IndexedDbStoreSchema, ("trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries")[], "readwrite">;
+type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
+    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries")[], "readwrite">;
 
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
@@ -60,7 +73,7 @@ export class IndexedDbStore implements Store {
     private lastCaller: string = "";
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
-    constructor(indexedDbName = "gink-default", reset = false, private keepingHistory = true) {
+    constructor(indexedDbName: string, reset?: boolean, private keepingHistory = true) {
         this.ready = this.initialize(indexedDbName, reset);
     }
 
@@ -99,7 +112,7 @@ export class IndexedDbStore implements Store {
                     easier because the getAll() interface is a bit nicer than
                     working with the cursor interface.
                 */
-                db.createObjectStore('activeChains', { keyPath: "medallion" });
+                db.createObjectStore('activeChains', { keyPath: ["medallion", "chainStart"] });
 
                 db.createObjectStore("clearances", { keyPath: ["containerId", "clearanceId"] });
 
@@ -213,23 +226,33 @@ export class IndexedDbStore implements Store {
         throw new Error(`don't know how to interpret asOf=${asOf}`);
     }
 
-    async getClaimedChains(): Promise<ClaimedChains> {
+    async getClaimedChains(): Promise<Map<Medallion, ClaimedChain>> {
         if (!this.initialized) throw new Error("not initilized");
         const objectStore = this.wrapped.transaction("activeChains", "readonly").objectStore("activeChains");
         const items = await objectStore.getAll();
-        const result = new Map();
-        for (let i = 0; i < items.length; i++) {
-            result.set(items[i].medallion, items[i].chainStart);
+        const result: Map<Medallion, ClaimedChain> = new Map();
+        let lastTs = 0;
+        for (let item of items) {
+            if (item.claimTime < lastTs)
+                throw new Error("claims not in order");
+            lastTs = item.claimTime;
+            result.set(item.medallion, item);
         }
         return result;
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart): Promise<void> {
-        //TODO(https://github.com/google/gink/issues/29): check for medallion reuse
+    async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         await this.ready;
         const wrappedTransaction = this.wrapped.transaction("activeChains", "readwrite");
-        await wrappedTransaction.objectStore('activeChains').add({ chainStart, medallion });
-        return wrappedTransaction.done;
+        const claim = {
+            chainStart,
+            medallion,
+            actorId: actorId || 0,
+            claimTime: generateTimestamp(),
+        };
+        await wrappedTransaction.objectStore('activeChains').add(claim);
+        await wrappedTransaction.done;
+        return claim;
     }
 
     async getChainTracker(): Promise<ChainTracker> {
