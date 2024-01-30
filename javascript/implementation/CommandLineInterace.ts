@@ -87,13 +87,13 @@ export class CommandLineInterface {
     }
 
     async run() {
+        globalThis.database = this.instance;
+        globalThis.root = this.instance.getGlobalDirectory();
         this.replServer = start({prompt: "node+gink> ", useGlobal: true});
         if (this.instance) {
             await this.instance.ready;
             this.instance.addListener(
                 async (commitInfo: BundleInfo) => logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`))
-            this.replServer.context.db = this.instance;
-            this.replServer.context.root = this.instance.getGlobalDirectory();
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
                 try {
