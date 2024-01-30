@@ -123,7 +123,11 @@ export class MemoryStore implements Store {
 
     getClaimedChains(): Promise<Map<Medallion, ClaimedChain>> {
         const result = new Map();
+        let lastTime = 0;
+        this.activeChains.sort((a, b) => a.claimTime - b.claimTime);
         for (let chain of this.activeChains) {
+            ensure(chain.claimTime > lastTime);
+            lastTime = chain.claimTime;
             result.set(chain.medallion, chain);
         }
         return Promise.resolve(result);
