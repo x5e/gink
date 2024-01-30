@@ -113,7 +113,7 @@ export interface IndexedDbStoreSchema extends DBSchema {
     };
     activeChains: {
         value: ClaimedChain;
-        key: [number]; // medallion, chainStart, claimTime
+        key: [number]; // claimTime
     };
     containers: {
         key: MuidTuple;
