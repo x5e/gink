@@ -82,10 +82,16 @@ export class CommandLineInterface {
         this.targets = process.argv.slice(2);
     }
 
+    static async onCommit(commitInfo: BundleInfo) {
+                logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`);
+    }
+
     async run() {
         this.replServer = start({prompt: "node+gink> ", useGlobal: true});
         if (this.instance) {
             await this.instance.ready;
+            this.instance.addListener(
+                async (commitInfo: BundleInfo) => logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`))
             this.replServer.context.db = this.instance;
             this.replServer.context.root = this.instance.getGlobalDirectory();
             for (const target of this.targets) {
