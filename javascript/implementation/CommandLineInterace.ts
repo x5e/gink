@@ -87,11 +87,10 @@ export class CommandLineInterface {
     }
 
     async run() {
-        globalThis.database = this.instance;
-        globalThis.root = this.instance.getGlobalDirectory();
-        this.replServer = start({prompt: "node+gink> ", useGlobal: true});
         if (this.instance) {
             await this.instance.ready;
+            globalThis.database = this.instance;
+            globalThis.root = this.instance.getGlobalDirectory();
             this.instance.addListener(
                 async (commitInfo: BundleInfo) => logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`))
             for (const target of this.targets) {
@@ -106,5 +105,6 @@ export class CommandLineInterface {
         } else {
             await this.routingServer?.ready;
         }
+        this.replServer = start({prompt: "node+gink> ", useGlobal: true});
     }
 }
