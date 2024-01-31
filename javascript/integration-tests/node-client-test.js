@@ -3,16 +3,16 @@ const Expector = require("./Expector");
 (async () => {
     console.log("starting");
     const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: "8080", ...process.env } });
-    await server.expect("ready", 60000);
+    await server.expect("listening", 10000);
     const client = new Expector("./tsc.out/implementation/main.js", ["ws://127.0.0.1:8080/"]);
-    await client.expect("ready", 60000);
+    await client.expect("using", 10000);
     console.log("all ready");
 
-    server.send("hello\r\n");
+    server.send("var misc = await root.set('x', 'y', 'hello'); \r\n");
     console.log("sent");
     await client.expect(/received commit:.*hello/);
     console.log("received");
-    client.send("world\r\n");
+    client.send("var misc = await root.set('a', 'b', 'world'); \r\n");
     await server.expect(/received commit:.*world/);
 
     console.log("closing...");

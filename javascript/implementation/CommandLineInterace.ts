@@ -7,9 +7,8 @@ import { Bundler } from "./Bundler";
 import { SimpleServer } from "./SimpleServer";
 import { ensure, generateTimestamp, logToStdErr } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
+import { start, REPLServer } from "node:repl";
 
-
-import readline from "readline";
 
 /**
     Intended to manage server side running of Gink.
@@ -24,6 +23,7 @@ export class CommandLineInterface {
     store?: Store;
     instance?: GinkInstance;
     routingServer?: RoutingServer;
+    replServer?: REPLServer;
 
     constructor(process: NodeJS.Process) {
         logToStdErr("starting...");
@@ -83,30 +83,28 @@ export class CommandLineInterface {
     }
 
     static async onCommit(commitInfo: BundleInfo) {
-        logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`);
+                logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`);
     }
 
     async run() {
         if (this.instance) {
             await this.instance.ready;
-            const instance = this.instance;
-            this.instance.addListener(CommandLineInterface.onCommit);
+            globalThis.database = this.instance;
+            globalThis.root = this.instance.getGlobalDirectory();
+            this.instance.addListener(
+                async (commitInfo: BundleInfo) => logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`))
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
                 try {
                     await this.instance.connectTo(target, logToStdErr);
                     logToStdErr(`connected!`);
                 } catch (e) {
-                    logToStdErr(`**** Failed connection to ${target}. Bath Auth token? ****`);
+                    logToStdErr(`**** Failed connection to ${target}. Bad Auth token? ****`);
                 }
             }
-            logToStdErr("ready (type a comment and press enter to create a commit)");
-            const readlineInterface = readline.createInterface(process.stdin, process.stdout);
-            readlineInterface.on('line', async (comment: string) => {
-                instance.addBundler(new Bundler(comment));
-            });
         } else {
             await this.routingServer?.ready;
         }
+        this.replServer = start({prompt: "node+gink> ", useGlobal: true});
     }
 }

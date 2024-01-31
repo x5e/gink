@@ -33,6 +33,9 @@ module.exports = function (config) {
                 filename: 'packed-tests.js',
                 path: path.resolve(__dirname, 'content_root/generated/unit-tests'),
             },
+            externals: {
+                "node:repl": "node:repl"
+            },
             resolve: {
                 extensions: [".ts", ".tsx", ".js", ".node"],
                 modules: ['node_modules'],
@@ -55,7 +58,6 @@ module.exports = function (config) {
                     "tls": false
                 }
             },
-
             module: {
                 rules: [
                     {
