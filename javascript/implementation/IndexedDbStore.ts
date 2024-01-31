@@ -112,7 +112,7 @@ export class IndexedDbStore implements Store {
                     easier because the getAll() interface is a bit nicer than
                     working with the cursor interface.
                 */
-                db.createObjectStore('activeChains', { keyPath: ["medallion", "chainStart"] });
+                db.createObjectStore('activeChains', { keyPath: ["claimTime"] });
 
                 db.createObjectStore("clearances", { keyPath: ["containerId", "clearanceId"] });
 
