@@ -1,6 +1,8 @@
 import { Peer } from "./Peer";
-import { makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
-    encodeToken, decodeToken, getActorId, isAlive } from "./utils";
+import {
+    makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
+    encodeToken, getActorId, isAlive
+} from "./utils";
 import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
@@ -86,13 +88,13 @@ export class GinkInstance {
         // TODO(181): make claiming of a chain as needed to facilitate read-only/relay use cases
         const claimedChains = await this.store.getClaimedChains();
         for (let value of claimedChains.values()) {
-            if (! isAlive(value.actorId)) {
+            if (!isAlive(value.actorId)) {
                 // TODO: check to see if meta-data matches, and overwrite if not
                 this.myChain = value;
                 break;
             }
         }
-        if (! this.myChain) {
+        if (!this.myChain) {
             await this.startChain(info);
         }
         ensure(this.myChain.medallion > 0);
@@ -253,7 +255,7 @@ export class GinkInstance {
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
         if (!this.initilized)
             throw new Error("GinkInstance not ready");
-        if (! (this.myChain.medallion > 0))
+        if (!(this.myChain.medallion > 0))
             throw new Error("zero medallion?");
         const nowMicros = generateTimestamp();
         const lastBundleInfo = this.iHave.getCommitInfo([this.myChain.medallion, this.myChain.chainStart]);
@@ -400,19 +402,25 @@ export class GinkInstance {
      * @param resolveOnOpen if true, resolve when the connection is established, otherwise wait for greeting
      * @returns a promise to the peer
      */
-    public async connectTo(target: string, onClose: CallBack = noOp, resolveOnOpen?: boolean): Promise<Peer> {
+    public async connectTo(
+        target: string,
+        options?: {
+            onClose?: CallBack,
+            resolveOnOpen?: boolean,
+            authToken?: string;
+        }): Promise<Peer> {
         //TODO(https://github.com/google/gink/issues/69): have the default be to wait for databases to sync
+        const onClose: CallBack = (options && options.onClose) ? options.onClose : noOp;
+        const resolveOnOpen: boolean = (options && options.resolveOnOpen) ? options.resolveOnOpen : false;
+        const authToken: string = (options && options.authToken) ? options.authToken : undefined;
+        if (authToken && !authToken.toLowerCase().startsWith("token ")) throw new Error("auth token needs to start with 'token '");
+
         await this.ready;
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
             let protocols = [GinkInstance.PROTOCOL];
 
-            // Probably need to pass auth token into here?
-            // const authToken = process.env["GINK_AUTH_TOKEN"];
-            // let authToken = encodeToken("abc");
-            let authToken; // figure this out later :)
-
-            if (authToken) protocols.push(authToken);
+            if (authToken) protocols.push(encodeToken(authToken));
             const connectionId = this.createConnectionId();
             let websocketClient: WebSocket = new GinkInstance.W3cWebSocket(target, protocols);
             websocketClient.binaryType = "arraybuffer";

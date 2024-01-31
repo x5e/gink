@@ -38,12 +38,23 @@ export class CommandLineInterface {
         'token {key}' in their websocket subprotocol list.
         Otherwise, just accept all connections with the gink subprotocol.
         */
-        const authKey = process.env["GINK_AUTH_KEY"];
+        let authKey = process.env["GINK_AUTH_KEY"];
+        if (authKey && !authKey.toLowerCase().startsWith("token "))
+            throw new Error("make sure GINK_AUTH_KEY begins with 'token '");
+        // This is different than GINK_AUTH_TOKEN, which is what
+        // the client looks for when connecting via the CLI.run().
 
         let authFunc: AuthFunction | null = null;
         if (authKey) {
             authFunc = (token: string) => {
-                return token == authKey;
+                // Expecting token to have already been decoded from hex.
+                if (!token) return false;
+                // Purposely using includes here since the token will have been
+                // decoded and may contain '\x00' as a prefix.
+                ensure(token.includes("token "));
+                let key = authKey.toLowerCase().split("token ")[1].trimStart();
+                token = token.toLowerCase().split("token ")[1].trimStart();
+                return token == key;
             };
         }
 
@@ -83,7 +94,7 @@ export class CommandLineInterface {
     }
 
     static async onCommit(commitInfo: BundleInfo) {
-                logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`);
+        logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`);
     }
 
     async run() {
@@ -92,19 +103,19 @@ export class CommandLineInterface {
             globalThis.database = this.instance;
             globalThis.root = this.instance.getGlobalDirectory();
             this.instance.addListener(
-                async (commitInfo: BundleInfo) => logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`))
+                async (commitInfo: BundleInfo) => logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`));
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
                 try {
-                    await this.instance.connectTo(target, logToStdErr);
+                    await this.instance.connectTo(target, { onClose: logToStdErr, authToken: process.env["GINK_AUTH_TOKEN"] });
                     logToStdErr(`connected!`);
                 } catch (e) {
-                    logToStdErr(`**** Failed connection to ${target}. Bad Auth token? ****`);
+                    logToStdErr(`Failed connection to ${target}. Bad Auth token?\n` + e);
                 }
             }
         } else {
             await this.routingServer?.ready;
         }
-        this.replServer = start({prompt: "node+gink> ", useGlobal: true});
+        this.replServer = start({ prompt: "node+gink> ", useGlobal: true });
     }
 }
