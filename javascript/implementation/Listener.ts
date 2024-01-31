@@ -7,7 +7,7 @@ import {
 } from 'websocket';
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { SimpleServer } from './SimpleServer';
-import { OAuth2Client } from 'google-auth-library';
+import { OAuth2Client, } from 'google-auth-library';
 import { join } from 'path';
 
 /**
@@ -37,19 +37,23 @@ export class Listener {
             callWhenReady = resolve;
         });
 
+        const oAuthCredentials = {
+            clientID: process.env["OAUTH_CLIENT_ID"],
+            clientSecret: process.env["OAUTH_CLIENT_SECRET"],
+            scopes: [
+                "https://www.googleapis.com/auth/userinfo.profile",
+                "https://www.googleapis.com/auth/userinfo.email"
+            ]
+        };
+
         if (args.useOAuth) {
             // Set up Google OAuth client
-            const oAuthClientID = process.env["OAUTH_CLIENT_ID"];
-            const oAuthClientSecret = process.env["OAUTH_CLIENT_SECRET"];
-
-            // Don't need scopes until a request is made, but it's better to throw the error up front
-            if (!process.env["OAUTH_SCOPES"]) throw new Error("Need to provide OAuth scopes (separated by a ',') in env variable OAUTH_SCOPES");
-            if (!oAuthClientID) throw new Error("Provide Google Client ID in env OAUTH_CLIENT_ID to use OAuth");
-            if (!oAuthClientSecret) throw new Error("Provide Google Client Secret in env OAUTH_CLIENT_SECRET to use OAuth");
+            if (!oAuthCredentials.clientID) throw new Error("Provide Google Client ID in env OAUTH_CLIENT_ID to use OAuth");
+            if (!oAuthCredentials.clientSecret) throw new Error("Provide Google Client Secret in env OAUTH_CLIENT_SECRET to use OAuth");
 
             this.oAuth2Client = new OAuth2Client(
-                oAuthClientID,
-                oAuthClientSecret,
+                oAuthCredentials.clientID,
+                oAuthCredentials.clientSecret,
                 "http://localhost:8080/oauth2callback",
             );
         }
@@ -63,6 +67,8 @@ export class Listener {
                         const code = url.searchParams.get("code");
                         const { tokens } = await thisListener.oAuth2Client.getToken(code);
                         thisListener.oAuth2Client.setCredentials(tokens);
+                        const userInfo = JSON.parse(Buffer.from(tokens.id_token.split('.')[1], 'base64').toString());
+                        // Authorize (or not) user here
 
                         response.writeHead(302, {
                             Location: "http://localhost:8080/"
@@ -73,10 +79,8 @@ export class Listener {
 
                     // no access token, need to authorize
                     if (!thisListener.oAuth2Client.credentials.access_token) {
-                        const scopesStr: string = process.env["OAUTH_SCOPES"];
-                        const oAuthScopes = scopesStr.split(",");
                         response.writeHead(302, {
-                            Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthScopes })
+                            Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthCredentials.scopes })
                         });
                         response.end();
                         return;

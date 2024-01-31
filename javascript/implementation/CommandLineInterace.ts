@@ -77,7 +77,8 @@ export class CommandLineInterface {
                 staticContentRoot: process.env["GINK_STATIC_PATH"],
                 logger: logToStdErr,
                 authFunc: authFunc,
-                useOAuth: false
+                // Assuming if clientId is set we want to use OAuth.
+                useOAuth: !!process.env["OAUTH_CLIENT_ID"]
             };
             if (dataRoot) {
                 this.routingServer = new RoutingServer({
