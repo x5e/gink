@@ -457,7 +457,7 @@ If you haven't already, create a new Google Cloud Project from the Console.<br>
 In the search bar at the top of the console, type "**OAuth consent screen**" and click on the first option.<br>
 I prefer setting user type to "**External**" to begin, but it is up to you.
 On the first page, add "googleusercontent.com" to **Authorized domain 1**. Also, add a developer email to **Developer contact info**. The rest of this page is optional, so continue to the next page when you are done.<br>
-The scopes are very important, but they are also completely dependent on what type of application you are developing. Have a look through the list and identify scopes you will need to access. Make note of these urls, as you will need to add them as an ENV variable for Gink.<br>
+The scopes are very important - ensure you have at least selected 'profile' and 'email'. Have a look through the list and identify scopes you will need to access. Make note of these urls, as you will need to add them as an ENV variable for Gink.<br>
 Head to the next page, add a few test users (probably just your team), then you are done with the consent screen.<br>
 
 **Step 3**: Add new a credential<br>
@@ -469,10 +469,17 @@ In **Authorized Redirect URIs**, add 'http://localhost:8080/oauth2callback' and 
 Click **Create** - download the JSON file and keep it safe!
 
 **Step 4**: Save client ID and client secret in ENV variables
-Open the JSON file you just downloaded.
-Here are the environment variables you need to set for Gink:<br>
-OAUTH_CLIENT_ID=your_client_id<br>
-OAUTH_CLIENT_SECRET=your_client_secret<br>
-OAUTH_SCOPES=your_scopes,separated_by_comma,no_spaces<br>
+Open the JSON file you just downloaded.<br>
+Set the following environment variable:<br>
+export OAUTH_CREDS='{<br>
+"client_id": "{your_client_id}",<br>
+"client_secret": "{your_client_secret}"<br>
+"authorized_emails": [
+    "example@gmail.com",
+    "email@test.com"
+]
+}'<br>
+Authorized emails are the users who will be allowed to connect to the Gink server. If a connection is
+attempted from a different Google account, the connection will be denied.
 <br>
 That's it!
