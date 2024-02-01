@@ -6,7 +6,7 @@ import {
 import { AuthFunction, CallBack, DirPath, NumberStr, FilePath } from "./typedefs";
 import { GinkInstance } from "./GinkInstance";
 import { RoutingServerInstance } from './RoutingServerInstance';
-import { ensure, decodeToken, isPathDangerous } from './utils';
+import { ensure, decodeFromHex, isPathDangerous } from './utils';
 import { existsSync } from 'fs';
 import { join } from "path";
 import { Listener } from './Listener';
@@ -73,7 +73,9 @@ export class RoutingServer {
         if (request.requestedProtocols.length) {
             for (const protocol of request.requestedProtocols) {
                 if (protocol.match(/0x.*/)) {
-                    token = decodeToken(protocol);
+                    let decoded = decodeFromHex(protocol);
+                    if (decoded.includes("token "))
+                        token = decodeFromHex(protocol);
                 }
             }
 

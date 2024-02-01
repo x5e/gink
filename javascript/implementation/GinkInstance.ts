@@ -1,7 +1,7 @@
 import { Peer } from "./Peer";
 import {
     makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
-    encodeToken, getActorId, isAlive
+    encodeToHex, getActorId, isAlive
 } from "./utils";
 import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
@@ -458,7 +458,7 @@ export class GinkInstance {
                 };
                 oAuthCode = await getOAuthCode();
             };
-            if (authToken) protocols.push(encodeToken(authToken));
+            if (authToken) protocols.push(encodeToHex("token " + authToken));
             const connectionId = this.createConnectionId();
             let websocketClient: WebSocket = new GinkInstance.W3cWebSocket(target, protocols);
             websocketClient.binaryType = "arraybuffer";

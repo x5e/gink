@@ -47,9 +47,7 @@ export class CommandLineInterface {
             authFunc = (token: string) => {
                 // Expecting token to have already been decoded from hex.
                 if (!token) return false;
-                // Purposely using includes here since the token will have been
-                // decoded and may contain '\x00' as a prefix.
-                ensure(token.includes("token "));
+                ensure(token.startsWith("token "));
                 let key = authKey.toLowerCase();
                 token = token.toLowerCase().split("token ")[1].trimStart();
                 return token == key;

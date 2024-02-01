@@ -8,7 +8,7 @@ import { Buffer } from "buffer";
 import { Store, } from "./Store";
 import { CallBack, NumberStr, FilePath, DirPath, AuthFunction } from "./typedefs";
 import { Listener } from "./Listener";
-import { decodeToken } from './utils';
+import { decodeFromHex } from './utils';
 
 /**
  * A server that connects all inbound websocket connections to a single database instance.
@@ -48,7 +48,9 @@ export class SimpleServer extends GinkInstance {
         if (request.requestedProtocols.length) {
             for (const protocol of request.requestedProtocols) {
                 if (protocol.match(/0x.*/)) {
-                    token = decodeToken(protocol);
+                    let decoded = decodeFromHex(protocol);
+                    if (decoded.includes("token "))
+                        token = decodeFromHex(protocol);
                 }
             }
 
