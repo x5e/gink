@@ -34,13 +34,11 @@ export class CommandLineInterface {
 
         /*
         If an auth key is found in the server's environment variable
-        GINK_AUTH_KEY, then all clients will be required to have
-        'token {key}' in their websocket subprotocol list.
+        GINK_TOKEN, then all clients will be required to have
+        'token {token}' in their websocket subprotocol list.
         Otherwise, just accept all connections with the gink subprotocol.
         */
-        let authKey = process.env["GINK_AUTH_KEY"];
-        if (authKey && !authKey.toLowerCase().startsWith("token "))
-            throw new Error("make sure GINK_AUTH_KEY begins with 'token '");
+        let authKey = process.env["GINK_TOKEN"];
         // This is different than GINK_AUTH_TOKEN, which is what
         // the client looks for when connecting via the CLI.run().
 
@@ -52,7 +50,7 @@ export class CommandLineInterface {
                 // Purposely using includes here since the token will have been
                 // decoded and may contain '\x00' as a prefix.
                 ensure(token.includes("token "));
-                let key = authKey.toLowerCase().split("token ")[1].trimStart();
+                let key = authKey.toLowerCase();
                 token = token.toLowerCase().split("token ")[1].trimStart();
                 return token == key;
             };
