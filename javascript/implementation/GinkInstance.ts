@@ -400,6 +400,9 @@ export class GinkInstance {
      * @param target a websocket uri, e.g. "ws://127.0.0.1:8080/"
      * @param onClose optional callback to invoke when the connection is closed
      * @param resolveOnOpen if true, resolve when the connection is established, otherwise wait for greeting
+     * @param authToken optional authentication token if the server requires it.
+     * @param requiresOAuth set to true if your server is configured to use OAuth. This will redirect to
+     * Google's OAuth endpoint if you are in a browser.
      * @returns a promise to the peer
      */
     public async connectTo(
@@ -407,18 +410,54 @@ export class GinkInstance {
         options?: {
             onClose?: CallBack,
             resolveOnOpen?: boolean,
-            authToken?: string;
+            authToken?: string,
+            requiresOAuth?: boolean;
         }): Promise<Peer> {
         //TODO(https://github.com/google/gink/issues/69): have the default be to wait for databases to sync
         const onClose: CallBack = (options && options.onClose) ? options.onClose : noOp;
         const resolveOnOpen: boolean = (options && options.resolveOnOpen) ? options.resolveOnOpen : false;
         const authToken: string = (options && options.authToken) ? options.authToken : undefined;
+        let oAuthCode: string = undefined;
 
         await this.ready;
         const thisClient = this;
-        return new Promise<Peer>((resolve, reject) => {
+        return new Promise<Peer>(async (resolve, reject) => {
             let protocols = [GinkInstance.PROTOCOL];
 
+            if (options && options.requiresOAuth && window) {
+                /*
+                Open new tab and navigate to the auth endpoint for the gink server
+                the client is trying to connect to.
+
+                Try to get the code from the window.location once the user has signed in
+                Once we have the code, resolve the promise with the code.
+
+                Window is valid for 40 seconds before it will close and stop looking for the code.
+                 */
+                const targetURL = new URL(target);
+                const redirectTo = `http://${targetURL.hostname}${targetURL.port ? ":" + targetURL.port : ""}/auth`;
+                const oAuthWindow = window.open(redirectTo, "_blank");
+                const getOAuthCode = async (): Promise<string> => {
+                    let i = 0;
+                    return new Promise((resolve, reject) => {
+                        const timer = setInterval(() => {
+                            if (oAuthWindow.location.pathname == "/oauth2callback") {
+                                const code = oAuthWindow.location.search.split("&")[0].split("code=")[1];
+                                clearInterval(timer);
+                                oAuthWindow.close();
+                                return resolve(code);
+                            }
+                            if (i > 40) {
+                                oAuthWindow.close();
+                                return reject("Couldn't find OAuth code within 40 seconds.");
+                            }
+                            i++;
+                        }, 1000);
+                    });
+
+                };
+                oAuthCode = await getOAuthCode();
+            };
             if (authToken) protocols.push(encodeToken(authToken));
             const connectionId = this.createConnectionId();
             let websocketClient: WebSocket = new GinkInstance.W3cWebSocket(target, protocols);

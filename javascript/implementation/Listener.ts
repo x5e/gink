@@ -62,8 +62,16 @@ export class Listener {
             const url = new URL(request.url, `http://${request.headers.host}`);
             request.addListener('end', async function () {
                 if (args.useOAuth) {
+                    if (url.pathname == "/auth") {
+                        response.writeHead(302, {
+                            Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthCredentials.scopes })
+                        });
+                        response.end();
+                        return;
+                    }
+
                     // This is where Google redirects to after the user gives permissions
-                    if (url.pathname == "/oauth2callback") {
+                    else if (url.pathname == "/oauth2callback") {
                         const code = url.searchParams.get("code");
                         try {
                             const { tokens } = await thisListener.oAuth2Client.getToken(code);
@@ -81,21 +89,21 @@ export class Listener {
                             return;
                         }
 
-                        response.writeHead(302, {
-                            Location: "http://localhost:8080/"
-                        });
+                        // response.writeHead(302, {
+                        //     Location: "http://localhost:8080/"
+                        // });
                         response.end();
                         return;
                     }
 
                     // no access token, need to authorize
-                    if (!thisListener.oAuth2Client.credentials.access_token) {
-                        response.writeHead(302, {
-                            Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthCredentials.scopes })
-                        });
-                        response.end();
-                        return;
-                    }
+                    // if (!thisListener.oAuth2Client.credentials.access_token) {
+                    //     response.writeHead(302, {
+                    //         Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthCredentials.scopes })
+                    //     });
+                    //     response.end();
+                    //     return;
+                    // }
                 }
 
                 if (url.pathname == "/") {
