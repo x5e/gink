@@ -413,7 +413,6 @@ export class GinkInstance {
         const onClose: CallBack = (options && options.onClose) ? options.onClose : noOp;
         const resolveOnOpen: boolean = (options && options.resolveOnOpen) ? options.resolveOnOpen : false;
         const authToken: string = (options && options.authToken) ? options.authToken : undefined;
-        if (authToken && !authToken.toLowerCase().startsWith("token ")) throw new Error("auth token needs to start with 'token '");
 
         await this.ready;
         const thisClient = this;

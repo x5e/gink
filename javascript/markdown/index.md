@@ -430,6 +430,20 @@ await instance.connectTo("ws://host1");
 await instance.connectTo("ws://host2");
 ```
 
+### Token Authentication
+Start the Gink server with the environment variable GINK_TOKEN set to the token that will be required for a connection to be accepted.
+For example, `export GINK_TOKEN=1451jknr1jnak14jn`. <br>
+Now, when your server gets a connection attempt (presumably from another Gink instance), they will need to have the token. <br>
+<br>
+For the client, there are two ways to supply a token:<br>
+If starting an instance from the CLI - you will need to have the token as an env variable `GINK_AUTH_TOKEN`. This will automatically include the token in all connection requests to the targets supplied in the command (`npx gink ws://localhost:8080`).
+<br>
+If you are connecting from a client through the Gink API, pass the auth token to `GinkInstance.connectTo()` like so:
+```js
+const instance = new gink.GinkInstance()
+await instance.connectTo("ws://localhost:8080", {authToken: "1451jknr1jnak14jn"});
+```
+
 ### Setting up Google OAuth for your application
 Gink allows for Google OAuth to login users to your application. All of the backend code and implementation has been done for you, as long as you supply the Client ID, Client Secret, and set the correct redirect URI in Google Cloud.<br>
 <br>

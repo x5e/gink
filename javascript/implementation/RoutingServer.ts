@@ -73,7 +73,7 @@ export class RoutingServer {
         if (request.requestedProtocols.length) {
             for (const protocol of request.requestedProtocols) {
                 if (protocol.match(/0x.*/)) {
-                    token = decodeToken(protocol).split("token ")[1];
+                    token = decodeToken(protocol);
                 }
             }
 
