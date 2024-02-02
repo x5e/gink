@@ -9,7 +9,7 @@ import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { SimpleServer } from './SimpleServer';
 import { OAuth2Client, } from 'google-auth-library';
 import { join } from 'path';
-import { ensure, parseOAuthCreds } from './utils';
+import { getOAuthClient, parseOAuthCreds } from './utils';
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -18,7 +18,6 @@ export class Listener {
     ready: Promise<any>;
     private websocketServer: WebSocketServer;
     readonly httpServer: HttpServer | HttpsServer;
-    private oAuth2Client: OAuth2Client;
 
     constructor(args: {
         requestHandler: (request: WebSocketRequest) => void,
@@ -28,7 +27,6 @@ export class Listener {
         logger?: CallBack,
         sslKeyFilePath?: FilePath,
         sslCertFilePath?: FilePath,
-        useOAuth?: boolean;
     }) {
         const thisListener = this;
         const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot) : new StaticServer(join(__dirname, "../../content_root"));
@@ -38,63 +36,28 @@ export class Listener {
             callWhenReady = resolve;
         });
 
-
-        const oAuthCredentials = parseOAuthCreds();
-        if (args.useOAuth) {
-            // Set up Google OAuth client
-            this.oAuth2Client = new OAuth2Client(
-                oAuthCredentials.client_id,
-                oAuthCredentials.client_secret,
-                "http://localhost:8080/oauth2callback",
-            );
-        }
-
         const requestListener = (request: IncomingMessage, response: ServerResponse) => {
             const url = new URL(request.url, `http://${request.headers.host}`);
             request.addListener('end', async function () {
-                if (args.useOAuth) {
-                    if (url.pathname == "/auth") {
-                        response.writeHead(302, {
-                            Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthCredentials.scopes })
-                        });
-                        response.end();
+                if (url.pathname == "/auth") {
+                    const oAuthCredentials = parseOAuthCreds();
+                    if (!oAuthCredentials) {
+                        response.writeHead(401, "Server is not using OAuth").end();
                         return;
                     }
+                    response.writeHead(302, {
+                        Location: getOAuthClient().generateAuthUrl({ access_type: 'offline', scope: oAuthCredentials.scopes }),
+                    });
+                    response.end();
+                    return;
+                }
 
-                    // This is where Google redirects to after the user gives permissions
-                    else if (url.pathname == "/oauth2callback") {
-                        // const code = url.searchParams.get("code");
-                        // try {
-                        //     const { tokens } = await thisListener.oAuth2Client.getToken(code);
-                        //     thisListener.oAuth2Client.setCredentials(tokens);
-                        //     const userInfo = JSON.parse(Buffer.from(tokens.id_token.split('.')[1], 'base64').toString());
-
-                        //     // Authorize (or not) the user
-                        //     if (!oAuthCredentials.authorized_emails.includes(userInfo.email)) {
-                        //         thisListener.oAuth2Client.credentials = {};
-                        //         response.writeHead(401, "Not authorized").end();
-                        //         return;
-                        //     }
-                        // } catch { // If the oauth2callback page is refreshed, the server will error getting the token
-                        //     response.writeHead(401, "Not authorized").end();
-                        //     return;
-                        // }
-
-                        // response.writeHead(302, {
-                        //     Location: "http://localhost:8080/"
-                        // });
-                        response.end();
-                        return;
-                    }
-
-                    // no access token, need to authorize
-                    // if (!thisListener.oAuth2Client.credentials.access_token) {
-                    //     response.writeHead(302, {
-                    //         Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthCredentials.scopes })
-                    //     });
-                    //     response.end();
-                    //     return;
-                    // }
+                // This is where Google redirects to after the user gives permissions
+                // It's important to stop the response here so we can capture the code
+                // in the query params
+                else if (url.pathname == "/oauth2callback") {
+                    response.end();
+                    return;
                 }
 
                 if (url.pathname == "/") {

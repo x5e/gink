@@ -42,7 +42,7 @@ export interface Indexer {
 }
 
 export interface AuthFunction {
-    (token: string): boolean;
+    (token: string): Promise<boolean>;
 }
 
 export interface Muid {

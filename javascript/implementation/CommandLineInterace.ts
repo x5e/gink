@@ -2,12 +2,12 @@ import { RoutingServer } from "./RoutingServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { Store } from "./Store";
 import { GinkInstance } from "./GinkInstance";
-import { AuthFunction, BundleInfo, CallBack } from "./typedefs";
-import { Bundler } from "./Bundler";
+import { AuthFunction, BundleInfo } from "./typedefs";
 import { SimpleServer } from "./SimpleServer";
-import { ensure, generateTimestamp, logToStdErr } from "./utils";
+import { ensure, generateTimestamp, getOAuthClient, logToStdErr, parseOAuthCreds } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { start, REPLServer } from "node:repl";
+import { OAuth2Client, } from 'google-auth-library';
 
 
 /**
@@ -38,19 +38,39 @@ export class CommandLineInterface {
         'token {token}' in their websocket subprotocol list.
         Otherwise, just accept all connections with the gink subprotocol.
         */
-        let authKey = process.env["GINK_TOKEN"];
+        const authKey = process.env["GINK_TOKEN"];
         // This is different than GINK_AUTH_TOKEN, which is what
         // the client looks for when connecting via the CLI.run().
+        const oAuthCreds = process.env["OAUTH_CREDS"];
 
         let authFunc: AuthFunction | null = null;
+        let oAuth2Client: OAuth2Client = null;
+        if (oAuthCreds && authKey) {
+            throw new Error("You may only use token auth or OAuth, not both. Please either `unset OAUTH_CREDS` or `unset GINK_TOKEN`");
+        }
         if (authKey) {
             authFunc = (token: string) => {
                 // Expecting token to have already been decoded from hex.
-                if (!token) return false;
+                if (!token) return Promise.resolve(false);
                 ensure(token.startsWith("token "));
                 let key = authKey.toLowerCase();
                 token = token.toLowerCase().split("token ")[1].trimStart();
-                return token == key;
+                return Promise.resolve(token == key);
+            };
+        }
+        else if (oAuthCreds) {
+            const oAuthCredentials = parseOAuthCreds();
+            // Set up Google OAuth client
+            const oAuth2Client = getOAuthClient();
+            authFunc = async (code: string): Promise<boolean> => {
+                if (!code) return false;
+                const { tokens } = await oAuth2Client.getToken(decodeURIComponent(code));
+                const userInfo = JSON.parse(Buffer.from(tokens.id_token.split('.')[1], 'base64').toString());
+                if (!oAuthCredentials.authorized_emails.includes(userInfo.email)) {
+                    return false;
+                }
+                oAuth2Client.setCredentials(tokens);
+                return true;
             };
         }
 
@@ -73,7 +93,7 @@ export class CommandLineInterface {
                 staticContentRoot: process.env["GINK_STATIC_PATH"],
                 logger: logToStdErr,
                 authFunc: authFunc,
-                useOAuth: !!process.env["OAUTH_CREDS"]
+                oAuth2Client: oAuth2Client
             };
             if (dataRoot) {
                 this.routingServer = new RoutingServer({

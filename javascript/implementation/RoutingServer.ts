@@ -1,4 +1,3 @@
-
 import {
     request as WebSocketRequest,
     connection as WebSocketConnection
@@ -37,7 +36,7 @@ export class RoutingServer {
         authFunc?: AuthFunction;
     }) {
         const logger = this.logger = args.logger || (() => null);
-        this.authFunc = args.authFunc || (() => true);
+        this.authFunc = args.authFunc || (() => Promise.resolve(true));
         this.dataFilesRoot = args.dataFilesRoot;
         ensure(existsSync(this.dataFilesRoot), "data root not there");
         this.listener = new Listener({
@@ -75,7 +74,7 @@ export class RoutingServer {
                 if (protocol.match(/0x.*/)) {
                     let decoded = decodeFromHex(protocol);
                     if (decoded.includes("token "))
-                        token = decodeFromHex(protocol);
+                        token = decoded;
                 }
             }
 

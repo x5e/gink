@@ -457,10 +457,15 @@ Create a new Google Cloud project,<br>
 Configure the consent screen,<br>
 Configure a new credential and save the id and secret<br>
 **IMPORTANT**: Add 'http://localhost:8080/oauth2callback' and (if applicable) 'https://yourginkserver.com/oauth2callback' to Authorized Redirect URIs.<br>
-Put the client id and client secret in these ENV variables:<br>
-OAUTH_CLIENT_ID=your_client_id<br>
-OAUTH_CLIENT_SECRET=your_client_secret<br>
-OAUTH_SCOPES=your_scopes,separated_by_comma,no_spaces<br>
+Put the credentials in an ENV variables:<br>
+export OAUTH_CREDS='{
+	"client_id": {your_client_id},
+	"client_secret": {your_client_secret},
+	"redirect_uri": {your_redirect_uri},
+	"authorized_emails": [
+		"youremails@email.com"
+	]
+}'
 <br>
 
 **Step 1**: New Project<br>
@@ -485,14 +490,15 @@ Click **Create** - download the JSON file and keep it safe!
 **Step 4**: Save client ID and client secret in ENV variables
 Open the JSON file you just downloaded.<br>
 Set the following environment variable:<br>
-export OAUTH_CREDS='{<br>
-"client_id": "{your_client_id}",<br>
-"client_secret": "{your_client_secret}"<br>
-"authorized_emails": [
-    "example@gmail.com",
-    "email@test.com"
-]
+export OAUTH_CREDS='{
+	"client_id": {your_client_id},
+	"client_secret": {your_client_secret},
+	"redirect_uri": {your_redirect_uri},
+	"authorized_emails": [
+		"youremails@email.com"
+	]
 }'<br>
+The redirect uri will be localhost for testing, or the uri of your gink server for production.<br>
 Authorized emails are the users who will be allowed to connect to the Gink server. If a connection is
 attempted from a different Google account, the connection will be denied.
 <br>

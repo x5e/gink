@@ -12,6 +12,7 @@ import {
     TimestampBuilder,
     TupleBuilder, DocumentBuilder
 } from "./builders";
+import { OAuth2Client } from "google-auth-library";
 
 export function ensure(x: any, msg?: string) {
     if (!x)
@@ -476,13 +477,24 @@ export function parseOAuthCreds() {
     const oAuthCredentials = JSON.parse(process.env["OAUTH_CREDS"]);
     ensure(oAuthCredentials, "Set OAuth credentials as OAUTH_CREDS env variable. Check gink typescript docs.");
     if (oAuthCredentials) {
-        const msg = "Ensure you have set both 'client_id' and 'client_secret' in OAUTH_CREDS env variable.";
-        ensure(oAuthCredentials.client_id && oAuthCredentials.client_secret, msg);
+        const msg = "Ensure you have set 'client_id', 'client_secret', and 'redirect_uri' in OAUTH_CREDS env variable.";
+        ensure(oAuthCredentials.client_id && oAuthCredentials.client_secret && oAuthCredentials.redirect_uri, msg);
         if (!oAuthCredentials.authorized_emails) oAuthCredentials.authorized_emails = [];
         oAuthCredentials.scopes = [
-            "https://www.googleapis.com/auth/userinfo.profile",
             "https://www.googleapis.com/auth/userinfo.email"
         ];
     }
     return oAuthCredentials;
+}
+
+/**
+ * Returns the google OAuthClient for the OAUTH_CREDS environment variable.
+ */
+export function getOAuthClient() {
+    const oAuthCredentials = parseOAuthCreds();
+    return new OAuth2Client(
+        oAuthCredentials.client_id,
+        oAuthCredentials.client_secret,
+        oAuthCredentials.redirect_uri
+    );
 }

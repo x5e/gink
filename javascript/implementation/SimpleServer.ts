@@ -8,8 +8,7 @@ import { Buffer } from "buffer";
 import { Store, } from "./Store";
 import { CallBack, NumberStr, FilePath, DirPath, AuthFunction } from "./typedefs";
 import { Listener } from "./Listener";
-import { decodeFromHex, parseOAuthCreds } from './utils';
-import { OAuth2Client, } from 'google-auth-library';
+import { decodeFromHex } from './utils';
 
 /**
  * A server that connects all inbound websocket connections to a single database instance.
@@ -19,7 +18,6 @@ export class SimpleServer extends GinkInstance {
     private listener: Listener;
     readonly authFunc: AuthFunction;
     readonly oAuthFunc: (code: string) => Promise<boolean>;
-    private oAuth2Client: OAuth2Client;
     public connections: Map<number, WebSocketConnection>;
 
     constructor(store: Store, args: {
@@ -30,7 +28,6 @@ export class SimpleServer extends GinkInstance {
         logger?: CallBack;
         software?: string;
         authFunc?: AuthFunction;
-        useOAuth?: boolean;
     }) {
         super(store, { software: args.software || "SimpleServer" }, args.logger || (() => null));
         this.listener = new Listener({
@@ -39,30 +36,7 @@ export class SimpleServer extends GinkInstance {
             ...args
         });
         this.connections = new Map();
-        this.authFunc = args.authFunc || (() => true);
-
-        this.oAuthFunc = (() => Promise.resolve(true));
-        if (args.useOAuth) {
-            const oAuthCredentials = parseOAuthCreds();
-            // Set up Google OAuth client
-            this.oAuth2Client = new OAuth2Client(
-                oAuthCredentials.client_id,
-                oAuthCredentials.client_secret,
-                "http://localhost:8080/oauth2callback",
-            );
-
-            this.oAuthFunc = async (code: string): Promise<boolean> => {
-                if (!code) return false;
-                const { tokens } = await this.oAuth2Client.getToken(decodeURIComponent(code));
-                const userInfo = JSON.parse(Buffer.from(tokens.id_token.split('.')[1], 'base64').toString());
-                if (!oAuthCredentials.authorized_emails.includes(userInfo.email)) {
-                    return false;
-                }
-                this.oAuth2Client.setCredentials(tokens);
-                return true;
-            };
-        }
-
+        this.authFunc = args.authFunc || (() => Promise.resolve(true));
         this.ready = Promise.all([this.ready, this.listener.ready]).then(() => args.logger(`SimpleServer.ready`));
     }
 
@@ -77,10 +51,10 @@ export class SimpleServer extends GinkInstance {
                 if (subprotocol.match(/0x.*/)) {
                     let decoded = decodeFromHex(subprotocol);
                     if (decoded.includes("token ")) {
-                        token = decodeFromHex(subprotocol);
+                        token = decoded;
                     }
                     else if (decoded.includes("oauth ")) {
-                        code = decodeFromHex(subprotocol).split("oauth ")[1];
+                        code = decoded.split("oauth ")[1];
                     }
                 }
             }
@@ -92,9 +66,6 @@ export class SimpleServer extends GinkInstance {
         }
 
         if (!this.authFunc(token)) {
-            return request.reject(401, "authentication failed");
-        }
-        if (!(await this.oAuthFunc(code))) {
             return request.reject(401, "authentication failed");
         }
 
