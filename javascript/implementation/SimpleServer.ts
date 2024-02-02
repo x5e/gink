@@ -53,9 +53,7 @@ export class SimpleServer extends GinkInstance {
 
             this.oAuthFunc = async (code: string): Promise<boolean> => {
                 if (!code) return false;
-                console.log(code);
-
-                const { tokens } = await this.oAuth2Client.getToken(code);
+                const { tokens } = await this.oAuth2Client.getToken(decodeURIComponent(code));
                 const userInfo = JSON.parse(Buffer.from(tokens.id_token.split('.')[1], 'base64').toString());
                 if (!oAuthCredentials.authorized_emails.includes(userInfo.email)) {
                     return false;
