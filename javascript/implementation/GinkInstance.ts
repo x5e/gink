@@ -458,6 +458,7 @@ export class GinkInstance {
                 };
                 oAuthCode = await getOAuthCode();
             };
+            if (oAuthCode) protocols.push(encodeToHex("oauth " + oAuthCode));
             if (authToken) protocols.push(encodeToHex("token " + authToken));
             const connectionId = this.createConnectionId();
             let websocketClient: WebSocket = new GinkInstance.W3cWebSocket(target, protocols);

@@ -9,7 +9,7 @@ import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { SimpleServer } from './SimpleServer';
 import { OAuth2Client, } from 'google-auth-library';
 import { join } from 'path';
-import { ensure } from './utils';
+import { ensure, parseOAuthCreds } from './utils';
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -38,17 +38,8 @@ export class Listener {
             callWhenReady = resolve;
         });
 
-        const oAuthCredentials = JSON.parse(process.env["OAUTH_CREDS"]);
-        if (oAuthCredentials) {
-            const msg = "Ensure you have set 'client_id' and 'client_secret' in OAUTH_CREDS env variable.";
-            ensure(oAuthCredentials.client_id && oAuthCredentials.client_secret, msg);
-            if (!oAuthCredentials.authorized_emails) oAuthCredentials.authorized_emails = [];
-            oAuthCredentials.scopes = [
-                "https://www.googleapis.com/auth/userinfo.profile",
-                "https://www.googleapis.com/auth/userinfo.email"
-            ];
-        }
 
+        const oAuthCredentials = parseOAuthCreds();
         if (args.useOAuth) {
             // Set up Google OAuth client
             this.oAuth2Client = new OAuth2Client(
@@ -72,22 +63,22 @@ export class Listener {
 
                     // This is where Google redirects to after the user gives permissions
                     else if (url.pathname == "/oauth2callback") {
-                        const code = url.searchParams.get("code");
-                        try {
-                            const { tokens } = await thisListener.oAuth2Client.getToken(code);
-                            thisListener.oAuth2Client.setCredentials(tokens);
-                            const userInfo = JSON.parse(Buffer.from(tokens.id_token.split('.')[1], 'base64').toString());
+                        // const code = url.searchParams.get("code");
+                        // try {
+                        //     const { tokens } = await thisListener.oAuth2Client.getToken(code);
+                        //     thisListener.oAuth2Client.setCredentials(tokens);
+                        //     const userInfo = JSON.parse(Buffer.from(tokens.id_token.split('.')[1], 'base64').toString());
 
-                            // Authorize (or not) the user
-                            if (!oAuthCredentials.authorized_emails.includes(userInfo.email)) {
-                                thisListener.oAuth2Client.credentials = {};
-                                response.writeHead(401, "Not authorized").end();
-                                return;
-                            }
-                        } catch { // If the oauth2callback page is refreshed, the server will error getting the token
-                            response.writeHead(401, "Not authorized").end();
-                            return;
-                        }
+                        //     // Authorize (or not) the user
+                        //     if (!oAuthCredentials.authorized_emails.includes(userInfo.email)) {
+                        //         thisListener.oAuth2Client.credentials = {};
+                        //         response.writeHead(401, "Not authorized").end();
+                        //         return;
+                        //     }
+                        // } catch { // If the oauth2callback page is refreshed, the server will error getting the token
+                        //     response.writeHead(401, "Not authorized").end();
+                        //     return;
+                        // }
 
                         // response.writeHead(302, {
                         //     Location: "http://localhost:8080/"

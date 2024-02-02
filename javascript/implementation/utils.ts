@@ -467,3 +467,22 @@ export function isAlive(actorId: ActorId): boolean {
     // TODO: https://github.com/x5e/gink/issues/179
     return actorId > 0;
 }
+
+/**
+ * Parse OAuth credentials from the server's environment variable OAUTH_CREDS
+ * @returns an object including client_id, client_secret, scopes, and authorized_emails
+ */
+export function parseOAuthCreds() {
+    const oAuthCredentials = JSON.parse(process.env["OAUTH_CREDS"]);
+    ensure(oAuthCredentials, "Set OAuth credentials as OAUTH_CREDS env variable. Check gink typescript docs.");
+    if (oAuthCredentials) {
+        const msg = "Ensure you have set both 'client_id' and 'client_secret' in OAUTH_CREDS env variable.";
+        ensure(oAuthCredentials.client_id && oAuthCredentials.client_secret, msg);
+        if (!oAuthCredentials.authorized_emails) oAuthCredentials.authorized_emails = [];
+        oAuthCredentials.scopes = [
+            "https://www.googleapis.com/auth/userinfo.profile",
+            "https://www.googleapis.com/auth/userinfo.email"
+        ];
+    }
+    return oAuthCredentials;
+}
