@@ -622,8 +622,7 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=placement_key.placer, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool = False
-                     ) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle_bytes: bytes) -> BundleInfo:
         builder = BundleBuilder()
         builder.ParseFromString(bundle_bytes)  # type: ignore
         new_info = BundleInfo(builder=builder)
@@ -636,8 +635,6 @@ class LmdbStore(AbstractStore):
             if needed:
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
                     trxn.put(bytes(new_info), bundle_bytes, db=self._bundles)
-                if push_into_outbox:
-                    trxn.put(bytes(new_info), bundle_bytes, db=self._outbox)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 change_items = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
@@ -656,7 +653,7 @@ class LmdbStore(AbstractStore):
                         self._apply_clearance(new_info, trxn, offset, change.clearance)
                         continue
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
-        return new_info, needed
+        return new_info
 
     def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
         with self._handle.begin() as trxn:

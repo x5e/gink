@@ -87,14 +87,10 @@ class AbstractStore(ABC):
         """ Marks a chain as being owned by this store for future use. """
 
     @abstractmethod
-    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool = False
-                     ) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle_bytes: bytes) -> BundleInfo:
         """ Tries to add data from a particular bundle to this store.
 
-            Set push_into_outbox if being added by an instance that isn't syncing.
-
-            Returns: a tuple of the bundle's info and boolean indicating if it was applied
-            Will not be applied if this store has already seen this bundle before.
+            the bundle's metadata
         """
 
     @abstractmethod

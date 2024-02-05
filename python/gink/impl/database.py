@@ -181,8 +181,7 @@ class Database:
         self._add_info(starting_bundler)
         # We can't use Database.commit because Database.commit calls this function.
         bundle_bytes = starting_bundler.seal(chain=chain, timestamp=chain_start)
-        info, added = self._store.apply_bundle(bundle_bytes, True)
-        assert added, "expected a newly created bundle to be added"
+        info = self._store.apply_bundle(bundle_bytes)
         self._logger.debug("started chain: %r", info)
         if self._connections:
             self._broadcast_bundle(bundle_bytes, info, from_peer=None)
@@ -203,8 +202,7 @@ class Database:
             timestamp = self.get_now()
             assert timestamp > seen_to
             bundle_bytes = bundler.seal(chain=chain, timestamp=timestamp, previous=seen_to)
-            info, added = self._store.apply_bundle(bundle_bytes, True)
-            assert added, "didn't expect the store to already have a newly created bundle"
+            info = self._store.apply_bundle(bundle_bytes)
             self._last_link = info
             self._logger.debug("locally committed bundle: %r", info)
             if self._connections:
@@ -248,13 +246,12 @@ class Database:
         with self._lock:
             if sync_message.HasField("bundle"):
                 bundle_bytes = sync_message.bundle  # type: ignore # pylint: disable=maybe-no-member
-                info, added = self._store.apply_bundle(bundle_bytes, False)
+                info = self._store.apply_bundle(bundle_bytes)
                 from_peer.send(info.as_acknowledgement())
                 tracker = self._trackers.get(from_peer)
                 if tracker is not None:
                     tracker.mark_as_having(info)
-                if added:
-                    self._broadcast_bundle(bundle_bytes, info, from_peer)
+                self._broadcast_bundle(bundle_bytes, info, from_peer)
             elif sync_message.HasField("greeting"):
                 self._logger.debug("received greeting from %s", from_peer)
                 chain_tracker = ChainTracker(sync_message=sync_message)
