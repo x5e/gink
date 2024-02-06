@@ -12,7 +12,7 @@ from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBu
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore
+from .abstract_store import AbstractStore, BundleWrapper
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
@@ -232,15 +232,16 @@ class MemoryStore(AbstractStore):
         for bundle_info in bundle_infos:
             del self._outbox[bytes(bundle_info)]
 
-    def apply_bundle(self, bundle_bytes: bytes) -> BundleInfo:
-        bundle_builder = BundleBuilder()
-        bundle_builder.ParseFromString(bundle_bytes)  # type: ignore
-        new_info = BundleInfo(builder=bundle_builder)
+    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
+        if isinstance(bundle, bytes):
+            bundle = BundleWrapper(bundle)
+        bundle_builder = bundle.get_builder()
+        new_info = bundle.get_info()
         chain_key = new_info.get_chain()
         old_info = self._chain_infos.get(new_info.get_chain())
         needed = AbstractStore._is_needed(new_info, old_info)
         if needed:
-            self._bundles[bytes(new_info)] = bundle_bytes
+            self._bundles[bytes(new_info)] = bundle.get_bytes()
             self._chain_infos[chain_key] = new_info
             change_items = list(bundle_builder.changes.items())  # type: ignore
             change_items.sort()  # the protobuf library doesn't maintain order of maps
@@ -260,7 +261,7 @@ class MemoryStore(AbstractStore):
                     self._add_clearance(new_info=new_info, offset=offset, builder=change.clearance)
                     continue
                 raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
-        return new_info
+        return needed
 
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)

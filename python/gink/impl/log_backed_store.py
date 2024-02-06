@@ -1,9 +1,11 @@
 """ implementation of the LogBackedStore class """
-from typing import Tuple
+from typing import Optional, Callable, Union
 from fcntl import flock, LOCK_EX, LOCK_NB
 from .builders import LogFile
 from .memory_store import MemoryStore
 from .bundle_info import BundleInfo
+from .bundle_wrapper import BundleWrapper
+
 
 
 class LogBackedStore(MemoryStore):
@@ -27,17 +29,19 @@ class LogBackedStore(MemoryStore):
     def refresh(self):
         pass
 
-    def apply_bundle(self, bundle_bytes: bytes) -> BundleInfo:
+    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
         if self._handle.closed:
             raise AssertionError("attempt to write to closed LogBackStore")
-        bundle_info, added = MemoryStore.apply_bundle(self, bundle_bytes)
+        if isinstance(bundle, bytes):
+            bundle = BundleWrapper(bundle)
+        added = MemoryStore.apply_bundle(self, bundle)
         if added:
             self._log_file_builder.Clear()  # type: ignore
             self._log_file_builder.commits.push(bundle_bytes)  # type: ignore
             data: bytes = self._log_file_builder.SerializeToString()  # type: ignore
             self._handle.write(data)
             self._handle.flush()
-        return bundle_info
+        return added
 
     def get_claimed_chains(self):
         raise NotImplementedError()

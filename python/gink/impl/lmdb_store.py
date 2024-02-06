@@ -15,7 +15,7 @@ from .typedefs import MuTimestamp, UserKey, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore
+from .abstract_store import AbstractStore, BundleWrapper
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
@@ -622,10 +622,11 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=placement_key.placer, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def apply_bundle(self, bundle_bytes: bytes) -> BundleInfo:
-        builder = BundleBuilder()
-        builder.ParseFromString(bundle_bytes)  # type: ignore
-        new_info = BundleInfo(builder=builder)
+    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
+        if isinstance(bundle, bytes):
+            bundle = BundleWrapper(bundle)
+        builder = bundle.get_builder()
+        new_info = bundle.get_info()
         chain_key = pack(">QQ", new_info.medallion, new_info.chain_start)
         # Note: LMDB supports only one write transaction, so we don't need to explicitly lock.
         with self._handle.begin(write=True) as trxn:
@@ -634,7 +635,7 @@ class LmdbStore(AbstractStore):
             needed = AbstractStore._is_needed(new_info, old_info)
             if needed:
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
-                    trxn.put(bytes(new_info), bundle_bytes, db=self._bundles)
+                    trxn.put(bytes(new_info), bundle.get_bytes(), db=self._bundles)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 change_items = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
@@ -653,7 +654,7 @@ class LmdbStore(AbstractStore):
                         self._apply_clearance(new_info, trxn, offset, change.clearance)
                         continue
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
-        return new_info
+        return needed
 
     def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
         with self._handle.begin() as trxn:

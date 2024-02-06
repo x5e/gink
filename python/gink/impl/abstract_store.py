@@ -11,6 +11,7 @@ from .chain_tracker import ChainTracker
 from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
+from .bundle_wrapper import BundleWrapper
 
 
 class AbstractStore(ABC):
@@ -87,7 +88,7 @@ class AbstractStore(ABC):
         """ Marks a chain as being owned by this store for future use. """
 
     @abstractmethod
-    def apply_bundle(self, bundle_bytes: bytes) -> BundleInfo:
+    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
         """ Tries to add data from a particular bundle to this store.
 
             the bundle's metadata
