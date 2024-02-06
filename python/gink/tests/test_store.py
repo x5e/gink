@@ -52,6 +52,33 @@ def make_empty_bundle(bundle_info: BundleInfo) -> bytes:
     return builder.SerializeToString()  # type: ignore
 
 
+def generic_test_accepts_only_once(store_maker: StoreMaker):
+    """ Ensures that the store accepts things as expected. """
+    # with closing(store_maker()) as store:
+    store = store_maker()
+    try:
+        start_info = BundleInfo(medallion=123, chain_start=456, timestamp=456, comment="start")
+        start_bytes = make_empty_bundle(start_info)
+
+        result_starting_first = store.apply_bundle(start_bytes)
+        assert result_starting_first
+
+        result_starting_repeat = store.apply_bundle(start_bytes)
+        assert not result_starting_repeat
+
+        ext_info = BundleInfo(medallion=123, chain_start=456, timestamp=555,
+                              comment="extension", previous=456)
+        ext_bytes = make_empty_bundle(ext_info)
+
+        result_ext_first = store.apply_bundle(ext_bytes)
+        assert result_ext_first
+
+        result_ext_second = store.apply_bundle(ext_bytes)
+        assert not result_ext_second
+    finally:
+        store.close()
+
+
 def generic_test_rejects_gap(store_maker: StoreMaker):
     """ Ensures that chains with missing links throw exceptions. """
     with closing(store_maker()) as store:
