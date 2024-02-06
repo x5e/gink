@@ -1,18 +1,18 @@
-import { LogBackedStore } from "../implementation/main";
+import { GinkInstance, LogBackedStore } from "../implementation/main";
 import { testStore } from "./Store.test";
 import { truncateSync, existsSync } from "fs";
 
 const TEST_FILE = "/tmp/test.store";
 
 function createMaker(reset: boolean) {
-    return async function() {
+    return async function () {
         if (reset && existsSync(TEST_FILE)) {
             truncateSync(TEST_FILE);
         }
         const new_store = new LogBackedStore(TEST_FILE, true);
         await new_store.ready;
         return new_store;
-    }
+    };
 }
 
 
@@ -38,3 +38,22 @@ it('test locks', async () => {
     }
     await lbs1.close();
 });
+
+it('test two stores automatically pulling new data', async () => {
+    const store1 = new LogBackedStore("/tmp/basic_test.store");
+    const store2 = new LogBackedStore("/tmp/basic_test.store");
+
+    const instance1 = new GinkInstance(store1);
+    const instance2 = new GinkInstance(store1);
+    await instance1.ready;
+    await instance2.ready;
+
+    const globalDir1 = instance1.getGlobalDirectory();
+
+    await globalDir1.set("key", "value");
+
+    expect(await store2.getAllEntries()).toBeTruthy();
+
+    await store1.close();
+    await store2.close();
+}, 1000 * 1000);
