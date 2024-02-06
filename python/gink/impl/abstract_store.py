@@ -11,6 +11,7 @@ from .chain_tracker import ChainTracker
 from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
+from .bundle_wrapper import BundleWrapper
 
 
 class AbstractStore(ABC):
@@ -87,23 +88,11 @@ class AbstractStore(ABC):
         """ Marks a chain as being owned by this store for future use. """
 
     @abstractmethod
-    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool = False
-                     ) -> Tuple[BundleInfo, bool]:
+    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
         """ Tries to add data from a particular bundle to this store.
 
-            Set push_into_outbox if being added by an instance that isn't syncing.
-
-            Returns: a tuple of the bundle's info and boolean indicating if it was applied
-            Will not be applied if this store has already seen this bundle before.
+            the bundle's metadata
         """
-
-    @abstractmethod
-    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
-        """ Goes through outbox items in standard order. """
-
-    @abstractmethod
-    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
-        """ Something to call after receiving an ack from a peer. """
 
     @abstractmethod
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):

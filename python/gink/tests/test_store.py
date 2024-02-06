@@ -61,24 +61,20 @@ def generic_test_accepts_only_once(store_maker: StoreMaker):
         start_bytes = make_empty_bundle(start_info)
 
         result_starting_first = store.apply_bundle(start_bytes)
-        assert result_starting_first[0] == start_info
-        assert result_starting_first[1]
+        assert result_starting_first
 
         result_starting_repeat = store.apply_bundle(start_bytes)
-        assert result_starting_repeat[0] == start_info
-        assert not result_starting_repeat[1]
+        assert not result_starting_repeat
 
         ext_info = BundleInfo(medallion=123, chain_start=456, timestamp=555,
                               comment="extension", previous=456)
         ext_bytes = make_empty_bundle(ext_info)
 
         result_ext_first = store.apply_bundle(ext_bytes)
-        assert result_ext_first[0] == ext_info
-        assert result_ext_first[1]
+        assert result_ext_first
 
         result_ext_second = store.apply_bundle(ext_bytes)
-        assert result_ext_second[0] == ext_info
-        assert not result_ext_second[1]
+        assert not result_ext_second
     finally:
         store.close()
 

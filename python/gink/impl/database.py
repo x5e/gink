@@ -37,6 +37,7 @@ from .attribution import Attribution
 from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
 from .selectable_console import SelectableConsole
+from .bundle_wrapper import BundleWrapper
 
 
 class Database:
@@ -181,11 +182,11 @@ class Database:
         self._add_info(starting_bundler)
         # We can't use Database.commit because Database.commit calls this function.
         bundle_bytes = starting_bundler.seal(chain=chain, timestamp=chain_start)
-        info, added = self._store.apply_bundle(bundle_bytes, True)
-        assert added, "expected a newly created bundle to be added"
+        wrap = BundleWrapper(bundle_bytes)
+        added = self._store.apply_bundle(wrap, self._broadcast_bundle)
+        assert added
+        info = wrap.get_info()
         self._logger.debug("started chain: %r", info)
-        if self._connections:
-            self._broadcast_bundle(bundle_bytes, info, from_peer=None)
         self._last_link = info
 
     def commit(self, bundler: Bundler) -> BundleInfo:
@@ -203,58 +204,43 @@ class Database:
             timestamp = self.get_now()
             assert timestamp > seen_to
             bundle_bytes = bundler.seal(chain=chain, timestamp=timestamp, previous=seen_to)
-            info, added = self._store.apply_bundle(bundle_bytes, True)
-            assert added, "didn't expect the store to already have a newly created bundle"
+            wrap = BundleWrapper(bundle_bytes)
+            added = self._store.apply_bundle(wrap, self._broadcast_bundle)
+            assert added
+            info = wrap.get_info()
             self._last_link = info
             self._logger.debug("locally committed bundle: %r", info)
-            if self._connections:
-                self._broadcast_bundle(bundle_bytes, info, from_peer=None)
             return info
 
-    def _broadcast_bundle(
-            self,
-            bundle: bytes,
-            info: BundleInfo,
-            from_peer: Optional[Connection]
-    ) -> None:
+    def _broadcast_bundle(self, wrap: BundleWrapper) -> None:
         """ Sends a bundle either created locally or received from a peer to other peers.
-
-            The "peer" argument indicates which peer this bundle came from.  We need to know
-            where it came from so we don't send the same data back.
         """
-        self._logger.debug("broadcasting %r from %r", info, from_peer)
         outbound_message_with_bundle = SyncMessage()
-        outbound_message_with_bundle.bundle = bundle  # type: ignore
+        outbound_message_with_bundle.bundle = wrap.get_bytes()  # type: ignore
+        info = wrap.get_info()
         for peer in self._connections:
-            if peer == from_peer:
-                # We got this bundle from this peer, so don't need to send the bundle back to them.
-                # But we do need to send them an ack confirming that we've received it.
-                continue
             tracker = self._trackers.get(peer)
             if tracker is None:
                 # In this case we haven't received a greeting from the peer, and so don't want to
                 # send any bundles because it might result in gaps in their chain.
                 continue
             if tracker.has(info):
-                # In this case the peer has indicated they already have this bundle, probably
-                # via their greeting message, so we don't need to send it to them again.
+                # peer already has or has been previously sent this bundle
                 continue
             self._logger.debug("sending %r to %r", info, peer)
             peer.send(outbound_message_with_bundle)
-        if from_peer is None:
-            self._sent_but_not_acked.add(info)
+            tracker.mark_as_having(info)
 
     def _receive_data(self, sync_message: SyncMessage, from_peer: Connection):
         with self._lock:
             if sync_message.HasField("bundle"):
                 bundle_bytes = sync_message.bundle  # type: ignore # pylint: disable=maybe-no-member
-                info, added = self._store.apply_bundle(bundle_bytes, False)
-                from_peer.send(info.as_acknowledgement())
-                tracker = self._trackers.get(from_peer)
-                if tracker is not None:
+                wrap = BundleWrapper(bundle_bytes)
+                info = wrap.get_info()
+                if (tracker := self._trackers.get(from_peer)):
                     tracker.mark_as_having(info)
-                if added:
-                    self._broadcast_bundle(bundle_bytes, info, from_peer)
+                self._store.apply_bundle(wrap, self._broadcast_bundle)
+                from_peer.send(info.as_acknowledgement())
             elif sync_message.HasField("greeting"):
                 self._logger.debug("received greeting from %s", from_peer)
                 chain_tracker = ChainTracker(sync_message=sync_message)
@@ -273,7 +259,6 @@ class Database:
                 tracker = self._trackers.get(from_peer)
                 if tracker is not None:
                     tracker.mark_as_having(acked_info)
-                self._store.remove_from_outbox([acked_info])
                 if acked_info in self._sent_but_not_acked:
                     self._sent_but_not_acked.remove(acked_info)
             else:
@@ -338,10 +323,6 @@ class Database:
                         self._logger.info("accepted incoming connection from %s", new_connection)
                     elif isinstance(ready_reader, SelectableConsole):
                         ready_reader.call_when_ready()
-                if bool([conn for conn in self._connections if conn.get_replied_to_greeting()]):
-                    for info, bundle_bytes in self._store.read_through_outbox():
-                        if info not in self._sent_but_not_acked:
-                            self._broadcast_bundle(bundle_bytes, info, None)
 
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):

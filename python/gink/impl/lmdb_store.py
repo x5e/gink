@@ -15,7 +15,7 @@ from .typedefs import MuTimestamp, UserKey, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore
+from .abstract_store import AbstractStore, BundleWrapper
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
@@ -63,7 +63,6 @@ class LmdbStore(AbstractStore):
         self._by_pointee = self._handle.open_db(b"by_pointee")
         self._by_name = self._handle.open_db(b"by_name")
         self._by_side = self._handle.open_db(b"by_side")
-        self._outbox = self._handle.open_db(b"outbox")
         if reset:
             with self._handle.begin(write=True) as txn:
                 # Setting delete=False signals to lmdb to truncate the tables rather than drop them
@@ -77,7 +76,6 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._retentions, delete=False)
                 txn.drop(self._clearances, delete=False)
                 txn.drop(self._properties, delete=False)
-                txn.drop(self._outbox, delete=False)
                 txn.drop(self._by_describing, delete=False)
                 txn.drop(self._by_name, delete=False)
                 txn.drop(self._by_side, delete=False)
@@ -622,11 +620,11 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=placement_key.placer, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool = False
-                     ) -> Tuple[BundleInfo, bool]:
-        builder = BundleBuilder()
-        builder.ParseFromString(bundle_bytes)  # type: ignore
-        new_info = BundleInfo(builder=builder)
+    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
+        if isinstance(bundle, bytes):
+            bundle = BundleWrapper(bundle)
+        builder = bundle.get_builder()
+        new_info = bundle.get_info()
         chain_key = pack(">QQ", new_info.medallion, new_info.chain_start)
         # Note: LMDB supports only one write transaction, so we don't need to explicitly lock.
         with self._handle.begin(write=True) as trxn:
@@ -635,9 +633,7 @@ class LmdbStore(AbstractStore):
             needed = AbstractStore._is_needed(new_info, old_info)
             if needed:
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
-                    trxn.put(bytes(new_info), bundle_bytes, db=self._bundles)
-                if push_into_outbox:
-                    trxn.put(bytes(new_info), bundle_bytes, db=self._outbox)
+                    trxn.put(bytes(new_info), bundle.get_bytes(), db=self._bundles)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 change_items = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
@@ -656,22 +652,9 @@ class LmdbStore(AbstractStore):
                         self._apply_clearance(new_info, trxn, offset, change.clearance)
                         continue
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
-        return new_info, needed
-
-    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
-        with self._handle.begin() as trxn:
-            outbox_cursor = trxn.cursor(self._outbox)
-            positioned = outbox_cursor.first()
-            while positioned:
-                key, val = outbox_cursor.item()
-                yield BundleInfo.from_bytes(key), val
-                positioned = outbox_cursor.next()
-
-    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
-        with self._handle.begin(write=True) as trxn:
-            assert isinstance(trxn, Trxn)
-            for bundle_info in bundle_infos:
-                trxn.delete(bytes(bundle_info), db=self._outbox)
+        if needed and callback is not None:
+            callback(bundle)
+        return needed
 
     def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int,
                          builder: ClearanceBuilder):

@@ -12,7 +12,7 @@ from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBu
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore
+from .abstract_store import AbstractStore, BundleWrapper
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
@@ -34,7 +34,6 @@ class MemoryStore(AbstractStore):
     _containers: SortedDict  # muid => builder
     _removals: SortedDict  # bytes(removal_key) => MovementBuilder
     _clearances: SortedDict
-    _outbox: SortedDict
 
     def __init__(self):
         # TODO: add a "no retention" capability to allow the memory store to be configured to
@@ -48,7 +47,6 @@ class MemoryStore(AbstractStore):
         self._locations = SortedDict()
         self._removals = SortedDict()
         self._clearances = SortedDict()
-        self._outbox = SortedDict()
         self._logger = getLogger(self.__class__.__name__)
 
     def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
@@ -222,28 +220,16 @@ class MemoryStore(AbstractStore):
             if limit is not None:
                 limit -= 1
 
-    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
-        for info_bytes, bundle_bytes in self._outbox.items():
-            assert isinstance(bundle_bytes, bytes)
-            assert isinstance(info_bytes, bytes)
-            yield BundleInfo.from_bytes(info_bytes), bundle_bytes
-
-    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
-        for bundle_info in bundle_infos:
-            del self._outbox[bytes(bundle_info)]
-
-    def apply_bundle(self, bundle_bytes: bytes, push_into_outbox: bool = False
-                     ) -> Tuple[BundleInfo, bool]:
-        bundle_builder = BundleBuilder()
-        bundle_builder.ParseFromString(bundle_bytes)  # type: ignore
-        new_info = BundleInfo(builder=bundle_builder)
+    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
+        if isinstance(bundle, bytes):
+            bundle = BundleWrapper(bundle)
+        bundle_builder = bundle.get_builder()
+        new_info = bundle.get_info()
         chain_key = new_info.get_chain()
         old_info = self._chain_infos.get(new_info.get_chain())
         needed = AbstractStore._is_needed(new_info, old_info)
         if needed:
-            if push_into_outbox:
-                self._outbox[bytes(new_info)] = bundle_bytes
-            self._bundles[bytes(new_info)] = bundle_bytes
+            self._bundles[bytes(new_info)] = bundle.get_bytes()
             self._chain_infos[chain_key] = new_info
             change_items = list(bundle_builder.changes.items())  # type: ignore
             change_items.sort()  # the protobuf library doesn't maintain order of maps
@@ -263,7 +249,9 @@ class MemoryStore(AbstractStore):
                     self._add_clearance(new_info=new_info, offset=offset, builder=change.clearance)
                     continue
                 raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
-        return new_info, needed
+        if needed and callback is not None:
+            callback(bundle)
+        return needed
 
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
