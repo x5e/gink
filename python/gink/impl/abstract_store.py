@@ -95,14 +95,6 @@ class AbstractStore(ABC):
         """
 
     @abstractmethod
-    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
-        """ Goes through outbox items in standard order. """
-
-    @abstractmethod
-    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
-        """ Something to call after receiving an ack from a peer. """
-
-    @abstractmethod
     def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
         """ Calls the callback with each bundle, in (timestamp, medallion) order.
 

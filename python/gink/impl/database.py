@@ -259,7 +259,6 @@ class Database:
                 tracker = self._trackers.get(from_peer)
                 if tracker is not None:
                     tracker.mark_as_having(acked_info)
-                self._store.remove_from_outbox([acked_info])
                 if acked_info in self._sent_but_not_acked:
                     self._sent_but_not_acked.remove(acked_info)
             else:
@@ -324,10 +323,6 @@ class Database:
                         self._logger.info("accepted incoming connection from %s", new_connection)
                     elif isinstance(ready_reader, SelectableConsole):
                         ready_reader.call_when_ready()
-                if bool([conn for conn in self._connections if conn.get_replied_to_greeting()]):
-                    for info, bundle_bytes in self._store.read_through_outbox():
-                        if info not in self._sent_but_not_acked:
-                            self._broadcast_bundle(bundle_bytes, info, None)
 
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):

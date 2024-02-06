@@ -63,7 +63,6 @@ class LmdbStore(AbstractStore):
         self._by_pointee = self._handle.open_db(b"by_pointee")
         self._by_name = self._handle.open_db(b"by_name")
         self._by_side = self._handle.open_db(b"by_side")
-        self._outbox = self._handle.open_db(b"outbox")
         if reset:
             with self._handle.begin(write=True) as txn:
                 # Setting delete=False signals to lmdb to truncate the tables rather than drop them
@@ -77,7 +76,6 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._retentions, delete=False)
                 txn.drop(self._clearances, delete=False)
                 txn.drop(self._properties, delete=False)
-                txn.drop(self._outbox, delete=False)
                 txn.drop(self._by_describing, delete=False)
                 txn.drop(self._by_name, delete=False)
                 txn.drop(self._by_side, delete=False)
@@ -655,21 +653,6 @@ class LmdbStore(AbstractStore):
                         continue
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         return needed
-
-    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
-        with self._handle.begin() as trxn:
-            outbox_cursor = trxn.cursor(self._outbox)
-            positioned = outbox_cursor.first()
-            while positioned:
-                key, val = outbox_cursor.item()
-                yield BundleInfo.from_bytes(key), val
-                positioned = outbox_cursor.next()
-
-    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
-        with self._handle.begin(write=True) as trxn:
-            assert isinstance(trxn, Trxn)
-            for bundle_info in bundle_infos:
-                trxn.delete(bytes(bundle_info), db=self._outbox)
 
     def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int,
                          builder: ClearanceBuilder):

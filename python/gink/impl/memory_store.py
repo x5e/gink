@@ -34,7 +34,6 @@ class MemoryStore(AbstractStore):
     _containers: SortedDict  # muid => builder
     _removals: SortedDict  # bytes(removal_key) => MovementBuilder
     _clearances: SortedDict
-    _outbox: SortedDict
 
     def __init__(self):
         # TODO: add a "no retention" capability to allow the memory store to be configured to
@@ -48,7 +47,6 @@ class MemoryStore(AbstractStore):
         self._locations = SortedDict()
         self._removals = SortedDict()
         self._clearances = SortedDict()
-        self._outbox = SortedDict()
         self._logger = getLogger(self.__class__.__name__)
 
     def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
@@ -221,16 +219,6 @@ class MemoryStore(AbstractStore):
                 builder=entry_builder)
             if limit is not None:
                 limit -= 1
-
-    def read_through_outbox(self) -> Iterable[Tuple[BundleInfo, bytes]]:
-        for info_bytes, bundle_bytes in self._outbox.items():
-            assert isinstance(bundle_bytes, bytes)
-            assert isinstance(info_bytes, bytes)
-            yield BundleInfo.from_bytes(info_bytes), bundle_bytes
-
-    def remove_from_outbox(self, bundle_infos: Iterable[BundleInfo]):
-        for bundle_info in bundle_infos:
-            del self._outbox[bytes(bundle_info)]
 
     def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
         if isinstance(bundle, bytes):
