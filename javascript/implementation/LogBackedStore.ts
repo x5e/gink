@@ -7,7 +7,6 @@ import {
     KeyType,
     ClaimedChain,
     ActorId,
-    CallBack,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
@@ -60,7 +59,6 @@ export class LogBackedStore implements Store {
     private async initialize(): Promise<void> {
         await this.internalStore.ready;
         this.fileHandle = await open(this.filename, "a+");
-
         if (this.exclusive) {
             await this.lockFile(false);
         }

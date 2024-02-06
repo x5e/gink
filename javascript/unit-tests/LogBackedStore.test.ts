@@ -56,4 +56,4 @@ it('test two stores automatically pulling new data', async () => {
 
     await store1.close();
     await store2.close();
-}, 1000 * 1000);
+});
