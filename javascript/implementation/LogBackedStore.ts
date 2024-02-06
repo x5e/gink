@@ -69,8 +69,16 @@ export class LogBackedStore implements Store {
             watch(this.filename, async (eventType, filename) => {
                 await new Promise(r => setTimeout(r, 10));
                 const size = (await this.fileHandle.stat()).size;
-                if (eventType == "change" && size > this.redTo && !this.fileLocked) {
+                if (eventType == "change" && size > this.redTo) {
+                    const unlockingFunction = await this.memoryLock.acquireLock();
+                    if (!this.exclusive)
+                        await this.lockFile(true);
+
                     await this.pullDataFromFile();
+
+                    if (!this.exclusive)
+                        await this.unlockFile();
+                    unlockingFunction();
                 }
             });
 
