@@ -652,6 +652,8 @@ class LmdbStore(AbstractStore):
                         self._apply_clearance(new_info, trxn, offset, change.clearance)
                         continue
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
+        if needed and callback is not None:
+            callback(bundle)
         return needed
 
     def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int,

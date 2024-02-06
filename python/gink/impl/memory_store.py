@@ -249,6 +249,8 @@ class MemoryStore(AbstractStore):
                     self._add_clearance(new_info=new_info, offset=offset, builder=change.clearance)
                     continue
                 raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
+        if needed and callback is not None:
+            callback(bundle)
         return needed
 
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):

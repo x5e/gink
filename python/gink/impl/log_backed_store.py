@@ -1,6 +1,6 @@
 """ implementation of the LogBackedStore class """
 from typing import Optional, Callable, Union
-from fcntl import flock, LOCK_EX, LOCK_NB
+from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN
 from .builders import LogFile
 from .memory_store import MemoryStore
 from .bundle_info import BundleInfo
@@ -17,7 +17,7 @@ class LogBackedStore(MemoryStore):
         self._handle = open(self._filepath, "ab+")
         self._exclusive = exclusive
         if self._exclusive:
-            flock(self._handle, LOCK_EX | LOCK_NB)
+            flock(self._handle, LOCK_EX | LOCK_NB)  # this will throw if another process has a lock
         if reset:
             self._handle.truncate()
         self._handle.seek(0)
@@ -34,6 +34,8 @@ class LogBackedStore(MemoryStore):
             raise AssertionError("attempt to write to closed LogBackStore")
         if isinstance(bundle, bytes):
             bundle = BundleWrapper(bundle)
+        if not self._exclusive:
+            flock(self._handle, LOCK_EX)  # this will block (wait) if another process has a lock
         added = MemoryStore.apply_bundle(self, bundle)
         if added:
             self._log_file_builder.Clear()  # type: ignore
@@ -41,6 +43,10 @@ class LogBackedStore(MemoryStore):
             data: bytes = self._log_file_builder.SerializeToString()  # type: ignore
             self._handle.write(data)
             self._handle.flush()
+            if callback is not None:
+                callback(bundle)
+        if not self._exclusive:
+            flock(self._handle, LOCK_UN)
         return added
 
     def get_claimed_chains(self):
