@@ -104,10 +104,16 @@ export class GinkInstance {
         this.initilized = true;
         //this.logger(`GinkInstance.ready`);
         if (this.store instanceof LogBackedStore) {
-            const callback = async (bundleBytes: BundleBytes): Promise<BundleInfo> => {
-                return await this.receiveCommit(bundleBytes);
+            const callback = async (bundleBytes: BundleBytes, bundleInfo: BundleInfo): Promise<void> => {
+                for (const [peerId, peer] of this.peers) {
+                    peer._sendIfNeeded(bundleBytes, bundleInfo);
+                }
+                // Send to listeners subscribed to all containers.
+                for (const listener of this.listeners.get("all")) {
+                    listener(bundleInfo);
+                }
             };
-            this.store.setOnNewDataCallBack(callback);
+            this.store.setBroadcastCallBack(callback);
         }
     }
 

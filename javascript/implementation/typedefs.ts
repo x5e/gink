@@ -45,8 +45,8 @@ export interface AuthFunction {
     (token: string): boolean;
 }
 
-export interface OnCommitFunc {
-    (bundleBytes: BundleBytes): Promise<BundleInfo>;
+export interface BroadcastFunc {
+    (bundleBytes: BundleBytes, bundleInfo: BundleInfo): Promise<void>;
 }
 
 export interface Muid {

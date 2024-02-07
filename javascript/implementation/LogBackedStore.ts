@@ -7,7 +7,8 @@ import {
     KeyType,
     ClaimedChain,
     ActorId,
-    OnCommitFunc,
+    CallBack,
+    BroadcastFunc,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
@@ -43,7 +44,7 @@ export class LogBackedStore implements Store {
     private memoryLock: PromiseChainLock = new PromiseChainLock();
     private redTo: number = 0;
     private fileWatcher: FSWatcher;
-    private onNewData: OnCommitFunc = null;
+    private broadcastData: BroadcastFunc = null;
 
     /**
      *
@@ -131,12 +132,10 @@ export class LogBackedStore implements Store {
             const logFileBuilder = <LogFileBuilder>LogFileBuilder.deserializeBinary(uint8Array);
             const commits = logFileBuilder.getCommitsList();
             for (const commit of commits) {
-                let info: BundleInfo;
-                if (this.onNewData) {
-                    info = await this.onNewData(commit);
-                } else {
-                    info = await this.internalStore.addBundle(commit);
-                    this.chainTracker.markAsHaving(info);
+                const info = await this.internalStore.addBundle(commit);
+                this.chainTracker.markAsHaving(info);
+                if (this.broadcastData) {
+                    await this.broadcastData(commit, info);
                 }
                 this.commitsProcessed += 1;
             }
@@ -273,7 +272,7 @@ export class LogBackedStore implements Store {
         return this.internalStore.getAllEntries();
     }
 
-    setOnNewDataCallBack(callback: OnCommitFunc) {
-        this.onNewData = callback;
+    setBroadcastCallBack(callback: BroadcastFunc) {
+        this.broadcastData = callback;
     }
 }
