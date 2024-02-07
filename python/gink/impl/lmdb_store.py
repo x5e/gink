@@ -18,6 +18,7 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, BundleWrapper, BundleCallback
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
+from .utilities import generate_timestamp
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
@@ -94,6 +95,7 @@ class LmdbStore(AbstractStore):
             # TODO: add methods to drop out-of-date entries and/or turn off retention
             # TODO: add purge method to remove particular data even when retention is on
             # TODO: add expiries table to keep track of when things need to be removed
+        self._seen_through: MuTimestamp = 0
 
     def get_edge_entries(
             self,
@@ -211,9 +213,6 @@ class LmdbStore(AbstractStore):
             assert isinstance(container_builder, Message)
             container_builder.ParseFromString(container_definition_bytes)
             return container_builder
-
-    def refresh(self, callback: Optional[BundleCallback] = None):
-        raise NotImplementedError()
 
     def get_some(self, cls, last_index: Optional[int] = None):
         """ gets several instance of the given class """
@@ -623,6 +622,19 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=placement_key.placer, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
+    def refresh(self, callback: Optional[BundleCallback] = None):
+        with self._handle.begin(write=False) as trxn:
+            self._refresh_helper(trxn=trxn, callback=callback)
+
+    def _refresh_helper(self, trxn: Trxn, callback: Optional[BundleCallback] = None):
+        cursor = trxn.cursor(self._bundles)
+        while cursor.set_range(encode_muts(self._seen_through + 1)):
+            byte_key = cursor.key()
+            bundle_info = BundleInfo(encoded=byte_key[8:])
+            if callback is not None:
+                callback(cursor.value(), bundle_info)
+            self._seen_through = decode_muts(byte_key[0:8])
+
     def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[BundleCallback]=None) -> bool:
         wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
         builder = wrapper.get_builder()
@@ -630,12 +642,13 @@ class LmdbStore(AbstractStore):
         chain_key = bytes(new_info.get_chain())
         # Note: LMDB supports only one write transaction, so we don't need to explicitly lock.
         with self._handle.begin(write=True) as trxn:
+            self._refresh_helper(trxn=trxn, callback=callback)
             chain_value_old = trxn.get(chain_key, db=self._chains)
             old_info = BundleInfo(encoded=chain_value_old) if chain_value_old else None
             needed = AbstractStore._is_needed(new_info, old_info)
             if needed:
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
-                    trxn.put(bytes(new_info), wrapper.get_bytes(), db=self._bundles)
+                    trxn.put(encode_muts(generate_timestamp()) + bytes(new_info), wrapper.get_bytes(), db=self._bundles)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 change_items = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
