@@ -52,7 +52,7 @@ it('test two stores automatically pulling new data', async () => {
 
     await globalDir1.set("key", "value");
 
-    expect(await store2.getAllEntries()).toBeTruthy();
+    expect((await store2.getAllEntries()).length).toBeTruthy();
 
     await store1.close();
     await store2.close();
