@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from google.protobuf.message import Message   # type: ignore
 from google.protobuf.text_format import Parse  # type: ignore
@@ -62,15 +62,20 @@ if TYPE_CHECKING:
     class ClearanceBuilder(Message):
         pass
 
-
     class MuidBuilder(Message):
         timestamp: MuTimestamp
         medallion: Medallion
         offset: int
 
+    class ClaimBuilder(Message):
+        medallion: Medallion
+        chain_start: MuTimestamp
+        process_id: int
+        claim_time: MuTimestamp
 
-    class LogFile(Message):
-        pass
+    class LogFileBuilder(Message):
+        commits: List[bytes]
+        chain_entries: List[ClaimBuilder]
 
 
     class Behavior(IntEnum):
@@ -99,4 +104,5 @@ else:
     from ..builders.clearance_pb2 import Clearance as ClearanceBuilder
     from ..builders.muid_pb2 import Muid as MuidBuilder
     from ..builders.behavior_pb2 import Behavior
-    from ..builders.log_file_pb2 import LogFile
+    from ..builders.log_file_pb2 import LogFile as LogFileBuilder
+    from ..builders.claim_pb2 import Claim as ClaimBuilder

@@ -3,7 +3,7 @@
     Under the hood, each gink.mdb file stores several "databases" (tables/b-trees):
 
         bundles - Used to keep track of all commits we have seen.
-            key: bytes(bundle_info), which forces sorting by (timestamp, medallion)
+            key: received_muts (packed into 8 bytes big endian) + bytes(bundle_info)
             val: the bytes for the relevant bundle when it was sealed
 
         chains - Used to keep track of how far along each chain we've seen.
@@ -11,8 +11,8 @@
             val: bytes(bundle_info) for the last bundle along the given chain
 
         claims - Used to keep track of which chains this store owns and can append to.
-            key: medallion (packed big endian)
-            val: chain_start (packed big endian)
+            key: claim_time (packed big endian)
+            val: Claim (encoded protobuf)
 
         entries - Stores entry payload.
             key: entry-muid

@@ -4,7 +4,7 @@
 import os
 from logging import getLogger
 import uuid
-from typing import Tuple, Callable, Iterable, Optional, Set, Union
+from typing import Tuple, Iterable, Optional, Set, Union
 from struct import pack
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
 
@@ -15,7 +15,7 @@ from .typedefs import MuTimestamp, UserKey, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper
+from .abstract_store import AbstractStore, BundleWrapper, BundleCallback
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
@@ -211,6 +211,9 @@ class LmdbStore(AbstractStore):
             assert isinstance(container_builder, Message)
             container_builder.ParseFromString(container_definition_bytes)
             return container_builder
+
+    def refresh(self, callback: Optional[BundleCallback] = None):
+        raise NotImplementedError()
 
     def get_some(self, cls, last_index: Optional[int] = None):
         """ gets several instance of the given class """
@@ -437,13 +440,13 @@ class LmdbStore(AbstractStore):
         if self._temporary:
             os.unlink(self._file_path)
 
-    def claim_chain(self, chain: Chain):
+    def add_claim(self, chain: Chain):
         with self._handle.begin(write=True) as txn:
             key = encode_muts(chain.medallion)
             val = encode_muts(chain.chain_start)
             txn.put(key, val, db=self._claims)
 
-    def get_claimed_chains(self) -> Iterable[Chain]:
+    def get_claims(self) -> Iterable[Chain]:
         if self:
             raise NotImplementedError()
         return []
@@ -620,12 +623,11 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=placement_key.placer, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
-        if isinstance(bundle, bytes):
-            bundle = BundleWrapper(bundle)
-        builder = bundle.get_builder()
-        new_info = bundle.get_info()
-        chain_key = pack(">QQ", new_info.medallion, new_info.chain_start)
+    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[BundleCallback]=None) -> bool:
+        wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
+        builder = wrapper.get_builder()
+        new_info = wrapper.get_info()
+        chain_key = bytes(new_info.get_chain())
         # Note: LMDB supports only one write transaction, so we don't need to explicitly lock.
         with self._handle.begin(write=True) as trxn:
             chain_value_old = trxn.get(chain_key, db=self._chains)
@@ -633,7 +635,7 @@ class LmdbStore(AbstractStore):
             needed = AbstractStore._is_needed(new_info, old_info)
             if needed:
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
-                    trxn.put(bytes(new_info), bundle.get_bytes(), db=self._bundles)
+                    trxn.put(bytes(new_info), wrapper.get_bytes(), db=self._bundles)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 change_items = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
@@ -653,7 +655,7 @@ class LmdbStore(AbstractStore):
                         continue
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         if needed and callback is not None:
-            callback(bundle)
+            callback(wrapper.get_bytes(), wrapper.get_info())
         return needed
 
     def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int,
@@ -824,7 +826,7 @@ class LmdbStore(AbstractStore):
                     by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
                     trxn.delete(by_name_key, db=self._by_name)
 
-    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
+    def get_bundles(self, callback: BundleCallback, since: MuTimestamp = 0):
         with self._handle.begin() as txn:
             retention = decode_muts(txn.get(b"bundles", db=self._retentions))
             if retention is None or (retention != 1 and retention > since):

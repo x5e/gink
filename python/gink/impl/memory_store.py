@@ -163,14 +163,17 @@ class MemoryStore(AbstractStore):
             return FoundEntry(address=entry_storage_key.placer, builder=builder)
         return None
 
-    def get_claimed_chains(self) -> Iterable[Chain]:
+    def get_claims(self) -> Iterable[Chain]:
         for key, val in self._claimed_chains.items():
             assert isinstance(key, Medallion)
             assert isinstance(val, int)
             yield Chain(key, val)
 
-    def claim_chain(self, chain: Chain):
+    def add_claim(self, chain: Chain):
         self._claimed_chains[chain.medallion] = chain.chain_start
+
+    def refresh(self, *_):
+        pass
 
     def get_ordered_entries(
             self,
@@ -250,7 +253,7 @@ class MemoryStore(AbstractStore):
                     continue
                 raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         if needed and callback is not None:
-            callback(bundle)
+            callback(bundle.get_bytes(), bundle.get_info())
         return needed
 
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):

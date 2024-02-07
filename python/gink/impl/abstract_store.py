@@ -3,6 +3,7 @@
 # standard python modules
 from typing import Tuple, Callable, Optional, Iterable, List, Union
 from abc import ABC, abstractmethod
+from random import randint
 
 # Gink specific modules
 from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder
@@ -12,6 +13,10 @@ from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_wrapper import BundleWrapper
+from .utilities import generate_timestamp, get_process_info
+from .coding import DIRECTORY, encode_key, encode_value
+from .bundler import Bundler
+BundleCallback = Callable[[bytes, BundleInfo], None]
 
 
 class AbstractStore(ABC):
@@ -79,24 +84,56 @@ class AbstractStore(ABC):
     def close(self):
         """Safely releases resources."""
 
-    @abstractmethod
-    def get_claimed_chains(self) -> Iterable[Chain]:
-        """ Returns the chains that this store as started and can write to. """
+    def acquire_appendable_chain(self, callback: Optional[BundleCallback]=None) -> BundleInfo:
+        """ Either creates a chain or finds one that's available to be appended to, and returns the last entry.
+
+            When a new chain is created the first entry will be metadata about this process.
+
+            Default implementation always creates a new chain, subclasses should check if one is available.
+        """
+        medallion = randint((2 ** 48) + 1, (2 ** 49) - 1)
+        chain_start = generate_timestamp()
+        chain = Chain(medallion=Medallion(medallion), chain_start=chain_start)
+        personal_directory = Muid(-1, chain.medallion, DIRECTORY)
+        entry_builder = EntryBuilder()
+        bundler = Bundler("(starting chain)")
+        for key, val in get_process_info():
+            # pylint: disable=maybe-no-member
+            setattr(entry_builder, "behavior", DIRECTORY)
+            personal_directory.put_into(getattr(entry_builder, "container"))
+            encode_key(key, getattr(entry_builder, "key"))
+            encode_value(val, entry_builder.value)  # type: ignore
+            bundler.add_change(entry_builder)
+        bundle_bytes = bundler.seal(chain=chain, timestamp=chain_start)
+        wrap = BundleWrapper(bundle_bytes)
+        added = self.apply_bundle(wrap, callback)
+        assert added
+        bundle_info = wrap.get_info()
+        self._logger.debug("started chain: %r", bundle_info)
+        return bundle_info
 
     @abstractmethod
-    def claim_chain(self, chain: Chain):
-        """ Marks a chain as being owned by this store for future use. """
-
-    @abstractmethod
-    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
+    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[BundleCallback]=None) -> bool:
         """ Tries to add data from a particular bundle to this store.
 
             the bundle's metadata
         """
 
     @abstractmethod
-    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
-        """ Calls the callback with each bundle, in (timestamp, medallion) order.
+    def refresh(self, callback: Optional[BundleCallback] = None):
+        """ Checks the source file for bundles that haven't come from this process and calls the callback.
+
+            Intended to allow the process to send bundles to peers and otherwise get the model in line with the file.
+        """
+
+
+    @abstractmethod
+    def get_bundles(self, callback: BundleCallback, since: MuTimestamp=0):
+        """ Calls the callback with each bundle currently in the store since the `since` argument (default 0).
+
+            Calls in order received by this store, which may not correspond to the bundle creation times.
+            But we still expect dependency order to be respected, that is if B1 references objects from B0,
+            then B0 should come before B1.
 
             This is done callback style because we don't want to leave dangling transactions
             in the store, which could easily happen if we offered up an iterator interface instead.
