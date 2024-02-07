@@ -50,9 +50,10 @@ it('test two stores automatically pulling new data', async () => {
 
     const globalDir1 = instance1.getGlobalDirectory();
 
-    await globalDir1.set("key", "value");
+    await globalDir1.set("key", "value", "test bundle");
+    await new Promise(r => setTimeout(r, 100));
 
-    expect(await store2.getAllEntries()).toBeTruthy();
+    expect((await store2.getAllEntries()).length).toBeTruthy();
 
     await store1.close();
     await store2.close();
