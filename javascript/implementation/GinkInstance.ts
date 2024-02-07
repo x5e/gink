@@ -22,6 +22,7 @@ import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 import { Verb } from "./Verb";
 import { BundleBuilder } from "./builders";
+import { LogBackedStore } from "./LogBackedStore";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -102,6 +103,12 @@ export class GinkInstance {
         this.listeners.set("all", []);
         this.initilized = true;
         //this.logger(`GinkInstance.ready`);
+        if (this.store instanceof LogBackedStore) {
+            const callback = async (bundleBytes: BundleBytes): Promise<BundleInfo> => {
+                return await this.receiveCommit(bundleBytes);
+            };
+            this.store.setOnNewDataCallBack(callback);
+        }
     }
 
     /**

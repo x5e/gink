@@ -45,6 +45,10 @@ export interface AuthFunction {
     (token: string): boolean;
 }
 
+export interface OnCommitFunc {
+    (bundleBytes: BundleBytes): Promise<BundleInfo>;
+}
+
 export interface Muid {
     medallion: Medallion | undefined;
     timestamp: Timestamp | undefined;
