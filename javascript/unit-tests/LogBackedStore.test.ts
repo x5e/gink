@@ -44,9 +44,7 @@ it('test two stores automatically pulling new data', async () => {
     const store2 = new LogBackedStore("/tmp/basic_test.store");
 
     const instance1 = new GinkInstance(store1);
-    const instance2 = new GinkInstance(store1);
     await instance1.ready;
-    await instance2.ready;
 
     const globalDir1 = instance1.getGlobalDirectory();
 
