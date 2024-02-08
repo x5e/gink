@@ -50,6 +50,7 @@ class LmdbStore(AbstractStore):
         self._file_path = file_path
         self._handle = ldmbopen(file_path, max_dbs=100, map_size=map_size, subdir=False)
         self._bundles = self._handle.open_db(b"bundles")
+        self._bundle_infos = self._handle.open_db(b"bundle_infos")
         self._chains = self._handle.open_db(b"chains")
         self._claims = self._handle.open_db(b"claims")
         self._entries = self._handle.open_db(b"entries")
@@ -67,6 +68,7 @@ class LmdbStore(AbstractStore):
         if reset:
             with self._handle.begin(write=True) as txn:
                 # Setting delete=False signals to lmdb to truncate the tables rather than drop them
+                txn.drop(self._bundle_infos, delete=False)
                 txn.drop(self._bundles, delete=False)
                 txn.drop(self._chains, delete=False)
                 txn.drop(self._claims, delete=False)
@@ -197,8 +199,8 @@ class LmdbStore(AbstractStore):
 
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
         with self._handle.begin() as trxn:
-            bundles_cursor = trxn.cursor(self._bundles)
-            found = to_last_with_prefix(bundles_cursor, prefix=pack(">QQ", timestamp, medallion))
+            bundle_infos_cursor = trxn.cursor(self._bundle_infos)
+            found = to_last_with_prefix(bundle_infos_cursor, prefix=pack(">QQ", timestamp, medallion))
             if not found:
                 return None
             bundle_info = BundleInfo.from_bytes(found)
@@ -630,10 +632,10 @@ class LmdbStore(AbstractStore):
         cursor = trxn.cursor(self._bundles)
         while cursor.set_range(encode_muts(self._seen_through + 1)):
             byte_key = cursor.key()
-            bundle_info = BundleInfo(encoded=byte_key[8:])
+            wrapper = BundleWrapper(cursor.value())
             if callback is not None:
-                callback(cursor.value(), bundle_info)
-            self._seen_through = decode_muts(byte_key[0:8])
+                callback(wrapper.get_bytes(), wrapper.get_info())
+            self._seen_through = decode_muts(byte_key)
 
     def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[BundleCallback]=None) -> bool:
         wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
@@ -648,7 +650,9 @@ class LmdbStore(AbstractStore):
             needed = AbstractStore._is_needed(new_info, old_info)
             if needed:
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
-                    trxn.put(encode_muts(generate_timestamp()) + bytes(new_info), wrapper.get_bytes(), db=self._bundles)
+                    bundle_location = encode_muts(generate_timestamp())
+                    trxn.put(bundle_location, wrapper.get_bytes(), db=self._bundles)
+                    trxn.put(bytes(new_info), bundle_location, db=self._bundle_infos)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 change_items = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps

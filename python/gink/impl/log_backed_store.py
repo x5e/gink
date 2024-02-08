@@ -70,9 +70,6 @@ class LogBackedStore(MemoryStore):
             self._flocked = False
         return added
 
-    def get_claims(self) -> Mapping[Medallion, ClaimBuilder]:
-        return self._claims
-
     def close(self):
         """Closes the underlying file."""
         self._handle.close()
