@@ -33,4 +33,8 @@ automatically pull the changes and broadcast them.
 
     await server.close();
     process.exit(0);
-})().catch((reason) => { console.error(reason); process.exit(1); });
+})().catch(async (reason) => {
+    console.error(reason);
+    await server.close();
+    process.exit(1);
+});
