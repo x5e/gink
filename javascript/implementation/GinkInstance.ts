@@ -101,20 +101,18 @@ export class GinkInstance {
         ensure(this.myChain.medallion > 0);
         this.iHave = await this.store.getChainTracker();
         this.listeners.set("all", []);
-        this.initilized = true;
         //this.logger(`GinkInstance.ready`);
-        if (this.store instanceof LogBackedStore) {
-            const callback = async (bundleBytes: BundleBytes, bundleInfo: BundleInfo): Promise<void> => {
-                for (const [peerId, peer] of this.peers) {
-                    peer._sendIfNeeded(bundleBytes, bundleInfo);
-                }
-                // Send to listeners subscribed to all containers.
-                for (const listener of this.listeners.get("all")) {
-                    listener(bundleInfo);
-                }
-            };
-            this.store.setBroadcastCallBack(callback);
-        }
+        const callback = async (bundleBytes: BundleBytes, bundleInfo: BundleInfo): Promise<void> => {
+            for (const [peerId, peer] of this.peers) {
+                peer._sendIfNeeded(bundleBytes, bundleInfo);
+            }
+            // Send to listeners subscribed to all containers.
+            for (const listener of this.listeners.get("all")) {
+                listener(bundleInfo);
+            }
+        };
+        this.store.addFoundBundleCallBack(callback);
+        this.initilized = true;
     }
 
     /**

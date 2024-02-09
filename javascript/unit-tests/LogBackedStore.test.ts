@@ -43,9 +43,12 @@ it('test automatic data pulling & callbacks', async () => {
     const store1 = new LogBackedStore("/tmp/basic_test.store");
     const store2 = new LogBackedStore("/tmp/basic_test.store");
 
-    const cb = (bundleInfo) => { cb.calledTimes++; };
+    const cb = (bytes, info) => {
+        cb.calledTimes++;
+        return Promise.resolve();
+    };
     cb.calledTimes = 0;
-    store2.addOnNewBundleCallback(cb);
+    store2.addFoundBundleCallBack(cb);
 
     const instance1 = new GinkInstance(store1);
     const instance2 = new GinkInstance(store1);

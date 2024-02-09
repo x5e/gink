@@ -11,6 +11,7 @@ import {
     Entry,
     AsOf,
     ActorId,
+    BroadcastFunc,
 } from "./typedefs";
 
 export interface Store {
@@ -88,6 +89,15 @@ export interface Store {
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>>;
     getOrderedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Entry[]>;
     getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]>;
+
+    /**
+     * Adds a callback to be called when a bundle was added by a
+     * different store and is found by the current store.
+     * Primarily intended for use with the LogBackedStore and file sharing.
+     * @param callback the function to be called when a new bundle is found.
+     * It needs to take two arguments, bundleBytes and bundleInfo.
+     */
+    addFoundBundleCallBack(callback: BroadcastFunc): void;
 
     /**
      * Closes the underlying data store.  Implicitly awaits on the `this.ready` promise.

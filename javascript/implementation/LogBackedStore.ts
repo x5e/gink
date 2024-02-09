@@ -44,8 +44,7 @@ export class LogBackedStore implements Store {
     private memoryLock: PromiseChainLock = new PromiseChainLock();
     private redTo: number = 0;
     private fileWatcher: FSWatcher;
-    private broadcastFromInstance: BroadcastFunc = null;
-    private onNewBundleCallBacks: CallBack[] = [];
+    private foundBundleCallBacks: BroadcastFunc[] = [];
 
     /**
      *
@@ -135,7 +134,9 @@ export class LogBackedStore implements Store {
             for (const commit of commits) {
                 const info = await this.internalStore.addBundle(commit);
                 this.chainTracker.markAsHaving(info);
-                await this.broadcastBundle(commit, info);
+                for (const callback of this.foundBundleCallBacks) {
+                    callback(commit, info);
+                }
                 this.commitsProcessed += 1;
             }
             const chainEntries: ChainEntryBuilder[] = logFileBuilder.getChainEntriesList();
@@ -272,40 +273,12 @@ export class LogBackedStore implements Store {
     }
 
     /**
-     * Combines the broadcastFromInstance callback supplied by the instance and
-     * other callbacks the supplied by the user.
-     * @param bundleBytes
-     * @param bundleInfo
-     */
-    async broadcastBundle(bundleBytes: BundleBytes, bundleInfo: BundleInfo): Promise<void> {
-        if (this.broadcastFromInstance) {
-            await this.broadcastFromInstance(bundleBytes, bundleInfo);
-        }
-        for (const callback of this.onNewBundleCallBacks) {
-            callback(bundleInfo);
-        }
-    }
-
-    /**
-     * The GinkInstance using this store needs to set the
-     * callback used to send new bundles to peers. (This will happen automatically)
-     * When a LogBackedStore file is updated and a store pulls new data,
-     * other connected instances need to receive the same data.
-     * @param callback a function to be called when a new bundle has been
-     * received from the log file. It needs to take two arguments,
-     * bundleBytes and bundleInfo
-     */
-    setBroadcastCallBack(callback: BroadcastFunc) {
-        this.broadcastFromInstance = callback;
-    }
-
-    /**
      * Add a callback if you want another function to run when a new
      * bundle is pulled from the log file.
      * @param callback a function to be called when a new bundle has been
      * received from the log file. It needs to take one argument, bundleInfo
      */
-    addOnNewBundleCallback(callback: CallBack) {
-        this.onNewBundleCallBacks.push(callback);
+    addFoundBundleCallBack(callback: BroadcastFunc) {
+        this.foundBundleCallBacks.push(callback);
     }
 }

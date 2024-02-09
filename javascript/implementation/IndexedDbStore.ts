@@ -13,6 +13,7 @@ import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {
     ActorId,
     AsOf,
+    BroadcastFunc,
     BundleBytes,
     BundleInfo,
     BundleInfoTuple,
@@ -71,6 +72,7 @@ export class IndexedDbStore implements Store {
     private initialized = false;
     private processingLock = new PromiseChainLock();
     private lastCaller: string = "";
+    private foundBundleCallBacks: BroadcastFunc[] = [];
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
     constructor(indexedDbName: string, reset?: boolean, private keepingHistory = true) {
@@ -649,5 +651,9 @@ export class IndexedDbStore implements Store {
             const commitBytes: BundleBytes = cursor.value;
             callBack(commitBytes, commitInfo);
         }
+    }
+
+    addFoundBundleCallBack(callback: BroadcastFunc): void {
+        this.foundBundleCallBacks.push(callback);
     }
 }
