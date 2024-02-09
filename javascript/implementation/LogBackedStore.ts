@@ -7,7 +7,6 @@ import {
     KeyType,
     ClaimedChain,
     ActorId,
-    CallBack,
     BroadcastFunc,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";

@@ -26,7 +26,6 @@ import {
     MuidTuple,
     Offset,
     Removal,
-    SeenThrough,
     Timestamp,
     ActorId,
     BroadcastFunc,

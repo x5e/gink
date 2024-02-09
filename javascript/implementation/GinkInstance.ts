@@ -3,10 +3,9 @@ import {
     makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
     encodeToken, getActorId, isAlive
 } from "./utils";
-import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
+import { BundleBytes, CommitListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
-import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
 
 import { PairSet } from './PairSet';
@@ -22,7 +21,6 @@ import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 import { Verb } from "./Verb";
 import { BundleBuilder } from "./builders";
-import { LogBackedStore } from "./LogBackedStore";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
