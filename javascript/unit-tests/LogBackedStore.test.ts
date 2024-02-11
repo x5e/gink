@@ -39,9 +39,16 @@ it('test locks', async () => {
     await lbs1.close();
 });
 
-it('test two stores automatically pulling new data', async () => {
+it('test automatic data pulling & callbacks', async () => {
     const store1 = new LogBackedStore("/tmp/basic_test.store");
     const store2 = new LogBackedStore("/tmp/basic_test.store");
+
+    const cb = (bytes, info) => {
+        cb.calledTimes++;
+        return Promise.resolve();
+    };
+    cb.calledTimes = 0;
+    store2.addFoundBundleCallBack(cb);
 
     const instance1 = new GinkInstance(store1);
     await instance1.ready;
@@ -51,6 +58,7 @@ it('test two stores automatically pulling new data', async () => {
     await globalDir1.set("key", "value", "test bundle");
     await new Promise(r => setTimeout(r, 100));
 
+    expect(cb.calledTimes > 0).toBe(true);
     expect((await store2.getAllEntries()).length).toBeTruthy();
 
     await store1.close();

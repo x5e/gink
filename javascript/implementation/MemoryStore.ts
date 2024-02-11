@@ -26,9 +26,9 @@ import {
     MuidTuple,
     Offset,
     Removal,
-    SeenThrough,
     Timestamp,
     ActorId,
+    BroadcastFunc,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
@@ -51,6 +51,7 @@ import {
 export class MemoryStore implements Store {
     ready: Promise<void>;
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
+    private foundBundleCallBacks: BroadcastFunc[] = [];
     // Awkward, but need to use strings to represent objects, since we won't always
     // have the original reference to use.
     private trxns: TreeMap<BundleInfoTuple, Uint8Array>; // BundleInfoTuple => bytes
@@ -569,5 +570,9 @@ export class MemoryStore implements Store {
     // for debugging, not part of the api/interface
     getAllRemovals(): TreeMap<string, Removal> {
         return this.removals;
+    }
+
+    addFoundBundleCallBack(callback: BroadcastFunc): void {
+        this.foundBundleCallBacks.push(callback);
     }
 }

@@ -3,10 +3,9 @@ import {
     makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
     encodeToken, getActorId, isAlive
 } from "./utils";
-import { BundleBytes, Medallion, ChainStart, CommitListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
+import { BundleBytes, CommitListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
-import { PromiseChainLock } from "./PromiseChainLock";
 import { IndexedDbStore } from "./IndexedDbStore";
 
 import { PairSet } from './PairSet';
@@ -100,8 +99,18 @@ export class GinkInstance {
         ensure(this.myChain.medallion > 0);
         this.iHave = await this.store.getChainTracker();
         this.listeners.set("all", []);
-        this.initilized = true;
         //this.logger(`GinkInstance.ready`);
+        const callback = async (bundleBytes: BundleBytes, bundleInfo: BundleInfo): Promise<void> => {
+            for (const [peerId, peer] of this.peers) {
+                peer._sendIfNeeded(bundleBytes, bundleInfo);
+            }
+            // Send to listeners subscribed to all containers.
+            for (const listener of this.listeners.get("all")) {
+                listener(bundleInfo);
+            }
+        };
+        this.store.addFoundBundleCallBack(callback);
+        this.initilized = true;
     }
 
     /**

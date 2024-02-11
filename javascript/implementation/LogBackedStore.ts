@@ -7,6 +7,7 @@ import {
     KeyType,
     ClaimedChain,
     ActorId,
+    BroadcastFunc,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
@@ -42,6 +43,7 @@ export class LogBackedStore implements Store {
     private memoryLock: PromiseChainLock = new PromiseChainLock();
     private redTo: number = 0;
     private fileWatcher: FSWatcher;
+    private foundBundleCallBacks: BroadcastFunc[] = [];
 
     /**
      *
@@ -131,6 +133,9 @@ export class LogBackedStore implements Store {
             for (const commit of commits) {
                 const info = await this.internalStore.addBundle(commit);
                 this.chainTracker.markAsHaving(info);
+                for (const callback of this.foundBundleCallBacks) {
+                    callback(commit, info);
+                }
                 this.commitsProcessed += 1;
             }
             const chainEntries: ChainEntryBuilder[] = logFileBuilder.getChainEntriesList();
@@ -264,5 +269,15 @@ export class LogBackedStore implements Store {
     async getAllEntries(): Promise<Entry[]> {
         await this.ready;
         return this.internalStore.getAllEntries();
+    }
+
+    /**
+     * Add a callback if you want another function to run when a new
+     * bundle is pulled from the log file.
+     * @param callback a function to be called when a new bundle has been
+     * received from the log file. It needs to take one argument, bundleInfo
+     */
+    addFoundBundleCallBack(callback: BroadcastFunc) {
+        this.foundBundleCallBacks.push(callback);
     }
 }
