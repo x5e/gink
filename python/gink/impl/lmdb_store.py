@@ -99,6 +99,9 @@ class LmdbStore(AbstractStore):
             # TODO: add expiries table to keep track of when things need to be removed
         self._seen_through: MuTimestamp = 0
 
+    def _get_file_path(self):
+        return self._file_path
+
     def get_edge_entries(
             self,
             as_of: MuTimestamp,
@@ -624,18 +627,24 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=placement_key.placer, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def refresh(self, callback: Optional[BundleCallback] = None):
+    def refresh(self, callback: Optional[BundleCallback] = None) -> int:
         with self._handle.begin(write=False) as trxn:
-            self._refresh_helper(trxn=trxn, callback=callback)
+            count = self._refresh_helper(trxn=trxn, callback=callback)
+        if count:
+            self._clear_notifications()
+        return count
 
-    def _refresh_helper(self, trxn: Trxn, callback: Optional[BundleCallback] = None):
+    def _refresh_helper(self, trxn: Trxn, callback: Optional[BundleCallback] = None) -> int:
         cursor = trxn.cursor(self._bundles)
+        count = 0
         while cursor.set_range(encode_muts(self._seen_through + 1)):
             byte_key = cursor.key()
             wrapper = BundleWrapper(cursor.value())
             if callback is not None:
                 callback(wrapper.get_bytes(), wrapper.get_info())
+                count += 1
             self._seen_through = decode_muts(byte_key)
+        return count
 
     def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[BundleCallback]=None) -> bool:
         wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
@@ -671,6 +680,7 @@ class LmdbStore(AbstractStore):
                         self._apply_clearance(new_info, trxn, offset, change.clearance)
                         continue
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
+        self._clear_notifications()
         if needed and callback is not None:
             callback(wrapper.get_bytes(), wrapper.get_info())
         return needed

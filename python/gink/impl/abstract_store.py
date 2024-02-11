@@ -4,6 +4,7 @@
 from typing import Tuple, Callable, Optional, Iterable, List, Union
 from abc import ABC, abstractmethod
 from random import randint
+from pathlib import Path
 
 # Gink specific modules
 from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder
@@ -16,6 +17,7 @@ from .bundle_wrapper import BundleWrapper
 from .utilities import generate_timestamp, get_process_info
 from .coding import DIRECTORY, encode_key, encode_value
 from .bundler import Bundler
+from .watcher import Watcher
 BundleCallback = Callable[[bytes, BundleInfo], None]
 
 
@@ -34,6 +36,28 @@ class AbstractStore(ABC):
 
     def __exit__(self, *_):
         self.close()
+
+    @abstractmethod
+    def _get_file_path(self) -> Optional[Path]:
+        """ Return the underlying file name, or None if the store isn't file backed.
+
+        """
+
+    def is_selectable(self) -> bool:
+        return self._get_file_path() is not None
+
+    def fileno(self) -> int:
+        if not hasattr(self, "_watcher"):
+            file_path = self._get_file_path()
+            if file_path is None:
+                raise AssertionError("can't get the fileno of this kind of store")
+            watcher = Watcher(file_path)
+            setattr(self, "_watcher", watcher)
+        return self._watcher.fileno()
+
+    def _clear_notifications(self):
+        if hasattr(self, "_watcher"):
+            self._watcher.clear()
 
     @abstractmethod
     def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
@@ -120,10 +144,12 @@ class AbstractStore(ABC):
         """
 
     @abstractmethod
-    def refresh(self, callback: Optional[BundleCallback] = None):
+    def refresh(self, callback: Optional[BundleCallback] = None) -> int:
         """ Checks the source file for bundles that haven't come from this process and calls the callback.
 
             Intended to allow the process to send bundles to peers and otherwise get the model in line with the file.
+
+            Returns the number of transactions processed.
         """
 
 
