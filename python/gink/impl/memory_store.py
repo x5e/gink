@@ -5,6 +5,7 @@ import struct
 from logging import getLogger
 from typing import Tuple, Callable, Optional, Iterable, Union, Dict
 from sortedcontainers import SortedDict  # type: ignore
+from pathlib import Path
 
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder, Message,
@@ -12,7 +13,7 @@ from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBu
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper
+from .abstract_store import AbstractStore, BundleWrapper, BundleCallback
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
@@ -51,6 +52,9 @@ class MemoryStore(AbstractStore):
 
     def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
         return self._containers.get(container)
+
+    def _get_file_path(self) -> Optional[Path]:
+        return None
 
     def list_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
         for key, val in self._containers.items():
@@ -172,8 +176,9 @@ class MemoryStore(AbstractStore):
     def add_claim(self, chain: Chain):
         self._claimed_chains[chain.medallion] = chain.chain_start
 
-    def refresh(self, *_):
-        pass
+    def refresh(self, callback: Optional[BundleCallback] = None) -> int:
+        # Memory store will never have external data added to it.
+        return 0
 
     def get_ordered_entries(
             self,

@@ -21,6 +21,8 @@ class BundleInfo:
 
     def __init__(self, *, builder: Optional[BundleBuilder] = None, encoded: bytes = b'\x00' * 32, **kwargs):
 
+        if len(encoded) < 32:
+            raise ValueError("need at least 32 bytes to unpack")
         unpacked = self._struct.unpack(encoded[0:32])
         (self.timestamp, self.medallion, self.chain_start, self.previous) = unpacked
         self.comment = encoded[32:].decode()
@@ -66,7 +68,8 @@ class BundleInfo:
     @staticmethod
     def from_bytes(data: bytes):
         """ the opposite of __bytes__ """
-        assert isinstance(data, bytes) and len(data) >= 32, (type(data), data)
+        if not (isinstance(data, bytes) and len(data) >= 32):
+            raise ValueError("bad argument to BundleInfo.from_bytes: %r" % data)
         return BundleInfo(encoded=data)
 
     def get_chain(self) -> Chain:

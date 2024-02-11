@@ -29,7 +29,13 @@ class LmdbStore(AbstractStore):
     """
     """
 
-    def __init__(self, file_path=None, reset=False, retain_bundles=True, retain_entries=True, map_size=2**30):
+    def __init__(
+            self,
+            file_path=None,
+            reset=False,
+            retain_bundles=True,
+            retain_entries=True,
+            map_size: int=2**30) -> None:
         """ Opens a gink.mdb file for use as a Store.
 
             file_path: where find or place the data file
@@ -231,7 +237,7 @@ class LmdbStore(AbstractStore):
                 BundleBuilder: self._bundles,
                 EntryBuilder: self._entries,
                 MovementBuilder: self._removals,
-                BundleInfo: self._bundles,
+                BundleInfo: self._bundle_infos,
                 Placement: self._entries,
                 RemovalKey: self._removals,
                 LocationKey: self._locations,
@@ -643,7 +649,7 @@ class LmdbStore(AbstractStore):
             if callback is not None:
                 callback(wrapper.get_bytes(), wrapper.get_info())
                 count += 1
-            self._seen_through = decode_muts(byte_key)
+            self._seen_through = decode_muts(byte_key) or 0
         return count
 
     def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[BundleCallback]=None) -> bool:
@@ -861,8 +867,10 @@ class LmdbStore(AbstractStore):
             bundles_cursor = txn.cursor(self._bundles)
             data_remaining = bundles_cursor.set_range(encode_muts(since))
             while data_remaining:
-                info_bytes, bundle_bytes = bundles_cursor.item()
-                bundle_info = BundleInfo(encoded=info_bytes)
+                bundle_bytes = bundles_cursor.value()
+                bundle_builder = BundleBuilder()
+                bundle_builder.ParseFromString(bundle_bytes)
+                bundle_info = BundleInfo(builder=bundle_builder)
                 callback(bundle_bytes, bundle_info)
                 data_remaining = bundles_cursor.next()
 

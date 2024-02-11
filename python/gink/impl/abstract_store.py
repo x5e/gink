@@ -53,7 +53,7 @@ class AbstractStore(ABC):
                 raise AssertionError("can't get the fileno of this kind of store")
             watcher = Watcher(file_path)
             setattr(self, "_watcher", watcher)
-        return self._watcher.fileno()
+        return getattr(self, "_watcher").fileno()
 
     def _clear_notifications(self):
         if hasattr(self, "_watcher"):
@@ -133,7 +133,6 @@ class AbstractStore(ABC):
         added = self.apply_bundle(wrap, callback)
         assert added
         bundle_info = wrap.get_info()
-        self._logger.debug("started chain: %r", bundle_info)
         return bundle_info
 
     @abstractmethod
