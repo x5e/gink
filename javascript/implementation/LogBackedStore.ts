@@ -7,6 +7,7 @@ import {
     KeyType,
     ClaimedChain,
     ActorId,
+    BroadcastFunc,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
@@ -14,6 +15,7 @@ import { Store } from "./Store";
 import { FileHandle, open } from "fs/promises";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { flock } from "fs-ext";
+import { watch, FSWatcher } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ChainEntryBuilder, LogFileBuilder } from "./builders";
 import { generateTimestamp, ensure } from "./utils";
@@ -40,6 +42,8 @@ export class LogBackedStore implements Store {
     private fileLocked: boolean = false;
     private memoryLock: PromiseChainLock = new PromiseChainLock();
     private redTo: number = 0;
+    private fileWatcher: FSWatcher;
+    private foundBundleCallBacks: BroadcastFunc[] = [];
 
     /**
      *
@@ -50,7 +54,7 @@ export class LogBackedStore implements Store {
         readonly filename: string,
         readonly exclusive: boolean = false,
         private internalStore = new IndexedDbStore(generateTimestamp().toString()),
-        ) {
+    ) {
         this.ready = this.initialize();
     }
 
@@ -62,10 +66,30 @@ export class LogBackedStore implements Store {
         }
         const unlockingFunction = await this.memoryLock.acquireLock();
         await this.pullDataFromFile();
+
+        this.fileWatcher =
+            watch(this.filename, async (eventType, filename) => {
+                await new Promise(r => setTimeout(r, 10));
+                const size = (await this.fileHandle.stat()).size;
+                if (eventType == "change" && size > this.redTo) {
+                    const unlockingFunction = await this.memoryLock.acquireLock();
+                    if (!this.exclusive)
+                        await this.lockFile(true);
+
+                    await this.pullDataFromFile();
+
+                    if (!this.exclusive)
+                        await this.unlockFile();
+                    unlockingFunction();
+                }
+            });
+
         unlockingFunction();
     }
 
     async close() {
+        this.fileWatcher.close();
+        await new Promise(r => setTimeout(r, 100));
         await this.ready.catch();
         await this.fileHandle.close().catch();
         await this.internalStore.close().catch();
@@ -74,7 +98,7 @@ export class LogBackedStore implements Store {
     private async lockFile(block: boolean): Promise<boolean> {
         const thisLogBackedStore = this;
         return new Promise((resolve, reject) => {
-            flock(this.fileHandle.fd, (block ? "ex": "exnb"), (err) => {
+            flock(this.fileHandle.fd, (block ? "ex" : "exnb"), (err) => {
                 if (err) {
                     return reject(err);
                 }
@@ -108,11 +132,14 @@ export class LogBackedStore implements Store {
             const commits = logFileBuilder.getCommitsList();
             for (const commit of commits) {
                 const info = await this.internalStore.addBundle(commit);
-                this.chainTracker.markAsHaving(info)
+                this.chainTracker.markAsHaving(info);
+                for (const callback of this.foundBundleCallBacks) {
+                    callback(commit, info);
+                }
                 this.commitsProcessed += 1;
             }
             const chainEntries: ChainEntryBuilder[] = logFileBuilder.getChainEntriesList();
-            for (let i=0;i<chainEntries.length;i++) {
+            for (let i = 0; i < chainEntries.length; i++) {
                 this.claimedChains.push({
                     medallion: chainEntries[i].getMedallion(),
                     chainStart: chainEntries[i].getChainStart(),
@@ -176,7 +203,7 @@ export class LogBackedStore implements Store {
     async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         await this.ready;
         const unlockingFunction = await this.memoryLock.acquireLock();
-        if (! this.exclusive) {
+        if (!this.exclusive) {
             await this.lockFile(true);
         }
         ensure(this.fileLocked);
@@ -193,7 +220,7 @@ export class LogBackedStore implements Store {
         await this.fileHandle.appendFile(bytes);
         await this.fileHandle.sync();
         this.redTo += bytes.byteLength;
-        if (! this.exclusive)
+        if (!this.exclusive)
             await this.unlockFile();
         unlockingFunction();
         return {
@@ -201,7 +228,7 @@ export class LogBackedStore implements Store {
             chainStart,
             actorId: actorId || 0,
             claimTime,
-        }
+        };
     }
 
     async getChainTracker(): Promise<ChainTracker> {
@@ -242,5 +269,15 @@ export class LogBackedStore implements Store {
     async getAllEntries(): Promise<Entry[]> {
         await this.ready;
         return this.internalStore.getAllEntries();
+    }
+
+    /**
+     * Add a callback if you want another function to run when a new
+     * bundle is pulled from the log file.
+     * @param callback a function to be called when a new bundle has been
+     * received from the log file. It needs to take one argument, bundleInfo
+     */
+    addFoundBundleCallBack(callback: BroadcastFunc) {
+        this.foundBundleCallBacks.push(callback);
     }
 }

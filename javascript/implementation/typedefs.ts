@@ -45,6 +45,10 @@ export interface AuthFunction {
     (token: string): boolean;
 }
 
+export interface BroadcastFunc {
+    (bundleBytes: BundleBytes, bundleInfo: BundleInfo): Promise<void>;
+}
+
 export interface Muid {
     medallion: Medallion | undefined;
     timestamp: Timestamp | undefined;
