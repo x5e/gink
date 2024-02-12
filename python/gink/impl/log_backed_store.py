@@ -26,7 +26,7 @@ class LogBackedStore(MemoryStore):
         self._handle.seek(0)
         self._processed_to = 0
         self._log_file_builder = LogFileBuilder()
-        self._claims: Dict[Medallion, ClaimBuilder] = dict()
+        #self._claims: Dict[Medallion, ClaimBuilder] = dict()
         self.refresh()
 
     def _get_file_path(self) -> Optional[Path]:
@@ -44,8 +44,8 @@ class LogBackedStore(MemoryStore):
         for bundle_bytes in self._log_file_builder.commits:  # type: ignore # pylint: disable=maybe-no-member
             MemoryStore.apply_bundle(self, bundle_bytes, callback=callback)
             count += 1
-        for claim_builder in self._log_file_builder.claims:
-            self._claims[claim_builder.medallion] = claim_builder
+        # for claim_builder in self._log_file_builder.claims:
+        #    self._claims[claim_builder.medallion] = claim_builder
         self._processed_to += len(file_bytes)
         if flocked_by_refresh:
             flock(self._handle, LOCK_UN)
