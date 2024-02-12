@@ -16,8 +16,9 @@ from .impl.key_set import KeySet
 from .impl.graph import Vertex, Verb, Edge
 from .impl.pair_set import PairSet
 from .impl.pair_map import PairMap
+from .impl.utilities import generate_timestamp
 
 
 __all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence", "Box", "Bundler",
            "Property", "Container", "Muid", "LogBackedStore", "BundleInfo", "AbstractStore", "Role",
-           "Vertex", "Verb", "Edge", "KeySet", "PairSet", "PairMap"]
+           "Vertex", "Verb", "Edge", "KeySet", "PairSet", "PairMap", "generate_timestamp"]
