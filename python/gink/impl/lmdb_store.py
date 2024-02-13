@@ -32,7 +32,7 @@ class LmdbStore(AbstractStore):
 
     def __init__(
             self,
-            file_path: Union[str, bytes, Path]=None,
+            file_path: Union[str, bytes, Path, None]=None,
             reset=False,
             retain_bundles=True,
             retain_entries=True,

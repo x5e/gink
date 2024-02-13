@@ -2,7 +2,7 @@
 """ contains the Database class """
 
 # standard python modules
-from typing import Optional, Set, Union, Iterable, Tuple, Dict, List
+from typing import Optional, Set, Union, Iterable, Dict, List, Callable
 from datetime import datetime, date, timedelta
 from threading import Lock
 from select import select
@@ -62,10 +62,10 @@ class Database:
         self._trackers = {}
         self._sent_but_not_acked = set()
         self._logger = getLogger(self.__class__.__name__)
-        self._callbacks = list()
+        self._callbacks: List[Callable[[BundleInfo], None]] = list()
 
     @experimental
-    def add_callback(self, callback):
+    def add_callback(self, callback: Callable[[BundleInfo], None]):
         self._callbacks.append(callback)
 
     @staticmethod
