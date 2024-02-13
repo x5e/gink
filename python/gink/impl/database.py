@@ -242,7 +242,9 @@ class Database:
         with context_manager:
             while until is None or generate_timestamp() < until:
                 # eventually will want to support epoll on platforms where its supported
-                readers: List[Union[Listener, Connection, SelectableConsole]] = []
+                readers: List[Union[Listener, Connection, SelectableConsole, AbstractStore]] = []
+                if self._store.is_selectable():
+                    readers.append(self._store)
                 for listener in self._listeners:
                     readers.append(listener)
                 for connection in list(self._connections):
@@ -266,7 +268,8 @@ class Database:
                         self._logger.info("accepted incoming connection from %s", new_connection)
                     elif isinstance(ready_reader, SelectableConsole):
                         ready_reader.call_when_ready()
-
+                    elif isinstance(ready_reader, AbstractStore):
+                        ready_reader.refresh(self._broadcast_bundle)
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):
         """ Resets the database to a specific point in time.
