@@ -101,7 +101,7 @@ def test_reset_everything():
 
 def test_react_to_store_changes():
     for store_class in [
-        #LogBackedStore,
+        LogBackedStore,
         LmdbStore,
     ]:
         path1 = Path("/tmp/test1.gink")
@@ -119,6 +119,7 @@ def test_react_to_store_changes():
         root1a = Directory(root=True, database=db1a)
         root1b = Directory(root=True, database=db1b)
 
+        db1b.run(0.01)
         root1a.set("foo", "bar")
         db1b.run(0.01)
         found = root1b.get("foo")

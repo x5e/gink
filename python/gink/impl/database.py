@@ -30,7 +30,7 @@ from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
 from .selectable_console import SelectableConsole
 from .bundle_wrapper import BundleWrapper
-from .utilities import generate_timestamp
+from .utilities import generate_timestamp, experimental
 
 
 class Database:
@@ -62,6 +62,11 @@ class Database:
         self._trackers = {}
         self._sent_but_not_acked = set()
         self._logger = getLogger(self.__class__.__name__)
+        self._callbacks = list()
+
+    @experimental
+    def add_callback(self, callback):
+        self._callbacks.append(callback)
 
     @staticmethod
     def get_last():
@@ -139,7 +144,7 @@ class Database:
         with self._lock:  # using an exclusive lock to ensure that we don't fork a chain
             if not self._last_link:
                 # TODO[P3]: reuse claimed chains of processes that have exited on this machine
-                self._last_link = self._store.acquire_appendable_chain(self._broadcast_bundle)
+                self._last_link = self._store.acquire_appendable_chain(self._on_bundle)
             last_link = self._last_link
             assert isinstance(last_link, BundleInfo)
             chain = last_link.get_chain()
@@ -149,14 +154,14 @@ class Database:
             assert timestamp > seen_to
             bundle_bytes = bundler.seal(chain=chain, timestamp=timestamp, previous=seen_to)
             wrap = BundleWrapper(bundle_bytes)
-            added = self._store.apply_bundle(wrap, self._broadcast_bundle)
+            added = self._store.apply_bundle(wrap, self._on_bundle)
             assert added
             info = wrap.get_info()
             self._last_link = info
             self._logger.debug("locally committed bundle: %r", info)
             return info
 
-    def _broadcast_bundle(self, bundle_bytes: bytes, bundle_info: BundleInfo) -> None:
+    def _on_bundle(self, bundle_bytes: bytes, bundle_info: BundleInfo) -> None:
         """ Sends a bundle either created locally or received from a peer to other peers.
         """
         outbound_message_with_bundle = SyncMessage()
@@ -173,6 +178,8 @@ class Database:
             self._logger.debug("sending %r to %r", bundle_info, peer)
             peer.send(outbound_message_with_bundle)
             tracker.mark_as_having(bundle_info)
+        for callback in self._callbacks:
+            callback(bundle_info)
 
     def _receive_data(self, sync_message: SyncMessage, from_peer: Connection):
         with self._lock:
@@ -182,7 +189,7 @@ class Database:
                 info = wrap.get_info()
                 if (tracker := self._trackers.get(from_peer)):
                     tracker.mark_as_having(info)
-                self._store.apply_bundle(wrap, self._broadcast_bundle)
+                self._store.apply_bundle(wrap, self._on_bundle)
                 from_peer.send(info.as_acknowledgement())
             elif sync_message.HasField("greeting"):
                 self._logger.debug("received greeting from %s", from_peer)
@@ -269,7 +276,7 @@ class Database:
                     elif isinstance(ready_reader, SelectableConsole):
                         ready_reader.call_when_ready()
                     elif isinstance(ready_reader, AbstractStore):
-                        ready_reader.refresh(self._broadcast_bundle)
+                        ready_reader.refresh(self._on_bundle)
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):
         """ Resets the database to a specific point in time.
