@@ -149,6 +149,7 @@ class Sequence(Container):
             dest = 0
         else:
             dest = self._database.resolve_timestamp(dest)
+        assert isinstance(dest, int)
         movement_builder.dest = dest
         muid = bundler.add_change(change_builder)
         if immediate:

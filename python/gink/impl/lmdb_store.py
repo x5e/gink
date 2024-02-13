@@ -4,7 +4,7 @@
 import os
 from logging import getLogger
 import uuid
-from typing import Tuple, Callable, Iterable, Optional, Set, Union
+from typing import Tuple, Iterable, Optional, Set, Union
 from struct import pack
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
 
@@ -15,9 +15,10 @@ from .typedefs import MuTimestamp, UserKey, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper
+from .abstract_store import AbstractStore, BundleWrapper, BundleCallback
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
+from .utilities import generate_timestamp
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
@@ -28,7 +29,13 @@ class LmdbStore(AbstractStore):
     """
     """
 
-    def __init__(self, file_path=None, reset=False, retain_bundles=True, retain_entries=True, map_size=2**30):
+    def __init__(
+            self,
+            file_path=None,
+            reset=False,
+            retain_bundles=True,
+            retain_entries=True,
+            map_size: int=2**30) -> None:
         """ Opens a gink.mdb file for use as a Store.
 
             file_path: where find or place the data file
@@ -49,6 +56,7 @@ class LmdbStore(AbstractStore):
         self._file_path = file_path
         self._handle = ldmbopen(file_path, max_dbs=100, map_size=map_size, subdir=False)
         self._bundles = self._handle.open_db(b"bundles")
+        self._bundle_infos = self._handle.open_db(b"bundle_infos")
         self._chains = self._handle.open_db(b"chains")
         self._claims = self._handle.open_db(b"claims")
         self._entries = self._handle.open_db(b"entries")
@@ -66,6 +74,7 @@ class LmdbStore(AbstractStore):
         if reset:
             with self._handle.begin(write=True) as txn:
                 # Setting delete=False signals to lmdb to truncate the tables rather than drop them
+                txn.drop(self._bundle_infos, delete=False)
                 txn.drop(self._bundles, delete=False)
                 txn.drop(self._chains, delete=False)
                 txn.drop(self._claims, delete=False)
@@ -94,6 +103,10 @@ class LmdbStore(AbstractStore):
             # TODO: add methods to drop out-of-date entries and/or turn off retention
             # TODO: add purge method to remove particular data even when retention is on
             # TODO: add expiries table to keep track of when things need to be removed
+        self._seen_through: MuTimestamp = 0
+
+    def _get_file_path(self):
+        return self._file_path
 
     def get_edge_entries(
             self,
@@ -195,8 +208,8 @@ class LmdbStore(AbstractStore):
 
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
         with self._handle.begin() as trxn:
-            bundles_cursor = trxn.cursor(self._bundles)
-            found = to_last_with_prefix(bundles_cursor, prefix=pack(">QQ", timestamp, medallion))
+            bundle_infos_cursor = trxn.cursor(self._bundle_infos)
+            found = to_last_with_prefix(bundle_infos_cursor, prefix=pack(">QQ", timestamp, medallion))
             if not found:
                 return None
             bundle_info = BundleInfo.from_bytes(found)
@@ -224,7 +237,7 @@ class LmdbStore(AbstractStore):
                 BundleBuilder: self._bundles,
                 EntryBuilder: self._entries,
                 MovementBuilder: self._removals,
-                BundleInfo: self._bundles,
+                BundleInfo: self._bundle_infos,
                 Placement: self._entries,
                 RemovalKey: self._removals,
                 LocationKey: self._locations,
@@ -437,13 +450,13 @@ class LmdbStore(AbstractStore):
         if self._temporary:
             os.unlink(self._file_path)
 
-    def claim_chain(self, chain: Chain):
+    def add_claim(self, chain: Chain):
         with self._handle.begin(write=True) as txn:
             key = encode_muts(chain.medallion)
             val = encode_muts(chain.chain_start)
             txn.put(key, val, db=self._claims)
 
-    def get_claimed_chains(self) -> Iterable[Chain]:
+    def get_claims(self) -> Iterable[Chain]:
         if self:
             raise NotImplementedError()
         return []
@@ -620,20 +633,41 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=placement_key.placer, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
-        if isinstance(bundle, bytes):
-            bundle = BundleWrapper(bundle)
-        builder = bundle.get_builder()
-        new_info = bundle.get_info()
-        chain_key = pack(">QQ", new_info.medallion, new_info.chain_start)
+    def refresh(self, callback: Optional[BundleCallback] = None) -> int:
+        with self._handle.begin(write=False) as trxn:
+            count = self._refresh_helper(trxn=trxn, callback=callback)
+        if count:
+            self._clear_notifications()
+        return count
+
+    def _refresh_helper(self, trxn: Trxn, callback: Optional[BundleCallback] = None) -> int:
+        cursor = trxn.cursor(self._bundles)
+        count = 0
+        while cursor.set_range(encode_muts(self._seen_through + 1)):
+            byte_key = cursor.key()
+            wrapper = BundleWrapper(cursor.value())
+            if callback is not None:
+                callback(wrapper.get_bytes(), wrapper.get_info())
+                count += 1
+            self._seen_through = decode_muts(byte_key) or 0
+        return count
+
+    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[BundleCallback]=None) -> bool:
+        wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
+        builder = wrapper.get_builder()
+        new_info = wrapper.get_info()
+        chain_key = bytes(new_info.get_chain())
         # Note: LMDB supports only one write transaction, so we don't need to explicitly lock.
         with self._handle.begin(write=True) as trxn:
+            self._refresh_helper(trxn=trxn, callback=callback)
             chain_value_old = trxn.get(chain_key, db=self._chains)
             old_info = BundleInfo(encoded=chain_value_old) if chain_value_old else None
             needed = AbstractStore._is_needed(new_info, old_info)
             if needed:
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
-                    trxn.put(bytes(new_info), bundle.get_bytes(), db=self._bundles)
+                    bundle_location = encode_muts(generate_timestamp())
+                    trxn.put(bundle_location, wrapper.get_bytes(), db=self._bundles)
+                    trxn.put(bytes(new_info), bundle_location, db=self._bundle_infos)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 change_items = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
@@ -652,8 +686,9 @@ class LmdbStore(AbstractStore):
                         self._apply_clearance(new_info, trxn, offset, change.clearance)
                         continue
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
+        self._clear_notifications()
         if needed and callback is not None:
-            callback(bundle)
+            callback(wrapper.get_bytes(), wrapper.get_info())
         return needed
 
     def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int,
@@ -824,7 +859,7 @@ class LmdbStore(AbstractStore):
                     by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
                     trxn.delete(by_name_key, db=self._by_name)
 
-    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
+    def get_bundles(self, callback: BundleCallback, since: MuTimestamp = 0):
         with self._handle.begin() as txn:
             retention = decode_muts(txn.get(b"bundles", db=self._retentions))
             if retention is None or (retention != 1 and retention > since):
@@ -832,8 +867,10 @@ class LmdbStore(AbstractStore):
             bundles_cursor = txn.cursor(self._bundles)
             data_remaining = bundles_cursor.set_range(encode_muts(since))
             while data_remaining:
-                info_bytes, bundle_bytes = bundles_cursor.item()
-                bundle_info = BundleInfo(encoded=info_bytes)
+                bundle_bytes = bundles_cursor.value()
+                bundle_builder = BundleBuilder()
+                bundle_builder.ParseFromString(bundle_bytes)
+                bundle_info = BundleInfo(builder=bundle_builder)
                 callback(bundle_bytes, bundle_info)
                 data_remaining = bundles_cursor.next()
 

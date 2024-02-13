@@ -152,8 +152,8 @@ def generic_test_orders_commits(store_maker: StoreMaker):
         store.get_bundles(appender)
         assert len(ordered) == 4
         assert ordered[0] == (cs1, info1)
-        assert ordered[1] == (cs3, info3)
-        assert ordered[2] == (cs2, info2)
+        assert ordered[1] == (cs3, info3) or ordered[1] == (cs2, info2)
+        assert ordered[2] == (cs2, info2) or ordered[2] == (cs3, info3)
         assert ordered[3] == (cs4, info4)
 
 

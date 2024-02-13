@@ -3,6 +3,7 @@ from typing import NamedTuple
 
 from .builders import EntryBuilder, ContainerBuilder
 from .muid import Muid
+from struct import pack
 from .typedefs import Medallion, MuTimestamp
 
 
@@ -10,6 +11,9 @@ class Chain(NamedTuple):
     """ Pair of numbers to identify a blockchain in gink. """
     medallion: Medallion
     chain_start: MuTimestamp
+
+    def __bytes__(self):
+        return pack(">QQ", self.medallion, self.chain_start)
 
 
 class FoundEntry(NamedTuple):
@@ -25,7 +29,7 @@ class FoundEntry(NamedTuple):
             return False
         else:
             return self.address == other.address
-        
+
     def __hash__(self):
         return hash(self.address)
 

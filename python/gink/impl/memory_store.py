@@ -5,6 +5,7 @@ import struct
 from logging import getLogger
 from typing import Tuple, Callable, Optional, Iterable, Union, Dict
 from sortedcontainers import SortedDict  # type: ignore
+from pathlib import Path
 
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder, Message,
@@ -12,7 +13,7 @@ from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBu
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper
+from .abstract_store import AbstractStore, BundleWrapper, BundleCallback
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
@@ -51,6 +52,9 @@ class MemoryStore(AbstractStore):
 
     def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
         return self._containers.get(container)
+
+    def _get_file_path(self) -> Optional[Path]:
+        return None
 
     def list_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
         for key, val in self._containers.items():
@@ -163,14 +167,18 @@ class MemoryStore(AbstractStore):
             return FoundEntry(address=entry_storage_key.placer, builder=builder)
         return None
 
-    def get_claimed_chains(self) -> Iterable[Chain]:
+    def get_claims(self) -> Iterable[Chain]:
         for key, val in self._claimed_chains.items():
             assert isinstance(key, Medallion)
             assert isinstance(val, int)
             yield Chain(key, val)
 
-    def claim_chain(self, chain: Chain):
+    def add_claim(self, chain: Chain):
         self._claimed_chains[chain.medallion] = chain.chain_start
+
+    def refresh(self, callback: Optional[BundleCallback] = None) -> int:
+        # Memory store will never have external data added to it.
+        return 0
 
     def get_ordered_entries(
             self,
@@ -250,7 +258,7 @@ class MemoryStore(AbstractStore):
                     continue
                 raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         if needed and callback is not None:
-            callback(bundle)
+            callback(bundle.get_bytes(), bundle.get_info())
         return needed
 
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):

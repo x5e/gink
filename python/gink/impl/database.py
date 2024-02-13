@@ -2,24 +2,17 @@
 """ contains the Database class """
 
 # standard python modules
-from random import randint
 from typing import Optional, Set, Union, Iterable, Tuple, Dict, List
 from datetime import datetime, date, timedelta
 from threading import Lock
 from select import select
-from pwd import getpwuid
-from socket import gethostname
-from os import getuid, getpid
-from time import time, sleep
-from sys import stdout, argv, stdin, stderr
-from math import floor
+from sys import stdout
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 from contextlib import nullcontext
 
-
 # builders
-from .builders import SyncMessage, EntryBuilder, ContainerBuilder
+from .builders import SyncMessage, ContainerBuilder
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -30,7 +23,6 @@ from .tuples import Chain
 from .connection import Connection
 from .websocket_connection import WebsocketConnection
 from .listener import Listener
-from .coding import DIRECTORY, encode_key, encode_value
 from .muid import Muid
 from .chain_tracker import ChainTracker
 from .attribution import Attribution
@@ -38,6 +30,7 @@ from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
 from .selectable_console import SelectableConsole
 from .bundle_wrapper import BundleWrapper
+from .utilities import generate_timestamp
 
 
 class Database:
@@ -92,41 +85,8 @@ class Database:
             return self._last_link.get_chain()
         return None
 
-    @staticmethod
-    def _get_info() -> Iterable[Tuple[str, Union[str, int]]]:
-        yield ".process.id", getpid()
-        user_data = getpwuid(getuid())
-        yield ".user.name", user_data[0]
-        if user_data[4] != user_data[0]:
-            yield ".full.name", user_data[4]
-        yield ".host.name", gethostname()
-        if argv[0]:
-            yield ".software", argv[0]
-
-    def _add_info(self, bundler: Bundler):
-        personal_directory = Muid(-1, 0, DIRECTORY)
-        entry_builder = EntryBuilder()
-        for key, val in self._get_info():
-            # pylint: disable=maybe-no-member
-            setattr(entry_builder, "behavior", DIRECTORY)
-            personal_directory.put_into(getattr(entry_builder, "container"))
-            encode_key(key, getattr(entry_builder, "key"))
-            encode_value(val, entry_builder.value)  # type: ignore
-            bundler.add_change(entry_builder)
-
-    def get_now(self) -> MuTimestamp:
-        """ returns the current time in microseconds since epoch
-
-            sleeps if needed to ensure no duplicate timestamps and
-            that the timestamps returned are monotonically increasing
-        """
-        while True:
-            now = floor(time() * 1_000_000)
-            if self._last_time is None or now > self._last_time:
-                break
-            sleep(1e-5)
-        self._last_time = now
-        return now
+    def get_now(self):
+        return generate_timestamp()
 
     def resolve_timestamp(self, timestamp: GenericTimestamp = None) -> MuTimestamp:
         """ translates an abstract time into a real timestamp
@@ -139,7 +99,7 @@ class Database:
             small integers are treated as "right before the <index> commit"
         """
         if timestamp is None:
-            return self.get_now()
+            return generate_timestamp()
         if isinstance(timestamp, str):
             if fullmatch(r"-?\d+", timestamp):
                 timestamp = int(timestamp)
@@ -151,7 +111,7 @@ class Database:
                 raise ValueError("muid doesn't have a resolved timestamp")
             return muid_timestamp
         if isinstance(timestamp, timedelta):
-            return self.get_now() + int(timestamp.total_seconds() * 1e6)
+            return generate_timestamp() + int(timestamp.total_seconds() * 1e6)
         if isinstance(timestamp, date):
             timestamp = datetime(timestamp.year, timestamp.month, timestamp.day)
         if isinstance(timestamp, datetime):
@@ -170,24 +130,8 @@ class Database:
             assert isinstance(bundle_info, BundleInfo)
             return bundle_info.timestamp
         if isinstance(timestamp, float) and 1e6 > timestamp > -1e6:
-            return self.get_now() + int(1e6 * timestamp)
+            return generate_timestamp() + int(1e6 * timestamp)
         raise ValueError(f"don't know how to resolve {timestamp} into a timestamp")
-
-    def _start_chain(self):
-        medallion = randint((2 ** 48) + 1, (2 ** 49) - 1)
-        chain_start = self.get_now()
-        chain = Chain(medallion=Medallion(medallion), chain_start=chain_start)
-        self._store.claim_chain(chain)
-        starting_bundler = Bundler("(starting chain)")
-        self._add_info(starting_bundler)
-        # We can't use Database.commit because Database.commit calls this function.
-        bundle_bytes = starting_bundler.seal(chain=chain, timestamp=chain_start)
-        wrap = BundleWrapper(bundle_bytes)
-        added = self._store.apply_bundle(wrap, self._broadcast_bundle)
-        assert added
-        info = wrap.get_info()
-        self._logger.debug("started chain: %r", info)
-        self._last_link = info
 
     def commit(self, bundler: Bundler) -> BundleInfo:
         """ seals bundler and adds the resulting bundle to the local store """
@@ -195,13 +139,13 @@ class Database:
         with self._lock:  # using an exclusive lock to ensure that we don't fork a chain
             if not self._last_link:
                 # TODO[P3]: reuse claimed chains of processes that have exited on this machine
-                self._start_chain()
+                self._last_link = self._store.acquire_appendable_chain(self._broadcast_bundle)
             last_link = self._last_link
             assert isinstance(last_link, BundleInfo)
             chain = last_link.get_chain()
             seen_to = last_link.timestamp
             assert seen_to is not None
-            timestamp = self.get_now()
+            timestamp = generate_timestamp()
             assert timestamp > seen_to
             bundle_bytes = bundler.seal(chain=chain, timestamp=timestamp, previous=seen_to)
             wrap = BundleWrapper(bundle_bytes)
@@ -212,24 +156,23 @@ class Database:
             self._logger.debug("locally committed bundle: %r", info)
             return info
 
-    def _broadcast_bundle(self, wrap: BundleWrapper) -> None:
+    def _broadcast_bundle(self, bundle_bytes: bytes, bundle_info: BundleInfo) -> None:
         """ Sends a bundle either created locally or received from a peer to other peers.
         """
         outbound_message_with_bundle = SyncMessage()
-        outbound_message_with_bundle.bundle = wrap.get_bytes()  # type: ignore
-        info = wrap.get_info()
+        outbound_message_with_bundle.bundle = bundle_bytes  # type: ignore
         for peer in self._connections:
             tracker = self._trackers.get(peer)
             if tracker is None:
                 # In this case we haven't received a greeting from the peer, and so don't want to
                 # send any bundles because it might result in gaps in their chain.
                 continue
-            if tracker.has(info):
+            if tracker.has(bundle_info):
                 # peer already has or has been previously sent this bundle
                 continue
-            self._logger.debug("sending %r to %r", info, peer)
+            self._logger.debug("sending %r to %r", bundle_info, peer)
             peer.send(outbound_message_with_bundle)
-            tracker.mark_as_having(info)
+            tracker.mark_as_having(bundle_info)
 
     def _receive_data(self, sync_message: SyncMessage, from_peer: Connection):
         with self._lock:
@@ -297,7 +240,7 @@ class Database:
             until = self.resolve_timestamp(until)
         context_manager = console or nullcontext()
         with context_manager:
-            while until is None or self.get_now() < until:
+            while until is None or generate_timestamp() < until:
                 # eventually will want to support epoll on platforms where its supported
                 readers: List[Union[Listener, Connection, SelectableConsole]] = []
                 for listener in self._listeners:
