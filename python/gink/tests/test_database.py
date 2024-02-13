@@ -1,6 +1,7 @@
 """ some general tests of the Database class """
 from typing import List
 from contextlib import closing
+from pathlib import Path
 
 from ..impl.database import Database
 from ..impl.memory_store import MemoryStore
@@ -10,6 +11,7 @@ from ..impl.bundle_info import BundleInfo
 from ..impl.directory import Directory
 from ..impl.sequence import Sequence
 from ..impl.key_set import KeySet
+from ..impl.log_backed_store import LogBackedStore
 
 
 def test_database():
@@ -95,3 +97,33 @@ def test_reset_everything():
             assert len(misc) == 1
             assert len(ks) == 1
             assert len(globalks) == 1
+
+
+def test_react_to_store_changes():
+    for store_class in [
+        LogBackedStore,
+        #LmdbStore,
+    ]:
+        path1 = Path("/tmp/test1.gink")
+        path2 = Path("/tmp/test2.gink")
+
+        path1.unlink(missing_ok=True)
+        path2.unlink(missing_ok=True)
+
+        store1a = store_class(path1)
+        store1b = store_class(path1)
+
+        db1a = Database(store1a)
+        db1b = Database(store1b)
+
+        root1a = Directory(root=True, database=db1a)
+        root1b = Directory(root=True, database=db1b)
+
+        db1b.run(0.01)
+        bundle_infos = list()
+        db1b.add_callback(lambda bi: bundle_infos.append(bi))
+        root1a.set("foo", "bar", comment="abc")
+        db1b.run(0.01)
+        assert bundle_infos and bundle_infos[-1].comment == "abc"
+        found = root1b.get("foo")
+        assert found == "bar", found

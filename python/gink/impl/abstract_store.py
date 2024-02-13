@@ -44,16 +44,20 @@ class AbstractStore(ABC):
         """
 
     def is_selectable(self) -> bool:
-        return self._get_file_path() is not None
+        return self._get_watcher() is not None
+
+    def _get_watcher(self) -> Optional[Watcher]:
+        file_path = self._get_file_path()
+        if file_path is None:
+            return None
+        if not hasattr(self, "_watcher"):
+            setattr(self, "_watcher", Watcher(file_path))
+        return getattr(self, "_watcher")
 
     def fileno(self) -> int:
-        if not hasattr(self, "_watcher"):
-            file_path = self._get_file_path()
-            if file_path is None:
-                raise AssertionError("can't get the fileno of this kind of store")
-            watcher = Watcher(file_path)
-            setattr(self, "_watcher", watcher)
-        return getattr(self, "_watcher").fileno()
+        watcher = self._get_watcher()
+        assert watcher is not None
+        return watcher.fileno()
 
     def _clear_notifications(self):
         if hasattr(self, "_watcher"):

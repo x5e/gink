@@ -71,7 +71,7 @@ class LogBackedStore(MemoryStore):
         added = MemoryStore.apply_bundle(self, bundle)
         if added:
             self._log_file_builder.Clear()  # type: ignore
-            self._log_file_builder.commits.push(bundle_bytes)  # type: ignore
+            self._log_file_builder.commits.append(bundle.get_bytes())  # type: ignore
             data: bytes = self._log_file_builder.SerializeToString()  # type: ignore
             self._handle.write(data)
             self._handle.flush()

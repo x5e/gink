@@ -44,9 +44,9 @@ class Watcher(FileIO):
         self._bytes_available = c_int()
 
     def clear(self):
-        ioctl(watcher, FIONREAD, self._bytes_available)
+        ioctl(self.fileno(), FIONREAD, self._bytes_available)
         if self._bytes_available:
-            read(watcher.fileno(), self._bytes_available.value)
+            read(self.fileno(), self._bytes_available.value)
 
 
 if __name__ == "__main__":
