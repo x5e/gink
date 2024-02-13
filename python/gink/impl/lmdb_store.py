@@ -6,6 +6,7 @@ from logging import getLogger
 import uuid
 from typing import Tuple, Iterable, Optional, Set, Union
 from struct import pack
+from pathlib import Path
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
 
 # Gink Implementation
@@ -31,7 +32,7 @@ class LmdbStore(AbstractStore):
 
     def __init__(
             self,
-            file_path=None,
+            file_path: Union[str, bytes, Path]=None,
             reset=False,
             retain_bundles=True,
             retain_entries=True,
@@ -53,6 +54,8 @@ class LmdbStore(AbstractStore):
                 prefix = "/dev/shm/temp."
             file_path = prefix + str(uuid.uuid4()) + ".gink.mdb"
             self._temporary = True
+        if isinstance(file_path, Path):
+            file_path = str(file_path)
         self._file_path = file_path
         self._handle = ldmbopen(file_path, max_dbs=100, map_size=map_size, subdir=False)
         self._bundles = self._handle.open_db(b"bundles")
