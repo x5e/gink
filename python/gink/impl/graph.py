@@ -10,8 +10,10 @@ from .database import Database
 from .bundler import Bundler
 from .builders import EntryBuilder, ChangeBuilder
 from .addressable import Addressable
+from .utilities import experimental
 
 
+@experimental
 class Vertex(Container):
     BEHAVIOR = VERTEX
 
@@ -91,6 +93,7 @@ class Vertex(Container):
 Database.register_container_type(Vertex)
 
 
+@experimental
 class Verb(Container):
     BEHAVIOR = VERB
 
@@ -161,6 +164,7 @@ class Verb(Container):
 Database.register_container_type(Verb)
 
 
+@experimental
 class Edge(Addressable):
 
     def __init__(self,

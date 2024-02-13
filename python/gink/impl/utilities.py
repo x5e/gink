@@ -5,6 +5,8 @@ from os import getpid, getuid
 from typing import Iterable, Tuple, Union
 from socket import gethostname
 from pwd import getpwuid
+from functools import wraps
+from warnings import warn
 
 from .typedefs import MuTimestamp
 
@@ -48,3 +50,25 @@ def get_process_info() -> Iterable[Tuple[str, Union[str, int]]]:
     yield ".host.name", gethostname()
     if argv[0]:
         yield ".software", argv[0]
+
+def experimental(thing):
+    warned = [False]
+    name = f"{thing.__module__}.{thing.__name__}"
+    the_class = None
+    if isinstance(thing, type):
+        the_class = thing
+        thing = the_class.__init__
+    @wraps(thing)
+    def wrapped(*a, **b):
+        if not warned[0]:
+            warn(
+                f"{name} is experimental",
+                DeprecationWarning, stacklevel=2,)
+            warned[0] = True
+        return thing(*a, **b)
+
+    if the_class:
+        the_class.__init__ = wrapped
+        return the_class
+    else:
+        return wrapped
