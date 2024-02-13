@@ -3,7 +3,12 @@
   "version": "${VERSION}",
   "description": "an eventually consistent database",
   "main": "tsc.out/implementation/main.js",
-  "browser": "content_root/generated/packed.js",
+  "browser": {
+    "@x5e/gink": "content_root/generated/packed.js",
+    "fs": false,
+    "fs/promises": false,
+    "fs-ext": false
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/x5e/gink.git"
