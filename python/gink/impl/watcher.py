@@ -43,6 +43,10 @@ class Watcher(FileIO):
         _libc_call(_libc.inotify_add_watch, self.fileno(), fsencode(str(path)), MODIFY | ATTRIB)
         self._bytes_available = c_int()
 
+    @staticmethod
+    def supported() -> bool:
+        return hasattr(_libc, "inotify_init1")
+
     def clear(self):
         ioctl(self.fileno(), FIONREAD, self._bytes_available)
         if self._bytes_available:

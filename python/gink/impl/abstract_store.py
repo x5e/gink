@@ -47,6 +47,8 @@ class AbstractStore(ABC):
         return self._get_watcher() is not None
 
     def _get_watcher(self) -> Optional[Watcher]:
+        if not Watcher.supported():
+            return None
         file_path = self._get_file_path()
         if file_path is None:
             return None
