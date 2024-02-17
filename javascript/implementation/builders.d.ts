@@ -203,7 +203,7 @@ export class KeyBuilder extends ImplementedMessage {
     getOctets(): Uint8Array;
 }
 
-export class ChainEntryBuilder extends ImplementedMessage {
+export class ClaimBuilder extends ImplementedMessage {
     getMedallion(): number;
     getChainStart(): number;
     setChainStart(number);
@@ -217,8 +217,8 @@ export class ChainEntryBuilder extends ImplementedMessage {
 export class LogFileBuilder extends ImplementedMessage {
     setCommitsList(commits: Array<Uint8Array>);
     getCommitsList(): Array<Uint8Array>;
-    getChainEntriesList(): Array<ChainEntryBuilder>;
-    setChainEntriesList(entries: Array<ChainEntryBuilder>);
+    getClaimsList(): Array<ClaimBuilder>;
+    setClaimsList(entries: Array<ClaimBuilder>);
 }
 
 export class MovementBuilder extends ImplementedMessage {
