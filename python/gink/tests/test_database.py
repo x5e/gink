@@ -2,6 +2,7 @@
 from typing import List
 from contextlib import closing
 from pathlib import Path
+from platform import system
 
 from ..impl.database import Database
 from ..impl.memory_store import MemoryStore
@@ -102,8 +103,10 @@ def test_reset_everything():
 def test_react_to_store_changes():
     for store_class in [
         LogBackedStore,
-        #LmdbStore,
+        LmdbStore,
     ]:
+        if system() != 'Linux':
+            return
         path1 = Path("/tmp/test1.gink")
         path2 = Path("/tmp/test2.gink")
 

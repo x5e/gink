@@ -1,10 +1,14 @@
 from select import select
 from logging import getLogger
+from platform import system
+
 _logger = getLogger(__name__)
 
 from .. import *
 
 def test_notification():
+    if system() != "Linux":
+        return
     fn = "/tmp/test_logbackedstore.tmp"
     store1 = LogBackedStore(fn)
     store2 = LogBackedStore(fn)
