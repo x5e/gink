@@ -1,17 +1,18 @@
 """Contains the LmdbStore class."""
 
 # Standard Python Stuff
-import os
+from os import getpid, unlink
+from os.path import exists
 from logging import getLogger
 import uuid
-from typing import Tuple, Iterable, Optional, Set, Union
+from typing import Tuple, Iterable, Optional, Set, Union, Mapping
 from struct import pack
 from pathlib import Path
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
 
 # Gink Implementation
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
-                       ContainerBuilder, ClearanceBuilder, Message, Behavior)
+                       ContainerBuilder, ClearanceBuilder, Message, Behavior, ClaimBuilder)
 from .typedefs import MuTimestamp, UserKey, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
@@ -50,7 +51,7 @@ class LmdbStore(AbstractStore):
         self._temporary = False
         if file_path is None:
             prefix = "/tmp/temp."
-            if os.path.exists("/dev/shm"):
+            if exists("/dev/shm"):
                 prefix = "/dev/shm/temp."
             file_path = prefix + str(uuid.uuid4()) + ".gink.mdb"
             self._temporary = True
@@ -451,18 +452,30 @@ class LmdbStore(AbstractStore):
     def close(self):
         self._handle.close()
         if self._temporary:
-            os.unlink(self._file_path)
+            unlink(self._file_path)
 
-    def add_claim(self, chain: Chain):
+    def _add_claim(self, chain: Chain):
         with self._handle.begin(write=True) as txn:
             key = encode_muts(chain.medallion)
             val = encode_muts(chain.chain_start)
+            claim_builder = ClaimBuilder()
+            claim_builder.claim_time = generate_timestamp()
+            claim_builder.medallion = chain.medallion
+            claim_builder.chain_start = chain.chain_start
+            claim_builder.process_id = getpid()
+            key = encode_muts(claim_builder.claim_time)
+            val = claim_builder.SerializeToString()
             txn.put(key, val, db=self._claims)
 
-    def get_claims(self) -> Iterable[Chain]:
-        if self:
-            raise NotImplementedError()
-        return []
+    def _get_claims(self) -> Mapping[Medallion, ClaimBuilder]:
+        results = dict()
+        with self._handle.begin(write=False) as txn:
+            claims_cursor = txn.cursor(self._claims)
+            for val in claims_cursor.iternext(keys=False, values=True):
+                claim_builder = ClaimBuilder()
+                claim_builder.ParseFromString(val)
+                results[claim_builder.medallion] = claim_builder
+        return results
 
     def _get_location(self, txn, entry_muid: Muid, as_of: int = -1) -> Optional[Placement]:
         """ Tells the location of a particular entry as of a given time. """

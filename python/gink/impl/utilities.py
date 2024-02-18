@@ -26,7 +26,6 @@ def decodeFromHex(hexStr: str) -> str:
     string = bytes_obj.decode('utf-8')
     return string
 
-
 def generate_timestamp(_last_time=[get_time()]) -> MuTimestamp:
     """ returns the current time in microseconds since epoch
 
@@ -72,3 +71,6 @@ def experimental(thing):
         return the_class
     else:
         return wrapped
+
+def is_alive(process_id: int) -> bool:
+    raise NotImplementedError()

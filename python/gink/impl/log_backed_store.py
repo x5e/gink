@@ -1,5 +1,5 @@
 """ implementation of the LogBackedStore class """
-from typing import Optional, Union, Dict
+from typing import Optional, Union, Mapping
 from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN, LOCK_SH
 from pathlib import Path
 from .builders import LogFileBuilder, ClaimBuilder
@@ -7,6 +7,7 @@ from .memory_store import MemoryStore
 from .bundle_wrapper import BundleWrapper
 from .abstract_store import BundleCallback
 from .typedefs import Medallion
+from .tuples import Chain
 
 
 class LogBackedStore(MemoryStore):
@@ -26,8 +27,14 @@ class LogBackedStore(MemoryStore):
         self._handle.seek(0)
         self._processed_to = 0
         self._log_file_builder = LogFileBuilder()
-        #self._claims: Dict[Medallion, ClaimBuilder] = dict()
+        self._claims: Mapping[Medallion, ClaimBuilder] = dict()
         self.refresh()
+
+    def _add_claim(self, chain: Chain):
+        """ Mark a chain as having been acquired. """
+
+    def _get_claims(self) -> Mapping[Medallion, ClaimBuilder]:
+        """ Get claims. """
 
     def _get_file_path(self) -> Optional[Path]:
         return self._filepath

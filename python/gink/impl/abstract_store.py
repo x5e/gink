@@ -1,24 +1,25 @@
 """Contains AbstractStore class."""
 
 # standard python modules
-from typing import Tuple, Callable, Optional, Iterable, List, Union
+from typing import Tuple, Callable, Optional, Iterable, List, Union, Mapping, TypeVar
 from abc import ABC, abstractmethod
 from random import randint
 from pathlib import Path
 
 # Gink specific modules
-from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder
+from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder, ClaimBuilder
 from .bundle_info import BundleInfo
 from .chain_tracker import ChainTracker
 from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_wrapper import BundleWrapper
-from .utilities import generate_timestamp, get_process_info
+from .utilities import generate_timestamp, get_process_info, is_alive
 from .coding import DIRECTORY, encode_key, encode_value
 from .bundler import Bundler
 from .watcher import Watcher
 BundleCallback = Callable[[bytes, BundleInfo], None]
+Lock = TypeVar('Lock')
 
 
 class AbstractStore(ABC):
@@ -140,6 +141,37 @@ class AbstractStore(ABC):
         assert added
         bundle_info = wrap.get_info()
         return bundle_info
+
+    def _maybe_reuse_chain(self) -> Optional[Chain]:
+        lock = self._acquire_lock()
+        try:
+            claims = self._get_claims(lock)
+            for old_claim in claims.values():
+                if not is_alive(old_claim.process_id):
+                    chain = Chain(old_claim.medallion, old_claim.chain_start)
+                    self._add_claim(lock, chain)
+                    return chain
+            else:
+                return None
+        finally:
+            self._release_lock(lock)
+
+
+    @abstractmethod
+    def _acquire_lock(self) -> Lock:
+        """ Get handle that can be used to get and add claims. """
+
+    @abstractmethod
+    def _add_claim(self, lock: Lock, chain: Chain):
+        """ Mark a chain as having been acquired. """
+
+    @abstractmethod
+    def _get_claims(self, lock:Lock) -> Mapping[Medallion, ClaimBuilder]:
+        """ Get claims. """
+
+    @abstractmethod
+    def _release_lock(self, lock: Lock):
+        """ Finalize Transaction """
 
     @abstractmethod
     def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[BundleCallback]=None) -> bool:
