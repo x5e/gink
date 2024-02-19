@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, List
 
-from google.protobuf.message import Message   # type: ignore
-from google.protobuf.text_format import Parse  # type: ignore
+from google.protobuf.message import Message # type: ignore
+# from google.protobuf.text_format import Parse
 from enum import IntEnum
 
 from .typedefs import Medallion, MuTimestamp
@@ -75,7 +75,7 @@ if TYPE_CHECKING:
 
     class LogFileBuilder(Message):
         commits: List[bytes]
-        chain_entries: List[ClaimBuilder]
+        claims: List[ClaimBuilder]
 
 
     class Behavior(IntEnum):

@@ -2,7 +2,7 @@
 """ contains the Database class """
 
 # standard python modules
-from typing import Optional, Set, Union, Iterable, Dict, List, Callable
+from typing import Optional, Set, Union, Iterable, Dict, List, Callable, Mapping
 from datetime import datetime, date, timedelta
 from threading import Lock
 from select import select
@@ -30,7 +30,7 @@ from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
 from .selectable_console import SelectableConsole
 from .bundle_wrapper import BundleWrapper
-from .utilities import generate_timestamp, experimental
+from .utilities import generate_timestamp, experimental, get_identity, is_certainly_gone, generate_medallion
 
 
 class Database:
@@ -42,11 +42,13 @@ class Database:
     _connections: Set[Connection]
     _listeners: Set[Listener]
     _sent_but_not_acked: Set[BundleInfo]
-    _trackers: Dict[Connection, ChainTracker]  # tracks what we know a peer has *received*
+    _trackers: Dict[Connection, ChainTracker]  # tracks what we know a peer has
     _last_link: Optional[BundleInfo]
     _container_types: dict = {}
 
-    def __init__(self, store: Union[AbstractStore, str, None] = None):
+    def __init__(self,
+                 store: Union[AbstractStore, str, None] = None,
+                 identity = get_identity()):
         setattr(Database, "_last", self)
         if isinstance(store, str):
             store = LmdbStore(store)
@@ -60,6 +62,7 @@ class Database:
         self._connections = set()
         self._listeners = set()
         self._trackers = {}
+        self._identity = identity
         self._sent_but_not_acked = set()
         self._logger = getLogger(self.__class__.__name__)
         self._callbacks: List[Callable[[BundleInfo], None]] = list()
@@ -138,23 +141,35 @@ class Database:
             return generate_timestamp() + int(1e6 * timestamp)
         raise ValueError(f"don't know how to resolve {timestamp} into a timestamp")
 
+    def _acquire_appendable_chain(self) -> BundleInfo:
+        """ Either starts a chain or finds one to reuse, then returns the last link in it.
+        """
+        reused = self._store.maybe_reuse_chain(self._identity)
+        if reused:
+            return reused
+        medallion = generate_medallion()
+        chain_start = generate_timestamp()
+        chain = Chain(medallion=medallion, chain_start=chain_start)
+        bundler = Bundler(self._identity)
+        bundle_bytes = bundler.seal(chain=chain, timestamp=chain_start)
+        wrapper = BundleWrapper(bundle_bytes=bundle_bytes)
+        self._store.apply_bundle(wrapper, self._on_bundle, True)
+        return wrapper.get_info()
+
     def commit(self, bundler: Bundler) -> BundleInfo:
         """ seals bundler and adds the resulting bundle to the local store """
         assert not bundler.sealed
         with self._lock:  # using an exclusive lock to ensure that we don't fork a chain
             if not self._last_link:
-                # TODO[P3]: reuse claimed chains of processes that have exited on this machine
-                self._last_link = self._store.acquire_appendable_chain(self._on_bundle)
-            last_link = self._last_link
-            assert isinstance(last_link, BundleInfo)
-            chain = last_link.get_chain()
-            seen_to = last_link.timestamp
+                self._last_link = self.acquire_appendable_chain()
+            chain = self._last_link.get_chain()
+            seen_to = self._last_link.timestamp
             assert seen_to is not None
             timestamp = generate_timestamp()
             assert timestamp > seen_to
             bundle_bytes = bundler.seal(chain=chain, timestamp=timestamp, previous=seen_to)
             wrap = BundleWrapper(bundle_bytes)
-            added = self._store.apply_bundle(wrap, self._on_bundle)
+            added = self._store.apply_bundle(wrap, self._on_bundle, False)
             assert added
             info = wrap.get_info()
             self._last_link = info

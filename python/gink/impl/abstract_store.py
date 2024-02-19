@@ -1,9 +1,9 @@
 """Contains AbstractStore class."""
 
 # standard python modules
-from typing import Tuple, Callable, Optional, Iterable, List, Union, Mapping, TypeVar
+from typing import Tuple, Callable, Optional, Iterable, List, Union, Mapping, TypeVar, Generic
 from abc import ABC, abstractmethod
-from random import randint
+
 from pathlib import Path
 
 # Gink specific modules
@@ -14,15 +14,13 @@ from .typedefs import UserKey, MuTimestamp, Medallion
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_wrapper import BundleWrapper
-from .utilities import generate_timestamp, get_process_info, is_alive
-from .coding import DIRECTORY, encode_key, encode_value
-from .bundler import Bundler
+from .utilities import is_certainly_gone
 from .watcher import Watcher
 BundleCallback = Callable[[bytes, BundleInfo], None]
 Lock = TypeVar('Lock')
 
 
-class AbstractStore(ABC):
+class AbstractStore(ABC, Generic[Lock]):
     """ abstract base class for the gink data store
 
         Stores both the bundles received and the contents of those
@@ -115,72 +113,57 @@ class AbstractStore(ABC):
     def close(self):
         """Safely releases resources."""
 
-    def acquire_appendable_chain(self, callback: Optional[BundleCallback]=None) -> BundleInfo:
-        """ Either creates a chain or finds one that's available to be appended to, and returns the last entry.
+    @abstractmethod
+    def _refresh_helper(self, lock: Lock, callback: Optional[BundleCallback] = None, /) -> int:
+        """ do a refresh using a lock/transaction """
 
-            When a new chain is created the first entry will be metadata about this process.
-
-            Default implementation always creates a new chain, subclasses should check if one is available.
+    def maybe_reuse_chain(
+            self,
+            identity: str,
+            callback: Optional[BundleCallback] = None) -> Optional[BundleInfo]:
+        """ Tries to find a chain for reuse.  The callback is used for refresh.
         """
-        medallion = randint((2 ** 48) + 1, (2 ** 49) - 1)
-        chain_start = generate_timestamp()
-        chain = Chain(medallion=Medallion(medallion), chain_start=chain_start)
-        personal_directory = Muid(-1, chain.medallion, DIRECTORY)
-        entry_builder = EntryBuilder()
-        bundler = Bundler("(starting chain)")
-        for key, val in get_process_info():
-            # pylint: disable=maybe-no-member
-            setattr(entry_builder, "behavior", DIRECTORY)
-            personal_directory.put_into(getattr(entry_builder, "container"))
-            encode_key(key, getattr(entry_builder, "key"))
-            encode_value(val, entry_builder.value)  # type: ignore
-            bundler.add_change(entry_builder)
-        bundle_bytes = bundler.seal(chain=chain, timestamp=chain_start)
-        wrap = BundleWrapper(bundle_bytes)
-        added = self.apply_bundle(wrap, callback)
-        assert added
-        bundle_info = wrap.get_info()
-        return bundle_info
-
-    def _maybe_reuse_chain(self) -> Optional[Chain]:
-        lock = self._acquire_lock()
+        lock: Lock = self._acquire_lock()
         try:
+            self._refresh_helper(lock, callback)
             claims = self._get_claims(lock)
             for old_claim in claims.values():
-                if not is_alive(old_claim.process_id):
-                    chain = Chain(old_claim.medallion, old_claim.chain_start)
+                chain = Chain(old_claim.medallion, old_claim.chain_start)
+                if self.get_identity(chain) == identity and is_certainly_gone(old_claim.process_id):
                     self._add_claim(lock, chain)
-                    return chain
+                    return self.get_last(chain)
             else:
                 return None
         finally:
             self._release_lock(lock)
-
 
     @abstractmethod
     def _acquire_lock(self) -> Lock:
         """ Get handle that can be used to get and add claims. """
 
     @abstractmethod
-    def _add_claim(self, lock: Lock, chain: Chain):
+    def _add_claim(self, lock: Lock, chain: Chain, /) -> ClaimBuilder:
         """ Mark a chain as having been acquired. """
 
     @abstractmethod
-    def _get_claims(self, lock:Lock) -> Mapping[Medallion, ClaimBuilder]:
+    def _get_claims(self, lock: Lock, /) -> Mapping[Medallion, ClaimBuilder]:
         """ Get claims. """
 
     @abstractmethod
-    def _release_lock(self, lock: Lock):
+    def _release_lock(self, lock: Lock, /):
         """ Finalize Transaction """
 
     @abstractmethod
-    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[BundleCallback]=None) -> bool:
+    def apply_bundle(
+            self,
+            bundle: Union[BundleWrapper, bytes],
+            callback: Optional[BundleCallback]=None,
+            claim_chain: bool=False) -> bool:
         """ Tries to add data from a particular bundle to this store.
 
             the bundle's metadata
         """
 
-    @abstractmethod
     def refresh(self, callback: Optional[BundleCallback] = None) -> int:
         """ Checks the source file for bundles that haven't come from this process and calls the callback.
 
@@ -188,7 +171,11 @@ class AbstractStore(ABC):
 
             Returns the number of transactions processed.
         """
-
+        lock = self._acquire_lock()
+        if count := self._refresh_helper(lock, callback):
+            self._clear_notifications()
+        self._release_lock(lock)
+        return count
 
     @abstractmethod
     def get_bundles(self, callback: BundleCallback, since: MuTimestamp=0):
@@ -247,6 +234,14 @@ class AbstractStore(ABC):
     @abstractmethod
     def get_chain_tracker(self) -> ChainTracker:
         """Returns a tracker showing what this store has at the time this function is called."""
+
+    @abstractmethod
+    def get_last(self, chain: Chain) -> BundleInfo:
+        """ Returns metadata for the last bundle in a specified chain. """
+
+    @abstractmethod
+    def get_identity(self, chain: Chain, lock: Optional[Lock]=None, /) -> str:
+        """ Get the first item in a chain. """
 
     @staticmethod
     def _is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:

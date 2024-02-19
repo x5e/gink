@@ -26,7 +26,9 @@ class ChainTracker:
             assert sync_message.HasField("greeting")
             greeting = sync_message.greeting  # type: ignore
             for greeting_entry in greeting.entries:
-                chain = Chain(greeting_entry.medallion, greeting_entry.chain_start)
+                chain = Chain(
+                    medallion=greeting_entry.medallion,
+                    chain_start=greeting_entry.chain_start)
                 self._data[chain] = greeting_entry.seen_through
 
     def get_seen_to(self, chain: Chain) -> Optional[MuTimestamp]:
@@ -46,8 +48,8 @@ class ChainTracker:
             return what.timestamp <= self._data.get(what.get_chain(), 0)
         if isinstance(what, Muid):
             iterator = self._data.irange(
-                minimum=Chain(Medallion(what.medallion), 0),
-                maximum=Chain(Medallion(what.medallion), what.timestamp))
+                minimum=Chain(medallion=Medallion(what.medallion), chain_start=0),
+                maximum=Chain(medallion=Medallion(what.medallion), chain_start=what.timestamp))
             for chain, seen_to in iterator:
                 assert isinstance(chain, Chain)
                 if chain.chain_start <= what.timestamp <= seen_to:

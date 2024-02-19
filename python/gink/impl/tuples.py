@@ -9,11 +9,11 @@ from .typedefs import Medallion, MuTimestamp
 
 class Chain(NamedTuple):
     """ Pair of numbers to identify a blockchain in gink. """
-    medallion: Medallion
     chain_start: MuTimestamp
+    medallion: Medallion
 
     def __bytes__(self):
-        return pack(">QQ", self.medallion, self.chain_start)
+        return pack(">QQ", self.chain_start, self.medallion)
 
 
 class FoundEntry(NamedTuple):

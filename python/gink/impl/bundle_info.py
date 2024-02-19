@@ -74,7 +74,7 @@ class BundleInfo:
 
     def get_chain(self) -> Chain:
         """Gets a Chain tuple saying which chain this change set came from."""
-        return Chain(self.medallion, self.chain_start)
+        return Chain(chain_start=self.chain_start, medallion=self.medallion)
 
     def __bytes__(self) -> bytes:
         """ Returns: a binary representation that sorts according to (timestamp, medallion)."""
