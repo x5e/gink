@@ -161,7 +161,7 @@ class Database:
         assert not bundler.sealed
         with self._lock:  # using an exclusive lock to ensure that we don't fork a chain
             if not self._last_link:
-                self._last_link = self.acquire_appendable_chain()
+                self._last_link = self._acquire_appendable_chain()
             chain = self._last_link.get_chain()
             seen_to = self._last_link.timestamp
             assert seen_to is not None

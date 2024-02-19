@@ -5,7 +5,8 @@ from socket import socketpair
 import os
 
 # builders
-from ..impl.builders import SyncMessage, Parse
+from ..impl.builders import SyncMessage
+from google.protobuf.text_format import Parse  # type: ignore
 
 from ..impl.websocket_connection import WebsocketConnection
 

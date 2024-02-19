@@ -36,6 +36,7 @@ class MemoryStore(AbstractStore):
     _containers: SortedDict  # muid => builder
     _removals: SortedDict  # bytes(removal_key) => MovementBuilder
     _clearances: SortedDict
+    _identities: Dict[Chain, str]
 
     def __init__(self):
         # TODO: add a "no retention" capability to allow the memory store to be configured to
@@ -44,6 +45,7 @@ class MemoryStore(AbstractStore):
         self._chain_infos = SortedDict()
         self._claims = SortedDict()
         self._entries = {}
+        self._identities = {}
         self._placements = SortedDict()
         self._containers = SortedDict()
         self._locations = SortedDict()
@@ -241,6 +243,8 @@ class MemoryStore(AbstractStore):
         old_info = self._chain_infos.get(new_info.get_chain())
         needed = AbstractStore._is_needed(new_info, old_info)
         if needed:
+            if new_info.chain_start == new_info.timestamp:
+                self._identities[new_info.get_chain()] = new_info.comment
             self._bundles[bytes(new_info)] = bundle.get_bytes()
             self._chain_infos[chain_key] = new_info
             change_items = list(bundle_builder.changes.items())  # type: ignore
@@ -264,6 +268,15 @@ class MemoryStore(AbstractStore):
         if needed and callback is not None:
             callback(bundle.get_bytes(), bundle.get_info())
         return needed
+
+    def _acquire_lock(self) -> bool:
+        return False
+
+    def _release_lock(self, _, /):
+        pass
+
+    def get_identity(self, chain: Chain, lock: Optional[bool]=None, /) -> str:
+        return self._identities[chain]
 
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
@@ -327,6 +340,9 @@ class MemoryStore(AbstractStore):
             assert isinstance(bundle_info, BundleInfo)
             chain_tracker.mark_as_having(bundle_info)
         return chain_tracker
+
+    def get_last(self, chain: Chain) -> BundleInfo:
+        return self._chain_infos[chain]
 
     def _get_entry_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
         # bkey = bytes(entry_muid)

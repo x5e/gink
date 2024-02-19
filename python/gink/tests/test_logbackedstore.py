@@ -5,6 +5,7 @@ from platform import system
 _logger = getLogger(__name__)
 
 from .. import *
+from ..impl.tuples import Chain
 
 def test_notification():
     if system() != "Linux":
@@ -14,8 +15,8 @@ def test_notification():
     store2 = LogBackedStore(fn)
 
     assert store2.is_selectable()
-    bundle_info = store1.acquire_appendable_chain()
-    assert bundle_info.chain_start == bundle_info.timestamp
+    ts = generate_timestamp()
+    store1.apply_bundle(Bundler("test").seal(Chain(chain_start=ts, medallion=0), ts))
     before = generate_timestamp()
     ready_readers, _, _ = select([store2], [], [], .1)
     after = generate_timestamp()

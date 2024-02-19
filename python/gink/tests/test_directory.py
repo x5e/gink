@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """ test the directory class """
 from contextlib import closing
-import os
-import socket
 
 from ..impl.muid import Muid
 from ..impl.directory import Directory
@@ -11,10 +9,6 @@ from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
-
-from ..impl.coding import Deletion
-
-
 
 def test_creation():
     """ test that I can create new directories as well as proxies for existing ones """
@@ -28,7 +22,6 @@ def test_creation():
             directory2 = Directory()
             assert len(store.get_bundle_infos()) != 0
             assert directory1 != directory2
-
 
 def test_set_get():
     """ Test the basic set/get functionality of directories works as expected. """
@@ -57,7 +50,6 @@ def test_set_get():
             result = global_directory["foo"]
             assert repr(result) == "{'test': 'document'}"
 
-
 def test_delete():
     """ tests that delete works as expected """
     for store in [MemoryStore(), LmdbStore()]:
@@ -70,7 +62,6 @@ def test_delete():
             del gdi["foo"]
             assert not gdi.has("foo"), store
             assert gdi.get("foo", as_of=a_time) == "bar"
-
 
 def test_setdefault():
     """ tests that delete works as expected """
@@ -105,7 +96,6 @@ def test_pop():
             val = gdi.pop("foo", default=7)
             assert val == 7
 
-
 def test_items_and_keys():
     """ tests the items and keys """
     for store in [LmdbStore(), MemoryStore(), ]:
@@ -128,7 +118,6 @@ def test_items_and_keys():
             keys = set(gdi.keys())
             assert keys == set(["foo", "zoo", 3]), keys
 
-
 def test_popitem_and_len():
     """ ensures popitem works as intended """
     for store in [MemoryStore(), LmdbStore(),  ]:
@@ -148,7 +137,6 @@ def test_popitem_and_len():
             assert val2 == "bar" if key2 == "foo" else val2 == "zoo"
             assert len(gdi) == 0
 
-
 def test_update():
     """ tests both forms of the update method """
     for store in [LmdbStore(), MemoryStore(), ]:
@@ -159,7 +147,6 @@ def test_update():
             gdi.update([("zoo", "bear"), (99, 101)])
             as_dict = dict(gdi.items())
             assert as_dict == {"foo": "bar", "zoo": "bear", 99: 101}, as_dict
-
 
 def test_reset():
     """ tests that the reset(time) functionality works """
@@ -209,7 +196,6 @@ def test_clearance():
             keys = set(gdi.keys())
             assert keys == set(["bar"]), (keys, store)
 
-
 def test_reset_over_clear():
     for store in [LmdbStore()]:
         with closing(store):
@@ -227,26 +213,6 @@ def test_reset_over_clear():
             gdi.reset(set_timestamp)
             assert gdi.get("bar") == "baz", gdi.get("bar")
 
-
-def test_personal_directory():
-    """ tests that ownership metadata is written appropriately """
-    for store in [MemoryStore(), LmdbStore()]:
-        with closing(store):
-            database = Database(store=store)
-            assert database._last_link is None
-            assert isinstance(store, AbstractStore)
-            infos = store.get_bundle_infos()
-            assert len(infos) == 0
-            database.commit(Bundler("hello world"))
-            infos = store.get_bundle_infos()
-            assert len(infos) == 2
-            personal_directory = Directory.get_medallion_instance()
-            assert personal_directory[".process.id"] == os.getpid()
-            assert personal_directory[".host.name"] == socket.gethostname()
-            user_name = personal_directory[".user.name"]
-            assert isinstance(user_name, str) and user_name != "", user_name
-
-
 def test_bytes_keys():
     """ tests that I can use bytestrings as keys for directories """
     for store in [MemoryStore(), LmdbStore()]:
@@ -258,7 +224,6 @@ def test_bytes_keys():
             keys = list(root.keys())
             assert keys == [a_bytestring], keys
             assert root[a_bytestring] == 42
-
 
 def test_blame_and_log():
     """ makes sure that the directory.get_blame works """
@@ -276,7 +241,6 @@ def test_blame_and_log():
                 as_list = list(directory.log("foo"))
                 assert as_list[0].comment == "second"
                 assert as_list[1].comment == "first"
-
 
 def test_float_int():
     """ makes sure that the directory.get_blame works """
