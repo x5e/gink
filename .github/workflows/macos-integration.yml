@@ -7,6 +7,9 @@ jobs:
   build:
 
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ./javascript
 
     steps:
     - uses: actions/checkout@v3
@@ -15,8 +18,8 @@ jobs:
     - name: Compile protos and install packages for both implementations.
       run: make
     - name: Run JS node-client test
-      run: ./javascript/integration-tests/node-client-test.js
+      run: ./integration-tests/node-client-test.js
     - name: Run JS authentication test
-      run: ./javascript/integration-tests/authentication-test.js
+      run: ./integration-tests/authentication-test.js
     - name: Run JS routing-server test
-      run: ./javascript/integration-tests/routing-server-test.js
+      run: ./integration-tests/routing-server-test.js
