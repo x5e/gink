@@ -1,0 +1,24 @@
+name: Continuous Integration - MacOS
+
+on: [push]
+
+jobs:
+
+  build:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+          packages: protobuf-compiler
+          version: 1.0
+    - name: Compile protos and install packages for both implementations.
+      run: make
+    - name: Run JS node-client test
+      run: ./integration-tests/node-client-test.js
+    - name: Run JS authentication test
+      run: ./integration-tests/authentication-test.js
+    - name: Run JS routing-server test
+      run: ./integration-tests/routing-server-test.js
