@@ -16,7 +16,7 @@ jobs:
     - name: Install protobuf-compiler
       run: brew install protobuf && npm install -g protoc-gen-js
     - name: Compile protos and install packages for both implementations.
-      run: cd.. && make
+      run: cd .. && make
     - name: Run JS node-client test
       run: ./integration-tests/node-client-test.js
     - name: Run JS authentication test
