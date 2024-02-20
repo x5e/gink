@@ -11,7 +11,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install protobuf-compiler
-      run: brew install protobuf
+      run: brew install protobuf && npm install -g protoc-gen-js
     - name: Compile protos and install packages for both implementations.
       run: make
     - name: Run JS node-client test
