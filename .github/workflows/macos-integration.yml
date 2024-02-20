@@ -15,8 +15,8 @@ jobs:
     - name: Compile protos and install packages for both implementations.
       run: make
     - name: Run JS node-client test
-      run: ./integration-tests/node-client-test.js
+      run: ./javascript/integration-tests/node-client-test.js
     - name: Run JS authentication test
-      run: ./integration-tests/authentication-test.js
+      run: ./javascript/integration-tests/authentication-test.js
     - name: Run JS routing-server test
-      run: ./integration-tests/routing-server-test.js
+      run: ./javascript/integration-tests/routing-server-test.js
