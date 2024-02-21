@@ -3,22 +3,23 @@
 # standard python stuff
 import struct
 from logging import getLogger
-from typing import Tuple, Callable, Optional, Iterable, Union, Dict
+from typing import Tuple, Callable, Optional, Iterable, Union, Dict, Mapping
 from sortedcontainers import SortedDict  # type: ignore
 from pathlib import Path
 
 # gink modules
-from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder, ContainerBuilder, Message,
-                       ChangeBuilder)
+from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder,
+                       ContainerBuilder, Message, ChangeBuilder, ClaimBuilder)
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper, BundleCallback
+from .abstract_store import AbstractStore, BundleWrapper, BundleCallback, Lock
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
                      Placement, decode_key, decode_entry_occupant)
+from .utilities import create_claim
 
 
 class MemoryStore(AbstractStore):
@@ -29,20 +30,22 @@ class MemoryStore(AbstractStore):
     _bundles: SortedDict  # BundleInfo => bytes
     _entries: Dict[Muid, EntryBuilder]
     _chain_infos: SortedDict  # Chain => BundleInfo
-    _claimed_chains: SortedDict  # Chain
+    _claims: Dict[Medallion, ClaimBuilder]
     _placements: SortedDict  # bytes(PlacementKey) => EntryMuid
     _locations: SortedDict  # LocationKey => bytes
     _containers: SortedDict  # muid => builder
     _removals: SortedDict  # bytes(removal_key) => MovementBuilder
     _clearances: SortedDict
+    _identities: Dict[Chain, str]
 
     def __init__(self):
         # TODO: add a "no retention" capability to allow the memory store to be configured to
         # drop out of date data like is currently implemented in the LmdbStore.
         self._bundles = SortedDict()
         self._chain_infos = SortedDict()
-        self._claimed_chains = SortedDict()
+        self._claims = SortedDict()
         self._entries = {}
+        self._identities = {}
         self._placements = SortedDict()
         self._containers = SortedDict()
         self._locations = SortedDict()
@@ -70,6 +73,11 @@ class MemoryStore(AbstractStore):
             else:
                 return None
         raise Exception("unexpected")
+
+    def _add_claim(self, _: Lock, chain: Chain, /) -> ClaimBuilder:
+        claim_builder = create_claim(chain)
+        self._claims[chain.medallion] = claim_builder
+        return claim_builder
 
     def get_edge_entries(
             self,
@@ -167,17 +175,10 @@ class MemoryStore(AbstractStore):
             return FoundEntry(address=entry_storage_key.placer, builder=builder)
         return None
 
-    def get_claims(self) -> Iterable[Chain]:
-        for key, val in self._claimed_chains.items():
-            assert isinstance(key, Medallion)
-            assert isinstance(val, int)
-            yield Chain(key, val)
+    def _get_claims(self, _: Lock, /) -> Mapping[Medallion, ClaimBuilder]:
+        return self._claims
 
-    def add_claim(self, chain: Chain):
-        self._claimed_chains[chain.medallion] = chain.chain_start
-
-    def refresh(self, callback: Optional[BundleCallback] = None) -> int:
-        # Memory store will never have external data added to it.
+    def _refresh_helper(self, lock: Lock, callback: Optional[BundleCallback] = None, /) -> int:
         return 0
 
     def get_ordered_entries(
@@ -228,7 +229,12 @@ class MemoryStore(AbstractStore):
             if limit is not None:
                 limit -= 1
 
-    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[Callable]=None) -> bool:
+    def apply_bundle(
+            self,
+            bundle: Union[BundleWrapper, bytes],
+            callback: Optional[Callable]=None,
+            claim_chain: bool=False
+            ) -> bool:
         if isinstance(bundle, bytes):
             bundle = BundleWrapper(bundle)
         bundle_builder = bundle.get_builder()
@@ -237,6 +243,8 @@ class MemoryStore(AbstractStore):
         old_info = self._chain_infos.get(new_info.get_chain())
         needed = AbstractStore._is_needed(new_info, old_info)
         if needed:
+            if new_info.chain_start == new_info.timestamp:
+                self._identities[new_info.get_chain()] = new_info.comment
             self._bundles[bytes(new_info)] = bundle.get_bytes()
             self._chain_infos[chain_key] = new_info
             change_items = list(bundle_builder.changes.items())  # type: ignore
@@ -260,6 +268,15 @@ class MemoryStore(AbstractStore):
         if needed and callback is not None:
             callback(bundle.get_bytes(), bundle.get_info())
         return needed
+
+    def _acquire_lock(self) -> bool:
+        return False
+
+    def _release_lock(self, _, /):
+        pass
+
+    def get_identity(self, chain: Chain, lock: Optional[bool]=None, /) -> str:
+        return self._identities[chain]
 
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
@@ -323,6 +340,9 @@ class MemoryStore(AbstractStore):
             assert isinstance(bundle_info, BundleInfo)
             chain_tracker.mark_as_having(bundle_info)
         return chain_tracker
+
+    def get_last(self, chain: Chain) -> BundleInfo:
+        return self._chain_infos[chain]
 
     def _get_entry_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
         # bkey = bytes(entry_muid)

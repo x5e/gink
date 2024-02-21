@@ -1,17 +1,18 @@
 """Contains the LmdbStore class."""
 
 # Standard Python Stuff
-import os
+from os import getpid, unlink
+from os.path import exists
 from logging import getLogger
 import uuid
-from typing import Tuple, Iterable, Optional, Set, Union
+from typing import Tuple, Iterable, Optional, Set, Union, Mapping
 from struct import pack
 from pathlib import Path
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
 
 # Gink Implementation
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
-                       ContainerBuilder, ClearanceBuilder, Message, Behavior)
+                       ContainerBuilder, ClearanceBuilder, Message, Behavior, ClaimBuilder)
 from .typedefs import MuTimestamp, UserKey, Medallion
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
@@ -19,7 +20,7 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, BundleWrapper, BundleCallback
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
-from .utilities import generate_timestamp
+from .utilities import generate_timestamp, create_claim
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
@@ -50,7 +51,7 @@ class LmdbStore(AbstractStore):
         self._temporary = False
         if file_path is None:
             prefix = "/tmp/temp."
-            if os.path.exists("/dev/shm"):
+            if exists("/dev/shm"):
                 prefix = "/dev/shm/temp."
             file_path = prefix + str(uuid.uuid4()) + ".gink.mdb"
             self._temporary = True
@@ -74,6 +75,7 @@ class LmdbStore(AbstractStore):
         self._by_pointee = self._handle.open_db(b"by_pointee")
         self._by_name = self._handle.open_db(b"by_name")
         self._by_side = self._handle.open_db(b"by_side")
+        self._identities = self._handle.open_db(b"identities")
         if reset:
             with self._handle.begin(write=True) as txn:
                 # Setting delete=False signals to lmdb to truncate the tables rather than drop them
@@ -91,6 +93,7 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._by_describing, delete=False)
                 txn.drop(self._by_name, delete=False)
                 txn.drop(self._by_side, delete=False)
+                txn.drop(self._identities, delete=False)
         with self._handle.begin() as txn:
             # I'm checking to see if retentions are set in a read-only transaction, because if
             # they are and another process has this file open I don't want to wait to get a lock.
@@ -451,18 +454,22 @@ class LmdbStore(AbstractStore):
     def close(self):
         self._handle.close()
         if self._temporary:
-            os.unlink(self._file_path)
+            unlink(self._file_path)
 
-    def add_claim(self, chain: Chain):
-        with self._handle.begin(write=True) as txn:
-            key = encode_muts(chain.medallion)
-            val = encode_muts(chain.chain_start)
-            txn.put(key, val, db=self._claims)
+    def _add_claim(self, trxn: Trxn, chain: Chain):
+        claim_builder = create_claim(chain)
+        key = encode_muts(claim_builder.claim_time)
+        val = claim_builder.SerializeToString()
+        trxn.put(key, val, db=self._claims)
 
-    def get_claims(self) -> Iterable[Chain]:
-        if self:
-            raise NotImplementedError()
-        return []
+    def _get_claims(self, trxn: Trxn) -> Mapping[Medallion, ClaimBuilder]:
+        results = dict()
+        claims_cursor = trxn.cursor(self._claims)
+        for val in claims_cursor.iternext(keys=False, values=True):
+            claim_builder = ClaimBuilder()
+            claim_builder.ParseFromString(val)
+            results[claim_builder.medallion] = claim_builder
+        return results
 
     def _get_location(self, txn, entry_muid: Muid, as_of: int = -1) -> Optional[Placement]:
         """ Tells the location of a particular entry as of a given time. """
@@ -474,6 +481,16 @@ class LmdbStore(AbstractStore):
         if len(entries_key_bytes) == 0:
             return None
         return Placement.from_bytes(entries_key_bytes, SEQUENCE)
+
+    def _acquire_lock(self) -> Trxn:
+        return self._handle.begin(write=True)
+
+    def _release_lock(self, trxn: Trxn):
+        trxn.commit()
+
+    def get_last(self, chain: Chain) -> BundleInfo:
+        with self._handle.begin() as trxn:
+            return BundleInfo.from_bytes(trxn.get(bytes(chain), db=self._chains))
 
     def get_positioned_entry(self, entry: Muid,
                              as_of: MuTimestamp = -1) -> Optional[PositionedEntry]:
@@ -655,14 +672,22 @@ class LmdbStore(AbstractStore):
             self._seen_through = decode_muts(byte_key) or 0
         return count
 
-    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[BundleCallback]=None) -> bool:
+    def apply_bundle(
+            self,
+            bundle: Union[BundleWrapper, bytes],
+            callback: Optional[BundleCallback]=None,
+            claim_chain: bool=False
+            ) -> bool:
         wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
         builder = wrapper.get_builder()
         new_info = wrapper.get_info()
+        if claim_chain:
+            assert new_info.timestamp == new_info.chain_start
         chain_key = bytes(new_info.get_chain())
         # Note: LMDB supports only one write transaction, so we don't need to explicitly lock.
         with self._handle.begin(write=True) as trxn:
             self._refresh_helper(trxn=trxn, callback=callback)
+            self._add_claim(trxn, new_info.get_chain())
             chain_value_old = trxn.get(chain_key, db=self._chains)
             old_info = BundleInfo(encoded=chain_value_old) if chain_value_old else None
             needed = AbstractStore._is_needed(new_info, old_info)
@@ -674,6 +699,8 @@ class LmdbStore(AbstractStore):
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 change_items = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
+                if new_info.chain_start == new_info.timestamp:
+                    trxn.put(bytes(chain_key), new_info.comment.encode())
                 for offset, change in change_items:  # type: ignore
                     if change.HasField("container"):
                         trxn.put(bytes(Muid(new_info.timestamp, new_info.medallion, offset)),
@@ -693,6 +720,14 @@ class LmdbStore(AbstractStore):
         if needed and callback is not None:
             callback(wrapper.get_bytes(), wrapper.get_info())
         return needed
+
+    def get_identity(self, chain: Chain, trxn: Optional[Trxn]=None, /) -> str:
+        if trxn is None:
+            with self._handle.begin() as trxn:
+                return trxn.get(bytes(chain), db=self._identities)
+        else:
+            return trxn.get(bytes(chain), db=self._identities)
+
 
     def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int,
                          builder: ClearanceBuilder):

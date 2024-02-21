@@ -5,9 +5,10 @@ from pathlib import Path
 from .builders import LogFileBuilder, ClaimBuilder
 from .memory_store import MemoryStore
 from .bundle_wrapper import BundleWrapper
-from .abstract_store import BundleCallback
+from .abstract_store import BundleCallback, Lock
 from .typedefs import Medallion
-
+from .tuples import Chain
+from .utilities import create_claim
 
 class LogBackedStore(MemoryStore):
     """A Store backed by a simple append-only file."""
@@ -26,18 +27,35 @@ class LogBackedStore(MemoryStore):
         self._handle.seek(0)
         self._processed_to = 0
         self._log_file_builder = LogFileBuilder()
-        #self._claims: Dict[Medallion, ClaimBuilder] = dict()
+        self._claims: Dict[Medallion, ClaimBuilder] = dict()
         self.refresh()
+
+    def _acquire_lock(self) -> bool:
+        flocked_by_acquire = False
+        if not self._flocked:
+            flock(self._handle, LOCK_SH)
+            flocked_by_acquire = self._flocked = True
+        return flocked_by_acquire
+
+    def _release_lock(self, flocked_by_acquire: bool, /):
+        if flocked_by_acquire:
+            assert self._flocked
+            flock(self._handle, LOCK_UN)
+            self._flocked = False
+
+    def _add_claim(self, _: Lock, chain: Chain, /):
+        assert self._flocked
+        claim_builder = super()._add_claim(True, chain)
+        self._log_file_builder.Clear()
+        self._log_file_builder.claims.append(claim_builder)
+        data: bytes = self._log_file_builder.SerializeToString()  # type: ignore
+        self._handle.write(data)
+        self._handle.flush()
 
     def _get_file_path(self) -> Optional[Path]:
         return self._filepath
 
-    def _refresh(self, callback: Optional[BundleCallback] = None) -> int:
-        flocked_by_refresh = False
-        if not self._flocked:
-            flock(self._handle, LOCK_SH)
-            self._flocked = True
-            flocked_by_refresh = True
+    def _refresh_helper(self, _: Lock, callback: Optional[BundleCallback] = None, /) -> int:
         file_bytes = self._handle.read()
         self._log_file_builder.ParseFromString(file_bytes)  # type: ignore
         count = 0
@@ -47,17 +65,14 @@ class LogBackedStore(MemoryStore):
         # for claim_builder in self._log_file_builder.claims:
         #    self._claims[claim_builder.medallion] = claim_builder
         self._processed_to += len(file_bytes)
-        if flocked_by_refresh:
-            flock(self._handle, LOCK_UN)
-            self._flocked = False
         return count
 
-    def refresh(self, callback: Optional[BundleCallback] = None) -> int:
-        if count := self._refresh(callback=callback):
-            self._clear_notifications()
-        return count
-
-    def apply_bundle(self, bundle: Union[BundleWrapper, bytes], callback: Optional[BundleCallback]=None) -> bool:
+    def apply_bundle(
+            self,
+            bundle: Union[BundleWrapper, bytes],
+            callback: Optional[BundleCallback]=None,
+            claim_chain: bool=False,
+            ) -> bool:
         if self._handle.closed:
             raise AssertionError("attempt to write to closed LogBackStore")
         if isinstance(bundle, bytes):
@@ -65,9 +80,8 @@ class LogBackedStore(MemoryStore):
         flocked_by_apply = False
         if not self._flocked:
             flock(self._handle, LOCK_EX)  # this will block (wait) if another process has a lock
-            flocked_by_apply = True
-            self._flocked = True
-        self.refresh(callback=callback)
+            flocked_by_apply = self._flocked = True
+        self._refresh_helper(True, callback)
         added = MemoryStore.apply_bundle(self, bundle)
         if added:
             self._log_file_builder.Clear()  # type: ignore

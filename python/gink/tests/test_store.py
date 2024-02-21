@@ -5,7 +5,8 @@ from typing import Callable
 from contextlib import closing
 
 # gink generated proto modules
-from ..impl.builders import BundleBuilder, Parse
+from ..impl.builders import BundleBuilder
+from google.protobuf.text_format import Parse  # type: ignore
 
 # gink stuff
 from ..impl.abstract_store import AbstractStore

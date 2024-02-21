@@ -1,14 +1,17 @@
 from time import time as get_time, sleep
 from math import floor
-from sys import argv
-from os import getpid, getuid
-from typing import Iterable, Tuple, Union
+from os import getuid, getpid
+from os.path import exists
 from socket import gethostname
 from pwd import getpwuid
 from functools import wraps
 from warnings import warn
+from random import randint
+from platform import system
 
-from .typedefs import MuTimestamp
+from .typedefs import MuTimestamp, Medallion
+from .tuples import Chain
+from .builders import ClaimBuilder
 
 def encodeToHex(string: str) -> str:
     """
@@ -26,7 +29,6 @@ def decodeFromHex(hexStr: str) -> str:
     string = bytes_obj.decode('utf-8')
     return string
 
-
 def generate_timestamp(_last_time=[get_time()]) -> MuTimestamp:
     """ returns the current time in microseconds since epoch
 
@@ -41,15 +43,12 @@ def generate_timestamp(_last_time=[get_time()]) -> MuTimestamp:
     _last_time[0] = now
     return now
 
-def get_process_info() -> Iterable[Tuple[str, Union[str, int]]]:
-    yield ".process.id", getpid()
+def generate_medallion() -> Medallion:
+    return randint((2 ** 48) + 1, (2 ** 49) - 1)
+
+def get_identity() -> str:
     user_data = getpwuid(getuid())
-    yield ".user.name", user_data[0]
-    if user_data[4] != user_data[0]:
-        yield ".full.name", user_data[4]
-    yield ".host.name", gethostname()
-    if argv[0]:
-        yield ".software", argv[0]
+    return "%s@%s" % (user_data[0], gethostname())
 
 def experimental(thing):
     warned = [False]
@@ -72,3 +71,17 @@ def experimental(thing):
         return the_class
     else:
         return wrapped
+
+def is_certainly_gone(process_id: int) -> bool:
+    if system() == 'Linux' and exists("/proc") and not exists("/proc/%s" % process_id):
+        return True
+    # TODO(https://github.com/x5e/gink/issues/203) figure out a solution for macos
+    return False
+
+def create_claim(chain: Chain) -> ClaimBuilder:
+    claim_builder = ClaimBuilder()
+    claim_builder.claim_time = generate_timestamp()
+    claim_builder.medallion = chain.medallion
+    claim_builder.chain_start = chain.chain_start
+    claim_builder.process_id = getpid()
+    return claim_builder

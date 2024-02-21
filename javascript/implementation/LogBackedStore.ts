@@ -17,7 +17,7 @@ import { PromiseChainLock } from "./PromiseChainLock";
 import { flock } from "fs-ext";
 import { watch, FSWatcher } from "fs";
 import { ChainTracker } from "./ChainTracker";
-import { ChainEntryBuilder, LogFileBuilder } from "./builders";
+import { ClaimBuilder, LogFileBuilder } from "./builders";
 import { generateTimestamp, ensure } from "./utils";
 
 /*
@@ -138,13 +138,13 @@ export class LogBackedStore implements Store {
                 }
                 this.commitsProcessed += 1;
             }
-            const chainEntries: ChainEntryBuilder[] = logFileBuilder.getChainEntriesList();
-            for (let i = 0; i < chainEntries.length; i++) {
+            const claims: ClaimBuilder[] = logFileBuilder.getClaimsList();
+            for (let i = 0; i < claims.length; i++) {
                 this.claimedChains.push({
-                    medallion: chainEntries[i].getMedallion(),
-                    chainStart: chainEntries[i].getChainStart(),
-                    actorId: chainEntries[i].getProcessId(),
-                    claimTime: chainEntries[i].getClaimTime(),
+                    medallion: claims[i].getMedallion(),
+                    chainStart: claims[i].getChainStart(),
+                    actorId: claims[i].getProcessId(),
+                    claimTime: claims[i].getClaimTime(),
                 });
             }
             this.redTo = totalSize;
@@ -210,12 +210,12 @@ export class LogBackedStore implements Store {
         await this.pullDataFromFile();
         const claimTime = generateTimestamp();
         const fragment = new LogFileBuilder();
-        const entry = new ChainEntryBuilder();
-        entry.setChainStart(chainStart);
-        entry.setMedallion(medallion);
-        entry.setProcessId(actorId);
-        entry.setClaimTime(claimTime);
-        fragment.setChainEntriesList([entry]);
+        const claim = new ClaimBuilder();
+        claim.setChainStart(chainStart);
+        claim.setMedallion(medallion);
+        claim.setProcessId(actorId);
+        claim.setClaimTime(claimTime);
+        fragment.setClaimsList([claim]);
         const bytes: Uint8Array = fragment.serializeBinary();
         await this.fileHandle.appendFile(bytes);
         await this.fileHandle.sync();

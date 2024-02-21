@@ -11,8 +11,12 @@
             val: received_muts
 
         chains - Used to keep track of how far along each chain we've seen.
-            key: the tuple (medallion, chain_start), packed big endian
+            key: the tuple (chain_start, medallion), packed big endian
             val: bytes(bundle_info) for the last bundle along the given chain
+
+        identities - Used to keep track of who created the chain.
+            key: the tuple (chain_start, medallion), packed big endian
+            val: string identity
 
         claims - Used to keep track of which chains this store owns and can append to.
             key: claim_time (packed big endian)

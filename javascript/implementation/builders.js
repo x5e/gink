@@ -9,7 +9,7 @@ const AckBuilder = SyncMessageBuilder.Ack;
 const GreetingBuilder = SyncMessageBuilder.Greeting;
 const GreetingEntryBuilder = GreetingBuilder.GreetingEntry;
 const LogFileBuilder = require("../proto/log_file_pb")["LogFile"];
-const ChainEntryBuilder = LogFileBuilder.ChainEntry;
+const ClaimBuilder = require("../proto/claim_pb")["Claim"];
 const MovementBuilder = require("../proto/movement_pb")["Movement"];
 const MuidBuilder = require("../proto/muid_pb")["Muid"];
 const KeyBuilder = require("../proto/key_pb")["Key"];
@@ -39,7 +39,7 @@ module.exports = {
     ValueBuilder,
     Special,
     NumberBuilder,
-    ChainEntryBuilder,
+    ClaimBuilder,
     TimestampBuilder,
     DocumentBuilder,
     TupleBuilder,
