@@ -29,6 +29,7 @@ parser.add_argument("--connect_to", "-c", nargs="+", help="remote instances to c
 parser.add_argument("--show_arguments", action="store_true")
 parser.add_argument("--show_bundles", action="store_true")
 parser.add_argument("--repr", action="store_true", help="show repr of stored value when using --get")
+parser.add_argument("--line_mode", action="store_true", help="read lines of input from stdin")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -135,15 +136,9 @@ if args.listen_on:
 for target in (args.connect_to or []):
     database.connect_to(target)
 
-if stdin.isatty():
-    while True:
-        try:
-            console = SelectableConsole(locals())
-            database.run(console=console)
-        except EOFError:
-            exit(0)
-        except KeyboardInterrupt as ke:
-            print("\r\nKeyboardInterrupt", end="\r\n", file=stderr)
-            stderr.flush()
-else:
-    database.run()
+console = SelectableConsole(locals(), interactive=(stdin.isatty() and not args.line_mode))
+
+try:
+    database.run(console=console)
+except EOFError:
+    pass
