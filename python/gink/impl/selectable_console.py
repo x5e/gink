@@ -1,4 +1,4 @@
-from sys import stdin, stderr
+from sys import stdin, stderr, stdout
 from termios import TCSADRAIN, tcsetattr, tcgetattr, OPOST
 from tty import setraw, OFLAG
 from typing import Optional, TextIO, List
@@ -8,16 +8,16 @@ from io import TextIOWrapper
 
 class SelectableConsole(InteractiveInterpreter):
 
-    def __init__(self, locals, interactive: bool, unbuffered=True):
+    def __init__(self, locals, interactive: bool, unbuffered=True, output=stderr, input=stdin):
         """ Line mode (non-interactive), if specified, or if not using a TTY.
         """
         super().__init__(locals)
         self._interactive = interactive
         self._buffer: List[str] = []
-        self._input: TextIO = stdin
-        self._output: TextIO = stderr
+        self._input: TextIO = input
+        self._output: TextIO = output
         if unbuffered:
-            self._output = TextIOWrapper(open(stdout.fileno(), 'wb', 0), write_through=True)
+            self._output = TextIOWrapper(open(output.fileno(), 'wb', 0), write_through=True)
         self._settings: Optional[list] = None
         self._prompt = "python+gink> "
         self._logger = getLogger(self.__class__.__name__)
