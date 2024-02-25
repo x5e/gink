@@ -5,6 +5,9 @@ from typing import Optional, TextIO, List
 from code import InteractiveInterpreter
 from logging import getLogger
 from io import TextIOWrapper
+from ctypes import c_int
+from fcntl import ioctl
+from termios import FIONREAD
 
 class SelectableConsole(InteractiveInterpreter):
 
@@ -22,6 +25,7 @@ class SelectableConsole(InteractiveInterpreter):
         self._prompt = "python+gink> "
         self._logger = getLogger(self.__class__.__name__)
         self._ended = False
+        self._bytes_available = c_int()
 
     def is_active(self) -> bool:
         return not self._ended
@@ -48,7 +52,9 @@ class SelectableConsole(InteractiveInterpreter):
 
     def call_when_ready(self):
         if self._interactive:
-            self.on_character(self._input.read(1))
+            ioctl(self.fileno(), FIONREAD, self._bytes_available)
+            for _ in range(self._bytes_available.value):
+                self.on_character(self._input.read(1))
         else:
             self.on_line(input())
 
