@@ -33,7 +33,10 @@ module.exports = class Expector {
       program and we need to check if the thing we're expecting has arrived.
     */
     notify(fragment) {
-        if (fragment) this.captured += fragment;
+        if (fragment) {
+            this.captured += fragment;
+            console.log(fragment.toString());
+        }
         if (!this.expecting) return;
         const match = this.captured.match(this.expecting);
         if (match) {
@@ -61,7 +64,12 @@ module.exports = class Expector {
     /**
     * Sends a string to the controlled program.
     */
-    send(what) { this.proc.stdin.write(what); }
+    send(what) {
+        this.proc.stdin.write(
+            what,
+            // () => console.error("flushed")
+        );
+    }
 
     /**
     * Kill the underlying program, and resolve once the program has closed.

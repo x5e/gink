@@ -1,47 +1,75 @@
-from sys import stdin, stderr
-from termios import TCSADRAIN, tcsetattr, tcgetattr
-from tty import setraw
+from sys import stdin, stderr, stdout
+from termios import TCSADRAIN, tcsetattr, tcgetattr, OPOST
+from tty import setraw, OFLAG
 from typing import Optional, TextIO, List
 from code import InteractiveInterpreter
 from logging import getLogger
+from io import TextIOWrapper
 
 class SelectableConsole(InteractiveInterpreter):
 
-    def __init__(self, locals, input_handle: TextIO = stdin, output_handle: TextIO = stderr):
+    def __init__(self, locals, interactive: bool, unbuffered=True, output=stderr, input=stdin):
+        """ Line mode (non-interactive), if specified, or if not using a TTY.
+        """
         super().__init__(locals)
+        self._interactive = interactive
         self._buffer: List[str] = []
-        self._input: TextIO = input_handle
-        self._output: TextIO = output_handle
+        self._input: TextIO = input
+        self._output: TextIO = output
+        if unbuffered:
+            self._output = TextIOWrapper(open(output.fileno(), 'wb', 0), write_through=True)
         self._settings: Optional[list] = None
         self._prompt = "python+gink> "
         self._logger = getLogger(self.__class__.__name__)
+        self._ended = False
+
+    def is_active(self) -> bool:
+        return not self._ended
 
     def fileno(self):
       return self._input.fileno()
 
     def __enter__(self):
-        self._settings = tcgetattr(self._input.fileno())
-        setraw(self._input.fileno())
+        if self._settings is None and self._interactive:
+            fd = self._input.fileno()
+            self._settings = tcgetattr(fd)
+            setraw(fd)
+            mode = tcgetattr(fd)
+            mode[OFLAG] =  mode[OFLAG] | OPOST
+            tcsetattr(fd, TCSADRAIN, mode)
 
-    def __exit__(self, *_):
-        assert self._settings is not None
-        tcsetattr(self._input.fileno(), TCSADRAIN, self._settings)
+    def __exit__(self, exc_type, exc_value, tb):
+        if isinstance(exc_value, KeyboardInterrupt):
+            self.write("\nKeyboardInterrupt\n")
+            return True
+        if self._settings:
+            tcsetattr(self._input.fileno(), TCSADRAIN, self._settings)
+            self._settings = None
 
     def call_when_ready(self):
-        self.on_character(self._input.read(1))
+        if self._interactive:
+            self.on_character(self._input.read(1))
+        else:
+            self.on_line(input())
+
+    def on_line(self, line):
+        result = self.runsource(line)
+        if result is True:
+            self._logger.warning("multi-line input not yet implemented")
 
     def refresh(self):
-        self._output.write("\r" + self._prompt + "".join(self._buffer))
-        self._output.flush()
+        if self._interactive:
+            data = self._prompt + "".join(self._buffer)
+            self._output.write("\r" + data + " ")
+            self._output.write("\r" + data)
 
     def write(self, data):
-        data = data.replace("\n", "\r\n")
         self._output.write(data)
-        self._output.flush()
 
     def on_character(self, character: str) -> None:
         if character == '\x1b':
-            self._logger.info("history and keys not yet supported")
+            self._logger.info("history and line editing keys not yet supported")
+            self._input.read(2)
         elif character in ('\r'):  # return/enter
             if self._buffer:
                 print(end="\r\n", file=self._output)
@@ -57,27 +85,25 @@ class SelectableConsole(InteractiveInterpreter):
             need_to_wipe = len(self._buffer) + len(self._prompt)
             self._output.write("\r" + " " * need_to_wipe)
             self._buffer = []
+        elif character == '\x0c': # control-L
+            self._output.write("\033[H\033[2J")
         elif character == '\x04':  # control-D
             if self._buffer:
                 self._output.write('\a')  # bell
-                self._output.flush()
             else:
                 print(file=self._output, end="\r\n")
                 raise EOFError()
         elif character in ('\x03'):  # control-C
+            self._buffer = []
             raise KeyboardInterrupt()
         elif character in ('\x08', '\x7f'):  # backspace / control-h
             if self._buffer:
                 self._buffer.pop()
-                self._output.write(character)
-                self._output.flush()
             else:
                 self._output.write('\a')  # bell
-                self._output.flush()
         else:
             if len(repr(character)) == 3 or character == "\\":
                 self._buffer.append(character)
                 self._output.write(character)
             else:
                 self._output.write(repr(character))
-            self._output.flush()

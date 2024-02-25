@@ -10,7 +10,7 @@ from .impl.builders import BundleBuilder
 from .impl.selectable_console import SelectableConsole
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
-parser.add_argument("db_path", help="path to a database; created if doesn't exist")
+parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
 parser.add_argument("--verbosity", "-v", default="INFO", help="the log level to use, e.g. INFO or DEBUG")
 parser.add_argument("--format", default="lmdb", help="storage file format", choices=["lmdb", "binlog"])
 parser.add_argument("--set", help="set key/value in directory (default root) reading value from stdin")
@@ -29,6 +29,8 @@ parser.add_argument("--connect_to", "-c", nargs="+", help="remote instances to c
 parser.add_argument("--show_arguments", action="store_true")
 parser.add_argument("--show_bundles", action="store_true")
 parser.add_argument("--repr", action="store_true", help="show repr of stored value when using --get")
+parser.add_argument("--line_mode", action="store_true", help="read lines of input from stdin")
+parser.add_argument("--interactive", action="store_true", help="force interactive mode")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -135,15 +137,16 @@ if args.listen_on:
 for target in (args.connect_to or []):
     database.connect_to(target)
 
-if stdin.isatty():
-    while True:
-        try:
-            console = SelectableConsole(locals())
-            database.run(console=console)
-        except EOFError:
-            exit(0)
-        except KeyboardInterrupt as ke:
-            print("\r\nKeyboardInterrupt", end="\r\n", file=stderr)
-            stderr.flush()
+if args.interactive:
+    interactive = True
+elif args.line_mode:
+    interactive = False
 else:
-    database.run()
+    interactive = stdin.isatty()
+
+console = SelectableConsole(locals(), interactive=interactive)
+
+try:
+    database.run(console=console)
+except EOFError:
+    pass
