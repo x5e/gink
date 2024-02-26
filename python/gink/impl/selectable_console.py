@@ -1,16 +1,14 @@
-from sys import stdin, stderr, stdout
+from sys import stdin, stderr
 from termios import TCSADRAIN, tcsetattr, tcgetattr, OPOST
 from tty import setraw, OFLAG
 from typing import Optional, TextIO, List
 from code import InteractiveInterpreter
 from logging import getLogger
-from io import TextIOWrapper
 from ctypes import c_int
 from fcntl import ioctl
 from termios import FIONREAD
 from pathlib import Path
 from datetime import datetime as DateTime
-from time import sleep
 
 class SelectableConsole(InteractiveInterpreter):
 
@@ -32,7 +30,7 @@ class SelectableConsole(InteractiveInterpreter):
     def is_active(self) -> bool:
         return not self._ended
 
-    def fileno(self):
+    def fileno(self) -> int:
       return self._input.fileno()
 
     def __enter__(self):
@@ -44,13 +42,13 @@ class SelectableConsole(InteractiveInterpreter):
             mode[OFLAG] =  mode[OFLAG] | OPOST
             tcsetattr(fd, TCSADRAIN, mode)
 
-    def __exit__(self, exc_type, exc_value, tb):
+    def __exit__(self, *_):
         if self._settings:
             tcsetattr(self._input.fileno(), TCSADRAIN, self._settings)
             self._settings = None
 
     def _bytes_available(self) -> int:
-        ioctl(self.fileno(), FIONREAD, self._c_int)
+        ioctl(self.fileno(), FIONREAD, self._c_int)  # type: ignore
         return self._c_int.value
 
     def call_when_ready(self):
