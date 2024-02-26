@@ -4,6 +4,7 @@ from logging import basicConfig, getLogger
 from sys import exit, stdin, stderr
 from re import fullmatch
 from argparse import ArgumentParser, Namespace
+from pathlib import Path
 
 from . import *
 from .impl.builders import BundleBuilder
@@ -31,6 +32,7 @@ parser.add_argument("--show_bundles", action="store_true")
 parser.add_argument("--repr", action="store_true", help="show repr of stored value when using --get")
 parser.add_argument("--line_mode", action="store_true", help="read lines of input from stdin")
 parser.add_argument("--interactive", action="store_true", help="force interactive mode")
+parser.add_argument("--heartbeat_to", type=Path, help="write on console refresh (for debugging)")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -144,7 +146,7 @@ elif args.line_mode:
 else:
     interactive = stdin.isatty()
 
-console = SelectableConsole(locals(), interactive=interactive)
+console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
 
 try:
     database.run(console=console)
