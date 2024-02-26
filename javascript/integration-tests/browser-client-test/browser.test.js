@@ -9,7 +9,7 @@ it('connect to server and display commits', async () => {
     let page = await browser.newPage();
 
     const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: "8081", GINK_STATIC_PATH: ".", ...process.env } });
+        { env: { GINK_PORT: "8082", GINK_STATIC_PATH: ".", ...process.env } });
     await sleep(1000);
     await server.expect("ready");
 
@@ -20,7 +20,7 @@ it('connect to server and display commits', async () => {
         const args = await Promise.all(e.args().map(a => a.jsonValue()));
     });
 
-    await page.goto('http://127.0.0.1:8081/integration-tests/browser-client-test');
+    await page.goto('http://127.0.0.1:8082/integration-tests/browser-client-test');
     await page.waitForSelector('#messages');
 
     await sleep(4000);
