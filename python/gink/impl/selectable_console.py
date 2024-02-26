@@ -1,32 +1,36 @@
-from sys import stdin, stderr, stdout
+from sys import stdin, stderr
 from termios import TCSADRAIN, tcsetattr, tcgetattr, OPOST
 from tty import setraw, OFLAG
 from typing import Optional, TextIO, List
 from code import InteractiveInterpreter
 from logging import getLogger
-from io import TextIOWrapper
+from ctypes import c_int
+from fcntl import ioctl
+from termios import FIONREAD
+from pathlib import Path
+from datetime import datetime as DateTime
 
 class SelectableConsole(InteractiveInterpreter):
 
-    def __init__(self, locals, interactive: bool, unbuffered=True, output=stderr, input=stdin):
+    def __init__(self, locals, interactive: bool, heartbeat_to: Optional[Path]=None):
         """ Line mode (non-interactive), if specified, or if not using a TTY.
         """
         super().__init__(locals)
         self._interactive = interactive
         self._buffer: List[str] = []
-        self._input: TextIO = input
-        self._output: TextIO = output
-        if unbuffered:
-            self._output = TextIOWrapper(open(output.fileno(), 'wb', 0), write_through=True)
+        self._input: TextIO = stdin
+        self._output: TextIO = stderr
         self._settings: Optional[list] = None
         self._prompt = "python+gink> "
         self._logger = getLogger(self.__class__.__name__)
         self._ended = False
+        self._c_int = c_int()
+        self._heartbeat_to = open(heartbeat_to, "a") if heartbeat_to else None
 
     def is_active(self) -> bool:
         return not self._ended
 
-    def fileno(self):
+    def fileno(self) -> int:
       return self._input.fileno()
 
     def __enter__(self):
@@ -38,19 +42,26 @@ class SelectableConsole(InteractiveInterpreter):
             mode[OFLAG] =  mode[OFLAG] | OPOST
             tcsetattr(fd, TCSADRAIN, mode)
 
-    def __exit__(self, exc_type, exc_value, tb):
-        if isinstance(exc_value, KeyboardInterrupt):
-            self.write("\nKeyboardInterrupt\n")
-            return True
+    def __exit__(self, *_):
         if self._settings:
             tcsetattr(self._input.fileno(), TCSADRAIN, self._settings)
             self._settings = None
 
+    def _bytes_available(self) -> int:
+        ioctl(self.fileno(), FIONREAD, self._c_int)  # type: ignore
+        return self._c_int.value
+
     def call_when_ready(self):
-        if self._interactive:
-            self.on_character(self._input.read(1))
-        else:
-            self.on_line(input())
+        try:
+            if self._interactive:
+                for _ in range(self._bytes_available()):
+                  self.on_character(self._input.read(1))
+            else:
+                self.on_line(input())
+        except KeyboardInterrupt:
+            self.write("\nKeyboardInterrupt\n")
+        except StopIteration:
+            pass
 
     def on_line(self, line):
         result = self.runsource(line)
@@ -62,14 +73,19 @@ class SelectableConsole(InteractiveInterpreter):
             data = self._prompt + "".join(self._buffer)
             self._output.write("\r" + data + " ")
             self._output.write("\r" + data)
+            self._output.flush()
+            if self._heartbeat_to:
+                print(str(DateTime.now().time()), file=self._heartbeat_to)
 
     def write(self, data):
         self._output.write(data)
+        self._output.flush()
 
     def on_character(self, character: str) -> None:
         if character == '\x1b':
             self._logger.info("history and line editing keys not yet supported")
-            self._input.read(2)
+            self._input.read(2) # swallow extra characters
+            raise StopIteration()
         elif character in ('\r'):  # return/enter
             if self._buffer:
                 print(end="\r\n", file=self._output)

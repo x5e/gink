@@ -261,8 +261,8 @@ class Database:
         if until is not None:
             until = self.resolve_timestamp(until)
         context_manager = console or nullcontext()
-        while (until is None or generate_timestamp() < until):
-            with context_manager:
+        with context_manager:
+            while (until is None or generate_timestamp() < until):
                 # eventually will want to support epoll on platforms where its supported
                 readers: List[Union[Listener, Connection, SelectableConsole, AbstractStore]] = []
                 if self._store.is_selectable():
