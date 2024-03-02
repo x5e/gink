@@ -7,12 +7,12 @@ const { ensure } = require("../tsc.out/implementation/utils.js");
     console.log("starting");
     const python = new Expector(
         "python3",
-        ["-u", "-m", "gink", "-l"],
+        ["-u", "-m", "gink", "-l", "*:8085"],
         { env: { PYTHONPATH: "./python" } });
     await python.expect("listen");
 
     const client = new GinkInstance();
-    await client.connectTo("ws://localhost:8080");
+    await client.connectTo("ws://localhost:8085");
 
     python.send("Directory(root=True).set('3','4');\n");
     await python.expect("Muid", 1000);
