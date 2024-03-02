@@ -26,6 +26,12 @@ jobs:
       run: ./integration-tests/routing-server-test.js
     - name: Run JS logbacked peers test
       run: ./integration-tests/logbacked-peers-test.js
+    - name: Run python-typescript test
+      run: ./integration-tests/py-ts-test.js
+    - name: Run python-python test
+      run: ./integration-tests/py-py-test.js
+    - name: Run JS typescript-python test
+      run: ./integration-tests/ts-py-test.js
     - name: Run JS browser unit tests
       run: npm run browser-unit
     - name: Run JS browser integration tests
