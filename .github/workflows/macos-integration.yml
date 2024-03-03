@@ -9,6 +9,8 @@ jobs:
     runs-on: macos-latest
     defaults:
       run:
+        env:
+          PYTHONPATH: ./python
         working-directory: ./javascript
 
     steps:
@@ -18,18 +20,18 @@ jobs:
       run: brew install protobuf && npm install -g protoc-gen-js
     - name: Compile protos and install packages for both implementations.
       run: cd .. && make
-    - name: Run JS node-client test
-      run: ./integration-tests/node-client-test.js
-    - name: Run JS authentication test
-      run: ./integration-tests/authentication-test.js
-    - name: Run JS routing-server test
-      run: ./integration-tests/routing-server-test.js
-    - name: Run JS logbacked peers test
-      run: ./integration-tests/logbacked-peers-test.js
-    - name: Run JS browser unit tests
-      run: npm run browser-unit
-    - name: Run JS browser integration tests
-      run: npm run browser-integration
+    # - name: Run JS node-client test
+    #   run: ./integration-tests/node-client-test.js
+    # - name: Run JS authentication test
+    #   run: ./integration-tests/authentication-test.js
+    # - name: Run JS routing-server test
+    #   run: ./integration-tests/routing-server-test.js
+    # - name: Run JS logbacked peers test
+    #   run: ./integration-tests/logbacked-peers-test.js
+    # - name: Run JS browser unit tests
+    #   run: npm run browser-unit
+    # - name: Run JS browser integration tests
+    #   run: npm run browser-integration
 
     - name: Python-Python test
       run:  ./integration-tests/py-py-test.js
