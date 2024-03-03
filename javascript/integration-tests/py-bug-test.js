@@ -14,7 +14,9 @@ const { ensure } = require("../tsc.out/implementation/utils.js");
     const client = new GinkInstance();
     await client.connectTo("ws://localhost:8085");
 
-    // Error only happens when a Python instance sets an integer as a value.
+    // This error occurs only when a typescript instance is connected to a python instance
+    // Doesn't matter whether the TS instance is a server or client.
+    // Only happens when setting an INTEGER as a VALUE. Integer keys work.
     python.send("Directory(root=True).set(3,4);\n");
     await python.expect("Muid", 1000);
 
