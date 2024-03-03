@@ -41,9 +41,6 @@ RUN ./integration-tests/node-client-test.js
 RUN ./integration-tests/authentication-test.js
 RUN ./integration-tests/routing-server-test.js
 RUN ./integration-tests/logbacked-peers-test.js
-RUN ./integration-tests/py-py-test.js
-RUN ./integration-tests/py-ts-test.js
-RUN ./integration-tests/ts-py-test.js
 
 COPY content_root ./content_root
 RUN npm run browser-unit

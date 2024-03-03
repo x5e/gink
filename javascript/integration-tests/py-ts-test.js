@@ -10,7 +10,7 @@ const { sleep } = require("./browser_test_utilities.js");
     const client = new Expector(
         "python3",
         ["-u", "-m", "gink", "-c", "ws://localhost:8087"],
-        { env: { PYTHONPATH: "../python" } });
+        { env: { PYTHONPATH: "./python" } });
     await client.expect("connect");
     await server.expect("accepted");
 
