@@ -7,8 +7,7 @@ const { ensure } = require("../tsc.out/implementation/utils.js");
     console.log("starting");
     const python = new Expector(
         "python3",
-        ["-u", "-m", "gink", "-l", "*:8085"],
-        { env: { PYTHONPATH: "./python" } });
+        ["-u", "-m", "gink", "-l", "*:8085"]);
     await python.expect("listen");
 
     const client = new GinkInstance();

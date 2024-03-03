@@ -10,15 +10,5 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-          packages: protobuf-compiler
-          version: 1.0
-    - name: Compile protos for the python implementation.
-      run: make python/gink/builders
-    - name: Build the python docker image.
-      run: docker build ./python
-    - name: Compile protos for the javascript implementation.
-      run: make javascript/proto
-    - name: Build the javascript docker image.
-      run: docker build ./javascript
+    - name: Build Debian Docker image with tests
+      run: docker build .
