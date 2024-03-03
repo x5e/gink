@@ -2,6 +2,9 @@ name: Continuous Integration - MacOS
 
 on: [push]
 
+env:
+  PYTHONPATH: ./python
+
 jobs:
 
   build:
@@ -9,8 +12,6 @@ jobs:
     runs-on: macos-latest
     defaults:
       run:
-        env:
-          PYTHONPATH: ./python
         working-directory: ./javascript
 
     steps:
