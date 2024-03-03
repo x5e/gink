@@ -30,3 +30,10 @@ jobs:
       run: npm run browser-unit
     - name: Run JS browser integration tests
       run: npm run browser-integration
+
+    - name: Python-Python test
+      run:  ./integration-tests/py-py-test.js
+    - name: Python-TypeScript test
+      run:  ./integration-tests/py-ts-test.js
+    - name: TypeScript-Python test
+      run:  ./integration-tests/ts-py-test.js
