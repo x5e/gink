@@ -7,7 +7,7 @@ const { sleep } = require("./browser_test_utilities.js");
     const server = new Expector(
         "python3",
         ["-u", "-m", "gink", "-l", "*:8086"],
-        { env: { PYTHONPATH: "./python" } });
+        { env: { PYTHONPATH: "../python" } });
     await server.expect("listen");
 
     const client = new Expector(

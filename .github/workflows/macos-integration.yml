@@ -7,9 +7,9 @@ jobs:
   build:
 
     runs-on: macos-latest
-    # defaults:
-    #   run:
-    #     working-directory: ./javascript
+    defaults:
+      run:
+        working-directory: ./javascript
 
     steps:
     - uses: actions/checkout@v3
@@ -17,22 +17,22 @@ jobs:
     - name: Install protobuf-compiler
       run: brew install protobuf && npm install -g protoc-gen-js
     - name: Compile protos and install packages for both implementations.
-      run: make
+      run: cd .. && make
     - name: Run JS node-client test
-      run: ./javascript/integration-tests/node-client-test.js
+      run: ./integration-tests/node-client-test.js
     - name: Run JS authentication test
-      run: ./javascript/integration-tests/authentication-test.js
+      run: ./integration-tests/authentication-test.js
     - name: Run JS routing-server test
-      run: ./javascript/integration-tests/routing-server-test.js
+      run: ./integration-tests/routing-server-test.js
     - name: Run JS logbacked peers test
-      run: ./javascript/integration-tests/logbacked-peers-test.js
+      run: ./integration-tests/logbacked-peers-test.js
     - name: Run python-typescript test
-      run: ./javascript/integration-tests/py-ts-test.js
+      run: ./integration-tests/py-ts-test.js
     - name: Run python-python test
-      run: ./javascript/integration-tests/py-py-test.js
+      run: ./integration-tests/py-py-test.js
     - name: Run JS typescript-python test
-      run: ./javascript/integration-tests/ts-py-test.js
+      run: ./integration-tests/ts-py-test.js
     - name: Run JS browser unit tests
-      run: cd javascript && npm run browser-unit
+      run: npm run browser-unit
     - name: Run JS browser integration tests
-      run: cd javascript && npm run browser-integration
+      run: npm run browser-integration
