@@ -33,7 +33,10 @@ jobs:
     #   run: npm run browser-unit
     # - name: Run JS browser integration tests
     #   run: npm run browser-integration
-
+    - name: Update Version
+      run: export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" ../python/setup.py
+    - name: Install Python packages
+      run: cd ../python && pip3 install .[test]
     - name: Python-Python test
       run:  ./integration-tests/py-py-test.js
     - name: Python-TypeScript test
