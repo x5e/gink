@@ -34,7 +34,7 @@ jobs:
     # - name: Run JS browser integration tests
     #   run: npm run browser-integration
     - name: Update Version
-      run: export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" ../python/setup.py
+      run: cd ../python && export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "" "s/\${VERSION}/${VERSION}/g" setup.py
     - name: Install Python packages
       run: cd ../python && pip3 install .[test]
     - name: Python-Python test
