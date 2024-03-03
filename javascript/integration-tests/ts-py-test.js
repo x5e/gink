@@ -14,10 +14,10 @@ const { ensure } = require("../tsc.out/implementation/utils.js");
     const client = new GinkInstance();
     await client.connectTo("ws://localhost:8085");
 
-    python.send("Directory(root=True).set('3','4');\n");
+    python.send("Directory(root=True).set(3,4);\n");
     await python.expect("Muid", 1000);
 
-    ensure(await client.getGlobalDirectory().get('3') == '4');
+    ensure(await client.getGlobalDirectory().get(3) === 4);
 
     await python.close();
     console.log("finished!");

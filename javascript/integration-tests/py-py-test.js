@@ -17,7 +17,7 @@ const { sleep } = require("./browser_test_utilities.js");
     await client.expect("connect");
     await server.expect("accepted");
 
-    server.send("Directory(root=True).set('3','4');\n");
+    server.send("Directory(root=True).set(3,4);\n");
     await server.expect("Muid", 1000);
     await sleep(100);
 
