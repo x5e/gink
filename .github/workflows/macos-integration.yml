@@ -3,7 +3,7 @@ name: Continuous Integration - MacOS
 on: [push]
 
 env:
-  PYTHONPATH: /opt/gink/python
+  PYTHONPATH: /Users/runner/work/gink/gink/python
 
 jobs:
 
