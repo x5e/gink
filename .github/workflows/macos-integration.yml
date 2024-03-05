@@ -29,6 +29,8 @@ jobs:
       run: ./integration-tests/routing-server-test.js
     - name: Run JS logbacked peers test
       run: ./integration-tests/logbacked-peers-test.js
+    - name: Run JS unit tests
+      run: npm run test
     - name: Run JS browser unit tests
       run: npm run browser-unit
     - name: Run JS browser integration tests

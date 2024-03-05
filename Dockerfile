@@ -12,7 +12,7 @@ COPY proto ./proto
 COPY javascript ./javascript
 
 COPY python ./python
-RUN make python/gink/builders
+RUN make
 ENV PYTHONPATH $WORKING/python
 WORKDIR $WORKING/python
 # Python lint
@@ -21,8 +21,6 @@ RUN mypy gink/impl gink/tests
 # Python unit-tests
 RUN python3 -m nose2
 
-WORKDIR $WORKING
-RUN make javascript
 WORKDIR $WORKING/javascript
 RUN npm rebuild
 
