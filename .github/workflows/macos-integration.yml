@@ -37,9 +37,9 @@ jobs:
       run: cd ../python && export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "" "s/\${VERSION}/${VERSION}/g" setup.py
     - name: Install Python packages
       run: cd ../python && pip3 install .[test]
+    - name: TypeScript-Python test
+      run:  ./integration-tests/ts-py-test.js
     - name: Python-Python test
       run:  ./integration-tests/py-py-test.js
     - name: Python-TypeScript test
       run:  ./integration-tests/py-ts-test.js
-    - name: TypeScript-Python test
-      run:  ./integration-tests/ts-py-test.js
