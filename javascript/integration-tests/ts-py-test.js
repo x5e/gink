@@ -11,7 +11,8 @@ const { sleep } = require("./browser_test_utilities.js");
     await sleep(100);
 
     const client = new Expector("./tsc.out/implementation/main.js", ["ws://localhost:8085"], { env: { ...process.env } });
-    await client.expect("starting...");
+    await python.expect("connection established!");
+    await client.expect("connected!");
 
     python.send("Directory(root=True).set(3,4);\n");
     await python.expect("Muid", 1000);
