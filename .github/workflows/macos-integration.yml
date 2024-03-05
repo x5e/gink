@@ -21,6 +21,14 @@ jobs:
       run: echo $PWD && brew install protobuf && npm install -g protoc-gen-js
     - name: Compile protos and install packages for both implementations.
       run: cd .. && make
+    - name: Update Python Version to install packages
+      run: cd ../python && export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "" "s/\${VERSION}/${VERSION}/g" setup.py
+    - name: Install Python packages
+      run: cd ../python && pip3 install .[test]
+    - name: Run Python unit tests
+      run: cd ../python && nose2
+    - name: Run JS unit tests
+      run: npm run test
     - name: Run JS node-client test
       run: ./integration-tests/node-client-test.js
     - name: Run JS authentication test
@@ -29,16 +37,10 @@ jobs:
       run: ./integration-tests/routing-server-test.js
     - name: Run JS logbacked peers test
       run: ./integration-tests/logbacked-peers-test.js
-    - name: Run JS unit tests
-      run: npm run test
     - name: Run JS browser unit tests
       run: npm run browser-unit
     - name: Run JS browser integration tests
       run: npm run browser-integration
-    - name: Update Version
-      run: cd ../python && export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "" "s/\${VERSION}/${VERSION}/g" setup.py
-    - name: Install Python packages
-      run: cd ../python && pip3 install .[test]
     - name: TypeScript-Python test
       run:  ./integration-tests/ts-py-test.js
     - name: Python-Python test

@@ -1,9 +1,9 @@
 FROM debian:latest
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update --fix-missing && apt-get upgrade -y
-ENV WORKING=/opt/gink
-RUN mkdir -p $WORKING
-WORKDIR $WORKING
+ENV CWD=/opt/gink
+RUN mkdir -p $CWD
+WORKDIR $CWD
 RUN apt-get install -y make
 COPY packages.txt ./
 COPY Makefile ./
@@ -13,21 +13,16 @@ COPY javascript ./javascript
 
 COPY python ./python
 RUN make
-ENV PYTHONPATH $WORKING/python
-WORKDIR $WORKING/python
+ENV PYTHONPATH $CWD/python
+WORKDIR $CWD/python
 # Python lint
 RUN mypy gink/impl gink/tests
 
 # Python unit-tests
 RUN python3 -m nose2
 
-WORKDIR $WORKING/javascript
+WORKDIR $CWD/javascript
 RUN npm rebuild
-
-# Python integration tests
-RUN ./integration-tests/py-py-test.js
-RUN ./integration-tests/py-ts-test.js
-RUN ./integration-tests/ts-py-test.js
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
 ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
@@ -45,6 +40,11 @@ RUN if [ `uname -m` == aarch64 ]; then apt update && apt install chromium-browse
 # JavaScript/TypeScript unit-tests
 RUN npm test
 RUN npm run browser-unit
+
+# Python integration tests
+RUN ./integration-tests/py-py-test.js
+RUN ./integration-tests/py-ts-test.js
+RUN ./integration-tests/ts-py-test.js
 
 # JavaScript/TypeScript integration tests
 RUN ./integration-tests/node-client-test.js
