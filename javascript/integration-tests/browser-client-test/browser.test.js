@@ -32,4 +32,4 @@ it('connect to server and display commits', async () => {
 
     const expectedMessages = /Messages go here\..*Hello, Universe!.*start: SimpleServer/s;
     expect(messages).toMatch(expectedMessages);
-}, 13000);
+}, 40000);

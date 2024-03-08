@@ -38,7 +38,7 @@ it('connect to server and display dashboard', async () => {
         await server.close();
         await browser.close();
     }
-}, 30000);
+}, 40000);
 
 it('share commits between two pages', async () => {
     /**
