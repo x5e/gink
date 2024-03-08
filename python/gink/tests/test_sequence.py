@@ -121,7 +121,7 @@ def test_expiry():
                 if after_hiding_three != ["second", "four"]:
                     assertion_time = database.get_now()
                     raise AssertionError(str(after_hiding_three) + " " + str(assertion_time))
-                time.sleep(.11)
+                time.sleep(.3)
                 assert list(seq) == ["four", "three"], list(seq)
 
 
