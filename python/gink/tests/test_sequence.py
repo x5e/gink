@@ -102,7 +102,7 @@ def test_expiry():
                 start = database.get_now()
                 seq.append("first", expiry=0.1)
                 assert list(seq) == ["first"], list(seq)
-                seq.insert(0, "second", expiry=0.2)
+                seq.insert(0, "second", expiry=0.3)
                 mark = database.get_now()
                 seq_as_list = list(seq)
                 if seq_as_list != ["second", "first"]:
