@@ -167,7 +167,9 @@ export class ValueBuilder extends ImplementedMessage {
     asOctets(): boolean;
     getOctets(): Uint8Array;
     hasInteger(): boolean;
-    hasBigInt(): boolean;
+    hasBigint(): boolean;
+    getBigint(): number;
+    setBigint(NumberBuilder);
     getInteger(): number;
     hasSpecial(): boolean;
     getSpecial(): number;
