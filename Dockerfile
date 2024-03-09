@@ -9,20 +9,6 @@ COPY packages.txt ./
 COPY Makefile ./
 RUN make install-dependencies
 COPY proto ./proto
-COPY javascript ./javascript
-
-COPY python ./python
-RUN make
-ENV PYTHONPATH $CWD/python
-WORKDIR $CWD/python
-# Python lint
-RUN mypy gink/impl gink/tests
-
-# Python unit-tests
-RUN python3 -m nose2
-
-WORKDIR $CWD/javascript
-RUN npm rebuild
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
 ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
@@ -36,6 +22,20 @@ RUN if [ `uname -m` != aarch64 ]; then apt-get update && apt-get install gnupg w
   apt-get install google-chrome-stable -y --no-install-recommends && \
   rm -rf /var/lib/apt/lists/* && export CHROME_BIN=/usr/bin/chrome; fi
 RUN if [ `uname -m` == aarch64 ]; then apt update && apt install chromium-browser && export CHROME_BIN=/usr/bin/chromium-browser; fi
+
+COPY javascript ./javascript
+COPY python ./python
+RUN make
+ENV PYTHONPATH $CWD/python
+WORKDIR $CWD/python
+# Python lint
+RUN mypy gink/impl gink/tests
+
+# Python unit-tests
+RUN python3 -m nose2
+
+WORKDIR $CWD/javascript
+RUN npm rebuild
 
 # JavaScript/TypeScript unit-tests
 RUN npm test
