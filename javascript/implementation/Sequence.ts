@@ -55,7 +55,7 @@ export class Sequence extends Container {
             const beforeTs = <number>before.effectiveKey;
             if (nowTs - beforeTs < 2)
                 throw new Error("no space between entries");
-            const intended = beforeTs + Math.floor(1 + Math.random() * (nowTs - beforeTs));
+            const intended = beforeTs + Math.floor((nowTs - beforeTs) / 2);
             ensure(intended > beforeTs && intended < nowTs, "can't find place to put entry");
             return intended;
         }

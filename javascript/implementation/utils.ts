@@ -24,7 +24,7 @@ export function generateTimestamp(): number {
     // TODO: there's probably a better way ...
     let current = Date.now() * 1000;
     if (lastTime >= current) {
-        current = lastTime + 10;
+        current = lastTime + 20;
     }
     lastTime = current;
     return current;
