@@ -452,10 +452,8 @@ def encode_value(
         return value_builder
     if isinstance(value, int):
         if value > 2_147_483_647 or value < -2_147_483_648:
-            print(value, "is a big int?")
             value_builder.bigint = value
         else:
-            print(value, "is an integer")
             value_builder.integer = value
         return value_builder
     if value is None:

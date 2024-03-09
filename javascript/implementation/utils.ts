@@ -135,12 +135,9 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
         return valueBuilder.getDoubled();
     }
     if (valueBuilder.hasInteger()) {
-        console.log(valueBuilder.getInteger(), "is an integer");
         return valueBuilder.getInteger();
     }
     if (valueBuilder.hasBigint()) {
-        console.log(valueBuilder.getBigint(), "is a big int");
-
         return valueBuilder.getBigint();
     }
     if (valueBuilder.hasSpecial()) {
