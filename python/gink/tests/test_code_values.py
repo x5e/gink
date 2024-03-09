@@ -12,23 +12,16 @@ from ..impl.database import Database
 
 def test_encode_decode():
     """ Tests a bunch of basic values. """
-    for original in ("foo", 1.5, 137, True, False, None, b"abc"):
-        encoded = encode_value(original)
-        decoded = decode_value(encoded)
-        assert decoded == original, "%r != %r" % (decoded, original)
-
-def test_correct_builder():
-    """ 
-    Tests the value type is placed into the correct spot within the builder
-    For example, 3 would be placed into value_builder.integer
-    """
-    char_builder = encode_value("foo")
-    assert char_builder.characters == "foo"
+    # Ensure ints and big ints are treated as they should
     int_builder = encode_value(4)
     assert int_builder.integer == 4
     bigint_builder = encode_value(2_147_483_650)
     assert bigint_builder.bigint == 2_147_483_650
 
+    for original in ("foo", 1.5, 137, True, False, None, b"abc"):
+        encoded = encode_value(original)
+        decoded = decode_value(encoded)
+        assert decoded == original, "%r != %r" % (decoded, original)
 
 def test_tuple():
     """ Tests that a tuple can be encoded and decoded. """

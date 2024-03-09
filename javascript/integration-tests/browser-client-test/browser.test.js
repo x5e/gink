@@ -9,7 +9,8 @@ it('connect to server and display commits', async () => {
     let page = await browser.newPage();
 
     const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: "8082", GINK_STATIC_PATH: ".", ...process.env } });
+        { env: { GINK_PORT: "8082", GINK_STATIC_PATH: ".", ...process.env } },
+        false);
     await sleep(1000);
     await server.expect("ready");
 

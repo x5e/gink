@@ -8,7 +8,8 @@ it('connect to server and display dashboard', async () => {
     let page = await browser.newPage();
 
     const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: "8083", ...process.env } });
+        { env: { GINK_PORT: "8083", ...process.env } },
+        false);
     await sleep(1000);
     await server.expect("ready");
 
