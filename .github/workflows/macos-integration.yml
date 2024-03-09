@@ -16,8 +16,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Setup upterm session
-      uses: lhotari/action-upterm@v1
     - uses: browser-actions/setup-chrome@v1
     - name: Install protobuf-compiler
       run: echo $PWD && brew install protobuf && npm install -g protoc-gen-js
@@ -31,6 +29,10 @@ jobs:
       run: cd ../python && nose2
     - name: Run JS unit tests
       run: npm run test
+
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
+
     - name: Run JS node-client test
       run: ./integration-tests/node-client-test.js
     - name: Run JS authentication test
