@@ -5,10 +5,10 @@ package gink;
 
 message Value {
     oneof value {
-        sint64 bigint = 1;
+        sint32 integer = 1;
         bytes octets = 2;
         string characters = 3;
-        sint32 integer = 4;
+        sint64 bigint = 4;
         Timestamp timestamp = 5;
         Date date = 6;
         Time time = 7;

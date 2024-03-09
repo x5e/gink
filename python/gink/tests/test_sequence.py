@@ -100,28 +100,28 @@ def test_expiry():
             database = Database(store=store)
             for seq in [Sequence.get_global_instance(database)]:
                 start = database.get_now()
-                seq.append("first", expiry=0.01)
+                seq.append("first", expiry=0.1)
                 assert list(seq) == ["first"], list(seq)
-                seq.insert(0, "second", expiry=0.02)
+                seq.insert(0, "second", expiry=0.3)
                 mark = database.get_now()
                 seq_as_list = list(seq)
                 if seq_as_list != ["second", "first"]:
                     elapsed = str(timedelta(microseconds=mark - start))
                     raise AssertionError(f"{elapsed} unexpected: {seq_as_list} in {store}")
                 seq.extend(["three", "four"])
-                time.sleep(.011)
+                time.sleep(.11)
                 expect_two_three_four = list(seq)
                 if expect_two_three_four != ["second", "three", "four"]:
                     assertion_time = database.get_now()
                     raise AssertionError(str(expect_two_three_four) + " " + str(assertion_time))
                 found = list(seq.values(as_of=mark))
                 assert found == ["second", "first"], found
-                seq.remove("three", dest=0.01)
+                seq.remove("three", dest=0.1)
                 after_hiding_three = list(seq)
                 if after_hiding_three != ["second", "four"]:
                     assertion_time = database.get_now()
                     raise AssertionError(str(after_hiding_three) + " " + str(assertion_time))
-                time.sleep(.011)
+                time.sleep(.3)
                 assert list(seq) == ["four", "three"], list(seq)
 
 
