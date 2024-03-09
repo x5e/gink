@@ -5,19 +5,11 @@
     public API and can change at any time without a corresponding increase in the major
     revision number.
 """
-
 from __future__ import annotations
 from typing import Optional, Union, NamedTuple, List, Any, Tuple, Container
 from struct import Struct
 
-from .builders import (
-    EntryBuilder,
-    ChangeBuilder,
-    ValueBuilder,
-    KeyBuilder,
-    Message,
-    Behavior,
-)
+from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion, Inclusion
 from .muid import Muid
 from .bundle_info import BundleInfo
@@ -28,13 +20,13 @@ DIRECTORY: int = Behavior.DIRECTORY  # type: ignore
 PROPERTY: int = Behavior.PROPERTY  # type: ignore
 BOX: int = Behavior.BOX  # type: ignore
 VERTEX: int = Behavior.VERTEX  # type: ignore
-ROLE: int = Behavior.ROLE  # type: ignore
-VERB: int = Behavior.VERB  # type: ignore
-KEY_SET: int = Behavior.KEY_SET  # type: ignore
-PAIR_SET: int = Behavior.PAIR_SET  # type: ignore
-PAIR_MAP: int = Behavior.PAIR_MAP  # type: ignore
+ROLE: int = Behavior.ROLE # type: ignore
+VERB: int = Behavior.VERB # type: ignore
+KEY_SET: int = Behavior.KEY_SET # type: ignore
+PAIR_SET: int = Behavior.PAIR_SET # type: ignore
+PAIR_MAP: int = Behavior.PAIR_MAP # type: ignore
 FLOAT_INF = float("inf")
-INT_INF = 0xFFFFFFFFFFFFFFFF
+INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
 KEY_MAX: int = 2**53 - 1
 deletion = Deletion()
@@ -53,7 +45,7 @@ def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object()):
 
 
 def serialize(thing) -> bytes:
-    """Converts a protobuf builder or a timestamp into binary data."""
+    """ Converts a protobuf builder or a timestamp into binary data. """
     if isinstance(thing, Message):
         return thing.SerializeToString()
     if thing is None or isinstance(thing, (int, float)):
@@ -62,14 +54,13 @@ def serialize(thing) -> bytes:
 
 
 class LocationKey(NamedTuple):
-    """Key used in the locations table to track the current location of entries."""
-
+    """ Key used in the locations table to track the current location of entries. """
     entry_muid: Muid
     placement: Muid
 
     @staticmethod
     def from_bytes(data: bytes):
-        """inverse of __bytes__"""
+        """ inverse of __bytes__ """
         return LocationKey(Muid.from_bytes(data[0:16]), Muid.from_bytes(data[16:32]))
 
     def __bytes__(self):
@@ -77,28 +68,25 @@ class LocationKey(NamedTuple):
 
 
 class RemovalKey(NamedTuple):
-    """Key used in the removals table to track soft-deletes of entries."""
-
+    """ Key used in the removals table to track soft-deletes of entries. """
     container: Muid
     removing: Muid  # the entry or movement that placed the entry to be (re)moved
     movement: Muid  # the muid of the encoded movement
 
     @staticmethod
     def from_bytes(data: bytes):
-        """inverse of __bytes__"""
+        """ inverse of __bytes__ """
         return RemovalKey(
             Muid.from_bytes(data[0:16]),
             Muid.from_bytes(data[24:40]),
-            Muid.from_bytes(data[40:]),
-        )
+            Muid.from_bytes(data[40:]))
 
     def __bytes__(self) -> bytes:
         return bytes(self.container) + bytes(self.removing) + bytes(self.movement)
 
 
 class QueueMiddleKey(NamedTuple):
-    """Used to order non-keyed entries by timestamp and modification change."""
-
+    """ Used to order non-keyed entries by timestamp and modification change. """
     effective_time: MuTimestamp
 
     def __bytes__(self):
@@ -106,7 +94,7 @@ class QueueMiddleKey(NamedTuple):
 
     @staticmethod
     def from_bytes(data: bytes):
-        """inverse of __bytes__"""
+        """ inverse of __bytes__ """
         effective_time = decode_muts(data[0:8])
         assert effective_time is not None
         if len(data) == 8:
@@ -116,8 +104,9 @@ class QueueMiddleKey(NamedTuple):
 
 
 class Placement(NamedTuple):
-    """just a class to serialize / deserialize keys used to store entries"""
+    """ just a class to serialize / deserialize keys used to store entries
 
+    """
     container: Muid
     middle: Union[UserKey, QueueMiddleKey, Muid, None, Tuple[Muid, Muid]]
     placer: Muid
@@ -127,7 +116,7 @@ class Placement(NamedTuple):
         return self.placer
 
     def get_queue_position(self) -> MuTimestamp:
-        """Pulls out the effective timestamp (ordering position) from the middle_key."""
+        """ Pulls out the effective timestamp (ordering position) from the middle_key. """
         assert isinstance(self.middle, QueueMiddleKey)
         return self.middle.effective_time
 
@@ -135,9 +124,10 @@ class Placement(NamedTuple):
         assert not isinstance(self.middle, QueueMiddleKey)
         return self.middle
 
+
     @staticmethod
     def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):
-        """Create an EntryStorageKey from an Entry itself, plus address information."""
+        """ Create an EntryStorageKey from an Entry itself, plus address information. """
         container = Muid.create(builder=getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(context=new_info, offset=offset)
         behavior = getattr(builder, "behavior")
@@ -161,8 +151,9 @@ class Placement(NamedTuple):
         return Placement(container, middle_key, entry_muid, expiry)
 
     @staticmethod
-    def from_bytes(data: bytes, using: Union[int, bytes, EntryBuilder] = DIRECTORY):
-        """creates an entry key from its binary format, using either the entry(bytes) or behavior"""
+    def from_bytes(data: bytes, using: Union[int, bytes, EntryBuilder]=DIRECTORY):
+        """ creates an entry key from its binary format, using either the entry(bytes) or behavior
+        """
         # pylint: disable=maybe-no-member
         if isinstance(using, bytes):
             using = EntryBuilder.FromString(using)  # type: ignore
@@ -183,10 +174,7 @@ class Placement(NamedTuple):
         elif using in (PROPERTY, ROLE):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using in (PAIR_SET, PAIR_MAP):
-            middle_key = (
-                Muid.from_bytes(middle_key_bytes[:16]),
-                Muid.from_bytes(middle_key_bytes[16:]),
-            )
+            middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
         elif using in (BOX, VERTEX, VERB):
             middle_key = None
         else:
@@ -195,21 +183,11 @@ class Placement(NamedTuple):
             container=Muid.from_bytes(container_bytes),
             middle=middle_key,
             placer=entry_muid,
-            expiry=decode_muts(expiry_bytes),
-        )
+            expiry=decode_muts(expiry_bytes))
 
     def replace_time(self, timestamp: int):
-        """create a entry key that can be used for seeking before the given time"""
-        return Placement(
-            self.container,
-            self.middle,
-            Muid(
-                timestamp,
-                0,
-                0,
-            ),
-            None,
-        )
+        """ create a entry key that can be used for seeking before the given time """
+        return Placement(self.container, self.middle, Muid(timestamp, 0, 0, ), None)
 
     def __bytes__(self) -> bytes:
         parts: List[Any] = [self.container]
@@ -219,15 +197,13 @@ class Placement(NamedTuple):
             parts.append(encode_key(self.middle))
         elif isinstance(self.middle, tuple):
             assert len(self.middle) == 2
-            if not isinstance(self.middle[0], Muid) and not isinstance(self.middle[1], Muid):  # type: ignore
+            if not isinstance(self.middle[0], Muid) and not isinstance(self.middle[1], Muid): # type: ignore
                 # If self.middle is a container (a vertex)/not a muid
                 assert not isinstance(self.middle[0], int)
                 parts.append(self.middle[0]._muid)
                 parts.append(self.middle[1]._muid)
             else:
-                assert isinstance(self.middle[0], Muid) and isinstance(
-                    self.middle[1], Muid
-                )
+                assert isinstance(self.middle[0], Muid) and isinstance(self.middle[1], Muid)
                 parts.append(self.middle[0])
                 parts.append(self.middle[1])
         parts.append(self.placer)
@@ -235,12 +211,12 @@ class Placement(NamedTuple):
         return b"".join(map(serialize, parts))
 
     def get_placed_time(self) -> MuTimestamp:
-        """Gets the time that a specific entry key was inserted into the database.
+        """ Gets the time that a specific entry key was inserted into the database.
 
-        This is a little weird because queue entries are sorted by time by default,
-        but that time can overridden by explicity encoding a position.  But even
-        though we know now where we want the entry to be, we still need to know
-        when it was placed there in order to let users ask what the order previously was.
+            This is a little weird because queue entries are sorted by time by default,
+            but that time can overridden by explicity encoding a position.  But even
+            though we know now where we want the entry to be, we still need to know
+            when it was placed there in order to let users ask what the order previously was.
         """
         return self.get_positioner().timestamp
 
@@ -252,19 +228,16 @@ class Placement(NamedTuple):
 
 
 class PlacementBuilderPair(NamedTuple):
-    """Parsed entry data."""
-
+    """ Parsed entry data. """
     placement: Placement
     builder: EntryBuilder
 
 
-def create_deleting_entry(
-    muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid, Muid]], behavior: int
-) -> EntryBuilder:
-    """creates an entry that will delete the given key from the container
+def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid, Muid]], behavior: int) -> EntryBuilder:
+    """ creates an entry that will delete the given key from the container
 
-    I'm allowing a null key in the argument then barfing if it's null
-    inside in part because it results in an easier to use API.
+        I'm allowing a null key in the argument then barfing if it's null
+        inside in part because it results in an easier to use API.
     """
     # pylint: disable=maybe-no-member
     entry_builder = EntryBuilder()
@@ -285,19 +258,15 @@ def create_deleting_entry(
         key[0].put_into(entry_builder.pair.left)
         key[1].put_into(entry_builder.pair.rite)
     else:
-        raise Exception(
-            f"don't know how to creating a deleting entry for behavior {behavior}"
-        )
+        raise Exception(f"don't know how to creating a deleting entry for behavior {behavior}")
     return entry_builder
 
 
-def decode_entry_occupant(
-    entry_muid: Muid, builder: EntryBuilder
-) -> Union[UserValue, Muid, Deletion, Inclusion]:
-    """Determines what a container "contains" in a given entry.
+def decode_entry_occupant(entry_muid: Muid, builder: EntryBuilder) -> Union[UserValue, Muid, Deletion, Inclusion]:
+    """ Determines what a container "contains" in a given entry.
 
-    The full entry storage pair is required because if it points to something that pointer
-    might be relative to the entry address.
+        The full entry storage pair is required because if it points to something that pointer
+        might be relative to the entry address.
     """
     if builder.deletion:  # type: ignore
         return deletion
@@ -311,10 +280,10 @@ def decode_entry_occupant(
 
 
 def entries_equiv(pair1: PlacementBuilderPair, pair2: PlacementBuilderPair) -> bool:
-    """Checks the contained value/pointee/whatever to see if the entries are equiv.
+    """ Checks the contained value/pointee/whatever to see if the entries are equiv.
 
-    Used to see if the effective value in a container is the same even if it
-    has a new entry.
+        Used to see if the effective value in a container is the same even if it
+        has a new entry.
     """
     assert pair1.placement != pair2.placement, "comparing an entry to itself"
     assert pair1.placement.middle == pair2.placement.middle
@@ -335,10 +304,9 @@ def entries_equiv(pair1: PlacementBuilderPair, pair2: PlacementBuilderPair) -> b
 
 
 def decode_value(value_builder: ValueBuilder) -> UserValue:
-    """decodes a protobuf value into a python value."""
-    assert isinstance(
-        value_builder, ValueBuilder
-    ), f"value_builder is type {type(value_builder)}"
+    """ decodes a protobuf value into a python value.
+    """
+    assert isinstance(value_builder, ValueBuilder), f"value_builder is type {type(value_builder)}"
     # pylint: disable=too-many-return-statements
     # pylint: disable=maybe-no-member
     if value_builder.HasField("special"):  # type: ignore
@@ -355,24 +323,25 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
     if value_builder.HasField("doubled"):  # type: ignore
         return value_builder.doubled  # type: ignore
     if value_builder.HasField("integer"):
-        return value_builder.integer  # type: ignore
+        return value_builder.integer # type: ignore
     if value_builder.HasField("bigint"):
-        return value_builder.bigint  # type: ignore
+        return value_builder.bigint # type: ignore
     if value_builder.HasField("tuple"):  # type: ignore
         return tuple([decode_value(x) for x in value_builder.tuple.values])  # type: ignore
     if value_builder.HasField("document"):  # type: ignore # pylint: disable=maybe-no-member
         result = {}
         for i, key in enumerate(value_builder.document.keys):  # type: ignore # pylint: disable=maybe-no-member
-            value: ValueBuilder = value_builder.document.values[i]  # type: ignore # pylint: disable=maybe-no-member
+            value: ValueBuilder = value_builder.document.values[i] # type: ignore # pylint: disable=maybe-no-member
             result[decode_key(key)] = decode_value(value)
         return result
     raise ValueError(
-        "don't know how to decode: %r,%s" % (value_builder, type(value_builder))
-    )  # pylint: disable=consider-using-f-string
+        "don't know how to decode: %r,%s" % (
+            value_builder,
+            type(value_builder)))  # pylint: disable=consider-using-f-string
 
 
 def encode_muts(number: Union[int, float, None], _q_struct=Struct(">q")) -> bytes:
-    """packs a microsecond timestamp into a big-endian integer, with None=>0 and Inf=>-1"""
+    """ packs a microsecond timestamp into a big-endian integer, with None=>0 and Inf=>-1 """
     if not number:
         return ZERO_64
     if number == INT_INF or number == FLOAT_INF:
@@ -384,16 +353,17 @@ def encode_muts(number: Union[int, float, None], _q_struct=Struct(">q")) -> byte
 
 
 def decode_muts(data: bytes, _q_struct=Struct(">q")) -> Optional[MuTimestamp]:
-    """unpacks 8 bytes of data into a MuTimestamp by assuming big-endian encoding
+    """ unpacks 8 bytes of data into a MuTimestamp by assuming big-endian encoding
 
-    Treats 0 as "None" and -1 as "integer infinity" (i.e. highest unsigned 64 bit number)
+        Treats 0 as "None" and -1 as "integer infinity" (i.e. highest unsigned 64 bit number)
     """
     result = _q_struct.unpack(data)[0]
     return INT_INF if result == -1 else (result or None)
 
 
 def encode_key(key: UserKey, builder: Optional[KeyBuilder] = None) -> KeyBuilder:
-    """Encodes a valid key (int or str or bytes) into a protobuf Value."""
+    """ Encodes a valid key (int or str or bytes) into a protobuf Value.
+    """
     if builder is None:
         builder = KeyBuilder()
     if isinstance(key, str):
@@ -410,7 +380,7 @@ def encode_key(key: UserKey, builder: Optional[KeyBuilder] = None) -> KeyBuilder
 
 
 def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[UserKey]:
-    """extracts the key from a proto entry"""
+    """ extracts the key from a proto entry """
     if isinstance(from_what, KeyBuilder):
         key_builder = from_what
     elif isinstance(from_what, EntryBuilder):
@@ -430,10 +400,9 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Us
     return None
 
 
-def encode_value(
-    value: UserValue, value_builder: Optional[ValueBuilder] = None
-) -> ValueBuilder:
-    """encodes a python value (number, string, etc.) into a protobuf builder"""
+def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None) -> ValueBuilder:
+    """ encodes a python value (number, string, etc.) into a protobuf builder
+    """
     value_builder = value_builder or ValueBuilder()
     if isinstance(value, bytes):
         value_builder.octets = value  # type: ignore # pylint: disable=maybe-no-member
@@ -451,7 +420,7 @@ def encode_value(
         value_builder.doubled = value  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if isinstance(value, int):
-        if value > 2_147_483_647 or value < -2_147_483_648:
+        if value >  2_147_483_647 or value < -2_147_483_648:
             value_builder.bigint = value
         else:
             value_builder.integer = value
@@ -474,13 +443,11 @@ def encode_value(
             value_builder.document.keys.append(encode_key(key))  # type: ignore # pylint: disable=maybe-no-member
             value_builder.document.values.append(encode_value(val))  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
-    raise ValueError(
-        "don't know how to encode: %r" % value
-    )  # pylint: disable=consider-using-f-string
+    raise ValueError("don't know how to encode: %r" % value)  # pylint: disable=consider-using-f-string
 
 
 def wrap_change(builder: EntryBuilder) -> ChangeBuilder:
-    """A simple utility function to create a change and then copy the provided entry into it."""
+    """ A simple utility function to create a change and then copy the provided entry into it. """
     change_builder = ChangeBuilder()
     change_builder.entry.CopyFrom(builder)  # type: ignore # pylint: disable=maybe-no-member
     return change_builder
