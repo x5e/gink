@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
     - uses: browser-actions/setup-chrome@v1
     - name: Install protobuf-compiler
       run: echo $PWD && brew install protobuf && npm install -g protoc-gen-js
