@@ -6,11 +6,11 @@ const { sleep } = require("./browser_test_utilities.js");
     console.log("starting");
     const python = new Expector(
         "python3",
-        ["-u", "-m", "gink", "-l", "*:8088"]);
+        ["-u", "-m", "gink", "-l", "*:8085"]);
     await python.expect("listen");
-    await sleep(100);
+    await sleep(500);
 
-    const client = new Expector("./tsc.out/implementation/main.js", ["ws://localhost:8088"], { env: { ...process.env } });
+    const client = new Expector("node", ["./tsc.out/implementation/main.js", "ws://localhost:8085"], { env: { ...process.env } });
     await python.expect("connection established!");
     await client.expect("connected!");
 
