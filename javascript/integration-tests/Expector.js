@@ -10,9 +10,10 @@ module.exports = class Expector {
     * Takes a shellCommand as a string, starts it and then allows the user to send
     * data and wait for things to happen.
     */
-    constructor(program, args, options) {
+    constructor(program, args, options, verbose = true) {
         this.captured = "";
         this.expecting = null;
+        this.verbose = verbose;
         this.proc = spawn(program, args, options);
         const appender = this.notify.bind(this);
         this.proc.stdout.on('data', appender);
@@ -35,7 +36,8 @@ module.exports = class Expector {
     notify(fragment) {
         if (fragment) {
             this.captured += fragment;
-            console.log(fragment.toString());
+            if (this.verbose)
+                console.log(fragment.toString());
         }
         if (!this.expecting) return;
         const match = this.captured.match(this.expecting);
