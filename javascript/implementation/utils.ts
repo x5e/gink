@@ -137,6 +137,9 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
     if (valueBuilder.hasInteger()) {
         return valueBuilder.getInteger();
     }
+    if (valueBuilder.hasBigint()) {
+        return valueBuilder.getBigint();
+    }
     if (valueBuilder.hasSpecial()) {
         const special = valueBuilder.getSpecial();
         if (special == Special.NULL) return null;

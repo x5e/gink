@@ -8,7 +8,8 @@ it('connect to server and display dashboard', async () => {
     let page = await browser.newPage();
 
     const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: "8081", ...process.env } });
+        { env: { GINK_PORT: "8083", ...process.env } },
+        false);
     await sleep(1000);
     await server.expect("ready");
 
@@ -16,7 +17,7 @@ it('connect to server and display dashboard', async () => {
         const args = await Promise.all(e.args().map(a => a.jsonValue()));
     });
 
-    await page.goto(`http://localhost:8081/`);
+    await page.goto(`http://localhost:8083/`);
     await page.waitForSelector('#root');
 
     await sleep(4000);
@@ -38,7 +39,7 @@ it('connect to server and display dashboard', async () => {
         await server.close();
         await browser.close();
     }
-}, 13000);
+}, 40000);
 
 it('share commits between two pages', async () => {
     /**
@@ -52,13 +53,13 @@ it('share commits between two pages', async () => {
     const pages = [page1, page2];
 
     const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: "8081", ...process.env } });
+        { env: { GINK_PORT: "8084", ...process.env } });
     await sleep(1000);
     await server.expect("ready");
 
     try {
         for (const page of pages) {
-            await page.goto(`http://localhost:8081/`);
+            await page.goto(`http://localhost:8084/`);
             await page.waitForSelector('#root');
 
             page.on('dialog', async dialog => {

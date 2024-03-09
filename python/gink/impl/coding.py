@@ -420,7 +420,7 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
         value_builder.doubled = value  # type: ignore # pylint: disable=maybe-no-member
         return value_builder
     if isinstance(value, int):
-        if value >  2_147_483_647 or value < 2_147_483_648:
+        if value >  2_147_483_647 or value < -2_147_483_648:
             value_builder.bigint = value
         else:
             value_builder.integer = value

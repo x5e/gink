@@ -35,7 +35,7 @@
   "scripts": {
     "serve": "GINK_PORT=8080 ./tsc.out/implementation/main.js",
     "build": "tsc",
-    "test": "jest -- unit-tests",
+    "test": "jest --testPathPattern=javascript/unit-tests",
     "browser-unit": "karma start",
     "browser-integration": "jest --detectOpenHandles browser.test.js dashboard.test.js",
     "browser-performance": "node performance-tests/browser-performance-test.js"

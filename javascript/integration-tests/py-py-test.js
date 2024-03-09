@@ -6,14 +6,14 @@ const { sleep } = require("./browser_test_utilities.js");
     console.log("starting");
     const server = new Expector(
         "python3",
-        ["-u", "-m", "gink", "-l", "*:8086"],
-        { env: { PYTHONPATH: "./python" } });
+        ["-u", "-m", "gink", "-l", "*:8086"]
+    );
     await server.expect("listen");
 
     const client = new Expector(
         "python3",
-        ["-u", "-m", "gink", "-c", "ws://localhost:8086"],
-        { env: { PYTHONPATH: "./python" } });
+        ["-u", "-m", "gink", "-c", "ws://localhost:8086"]
+    );
     await client.expect("connect");
     await server.expect("accepted");
 

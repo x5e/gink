@@ -21,7 +21,7 @@ test-javascript:
 test: test-python test-javascript
 
 install-debian-packages: running-as-root
-	apt-get install -y `cat packages.txt | tr '\n' ' '`
+	apt-get update && apt-get install -y `cat packages.txt | tr '\n' ' '`
 
 install-protoc-gen-js: running-as-root
 	npm install -g protoc-gen-js # https://stackoverflow.com/questions/72572040

@@ -9,8 +9,7 @@ const { sleep } = require("./browser_test_utilities.js");
 
     const client = new Expector(
         "python3",
-        ["-u", "-m", "gink", "-c", "ws://localhost:8087"],
-        { env: { PYTHONPATH: "./python" } });
+        ["-u", "-m", "gink", "-c", "ws://localhost:8087"]);
     await client.expect("connect");
     await server.expect("accepted");
 

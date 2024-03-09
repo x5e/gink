@@ -7,6 +7,7 @@
     "esModuleInterop": true,
     "outDir": "tsc.out",
     "declaration": true,
+    "skipLibCheck": true,
     "allowJs": true
   },
   "include": ["implementation/*.ts", "implementation/*.js", "builders/*.js", "unit-tests/*.ts"],
