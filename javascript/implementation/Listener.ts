@@ -47,8 +47,6 @@ export class Listener {
                 xml: 'application/xml',
             };
             const extension = extname(filePath).slice(1);
-            console.log(extension);
-
             response.writeHead(statusCode, { 'Content-type': types[extension] });
             readStream.pipe(response);
         };
