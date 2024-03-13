@@ -6,7 +6,7 @@ import {
 } from 'websocket';
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { SimpleServer } from './SimpleServer';
-import { join } from 'path';
+import { join, extname } from 'path';
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -35,14 +35,21 @@ export class Listener {
 
         const serveFile = (filePath: FilePath, statusCode: number, response: ServerResponse) => {
             const readStream = createReadStream(join(staticContentRoot, filePath));
-            let contentType;
-            if (filePath.endsWith(".js"))
-                contentType = "text/javascript";
-            else if (filePath.endsWith(".html"))
-                contentType = "text/html";
-            else if (filePath.endsWith(".css"))
-                contentType = "text/css";
-            response.writeHead(statusCode, { 'Content-type': contentType });
+            const types = {
+                html: 'text/html',
+                css: 'text/css',
+                js: 'application/javascript',
+                png: 'image/png',
+                jpg: 'image/jpeg',
+                jpeg: 'image/jpeg',
+                gif: 'image/gif',
+                json: 'application/json',
+                xml: 'application/xml',
+            };
+            const extension = extname(filePath).slice(1);
+            console.log(extension);
+
+            response.writeHead(statusCode, { 'Content-type': types[extension] });
             readStream.pipe(response);
         };
 
