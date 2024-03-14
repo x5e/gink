@@ -21,7 +21,7 @@ it('connect to server and display commits', async () => {
         const args = await Promise.all(e.args().map(a => a.jsonValue()));
     });
 
-    await page.goto('http://127.0.0.1:8082/integration-tests/browser-client-test');
+    await page.goto('http://127.0.0.1:8082/integration-tests/browser-client-test/index.html');
     await page.waitForSelector('#messages');
 
     await sleep(4000);

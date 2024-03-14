@@ -1,13 +1,12 @@
 import { createServer as createHttpServer, Server as HttpServer, ServerResponse, IncomingMessage } from 'http';
 import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
-import { readFileSync } from 'fs';
-import { Server as StaticServer } from 'node-static';
+import { readFileSync, createReadStream, existsSync } from 'fs';
 import {
     server as WebSocketServer, request as WebSocketRequest,
 } from 'websocket';
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { SimpleServer } from './SimpleServer';
-import { join } from 'path';
+import { join, extname } from 'path';
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -26,22 +25,40 @@ export class Listener {
         sslKeyFilePath?: FilePath,
         sslCertFilePath?: FilePath;
     }) {
+        const staticContentRoot = args.staticContentRoot ?? join(__dirname, "../../content_root");
         const thisListener = this;
-        const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot) : new StaticServer(join(__dirname, "../../content_root"));
         const port = args.port || "8080";
         let callWhenReady: CallBack;
         this.ready = new Promise((resolve) => {
             callWhenReady = resolve;
         });
 
+        const serveFile = (filePath: FilePath, statusCode: number, response: ServerResponse) => {
+            const readStream = createReadStream(join(staticContentRoot, filePath));
+            const types = {
+                html: 'text/html',
+                css: 'text/css',
+                js: 'application/javascript',
+                png: 'image/png',
+                jpg: 'image/jpeg',
+                jpeg: 'image/jpeg',
+                gif: 'image/gif',
+                json: 'application/json',
+                xml: 'application/xml',
+            };
+            const extension = extname(filePath).slice(1);
+            response.writeHead(statusCode, { 'Content-type': types[extension] });
+            readStream.pipe(response);
+        };
+
         const requestListener = (request: IncomingMessage, response: ServerResponse) => {
             const url = new URL(request.url, `http://${request.headers.host}`);
             request.addListener('end', async function () {
                 if (url.pathname == "/") {
-                    staticServer.serveFile('/static/dashboard/dashboard.html', 200, {}, request, response);
+                    serveFile('/static/dashboard/dashboard.html', 200, response);
                 }
                 else if (url.pathname == "/connections") {
-                    staticServer.serveFile("/static/list_connections.html", 200, {}, request, response);
+                    serveFile("/static/list_connections.html", 200, response);
                 }
                 else if (url.pathname == "/list_connections") {
                     let connections = Object.fromEntries(args.instance.connections);
@@ -58,7 +75,12 @@ export class Listener {
                     }
                 }
                 else {
-                    staticServer.serve(request, response);
+                    if (existsSync(join(staticContentRoot, url.pathname))) {
+                        serveFile(url.pathname, 200, response);
+                    }
+                    else {
+                        response.end(JSON.stringify({ "status": 401, "message": "File not found" }));
+                    }
                 }
             }).resume();
         };
