@@ -21,7 +21,7 @@ jobs:
     - name: Install protobuf-compiler
       run: brew install protobuf && npm install -g protoc-gen-js
     - name: debug
-      run: npm cache verify && npm cache clean -force
+      run: rm -rf ./node_modules
     # - name: Setup upterm session
     #   uses: lhotari/action-upterm@v1
     - name: Compile protos and install packages for both implementations.
