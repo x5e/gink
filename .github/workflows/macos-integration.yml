@@ -19,9 +19,7 @@ jobs:
     - uses: actions/checkout@v3
     - uses: browser-actions/setup-chrome@v1
     - name: Install protobuf-compiler
-      run: echo $PWD && brew install protobuf && npm install -g protoc-gen-js
-    - name: Install JavaScript dependencies
-      run: npm install
+      run: brew install protobuf && npm install -g protoc-gen-js
     - name: Compile protos and install packages for both implementations.
       run: cd .. && make
     - name: Update Python Version to install packages
