@@ -1,14 +1,12 @@
 import { createServer as createHttpServer, Server as HttpServer, ServerResponse, IncomingMessage } from 'http';
 import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
-import { readFileSync } from 'fs';
-import { Server as StaticServer } from 'node-static';
+import { readFileSync, createReadStream, existsSync } from 'fs';
 import {
     server as WebSocketServer, request as WebSocketRequest,
 } from 'websocket';
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { SimpleServer } from './SimpleServer';
-import { OAuth2Client } from 'google-auth-library';
-import { join } from 'path';
+import { join, extname } from 'path';
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -17,7 +15,6 @@ export class Listener {
     ready: Promise<any>;
     private websocketServer: WebSocketServer;
     readonly httpServer: HttpServer | HttpsServer;
-    private oAuth2Client: OAuth2Client;
 
     constructor(args: {
         requestHandler: (request: WebSocketRequest) => void,
@@ -26,68 +23,42 @@ export class Listener {
         port?: NumberStr,
         logger?: CallBack,
         sslKeyFilePath?: FilePath,
-        sslCertFilePath?: FilePath,
-        useOAuth?: boolean;
+        sslCertFilePath?: FilePath;
     }) {
+        const staticContentRoot = args.staticContentRoot ?? join(__dirname, "../../content_root");
         const thisListener = this;
-        const staticServer = args.staticContentRoot ? new StaticServer(args.staticContentRoot) : new StaticServer(join(__dirname, "../../content_root"));
         const port = args.port || "8080";
         let callWhenReady: CallBack;
         this.ready = new Promise((resolve) => {
             callWhenReady = resolve;
         });
 
-        if (args.useOAuth) {
-            // Set up Google OAuth client
-            const oAuthClientID = process.env["OAUTH_CLIENT_ID"];
-            const oAuthClientSecret = process.env["OAUTH_CLIENT_SECRET"];
-
-            // Don't need scopes until a request is made, but it's better to throw the error up front
-            if (!process.env["OAUTH_SCOPES"]) throw new Error("Need to provide OAuth scopes (separated by a ',') in env variable OAUTH_SCOPES");
-            if (!oAuthClientID) throw new Error("Provide Google Client ID in env OAUTH_CLIENT_ID to use OAuth");
-            if (!oAuthClientSecret) throw new Error("Provide Google Client Secret in env OAUTH_CLIENT_SECRET to use OAuth");
-
-            this.oAuth2Client = new OAuth2Client(
-                oAuthClientID,
-                oAuthClientSecret,
-                "http://localhost:8080/oauth2callback",
-            );
-        }
+        const serveFile = (filePath: FilePath, statusCode: number, response: ServerResponse) => {
+            const readStream = createReadStream(join(staticContentRoot, filePath));
+            const types = {
+                html: 'text/html',
+                css: 'text/css',
+                js: 'application/javascript',
+                png: 'image/png',
+                jpg: 'image/jpeg',
+                jpeg: 'image/jpeg',
+                gif: 'image/gif',
+                json: 'application/json',
+                xml: 'application/xml',
+            };
+            const extension = extname(filePath).slice(1);
+            response.writeHead(statusCode, { 'Content-type': types[extension] });
+            readStream.pipe(response);
+        };
 
         const requestListener = (request: IncomingMessage, response: ServerResponse) => {
             const url = new URL(request.url, `http://${request.headers.host}`);
             request.addListener('end', async function () {
-                if (args.useOAuth) {
-                    // This is where Google redirects to after the user gives permissions
-                    if (url.pathname == "/oauth2callback") {
-                        const code = url.searchParams.get("code");
-                        const { tokens } = await thisListener.oAuth2Client.getToken(code);
-                        thisListener.oAuth2Client.setCredentials(tokens);
-
-                        response.writeHead(302, {
-                            Location: "http://localhost:8080/"
-                        });
-                        response.end();
-                        return;
-                    }
-
-                    // no access token, need to authorize
-                    if (!thisListener.oAuth2Client.credentials.access_token) {
-                        const scopesStr: string = process.env["OAUTH_SCOPES"];
-                        const oAuthScopes = scopesStr.split(",");
-                        response.writeHead(302, {
-                            Location: thisListener.oAuth2Client.generateAuthUrl({ access_type: 'offline', scope: oAuthScopes })
-                        });
-                        response.end();
-                        return;
-                    }
-                }
-
                 if (url.pathname == "/") {
-                    staticServer.serveFile('/static/dashboard/dashboard.html', 200, {}, request, response);
+                    serveFile('/static/dashboard/dashboard.html', 200, response);
                 }
                 else if (url.pathname == "/connections") {
-                    staticServer.serveFile("/static/list_connections.html", 200, {}, request, response);
+                    serveFile("/static/list_connections.html", 200, response);
                 }
                 else if (url.pathname == "/list_connections") {
                     let connections = Object.fromEntries(args.instance.connections);
@@ -104,7 +75,12 @@ export class Listener {
                     }
                 }
                 else {
-                    staticServer.serve(request, response);
+                    if (existsSync(join(staticContentRoot, url.pathname))) {
+                        serveFile(url.pathname, 200, response);
+                    }
+                    else {
+                        response.end(JSON.stringify({ "status": 401, "message": "File not found" }));
+                    }
                 }
             }).resume();
         };
