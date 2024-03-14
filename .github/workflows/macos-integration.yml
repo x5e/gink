@@ -17,13 +17,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
     - uses: browser-actions/setup-chrome@v1
     - name: Install protobuf-compiler
       run: brew install protobuf && npm install -g protoc-gen-js
-    - name: debug
-      run: rm -rf ./node_modules
-    # - name: Setup upterm session
-    #   uses: lhotari/action-upterm@v1
     - name: Compile protos and install packages for both implementations.
       run: cd .. && make
     - name: Update Python Version to install packages
