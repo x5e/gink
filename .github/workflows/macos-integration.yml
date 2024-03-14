@@ -20,10 +20,10 @@ jobs:
     - uses: browser-actions/setup-chrome@v1
     - name: Install protobuf-compiler
       run: echo $PWD && brew install protobuf && npm install -g protoc-gen-js
-    # - name: Setup upterm session
-    #   uses: lhotari/action-upterm@v1
-    - name: Change npm settings so the runner will download npm packages
-      run: npm config rm proxy && npm config rm https-proxy && npm config set registry http://registry.npmjs.org/
+    - name: debug
+      run: echo $TEMP
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
     - name: Compile protos and install packages for both implementations.
       run: cd .. && make
     - name: Update Python Version to install packages
