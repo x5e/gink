@@ -17,8 +17,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Reinstall node?
-      run: brew reinstall node
+    - name: update npm
+      run: npm install -g npm@latest
     - name: Setup upterm session
       uses: lhotari/action-upterm@v1
     - uses: browser-actions/setup-chrome@v1
