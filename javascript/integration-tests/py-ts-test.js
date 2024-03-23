@@ -12,6 +12,7 @@ const { sleep } = require("./browser_test_utilities.js");
         ["-u", "-m", "gink", "-c", "ws://localhost:8087"]);
     await client.expect("connect");
     await server.expect("accepted");
+    await sleep(100);
 
     server.send("await root.set(3,4, 'test commit');\n");
     await server.expect("received commit", 1000);
