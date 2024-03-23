@@ -4,7 +4,7 @@ export * from "./index";
 export { LogBackedStore } from "./LogBackedStore";
 export { SimpleServer } from "./SimpleServer";
 export { RoutingServer } from "./RoutingServer";
-import { CommandLineInterface } from "./CommandLineInterace";
+import { CommandLineInterface } from "./CommandLineInterface";
 export { CommandLineInterface };
 
 // Run the CLI if run as a script.
