@@ -8,8 +8,8 @@ import { Behavior, ContainerBuilder } from "./builders";
 
 export class PairMap extends Container {
 
-    constructor(ginkInstance: Database, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, Behavior.PAIR_MAP);
+    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+        super(database, address, Behavior.PAIR_MAP);
         if (this.address.timestamp < 0) {
             ensure(address.offset == Behavior.PAIR_MAP);
         } else {
@@ -41,7 +41,7 @@ export class PairMap extends Container {
      * @returns a promise that resolves to the value or container associated with the key.
      */
     async get(key: [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Value | Container> {
-        const found = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
+        const found = await this.database.store.getEntryByKey(this.address, key, asOf);
         if (found && !found.deletion) return found.value;
     }
 
@@ -62,7 +62,7 @@ export class PairMap extends Container {
      * @returns a promise that resolves to a boolean - true if key is in the pair map
      */
     async has(key: [Muid | Container, Muid | Container], asOf?: AsOf): Promise<boolean> {
-        const found = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
+        const found = await this.database.store.getEntryByKey(this.address, key, asOf);
         return (found && !found.deletion);
     }
 
@@ -72,7 +72,7 @@ export class PairMap extends Container {
      * @returns a promise that resolves to the number of entries
      */
     async size(asOf?: AsOf): Promise<number> {
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
         return entries.size;
     }
 
@@ -83,7 +83,7 @@ export class PairMap extends Container {
      */
     async items(asOf?: AsOf): Promise<Map<Array<Muid>, Value>> {
         let toMap = new Map();
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
         for (const [key, entry] of entries) {
             if (!entry.deletion) {
                 if (typeof (entry.effectiveKey) == "string") {

@@ -4,7 +4,7 @@ import { Muid } from "./typedefs";
 
 export class Addressable {
     protected constructor(
-        readonly ginkInstance: Database,
+        readonly database: Database,
         readonly address: Muid) {
     }
 

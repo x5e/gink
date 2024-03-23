@@ -282,7 +282,7 @@ const members = role.getMembers();
 // iterating through the role members
 for await (const member of members) {
     const address = member.address;
-    const instance = member.ginkInstance;
+    const instance = member.database;
 
     const asJson = member.toJson();
 }

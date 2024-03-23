@@ -8,8 +8,8 @@ import { Behavior, ContainerBuilder } from "./builders";
 
 export class Role extends Container {
 
-    constructor(ginkInstance: Database, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, Behavior.ROLE);
+    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+        super(database, address, Behavior.ROLE);
         if (this.address.timestamp < 0) {
             ensure(address.offset == Behavior.ROLE);
         } else {
@@ -47,7 +47,7 @@ export class Role extends Container {
         if ("address" in key) {
             key = key.address;
         }
-        const entry = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
+        const entry = await this.database.store.getEntryByKey(this.address, key, asOf);
         if (entry && !entry.deletion) {
             return true;
         }
@@ -63,9 +63,9 @@ export class Role extends Container {
         const thisRole = this;
         let container;
         return (async function* () {
-            const entries = await thisRole.ginkInstance.store.getKeyedEntries(thisRole.address, asOf);
+            const entries = await thisRole.database.store.getKeyedEntries(thisRole.address, asOf);
             for (const [key, entry] of entries) {
-                container = await interpret(entry, thisRole.ginkInstance);
+                container = await interpret(entry, thisRole.database);
                 if ("behavior" in container) {
                     yield container;
                 }
@@ -83,9 +83,9 @@ export class Role extends Container {
         const thisList = this;
         let toArray: Array<Container> = [];
         let container;
-        const entries = await thisList.ginkInstance.store.getKeyedEntries(thisList.address, asOf);
+        const entries = await thisList.database.store.getKeyedEntries(thisList.address, asOf);
         for (const [key, entry] of entries) {
-            container = await interpret(entry, thisList.ginkInstance);
+            container = await interpret(entry, thisList.database);
             if ("behavior" in container) {
                 toArray.push(container);
             } else {

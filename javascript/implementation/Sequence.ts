@@ -12,8 +12,8 @@ import { Behavior, ChangeBuilder, MovementBuilder, ContainerBuilder } from "./bu
  */
 export class Sequence extends Container {
 
-    constructor(ginkInstance: Database, address?: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, Behavior.SEQUENCE);
+    constructor(database: Database, address?: Muid, containerBuilder?: ContainerBuilder) {
+        super(database, address, Behavior.SEQUENCE);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
             ensure(address.offset == Behavior.SEQUENCE, "magic tag not SEQUENCE");
@@ -37,7 +37,7 @@ export class Sequence extends Container {
         dest: number,
         purge?: boolean,
         bundlerOrComment?: Bundler | string) {
-        const store = this.ginkInstance.store;
+        const store = this.database.store;
         const muid = (typeof (muidOrPosition) == "object") ? muidOrPosition :
             muidTupleToMuid((await store.getOrderedEntries(this.address, muidOrPosition)).pop().entryId);
         ensure(muid.timestamp && muid.medallion && muid.offset);
@@ -79,17 +79,17 @@ export class Sequence extends Container {
         let muid: Muid;
         if (what && typeof (what) == "object") {
             muid = what;
-            const entry = await this.ginkInstance.store.getEntryById(muid);
+            const entry = await this.database.store.getEntryById(muid);
             if (!entry) return undefined;
             ensure(entry.entryId[0] == muid.timestamp && entry.entryId[2] == muid.offset);
-            returning = await interpret(entry, this.ginkInstance);
+            returning = await interpret(entry, this.database);
         } else {
             what = (typeof (what) == "number") ? what : -1;
             // Should probably change the implementation to not copy all intermediate entries into memory.
-            const entries = await this.ginkInstance.store.getOrderedEntries(this.address, what);
+            const entries = await this.database.store.getOrderedEntries(this.address, what);
             if (entries.length == 0) return undefined;
             const entry = entries[entries.length - 1];
-            returning = await interpret(entry, this.ginkInstance);
+            returning = await interpret(entry, this.database);
             muid = muidTupleToMuid(entry.entryId);
         }
         await this.movementHelper(muid, undefined, purge, bundlerOrComment);
@@ -116,7 +116,7 @@ export class Sequence extends Container {
         changeBuilder.setMovement(movementBuilder);
         bundler.addChange(changeBuilder);
         if (immediate) {
-            await this.ginkInstance.addBundler(bundler);
+            await this.database.addBundler(bundler);
         }
     }
 
@@ -129,7 +129,7 @@ export class Sequence extends Container {
 
     private async getEntryAt(position: number, asOf?: AsOf): Promise<Entry | undefined> {
         //TODO(https://github.com/google/gink/issues/68): fix crummy algo
-        const entries = await this.ginkInstance.store.getOrderedEntries(this.address, position, asOf);
+        const entries = await this.database.store.getOrderedEntries(this.address, position, asOf);
         if (entries.length == 0) return undefined;
         if (position >= 0 && position >= entries.length) return undefined;
         if (position < 0 && Math.abs(position) > entries.length) return undefined;
@@ -145,7 +145,7 @@ export class Sequence extends Container {
     async at(position: number, asOf?: AsOf): Promise<Container | Value | undefined> {
         if (typeof (position) == "number") {
             const entry = await this.getEntryAt(position, asOf);
-            return await interpret(entry, this.ginkInstance);
+            return await interpret(entry, this.database);
         }
         throw Error("unexpected");
     }
@@ -159,14 +159,14 @@ export class Sequence extends Container {
      */
     async toArray(through = Infinity, asOf?: AsOf): Promise<(Container | Value)[]> {
         const thisList = this;
-        const entries = await thisList.ginkInstance.store.getOrderedEntries(thisList.address, through, asOf);
+        const entries = await thisList.database.store.getOrderedEntries(thisList.address, through, asOf);
         return await Promise.all(entries.map(async function (entry: Entry): Promise<Container | Value> {
-            return await interpret(entry, thisList.ginkInstance);
+            return await interpret(entry, thisList.database);
         }));
     }
 
     async size(asOf?: AsOf): Promise<number> {
-        const entries = await this.ginkInstance.store.getOrderedEntries(this.address, Infinity, asOf);
+        const entries = await this.database.store.getOrderedEntries(this.address, Infinity, asOf);
         return entries.length;
     }
 
@@ -182,9 +182,9 @@ export class Sequence extends Container {
             // Note: I'm loading all entries memory despite using an async generator due to shitty IndexedDb
             // behavior of closing transactions when you await on something else.  Hopefully they'll fix that in
             // the future and I can improve this.  Alternative, it might make sense to hydrate everything in a single pass.
-            const entries = await thisList.ginkInstance.store.getOrderedEntries(thisList.address, through, asOf);
+            const entries = await thisList.database.store.getOrderedEntries(thisList.address, through, asOf);
             for (const entry of entries) {
-                const hydrated = await interpret(entry, thisList.ginkInstance);
+                const hydrated = await interpret(entry, thisList.database);
                 yield [muidTupleToMuid(entry.entryId), hydrated];
             }
         })();

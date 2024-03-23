@@ -49,7 +49,7 @@ it('contains, toArray, and getMembers work properly', async function () {
         ensure((await role1.includedAsArray())[0].behavior);
 
         for await (const member of role1.getMembers()) {
-            ensure(member.address && member.behavior && member.ginkInstance);
+            ensure(member.address && member.behavior && member.database);
         }
     }
 });

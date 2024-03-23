@@ -9,8 +9,8 @@ import { Vertex } from "./Vertex";
 
 export class Verb extends Container {
 
-    constructor(ginkInstance: Database, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, Behavior.VERB);
+    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+        super(database, address, Behavior.VERB);
         if (this.address.timestamp < 0) {
             ensure(address.offset == Behavior.VERB);
         } else if (containerBuilder) {
@@ -26,7 +26,7 @@ export class Verb extends Container {
 
         const key: [Muid | Container, Muid | Container] = [source, target];
         const muid = await this.addEntry(key, value, change);
-        return new Edge(this.ginkInstance, muid,
+        return new Edge(this.database, muid,
             { source, target, action: this.address, value, effective: muid.timestamp });
     }
 

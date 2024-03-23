@@ -6,9 +6,9 @@ export const result = 1;
 
 it('use methods', async () => {
     const indexedDbStore = new IndexedDbStore('IndexedDbStore.test.1');
-    const ginkInstance = new Database(indexedDbStore);
-    await ginkInstance.ready;
-    const dir = ginkInstance.getGlobalDirectory();
+    const database = new Database(indexedDbStore);
+    await database.ready;
+    const dir = database.getGlobalDirectory();
     await dir.set("foo", "bar");
     const beforeSecondSet = generateTimestamp();
     await dir.set("foo", "baz");
@@ -21,4 +21,3 @@ it('use methods', async () => {
     ensure(entriesAfterDrop.length == 1);
     ensure(!await dir.has("foo", beforeSecondSet));
 });
-
