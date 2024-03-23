@@ -45,10 +45,10 @@ To see examples for all data structures in the TypeScript implementation, check 
 
 Import and initialize database and ginkInstance:
 ```ts
-import { GinkInstance, IndexedDbStore, Directory } from "@x5e/gink";
+import { Database, IndexedDbStore, Directory } from "@x5e/gink";
 
 const store = new IndexedDbStore('examples');
-const instance = new GinkInstance(store);
+const instance = new Database(store);
 ```
 All following examples will assume you have a store and instance.
 

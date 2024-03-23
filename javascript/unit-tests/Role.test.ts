@@ -1,9 +1,9 @@
-import { GinkInstance, IndexedDbStore, MemoryStore } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore } from "../implementation";
 import { ensure, muidToString, muidTupleToMuid } from "../implementation/utils";
 
 it('include and exclude work as intended', async function () {
     for (const store of [new IndexedDbStore('Role.test1', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const role1 = await instance.createRole();
 
@@ -33,7 +33,7 @@ it('include and exclude work as intended', async function () {
 
 it('contains, toArray, and getMembers work properly', async function () {
     for (const store of [new IndexedDbStore('Role.test2', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const role1 = await instance.createRole();
 

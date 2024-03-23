@@ -1,4 +1,4 @@
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { Container } from "./Container";
 import { Muid, AsOf, Entry } from "./typedefs";
 import { Behavior, ContainerBuilder } from "./builders";
@@ -8,7 +8,7 @@ import { Edge } from "./Edge";
 
 export class Vertex extends Container {
 
-    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(ginkInstance: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, Behavior.VERTEX);
         if (this.address.timestamp < 0) {
             ensure(address.offset == Behavior.VERTEX);

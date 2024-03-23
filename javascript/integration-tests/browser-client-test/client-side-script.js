@@ -21,7 +21,7 @@ async function onCommit(changeSetInfo) {
 }
 
 (async () => {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore("browser-test", true), { software: "browser instance" });
+    const instance = new gink.Database(new gink.IndexedDbStore("browser-test", true), { software: "browser instance" });
     await instance.ready;
     instance.addListener(onCommit);
     await instance.addBundler(new gink.Bundler("Hello, Universe!"));

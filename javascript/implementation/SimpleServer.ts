@@ -2,7 +2,7 @@ import {
     request as WebSocketRequest,
     connection as WebSocketConnection, Message as WebSocketMessage
 } from 'websocket';
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { Peer } from './Peer';
 import { Buffer } from "buffer";
 import { Store, } from "./Store";
@@ -13,7 +13,7 @@ import { decodeToken } from './utils';
 /**
  * A server that connects all inbound websocket connections to a single database instance.
  */
-export class SimpleServer extends GinkInstance {
+export class SimpleServer extends Database {
 
     private listener: Listener;
     readonly authFunc: AuthFunction;
@@ -51,8 +51,8 @@ export class SimpleServer extends GinkInstance {
                 }
             }
 
-            if (request.requestedProtocols.includes(GinkInstance.PROTOCOL))
-                protocol = GinkInstance.PROTOCOL;
+            if (request.requestedProtocols.includes(Database.PROTOCOL))
+                protocol = Database.PROTOCOL;
             else
                 return request.reject(400, "bad protocol");
         }

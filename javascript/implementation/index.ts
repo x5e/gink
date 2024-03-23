@@ -1,4 +1,4 @@
-export { GinkInstance } from "./GinkInstance";
+export { Database } from "./Database";
 export { Box } from "./Box";
 export { Directory } from "./Directory";
 export { Sequence } from "./Sequence";

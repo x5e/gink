@@ -3,7 +3,7 @@ import { Value, KeyType, Muid, AsOf } from "./typedefs";
 import { muidToBuilder, wrapValue, wrapKey, ensure } from "./utils";
 import { Deletion } from "./Deletion";
 import { Inclusion } from "./Inclusion";
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { EntryBuilder, ChangeBuilder, Behavior, ClearanceBuilder } from "./builders";
 import { PairBuilder } from "./builders";
 import { Addressable } from "./Addressable";
@@ -20,10 +20,10 @@ export class Container extends Addressable {
      *
      * The backref capability would allow you to find containers pointing to this container as of a particular time.
      */
-    static _getBackRefsFunction: (a: GinkInstance, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void>;
+    static _getBackRefsFunction: (a: Database, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void>;
 
     protected constructor(
-        ginkInstance: GinkInstance,
+        ginkInstance: Database,
         address: Muid,
         readonly behavior: Behavior) {
         super(ginkInstance, address);

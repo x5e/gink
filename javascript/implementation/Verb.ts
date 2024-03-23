@@ -1,4 +1,4 @@
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { Container } from "./Container";
 import { Muid, AsOf, Value } from "./typedefs";
 import { Behavior, ContainerBuilder } from "./builders";
@@ -9,7 +9,7 @@ import { Vertex } from "./Vertex";
 
 export class Verb extends Container {
 
-    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(ginkInstance: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, Behavior.VERB);
         if (this.address.timestamp < 0) {
             ensure(address.offset == Behavior.VERB);

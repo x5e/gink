@@ -4,7 +4,7 @@ import {
     connection as WebSocketConnection
 } from 'websocket';
 import { AuthFunction, CallBack, DirPath, NumberStr, FilePath } from "./typedefs";
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { RoutingServerInstance } from './RoutingServerInstance';
 import { ensure, decodeToken, isPathDangerous } from './utils';
 import { existsSync } from 'fs';
@@ -77,8 +77,8 @@ export class RoutingServer {
                 }
             }
 
-            if (request.requestedProtocols.includes(GinkInstance.PROTOCOL))
-                protocol = GinkInstance.PROTOCOL;
+            if (request.requestedProtocols.includes(Database.PROTOCOL))
+                protocol = Database.PROTOCOL;
             else
                 return request.reject(400, "bad protocol");
         }

@@ -1,12 +1,12 @@
-import { GinkInstance, IndexedDbStore, Bundler, BundleInfo, MemoryStore } from "../implementation";
+import { Database, IndexedDbStore, Bundler, BundleInfo, MemoryStore } from "../implementation";
 import { makeChainStart, MEDALLION1, START_MICROS1 } from "./test_utils";
 import { ensure } from "../implementation/utils";
 import { BundleBytes } from "../implementation/typedefs";
 import { BundleBuilder } from "../implementation/builders";
 
 it('test commit', async () => {
-    for (const store of [new IndexedDbStore('GinkInstance.commit', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+    for (const store of [new IndexedDbStore('Database.commit', true), new MemoryStore(true)]) {
+        const instance = new Database(store);
         await instance.ready;
         const commitInfo = await instance.addBundler(new Bundler("hello world"));
         ensure(commitInfo.comment == "hello world");
@@ -21,7 +21,7 @@ it('test commit', async () => {
 
 it('uses claimed chain', async () => {
     for (const store of [
-            new IndexedDbStore('GinkInstance.test', true),
+            new IndexedDbStore('Database.test', true),
             new MemoryStore(true),
         ]) {
         await store.ready;
@@ -32,7 +32,7 @@ it('uses claimed chain', async () => {
             const commit = <BundleBuilder>BundleBuilder.deserializeBinary(commitBytes);
             ensure(commit.getComment() == "chain start comment");
         });
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const secondInfo = await instance.addBundler(new Bundler("Hello, Universe!"));
         ensure(
@@ -44,9 +44,9 @@ it('uses claimed chain', async () => {
 });
 
 it('test listeners', async () => {
-    for (const store of [new IndexedDbStore('GinkInstance.listeners.test', true)]) {
+    for (const store of [new IndexedDbStore('Database.listeners.test', true)]) {
         await store.ready;
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
 
         const globalDir = instance.getGlobalDirectory();

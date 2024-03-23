@@ -1,5 +1,5 @@
 import { Addressable } from "./Addressable";
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { AsOf, EdgeData, Muid, Value } from "./typedefs";
 import { Vertex } from "./Vertex";
 import { Verb } from "./Verb";
@@ -16,7 +16,7 @@ export class Edge extends Addressable {
     private effective: number;
 
     constructor(
-        ginkInstance: GinkInstance,
+        ginkInstance: Database,
         address: Muid,
         data: EdgeData) {
         super(ginkInstance, address);
@@ -31,7 +31,7 @@ export class Edge extends Addressable {
         this.effective = data.effective;
     }
 
-    static async load(ginkInstance: GinkInstance, address: Muid): Promise<Edge> {
+    static async load(ginkInstance: Database, address: Muid): Promise<Edge> {
         const entry = await ginkInstance.store.getEntryById(address, address.timestamp + 1);
         if (!entry) {
             throw new Error("edge not found");

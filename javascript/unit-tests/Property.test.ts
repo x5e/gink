@@ -1,9 +1,9 @@
-import { GinkInstance, IndexedDbStore, MemoryStore } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore } from "../implementation";
 import { ensure, muidToString, sameData } from "../implementation/utils";
 
 it('Property.basics', async function () {
     for (const store of [new IndexedDbStore('Property.basics', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const gd = instance.getGlobalDirectory();
         const property = await instance.createProperty();

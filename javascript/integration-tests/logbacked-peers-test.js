@@ -1,6 +1,6 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
-const { GinkInstance } = require("../tsc.out/implementation/GinkInstance.js");
+const { Database } = require("../tsc.out/implementation/Database.js");
 const { LogBackedStore } = require("../tsc.out/implementation/LogBackedStore.js");
 /*
 Logbacked1 <- Share File -> Logbacked2
@@ -17,10 +17,10 @@ automatically pull the changes and broadcast them.
     console.log("server started");
 
     const lbstore1 = new LogBackedStore("/tmp/test_peer.store");
-    const instance1 = new GinkInstance(lbstore1);
+    const instance1 = new Database(lbstore1);
 
     const lbstore2 = new LogBackedStore("/tmp/test_peer.store");
-    const instance2 = new GinkInstance(lbstore2);
+    const instance2 = new Database(lbstore2);
     await instance2.connectTo("ws://localhost:8081");
     console.log("second store connected to server");
 

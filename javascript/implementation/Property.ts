@@ -2,13 +2,13 @@ import { Container } from "./Container";
 import { Value, Muid, KeyType, AsOf, Entry } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure } from "./utils";
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 import { Addressable } from "./Addressable";
 
 export class Property extends Container {
-    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(ginkInstance: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, Behavior.PROPERTY);
         if (this.address.timestamp < 0) {
             ensure(address.offset == Behavior.PROPERTY);

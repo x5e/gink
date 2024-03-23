@@ -1,12 +1,12 @@
 import { sleep } from "./test_utils";
-import { GinkInstance, Bundler, IndexedDbStore, MemoryStore } from "../implementation";
+import { Database, Bundler, IndexedDbStore, MemoryStore } from "../implementation";
 import { ensure, matches } from "../implementation/utils";
 import { KeySet } from "../implementation";
 
 it('add and has basic data', async function () {
     // set up the objects
     for (const store of [new IndexedDbStore('ks-test1', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
 
@@ -27,7 +27,7 @@ it('add and has basic data', async function () {
 
 it('delete, and size work as intended', async function () {
     for (const store of [new IndexedDbStore('ks-test2', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
 
@@ -50,7 +50,7 @@ it('delete, and size work as intended', async function () {
 
 it('entries works as intended', async function () {
     for (const store of [new IndexedDbStore('ks-test3', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const ks: KeySet = await instance.createKeySet();
         await ks.update(["key1", "key2", "key3"]);
@@ -66,7 +66,7 @@ it('entries works as intended', async function () {
 
 it('add multiple keys within a bundler', async function () {
     for (const store of [new IndexedDbStore('ks-test4', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
 
@@ -86,7 +86,7 @@ it('add multiple keys within a bundler', async function () {
 
 it('KeySet.toJson', async function () {
     for (const store of [new IndexedDbStore('ks-test6', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
 
@@ -100,7 +100,7 @@ it('KeySet.toJson', async function () {
 
 it('KeySet.asOf', async function () {
     for (const store of [new IndexedDbStore('ks-test7', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
 
@@ -142,7 +142,7 @@ it('KeySet.asOf', async function () {
 
 it('KeySet.clear', async function () {
     for (const store of [new IndexedDbStore('ks-test8', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
         await ks.update(["key1", "key2"]);
@@ -160,7 +160,7 @@ it('KeySet.clear', async function () {
 
 it('KeySet.clear(purge)', async function () {
     for (const store of [new IndexedDbStore('ks-test9', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
         await ks.add('key1');

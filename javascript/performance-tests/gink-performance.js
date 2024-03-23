@@ -6,7 +6,7 @@ if (typeof window == 'undefined') {
 }
 
 async function testWriteFresh(count, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_fresh', true, keepingHistory = keepHistory));
+    const instance = new gink.Database(new gink.IndexedDbStore('write_fresh', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log("Testing Gink TypeScript writing performance to fresh database.");
     console.log("Writing", count, "key, value entries...");
@@ -29,7 +29,7 @@ async function testWriteFresh(count, keepHistory) {
 }
 
 async function testWriteBigCommit(count, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_big_commit', true, keepingHistory = keepHistory));
+    const instance = new gink.Database(new gink.IndexedDbStore('write_big_commit', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     const bundler = new gink.Bundler();
     console.log("Testing Gink TypeScript writing performance to fresh database in one commit.");
@@ -54,7 +54,7 @@ async function testWriteBigCommit(count, keepHistory) {
 }
 
 async function testWriteOccupied(count, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('write_occupied', true, keepingHistory = keepHistory));
+    const instance = new gink.Database(new gink.IndexedDbStore('write_occupied', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript writing performance to occupied database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
@@ -81,7 +81,7 @@ async function testWriteOccupied(count, keepHistory) {
 }
 
 async function testRead(count, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('read', true, keepingHistory = keepHistory));
+    const instance = new gink.Database(new gink.IndexedDbStore('read', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript reading performance to database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
@@ -108,7 +108,7 @@ async function testRead(count, keepHistory) {
 }
 
 async function testSequenceAppend(count, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('sequence_append', true, keepingHistory = keepHistory));
+    const instance = new gink.Database(new gink.IndexedDbStore('sequence_append', true, keepingHistory = keepHistory));
     const sequence = await instance.createSequence();
     console.log("Testing Gink TypeScript Sequence append (push) performance to fresh database.");
     console.log("Appending", count, "entries...");
@@ -132,7 +132,7 @@ async function testSequenceAppend(count, keepHistory) {
 }
 
 async function testReadWrite(count, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('read_write', true, keepingHistory = keepHistory));
+    const instance = new gink.Database(new gink.IndexedDbStore('read_write', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log("Testing Gink TypeScript writing then reading performance.");
     console.log("Writing then reading", count, "key, value entries...");
@@ -156,7 +156,7 @@ async function testReadWrite(count, keepHistory) {
 }
 
 async function testDelete(count, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('delete', true, keepingHistory = keepHistory));
+    const instance = new gink.Database(new gink.IndexedDbStore('delete', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript deletion performance to occupied database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
@@ -185,7 +185,7 @@ async function testDelete(count, keepHistory) {
 
 async function testRandomRead(count, keepHistory) {
     const howMany = 1000;
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('random_read', true, keepingHistory = keepHistory));
+    const instance = new gink.Database(new gink.IndexedDbStore('random_read', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     console.log(`Testing Gink TypeScript reading performance to database with ${count} entries.`);
     console.log(`Filling fresh database with ${count} key, value entries...`);
@@ -217,7 +217,7 @@ async function testRandomRead(count, keepHistory) {
 }
 
 async function testIncreasing(count, num_inc_tests, keepHistory) {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore('increasing', true, keepingHistory = keepHistory));
+    const instance = new gink.Database(new gink.IndexedDbStore('increasing', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     let currentEntries = 0;
     let results = {};

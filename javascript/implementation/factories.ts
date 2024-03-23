@@ -13,14 +13,14 @@ import { Role } from "./Role";
 import { PairSet } from "./PairSet";
 import { PairMap } from "./PairMap";
 import { KeySet } from "./KeySet";
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid, rehydrate } from "./utils";
 import { Behavior, EntryBuilder, ContainerBuilder } from "./builders";
 import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 
 export async function construct(
-    ginkInstance: GinkInstance,
+    ginkInstance: Database,
     address: Muid,
     containerBuilder?: ContainerBuilder): Promise<Container> {
 
@@ -65,7 +65,7 @@ export async function construct(
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
 }
 
-export async function interpret(entry: Entry, ginkInstance: GinkInstance): Promise<Container | Value | undefined> {
+export async function interpret(entry: Entry, ginkInstance: Database): Promise<Container | Value | undefined> {
     if (entry === undefined || entry.deletion) {
         return undefined;
     }
@@ -101,7 +101,7 @@ export async function toJson(value: Value | Container, indent: number | boolean 
     }
 }
 
-export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: Bytes, entryAddress?: Muid): Promise<Value | Container | undefined> {
+export async function convertEntryBytes(ginkInstance: Database, entryBytes: Bytes, entryAddress?: Muid): Promise<Value | Container | undefined> {
     ensure(entryBytes instanceof Uint8Array);
     const entryBuilder = <EntryBuilder>EntryBuilder.deserializeBinary(entryBytes);
     if (entryBuilder.hasValue()) {
@@ -121,7 +121,7 @@ export async function convertEntryBytes(ginkInstance: GinkInstance, entryBytes: 
 * I can't import List, Directory, etc. into this Container.ts because it will cause the inherits clauses to break.
 * So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
 */
-Container._getBackRefsFunction = function (instance: GinkInstance, pointingTo: Container, asOf?: AsOf):
+Container._getBackRefsFunction = function (instance: Database, pointingTo: Container, asOf?: AsOf):
     AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
     return (async function* () {
         const entries = await instance.store.getBackRefs(pointingTo.address);

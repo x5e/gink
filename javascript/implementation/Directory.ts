@@ -2,13 +2,13 @@ import { Container } from "./Container";
 import { Value, Muid, KeyType, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure, muidToString } from "./utils";
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class Directory extends Container {
 
-    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(ginkInstance: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, Behavior.DIRECTORY);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers

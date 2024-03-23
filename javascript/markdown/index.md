@@ -11,7 +11,7 @@ npm install @x5e/gink
 ```
 Now you can import or require Gink like this:
 ```js
-const { IndexedDbStore, GinkInstance } = require("@x5e/gink");
+const { IndexedDbStore, Database } = require("@x5e/gink");
 ```
 If you'd prefer to import from a CDN:
 ```html
@@ -34,11 +34,11 @@ Example - create a `Directory`\
 Take a look at other examples below for a more in depth look at all of the available data structures.
 
 ```js
-const { IndexedDbStore, GinkInstance } = require("@x5e/gink");
+const { IndexedDbStore, Database } = require("@x5e/gink");
 
 // Initialize document store and database
 const store = new IndexedDbStore('directory-example');
-const instance = new GinkInstance(store);
+const instance = new Database(store);
 
 // Create a directory object (more info about this and other
 // data structures can be found on their respective pages)
@@ -52,12 +52,12 @@ const result = await directory.get("key1");
 ```
 
 # Examples
-All examples will need a `Store` and `GinkInstance`:
+All examples will need a `Store` and `Database`:
 ```js
-const { IndexedDbStore, GinkInstance } = require("@x5e/gink");
+const { IndexedDbStore, Database } = require("@x5e/gink");
 
 const store = new IndexedDbStore('examples');
-const instance = new GinkInstance(store);
+const instance = new Database(store);
 ```
 
 ## Data Structures
@@ -417,7 +417,7 @@ npx gink
 Once you have a server running, create a new instance and connect it to the server:
 ```ts
 const store = new IndexedDbStore('example');
-const instance = new GinkInstance(store);
+const instance = new Database(store);
 
 await instance.connectTo("ws://localhost:8080"); // or wherever your server is hosted
 ```
@@ -438,8 +438,8 @@ Now, when your server gets a connection attempt (presumably from another Gink in
 For the client, there are two ways to supply a token:<br>
 If starting an instance from the CLI - you will need to have the token as an env variable `GINK_AUTH_TOKEN`. This will automatically include the token in all connection requests to the targets supplied in the command (`npx gink ws://localhost:8080`).
 <br>
-If you are connecting from a client through the Gink API, pass the auth token to `GinkInstance.connectTo()` like so:
+If you are connecting from a client through the Gink API, pass the auth token to `Database.connectTo()` like so:
 ```js
-const instance = new gink.GinkInstance()
+const instance = new gink.Database()
 await instance.connectTo("ws://localhost:8080", {authToken: "1451jknr1jnak14jn"});
 ```

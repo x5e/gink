@@ -1,4 +1,4 @@
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { Container } from "./Container";
 import { AsOf, Entry, Muid, Value } from "./typedefs";
 import { Bundler } from "./Bundler";
@@ -12,7 +12,7 @@ import { Behavior, ChangeBuilder, MovementBuilder, ContainerBuilder } from "./bu
  */
 export class Sequence extends Container {
 
-    constructor(ginkInstance: GinkInstance, address?: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(ginkInstance: Database, address?: Muid, containerBuilder?: ContainerBuilder) {
         super(ginkInstance, address, Behavior.SEQUENCE);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers

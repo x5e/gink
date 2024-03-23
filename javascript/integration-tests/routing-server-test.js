@@ -1,6 +1,6 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
-const { GinkInstance, IndexedDbStore } = require("../tsc.out/implementation");
+const { Database, IndexedDbStore } = require("../tsc.out/implementation");
 (async function () {
     new Expector("mkdir", ["-p", "/tmp/routing-server-test"]);
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -15,7 +15,7 @@ const { GinkInstance, IndexedDbStore } = require("../tsc.out/implementation");
     // that will only be seen in the future by clients connecting to the same path.
 
     const firstAbcStore = new IndexedDbStore("firstAbc");
-    const firstAbcInstance = new GinkInstance(firstAbcStore, {}, (msg) => console.log('firstAbc: ' + msg));
+    const firstAbcInstance = new Database(firstAbcStore, {}, (msg) => console.log('firstAbc: ' + msg));
     const firstAbcPeer = await firstAbcInstance.connectTo("ws://127.0.0.1:8080/abc");
     const firstAbcDir = firstAbcInstance.getGlobalDirectory();
     const change = await firstAbcDir.set("abc", 123, "firstAbc");
@@ -24,14 +24,14 @@ const { GinkInstance, IndexedDbStore } = require("../tsc.out/implementation");
     await firstAbcPeer.hasMap?.waitTillHas(change);
     await firstAbcInstance.close();
 
-    const firstXyzInstance = new GinkInstance(new IndexedDbStore("firstXyz"), {}, (msg) => console.log('firstXyz: ' + msg));
+    const firstXyzInstance = new Database(new IndexedDbStore("firstXyz"), {}, (msg) => console.log('firstXyz: ' + msg));
     const firstXyzPeer = await firstXyzInstance.connectTo("ws://127.0.0.1:8080/xyz");
     const firstXyzDir = firstXyzInstance.getGlobalDirectory();
     const xyzChange = await firstXyzDir.set("xyz", 789, "firstXyz");
     await firstXyzPeer.hasMap?.waitTillHas(xyzChange);
     await firstXyzInstance.close();
 
-    const secondAbcInstance = new GinkInstance(new IndexedDbStore("secondAbc"), {}, (msg) => console.log('secondAbc: ' + msg));
+    const secondAbcInstance = new Database(new IndexedDbStore("secondAbc"), {}, (msg) => console.log('secondAbc: ' + msg));
     await secondAbcInstance.connectTo("ws://127.0.0.1:8080/abc");
     // TODO: Add a way to ask to wait until instances are caught up with each other.
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -43,7 +43,7 @@ const { GinkInstance, IndexedDbStore } = require("../tsc.out/implementation");
     secondAbcInstance.close();
 
     const secondXyzStore = new IndexedDbStore("secondXyz");
-    const secondXyzInstance = new GinkInstance(secondXyzStore, {}, (msg) => console.log('secondXyz: ' + msg));
+    const secondXyzInstance = new Database(secondXyzStore, {}, (msg) => console.log('secondXyz: ' + msg));
     await secondXyzInstance.connectTo("ws://127.0.0.1:8080/xyz");
     await new Promise((resolve) => setTimeout(resolve, 100));
     const secondXyzDir = secondXyzInstance.getGlobalDirectory();
