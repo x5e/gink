@@ -260,9 +260,12 @@ it('List.move', async function () {
         const seq = await instance.createSequence();
 
         await seq.push("A");
+        await sleep(100);
         await seq.push("B");
+        await sleep(100);
         const cMuid = await seq.push("C");
         await seq.push("D");
+        await sleep(100);
 
         ensure((await seq.toArray()).toString() == "A,B,C,D");
 
