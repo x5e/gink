@@ -1,9 +1,9 @@
-import { GinkInstance, IndexedDbStore, MemoryStore } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore } from "../implementation";
 import { ensure } from "../implementation/utils";
 
 it('pointingTo', async function () {
     for (const store of [new IndexedDbStore('pointingTo', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
 
         const target = await instance.createBox();

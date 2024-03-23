@@ -2,14 +2,14 @@ import { Container } from "./Container";
 import { Value, Muid, KeyType, AsOf, Entry } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure } from "./utils";
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 import { Addressable } from "./Addressable";
 
 export class Property extends Container {
-    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, Behavior.PROPERTY);
+    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+        super(database, address, Behavior.PROPERTY);
         if (this.address.timestamp < 0) {
             ensure(address.offset == Behavior.PROPERTY);
         } else {
@@ -26,17 +26,17 @@ export class Property extends Container {
     }
 
     async get(subject: Addressable, asOf?: AsOf): Promise<Container | Value | undefined> {
-        const entry = await this.ginkInstance.store.getEntryByKey(this.address, subject.address, asOf);
-        return interpret(entry, this.ginkInstance);
+        const entry = await this.database.store.getEntryByKey(this.address, subject.address, asOf);
+        return interpret(entry, this.database);
     }
 
     async has(subject: Addressable, asOf?: AsOf): Promise<boolean> {
-        const result = await this.ginkInstance.store.getEntryByKey(this.address, subject.address, asOf);
+        const result = await this.database.store.getEntryByKey(this.address, subject.address, asOf);
         return result !== undefined;
     }
 
     async getAll(asOf?: AsOf): Promise<Map<KeyType, Entry>> {
-        const result = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        const result = await this.database.store.getKeyedEntries(this.address, asOf);
         return result;
     }
 

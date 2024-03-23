@@ -4,7 +4,7 @@ class Database {
             store = new gink.IndexedDbStore("dashboard-test");
         }
         if (!instance) {
-            instance = new gink.GinkInstance(store);
+            instance = new gink.Database(store);
         }
         this.store = store;
         this.instance = instance;

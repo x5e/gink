@@ -1,10 +1,10 @@
 import { testStore } from "./Store.test";
-import { GinkInstance, MemoryStore, generateTimestamp, ensure } from "../implementation";
+import { Database, MemoryStore, generateTimestamp, ensure } from "../implementation";
 
 testStore('MemoryStore', async () => new MemoryStore(true));
 it('test basic operations', async () => {
     const memStore = new MemoryStore(true);
-    const instance = new GinkInstance(memStore);
+    const instance = new Database(memStore);
     await instance.ready;
     const dir = instance.getGlobalDirectory();
     await dir.set("foo", "bar");
@@ -22,7 +22,7 @@ it('test basic operations', async () => {
 
 it('tests getEntryByKey and getKeyedEntries', async () => {
     const memStore = new MemoryStore(true);
-    const instance = new GinkInstance(memStore);
+    const instance = new Database(memStore);
     await instance.ready;
     const dir = instance.getGlobalDirectory();
     const id = await dir.set("foo", "bar");

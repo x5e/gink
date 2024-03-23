@@ -75,7 +75,7 @@ export class Bundler {
 
 
     /**
-     * Intended to be called by a GinkInstance to finalize a commit.
+     * Intended to be called by a Database to finalize a commit.
      * @param commitInfo the commit metadata to add when serializing
      * @returns serialized
      */

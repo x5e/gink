@@ -1,9 +1,9 @@
-import { GinkInstance, IndexedDbStore, MemoryStore } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore } from "../implementation";
 import { ensure } from "../implementation/utils";
 
 it('complex.toJSON', async function () {
     for (const store of [new IndexedDbStore('toJSON', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const directory = await instance.createDirectory();
 
@@ -47,7 +47,7 @@ it('complex.toJSON', async function () {
 
 it('various.contents', async function () {
     for (const store of [new IndexedDbStore('contents', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const box = await instance.createBox();
         const property = await instance.createProperty();

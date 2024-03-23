@@ -1,4 +1,4 @@
-import { Box, IndexedDbStore, GinkInstance, MemoryStore, Bundler, Muid } from "../implementation/index";
+import { Box, IndexedDbStore, Database, MemoryStore, Bundler, Muid } from "../implementation/index";
 import { ensure } from "../implementation/utils";
 
 it('create a box; set and get data in it', async function () {
@@ -7,7 +7,7 @@ it('create a box; set and get data in it', async function () {
             new IndexedDbStore('Box.test1', true),
             new MemoryStore(true),
         ]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const aBox: Box = await instance.createBox();
 
@@ -41,7 +41,7 @@ it('create a box; set and get data in it', async function () {
 it('set a box in a bundler', async function () {
     // set up the objects
     for (const store of [new IndexedDbStore('box.test2', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const aBox: Box = await instance.createBox();
 
@@ -64,7 +64,7 @@ it('set a box in a bundler', async function () {
 it('create a box and set in same CS', async function () {
     // set up the objects
     for (const store of [new IndexedDbStore('box.test3', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         // create a box and set in on CL
         const bundler = new Bundler();
@@ -83,7 +83,7 @@ it('create a box and set in same CS', async function () {
 
 it('set a value in a box then clear it', async function () {
     for (const store of [new IndexedDbStore('box.test4', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         // put a value into the box
         const box = await instance.createBox();
@@ -104,7 +104,7 @@ it('set a value in a box then clear it', async function () {
 
 it('Box.toJson', async function () {
     for (const store of [new IndexedDbStore('box.toJson', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         // put a value into the box
         const box = await instance.createBox();

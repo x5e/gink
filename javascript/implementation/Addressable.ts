@@ -1,10 +1,10 @@
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { Muid } from "./typedefs";
 
 
 export class Addressable {
     protected constructor(
-        readonly ginkInstance: GinkInstance,
+        readonly database: Database,
         readonly address: Muid) {
     }
 

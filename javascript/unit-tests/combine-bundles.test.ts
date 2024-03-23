@@ -1,9 +1,9 @@
-import { GinkInstance, IndexedDbStore, } from "../implementation";
+import { Database, IndexedDbStore, } from "../implementation";
 import { ensure } from "../implementation/utils";
 
 it('bundle.combining', async function () {
     const store = new IndexedDbStore('bundle combining test', true)
-    const instance = new GinkInstance(store);
+    const instance = new Database(store);
     await instance.ready;
     const schema = await instance.createDirectory();
 

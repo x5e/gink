@@ -1,4 +1,4 @@
-import { GinkInstance, LogBackedStore } from "../implementation/main";
+import { Database, LogBackedStore } from "../implementation/main";
 import { testStore } from "./Store.test";
 import { truncateSync, existsSync } from "fs";
 
@@ -50,7 +50,7 @@ it('test automatic data pulling & callbacks', async () => {
     cb.calledTimes = 0;
     store2.addFoundBundleCallBack(cb);
 
-    const instance1 = new GinkInstance(store1);
+    const instance1 = new Database(store1);
     await instance1.ready;
 
     const globalDir1 = instance1.getGlobalDirectory();

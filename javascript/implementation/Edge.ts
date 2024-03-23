@@ -1,5 +1,5 @@
 import { Addressable } from "./Addressable";
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { AsOf, EdgeData, Muid, Value } from "./typedefs";
 import { Vertex } from "./Vertex";
 import { Verb } from "./Verb";
@@ -16,10 +16,10 @@ export class Edge extends Addressable {
     private effective: number;
 
     constructor(
-        ginkInstance: GinkInstance,
+        database: Database,
         address: Muid,
         data: EdgeData) {
-        super(ginkInstance, address);
+        super(database, address);
         this.setFromEdgeData(data);
     }
 
@@ -31,24 +31,24 @@ export class Edge extends Addressable {
         this.effective = data.effective;
     }
 
-    static async load(ginkInstance: GinkInstance, address: Muid): Promise<Edge> {
-        const entry = await ginkInstance.store.getEntryById(address, address.timestamp + 1);
+    static async load(database: Database, address: Muid): Promise<Edge> {
+        const entry = await database.store.getEntryById(address, address.timestamp + 1);
         if (!entry) {
             throw new Error("edge not found");
         }
-        return new Edge(ginkInstance, address, entryToEdgeData(entry));
+        return new Edge(database, address, entryToEdgeData(entry));
     }
 
     getSourceVertex(): Vertex {
-        return new Vertex(this.ginkInstance, this.source);
+        return new Vertex(this.database, this.source);
     }
 
     getTargetVertex(): Vertex {
-        return new Vertex(this.ginkInstance, this.target);
+        return new Vertex(this.database, this.target);
     }
 
     getEdgeType(): Verb {
-        return new Verb(this.ginkInstance, this.action);
+        return new Verb(this.database, this.action);
     }
 
     getValue(): Value | undefined {
@@ -60,7 +60,7 @@ export class Edge extends Addressable {
     }
 
     async getPosition(asOf?: AsOf): Promise<number> {
-        const entry = await this.ginkInstance.store.getEntryById(this.address, asOf);
+        const entry = await this.database.store.getEntryById(this.address, asOf);
         if (!entry) {
             return 0;
         } else {
@@ -92,7 +92,7 @@ export class Edge extends Addressable {
         changeBuilder.setMovement(movementBuilder);
         bundler.addChange(changeBuilder);
         if (immediate) {
-            await this.ginkInstance.addBundler(bundler);
+            await this.database.addBundler(bundler);
         }
     }
 }

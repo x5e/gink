@@ -1,4 +1,4 @@
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { Container } from "./Container";
 import { Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
@@ -8,8 +8,8 @@ import { Behavior, ContainerBuilder } from "./builders";
 
 export class PairSet extends Container {
 
-    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, Behavior.PAIR_SET);
+    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+        super(database, address, Behavior.PAIR_SET);
         if (this.address.timestamp < 0) {
             ensure(address.offset == Behavior.PAIR_SET);
         } else {
@@ -44,7 +44,7 @@ export class PairSet extends Container {
      * @returns a promise that resolves to a boolean, true if the key is included, false if not
      */
     async contains(key: [Muid | Container, Muid | Container], asOf?: AsOf): Promise<boolean> {
-        const found = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
+        const found = await this.database.store.getEntryByKey(this.address, key, asOf);
         if (found && found.deletion) return false;
         return Boolean(found);
     }
@@ -55,7 +55,7 @@ export class PairSet extends Container {
      * @returns a promise that resolves to the number of entries
      */
     async size(asOf?: AsOf): Promise<number> {
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
         return entries.size;
     }
 
@@ -65,7 +65,7 @@ export class PairSet extends Container {
      * @returns a promise that resolves to a set of pairs [Muid, Muid]
      */
     async getPairs(asOf?: AsOf): Promise<Set<Array<Muid>>> {
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
         const toSet = new Set<Array<Muid>>();
         for (const [key, entry] of entries) {
             if (!entry.deletion) {

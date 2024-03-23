@@ -1,7 +1,7 @@
 import { RoutingServer } from "./RoutingServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { Store } from "./Store";
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { AuthFunction, BundleInfo, CallBack } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { SimpleServer } from "./SimpleServer";
@@ -21,7 +21,7 @@ import { start, REPLServer } from "node:repl";
 export class CommandLineInterface {
     targets: string[];
     store?: Store;
-    instance?: GinkInstance;
+    instance?: Database;
     routingServer?: RoutingServer;
     replServer?: REPLServer;
 
@@ -85,7 +85,7 @@ export class CommandLineInterface {
             }
         } else {
             // GINK_PORT not set, so don't listen for incoming connections
-            this.instance = new GinkInstance(this.store, { software: "node instance" });
+            this.instance = new Database(this.store, { software: "node instance" });
         }
         this.targets = process.argv.slice(2);
     }

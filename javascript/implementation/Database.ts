@@ -27,7 +27,7 @@ import { BundleBuilder } from "./builders";
  * ts-node on a server.  Because of the need to work within a browser it doesn't do any port
  * listening (see GinkListener and GinkServerInstance for that capability).
  */
-export class GinkInstance {
+export class Database {
 
     ready: Promise<any>;
     readonly peers: Map<number, Peer> = new Map();
@@ -43,7 +43,7 @@ export class GinkInstance {
     private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
         eval("require('websocket').w3cwebsocket");
 
-    constructor(readonly store: Store = new IndexedDbStore('GinkInstance-default'), info?: {
+    constructor(readonly store: Store = new IndexedDbStore('Database-default'), info?: {
         fullName?: string,
         email?: string,
         software?: string,
@@ -58,7 +58,7 @@ export class GinkInstance {
     }) {
         const medallion = makeMedallion();
         const chainStart = generateTimestamp();
-        const bundler = new Bundler(`start: ${info?.software || "GinkInstance"}`, medallion);
+        const bundler = new Bundler(`start: ${info?.software || "Database"}`, medallion);
         const medallionInfo = new Directory(this, { timestamp: -1, medallion, offset: Behavior.DIRECTORY });
         if (info?.email) {
             await medallionInfo.set("email", info.email, bundler);
@@ -99,7 +99,7 @@ export class GinkInstance {
         ensure(this.myChain.medallion > 0);
         this.iHave = await this.store.getChainTracker();
         this.listeners.set("all", []);
-        //this.logger(`GinkInstance.ready`);
+        //this.logger(`Database.ready`);
         const callback = async (bundleBytes: BundleBytes, bundleInfo: BundleInfo): Promise<void> => {
             for (const [peerId, peer] of this.peers) {
                 peer._sendIfNeeded(bundleBytes, bundleInfo);
@@ -263,7 +263,7 @@ export class GinkInstance {
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
         if (!this.initilized)
-            throw new Error("GinkInstance not ready");
+            throw new Error("Database not ready");
         if (!(this.myChain.medallion > 0))
             throw new Error("zero medallion?");
         const nowMicros = generateTimestamp();
@@ -426,11 +426,11 @@ export class GinkInstance {
         await this.ready;
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
-            let protocols = [GinkInstance.PROTOCOL];
+            let protocols = [Database.PROTOCOL];
 
             if (authToken) protocols.push(encodeToken(authToken));
             const connectionId = this.createConnectionId();
-            let websocketClient: WebSocket = new GinkInstance.W3cWebSocket(target, protocols);
+            let websocketClient: WebSocket = new Database.W3cWebSocket(target, protocols);
             websocketClient.binaryType = "arraybuffer";
             const peer = new Peer(
                 websocketClient.send.bind(websocketClient),

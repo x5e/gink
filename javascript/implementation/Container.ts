@@ -3,7 +3,7 @@ import { Value, KeyType, Muid, AsOf } from "./typedefs";
 import { muidToBuilder, wrapValue, wrapKey, ensure } from "./utils";
 import { Deletion } from "./Deletion";
 import { Inclusion } from "./Inclusion";
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { EntryBuilder, ChangeBuilder, Behavior, ClearanceBuilder } from "./builders";
 import { PairBuilder } from "./builders";
 import { Addressable } from "./Addressable";
@@ -20,13 +20,13 @@ export class Container extends Addressable {
      *
      * The backref capability would allow you to find containers pointing to this container as of a particular time.
      */
-    static _getBackRefsFunction: (a: GinkInstance, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void>;
+    static _getBackRefsFunction: (a: Database, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void>;
 
     protected constructor(
-        ginkInstance: GinkInstance,
+        database: Database,
         address: Muid,
         readonly behavior: Behavior) {
-        super(ginkInstance, address);
+        super(database, address);
     }
 
     /**
@@ -37,7 +37,7 @@ export class Container extends Addressable {
      * @returns an async generator of [key, Container], where key is they Directory key, or List entry muid, or undefined for Box
      */
     public getBackRefs(asOf?: AsOf): AsyncGenerator<[KeyType | Muid | undefined, Container], void> {
-        return Container._getBackRefsFunction(this.ginkInstance, this, asOf);
+        return Container._getBackRefsFunction(this.database, this, asOf);
     }
 
     public toString(): string {
@@ -64,7 +64,7 @@ export class Container extends Addressable {
         changeBuilder.setClearance(clearanceBuilder);
         const address = bundler.addChange(changeBuilder);
         if (immediate) {
-            await this.ginkInstance.addBundler(bundler);
+            await this.database.addBundler(bundler);
         }
         return address;
     }
@@ -141,7 +141,7 @@ export class Container extends Addressable {
         changeBuilder.setEntry(entryBuilder);
         const address = bundler.addChange(changeBuilder);
         if (immediate) {
-            return this.ginkInstance.addBundler(bundler).then((_) => address);
+            return this.database.addBundler(bundler).then((_) => address);
         }
         return Promise.resolve(address);
     }

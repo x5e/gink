@@ -2,14 +2,14 @@ import { Container } from "./Container";
 import { Value, Muid, KeyType, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure, muidToString } from "./utils";
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class Directory extends Container {
 
-    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, Behavior.DIRECTORY);
+    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+        super(database, address, Behavior.DIRECTORY);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
             ensure(address.offset == Behavior.DIRECTORY);
@@ -55,17 +55,17 @@ export class Directory extends Container {
     * @returns undefined, a basic value, or a container
     */
     async get(key: KeyType, asOf?: AsOf): Promise<Container | Value | undefined> {
-        const entry = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
-        return interpret(entry, this.ginkInstance);
+        const entry = await this.database.store.getEntryByKey(this.address, key, asOf);
+        return interpret(entry, this.database);
     }
 
     async size(asOf?: AsOf): Promise<number> {
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
         return entries.size;
     }
 
     async has(key: KeyType, asOf?: AsOf): Promise<boolean> {
-        const result = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
+        const result = await this.database.store.getEntryByKey(this.address, key, asOf);
         if (result != undefined && result.deletion) {
             return false;
         }
@@ -79,10 +79,10 @@ export class Directory extends Container {
      * @returns a javascript map from keys (numbers or strings) to values or containers
      */
     async toMap(asOf?: AsOf): Promise<Map<KeyType, Value | Container>> {
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
         const resultMap = new Map();
         for (const [key, entry] of entries) {
-            const val = await interpret(entry, this.ginkInstance);
+            const val = await interpret(entry, this.database);
             resultMap.set(key, val);
         }
         return resultMap;

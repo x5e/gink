@@ -1,5 +1,5 @@
 import { sleep } from "./test_utils";
-import { GinkInstance, Bundler, IndexedDbStore, Directory, MemoryStore } from "../implementation";
+import { Database, Bundler, IndexedDbStore, Directory, MemoryStore } from "../implementation";
 import { ensure } from "../implementation/utils";
 
 it('set and get Basic data', async function () {
@@ -7,7 +7,7 @@ it('set and get Basic data', async function () {
         new IndexedDbStore('Directory.test1', true),
         new MemoryStore(true),
     ]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const schema = await instance.createDirectory();
 
@@ -36,7 +36,7 @@ it('set and get data in two directories', async function () {
             new IndexedDbStore('two.directories', true),
             new MemoryStore(true),
         ]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const dir1 = await instance.createDirectory();
         const dir2 = await instance.createDirectory();
@@ -67,7 +67,7 @@ it('set and get data in two directories', async function () {
 
 it('set multiple key/value pairs in one change-set', async function () {
     for (const store of [new IndexedDbStore('Directory.test2', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const schema = await instance.createDirectory();
 
@@ -90,7 +90,7 @@ it('set multiple key/value pairs in one change-set', async function () {
 
 it('use a sub-schema', async function () {
     for (const store of [new IndexedDbStore('Directory.test3', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const schema = await instance.createDirectory();
 
@@ -111,7 +111,7 @@ it('purge one directory leaving other untouched', async function () {
         new IndexedDbStore('purge etc.', true),
         new MemoryStore(true),
     ]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const d1 = await instance.createDirectory();
         const d2 = await instance.createDirectory();
@@ -129,7 +129,7 @@ it('purge one directory leaving other untouched', async function () {
 
 it('convert to standard Map', async function () {
     for (const store of [new IndexedDbStore('Directory.convert', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const directory = await instance.createDirectory();
 
@@ -150,7 +150,7 @@ it('convert to standard Map', async function () {
 
 it('Directory.toJSON', async function () {
     for (const store of [new IndexedDbStore('Directory.toJSON', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const directory = await instance.createDirectory();
 
@@ -172,7 +172,7 @@ it('Directory.toJSON', async function () {
 
 it('Directory.asOf', async function () {
     for (const store of [new IndexedDbStore('Directory.asOf', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const directory = await instance.createDirectory();
 
@@ -211,7 +211,7 @@ it('Directory.asOf', async function () {
 
 it('Directory.purge', async function () {
     for (const store of [new IndexedDbStore('Directory.purge', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const directory = await instance.createDirectory();
 
@@ -236,7 +236,7 @@ it('Directory.clear', async function () {
         new IndexedDbStore('Directory.clear', true),
         new MemoryStore(true),
     ]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const directory = await instance.createDirectory();
         await directory.set('A', 99);

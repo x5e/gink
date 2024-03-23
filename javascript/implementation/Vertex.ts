@@ -1,4 +1,4 @@
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { Container } from "./Container";
 import { Muid, AsOf, Entry } from "./typedefs";
 import { Behavior, ContainerBuilder } from "./builders";
@@ -8,8 +8,8 @@ import { Edge } from "./Edge";
 
 export class Vertex extends Container {
 
-    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, Behavior.VERTEX);
+    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+        super(database, address, Behavior.VERTEX);
         if (this.address.timestamp < 0) {
             ensure(address.offset == Behavior.VERTEX);
         } else if (containerBuilder) {
@@ -23,7 +23,7 @@ export class Vertex extends Container {
     * @returns undefined, a basic value, or a container
     */
     async isAlive(asOf?: AsOf): Promise<boolean> {
-        const entry = await this.ginkInstance.store.getEntryByKey(this.address, undefined, asOf);
+        const entry = await this.database.store.getEntryByKey(this.address, undefined, asOf);
         return (entry === undefined || !entry.deletion);
     }
 
@@ -43,11 +43,11 @@ export class Vertex extends Container {
     }
 
     async getEdges(source: boolean, asOf?: AsOf): Promise<Edge[]> {
-        const entries = await this.ginkInstance.store.getEntriesBySourceOrTarget(this.address, source, asOf);
+        const entries = await this.database.store.getEntriesBySourceOrTarget(this.address, source, asOf);
         const thisVertex = this;
         const edges = entries.map(
             function (entry: Entry) {
-                return new Edge(thisVertex.ginkInstance, muidTupleToMuid(entry.entryId), entryToEdgeData(entry));
+                return new Edge(thisVertex.database, muidTupleToMuid(entry.entryId), entryToEdgeData(entry));
             }
         );
         return edges;

@@ -1,4 +1,4 @@
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { Container } from "./Container";
 import { KeyType, Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
@@ -8,8 +8,8 @@ import { Behavior, ContainerBuilder } from "./builders";
 
 export class KeySet extends Container {
 
-    constructor(ginkInstance: GinkInstance, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(ginkInstance, address, Behavior.KEY_SET);
+    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+        super(database, address, Behavior.KEY_SET);
         if (this.address.timestamp < 0) {
             ensure(address.offset == Behavior.KEY_SET);
         } else {
@@ -49,7 +49,7 @@ export class KeySet extends Container {
         for (const key of keys) {
             await this.addEntry(key, Container.INCLUSION, bundler);
         }
-        await this.ginkInstance.addBundler(bundler);
+        await this.database.addBundler(bundler);
         return bundler;
     }
 
@@ -72,7 +72,7 @@ export class KeySet extends Container {
     entries(asOf?: AsOf): AsyncGenerator<[KeyType, KeyType], void, unknown> {
         const thisSet = this;
         return (async function* () {
-            const entries = await thisSet.ginkInstance.store.getKeyedEntries(thisSet.address, asOf);
+            const entries = await thisSet.database.store.getKeyedEntries(thisSet.address, asOf);
             for (const [key, entry] of entries) {
                 yield [key, key];
             }
@@ -86,7 +86,7 @@ export class KeySet extends Container {
      * @returns true if the key set has the key, false if not.
      */
     async has(key: KeyType, asOf?: AsOf): Promise<boolean> {
-        const result = await this.ginkInstance.store.getEntryByKey(this.address, key, asOf);
+        const result = await this.database.store.getEntryByKey(this.address, key, asOf);
         if (result != undefined && result.deletion) {
             return false;
         }
@@ -99,7 +99,7 @@ export class KeySet extends Container {
      * @returns a promise that resolves to a set with KeyTypes.
      */
     async toSet(asOf?: AsOf): Promise<Set<KeyType>> {
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
         const resultSet = new Set<KeyType>();
         for (const [key, entry] of entries) {
             resultSet.add(key);
@@ -113,7 +113,7 @@ export class KeySet extends Container {
      * @returns a promise that resolves to a number.
      */
     async size(asOf?: AsOf): Promise<number> {
-        const entries = await this.ginkInstance.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
         return entries.size;
     }
 

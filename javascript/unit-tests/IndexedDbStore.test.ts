@@ -1,14 +1,14 @@
 import { testStore } from "./Store.test";
-import { GinkInstance, IndexedDbStore, generateTimestamp, ensure } from "../implementation";
+import { Database, IndexedDbStore, generateTimestamp, ensure } from "../implementation";
 
 testStore('IndexedDbStore', async () => new IndexedDbStore("IDB.test", true));
 export const result = 1;
 
 it('use methods', async () => {
     const indexedDbStore = new IndexedDbStore('IndexedDbStore.test.1');
-    const ginkInstance = new GinkInstance(indexedDbStore);
-    await ginkInstance.ready;
-    const dir = ginkInstance.getGlobalDirectory();
+    const database = new Database(indexedDbStore);
+    await database.ready;
+    const dir = database.getGlobalDirectory();
     await dir.set("foo", "bar");
     const beforeSecondSet = generateTimestamp();
     await dir.set("foo", "baz");
@@ -21,4 +21,3 @@ it('use methods', async () => {
     ensure(entriesAfterDrop.length == 1);
     ensure(!await dir.has("foo", beforeSecondSet));
 });
-

@@ -61,7 +61,7 @@ if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typ
  * be done using a shim that is only an in-memory implementation of the IndexedDb API,
  * so the LogBackedStore should be used on the server for persistence.  Most of the time
  * uses of Gink should not need to call methods on the store directly, instead just
- * pass it into the GinkInstance (or SimpleServer, etc.).
+ * pass it into the Database (or SimpleServer, etc.).
  */
 export class IndexedDbStore implements Store {
 

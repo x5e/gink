@@ -1,4 +1,4 @@
-import { GinkInstance } from "./GinkInstance";
+import { Database } from "./Database";
 import { LogBackedStore } from "./LogBackedStore";
 import {
     connection as WebSocketConnection, Message as WebSocketMessage
@@ -10,7 +10,7 @@ import { ensure } from "./utils";
 
 
 
-export class RoutingServerInstance extends GinkInstance {
+export class RoutingServerInstance extends Database {
 
     constructor(readonly filePath: FilePath, readonly logger: CallBack = console.log) {
         super(new LogBackedStore(filePath, false), { software: `routing server for ${filePath}` }, logger);

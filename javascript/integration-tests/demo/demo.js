@@ -13,7 +13,7 @@ function getWebsocketTarget() {
 }
 
 (async () => {
-    const instance = new gink.GinkInstance(new gink.IndexedDbStore("browser-test", true),
+    const instance = new gink.Database(new gink.IndexedDbStore("browser-test", true),
         { software: "browser instance" });
     await instance.ready;
     globalThis.root = instance.getGlobalDirectory();

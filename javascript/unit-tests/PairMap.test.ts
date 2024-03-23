@@ -1,10 +1,10 @@
-import { GinkInstance, IndexedDbStore, MemoryStore } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore } from "../implementation";
 import { ensure } from "../implementation/utils";
 import { sleep } from "./test_utils";
 
 it('set, get, delete, and size work as intended', async function () {
     for (const store of [new IndexedDbStore('PM.test1', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const pm1 = await instance.createPairMap();
         const box1 = await instance.createBox();
@@ -32,7 +32,7 @@ it('set, get, delete, and size work as intended', async function () {
 
 it('asOf and items work as intended', async function () {
     for (const store of [new IndexedDbStore('PM.test2', true), new MemoryStore(true)]) {
-        const instance = new GinkInstance(store);
+        const instance = new Database(store);
         await instance.ready;
         const pm1 = await instance.createPairMap();
         const box1 = await instance.createBox();
