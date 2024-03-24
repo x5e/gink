@@ -1,5 +1,5 @@
 """ Contains the Peer class that manages a connection to another gink instance. """
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Mapping
 from socket import (
     socket as Socket,
     AF_INET,

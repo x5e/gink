@@ -229,14 +229,14 @@ class Database:
             else:
                 self._logger.warning("got binary message without ack, bundle, or greeting")
 
-    def start_listening(self, ip_addr="", port: Union[str, int] = "8080"):
+    def start_listening(self, ip_addr="", port: Union[str, int] = "8080", oauth=False):
         """ Listen for incoming connections on the given port.
 
             Note that you'll still need to call "run" to actually accept those connections.
         """
         port = int(port)
         self._logger.info("starting to listen on %r:%r", ip_addr, port)
-        self._listeners.add(Listener(WebsocketConnection, ip_addr=ip_addr, port=port))
+        self._listeners.add(Listener(WebsocketConnection, ip_addr=ip_addr, port=port, oauth=oauth))
 
     def connect_to(self, target: str):
         """ initiate a connection to another gink instance """

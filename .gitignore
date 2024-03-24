@@ -26,3 +26,4 @@ venv
 data.json
 *.db
 *.db-lock
+token.json
