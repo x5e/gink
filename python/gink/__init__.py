@@ -17,8 +17,10 @@ from .impl.graph import Vertex, Verb, Edge
 from .impl.pair_set import PairSet
 from .impl.pair_map import PairMap
 from .impl.utilities import generate_timestamp
+from .impl.builders import ClaimBuilder
+from .impl.tuples import Chain
 
 
-__all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence", "Box", "Bundler",
+__all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence", "Box", "Bundler", "Chain",
            "Property", "Container", "Muid", "LogBackedStore", "BundleInfo", "AbstractStore", "Role",
-           "Vertex", "Verb", "Edge", "KeySet", "PairSet", "PairMap", "generate_timestamp"]
+           "Vertex", "Verb", "Edge", "KeySet", "PairSet", "PairMap", "generate_timestamp", "ClaimBuilder"]

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ command line interface for Gink """
 from logging import basicConfig, getLogger
-from sys import exit, stdin, stderr
+from sys import exit, stdin
 from re import fullmatch
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -9,6 +9,7 @@ from pathlib import Path
 from . import *
 from .impl.builders import BundleBuilder
 from .impl.selectable_console import SelectableConsole
+from .impl.utilities import get_identity
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
@@ -33,6 +34,7 @@ parser.add_argument("--repr", action="store_true", help="show repr of stored val
 parser.add_argument("--line_mode", action="store_true", help="read lines of input from stdin")
 parser.add_argument("--interactive", action="store_true", help="force interactive mode")
 parser.add_argument("--heartbeat_to", type=Path, help="write on console refresh (for debugging)")
+parser.add_argument("--identity", help="explicitly set identity to be associated with changes")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -50,7 +52,7 @@ elif args.format == "lmdb":
 else:
     store = LogBackedStore(args.db_path)
 
-database = Database(store)
+database = Database(store, identity=args.identity or get_identity())
 root = Directory.get_global_instance(database=database)
 
 if args.dump:
@@ -91,7 +93,7 @@ if args.set:
 if args.get:
     container = root
     result = container.get(args.get, as_of=args.as_of)
-    print(repr(result))
+    print(result)
     exit(0)
 
 if args.blame:
