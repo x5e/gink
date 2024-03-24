@@ -35,10 +35,11 @@ class Attribution:
     def __str__(self):
         local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
         as_datetime = datetime.fromtimestamp(self.timestamp / 1e6, local_timezone)
-
+        as_datetime = as_datetime.replace(microsecond=0)
         returning = ""
-        returning += f"{as_datetime} {self.identity}"
+        returning += f"{as_datetime}"
+        returning += "%30s" % self.identity
         if self.abstract:
-            returning += " "
-            returning += self.abstract
+            returning += "   "
+            returning += repr(self.abstract)
         return returning
