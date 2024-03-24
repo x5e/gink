@@ -226,7 +226,8 @@ class Directory(Container):
             found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
             if found is None or not key:
                 continue
-            result[key] = self._database.get_attribution(*found.address)
+            result[key] = self._database.get_attribution(
+                medallion=found.address.medallion, timestamp=found.address.timestamp)
         return result
 
     def show_blame(self, as_of: GenericTimestamp = None, file=stdout):

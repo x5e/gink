@@ -348,7 +348,7 @@ class Database:
                 if container.size(as_of=as_of):
                     container.dump(as_of=as_of, file=file)
 
-    def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion) -> Attribution:
+    def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
         """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
 
             After the timestamp and medallion it will ignore other ordered arguments, so

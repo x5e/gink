@@ -738,6 +738,8 @@ class LmdbStore(AbstractStore):
         with self._handle.begin() as trxn:
             identity_cursor = trxn.cursor(db=self._identities)
             key = to_last_with_prefix(identity_cursor, pack(">Q", medallion))
+            if not isinstance(key, bytes):
+                raise ValueError("could not identify correct chain")
             chain = Chain.from_bytes(key)
             if chain.chain_start > timestamp or chain.medallion != medallion:
                 raise ValueError("problem identifying correct chain")

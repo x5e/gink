@@ -234,13 +234,13 @@ def test_blame_and_log():
                 directory.set("foo", "bar", comment="first")
                 directory.set("foo", 123, comment="second")
                 attr1 = directory.blame()["foo"]
-                assert attr1.comment == "second", attr1
+                assert attr1.abstract == "second", attr1
                 attr2 = directory.blame(as_of=-1)["foo"]
-                assert attr2.comment == "first", attr2
+                assert attr2.abstract == "first", attr2
 
                 as_list = list(directory.log("foo"))
-                assert as_list[0].comment == "second"
-                assert as_list[1].comment == "first"
+                assert as_list[0].abstract == "second"
+                assert as_list[1].abstract == "first"
 
 def test_float_int():
     """ makes sure that the directory.get_blame works """

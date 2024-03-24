@@ -36,7 +36,7 @@ class MemoryStore(AbstractStore):
     _containers: SortedDict  # muid => builder
     _removals: SortedDict  # bytes(removal_key) => MovementBuilder
     _clearances: SortedDict
-    _identities: Dict[Chain, str]
+    _identities: SortedDict # Dict[Chain, str]
 
     def __init__(self):
         # TODO: add a "no retention" capability to allow the memory store to be configured to
@@ -45,7 +45,7 @@ class MemoryStore(AbstractStore):
         self._chain_infos = SortedDict()
         self._claims = SortedDict()
         self._entries = {}
-        self._identities = {}
+        self._identities = SortedDict()
         self._placements = SortedDict()
         self._containers = SortedDict()
         self._locations = SortedDict()
@@ -277,6 +277,15 @@ class MemoryStore(AbstractStore):
 
     def get_identity(self, chain: Chain, lock: Optional[bool]=None, /) -> str:
         return self._identities[chain]
+
+    def find_chain(self, medallion: Medallion, timestamp: MuTimestamp) -> Chain:
+        for chain in self._identities.irange(reverse=True,
+            minimum=Chain(medallion=medallion, chain_start=0),
+            maximum=Chain(medallion=medallion+1, chain_start=0)):
+            assert isinstance(chain, Chain)
+            if chain.medallion == medallion and timestamp >= chain.chain_start:
+                return chain
+        raise ValueError("chain not found")
 
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
