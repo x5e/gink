@@ -29,6 +29,7 @@ class Listener:
         self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.socket.bind((ip_addr, int(port)))
         self.socket.listen(128)
+        self.OAUTH_CREDS = None
         if oauth:
             self.OAUTH_CREDS = os.environ.get("OAUTH_CREDS")
             assert self.OAUTH_CREDS, "Provide OAUTH_CREDS env variable to use OAuth 2.0"

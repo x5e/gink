@@ -33,7 +33,7 @@ parser.add_argument("--repr", action="store_true", help="show repr of stored val
 parser.add_argument("--line_mode", action="store_true", help="read lines of input from stdin")
 parser.add_argument("--interactive", action="store_true", help="force interactive mode")
 parser.add_argument("--heartbeat_to", type=Path, help="write on console refresh (for debugging)")
-parser.add_argument("--use_oauth", type=bool, default=False, help="should the server authenticate users with OAuth 2.0?")
+parser.add_argument("--use_oauth", action="store_true", help="the server authenticates users with OAuth 2.0")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
