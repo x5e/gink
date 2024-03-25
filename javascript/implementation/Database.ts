@@ -39,7 +39,7 @@ export class Database {
     private initilized = false;
     protected iHave: ChainTracker;
 
-    //TODO(https://github.com/google/gink/issues/31): centralize platform dependent code
+    //TODO: centralize platform dependent code
     private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
         eval("require('websocket').w3cwebsocket");
 
@@ -87,7 +87,7 @@ export class Database {
         // TODO(181): make claiming of a chain as needed to facilitate read-only/relay use cases
         const claimedChains = await this.store.getClaimedChains();
         for (let value of claimedChains.values()) {
-            if (!isAlive(value.actorId)) {
+            if (!(await isAlive(value.actorId))) {
                 // TODO: check to see if meta-data matches, and overwrite if not
                 this.myChain = value;
                 break;

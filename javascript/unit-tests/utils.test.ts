@@ -1,4 +1,4 @@
-import { ensure, muidTupleToString, muidToString, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous, strToMuid, encodeToken, decodeToken } from "../implementation/utils";
+import { ensure, muidTupleToString, muidToString, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous, strToMuid, encodeToken, decodeToken, getActorId, isAlive } from "../implementation/utils";
 
 it('document', async function () {
     const wrapped = wrapValue((new Map()).set("fee", "parking").set("cost", 1000));
@@ -93,3 +93,13 @@ it('encodeToken and decodeToken', function () {
     ensure(backToToken.includes("token "));
     ensure(token == backToToken.substring(7), `original: '${token}' | fromHex: '${backToToken.substring(7)}'`);
 });
+
+if (typeof window == "undefined") {
+    it('getActorId and isAlive correctly identify processes', async () => {
+        const currentProcess = process.pid;
+        const actorId = getActorId();
+        ensure(currentProcess === actorId);
+        ensure(await isAlive(actorId));
+        ensure(!(await isAlive(0)));
+    });
+}

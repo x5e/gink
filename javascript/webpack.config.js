@@ -9,7 +9,14 @@ module.exports = {
         path: path.resolve(__dirname, 'content_root', 'generated'),
     },
     resolve: {
-        extensions: [".ts", ".tsx", ".js"]
+        extensions: [".ts", ".tsx", ".js"],
+        fallback: {
+            "os": false,
+            "child_process": false,
+            "path": false,
+            "fs": false
+        }
+
     },
     module: {
         rules: [

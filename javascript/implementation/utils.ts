@@ -13,6 +13,16 @@ import {
     TupleBuilder, DocumentBuilder
 } from "./builders";
 
+// Since find-process uses child-process, we can't load this if gink
+// is running in a browser
+// TODO: only install this package when you will be using as a backend?
+let fp;
+if (typeof window == "undefined") {
+    fp = import('find-process').then((fp) => {
+        return fp;
+    });
+}
+
 export function ensure(x: any, msg?: string) {
     if (!x)
         throw new Error(msg ?? "assert failed");
@@ -454,9 +464,11 @@ export const dehydrate = muidToTuple;
 export const rehydrate = muidTupleToMuid;
 
 export function getActorId(): ActorId {
-    if ("object" == typeof process)
+    if (typeof window == "undefined")
         return process.pid;
-    return generateTimestamp();
+    else {
+        return generateTimestamp();
+    }
 }
 
 /**
@@ -465,12 +477,19 @@ export function getActorId(): ActorId {
  * chain is still active, then you can't assume that the chain is free for reuse.  For right now, the function
  * returns true for any non-zero actor Id, mostly to force the creation of a new chain as a "safe" fallback.
  * Returning false when the actor ID is zero is done to allow testing for chain reuse.  At some point this
- * needs to be flushed out with a test to see if the process ID is still alive (on backend/node) or if the
- * window corresponding to the window ID is still alive.
+ * needs to be flushed out with a test to see if the window corresponding to the window ID is still alive.
  * @param actorId
  * @returns
  */
-export function isAlive(actorId: ActorId): boolean {
-    // TODO: https://github.com/x5e/gink/issues/179
-    return actorId > 0;
+export async function isAlive(actorId: ActorId): Promise<boolean> {
+    if (typeof window == "undefined") {
+        // If the window is undefined, we are running in Node.js
+        // Await on the find-process import and find the process with actorId.
+        fp = await fp;
+        const found = await fp.default('pid', actorId);
+        ensure(found.length == 0 || found.length == 1);
+        return found.length == 1;
+    } else {
+        return actorId > 0;
+    }
 }
