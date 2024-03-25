@@ -27,7 +27,6 @@ class LogBackedStore(MemoryStore):
         self._handle.seek(0)
         self._processed_to = 0
         self._log_file_builder = LogFileBuilder()
-        self._claims: Dict[Medallion, ClaimBuilder] = dict()
         self.refresh()
 
     def _acquire_lock(self) -> bool:
@@ -62,8 +61,8 @@ class LogBackedStore(MemoryStore):
         for bundle_bytes in self._log_file_builder.commits:  # type: ignore # pylint: disable=maybe-no-member
             MemoryStore.apply_bundle(self, bundle_bytes, callback=callback)
             count += 1
-        # for claim_builder in self._log_file_builder.claims:
-        #    self._claims[claim_builder.medallion] = claim_builder
+        for claim_builder in self._log_file_builder.claims:
+            self._claims[claim_builder.medallion] = claim_builder
         self._processed_to += len(file_bytes)
         return count
 
@@ -86,6 +85,10 @@ class LogBackedStore(MemoryStore):
         if added:
             self._log_file_builder.Clear()  # type: ignore
             self._log_file_builder.commits.append(bundle.get_bytes())  # type: ignore
+            if claim_chain:
+                claim_builder: ClaimBuilder = create_claim(bundle.get_info().get_chain())
+                self._log_file_builder.claims.append(claim_builder)
+                self._claims[bundle.get_info().medallion] = claim_builder
             data: bytes = self._log_file_builder.SerializeToString()  # type: ignore
             self._handle.write(data)
             self._handle.flush()
