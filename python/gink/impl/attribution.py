@@ -37,7 +37,7 @@ class Attribution:
         as_datetime = datetime.fromtimestamp(self.timestamp / 1e6, local_timezone)
         as_datetime = as_datetime.replace(microsecond=0)
         returning = ""
-        returning += f"{as_datetime}"
+        returning += hex(self.medallion)[2:] + f" {as_datetime}"
         returning += "%30s" % self.identity
         if self.abstract:
             returning += "   "

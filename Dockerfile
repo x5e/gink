@@ -45,6 +45,7 @@ RUN npm run browser-unit
 RUN ./integration-tests/py-py-test.js
 RUN ./integration-tests/py-ts-test.js
 RUN ./integration-tests/ts-py-test.js
+RUN ./integration-tests/chain-reuse-test.js
 
 # JavaScript/TypeScript integration tests
 RUN ./integration-tests/node-client-test.js
