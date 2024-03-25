@@ -10,10 +10,15 @@ const TEST_DB_PATH = "/tmp/client-reuse-test.db";
     if (fs.existsSync(TEST_DB_PATH)) {
         fs.unlinkSync(TEST_DB_PATH);
     }
+
+    const format = process.argv.length >= 3 ? process.argv[2] : "lmdb";
+    console.log(`using format=${format}`)
+
     const result1 = spawnSync(
         "python3",
-        ["-u", "-m", "gink", TEST_DB_PATH, "--identity", "abc", "--set", "foo", "<<<", "bar"],
-        {shell: "/usr/bin/bash", env: process.env}
+        ["-u", "-m", "gink", TEST_DB_PATH, "--format", format,
+        "--identity", "abc", "--set", "foo", "<<<", "bar"],
+        {shell: "/usr/bin/bash"}
     );
 
     if (result1.status != 0) {
@@ -21,7 +26,8 @@ const TEST_DB_PATH = "/tmp/client-reuse-test.db";
 
     const result2 = spawnSync(
         "python3",
-        ["-u", "-m", "gink", TEST_DB_PATH, "--identity", "abc", "--set", "bar", "<<<", "baz"],
+        ["-u", "-m", "gink", TEST_DB_PATH, "--format", format,
+            "--identity", "abc", "--set", "bar", "<<<", "baz"],
         {shell: "/usr/bin/bash"}
     );
 
@@ -30,7 +36,8 @@ const TEST_DB_PATH = "/tmp/client-reuse-test.db";
 
     const result3 = spawnSync(
         "python3",
-        ["-u", "-m", "gink", TEST_DB_PATH, "--identity", "xyz", "--set", "xxx", "<<<", "zzz"],
+        ["-u", "-m", "gink", TEST_DB_PATH, "--format", format,
+            "--identity", "xyz", "--set", "xxx", "<<<", "zzz"],
         {shell: "/usr/bin/bash"}
     );
 
@@ -39,7 +46,7 @@ const TEST_DB_PATH = "/tmp/client-reuse-test.db";
 
     const result4 = spawnSync(
         "/usr/bin/bash", [ "-c",
-            `"python3 -m gink ${TEST_DB_PATH} --log | cut -b 1-13 | sort -u | wc -l "`],
+    `"python3 -m gink ${TEST_DB_PATH} --log --format ${format} | cut -b 1-13 | sort -u | wc -l "`],
             {shell: "/usr/bin/bash"}
     );
 
