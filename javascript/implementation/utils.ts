@@ -467,7 +467,25 @@ export function getActorId(): ActorId {
     if (typeof window == "undefined")
         return process.pid;
     else {
-        return generateTimestamp();
+        // If window has already been assigned an actorId
+        if (window.name.startsWith("gink-")) {
+            return Number(window.name.split("-")[1]);
+        }
+
+        if (!window.localStorage.getItem(`gink-current-window`)) {
+            window.localStorage.setItem(`gink-current-window`, "1");
+        }
+        let currentWindow = Number(window.localStorage.getItem(`gink-current-window`));
+        // Using 2^22 since that is the max pid for any process on a 64 bit machine.
+        const aId = (2 ** 22) + currentWindow;
+        currentWindow++;
+        window.localStorage.setItem(`gink-${aId}`, "true");
+        window.name = `gink-${aId}`;
+        window.localStorage.setItem(`gink-current-window`, String(currentWindow));
+        window.onunload = () => {
+            window.localStorage.removeItem(`gink-${aId}`);
+        };
+        return aId;
     }
 }
 
@@ -490,6 +508,6 @@ export async function isAlive(actorId: ActorId): Promise<boolean> {
         ensure(found.length == 0 || found.length == 1);
         return found.length == 1;
     } else {
-        return actorId > 0;
+        return !!window.localStorage.getItem(`gink-${actorId}`);
     }
 }

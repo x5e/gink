@@ -94,12 +94,17 @@ it('encodeToken and decodeToken', function () {
     ensure(token == backToToken.substring(7), `original: '${token}' | fromHex: '${backToToken.substring(7)}'`);
 });
 
-if (typeof window == "undefined") {
-    it('getActorId and isAlive correctly identify processes', async () => {
-        const currentProcess = process.pid;
-        const actorId = getActorId();
-        ensure(currentProcess === actorId);
-        ensure(await isAlive(actorId));
-        ensure(!(await isAlive(0)));
-    });
-}
+it('getActorId and isAlive correctly identify processes', async () => {
+    let currentProcess;
+    if (typeof window == "undefined") {
+        currentProcess = process.pid;
+    } else {
+        currentProcess = Number(window.name.split("-")[1]);
+    }
+    const actorId = getActorId();
+    // Process 0 should not be active, and windowID+1 should not be active.
+    const testAId = typeof window == "undefined" ? 0 : actorId + 1;
+    ensure(currentProcess === actorId);
+    ensure(await isAlive(actorId));
+    ensure(!(await isAlive(testAId)));
+});
