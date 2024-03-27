@@ -475,10 +475,9 @@ export function getActorId(): ActorId {
         window.localStorage.setItem(`gink-${aId}`, `${Date.now()}`);
         // Heartbeat the browser's localStorage every 1 second with the current time.
         // This is to tell isAlive() that the window is still alive.
-        const intervalNum = setInterval(() => {
+        setInterval(() => {
             window.localStorage.setItem(`gink-${aId}`, `${Date.now()}`);
         }, 1000);
-        window.localStorage.setItem("int", String(intervalNum));
         window.onunload = () => {
             window.localStorage.removeItem(`gink-${aId}`);
         };

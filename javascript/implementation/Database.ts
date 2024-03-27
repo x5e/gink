@@ -90,6 +90,13 @@ export class Database {
             if (!(await isAlive(value.actorId))) {
                 // TODO: check to see if meta-data matches, and overwrite if not
                 this.myChain = value;
+                if (typeof window != "undefined") {
+                    // If we are running in a browser and take over a chain,
+                    // start a new heartbeat.
+                    setInterval(() => {
+                        window.localStorage.setItem(`gink-${value.actorId}`, `${Date.now()}`);
+                    }, 1000);
+                }
                 break;
             }
         }
