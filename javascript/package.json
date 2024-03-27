@@ -46,7 +46,6 @@
     "fake-indexeddb": "^4.0.1",
     "find-process": "^1.4.7",
     "fs-ext": "^2.0.0",
-    "google-auth-library": "^9.4.2",
     "google-protobuf": "^3.21.2",
     "idb": "^7.1.1",
     "jstreemap": "^1.28.2",
