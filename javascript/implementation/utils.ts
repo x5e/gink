@@ -16,12 +16,7 @@ import {
 // Since find-process uses child-process, we can't load this if gink
 // is running in a browser
 // TODO: only install this package when you will be using as a backend?
-let fp;
-if (typeof window == "undefined") {
-    fp = import('find-process').then((fp) => {
-        return fp;
-    });
-}
+const findProcess = (typeof window == "undefined") ? eval("require('find-process')") : undefined;
 
 export function ensure(x: any, msg?: string) {
     if (!x)
@@ -467,11 +462,7 @@ export function getActorId(): ActorId {
     if (typeof window == "undefined")
         return process.pid;
     else {
-        // If window has already been assigned an actorId
-        if (window.name.startsWith("gink-")) {
-            return Number(window.name.split("-")[1]);
-        }
-
+        // So we don't assign multiple gink instances in different windows the same actorId
         if (!window.localStorage.getItem(`gink-current-window`)) {
             window.localStorage.setItem(`gink-current-window`, "1");
         }
@@ -479,9 +470,15 @@ export function getActorId(): ActorId {
         // Using 2^22 since that is the max pid for any process on a 64 bit machine.
         const aId = (2 ** 22) + currentWindow;
         currentWindow++;
-        window.localStorage.setItem(`gink-${aId}`, "true");
-        window.name = `gink-${aId}`;
         window.localStorage.setItem(`gink-current-window`, String(currentWindow));
+
+        window.localStorage.setItem(`gink-${aId}`, `${Date.now()}`);
+        // Heartbeat the browser's localStorage every 1 second with the current time.
+        // This is to tell isAlive() that the window is still alive.
+        const intervalNum = setInterval(() => {
+            window.localStorage.setItem(`gink-${aId}`, `${Date.now()}`);
+        }, 1000);
+        window.localStorage.setItem("int", String(intervalNum));
         window.onunload = () => {
             window.localStorage.removeItem(`gink-${aId}`);
         };
@@ -498,13 +495,19 @@ export function getActorId(): ActorId {
  */
 export async function isAlive(actorId: ActorId): Promise<boolean> {
     if (typeof window == "undefined") {
-        // If the window is undefined, we are running in Node.js
-        // Await on the find-process import and find the process with actorId.
-        fp = await fp;
-        const found = await fp.default('pid', actorId);
+        ensure(findProcess, "find-process library didn't load in browser");
+        const found = await findProcess('pid', actorId);
         ensure(found.length == 0 || found.length == 1);
         return found.length == 1;
     } else {
-        return !!window.localStorage.getItem(`gink-${actorId}`);
+        const lastPinged = window.localStorage.getItem(`gink-${actorId}`);
+        if (!lastPinged) return false;
+
+        const lastPingedTime = Number(lastPinged);
+        const currentTime = Date.now();
+
+        // Compare current time to the last window heartbeat
+        // Using 5 seconds here for a bit of a buffer
+        return (currentTime - lastPingedTime) < 5000;
     }
 }
