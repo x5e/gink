@@ -1,6 +1,7 @@
 """ Contains the Attribution class. """
 from datetime import datetime, timezone
 from .typedefs import MuTimestamp, Medallion
+from typing import Optional
 
 
 class Attribution:
@@ -8,30 +9,20 @@ class Attribution:
     __slots__ = [
         "timestamp",
         "medallion",
-        "username",
-        "hostname",
-        "fullname",
-        "email",
-        "software",
-        "comment",
+        "identity",
+        "abstract",
     ]
 
-    def __init__(self, timestamp: MuTimestamp, medallion: Medallion, *,
-                 username=None,
-                 hostname=None,
-                 comment=None,
-                 fullname=None,
-                 software=None,
-                 email=None,
+    def __init__(self,
+                 timestamp: MuTimestamp,
+                 medallion: Medallion,
+                 identity: str,
+                 abstract: Optional[str]=None,
                  ):
         self.timestamp = timestamp
         self.medallion = medallion
-        self.username = username
-        self.hostname = hostname
-        self.comment = comment
-        self.fullname = fullname
-        self.software = software
-        self.email = email
+        self.identity = identity
+        self.abstract = abstract
 
     def __repr__(self):
         result = "Attribution("
@@ -44,17 +35,11 @@ class Attribution:
     def __str__(self):
         local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
         as_datetime = datetime.fromtimestamp(self.timestamp / 1e6, local_timezone)
-
+        as_datetime = as_datetime.replace(microsecond=0)
         returning = ""
-        returning += f"{as_datetime} "
-        if self.email:
-            returning += self.email + " "
-        elif self.username and self.hostname:
-            host = self.hostname.split(".")[0]
-            returning += f"{self.username}@{host}"
-        elif self.fullname:
-            returning += self.fullname
-        if self.comment:
-            returning += " "
-            returning += self.comment
+        returning += hex(self.medallion)[2:] + f" {as_datetime}"
+        returning += "%30s" % self.identity
+        if self.abstract:
+            returning += "   "
+            returning += repr(self.abstract)
         return returning

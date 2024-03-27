@@ -247,6 +247,7 @@ class LmdbStore(AbstractStore):
                 Placement: self._entries,
                 RemovalKey: self._removals,
                 LocationKey: self._locations,
+                ClaimBuilder: self._claims,
             }[cls]
             cursor = trxn.cursor(table)
             placed = cursor.first() if last_index >= 0 else cursor.last()
@@ -681,17 +682,19 @@ class LmdbStore(AbstractStore):
         wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
         builder = wrapper.get_builder()
         new_info = wrapper.get_info()
-        if claim_chain:
-            assert new_info.timestamp == new_info.chain_start
         chain_key = bytes(new_info.get_chain())
         # Note: LMDB supports only one write transaction, so we don't need to explicitly lock.
         with self._handle.begin(write=True) as trxn:
             self._refresh_helper(trxn=trxn, callback=callback)
-            self._add_claim(trxn, new_info.get_chain())
             chain_value_old = trxn.get(chain_key, db=self._chains)
             old_info = BundleInfo(encoded=chain_value_old) if chain_value_old else None
             needed = AbstractStore._is_needed(new_info, old_info)
             if needed:
+                if claim_chain:
+                    assert new_info.timestamp == new_info.chain_start
+                    self._add_claim(trxn, new_info.get_chain())
+                if new_info.timestamp == new_info.chain_start:
+                    trxn.put(bytes(new_info.get_chain()), new_info.comment.encode(), db=self._identities)
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
                     bundle_location = encode_muts(generate_timestamp())
                     trxn.put(bundle_location, wrapper.get_bytes(), db=self._bundles)
@@ -724,10 +727,23 @@ class LmdbStore(AbstractStore):
     def get_identity(self, chain: Chain, trxn: Optional[Trxn]=None, /) -> str:
         if trxn is None:
             with self._handle.begin() as trxn:
-                return trxn.get(bytes(chain), db=self._identities)
+                result = trxn.get(bytes(chain), db=self._identities)
         else:
-            return trxn.get(bytes(chain), db=self._identities)
+            result = trxn.get(bytes(chain), db=self._identities)
+        if result is None:
+            raise ValueError(f"identity for chain not found: {chain}")
+        return result.decode()
 
+    def find_chain(self, medallion: Medallion, timestamp: MuTimestamp) -> Chain:
+        with self._handle.begin() as trxn:
+            identity_cursor = trxn.cursor(db=self._identities)
+            key = to_last_with_prefix(identity_cursor, pack(">Q", medallion))
+            if not isinstance(key, bytes):
+                raise ValueError("could not identify correct chain")
+            chain = Chain.from_bytes(key)
+            if chain.chain_start > timestamp or chain.medallion != medallion:
+                raise ValueError("problem identifying correct chain")
+            return chain
 
     def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int,
                          builder: ClearanceBuilder):

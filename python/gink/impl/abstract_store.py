@@ -128,7 +128,7 @@ class AbstractStore(ABC, Generic[Lock]):
             self._refresh_helper(lock, callback)
             claims = self._get_claims(lock)
             for old_claim in claims.values():
-                chain = Chain(old_claim.medallion, old_claim.chain_start)
+                chain = Chain(medallion=old_claim.medallion, chain_start=old_claim.chain_start)
                 if self.get_identity(chain) == identity and is_certainly_gone(old_claim.process_id):
                     self._add_claim(lock, chain)
                     return self.get_last(chain)
@@ -161,7 +161,8 @@ class AbstractStore(ABC, Generic[Lock]):
             claim_chain: bool=False) -> bool:
         """ Tries to add data from a particular bundle to this store.
 
-            the bundle's metadata
+            Returns true if the data is actually added, false if data already exists,
+            and will throw an exception in the case of an invalid extension.
         """
 
     def refresh(self, callback: Optional[BundleCallback] = None) -> int:
@@ -241,7 +242,14 @@ class AbstractStore(ABC, Generic[Lock]):
 
     @abstractmethod
     def get_identity(self, chain: Chain, lock: Optional[Lock]=None, /) -> str:
-        """ Get the first item in a chain. """
+        """ The comment on the first commit of each chain identifies who or what is responsible for it.
+        """
+
+    @abstractmethod
+    def find_chain(self, medallion: Medallion, timestamp: MuTimestamp) -> Chain:
+        """ Find the chain with the matching medallion and the first chain start prior
+            to the timestamp argument passed in.
+        """
 
     @staticmethod
     def _is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:

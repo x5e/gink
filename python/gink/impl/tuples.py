@@ -1,19 +1,24 @@
 """ a couple of NamedTuple definitions, primarily for internal usage """
+from __future__ import annotations
 from typing import NamedTuple
 
 from .builders import EntryBuilder, ContainerBuilder
 from .muid import Muid
-from struct import pack
+from struct import pack, unpack
 from .typedefs import Medallion, MuTimestamp
 
 
 class Chain(NamedTuple):
     """ Pair of numbers to identify a blockchain in gink. """
-    chain_start: MuTimestamp
     medallion: Medallion
+    chain_start: MuTimestamp
 
     def __bytes__(self):
-        return pack(">QQ", self.chain_start, self.medallion)
+        return pack(">QQ", self.medallion, self.chain_start)
+
+    @staticmethod
+    def from_bytes(data: bytes) -> Chain:
+        return Chain(*unpack(">QQ", data))
 
 
 class FoundEntry(NamedTuple):

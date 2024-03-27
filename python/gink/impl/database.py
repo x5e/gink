@@ -348,36 +348,33 @@ class Database:
                 if container.size(as_of=as_of):
                     container.dump(as_of=as_of, file=file)
 
-    def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_
-    ) -> Attribution:
+    def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
         """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
 
             After the timestamp and medallion it will ignore other ordered arguments, so
             that it can be used via get_attribution(*muid).
         """
-        from .directory import Directory
-        medallion_directory = Directory.get_medallion_instance(
-            medallion=medallion, database=self)
-        comment = self._store.get_comment(
-            medallion=medallion, timestamp=timestamp)
+        comment = self._store.get_comment(medallion=medallion, timestamp=timestamp)
+        chain = self._store.find_chain(medallion=medallion, timestamp=timestamp)
+        identity = self._store.get_identity(chain)
         return Attribution(
             timestamp=timestamp,
             medallion=medallion,
-            username=medallion_directory.get(".user.name", as_of=timestamp),
-            hostname=medallion_directory.get(".host.name", as_of=timestamp),
-            fullname=medallion_directory.get(".full.name", as_of=timestamp),
-            software=medallion_directory.get(".software", as_of=timestamp),
-            comment=comment,
+            identity=identity,
+            abstract=comment,
         )
 
-    def log(self, limit: Optional[int] = -10) -> Iterable[Attribution]:
+    def log(self, limit: Optional[int] = -10, *, include_starts=False) -> Iterable[Attribution]:
         """ Gets a list of attributions representing all bundles stored by the db. """
         for bundle_info in self._store.get_some(BundleInfo, limit):
+            assert isinstance(bundle_info, BundleInfo)
+            if bundle_info.timestamp == bundle_info.chain_start and not include_starts:
+                continue
             yield self.get_attribution(bundle_info.timestamp, bundle_info.medallion)
 
-    def show_log(self, limit: Optional[int] = -10, file=stdout):
+    def show_log(self, limit: Optional[int] = -10, *, include_starts=False, file=stdout):
         """ Just prints the log to stdout in a human-readable format. """
-        for attribution in self.log(limit=limit):
+        for attribution in self.log(limit=limit, include_starts=include_starts):
             print(attribution, file=file)
 
     def get_by_name(self, name: str, as_of: GenericTimestamp = None) -> List:
