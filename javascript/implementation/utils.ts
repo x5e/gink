@@ -13,6 +13,11 @@ import {
     TupleBuilder, DocumentBuilder
 } from "./builders";
 
+// Since find-process uses child-process, we can't load this if gink
+// is running in a browser
+// TODO: only install this package when you will be using as a backend?
+const findProcess = (typeof window == "undefined") ? eval("require('find-process')") : undefined;
+
 export function ensure(x: any, msg?: string) {
     if (!x)
         throw new Error(msg ?? "assert failed");
@@ -454,23 +459,54 @@ export const dehydrate = muidToTuple;
 export const rehydrate = muidTupleToMuid;
 
 export function getActorId(): ActorId {
-    if ("object" == typeof process)
+    if (typeof window == "undefined")
         return process.pid;
-    return generateTimestamp();
+    else {
+        // So we don't assign multiple gink instances in different windows the same actorId
+        if (!window.localStorage.getItem(`gink-current-window`)) {
+            window.localStorage.setItem(`gink-current-window`, "1");
+        }
+        let currentWindow = Number(window.localStorage.getItem(`gink-current-window`));
+        // Using 2^22 since that is the max pid for any process on a 64 bit machine.
+        const aId = (2 ** 22) + currentWindow;
+        currentWindow++;
+        window.localStorage.setItem(`gink-current-window`, String(currentWindow));
+
+        window.localStorage.setItem(`gink-${aId}`, `${Date.now()}`);
+        // Heartbeat the browser's localStorage every 1 second with the current time.
+        // This is to tell isAlive() that the window is still alive.
+        setInterval(() => {
+            window.localStorage.setItem(`gink-${aId}`, `${Date.now()}`);
+        }, 1000);
+        window.onunload = () => {
+            window.localStorage.removeItem(`gink-${aId}`);
+        };
+        return aId;
+    }
 }
 
 /**
  * This function exists to determine if the process or window that previously wrote to a chain is still around.
  * If not, then it's safe to append to that chain (to reduce the number of chain starts).  If the creator of a
- * chain is still active, then you can't assume that the chain is free for reuse.  For right now, the function
- * returns true for any non-zero actor Id, mostly to force the creation of a new chain as a "safe" fallback.
- * Returning false when the actor ID is zero is done to allow testing for chain reuse.  At some point this
- * needs to be flushed out with a test to see if the process ID is still alive (on backend/node) or if the
- * window corresponding to the window ID is still alive.
+ * chain is still active, then you can't assume that the chain is free for reuse.
  * @param actorId
  * @returns
  */
-export function isAlive(actorId: ActorId): boolean {
-    // TODO: https://github.com/x5e/gink/issues/179
-    return actorId > 0;
+export async function isAlive(actorId: ActorId): Promise<boolean> {
+    if (typeof window == "undefined") {
+        ensure(findProcess, "find-process library didn't load in browser");
+        const found = await findProcess('pid', actorId);
+        ensure(found.length == 0 || found.length == 1);
+        return found.length == 1;
+    } else {
+        const lastPinged = window.localStorage.getItem(`gink-${actorId}`);
+        if (!lastPinged) return false;
+
+        const lastPingedTime = Number(lastPinged);
+        const currentTime = Date.now();
+
+        // Compare current time to the last window heartbeat
+        // Using 5 seconds here for a bit of a buffer
+        return (currentTime - lastPingedTime) < 5000;
+    }
 }

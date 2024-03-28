@@ -1,4 +1,4 @@
-import { ensure, muidTupleToString, muidToString, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous, strToMuid, encodeToken, decodeToken } from "../implementation/utils";
+import { ensure, muidTupleToString, muidToString, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous, strToMuid, encodeToken, decodeToken, getActorId, isAlive } from "../implementation/utils";
 
 it('document', async function () {
     const wrapped = wrapValue((new Map()).set("fee", "parking").set("cost", 1000));
