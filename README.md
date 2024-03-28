@@ -42,4 +42,4 @@ I created the python implementation of Gink to be a testbed for new ideas and
 to provide the simplest expression of all the concepts in Gink.  Well written python
 code can essentially serve as executable psudocode.  Code written for this implementation
 has been biased in favor of readability and extensibility, rather than raw performance.
-For example, (most of) the code doesn't use async functions or multi-threading.
+For example, the code doesn't use async functions or multi-threading.
