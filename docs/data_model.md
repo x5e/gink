@@ -305,7 +305,7 @@ with the same subject.
 Placeholder containers may be created to serve as a proxy for a
 real-world object, which then can be described via properties or pointed to via other containers.
 Entries for nouns can either soft delete them, effectively removing them from the graph,
-or to restore them (undo deletion).
+or to restore them (if deletion=false in an entry).
 
 ### VERB
 

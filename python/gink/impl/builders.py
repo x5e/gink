@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     class ChangeBuilder(Message):
         entry: EntryBuilder
         container: ContainerBuilder
-        restore: MuidBuilder
         movement: MovementBuilder
 
     class Pair:
@@ -37,6 +36,7 @@ if TYPE_CHECKING:
         pair: Pair
         octets: bytes
         key: KeyBuilder
+        effective: int
 
 
     class ValueBuilder(Message):

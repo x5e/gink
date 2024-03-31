@@ -42,3 +42,20 @@ def test_to_from():
     assert edges_from1 == {edge12}, edges_from1
     edges_to = set(vertex1.get_edges_to())
     assert edges_to == {edge21}, edges_to
+
+def test_ordered_edges():
+    for store in [LmdbStore()]:
+        with closing(store):
+            db = Database(store)
+            noun1 = Vertex(database=db)
+            noun2 = Vertex(database=db)
+            verb = Verb(database=db)
+            edge1 = verb.create_edge(noun1, noun2, "hello")
+            timestamp = generate_timestamp()
+            verb.create_edge(noun1, noun2, "beautiful")
+            verb.create_edge(noun1, noun2, "world", timestamp)
+            messages = [edge.get_value() for edge in verb.get_edges()]
+            assert messages == ["hello", "world", "beautiful"], messages
+            edge1.move(dest=generate_timestamp())
+            messages = [edge.get_value() for edge in verb.get_edges()]
+            assert messages == ["world", "beautiful", "hello"], messages
