@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Optional, Union, Iterable
 
-from .typedefs import GenericTimestamp, UserValue, Inclusion
+from .typedefs import GenericTimestamp, UserValue, Inclusion, MuTimestamp
 from .container import Container
 from .coding import VERB, VERTEX, inclusion, encode_value, decode_value
 from .muid import Muid
@@ -114,8 +114,15 @@ class Verb(Container):
         if len(bundler):
             self._database.commit(bundler)
 
-    def create_edge(self, sub: Vertex, obj: Vertex, msg: Union[UserValue, Inclusion] = inclusion,
-                    comment: Optional[str] = None, bundler: Optional[Bundler] = None) -> Edge:
+    def create_edge(
+        self,
+        sub: Vertex,
+        obj: Vertex,
+        msg: Union[UserValue, Inclusion] = inclusion,
+        eff: Optional[MuTimestamp] = None,
+        *,
+        comment: Optional[str] = None,
+        bundler: Optional[Bundler] = None) -> Edge:
         immediate = False
         if bundler is None:
             bundler = Bundler(comment)
@@ -126,6 +133,7 @@ class Verb(Container):
             target=obj,
             valued=msg,
             bundler=bundler,
+            effective=eff,
             database=self._database,
             _immediate=immediate)
 
@@ -173,12 +181,14 @@ class Edge(Addressable):
                  source: Union[Muid, Vertex, None] = None,
                  target: Union[Muid, Vertex, None] = None,
                  valued: Union[UserValue, Inclusion] = inclusion,
+                 effective: Optional[MuTimestamp] = None,
                  bundler: Optional[Bundler] = None,
                  database: Optional[Database] = None,
                  _builder: Optional[EntryBuilder] = None,
                  _immediate=False):
         database = database or Database.get_last()
         self._valued: Union[UserValue, Inclusion]
+        self._effective: Optional[MuTimestamp] = None
         if action is None or source is None or target is None:
             if muid is None:
                 raise ValueError("must specify muid for existing edge or verb, left, and rite")
@@ -189,11 +199,15 @@ class Edge(Addressable):
             self._action = Muid.create(context=muid, builder=_builder.container)
             self._source = Muid.create(context=muid, builder=_builder.pair.left)
             self._target = Muid.create(context=muid, builder=_builder.pair.rite)
+            if _builder.effective:
+                self._effective = _builder.effective
             if _builder.HasField("value"):
                 self._valued = decode_value(_builder.value)
             else:
                 self._valued = inclusion
         else:
+            if muid is not None:
+                raise ValueError("can't specify source/target when reconstructing proxy edge")
             self._source = source if isinstance(source, Muid) else source._muid
             self._target = target if isinstance(target, Muid) else target._muid
             self._action = action if isinstance(action, Muid) else action._muid
@@ -209,10 +223,9 @@ class Edge(Addressable):
             self._valued = valued
             if not isinstance(valued, Inclusion):
                 encode_value(valued, entry_builder.value)
-            if muid is None:
-                muid = bundler.add_change(change_builder)
-            else:
-                muid.put_into(change_builder.restore)
+            if effective:
+                entry_builder.effective = self._effective = effective
+            muid = bundler.add_change(change_builder)
             if _immediate:
                 database.commit(bundler)
         super().__init__(database=database, muid=muid)
@@ -242,10 +255,23 @@ class Edge(Addressable):
     def _get_container(self) -> Muid:
         return self._action
 
+    def get_value(self) -> Union[Inclusion, UserValue]:
+        return self._valued
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}('{self._muid}')"
 
+    def get_effective(self) -> MuTimestamp:
+        return self._effective or self._muid.timestamp
+
     def remove(self, *,
+                purge: bool = False,
+                bundler: Optional[Bundler] = None,
+                comment: Optional[str] = None) -> Muid:
+        return self.move(purge=purge, bundler=bundler, comment=comment, dest=None)
+
+    def move(self, *,
+               dest: Optional[MuTimestamp] = None,
                purge: bool = False,
                bundler: Optional[Bundler] = None,
                comment: Optional[str] = None) -> Muid:
@@ -258,6 +284,8 @@ class Edge(Addressable):
         container_muid = self._action
         container_muid.put_into(movement_builder.container)
         self._muid.put_into(movement_builder.entry)
+        if dest:
+            movement_builder.dest = dest
         if purge is True:
             movement_builder.purge = purge
         change_muid = bundler.add_change(change_builder)

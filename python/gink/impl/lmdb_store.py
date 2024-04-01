@@ -1,7 +1,7 @@
 """Contains the LmdbStore class."""
 
 # Standard Python Stuff
-from os import getpid, unlink
+from os import unlink
 from os.path import exists
 from logging import getLogger
 import uuid
@@ -831,12 +831,10 @@ class LmdbStore(AbstractStore):
             new_info: BundleInfo,
             txn: Trxn,
             offset: int,
-            builder: EntryBuilder,
-            restoring: Optional[Muid] = None):
+            builder: EntryBuilder):
         retaining = bool(decode_muts(bytes(txn.get(b"entries", db=self._retentions))))
         ensure_entry_is_valid(builder=builder, context=new_info)
         placement_key = Placement.from_builder(builder, new_info, offset)
-        # TODO: when restoring an edge, create placement key based on new muid, restore entry for old muid
         placer_muid = placement_key.placer
         container_muid = placement_key.container
         serialized_placement_key = bytes(placement_key)
@@ -848,7 +846,7 @@ class LmdbStore(AbstractStore):
                     txn.put(removal_key, b"", db=self._removals)
                 else:
                     self._remove_entry(found_entry.address, txn)
-        entry_muid = restoring or placer_muid
+        entry_muid = placer_muid
         entry_bytes = bytes(entry_muid)
         txn.put(entry_bytes, serialize(builder), db=self._entries)
         txn.put(serialized_placement_key, entry_bytes, db=self._placements)

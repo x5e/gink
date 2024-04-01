@@ -135,9 +135,9 @@ class Placement(NamedTuple):
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None, Tuple[Muid, Muid]]
         if behavior in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(builder)
-        elif behavior in (BOX, VERTEX, VERB):
+        elif behavior in (BOX, VERTEX):
             middle_key = None
-        elif behavior == SEQUENCE:
+        elif behavior in (SEQUENCE, VERB):
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
         elif behavior in (PROPERTY, ROLE):
             middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
