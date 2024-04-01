@@ -18,7 +18,7 @@ class Container(Addressable, ABC):
 
     def __repr__(self):
         if self._muid.timestamp == -1 and self._muid.medallion == -1:
-            return f"{self.__class__.__name__}(root=True)"
+            return f"{self.__class__.__name__}(arche=True)"
         return f"{self.__class__.__name__}('{self._muid}')"
 
     def _get_container(self) -> Muid:

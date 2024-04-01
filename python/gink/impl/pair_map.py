@@ -13,7 +13,7 @@ class PairMap(Container):
     _missing = object()
     BEHAVIOR = PAIR_MAP
 
-    def __init__(self, root: Optional[bool] = None, bundler: Optional[Bundler] = None,
+    def __init__(self, arche: Optional[bool] = None, bundler: Optional[Bundler] = None,
                  contents: Optional[dict] = None, muid: Optional[Muid] = None,
                  database = None, comment: Optional[str] = None):
         """
@@ -23,7 +23,7 @@ class PairMap(Container):
         muid: the global id of this pair set, created on the fly if None
         db: database to send commits through, or last db instance created if None
         """
-        if root:
+        if arche:
             muid = Muid(-1, -1, PAIR_MAP)
         database = database or Database.get_last()
         immediate = False
@@ -111,7 +111,7 @@ class PairMap(Container):
         """ return the contents of this container as a string """
         as_of = self._database.resolve_timestamp(as_of)
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "root=True"
+            identifier = "arche=True"
         else:
             identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents="""

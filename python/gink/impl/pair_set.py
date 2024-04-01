@@ -13,7 +13,7 @@ class PairSet(Container):
     _missing = object()
     BEHAVIOR = PAIR_SET
 
-    def __init__(self, root: Optional[bool] = None, bundler: Optional[Bundler] = None,
+    def __init__(self, arche: Optional[bool] = None, bundler: Optional[Bundler] = None,
                  contents: Union[Iterable[Tuple[Vertex, Vertex]], None] = None,
                  muid: Optional[Muid] = None, database = None, comment: Optional[str] = None):
         """
@@ -23,7 +23,7 @@ class PairSet(Container):
         contents: an iterable of pairs (an iterable of tuples) to populate the pair set at initialization
         db: database to send commits through, or last db instance created if None
         """
-        if root:
+        if arche:
             muid = Muid(-1, -1, PAIR_SET)
         database = database or Database.get_last()
         immediate = False

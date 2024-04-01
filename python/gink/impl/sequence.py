@@ -20,7 +20,7 @@ class Sequence(Container):
                  contents: Optional[Iterable] = None,
                  muid: Optional[Muid] = None,
                  database: Optional[Database] = None,
-                 root: bool = False,
+                 arche: bool = False,
                  bundler: Optional[Bundler] = None,
                  comment: Optional[str] = None,
                  ):
@@ -31,7 +31,7 @@ class Sequence(Container):
         if ordered:
             if isinstance(ordered[0], str):
                 muid = Muid.from_str(ordered[0])
-        if root:
+        if arche:
             muid = Muid(-1, -1, SEQUENCE)
         database = database or Database.get_last()
         immediate = False
@@ -56,7 +56,7 @@ class Sequence(Container):
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "root=True"
+            identifier = "arche=True"
         else:
             identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents=["""

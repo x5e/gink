@@ -14,7 +14,7 @@ from .graph import Edge
 class Property(Container):
     BEHAVIOR = PROPERTY
 
-    def __init__(self, *, root: bool=False, muid: Optional[Muid] = None, database: Optional[Database]=None,
+    def __init__(self, *, arche: bool=False, muid: Optional[Muid] = None, database: Optional[Database]=None,
                  contents: Optional[Dict[Union[Container, Edge], Union[UserValue, Container]]]=None):
         """
         Constructor for a property definition.
@@ -24,7 +24,7 @@ class Property(Container):
         """
         database = database or Database.get_last()
         bundler = Bundler()
-        if root:
+        if arche:
             muid = Muid(-1, -1, PROPERTY)
         if muid is None:
             muid = Container._create(PROPERTY, database=database, bundler=bundler)
@@ -40,7 +40,7 @@ class Property(Container):
         """ Dumps the contents of this property to a string.
         """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "root=True"
+            identifier = "arche=True"
         else:
             identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents="""

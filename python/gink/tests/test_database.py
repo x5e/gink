@@ -119,8 +119,8 @@ def test_react_to_store_changes():
         db1a = Database(store1a)
         db1b = Database(store1b)
 
-        root1a = Directory(root=True, database=db1a)
-        root1b = Directory(root=True, database=db1b)
+        root1a = Directory(arche=True, database=db1a)
+        root1b = Directory(arche=True, database=db1b)
 
         db1b.run(0.01)
         bundle_infos = list()
