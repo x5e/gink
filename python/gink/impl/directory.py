@@ -19,7 +19,7 @@ class Directory(Container):
     _missing = object()
     BEHAVIOR = DIRECTORY
 
-    def __init__(self, *ordered, root: Optional[bool] = None, bundler: Optional[Bundler] = None,
+    def __init__(self, *ordered, arche: Optional[bool] = None, bundler: Optional[Bundler] = None,
                  contents=None, muid: Optional[Muid] = None, database=None, comment: Optional[str] = None):
         """
         Constructor for a directory proxy.
@@ -32,7 +32,7 @@ class Directory(Container):
         if ordered:
             if isinstance(ordered[0], str):
                 muid = Muid.from_str(ordered[0])
-        if root:
+        if arche:
             muid = Muid(-1, -1, DIRECTORY)
         database = database or Database.get_last()
         immediate = False
@@ -55,7 +55,7 @@ class Directory(Container):
         """ Dumps the contents of this directory to a string.
         """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "root=True"
+            identifier = "arche=True"
         else:
             identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents="""

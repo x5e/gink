@@ -14,7 +14,7 @@ class KeySet(Container):
     _missing = object()
     BEHAVIOR = KEY_SET
 
-    def __init__(self, root: Optional[bool] = None, bundler: Optional[Bundler] = None, contents = None,
+    def __init__(self, arche: Optional[bool] = None, bundler: Optional[Bundler] = None, contents = None,
                  muid: Optional[Muid] = None, database = None, comment: Optional[str] = None):
         """
         Constructor for a set proxy.
@@ -22,7 +22,7 @@ class KeySet(Container):
         muid: the global id of this set, created on the fly if None
         db: database to send commits through, or last db instance created if None
         """
-        if root:
+        if arche:
             muid = Muid(-1, -1, KEY_SET)
         database = database or Database.get_last()
         immediate = False

@@ -14,7 +14,7 @@ class Box(Container):
     def __init__(self,
                  muid: Optional[Muid] = None,
                  database: Optional[Database] = None,
-                 root: bool = False,
+                 arche: bool = False,
                  bundler: Optional[Bundler] = None,
                  contents = None,
                  comment: Optional[str] = None,
@@ -23,7 +23,7 @@ class Box(Container):
         muid: the global id of this sequence, created on the fly if None
         database: where to send commits through, or last db instance created if None
         """
-        if root:
+        if arche:
             muid = Muid(-1, -1, BOX)
         database = database or Database.get_last()
         immediate = False
@@ -67,7 +67,7 @@ class Box(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this box to a string. """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "root=True"
+            identifier = "arche=True"
         else:
             identifier = repr(str(self._muid))
 

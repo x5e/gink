@@ -38,7 +38,7 @@ def test_property_dump():
             assert named == "fred", named
             assert namer.size() == 1, store
             dumped = namer.dumps()
-            assert dumped == "Property(root=True, contents={Directory(root=True):'fred'})", dumped
+            assert dumped == "Property(arche=True, contents={Directory(arche=True):'fred'})", dumped
             namer.set(directory, "joe")
             assert namer.get(directory) == "joe"
             eval(dumped)

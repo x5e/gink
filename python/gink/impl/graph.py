@@ -18,7 +18,7 @@ class Vertex(Container):
     BEHAVIOR = VERTEX
 
     def __init__(self, *,
-                 root: bool = False,
+                 arche: bool = False,
                  muid: Optional[Muid] = None,
                  bundler: Optional[Bundler] = None,
                  database: Optional[Database] = None):
@@ -33,7 +33,7 @@ class Vertex(Container):
         if not isinstance(bundler, Bundler):
             immediate = True
             bundler = Bundler()
-        if root:
+        if arche:
             muid = Muid(-1, -1, VERTEX)
         if muid is None:
             muid = Container._create(VERTEX, database=database, bundler=bundler)
@@ -98,13 +98,13 @@ class Verb(Container):
     BEHAVIOR = VERB
 
     def __init__(self, *,
-                 root=False,
+                 arche=False,
                  muid: Optional[Muid] = None,
                  database: Optional[Database] = None,
                  contents: Optional[Iterable[Edge]] = None):
         database = database or Database.get_last()
         bundler = Bundler()
-        if root:
+        if arche:
             muid = Muid(-1, -1, VERB)
         if muid is None:
             muid = Container._create(VERB, database=database, bundler=bundler)
@@ -158,7 +158,7 @@ class Verb(Container):
         """ Dump all the edges for this verb.
         """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "root=True"
+            identifier = "arche=True"
         else:
             identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents=["""
