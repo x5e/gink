@@ -383,11 +383,18 @@ class LmdbStore(AbstractStore):
                 if isinstance(occupant, Muid) and seen is not None:
                     for change in self._container_reset_changes(to_time, occupant, seen, trxn):
                         yield change
-                if location != previous or last_clear_time > placed_time:
+                if location is None or last_clear_time > placed_time:
                     # but isn't there any longer
                     entry_builder.effective = parsed_key.get_queue_position()  # type: ignore
                     yield wrap_change(entry_builder)
+                    if entry_builder.behavior == VERB:
+                        pass
             positioned = placements_cursor.next()
+
+    def _copy_properties_onto_new_entry(self) -> Iterable[ChangeBuilder]:
+        # okay the wacky thing here is that I need to reference a previous change in a stream,
+        # so the thing to do is to use a negative offset.
+        raise NotImplementedError()
 
     def _get_keyed_reset(
             self,
