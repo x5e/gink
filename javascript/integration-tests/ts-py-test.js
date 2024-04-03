@@ -14,7 +14,7 @@ const { sleep } = require("./browser_test_utilities.js");
     await python.expect("connection established!");
     await client.expect("connected!");
 
-    python.send("Directory(root=True).set(3,4);\n");
+    python.send("Directory(arche=True).set(3,4);\n");
     await python.expect("Muid", 1000);
 
     await sleep(100);
