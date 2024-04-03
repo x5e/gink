@@ -284,7 +284,7 @@ class LmdbStore(AbstractStore):
                 yield change
             return
         if behavior in (SEQUENCE, VERB):
-            for change in self._get_sequence_reset(container, to_time, trxn, seen):
+            for change in self._get_changes_to_reset_sequence_or_verb(container, to_time, trxn, seen):
                 yield change
             return
         else:
@@ -328,7 +328,7 @@ class LmdbStore(AbstractStore):
         entry_builder.ParseFromString(trxn.get(value_as_bytes, db=self._entries))  # type: ignore
         return PlacementBuilderPair(parsed_key, entry_builder)
 
-    def _get_sequence_reset(
+    def _get_changes_to_reset_sequence_or_verb(
             self,
             container: Muid,
             to_time: MuTimestamp,
@@ -359,23 +359,26 @@ class LmdbStore(AbstractStore):
         positioned = placements_cursor.set_range(prefix)
         while positioned and placements_cursor.key().startswith(prefix):
             key_bytes = placements_cursor.key()
+            entry_muid_bytes = placements_cursor.value()
             parsed_key = Placement.from_bytes(key_bytes, SEQUENCE)
-            location = self._get_location(trxn, parsed_key.placer)
-            previous = self._get_location(trxn, parsed_key.placer, as_of=to_time)
+            entry_muid = Muid.from_bytes(entry_muid_bytes)
+            location = self._get_location(trxn, entry_muid=entry_muid)
+            previous = self._get_location(trxn, entry_muid=entry_muid, as_of=to_time)
             placed_time = parsed_key.get_placed_time()
             if placed_time >= to_time and last_clear_time < placed_time and location == parsed_key:
-                # this entry was put there recently, and it's still there
+                # this entry was put there recently, and it's still there, so it needs to be (re)moved
                 change_builder = ChangeBuilder()
                 container.put_into(change_builder.movement.container)  # type: ignore
-                parsed_key.placer.put_into(change_builder.movement.entry)  # type: ignore
-                if previous:
+                entry_muid.put_into(change_builder.movement.entry)  # type: ignore
+                if not previous:
+                    yield change_builder
+                elif previous.get_queue_position() != parsed_key.get_queue_position():
                     change_builder.movement.dest = previous.get_queue_position()  # type: ignore
-                yield change_builder
+                    yield change_builder
             if previous == parsed_key and clear_before_to < placed_time:
-                # this entry existed there at to_time
+                # this particular placement was active at to_time
                 entry_builder = EntryBuilder()
-                entry_muid_bytes = placements_cursor.value()
-                entry_builder.ParseFromString(trxn.get(entry_muid_bytes, db=self._entries))
+                entry_builder.ParseFromString(trxn.get(entry_muid_bytes, db=self._entries)) # copy contents
                 occupant = decode_entry_occupant(Muid.from_bytes(entry_muid_bytes), entry_builder)
                 if isinstance(occupant, Muid) and seen is not None:
                     for change in self._container_reset_changes(to_time, occupant, seen, trxn):
