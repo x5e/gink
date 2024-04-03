@@ -16,9 +16,9 @@ RUN if [ `uname -m` != aarch64 ]; then apt-get update && apt-get install gnupg w
   rm -rf /var/lib/apt/lists/* && export CHROME_BIN=/usr/bin/chrome; fi
 RUN if [ `uname -m` == aarch64 ]; then apt update && apt install chromium-browser && export CHROME_BIN=/usr/bin/chromium-browser; fi
 
-ENV CWD=/opt/gink
-RUN mkdir -p $CWD
-WORKDIR $CWD
+ENV GINK=/opt/gink
+RUN mkdir -p $GINK
+WORKDIR $GINK
 COPY packages.txt ./
 COPY Makefile ./
 RUN make install-dependencies
@@ -29,18 +29,19 @@ COPY proto ./proto
 
 COPY python ./python
 RUN make python/gink/builders
-ENV PYTHONPATH $CWD/python
-WORKDIR $CWD/python
+ENV PYTHONPATH $GINK/python
+WORKDIR $GINK/python
 # Python lint
 RUN mypy gink/impl gink/tests
 
 # Python unit-tests
 RUN python3 -m nose2
 
+WORKDIR $GINK
 COPY javascript ./javascript
 RUN mv node_modules ./javascript/
 RUN make
-WORKDIR $CWD/javascript
+WORKDIR $GINK/javascript
 
 
 # JavaScript/TypeScript unit-tests

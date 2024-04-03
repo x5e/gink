@@ -4,7 +4,6 @@ import "proto/container.proto";
 import "proto/entry.proto";
 import "proto/movement.proto";
 import "proto/clearance.proto";
-import "proto/muid.proto";
 
 /**
 * Any update/change that can be referenced by Gink
