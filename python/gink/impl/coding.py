@@ -33,12 +33,13 @@ deletion = Deletion()
 inclusion = Inclusion()
 
 
-def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object()):
+def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object(), offset: Optional[int]=None):
     if getattr(builder, "behavior") == UNSPECIFIED:
         raise ValueError("entry lacks a behavior")
     if not builder.HasField("container"):
         raise ValueError("no container specified in entry")
-    container_muid = Muid.create(context, builder=getattr(builder, "container"))
+    entry_muid = Muid.create(context, offset=offset)
+    container_muid = Muid.create(context=entry_muid, builder=getattr(builder, "container"))
     if container_muid.timestamp == -1 and container_muid.medallion > 0:
         if getattr(context, "medallion") != container_muid.medallion:
             raise ValueError("attempt to modify instance container from other instance")
@@ -128,8 +129,8 @@ class Placement(NamedTuple):
     @staticmethod
     def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):
         """ Create an EntryStorageKey from an Entry itself, plus address information. """
-        container = Muid.create(builder=getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(context=new_info, offset=offset)
+        container = Muid.create(builder=getattr(builder, "container"), context=entry_muid)
         behavior = getattr(builder, "behavior")
         position = getattr(builder, "effective")
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None, Tuple[Muid, Muid]]

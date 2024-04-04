@@ -35,5 +35,5 @@ package gink;
 message Muid {
     sint64 timestamp = 1; // microseconds since epoch
     sint64 medallion = 2; // less than 2**52, version 1 between 2**48 and 2**49, exclusive
-    uint32 offset = 3; // less than 2**20 (== 16**5)
+    sint32 offset = 3; // less than 2**20 (== 16**5)
 }
