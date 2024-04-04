@@ -38,11 +38,20 @@ def normalize_entry_builder(entry_builder: EntryBuilder, entry_muid: Muid):
     container_muid = Muid.create(context=entry_muid, builder=entry_builder.container)
     container_muid.put_into(entry_builder.container)
 
-    describes_muid = Muid.create(context=entry_muid, builder=entry_builder.describing)
-    describes_muid.put_into(entry_builder.describing)
+    if entry_builder.HasField("describing"):
+        describes_muid = Muid.create(context=entry_muid, builder=entry_builder.describing)
+        describes_muid.put_into(entry_builder.describing)
 
-    pointee_muid = Muid.create(context=entry_muid, builder=entry_builder.pointee)
-    pointee_muid.put_into(entry_builder.pointee)
+    if entry_builder.HasField("pointee"):
+        pointee_muid = Muid.create(context=entry_muid, builder=entry_builder.pointee)
+        pointee_muid.put_into(entry_builder.pointee)
+
+    if entry_builder.HasField("pair"):
+        left_muid = Muid.create(context=entry_muid, builder=entry_builder.pair.left)
+        left_muid.put_into(entry_builder.pair.left)
+        rite_muid = Muid.create(context=entry_muid, builder=entry_builder.pair.rite)
+        rite_muid.put_into(entry_builder.pair.rite)
+
 
 
 def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object(), offset: Optional[int]=None):
@@ -153,10 +162,10 @@ class Placement(NamedTuple):
         elif behavior in (SEQUENCE, VERB):
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
         elif behavior in (PROPERTY, ROLE):
-            middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
+            middle_key = Muid.create(context=entry_muid, builder=builder.describing)  # type: ignore
         elif behavior in (PAIR_SET, PAIR_MAP):
-            left = Muid.create(context=new_info, builder=builder.pair.left)
-            rite = Muid.create(context=new_info, builder=builder.pair.rite)
+            left = Muid.create(context=entry_muid, builder=builder.pair.left)
+            rite = Muid.create(context=entry_muid, builder=builder.pair.rite)
             middle_key = (left, rite)
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")

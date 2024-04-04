@@ -15,6 +15,9 @@ class Addressable:
         self._database: Database = database
         self._muid: Muid = muid
 
+    def get_muid(self):
+        return self._muid
+
     def __eq__(self, other):
         return isinstance(other, self.__class__) and other._muid == self._muid
 

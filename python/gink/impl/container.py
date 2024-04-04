@@ -72,10 +72,6 @@ class Container(Addressable, ABC):
             return self._database.get_container(pointee_muid)
         raise Exception("unexpected")
 
-    def get_muid(self) -> Muid:
-        """ returns the global address of this container """
-        return self._muid
-
     @classmethod
     def get_behavior(cls):
         """ Gets the behavior tag/enum for the particular class. """
