@@ -833,7 +833,7 @@ class LmdbStore(AbstractStore):
             offset: int,
             builder: EntryBuilder):
         retaining = bool(decode_muts(bytes(txn.get(b"entries", db=self._retentions))))
-        ensure_entry_is_valid(builder=builder, context=new_info)
+        ensure_entry_is_valid(builder=builder, context=new_info, offset=offset)
         placement_key = Placement.from_builder(builder, new_info, offset)
         placer_muid = placement_key.placer
         container_muid = placement_key.container

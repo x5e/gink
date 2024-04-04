@@ -307,3 +307,65 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         assert len(found) == 2
         assert found[0].entry_muid == Muid(123, 789, 3)
         assert found[1].entry_muid == Muid(123, 789, 4)
+
+
+
+def generic_test_negative_offsets(store_maker: StoreMaker):
+    """ makes sure that the get_ordered_entries works """
+    textproto1 = """
+        medallion: 789
+        chain_start: 123
+        timestamp: 123
+        changes {
+            key: 1
+            value {
+                container {
+                    behavior: SEQUENCE
+                }
+            }
+        }
+        changes {
+            key: 2
+            value {
+                entry {
+                    behavior: SEQUENCE
+                    container { offset: -1 }
+                    pointee {
+                        timestamp: -1
+                        medallion: -1
+                        offset: 1 }
+                }
+            }
+        }
+        changes {
+            key: 3
+            value {
+                entry {
+                    behavior: SEQUENCE
+                    container { offset: -2 }
+                    value { characters: "Hello, World!" }
+                }
+            }
+        }
+        changes {
+            key: 4
+            value {
+                entry {
+                    behavior: SEQUENCE
+                    container { offset: -3 }
+                    value { integer: 32 }
+                }
+            }
+        }
+    """
+    with closing(store_maker()) as store:
+        bundle_builder = BundleBuilder()
+        Parse(textproto1, bundle_builder)  # type: ignore
+        serialized = bundle_builder.SerializeToString()  # type: ignore
+        store.apply_bundle(serialized)
+        sequence = Muid(123, 789, 1)
+        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124)]
+        assert len(found) == 3, found
+        assert found[0].entry_muid == Muid(123, 789, 2)
+        assert found[1].entry_muid == Muid(123, 789, 3)
+        assert found[2].entry_muid == Muid(123, 789, 4)
