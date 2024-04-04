@@ -24,7 +24,8 @@ from .utilities import generate_timestamp, create_claim
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
-                     LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_MAP, PAIR_SET, KEY_SET)
+                     LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_MAP, PAIR_SET, KEY_SET,
+                     normalize_entry_builder, VERTEX)
 
 
 class LmdbStore(AbstractStore):
@@ -279,7 +280,7 @@ class LmdbStore(AbstractStore):
             trxn: Trxn) -> Iterable[ChangeBuilder]:
         """ Figures out which specific reset method to call to reset a container. """
         behavior = self._get_behavior(container, trxn)
-        if behavior in (DIRECTORY, BOX, ROLE, PROPERTY, KEY_SET):
+        if behavior in (DIRECTORY, BOX, ROLE, KEY_SET, VERTEX, PROPERTY):
             for change in self._get_keyed_reset(container, to_time, trxn, seen, None, behavior):
                 yield change
             return
@@ -376,15 +377,48 @@ class LmdbStore(AbstractStore):
                 entry_builder = EntryBuilder()
                 entry_muid_bytes = placements_cursor.value()
                 entry_builder.ParseFromString(trxn.get(entry_muid_bytes, db=self._entries))
-                occupant = decode_entry_occupant(Muid.from_bytes(entry_muid_bytes), entry_builder)
+                entry_muid = Muid.from_bytes(entry_muid_bytes)
+                occupant = decode_entry_occupant(entry_muid, entry_builder)
                 if isinstance(occupant, Muid) and seen is not None:
                     for change in self._container_reset_changes(to_time, occupant, seen, trxn):
                         yield change
                 if location != previous or last_clear_time > placed_time:
                     # but isn't there any longer
+                    normalize_entry_builder(entry_builder=entry_builder, entry_muid=entry_muid)
                     entry_builder.effective = parsed_key.get_queue_position()  # type: ignore
                     yield wrap_change(entry_builder)
+                    if entry_builder.behavior == VERB:
+                        for change in self._reissue_properties(
+                            trxn=trxn,
+                            describing_muid_bytes=entry_muid_bytes,
+                            to_time=to_time):
+                                yield change
             positioned = placements_cursor.next()
+
+    def _reissue_properties(
+            self,
+            trxn: Trxn,
+            describing_muid_bytes: bytes,
+            to_time: MuTimestamp,
+    ) -> Iterable[ChangeBuilder]:
+        describing_cursor = trxn.cursor(self._by_describing)
+        found = to_last_with_prefix(
+            describing_cursor, describing_muid_bytes, suffix=bytes(Muid(to_time,0,0)))
+        issued = set()
+        offset = 0
+        while found and describing_cursor.key().startswith(describing_muid_bytes):
+            describor_entry_bytes = describing_cursor.key()[16:]
+            describor_property = describing_cursor.value()
+            if describor_property not in issued:
+                issued.add(describor_property)
+                entry_builder = EntryBuilder()
+                entry_builder.ParseFromString(trxn.get(describor_entry_bytes, db=self._entries))
+                normalize_entry_builder(
+                    entry_builder=entry_builder, entry_muid=Muid.from_bytes(describor_entry_bytes))
+                offset -= 1
+                Muid(0, 0, offset).put_into(entry_builder.describing)
+                yield wrap_change(entry_builder)
+            found = describing_cursor.prev()
 
     def _get_keyed_reset(
             self,
@@ -835,42 +869,42 @@ class LmdbStore(AbstractStore):
         retaining = bool(decode_muts(bytes(txn.get(b"entries", db=self._retentions))))
         ensure_entry_is_valid(builder=builder, context=new_info, offset=offset)
         placement_key = Placement.from_builder(builder, new_info, offset)
-        placer_muid = placement_key.placer
+        entry_muid = placement_key.placer
         container_muid = placement_key.container
         serialized_placement_key = bytes(placement_key)
         if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX, Behavior.PROPERTY, Behavior.ROLE):
             found_entry = self.get_entry_by_key(container_muid, placement_key.middle)
             if found_entry:
                 if retaining:
-                    removal_key = bytes(container_muid) + bytes(found_entry.address) + bytes(placer_muid)
+                    removal_key = bytes(container_muid) + bytes(found_entry.address) + bytes(entry_muid)
                     txn.put(removal_key, b"", db=self._removals)
                 else:
                     self._remove_entry(found_entry.address, txn)
-        entry_muid = placer_muid
         entry_bytes = bytes(entry_muid)
         txn.put(entry_bytes, serialize(builder), db=self._entries)
         txn.put(serialized_placement_key, entry_bytes, db=self._placements)
-        entries_loc_key = bytes(LocationKey(entry_muid, placer_muid))
-        txn.put(entries_loc_key, serialized_placement_key, db=self._locations)
+        entries_loc_key = bytes(LocationKey(entry_muid, entry_muid))
+        if builder.behavior in (VERB, SEQUENCE):
+            txn.put(entries_loc_key, serialized_placement_key, db=self._locations)
         if builder.HasField("describing"):
-            describing_muid = Muid.create(new_info, builder.describing)
-            descriptor_key = bytes(describing_muid) + bytes(placer_muid)
+            describing_muid = Muid.create(entry_muid, builder.describing)
+            descriptor_key = bytes(describing_muid) + bytes(entry_muid)
             txn.put(descriptor_key, bytes(container_muid), db=self._by_describing)
         if builder.HasField("pointee"):
-            pointee_muid = Muid.create(new_info, builder.pointee)
-            pointee_key = bytes(pointee_muid) + bytes(placer_muid)
+            pointee_muid = Muid.create(entry_muid, builder.pointee)
+            pointee_key = bytes(pointee_muid) + bytes(entry_muid)
             txn.put(pointee_key, bytes(container_muid), db=self._by_pointee)
         if builder.HasField("pair"):
-            left = Muid.create(context=placer_muid, builder=builder.pair.left)
-            rite = Muid.create(context=placer_muid, builder=builder.pair.rite)
-            txn.put(bytes(left) + bytes(placer_muid), entry_bytes, db=self._by_side)
-            txn.put(bytes(rite) + bytes(placer_muid), entry_bytes, db=self._by_side)
+            left = Muid.create(context=entry_muid, builder=builder.pair.left)
+            rite = Muid.create(context=entry_muid, builder=builder.pair.rite)
+            txn.put(bytes(left) + bytes(entry_muid), entry_bytes, db=self._by_side)
+            txn.put(bytes(rite) + bytes(entry_muid), entry_bytes, db=self._by_side)
         if container_muid == Muid(-1, -1, Behavior.PROPERTY):
             if builder.HasField("value") and builder.HasField("describing"):
                 describing_muid = Muid.create(new_info, builder.describing)
                 name = decode_value(builder.value)
                 if isinstance(name, str):
-                    by_name_key = name.encode() + b"\x00" + bytes(placer_muid)
+                    by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
                     txn.put(by_name_key, bytes(describing_muid), db=self._by_name)
 
     def _remove_entry(self, entry_muid: Muid, trxn: Trxn):
