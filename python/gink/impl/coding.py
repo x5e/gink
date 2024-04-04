@@ -38,6 +38,12 @@ def normalize_entry_builder(entry_builder: EntryBuilder, entry_muid: Muid):
     container_muid = Muid.create(context=entry_muid, builder=entry_builder.container)
     container_muid.put_into(entry_builder.container)
 
+    describes_muid = Muid.create(context=entry_muid, builder=entry_builder.describing)
+    describes_muid.put_into(entry_builder.describing)
+
+    pointee_muid = Muid.create(context=entry_muid, builder=entry_builder.pointee)
+    pointee_muid.put_into(entry_builder.pointee)
+
 
 def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object(), offset: Optional[int]=None):
     if getattr(builder, "behavior") == UNSPECIFIED:
