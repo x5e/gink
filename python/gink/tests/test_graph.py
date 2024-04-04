@@ -87,3 +87,21 @@ def test_reissue_properties():
             assert edge2.get_muid() != edge1.get_muid()
             val_after_reset = edge2.get_property_value_by_name("foo")
             assert val_after_reset == "baz", val_after_reset
+
+
+def test_reset_vertex():
+    for store in [LmdbStore()]:
+        with closing(store):
+            db = Database(store)
+            noun1 = Vertex(database=db)
+            noun2 = Vertex(database=db)
+            verb = Verb(database=db)
+            verb.create_edge(noun1, noun2)
+            assert noun1.is_alive()
+            timestamp = generate_timestamp()
+            noun1.remove()
+            assert not noun1.is_alive()
+            bundler = Bundler()
+            noun1.reset(timestamp, bundler=bundler)
+            db.commit(bundler)
+            assert noun1.is_alive()

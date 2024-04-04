@@ -280,7 +280,11 @@ class LmdbStore(AbstractStore):
             trxn: Trxn) -> Iterable[ChangeBuilder]:
         """ Figures out which specific reset method to call to reset a container. """
         behavior = self._get_behavior(container, trxn)
-        if behavior in (DIRECTORY, BOX, ROLE, KEY_SET, VERTEX, PROPERTY):
+        if behavior == VERTEX:
+            for change in self._get_vertex_reset_changes(container, to_time, trxn):
+                yield change
+            return
+        if behavior in (DIRECTORY, BOX, ROLE, KEY_SET, PROPERTY):
             for change in self._get_keyed_reset(container, to_time, trxn, seen, None, behavior):
                 yield change
             return
@@ -419,6 +423,35 @@ class LmdbStore(AbstractStore):
                 Muid(0, 0, offset).put_into(entry_builder.describing)
                 yield wrap_change(entry_builder)
             found = describing_cursor.prev()
+
+    def _get_vertex_reset_changes(
+            self,
+            container: Muid,
+            to_time: MuTimestamp,
+            trxn: Trxn,
+    ) -> Iterable[ChangeBuilder]:
+        placement_cursor = trxn.cursor(db=self._placements)
+        suffix = bytes(Muid(to_time, 0, 0))
+        previous_change = to_last_with_prefix(placement_cursor, bytes(container), suffix=suffix)
+        was_deleted = container.timestamp > to_time
+        if previous_change:
+            entry_builder = EntryBuilder()
+            entry_builder.ParseFromString(trxn.get(placement_cursor.value(), db=self._entries))
+            if entry_builder.deletion:
+                was_deleted = True
+        is_deleted = False
+        current_change = to_last_with_prefix(placement_cursor, bytes(container))
+        if current_change:
+            entry_builder = EntryBuilder()
+            entry_builder.ParseFromString(trxn.get(placement_cursor.value(), db=self._entries))
+            if entry_builder.deletion:
+                is_deleted = True
+        if is_deleted != was_deleted:
+            entry_builder = EntryBuilder()
+            entry_builder.behavior = VERTEX
+            container.put_into(entry_builder.container)
+            entry_builder.deletion = was_deleted
+            yield wrap_change(entry_builder)
 
     def _get_keyed_reset(
             self,
