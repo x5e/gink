@@ -24,7 +24,8 @@ from .utilities import generate_timestamp, create_claim
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
-                     LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_MAP, PAIR_SET, KEY_SET)
+                     LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_MAP, PAIR_SET, KEY_SET,
+                     normalize_entry_builder)
 
 
 class LmdbStore(AbstractStore):
@@ -376,15 +377,48 @@ class LmdbStore(AbstractStore):
                 entry_builder = EntryBuilder()
                 entry_muid_bytes = placements_cursor.value()
                 entry_builder.ParseFromString(trxn.get(entry_muid_bytes, db=self._entries))
-                occupant = decode_entry_occupant(Muid.from_bytes(entry_muid_bytes), entry_builder)
+                entry_muid = Muid.from_bytes(entry_muid_bytes)
+                occupant = decode_entry_occupant(entry_muid, entry_builder)
                 if isinstance(occupant, Muid) and seen is not None:
                     for change in self._container_reset_changes(to_time, occupant, seen, trxn):
                         yield change
                 if location != previous or last_clear_time > placed_time:
                     # but isn't there any longer
+                    normalize_entry_builder(entry_builder=entry_builder, entry_muid=entry_muid)
                     entry_builder.effective = parsed_key.get_queue_position()  # type: ignore
                     yield wrap_change(entry_builder)
+                    if entry_builder.behavior == VERB:
+                        for change in self._reissue_properties(
+                            trxn=trxn,
+                            describing_muid_bytes=entry_muid_bytes,
+                            to_time=to_time):
+                                yield change
             positioned = placements_cursor.next()
+
+    def _reissue_properties(
+            self,
+            trxn: Trxn,
+            describing_muid_bytes: bytes,
+            to_time: MuTimestamp,
+    ) -> Iterable[ChangeBuilder]:
+        describing_cursor = trxn.cursor(self.describing)
+        found = to_last_with_prefix(
+            describing_cursor, describing_muid_bytes, boundary=bytes(Muid(to_time,0,0)))
+        issued = set()
+        offset = 0
+        while found and describing_cursor.key().startswith(describing_muid_bytes):
+            describor_entry_bytes = describing_cursor.key()[16:]
+            describor_property = describing_cursor.value()
+            if describor_property not in issued:
+                issued.add(describor_property)
+                entry_builder = EntryBuilder()
+                entry_builder.ParseFromString(trxn.get(describor_entry_bytes, db=self._entries))
+                normalize_entry_builder(
+                    entry_builder=entry_builder, entry_muid=Muid.from_bytes(describor_entry_bytes))
+                offset -= 1
+                Muid(0, 0, offset).put_into(entry_builder.describing)
+                yield wrap_change(entry_builder)
+            found = describing_cursor.prev()
 
     def _get_keyed_reset(
             self,

@@ -33,6 +33,12 @@ deletion = Deletion()
 inclusion = Inclusion()
 
 
+def normalize_entry_builder(entry_builder: EntryBuilder, entry_muid: Muid):
+    """ Make all relative muid references absolute muid refereces within an entry.
+    """
+    raise NotImplementedError()
+
+
 def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object(), offset: Optional[int]=None):
     if getattr(builder, "behavior") == UNSPECIFIED:
         raise ValueError("entry lacks a behavior")
