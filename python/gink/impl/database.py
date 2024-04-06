@@ -258,7 +258,7 @@ class Database:
             console: Optional[SelectableConsole]=None,
             connect_to: Optional[list[str]]=None):
         """ Waits for activity on ports then exchanges data with peers.
-            Optionally connects to another database instance.
+            Optionally connects to other database instances.
         """
         if connect_to:
             for target in connect_to:
