@@ -3,6 +3,11 @@ name: Publish Python distribution to PyPI
 on:
   push:
     branches: [main]
+    paths:
+    - python/gink/__init__.py
+    - python/gink/__main__.py
+    - python/gink/impl/**
+    - python/setup.py
 
 jobs:
   build:
