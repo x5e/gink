@@ -21,7 +21,7 @@ PROPERTY: int = Behavior.PROPERTY  # type: ignore
 BOX: int = Behavior.BOX  # type: ignore
 VERTEX: int = Behavior.VERTEX  # type: ignore
 ROLE: int = Behavior.ROLE # type: ignore
-VERB: int = Behavior.VERB # type: ignore
+EDGE_TYPE: int = Behavior.EDGE_TYPE # type: ignore
 KEY_SET: int = Behavior.KEY_SET # type: ignore
 PAIR_SET: int = Behavior.PAIR_SET # type: ignore
 PAIR_MAP: int = Behavior.PAIR_MAP # type: ignore
@@ -159,7 +159,7 @@ class Placement(NamedTuple):
             middle_key = decode_key(builder)
         elif behavior in (BOX, VERTEX):
             middle_key = None
-        elif behavior in (SEQUENCE, VERB):
+        elif behavior in (SEQUENCE, EDGE_TYPE):
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
         elif behavior in (PROPERTY, ROLE):
             middle_key = Muid.create(context=entry_muid, builder=builder.describing)  # type: ignore
@@ -197,7 +197,7 @@ class Placement(NamedTuple):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using in (PAIR_SET, PAIR_MAP):
             middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
-        elif using in (BOX, VERTEX, VERB):
+        elif using in (BOX, VERTEX, EDGE_TYPE):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")

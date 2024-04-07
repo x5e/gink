@@ -10,7 +10,7 @@ enum Behavior {
     PAIR_SET = 5; //
     PAIR_MAP = 6; // maps pairs of muids to values, could be used for neural net weights
     VERTEX = 7; // entries correspond to removal (soft deletion)
-    VERB = 8;  // entries have a source vertex, target vertex, and optional value
+    EDGE_TYPE = 8;  // entries have a source vertex, target vertex, and optional value
     PROPERTY = 9; // entries have a subject and value
     ROLE = 10; // entries have describing and optionally deleting
 };

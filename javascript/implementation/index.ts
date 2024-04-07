@@ -13,7 +13,7 @@ export { Bundler } from "./Bundler";
 export { Muid, BundleInfo, Value } from "./typedefs";
 export { Container } from "./Container";
 export { Vertex } from "./Vertex";
-export { Verb } from "./Verb";
+export { EdgeType } from "./EdgeType";
 export { Edge } from "./Edge";
 export {
     logToStdErr,

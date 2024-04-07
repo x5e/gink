@@ -4,7 +4,7 @@ from typing import Optional, Union, Iterable
 
 from .typedefs import GenericTimestamp, UserValue, Inclusion, MuTimestamp
 from .container import Container
-from .coding import VERB, VERTEX, inclusion, encode_value, decode_value
+from .coding import EDGE_TYPE, VERTEX, inclusion, encode_value, decode_value
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
@@ -95,7 +95,7 @@ Database.register_container_type(Vertex)
 
 @experimental
 class Verb(Container):
-    BEHAVIOR = VERB
+    BEHAVIOR = EDGE_TYPE
 
     def __init__(self, *,
                  arche=False,
@@ -105,9 +105,9 @@ class Verb(Container):
         database = database or Database.get_last()
         bundler = Bundler()
         if arche:
-            muid = Muid(-1, -1, VERB)
+            muid = Muid(-1, -1, EDGE_TYPE)
         if muid is None:
-            muid = Container._create(VERB, database=database, bundler=bundler)
+            muid = Container._create(EDGE_TYPE, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         if contents:
             pass  # This is intentional! The edge constructors will restore them!
@@ -216,7 +216,7 @@ class Edge(Addressable):
                 bundler = Bundler()
             change_builder = ChangeBuilder()
             entry_builder: EntryBuilder = change_builder.entry
-            entry_builder.behavior = VERB
+            entry_builder.behavior = EDGE_TYPE
             self._source.put_into(entry_builder.pair.left)
             self._target.put_into(entry_builder.pair.rite)
             self._action.put_into(entry_builder.container)

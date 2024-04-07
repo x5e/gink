@@ -19,7 +19,7 @@ import { Store } from "./Store";
 import { Behavior, ChangeBuilder, ContainerBuilder, SyncMessageBuilder } from "./builders";
 import { Property } from "./Property";
 import { Vertex } from "./Vertex";
-import { Verb } from "./Verb";
+import { EdgeType } from "./EdgeType";
 import { BundleBuilder } from "./builders";
 
 /**
@@ -213,9 +213,9 @@ export class Database {
     }
 
 
-    async createVerb(change?: Bundler | string): Promise<Verb> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.VERB, change);
-        return new Verb(this, muid, containerBuilder);
+    async createEdgeType(change?: Bundler | string): Promise<EdgeType> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.EDGE_TYPE, change);
+        return new EdgeType(this, muid, containerBuilder);
     }
 
 
