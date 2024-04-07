@@ -255,8 +255,14 @@ class Database:
 
     def run(self,
             until: GenericTimestamp = None,
-            console: Optional[SelectableConsole]=None):
-        """ Waits for activity on ports then exchanges data with peers. """
+            console: Optional[SelectableConsole]=None,
+            connect_to: Optional[list[str]]=None):
+        """ Waits for activity on ports then exchanges data with peers.
+            Optionally connects to other database instances.
+        """
+        if connect_to:
+            for target in connect_to:
+                self.connect_to(target)
         self._logger.debug("starting run loop until %r", until)
         if until is not None:
             until = self.resolve_timestamp(until)
