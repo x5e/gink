@@ -2,7 +2,7 @@ import { Addressable } from "./Addressable";
 import { Database } from "./Database";
 import { AsOf, EdgeData, Muid, Value } from "./typedefs";
 import { Vertex } from "./Vertex";
-import { Verb } from "./Verb";
+import { EdgeType } from "./EdgeType";
 import { muidToBuilder, entryToEdgeData } from "./utils";
 import { Bundler } from "./Bundler";
 import { ChangeBuilder, MovementBuilder } from "./builders";
@@ -47,8 +47,8 @@ export class Edge extends Addressable {
         return new Vertex(this.database, this.target);
     }
 
-    getEdgeType(): Verb {
-        return new Verb(this.database, this.action);
+    getEdgeType(): EdgeType {
+        return new EdgeType(this.database, this.action);
     }
 
     getValue(): Value | undefined {

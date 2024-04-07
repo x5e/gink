@@ -24,7 +24,7 @@ from .utilities import generate_timestamp, create_claim
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
-                     LocationKey, PROPERTY, BOX, ROLE, decode_value, VERB, PAIR_MAP, PAIR_SET, KEY_SET,
+                     LocationKey, PROPERTY, BOX, ROLE, decode_value, EDGE_TYPE, PAIR_MAP, PAIR_SET, KEY_SET,
                      normalize_entry_builder, VERTEX)
 
 
@@ -175,7 +175,7 @@ class LmdbStore(AbstractStore):
                         break
                     if not key < verb_bytes + asof_bytes:
                         break
-                    placement = Placement.from_bytes(key, using=VERB)
+                    placement = Placement.from_bytes(key, using=EDGE_TYPE)
                     removals_lookup = verb_bytes + bytes(placement.placer)
                     include = True
                     found_removal = to_last_with_prefix(removal_cursor, removals_lookup)
@@ -288,7 +288,7 @@ class LmdbStore(AbstractStore):
             for change in self._get_keyed_reset(container, to_time, trxn, seen, None, behavior):
                 yield change
             return
-        if behavior in (SEQUENCE, VERB):
+        if behavior in (SEQUENCE, EDGE_TYPE):
             for change in self._get_sequence_reset(container, to_time, trxn, seen):
                 yield change
             return
@@ -391,7 +391,7 @@ class LmdbStore(AbstractStore):
                     normalize_entry_builder(entry_builder=entry_builder, entry_muid=entry_muid)
                     entry_builder.effective = parsed_key.get_queue_position()  # type: ignore
                     yield wrap_change(entry_builder)
-                    if entry_builder.behavior == VERB:
+                    if entry_builder.behavior == EDGE_TYPE:
                         for change in self._reissue_properties(
                             trxn=trxn,
                             describing_muid_bytes=entry_muid_bytes,
@@ -917,7 +917,7 @@ class LmdbStore(AbstractStore):
         txn.put(entry_bytes, serialize(builder), db=self._entries)
         txn.put(serialized_placement_key, entry_bytes, db=self._placements)
         entries_loc_key = bytes(LocationKey(entry_muid, entry_muid))
-        if builder.behavior in (VERB, SEQUENCE):
+        if builder.behavior in (EDGE_TYPE, SEQUENCE):
             txn.put(entries_loc_key, serialized_placement_key, db=self._locations)
         if builder.HasField("describing"):
             describing_muid = Muid.create(entry_muid, builder.describing)

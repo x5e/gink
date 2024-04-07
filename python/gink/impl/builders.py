@@ -86,7 +86,7 @@ if TYPE_CHECKING:
         PAIR_SET = 5
         PAIR_MAP = 6
         VERTEX = 7
-        VERB = 8
+        EDGE_TYPE = 8
         PROPERTY = 9
         ROLE = 10
 else:

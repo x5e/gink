@@ -1,5 +1,5 @@
 
-import { Database, Bundler, IndexedDbStore, Vertex, Verb } from "../implementation";
+import { Database, Bundler, IndexedDbStore, Vertex, EdgeType } from "../implementation";
 import { ensure } from "../implementation/utils";
 
 it('isAlive and remove', async function () {
@@ -20,7 +20,7 @@ it('verb.createEdge', async function () {
     await instance.ready;
     const vertex1 = await instance.createVertex();
     const vertex2 = await instance.createVertex();
-    const verb1 = await instance.createVerb();
+    const verb1 = await instance.createEdgeType();
     const edge1 = await verb1.createEdge(vertex1, vertex2);
     ensure((edge1.getSourceVertex()).equals(vertex1));
     ensure((edge1.getTargetVertex()).equals(vertex2));
@@ -35,7 +35,7 @@ it('from_to', async function () {
     const vertex1 = await instance.createVertex();
     const vertex2 = await instance.createVertex();
     const vertex3 = await instance.createVertex();
-    const verb = await instance.createVerb();
+    const verb = await instance.createEdgeType();
     const edge12 = await verb.createEdge(vertex1, vertex2);
     const edge13 = await verb.createEdge(vertex1, vertex3);
     const edge11 = await verb.createEdge(vertex1, vertex1);

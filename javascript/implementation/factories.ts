@@ -18,6 +18,7 @@ import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid, rehyd
 import { Behavior, EntryBuilder, ContainerBuilder } from "./builders";
 import { Property } from "./Property";
 import { Vertex } from "./Vertex";
+import { EdgeType } from "./EdgeType";
 
 export async function construct(
     database: Database,
@@ -55,8 +56,8 @@ export async function construct(
         return (new PairMap(database, address, containerBuilder));
     if (containerBuilder.getBehavior() == Behavior.VERTEX)
         return (new Vertex(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.VERB)
-        throw new Error("Verbs aren't implemented in Type/Javascript yet!");
+    if (containerBuilder.getBehavior() == Behavior.EDGE_TYPE)
+        return (new EdgeType(database, address, containerBuilder));
     if (containerBuilder.getBehavior() == Behavior.PROPERTY)
         return (new Property(database, address, containerBuilder));
     if (containerBuilder.getBehavior() == Behavior.ROLE)

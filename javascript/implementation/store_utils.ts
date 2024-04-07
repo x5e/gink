@@ -33,7 +33,7 @@ export function getEffectiveKey(entryBuilder: EntryBuilder, timestamp: Timestamp
         ensure(entryBuilder.hasDescribing());
         const describing = builderToMuid(entryBuilder.getDescribing());
         effectiveKey = muidToTuple(describing);
-    } else if (behavior == Behavior.VERB) {
+    } else if (behavior == Behavior.EDGE_TYPE) {
         ensure(entryBuilder.hasPair());
         effectiveKey = entryBuilder.getEffective() || timestamp;
     } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
