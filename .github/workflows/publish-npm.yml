@@ -2,6 +2,11 @@ name: Publish to NPM
 on:
   push:
     branches: [main]
+    paths:
+    - javascript/content_root/**
+    - javascript/implementation/**
+    - javascript/package.json
+
 jobs:
   build:
     runs-on: ubuntu-latest
