@@ -10,15 +10,15 @@ import {
     BroadcastFunc,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
-import { IndexedDbStore } from "./IndexedDbStore";
+import { MemoryStore } from "./MemoryStore";
 import { Store } from "./Store";
-import { FileHandle, open } from "fs/promises";
 import { PromiseChainLock } from "./PromiseChainLock";
-import { flock } from "fs-ext";
+
 import { watch, FSWatcher } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder } from "./builders";
 import { generateTimestamp, ensure } from "./utils";
+import { LockableLog } from "./LockableLog";
 
 /*
     At time of writing, there's only an in-memory implementation of
@@ -32,14 +32,12 @@ import { generateTimestamp, ensure } from "./utils";
     implementation of Store using some other system (e.g. LMDB).
 */
 
-export class LogBackedStore implements Store {
+export class LogBackedStore extends LockableLog implements Store {
 
-    readonly ready: Promise<void>;
+
     private commitsProcessed = 0;
-    private fileHandle: FileHandle;
     private chainTracker: ChainTracker = new ChainTracker({});
     private claimedChains: ClaimedChain[] = [];
-    private fileLocked: boolean = false;
     private memoryLock: PromiseChainLock = new PromiseChainLock();
     private redTo: number = 0;
     private fileWatcher: FSWatcher;
@@ -53,17 +51,14 @@ export class LogBackedStore implements Store {
     constructor(
         readonly filename: string,
         readonly exclusive: boolean = false,
-        private internalStore = new IndexedDbStore(generateTimestamp().toString()),
+        private internalStore = new MemoryStore(),
     ) {
-        this.ready = this.initialize();
+        super(filename, exclusive);
+        this.ready = this.ready.then(() => this.initialize());
     }
 
     private async initialize(): Promise<void> {
         await this.internalStore.ready;
-        this.fileHandle = await open(this.filename, "a+");
-        if (this.exclusive) {
-            await this.lockFile(false);
-        }
         const unlockingFunction = await this.memoryLock.acquireLock();
         await this.pullDataFromFile();
 
@@ -93,32 +88,6 @@ export class LogBackedStore implements Store {
         await this.ready.catch();
         await this.fileHandle.close().catch();
         await this.internalStore.close().catch();
-    }
-
-    private async lockFile(block: boolean): Promise<boolean> {
-        const thisLogBackedStore = this;
-        return new Promise((resolve, reject) => {
-            flock(this.fileHandle.fd, (block ? "ex" : "exnb"), (err) => {
-                if (err) {
-                    return reject(err);
-                }
-                thisLogBackedStore.fileLocked = true;
-                resolve(true);
-            });
-        });
-    }
-
-    private async unlockFile(): Promise<boolean> {
-        const thisLogBackedStore = this;
-        return new Promise((resolve, reject) => {
-            flock(this.fileHandle.fd, ("un"), async (err) => {
-                if (err) {
-                    return reject(err);
-                }
-                thisLogBackedStore.fileLocked = false;
-                resolve(true);
-            });
-        });
     }
 
     private async pullDataFromFile(): Promise<void> {

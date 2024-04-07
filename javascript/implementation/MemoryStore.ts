@@ -414,7 +414,8 @@ export class MemoryStore implements Store {
         }
     }
 
-    async getEntryById(entryMuid: Muid): Promise<Entry | undefined> {
+    async getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
+        // TODO: check asOf
         const entry = this.entries.get(muidToString(entryMuid));
         return entry;
     }
@@ -539,7 +540,7 @@ export class MemoryStore implements Store {
         return clearanceTime;
     }
 
-    async getEntriesBySourceOrTarget(): Promise<Entry[]> {
+    async getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]> {
         throw new Error("not implemented");
     }
 
