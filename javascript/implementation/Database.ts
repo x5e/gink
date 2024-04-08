@@ -69,8 +69,6 @@ export class Database {
         // TODO(181): make claiming of a chain as needed to facilitate read-only/relay use cases
         const claimedChains = await this.store.getClaimedChains();
         for (let value of claimedChains.values()) {
-            console.log(await this.store.getChainIdentity(value), identity);
-
             if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity(value) == identity) {
                 // TODO: check to see if meta-data matches, and overwrite if not
                 this.myChain = value;
