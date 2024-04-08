@@ -18,9 +18,11 @@ automatically pull the changes and broadcast them.
 
     const lbstore1 = new LogBackedStore("/tmp/test_peer.store");
     const instance1 = new Database(lbstore1);
+    await instance1.ready;
 
     const lbstore2 = new LogBackedStore("/tmp/test_peer.store");
     const instance2 = new Database(lbstore2);
+    await instance2.ready;
     await instance2.connectTo("ws://localhost:8081");
     console.log("second store connected to server");
 

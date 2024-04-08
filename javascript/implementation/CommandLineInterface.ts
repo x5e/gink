@@ -81,11 +81,11 @@ export class CommandLineInterface {
                     dataFilesRoot: dataRoot, ...common
                 });
             } else {
-                this.instance = new SimpleServer(this.store, { software: "SimpleServer", ...common });
+                this.instance = new SimpleServer(this.store, { ...common });
             }
         } else {
             // GINK_PORT not set, so don't listen for incoming connections
-            this.instance = new Database(this.store, { software: "node instance" });
+            this.instance = new Database(this.store);
         }
         this.targets = process.argv.slice(2);
     }

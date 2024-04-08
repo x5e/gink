@@ -13,6 +13,8 @@ import {
     TupleBuilder, DocumentBuilder
 } from "./builders";
 
+import { hostname, userInfo } from 'os';
+
 // Since find-process uses child-process, we can't load this if gink
 // is running in a browser
 // TODO: only install this package when you will be using as a backend?
@@ -483,6 +485,18 @@ export function getActorId(): ActorId {
         };
         return aId;
     }
+}
+
+/**
+ * Used to (attempt to) identify the user who starts a gink chain.
+ * @returns either the 'username@hostname' of the process running gink,
+ * or a generic 'browser-client' if gink is running in a browser.
+ */
+export function getIdentity(): string {
+    if (typeof window == "undefined")
+        return `${userInfo().username}@${hostname()}`;
+    else
+        return `browser-client`;
 }
 
 /**

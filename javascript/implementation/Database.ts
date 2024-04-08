@@ -1,7 +1,8 @@
 import { Peer } from "./Peer";
 import {
     makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
-    encodeToken, getActorId, isAlive
+    encodeToken, getActorId, isAlive,
+    getIdentity
 } from "./utils";
 import { BundleBytes, CommitListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
@@ -21,7 +22,6 @@ import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { BundleBuilder } from "./builders";
-import { hostname, userInfo } from 'os';
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -45,7 +45,7 @@ export class Database {
         eval("require('websocket').w3cwebsocket");
 
     constructor(readonly store: Store = new IndexedDbStore('Database-default'),
-        identity: string = `${userInfo().username}@${hostname()}`,
+        identity: string = getIdentity(),
         readonly logger: CallBack = noOp) {
         this.ready = this.initialize(identity);
     }
