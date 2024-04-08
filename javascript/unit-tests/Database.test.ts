@@ -21,18 +21,21 @@ it('test commit', async () => {
 
 it('uses claimed chain', async () => {
     for (const store of [
-            new IndexedDbStore('Database.test', true),
-            new MemoryStore(true),
-        ]) {
+        new IndexedDbStore('Database.test', true),
+        new MemoryStore(true),
+    ]) {
         await store.ready;
-        const commitBytes = makeChainStart("chain start comment", MEDALLION1, START_MICROS1);
+        const commitBytes = makeChainStart("test@identity", MEDALLION1, START_MICROS1);
+        const chain = await store.claimChain(MEDALLION1, START_MICROS1);
+        await store.setChainIdentity(chain, "test@identity");
         await store.addBundle(commitBytes);
-        await store.claimChain(MEDALLION1, START_MICROS1);
+
+
         await store.getCommits((commitBytes: BundleBytes, _commitInfo: BundleInfo) => {
             const commit = <BundleBuilder>BundleBuilder.deserializeBinary(commitBytes);
-            ensure(commit.getComment() == "chain start comment");
+            ensure(commit.getComment() == "test@identity");
         });
-        const instance = new Database(store);
+        const instance = new Database(store, "test@identity");
         await instance.ready;
         const secondInfo = await instance.addBundler(new Bundler("Hello, Universe!"));
         ensure(
@@ -44,7 +47,10 @@ it('uses claimed chain', async () => {
 });
 
 it('test listeners', async () => {
-    for (const store of [new IndexedDbStore('Database.listeners.test', true)]) {
+    for (const store of [
+        new IndexedDbStore('Database.listeners.test', true),
+        new MemoryStore(true),
+    ]) {
         await store.ready;
         const instance = new Database(store);
         await instance.ready;

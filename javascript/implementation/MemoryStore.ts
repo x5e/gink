@@ -63,6 +63,7 @@ export class MemoryStore implements Store {
     private removalsByPlacementId: Map<string, Removal>; // EntryId => Removal
     private entries: TreeMap<string, Entry>; // PlacementId => Entry
     private entriesByContainerKeyPlacement: TreeMap<string, string>; // ContainerID,Key,PlacementId => PlacementId
+    private identities: Map<string, string>; // Medallion,chainStart => identity
 
     constructor(private keepingHistory = true) {
         this.ready = this.initialize();
@@ -103,6 +104,7 @@ export class MemoryStore implements Store {
         this.removalsByPlacementId = new Map();
         this.entries = new TreeMap();
         this.entriesByContainerKeyPlacement = new TreeMap();
+        this.identities = new Map();
         return Promise.resolve();
     }
 
@@ -143,6 +145,14 @@ export class MemoryStore implements Store {
         };
         this.activeChains.push(claim);
         return Promise.resolve(claim);
+    }
+
+    async getChainIdentity(chain: ClaimedChain): Promise<string> {
+        return this.identities.get(`${chain.medallion},${chain.chainStart}`);
+    }
+
+    async setChainIdentity(chain: ClaimedChain, identity: string): Promise<void> {
+        this.identities.set(`${chain.medallion},${chain.chainStart}`, identity);
     }
 
     async getChainTracker(): Promise<ChainTracker> {

@@ -50,7 +50,7 @@ import { Container } from './Container';
 import { PromiseChainLock } from "./PromiseChainLock";
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
-    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries")[], "readwrite">;
+    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries" | "identities")[], "readwrite">;
 
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
@@ -116,6 +116,14 @@ export class IndexedDbStore implements Store {
                 */
                 db.createObjectStore('activeChains', { keyPath: ["claimTime"] });
 
+                /*
+                Keep track of the identities of who started each chain.
+                key: [medallion, chainStart]
+                value: identity (string)
+                Not setting keyPath since [medallion, chainStart] can't be pulled from the value
+                */
+                db.createObjectStore('identities');
+
                 db.createObjectStore("clearances", { keyPath: ["containerId", "clearanceId"] });
 
                 db.createObjectStore('containers'); // map from AddressTuple to ContainerBytes
@@ -150,7 +158,7 @@ export class IndexedDbStore implements Store {
             this.lastCaller = callerLine;
             this.countTrxns += 1;
             this.transaction = this.wrapped.transaction(
-                ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains', 'containers'],
+                ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains', 'containers', 'identities'],
                 'readwrite');
             this.transaction.done.finally(() => this.clearTransaction());
         } else {
@@ -241,6 +249,21 @@ export class IndexedDbStore implements Store {
             result.set(item.medallion, item);
         }
         return result;
+    }
+
+    async getChainIdentity(chain: ClaimedChain): Promise<string> {
+        await this.ready;
+        const wrappedTransaction = this.wrapped.transaction("identities", "readwrite");
+        const identity = await wrappedTransaction.objectStore('identities').get([chain.medallion, chain.chainStart]);
+        await wrappedTransaction.done;
+        return identity;
+    }
+
+    async setChainIdentity(chain: ClaimedChain, identity: string): Promise<void> {
+        await this.ready;
+        const wrappedTransaction = this.wrapped.transaction("identities", "readwrite");
+        await wrappedTransaction.objectStore('identities').add(identity, [chain.medallion, chain.chainStart]);
+        await wrappedTransaction.done;
     }
 
     async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {

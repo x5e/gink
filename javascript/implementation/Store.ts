@@ -47,6 +47,18 @@ export interface Store {
     claimChain: (medallion: Medallion, chainStart: ChainStart, actorId?: ActorId) => Promise<ClaimedChain>;
 
     /**
+     * Attempts to get the identity of the user who started the chain.
+     * @param chain
+     * @returns a string of the identity of the user who started the chain.
+     */
+    getChainIdentity: (chain: ClaimedChain) => Promise<string>;
+
+    /**
+     * Sets the identity for a new chain
+     */
+    setChainIdentity: (chain: ClaimedChain, identity: string) => Promise<void>;
+
+    /**
      * Mark a chain as being closed and unavailable for new commits.
      * (Not really necessary when medallions are randomly generated).
      * endChain: (medallion: Medallion) => Promise<void>;
