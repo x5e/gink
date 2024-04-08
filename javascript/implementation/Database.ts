@@ -21,6 +21,7 @@ import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { BundleBuilder } from "./builders";
+import { hostname, userInfo } from 'os';
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -43,32 +44,16 @@ export class Database {
     private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
         eval("require('websocket').w3cwebsocket");
 
-    constructor(readonly store: Store = new IndexedDbStore('Database-default'), info?: {
-        fullName?: string,
-        email?: string,
-        software?: string,
-    }, readonly logger: CallBack = noOp) {
-        this.ready = this.initialize(info);
+    constructor(readonly store: Store = new IndexedDbStore('Database-default'),
+        identity: string = `${userInfo().username}@${hostname()}`,
+        readonly logger: CallBack = noOp) {
+        this.ready = this.initialize(identity);
     }
 
-    private async startChain(info?: {
-        fullName?: string,
-        email?: string,
-        software?: string,
-    }) {
+    private async startChain(identity: string) {
         const medallion = makeMedallion();
         const chainStart = generateTimestamp();
-        const bundler = new Bundler(`start: ${info?.software || "Database"}`, medallion);
-        const medallionInfo = new Directory(this, { timestamp: -1, medallion, offset: Behavior.DIRECTORY });
-        if (info?.email) {
-            await medallionInfo.set("email", info.email, bundler);
-        }
-        if (info?.fullName) {
-            await medallionInfo.set("full-name", info.fullName, bundler);
-        }
-        if (info?.software) {
-            await medallionInfo.set("software", info.software, bundler);
-        }
+        const bundler = new Bundler(identity, medallion);
         bundler.seal({
             medallion, timestamp: chainStart, chainStart
         });
@@ -78,11 +63,7 @@ export class Database {
         ensure(this.myChain.medallion > 0);
     }
 
-    private async initialize(info?: {
-        fullName?: string,
-        email?: string,
-        software?: string,
-    }): Promise<void> {
+    private async initialize(identity: string): Promise<void> {
         await this.store.ready;
         // TODO(181): make claiming of a chain as needed to facilitate read-only/relay use cases
         const claimedChains = await this.store.getClaimedChains();
@@ -101,7 +82,7 @@ export class Database {
             }
         }
         if (!this.myChain) {
-            await this.startChain(info);
+            await this.startChain(identity);
         }
         ensure(this.myChain.medallion > 0);
         this.iHave = await this.store.getChainTracker();
