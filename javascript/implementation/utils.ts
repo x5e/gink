@@ -14,6 +14,7 @@ import {
 } from "./builders";
 
 import { hostname, userInfo } from 'os';
+import { getRandomValues } from 'crypto';
 
 // Since find-process uses child-process, we can't load this if gink
 // is running in a browser
@@ -495,8 +496,11 @@ export function getActorId(): ActorId {
 export function getIdentity(): string {
     if (typeof window == "undefined")
         return `${userInfo().username}@${hostname()}`;
-    else
-        return `browser-client`;
+    else {
+        return 'browser-client-' + ("10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+            (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
+        ));
+    }
 }
 
 /**
