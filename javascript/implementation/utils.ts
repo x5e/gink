@@ -510,3 +510,22 @@ export async function isAlive(actorId: ActorId): Promise<boolean> {
         return (currentTime - lastPingedTime) < 5000;
     }
 }
+
+export function getType(extension: string) {
+    const types = {
+        html: 'text/html',
+        css: 'text/css',
+        js: 'application/javascript',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        json: 'application/json',
+        xml: 'application/xml',
+    };
+    const result = types[extension];
+    if (!result) {
+        throw new Error(`type not found for extension: ${extension}`);
+    }
+    return result;
+}
