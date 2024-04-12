@@ -251,19 +251,12 @@ export class IndexedDbStore implements Store {
         return result;
     }
 
-    async getChainIdentity(chain: ClaimedChain): Promise<string> {
+    async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
         await this.ready;
         const wrappedTransaction = this.wrapped.transaction("identities", "readwrite");
-        const identity = await wrappedTransaction.objectStore('identities').get([chain.medallion, chain.chainStart]);
+        const identity = await wrappedTransaction.objectStore('identities').get(chainInfo);
         await wrappedTransaction.done;
         return identity;
-    }
-
-    async setChainIdentity(chain: ClaimedChain, identity: string): Promise<void> {
-        await this.ready;
-        const wrappedTransaction = this.wrapped.transaction("identities", "readwrite");
-        await wrappedTransaction.objectStore('identities').add(identity, [chain.medallion, chain.chainStart]);
-        await wrappedTransaction.done;
     }
 
     async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
@@ -320,6 +313,11 @@ export class IndexedDbStore implements Store {
                 //TODO(https://github.com/google/gink/issues/27): Need to explicitly close?
                 throw new Error(`missing ${JSON.stringify(bundleInfo)}, have ${JSON.stringify(oldChainInfo)}`);
             }
+        }
+        // If this is a new chain, save the identity
+        if (bundleInfo.timestamp == bundleInfo.chainStart) {
+            const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
+            await wrappedTransaction.objectStore('identities').add(bundleInfo.comment, chainInfo);
         }
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make

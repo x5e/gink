@@ -147,12 +147,8 @@ export class MemoryStore implements Store {
         return Promise.resolve(claim);
     }
 
-    async getChainIdentity(chain: ClaimedChain): Promise<string> {
-        return this.identities.get(`${chain.medallion},${chain.chainStart}`);
-    }
-
-    async setChainIdentity(chain: ClaimedChain, identity: string): Promise<void> {
-        this.identities.set(`${chain.medallion},${chain.chainStart}`, identity);
+    async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
+        return this.identities.get(`${chainInfo[0]},${chainInfo[1]}`);
     }
 
     async getChainTracker(): Promise<ChainTracker> {
@@ -179,6 +175,11 @@ export class MemoryStore implements Store {
                 throw new Error(`missing prior chain entry for ${JSON.stringify(bundleInfo)}, ` +
                     `have ${JSON.stringify(oldChainInfo)}`);
             }
+        }
+        // If this is a new chain, save the identity
+        if (bundleInfo.timestamp == bundleInfo.chainStart) {
+            const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
+            this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
         }
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const commitKey: BundleInfoTuple = MemoryStore.commitInfoToKey(bundleInfo);

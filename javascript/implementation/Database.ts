@@ -60,7 +60,6 @@ export class Database {
         const commitBytes = bundler.bytes;
         await this.store.addBundle(commitBytes);
         this.myChain = await this.store.claimChain(medallion, chainStart, getActorId());
-        await this.store.setChainIdentity(this.myChain, identity);
         ensure(this.myChain.medallion > 0);
     }
 
@@ -69,7 +68,7 @@ export class Database {
         // TODO(181): make claiming of a chain as needed to facilitate read-only/relay use cases
         const claimedChains = await this.store.getClaimedChains();
         for (let value of claimedChains.values()) {
-            if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity(value) == identity) {
+            if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity([value.medallion, value.chainStart]) == identity) {
                 // TODO: check to see if meta-data matches, and overwrite if not
                 this.myChain = value;
                 if (typeof window != "undefined") {

@@ -15,7 +15,6 @@ it('test commit', async () => {
         ensure(allChains.length == 1);
         ensure(allChains[0][0] == commitInfo.medallion);
         ensure(allChains[0][1] == commitInfo.chainStart);
-        return "okay!";
     }
 });
 
@@ -26,10 +25,8 @@ it('uses claimed chain', async () => {
     ]) {
         await store.ready;
         const commitBytes = makeChainStart("test@identity", MEDALLION1, START_MICROS1);
-        const chain = await store.claimChain(MEDALLION1, START_MICROS1);
-        await store.setChainIdentity(chain, "test@identity");
+        await store.claimChain(MEDALLION1, START_MICROS1);
         await store.addBundle(commitBytes);
-
 
         await store.getCommits((commitBytes: BundleBytes, _commitInfo: BundleInfo) => {
             const commit = <BundleBuilder>BundleBuilder.deserializeBinary(commitBytes);

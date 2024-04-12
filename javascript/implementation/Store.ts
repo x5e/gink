@@ -48,15 +48,10 @@ export interface Store {
 
     /**
      * Attempts to get the identity of the user who started the chain.
-     * @param chain
+     * @param chainInfo [Medallion, ChainStart]
      * @returns a string of the identity of the user who started the chain.
      */
-    getChainIdentity: (chain: ClaimedChain) => Promise<string>;
-
-    /**
-     * Sets the identity for a new chain
-     */
-    setChainIdentity: (chain: ClaimedChain, identity: string) => Promise<void>;
+    getChainIdentity: (chainInfo: [Medallion, ChainStart]) => Promise<string>;
 
     /**
      * Mark a chain as being closed and unavailable for new commits.

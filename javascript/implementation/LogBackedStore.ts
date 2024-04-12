@@ -233,14 +233,9 @@ export class LogBackedStore implements Store {
         return chain;
     }
 
-    async getChainIdentity(chain: ClaimedChain): Promise<string> {
+    async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
         await this.ready;
-        return await this.internalStore.getChainIdentity(chain);
-    }
-
-    async setChainIdentity(chain: ClaimedChain, identity: string): Promise<void> {
-        await this.ready;
-        await this.internalStore.setChainIdentity(chain, identity);
+        return await this.internalStore.getChainIdentity(chainInfo);
     }
 
     async getChainTracker(): Promise<ChainTracker> {

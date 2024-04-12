@@ -159,7 +159,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const db = new Database(store, 'test@identity');
         await db.ready;
         const chain = [...(await store.getClaimedChains()).entries()][0][1];
-        const identity = await store.getChainIdentity(chain);
+        const identity = await store.getChainIdentity([chain.medallion, chain.chainStart]);
         ensure(identity == 'test@identity');
     });
 }
