@@ -37,6 +37,7 @@ export class Database {
     private listeners: Map<string, CommitListener[]> = new Map();
     private countConnections = 0; // Includes disconnected clients.
     private myChain: ClaimedChain;
+    private identity: string;
     private initilized = false;
     protected iHave: ChainTracker;
 
@@ -47,30 +48,20 @@ export class Database {
     constructor(readonly store: Store = new IndexedDbStore('Database-default'),
         identity: string = getIdentity(),
         readonly logger: CallBack = noOp) {
-        this.ready = this.initialize(identity);
+        this.identity = identity;
+        this.ready = this.initialize();
     }
 
-    private async startChain(identity: string) {
-        const medallion = makeMedallion();
-        const chainStart = generateTimestamp();
-        const bundler = new Bundler(identity, medallion);
-        bundler.seal({
-            medallion, timestamp: chainStart, chainStart
-        });
-        const commitBytes = bundler.bytes;
-        await this.store.addBundle(commitBytes);
-        this.myChain = await this.store.claimChain(medallion, chainStart, getActorId());
-        ensure(this.myChain.medallion > 0);
-    }
-
-    private async initialize(identity: string): Promise<void> {
-        await this.store.ready;
-        // TODO(181): make claiming of a chain as needed to facilitate read-only/relay use cases
+    /**
+     * Starts a chain or finds one to reuse, then returns the last link to it.
+     */
+    private async acquireAppendableChain(): Promise<BundleInfo> {
         const claimedChains = await this.store.getClaimedChains();
+        let reused;
         for (let value of claimedChains.values()) {
-            if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity([value.medallion, value.chainStart]) == identity) {
+            if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity([value.medallion, value.chainStart]) == this.identity) {
                 // TODO: check to see if meta-data matches, and overwrite if not
-                this.myChain = value;
+                reused = value;
                 if (typeof window != "undefined") {
                     // If we are running in a browser and take over a chain,
                     // start a new heartbeat.
@@ -81,10 +72,24 @@ export class Database {
                 break;
             }
         }
-        if (!this.myChain) {
-            await this.startChain(identity);
+        if (reused) {
+            ensure(reused.medallion > 0);
+            return reused;
         }
-        ensure(this.myChain.medallion > 0);
+
+        const medallion = makeMedallion();
+        const chainStart = generateTimestamp();
+        const bundler = new Bundler(this.identity, medallion);
+        bundler.seal({
+            medallion, timestamp: chainStart, chainStart
+        });
+        const commitBytes = bundler.bytes;
+        return await this.store.addBundle(commitBytes, true);
+    }
+
+    private async initialize(): Promise<void> {
+        await this.store.ready;
+
         this.iHave = await this.store.getChainTracker();
         this.listeners.set("all", []);
         //this.logger(`Database.ready`);

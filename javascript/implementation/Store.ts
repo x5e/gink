@@ -66,9 +66,11 @@ export interface Store {
      * Will throw if passed a commit without the proceeding
      * ones in the associated chain.
      *
+     * Optionally can reuse/start a new chain.
+     *
      * Implicitly awaits on this.ready;
      */
-    addBundle(bundleBytes: Bytes): Promise<BundleInfo>;
+    addBundle(bundleBytes: Bytes, claimChain?: boolean): Promise<BundleInfo>;
 
     /**
      * Get all commits from a store ordered by [timestamp, medallion].

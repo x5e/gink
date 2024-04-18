@@ -166,14 +166,14 @@ export class LogBackedStore implements Store {
         return this.commitsProcessed;
     }
 
-    async addBundle(commitBytes: BundleBytes): Promise<BundleInfo> {
+    async addBundle(commitBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
         // TODO(https://github.com/x5e/gink/issues/182): delay unlocking the file to give better throughput
         await this.ready;
         const unlockingFunction = await this.memoryLock.acquireLock();
         if (!this.exclusive)
             await this.lockFile(true);
         await this.pullDataFromFile();
-        const info: BundleInfo = await this.internalStore.addBundle(commitBytes);
+        const info: BundleInfo = await this.internalStore.addBundle(commitBytes, claimChain);
         const added = this.chainTracker.markAsHaving(info);
         if (added) {
             ensure(this.fileLocked);
