@@ -42,7 +42,8 @@ export class RoutingServerInstance extends Database {
     }
 
     private onClose(connectionId: number, reasonCode: number, description: string) {
-        this.peers.delete(connectionId);
+        // I'm intentionally leaving the peer object in the peers map just in case we get data from them.
+        // thisClient.peers.delete(connectionId);  // might still be processing data from peer
         this.logger(`Peer ${connectionId} disconnected from ${this.filePath} ${reasonCode}, ${description}`);
     }
 
