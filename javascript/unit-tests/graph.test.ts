@@ -1,17 +1,21 @@
 
-import { Database, Bundler, IndexedDbStore, Vertex, EdgeType } from "../implementation";
+import { Database, IndexedDbStore, Vertex, EdgeType, MemoryStore } from "../implementation";
 import { ensure } from "../implementation/utils";
 
 it('isAlive and remove', async function () {
-    const store = new IndexedDbStore('vertex1', true);
-    const instance = new Database(store);
-    await instance.ready;
-    const vertex = await instance.createVertex();
-    const aliveTime = instance.getNow();
-    ensure(await vertex.isAlive());
-    await vertex.remove();
-    ensure(!await vertex.isAlive());
-    ensure(await vertex.isAlive(aliveTime));
+    for (const store of [
+        new IndexedDbStore('graph.test1', true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const vertex = await instance.createVertex();
+        const aliveTime = instance.getNow();
+        ensure(await vertex.isAlive());
+        await vertex.remove();
+        ensure(!await vertex.isAlive());
+        ensure(await vertex.isAlive(aliveTime));
+    }
 });
 
 it('verb.createEdge', async function () {
@@ -62,4 +66,3 @@ it('from_to', async function () {
     ensure(edgesFrom2[1].equals(edge22));
     ensure(edgesFrom2[2].equals(edge23));
 });
-
