@@ -12,8 +12,8 @@ import { ensure } from "./utils";
 
 export class RoutingServerInstance extends Database {
 
-    constructor(readonly filePath: FilePath, readonly logger: CallBack = console.log) {
-        super(new LogBackedStore(filePath, false), null, logger);
+    constructor(readonly filePath: FilePath, identity: string, readonly logger: CallBack = console.log) {
+        super(new LogBackedStore(filePath, false), identity, logger);
     }
 
     async onConnection(connection: WebSocketConnection) {
