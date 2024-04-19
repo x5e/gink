@@ -158,6 +158,8 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     it(`${implName} getChainIdentity works`, async () => {
         const db = new Database(store, 'test@identity');
         await db.ready;
+        ensure((await store.getClaimedChains()).size == 0);
+        await db.getGlobalDirectory().set(3, 4);
         const chain = [...(await store.getClaimedChains()).entries()][0][1];
         const identity = await store.getChainIdentity([chain.medallion, chain.chainStart]);
         ensure(identity == 'test@identity');

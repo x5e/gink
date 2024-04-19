@@ -52,8 +52,8 @@ RUN npm run browser-unit
 RUN ./integration-tests/py-py-test.js
 RUN ./integration-tests/py-ts-test.js
 RUN ./integration-tests/ts-py-test.js
-RUN ./integration-tests/chain-reuse-test.js lmdb
-RUN ./integration-tests/chain-reuse-test.js binlog
+RUN ./integration-tests/chain-reuse-py-test.js lmdb
+RUN ./integration-tests/chain-reuse-py-test.js binlog
 
 # JavaScript/TypeScript integration tests
 RUN ./integration-tests/node-client-test.js
@@ -61,5 +61,6 @@ RUN ./integration-tests/authentication-test.js
 RUN ./integration-tests/routing-server-test.js
 RUN ./integration-tests/logbacked-peers-test.js
 RUN ./integration-tests/test_expector.js
+RUN ./integration-tests/chain-reuse-ts-test.js
 
 RUN npm run browser-integration

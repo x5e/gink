@@ -28,9 +28,13 @@ export class CommandLineInterface {
     constructor(process: NodeJS.Process) {
         logToStdErr("starting...");
 
+        // This makes debugging through integration tests way easier.
+        globalThis.ensure = ensure;
+
         const dataRoot = process.env["GINK_DATA_ROOT"];
         const dataFile = process.env["GINK_DATA_FILE"];
         const reset = !!process.env["GINK_RESET"];
+        const identity = process.env["GINK_IDENTITY"];
 
         /*
         If an auth key is found in the server's environment variable
@@ -81,11 +85,11 @@ export class CommandLineInterface {
                     dataFilesRoot: dataRoot, ...common
                 });
             } else {
-                this.instance = new SimpleServer(this.store, { ...common });
+                this.instance = new SimpleServer(this.store, { identity: identity, ...common });
             }
         } else {
             // GINK_PORT not set, so don't listen for incoming connections
-            this.instance = new Database(this.store);
+            this.instance = new Database(this.store, identity);
         }
         this.targets = process.argv.slice(2);
     }

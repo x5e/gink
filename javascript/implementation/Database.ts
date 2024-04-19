@@ -80,9 +80,10 @@ export class Database {
             const medallion = makeMedallion();
             const chainStart = generateTimestamp();
             const bundler = new Bundler(this.identity, medallion);
-            bundler.seal({
+            const bundleInfo = bundler.seal({
                 medallion, timestamp: chainStart, chainStart
             });
+            ensure(bundleInfo.comment == this.identity);
             const commitBytes = bundler.bytes;
             await this.store.addBundle(commitBytes, true);
             this.myChain = (await this.store.getClaimedChains()).get(medallion);
@@ -368,6 +369,7 @@ export class Database {
      */
     protected async receiveMessage(messageBytes: Uint8Array, fromConnectionId: number) {
         await this.ready;
+        await this.acquireAppendableChain();
         const peer = this.peers.get(fromConnectionId);
         if (!peer) throw Error("Got a message from a peer I don't have a proxy for?");
         //const unlockingFunction = await this.processingLock.acquireLock();
