@@ -146,4 +146,8 @@ export interface IndexedDbStoreSchema extends DBSchema {
             'targets': Indexable;
         };
     };
+    identities: {
+        value: string;
+        key: [Medallion, ChainStart];
+    };
 }

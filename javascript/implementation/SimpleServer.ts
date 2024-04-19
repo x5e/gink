@@ -27,10 +27,10 @@ export class SimpleServer extends Database {
         sslCertFilePath?: FilePath;
         staticContentRoot?: DirPath;
         logger?: CallBack;
-        software?: string;
+        identity?: string;
         authFunc?: AuthFunction;
     }) {
-        super(store, { software: args.software || "SimpleServer" }, args.logger || (() => null));
+        super(store, args.identity, args.logger || (() => null));
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this),
             requestListener: this.requestListener.bind(this),

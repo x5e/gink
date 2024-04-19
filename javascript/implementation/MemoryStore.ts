@@ -63,6 +63,7 @@ export class MemoryStore implements Store {
     private removalsByPlacementId: Map<string, Removal>; // EntryId => Removal
     private entries: TreeMap<string, Entry>; // PlacementId => Entry
     private entriesByContainerKeyPlacement: TreeMap<string, string>; // ContainerID,Key,PlacementId => PlacementId
+    private identities: Map<string, string>; // Medallion,chainStart => identity
 
     constructor(private keepingHistory = true) {
         this.ready = this.initialize();
@@ -103,6 +104,7 @@ export class MemoryStore implements Store {
         this.removalsByPlacementId = new Map();
         this.entries = new TreeMap();
         this.entriesByContainerKeyPlacement = new TreeMap();
+        this.identities = new Map();
         return Promise.resolve();
     }
 
@@ -145,6 +147,10 @@ export class MemoryStore implements Store {
         return Promise.resolve(claim);
     }
 
+    async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
+        return this.identities.get(`${chainInfo[0]},${chainInfo[1]}`);
+    }
+
     async getChainTracker(): Promise<ChainTracker> {
         const chainInfos = this.getChainInfos();
         const chainTracker = buildChainTracker(chainInfos);
@@ -169,6 +175,11 @@ export class MemoryStore implements Store {
                 throw new Error(`missing prior chain entry for ${JSON.stringify(bundleInfo)}, ` +
                     `have ${JSON.stringify(oldChainInfo)}`);
             }
+        }
+        // If this is a new chain, save the identity
+        if (bundleInfo.timestamp == bundleInfo.chainStart) {
+            const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
+            this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
         }
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const commitKey: BundleInfoTuple = MemoryStore.commitInfoToKey(bundleInfo);

@@ -223,12 +223,19 @@ export class LogBackedStore implements Store {
         if (!this.exclusive)
             await this.unlockFile();
         unlockingFunction();
-        return {
+        const chain = {
             medallion,
             chainStart,
             actorId: actorId || 0,
             claimTime,
         };
+        this.claimedChains.push(chain);
+        return chain;
+    }
+
+    async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
+        await this.ready;
+        return await this.internalStore.getChainIdentity(chainInfo);
     }
 
     async getChainTracker(): Promise<ChainTracker> {

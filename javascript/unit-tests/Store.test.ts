@@ -7,7 +7,7 @@ import {
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
 } from "./test_utils";
 import { muidToBuilder, ensure, wrapValue, matches, wrapKey } from "../implementation/utils";
-import { Bundler } from "../implementation";
+import { Bundler, Database } from "../implementation";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 
@@ -153,5 +153,13 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         ensure(matches(entry.entryId, [5, 4, 1]));
         ensure(entry.value == "xyz");
         ensure(entry.effectiveKey == "abc");
+    });
+
+    it(`${implName} getChainIdentity works`, async () => {
+        const db = new Database(store, 'test@identity');
+        await db.ready;
+        const chain = [...(await store.getClaimedChains()).entries()][0][1];
+        const identity = await store.getChainIdentity([chain.medallion, chain.chainStart]);
+        ensure(identity == 'test@identity');
     });
 }

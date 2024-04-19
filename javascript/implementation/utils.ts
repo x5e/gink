@@ -3,7 +3,7 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry, Indexer, Indexable, ActorId } from "./typedefs";
+import { Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry, Indexer, Indexable, ActorId, ClaimedChain } from "./typedefs";
 import {
     MuidBuilder,
     ValueBuilder,
@@ -12,6 +12,9 @@ import {
     TimestampBuilder,
     TupleBuilder, DocumentBuilder
 } from "./builders";
+
+import { hostname, userInfo } from 'os';
+import { getRandomValues } from 'crypto';
 
 // Since find-process uses child-process, we can't load this if gink
 // is running in a browser
@@ -482,6 +485,21 @@ export function getActorId(): ActorId {
             window.localStorage.removeItem(`gink-${aId}`);
         };
         return aId;
+    }
+}
+
+/**
+ * Used to (attempt to) identify the user who starts a gink chain.
+ * @returns either the 'username@hostname' of the process running gink,
+ * or a generic 'browser-client' if gink is running in a browser.
+ */
+export function getIdentity(): string {
+    if (typeof window == "undefined")
+        return `${userInfo().username}@${hostname()}`;
+    else {
+        return 'browser-client-' + ("10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+            (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
+        ));
     }
 }
 

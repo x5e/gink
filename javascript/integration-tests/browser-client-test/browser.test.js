@@ -31,6 +31,6 @@ it('connect to server and display commits', async () => {
     await server.close();
     await browser.close();
 
-    const expectedMessages = /Messages go here\..*Hello, Universe!.*start: SimpleServer/s;
+    const expectedMessages = /Messages go here\..*Hello, Universe!.*/s;
     expect(messages).toMatch(expectedMessages);
 }, 40000);

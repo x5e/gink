@@ -13,7 +13,7 @@ import { ensure } from "./utils";
 export class RoutingServerInstance extends Database {
 
     constructor(readonly filePath: FilePath, readonly logger: CallBack = console.log) {
-        super(new LogBackedStore(filePath, false), { software: `routing server for ${filePath}` }, logger);
+        super(new LogBackedStore(filePath, false), null, logger);
     }
 
     async onConnection(connection: WebSocketConnection) {
