@@ -18,7 +18,7 @@ import { flock } from "fs-ext";
 import { watch, FSWatcher } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder } from "./builders";
-import { generateTimestamp, ensure } from "./utils";
+import { generateTimestamp, ensure, getActorId } from "./utils";
 
 /*
     At time of writing, there's only an in-memory implementation of
@@ -172,8 +172,13 @@ export class LogBackedStore implements Store {
         const unlockingFunction = await this.memoryLock.acquireLock();
         if (!this.exclusive)
             await this.lockFile(true);
+
+
         await this.pullDataFromFile();
-        const info: BundleInfo = await this.internalStore.addBundle(commitBytes, claimChain);
+        const info: BundleInfo = await this.internalStore.addBundle(commitBytes);
+        if (claimChain) {
+            await this.claimChain(info.medallion, info.chainStart, getActorId());
+        }
         const added = this.chainTracker.markAsHaving(info);
         if (added) {
             ensure(this.fileLocked);
@@ -202,11 +207,13 @@ export class LogBackedStore implements Store {
 
     async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         await this.ready;
-        const unlockingFunction = await this.memoryLock.acquireLock();
-        if (!this.exclusive) {
-            await this.lockFile(true);
-        }
-        ensure(this.fileLocked);
+        // const unlockingFunction = await this.memoryLock.acquireLock();
+        // if (!this.exclusive) {
+        //     await this.lockFile(true);
+        // }
+        // ensure(this.fileLocked);
+
+
         await this.pullDataFromFile();
         const claimTime = generateTimestamp();
         const fragment = new LogFileBuilder();
@@ -220,9 +227,9 @@ export class LogBackedStore implements Store {
         await this.fileHandle.appendFile(bytes);
         await this.fileHandle.sync();
         this.redTo += bytes.byteLength;
-        if (!this.exclusive)
-            await this.unlockFile();
-        unlockingFunction();
+        // if (!this.exclusive)
+        //     await this.unlockFile();
+        // unlockingFunction();
         const chain = {
             medallion,
             chainStart,

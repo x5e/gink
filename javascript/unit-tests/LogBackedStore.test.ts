@@ -56,6 +56,7 @@ it('test automatic data pulling & callbacks', async () => {
     const globalDir1 = instance1.getGlobalDirectory();
 
     await globalDir1.set("key", "value", "test bundle");
+
     await new Promise(r => setTimeout(r, 100));
 
     expect(cb.calledTimes > 0).toBe(true);

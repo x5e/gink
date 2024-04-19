@@ -53,9 +53,10 @@ export class Database {
     }
 
     /**
-     * Starts a chain or finds one to reuse, then returns the last link to it.
+     * Starts a chain or finds one to reuse, then sets myChain.
      */
-    private async acquireAppendableChain(): Promise<BundleInfo> {
+    private async acquireAppendableChain(): Promise<void> {
+        if (this.myChain) return;
         const claimedChains = await this.store.getClaimedChains();
         let reused;
         for (let value of claimedChains.values()) {
@@ -74,17 +75,22 @@ export class Database {
         }
         if (reused) {
             ensure(reused.medallion > 0);
-            return reused;
+            this.myChain = reused;
+        } else {
+            const medallion = makeMedallion();
+            const chainStart = generateTimestamp();
+            const bundler = new Bundler(this.identity, medallion);
+            bundler.seal({
+                medallion, timestamp: chainStart, chainStart
+            });
+            const commitBytes = bundler.bytes;
+            await this.store.addBundle(commitBytes, true);
+            this.myChain = (await this.store.getClaimedChains()).get(medallion);
         }
+        this.iHave = await this.store.getChainTracker();
+        ensure(this.myChain, "myChain wasn't set.");
 
-        const medallion = makeMedallion();
-        const chainStart = generateTimestamp();
-        const bundler = new Bundler(this.identity, medallion);
-        bundler.seal({
-            medallion, timestamp: chainStart, chainStart
-        });
-        const commitBytes = bundler.bytes;
-        return await this.store.addBundle(commitBytes, true);
+        return;
     }
 
     private async initialize(): Promise<void> {
@@ -257,22 +263,24 @@ export class Database {
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
         if (!this.initilized)
             throw new Error("Database not ready");
-        if (!(this.myChain.medallion > 0))
-            throw new Error("zero medallion?");
-        const nowMicros = generateTimestamp();
-        const lastBundleInfo = this.iHave.getCommitInfo([this.myChain.medallion, this.myChain.chainStart]);
-        const seenThrough = lastBundleInfo.timestamp;
-        ensure(seenThrough > 0 && (seenThrough < nowMicros));
-        const commitInfo: BundleInfo = {
-            medallion: this.myChain.medallion,
-            chainStart: this.myChain.chainStart,
-            timestamp: seenThrough >= nowMicros ? seenThrough + 10 : nowMicros,
-            priorTime: seenThrough,
-        };
-        bundler.seal(commitInfo);
-        this.iHave.markAsHaving(commitInfo);
-        // console.log(`sending: ` + JSON.stringify(commitInfo));
-        return this.receiveCommit(bundler.bytes);
+        return this.acquireAppendableChain().then(() => {
+            if (!(this.myChain.medallion > 0))
+                throw new Error("zero medallion?");
+            const nowMicros = generateTimestamp();
+            const lastBundleInfo = this.iHave.getCommitInfo([this.myChain.medallion, this.myChain.chainStart]);
+            const seenThrough = lastBundleInfo.timestamp;
+            ensure(seenThrough > 0 && (seenThrough < nowMicros));
+            const commitInfo: BundleInfo = {
+                medallion: this.myChain.medallion,
+                chainStart: this.myChain.chainStart,
+                timestamp: seenThrough && (seenThrough >= nowMicros) ? seenThrough + 10 : nowMicros,
+                priorTime: seenThrough ?? nowMicros,
+            };
+            bundler.seal(commitInfo);
+            this.iHave.markAsHaving(commitInfo);
+            // console.log(`sending: ` + JSON.stringify(commitInfo));
+            return this.receiveCommit(bundler.bytes);
+        });
     }
 
     /**
