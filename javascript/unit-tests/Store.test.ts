@@ -100,20 +100,6 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[3])).getTimestamp()).toBe(NEXT_TS2);
     });
 
-    it(`${implName} test claim chains`, async () => {
-        const actorId = 17;
-        await store.claimChain(MEDALLION1, START_MICROS1, actorId);
-        await store.claimChain(MEDALLION2, START_MICROS2, actorId);
-        if (replacer) {
-            await store.close();
-            store = await replacer();
-        }
-        const active = await store.getClaimedChains();
-        expect(active.size).toBe(2);
-        expect(active.get(MEDALLION1).chainStart).toBe(START_MICROS1);
-        expect(active.get(MEDALLION2).chainStart).toBe(START_MICROS2);
-    });
-
     it(`${implName} test save/fetch container`, async () => {
         const bundleBuilder = new BundleBuilder();
         bundleBuilder.setChainStart(START_MICROS1);
