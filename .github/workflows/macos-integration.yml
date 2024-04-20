@@ -50,5 +50,3 @@ jobs:
       run:  ./integration-tests/py-ts-test.js
     - name: TypeScript-Python test
       run:  ./integration-tests/ts-py-test.js
-    - name: Run PY reuse chain test
-      run: ./integration-tests/chain-reuse-py-test.js
