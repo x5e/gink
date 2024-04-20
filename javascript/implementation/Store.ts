@@ -40,13 +40,6 @@ export interface Store {
     getClaimedChains: () => Promise<Map<Medallion, ClaimedChain>>;
 
     /**
-     * Mark a chain as being owned by this store.
-     *
-     * Implicitly awaits on this.ready;
-     */
-    claimChain: (medallion: Medallion, chainStart: ChainStart, actorId?: ActorId) => Promise<ClaimedChain>;
-
-    /**
      * Attempts to get the identity of the user who started the chain.
      * @param chainInfo [Medallion, ChainStart]
      * @returns a string of the identity of the user who started the chain.

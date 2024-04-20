@@ -259,7 +259,7 @@ export class IndexedDbStore implements Store {
         return identity;
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId, transaction?: Transaction): Promise<ClaimedChain> {
+    private async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId, transaction?: Transaction): Promise<ClaimedChain> {
         await this.ready;
         const wrappedTransaction = transaction ?? this.getTransaction();
         const claim = {

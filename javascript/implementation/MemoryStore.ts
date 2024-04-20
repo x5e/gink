@@ -137,7 +137,7 @@ export class MemoryStore implements Store {
         return Promise.resolve(result);
     }
 
-    claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
+    private claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         const claim = {
             medallion,
             chainStart,

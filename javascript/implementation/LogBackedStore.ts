@@ -212,7 +212,7 @@ export class LogBackedStore implements Store {
         return result;
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
+    private async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         await this.ready;
         await this.pullDataFromFile();
         const claimTime = generateTimestamp();
