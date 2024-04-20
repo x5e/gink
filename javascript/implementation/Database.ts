@@ -37,6 +37,7 @@ export class Database {
     private listeners: Map<string, CommitListener[]> = new Map();
     private countConnections = 0; // Includes disconnected clients.
     private myChain: ClaimedChain;
+    private identity: string;
     private initilized = false;
     protected iHave: ChainTracker;
 
@@ -47,30 +48,21 @@ export class Database {
     constructor(readonly store: Store = new IndexedDbStore('Database-default'),
         identity: string = getIdentity(),
         readonly logger: CallBack = noOp) {
-        this.ready = this.initialize(identity);
+        this.identity = identity;
+        this.ready = this.initialize();
     }
 
-    private async startChain(identity: string) {
-        const medallion = makeMedallion();
-        const chainStart = generateTimestamp();
-        const bundler = new Bundler(identity, medallion);
-        bundler.seal({
-            medallion, timestamp: chainStart, chainStart
-        });
-        const commitBytes = bundler.bytes;
-        await this.store.addBundle(commitBytes);
-        this.myChain = await this.store.claimChain(medallion, chainStart, getActorId());
-        ensure(this.myChain.medallion > 0);
-    }
-
-    private async initialize(identity: string): Promise<void> {
-        await this.store.ready;
-        // TODO(181): make claiming of a chain as needed to facilitate read-only/relay use cases
+    /**
+     * Starts a chain or finds one to reuse, then sets myChain.
+     */
+    private async acquireAppendableChain(): Promise<void> {
+        if (this.myChain) return;
         const claimedChains = await this.store.getClaimedChains();
+        let reused;
         for (let value of claimedChains.values()) {
-            if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity([value.medallion, value.chainStart]) == identity) {
+            if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity([value.medallion, value.chainStart]) == this.identity) {
                 // TODO: check to see if meta-data matches, and overwrite if not
-                this.myChain = value;
+                reused = value;
                 if (typeof window != "undefined") {
                     // If we are running in a browser and take over a chain,
                     // start a new heartbeat.
@@ -81,10 +73,34 @@ export class Database {
                 break;
             }
         }
-        if (!this.myChain) {
-            await this.startChain(identity);
+        if (reused) {
+            ensure(reused.medallion > 0);
+            this.myChain = reused;
+        } else {
+            const medallion = makeMedallion();
+            const chainStart = generateTimestamp();
+            const bundler = new Bundler(this.identity, medallion);
+            const bundleInfo = bundler.seal({
+                medallion, timestamp: chainStart, chainStart
+            });
+            ensure(bundleInfo.comment == this.identity);
+            const commitBytes = bundler.bytes;
+            await this.store.addBundle(commitBytes, true);
+            this.myChain = (await this.store.getClaimedChains()).get(medallion);
+            this.iHave.markAsHaving(bundleInfo);
+            // If there is already a connection before we claim a chain, ensure the
+            // peers get this commit as well so future commits will be valid extensions.
+            for (const [peerId, peer] of this.peers) {
+                peer._sendIfNeeded(commitBytes, bundleInfo);
+            }
         }
-        ensure(this.myChain.medallion > 0);
+        ensure(this.myChain, "myChain wasn't set.");
+        return;
+    }
+
+    private async initialize(): Promise<void> {
+        await this.store.ready;
+
         this.iHave = await this.store.getChainTracker();
         this.listeners.set("all", []);
         //this.logger(`Database.ready`);
@@ -252,22 +268,23 @@ export class Database {
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
         if (!this.initilized)
             throw new Error("Database not ready");
-        if (!(this.myChain.medallion > 0))
-            throw new Error("zero medallion?");
-        const nowMicros = generateTimestamp();
-        const lastBundleInfo = this.iHave.getCommitInfo([this.myChain.medallion, this.myChain.chainStart]);
-        const seenThrough = lastBundleInfo.timestamp;
-        ensure(seenThrough > 0 && (seenThrough < nowMicros));
-        const commitInfo: BundleInfo = {
-            medallion: this.myChain.medallion,
-            chainStart: this.myChain.chainStart,
-            timestamp: seenThrough >= nowMicros ? seenThrough + 10 : nowMicros,
-            priorTime: seenThrough,
-        };
-        bundler.seal(commitInfo);
-        this.iHave.markAsHaving(commitInfo);
-        // console.log(`sending: ` + JSON.stringify(commitInfo));
-        return this.receiveCommit(bundler.bytes);
+        return this.acquireAppendableChain().then(() => {
+            if (!(this.myChain.medallion > 0))
+                throw new Error("zero medallion?");
+            const nowMicros = generateTimestamp();
+            const lastBundleInfo = this.iHave.getCommitInfo([this.myChain.medallion, this.myChain.chainStart]);
+            const seenThrough = lastBundleInfo.timestamp;
+            ensure(seenThrough > 0 && (seenThrough < nowMicros));
+            const commitInfo: BundleInfo = {
+                medallion: this.myChain.medallion,
+                chainStart: this.myChain.chainStart,
+                timestamp: seenThrough && (seenThrough >= nowMicros) ? seenThrough + 10 : nowMicros,
+                priorTime: seenThrough ?? nowMicros,
+            };
+            bundler.seal(commitInfo);
+            this.iHave.markAsHaving(commitInfo);
+            return this.receiveCommit(bundler.bytes);
+        });
     }
 
     /**
@@ -357,7 +374,6 @@ export class Database {
         await this.ready;
         const peer = this.peers.get(fromConnectionId);
         if (!peer) throw Error("Got a message from a peer I don't have a proxy for?");
-        //const unlockingFunction = await this.processingLock.acquireLock();
         try {
             const parsed = <SyncMessageBuilder>SyncMessageBuilder.deserializeBinary(messageBytes);
             if (parsed.hasBundle()) {
@@ -412,6 +428,7 @@ export class Database {
         const authToken: string = (options && options.authToken) ? options.authToken : undefined;
 
         await this.ready;
+        await this.acquireAppendableChain();
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
             let protocols = [Database.PROTOCOL];

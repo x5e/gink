@@ -12,8 +12,8 @@ import { ensure } from "./utils";
 
 export class RoutingServerInstance extends Database {
 
-    constructor(readonly filePath: FilePath, readonly logger: CallBack = console.log) {
-        super(new LogBackedStore(filePath, false), null, logger);
+    constructor(readonly filePath: FilePath, identity: string, readonly logger: CallBack = console.log) {
+        super(new LogBackedStore(filePath, false), identity, logger);
     }
 
     async onConnection(connection: WebSocketConnection) {
@@ -42,7 +42,8 @@ export class RoutingServerInstance extends Database {
     }
 
     private onClose(connectionId: number, reasonCode: number, description: string) {
-        this.peers.delete(connectionId);
+        // I'm intentionally leaving the peer object in the peers map just in case we get data from them.
+        // thisClient.peers.delete(connectionId);  // might still be processing data from peer
         this.logger(`Peer ${connectionId} disconnected from ${this.filePath} ${reasonCode}, ${description}`);
     }
 

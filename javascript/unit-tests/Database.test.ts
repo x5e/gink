@@ -18,31 +18,6 @@ it('test commit', async () => {
     }
 });
 
-it('uses claimed chain', async () => {
-    for (const store of [
-        new IndexedDbStore('Database.test', true),
-        new MemoryStore(true),
-    ]) {
-        await store.ready;
-        const commitBytes = makeChainStart("test@identity", MEDALLION1, START_MICROS1);
-        await store.claimChain(MEDALLION1, START_MICROS1);
-        await store.addBundle(commitBytes);
-
-        await store.getCommits((commitBytes: BundleBytes, _commitInfo: BundleInfo) => {
-            const commit = <BundleBuilder>BundleBuilder.deserializeBinary(commitBytes);
-            ensure(commit.getComment() == "test@identity");
-        });
-        const instance = new Database(store, "test@identity");
-        await instance.ready;
-        const secondInfo = await instance.addBundler(new Bundler("Hello, Universe!"));
-        ensure(
-            secondInfo.medallion == MEDALLION1 &&
-            secondInfo.priorTime == START_MICROS1 &&
-            secondInfo.chainStart == START_MICROS1
-        );
-    }
-});
-
 it('test listeners', async () => {
     for (const store of [
         new IndexedDbStore('Database.listeners.test', true),

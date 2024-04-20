@@ -7,7 +7,8 @@ import {
     muidToTuple,
     muidTupleToMuid,
     sameData,
-    unwrapValue
+    unwrapValue,
+    getActorId
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {
@@ -253,15 +254,14 @@ export class IndexedDbStore implements Store {
 
     async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
         await this.ready;
-        const wrappedTransaction = this.wrapped.transaction("identities", "readwrite");
+        const wrappedTransaction = this.getTransaction();
         const identity = await wrappedTransaction.objectStore('identities').get(chainInfo);
-        await wrappedTransaction.done;
         return identity;
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
+    private async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId, transaction?: Transaction): Promise<ClaimedChain> {
         await this.ready;
-        const wrappedTransaction = this.wrapped.transaction("activeChains", "readwrite");
+        const wrappedTransaction = transaction ?? this.getTransaction();
         const claim = {
             chainStart,
             medallion,
@@ -269,7 +269,6 @@ export class IndexedDbStore implements Store {
             claimTime: generateTimestamp(),
         };
         await wrappedTransaction.objectStore('activeChains').add(claim);
-        await wrappedTransaction.done;
         return claim;
     }
 
@@ -282,23 +281,24 @@ export class IndexedDbStore implements Store {
 
     private async getChainInfos(): Promise<Array<BundleInfo>> {
         await this.ready;
-        return await this.wrapped.transaction("chainInfos", "readonly").objectStore('chainInfos').getAll();
+        return await this.getTransaction().objectStore('chainInfos').getAll();
     }
 
-    addBundle(bundleBytes: BundleBytes): Promise<BundleInfo> {
+    addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
         if (!this.initialized) throw new Error("not initialized! need to await on .ready");
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
         const bundleInfo = extractCommitInfo(bundleBuilder);
         //console.log(`got ${JSON.stringify(bundleInfo)}`);
 
         return this.processingLock.acquireLock().then((unlock) => {
-            return this.addBundleHelper(bundleBytes, bundleInfo, bundleBuilder).then((trxn) => {
-                unlock(); return trxn.done.then(() => bundleInfo);
+            return this.addBundleHelper(bundleBytes, bundleInfo, bundleBuilder, claimChain).then((trxn) => {
+                unlock();
+                return trxn.done.then(() => bundleInfo);
             }).finally(unlock);
         });
     }
 
-    private async addBundleHelper(bundleBytes: BundleBytes, bundleInfo: BundleInfo, bundleBuilder: BundleBuilder):
+    private async addBundleHelper(bundleBytes: BundleBytes, bundleInfo: BundleInfo, bundleBuilder: BundleBuilder, claimChain?: boolean):
         Promise<Transaction> {
         // console.log(`starting addBundleHelper for: ` + JSON.stringify(bundleInfo));
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
@@ -314,10 +314,13 @@ export class IndexedDbStore implements Store {
                 throw new Error(`missing ${JSON.stringify(bundleInfo)}, have ${JSON.stringify(oldChainInfo)}`);
             }
         }
-        // If this is a new chain, save the identity
-        if (bundleInfo.timestamp == bundleInfo.chainStart) {
+        // If this is a new chain, save the identity & claim this chain
+        if (claimChain) {
+            ensure(bundleInfo.timestamp == bundleInfo.chainStart, "timestamp != chainstart");
+            ensure(bundleInfo.comment, "comment (identity) required to start a chain");
             const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
             await wrappedTransaction.objectStore('identities').add(bundleInfo.comment, chainInfo);
+            await this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId(), wrappedTransaction);
         }
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
