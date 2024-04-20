@@ -2,10 +2,10 @@ import { RoutingServer } from "./RoutingServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { Store } from "./Store";
 import { Database } from "./Database";
-import { AuthFunction, BundleInfo, CallBack } from "./typedefs";
+import { AuthFunction, BundleInfo } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { SimpleServer } from "./SimpleServer";
-import { ensure, generateTimestamp, logToStdErr } from "./utils";
+import { ensure, generateTimestamp, getIdentity, logToStdErr } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { start, REPLServer } from "node:repl";
 
@@ -34,7 +34,8 @@ export class CommandLineInterface {
         const dataRoot = process.env["GINK_DATA_ROOT"];
         const dataFile = process.env["GINK_DATA_FILE"];
         const reset = !!process.env["GINK_RESET"];
-        const identity = process.env["GINK_IDENTITY"];
+        const identity = process.env["GINK_IDENTITY"] ?? getIdentity();
+        ensure(identity);
 
         /*
         If an auth key is found in the server's environment variable
@@ -82,7 +83,9 @@ export class CommandLineInterface {
             };
             if (dataRoot) {
                 this.routingServer = new RoutingServer({
-                    dataFilesRoot: dataRoot, ...common
+                    identity: identity,
+                    dataFilesRoot: dataRoot,
+                    ...common
                 });
             } else {
                 this.instance = new SimpleServer(this.store, { identity: identity, ...common });
@@ -92,10 +95,6 @@ export class CommandLineInterface {
             this.instance = new Database(this.store, identity);
         }
         this.targets = process.argv.slice(2);
-    }
-
-    static async onCommit(commitInfo: BundleInfo) {
-        logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`);
     }
 
     async run() {

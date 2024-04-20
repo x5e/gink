@@ -316,7 +316,8 @@ export class IndexedDbStore implements Store {
         }
         // If this is a new chain, save the identity & claim this chain
         if (claimChain) {
-            ensure(bundleInfo.timestamp == bundleInfo.chainStart);
+            ensure(bundleInfo.timestamp == bundleInfo.chainStart, "timestamp != chainstart");
+            ensure(bundleInfo.comment, "comment (identity) required to start a chain");
             const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
             await wrappedTransaction.objectStore('identities').add(bundleInfo.comment, chainInfo);
             await this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId(), wrappedTransaction);

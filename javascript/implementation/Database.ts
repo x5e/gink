@@ -87,10 +87,14 @@ export class Database {
             const commitBytes = bundler.bytes;
             await this.store.addBundle(commitBytes, true);
             this.myChain = (await this.store.getClaimedChains()).get(medallion);
+            this.iHave.markAsHaving(bundleInfo);
+            // If there is already a connection before we claim a chain, ensure the
+            // peers get this commit as well so future commits will be valid extensions.
+            for (const [peerId, peer] of this.peers) {
+                peer._sendIfNeeded(commitBytes, bundleInfo);
+            }
         }
-        this.iHave = await this.store.getChainTracker();
         ensure(this.myChain, "myChain wasn't set.");
-
         return;
     }
 
@@ -279,7 +283,6 @@ export class Database {
             };
             bundler.seal(commitInfo);
             this.iHave.markAsHaving(commitInfo);
-            // console.log(`sending: ` + JSON.stringify(commitInfo));
             return this.receiveCommit(bundler.bytes);
         });
     }
@@ -369,10 +372,8 @@ export class Database {
      */
     protected async receiveMessage(messageBytes: Uint8Array, fromConnectionId: number) {
         await this.ready;
-        await this.acquireAppendableChain();
         const peer = this.peers.get(fromConnectionId);
         if (!peer) throw Error("Got a message from a peer I don't have a proxy for?");
-        //const unlockingFunction = await this.processingLock.acquireLock();
         try {
             const parsed = <SyncMessageBuilder>SyncMessageBuilder.deserializeBinary(messageBytes);
             if (parsed.hasBundle()) {
@@ -427,6 +428,7 @@ export class Database {
         const authToken: string = (options && options.authToken) ? options.authToken : undefined;
 
         await this.ready;
+        await this.acquireAppendableChain();
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
             let protocols = [Database.PROTOCOL];
