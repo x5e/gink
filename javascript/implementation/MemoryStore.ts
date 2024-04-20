@@ -518,9 +518,16 @@ export class MemoryStore implements Store {
      * should eliminate some of the pain of adding entries to multiple maps.
      */
     addEntry(entry: Entry) {
-        this.entries.set(muidTupleToString(entry.placementId), entry);
-        const indexedKey = `${muidTupleToString(entry.containerId)},${entry.effectiveKey},${muidTupleToString(entry.placementId)}`;
-        this.entriesByContainerKeyPlacement.set(indexedKey, muidTupleToString(entry.placementId));
+        const entryIdStr = muidTupleToString(entry.entryId);
+        this.entries.set(entryIdStr, entry);
+        this.entriesByContainerKeyPlacement.set(this.entryToPlacementKey(entry), entryIdStr);
+    }
+
+    entryToPlacementKey(entry: Entry): string {
+        const containerIdStr = muidTupleToString(entry.containerId);
+        const placementIdStr = muidTupleToString(entry.placementId);
+        const placementKey = `${containerIdStr},${entry.effectiveKey},${placementIdStr}`;
+        return placementKey;
     }
 
     /**
