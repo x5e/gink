@@ -335,7 +335,6 @@ export class IndexedDbStore implements Store {
             }
             if (changeBuilder.hasEntry()) {
                 const entryBuilder: EntryBuilder = changeBuilder.getEntry();
-                // TODO(https://github.com/google/gink/issues/55): explain root
                 let containerId: MuidTuple = [0, 0, 0];
                 if (entryBuilder.hasContainer()) {
                     containerId = extractContainerMuid(entryBuilder, bundleInfo);
@@ -384,7 +383,7 @@ export class IndexedDbStore implements Store {
                             };
                             await wrappedTransaction.objectStore("removals").add(removal);
                         } else {
-                            await wrappedTransaction.objectStore("entries").delete(placementId);
+                            await wrappedTransaction.objectStore("entries").delete(search.value.placementId);
                         }
                     }
                 }

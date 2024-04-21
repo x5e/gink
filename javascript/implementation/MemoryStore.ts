@@ -54,19 +54,19 @@ export class MemoryStore implements Store {
     private foundBundleCallBacks: BroadcastFunc[] = [];
     // Awkward, but need to use strings to represent objects, since we won't always
     // have the original reference to use.
-    private trxns: TreeMap<BundleInfoTuple, Uint8Array>; // BundleInfoTuple => bytes
-    private chainInfos: TreeMap<string, BundleInfo>; // [Medallion, ChainStart] => BundleInfo
-    private activeChains: ClaimedChain[];
-    private clearances: TreeMap<string, Clearance>; // ContainerId,ClearanceId => Clearance
-    private containers: TreeMap<string, Uint8Array>; // ContainerId => bytes
-    private removals: TreeMap<string, Removal>; // RemovalId => Removal
-    private removalsByPlacementId: Map<string, Removal>; // EntryId => Removal
-    private entries: TreeMap<string, Entry>; // PlacementId => Entry
-    private entriesByContainerKeyPlacement: TreeMap<string, string>; // ContainerID,Key,PlacementId => PlacementId
-    private identities: Map<string, string>; // Medallion,chainStart => identity
+    private trxns: TreeMap<BundleInfoTuple, Uint8Array> = new TreeMap(); // BundleInfoTuple => bytes
+    private chainInfos: TreeMap<string, BundleInfo> = new TreeMap(); // [Medallion, ChainStart] => BundleInfo
+    private activeChains: ClaimedChain[] = [];
+    private clearances: TreeMap<string, Clearance> = new TreeMap(); // ContainerId,ClearanceId => Clearance
+    private containers: TreeMap<string, Uint8Array> = new TreeMap(); // ContainerId => bytes
+    private removals: TreeMap<string, Removal> = new TreeMap(); // RemovalId => Removal
+    private removalsByPlacementId: Map<string, Removal> = new Map(); // EntryId => Removal
+    private entries: TreeMap<string, Entry> = new TreeMap(); // PlacementId => Entry
+    private entriesByContainerKeyPlacement: TreeMap<string, string> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
+    private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
 
     constructor(private keepingHistory = true) {
-        this.ready = this.initialize();
+        this.ready = Promise.resolve();
     }
 
     dropHistory(container?: Muid, before?: AsOf): void {
@@ -92,20 +92,6 @@ export class MemoryStore implements Store {
 
     startHistory(): void {
         this.keepingHistory = true;
-    }
-
-    private async initialize(): Promise<void> {
-        this.trxns = new TreeMap();
-        this.chainInfos = new TreeMap();
-        this.activeChains = [];
-        this.clearances = new TreeMap();
-        this.containers = new TreeMap();
-        this.removals = new TreeMap();
-        this.removalsByPlacementId = new Map();
-        this.entries = new TreeMap();
-        this.entriesByContainerKeyPlacement = new TreeMap();
-        this.identities = new Map();
-        return Promise.resolve();
     }
 
     async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
@@ -394,13 +380,19 @@ export class MemoryStore implements Store {
         throw new Error(`don't know how to interpret asOf=${asOf}`);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined> {
+    getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined> {
+        return Promise.resolve(this.getEntryByKeyHelper(container, key, asOf));
+    }
+
+    getEntryByKeyHelper(container?: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Entry | undefined {
         const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const srcAsStr = muidTupleToString(desiredSrc);
         let clearanceTime: Timestamp = this.getLastClearanceTimeForContainer(srcAsStr, asOfTs);
         const semanticKey = keyToSemanticKey(key);
-        const upper = this.entriesByContainerKeyPlacement.upperBound(`${srcAsStr},${semanticKey},${asOfTs}`);
+        const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
+        const upperBound = `${srcAsStr},${semanticKey},${asOfTs}`;
+        const iterator = new ReverseIterator(this.entriesByContainerKeyPlacement.upperBound(upperBound));
         // TreeMap upperBound always fetches the entry GREATER than the provided key (if there is nothing greater, it will be undefined)
         // By calling prev() initially, the cursor will be at the right spot.
         upper.prev();
