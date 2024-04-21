@@ -1,4 +1,6 @@
 export { Database } from "./Database";
+export { RoutingServer } from "./RoutingServer";
+export { RoutingServerInstance } from "./RoutingServerInstance";
 export { Box } from "./Box";
 export { Directory } from "./Directory";
 export { Sequence } from "./Sequence";

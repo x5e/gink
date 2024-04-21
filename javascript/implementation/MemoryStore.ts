@@ -7,7 +7,8 @@ import {
     muidTupleToMuid,
     muidTupleToString,
     unwrapValue,
-    sameData
+    sameData,
+    getActorId
 } from "./utils";
 import {
     AsOf,
@@ -122,7 +123,7 @@ export class MemoryStore implements Store {
         return Promise.resolve(result);
     }
 
-    claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
+    private claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         const claim = {
             medallion,
             chainStart,
@@ -147,7 +148,7 @@ export class MemoryStore implements Store {
         return this.chainInfos.values();
     }
 
-    async addBundle(bundleBytes: BundleBytes): Promise<BundleInfo> {
+    async addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
         await this.ready;
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
         const bundleInfo = extractCommitInfo(bundleBuilder);
@@ -162,11 +163,15 @@ export class MemoryStore implements Store {
                     `have ${JSON.stringify(oldChainInfo)}`);
             }
         }
-        // If this is a new chain, save the identity
-        if (bundleInfo.timestamp == bundleInfo.chainStart) {
+        // If this is a new chain, save the identity & claim this chain
+        if (claimChain) {
+            ensure(bundleInfo.timestamp == bundleInfo.chainStart);
             const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
             this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
+
+            this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId());
         }
+
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const commitKey: BundleInfoTuple = MemoryStore.commitInfoToKey(bundleInfo);
         this.trxns.set(commitKey, bundleBytes);

@@ -18,7 +18,7 @@ import { flock } from "fs-ext";
 import { watch, FSWatcher } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder } from "./builders";
-import { generateTimestamp, ensure } from "./utils";
+import { generateTimestamp, ensure, getActorId } from "./utils";
 
 /*
     At time of writing, there's only an in-memory implementation of
@@ -39,6 +39,7 @@ export class LogBackedStore implements Store {
     private fileHandle: FileHandle;
     private chainTracker: ChainTracker = new ChainTracker({});
     private claimedChains: ClaimedChain[] = [];
+    private identities: Map<string, string> = new Map(); // Medallion,ChainStart => identity
     private fileLocked: boolean = false;
     private memoryLock: PromiseChainLock = new PromiseChainLock();
     private redTo: number = 0;
@@ -133,6 +134,10 @@ export class LogBackedStore implements Store {
             for (const commit of commits) {
                 const info = await this.internalStore.addBundle(commit);
                 this.chainTracker.markAsHaving(info);
+                // This is the start of a chain, and we need to keep track of the identity.
+                if (info.timestamp == info.chainStart && !info.priorTime) {
+                    this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
+                }
                 for (const callback of this.foundBundleCallBacks) {
                     callback(commit, info);
                 }
@@ -166,14 +171,21 @@ export class LogBackedStore implements Store {
         return this.commitsProcessed;
     }
 
-    async addBundle(commitBytes: BundleBytes): Promise<BundleInfo> {
+    async addBundle(commitBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
         // TODO(https://github.com/x5e/gink/issues/182): delay unlocking the file to give better throughput
         await this.ready;
         const unlockingFunction = await this.memoryLock.acquireLock();
         if (!this.exclusive)
             await this.lockFile(true);
+
         await this.pullDataFromFile();
         const info: BundleInfo = await this.internalStore.addBundle(commitBytes);
+        if (claimChain) {
+            await this.claimChain(info.medallion, info.chainStart, getActorId());
+            if (info.timestamp == info.chainStart && !info.priorTime) {
+                this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
+            }
+        }
         const added = this.chainTracker.markAsHaving(info);
         if (added) {
             ensure(this.fileLocked);
@@ -200,13 +212,8 @@ export class LogBackedStore implements Store {
         return result;
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
+    private async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         await this.ready;
-        const unlockingFunction = await this.memoryLock.acquireLock();
-        if (!this.exclusive) {
-            await this.lockFile(true);
-        }
-        ensure(this.fileLocked);
         await this.pullDataFromFile();
         const claimTime = generateTimestamp();
         const fragment = new LogFileBuilder();
@@ -220,9 +227,6 @@ export class LogBackedStore implements Store {
         await this.fileHandle.appendFile(bytes);
         await this.fileHandle.sync();
         this.redTo += bytes.byteLength;
-        if (!this.exclusive)
-            await this.unlockFile();
-        unlockingFunction();
         const chain = {
             medallion,
             chainStart,
@@ -235,7 +239,7 @@ export class LogBackedStore implements Store {
 
     async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
         await this.ready;
-        return await this.internalStore.getChainIdentity(chainInfo);
+        return this.identities.get(`${chainInfo[0]},${chainInfo[1]}`);
     }
 
     async getChainTracker(): Promise<ChainTracker> {

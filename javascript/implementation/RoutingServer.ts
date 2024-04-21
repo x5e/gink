@@ -24,6 +24,7 @@ export class RoutingServer {
     readonly dataFilesRoot: DirPath | null;
     readonly authFunc: AuthFunction;
     private listener: Listener;
+    private identity: string;
 
     private instances: Map<string, RoutingServerInstance> = new Map();
 
@@ -33,11 +34,13 @@ export class RoutingServer {
         sslKeyFilePath?: FilePath;
         sslCertFilePath?: FilePath;
         staticContentRoot?: DirPath;
+        identity?: string;
         logger?: CallBack;
         authFunc?: AuthFunction;
     }) {
         const logger = this.logger = args.logger || (() => null);
         this.authFunc = args.authFunc || (() => true);
+        this.identity = args.identity;
         this.dataFilesRoot = args.dataFilesRoot;
         ensure(existsSync(this.dataFilesRoot), "data root not there");
         this.listener = new Listener({
@@ -56,7 +59,7 @@ export class RoutingServer {
         // Note: can't afford to await for the instance to be ready, or you'll miss the greeting.
         let instance = this.instances.get(path);
         if (!instance) {
-            instance = new RoutingServerInstance(path, this.logger);
+            instance = new RoutingServerInstance(path, this.identity, this.logger);
             this.instances.set(path, instance);
         }
         return instance;
