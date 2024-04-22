@@ -35,7 +35,7 @@ import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { Container } from './Container';
-import { TreeMap, ReverseIterator } from 'jstreemap';
+import { TreeMap, TreeSet, ReverseIterator } from 'jstreemap';
 import {
     getEffectiveKey,
     extractMovementInfo,
@@ -60,12 +60,11 @@ export class MemoryStore implements Store {
     private activeChains: ClaimedChain[] = [];
     private clearances: TreeMap<string, Clearance> = new TreeMap(); // ContainerId,ClearanceId => Clearance
     private containers: TreeMap<string, Uint8Array> = new TreeMap(); // ContainerId => bytes
-    private removals: TreeMap<string, Removal> = new TreeMap(); // RemovalId => Removal
-    private removalsByPlacementId: Map<string, Removal> = new Map(); // EntryId => Removal
+    private removals: TreeSet<string> = new TreeSet(); // containerId,placementId,removalId
     private entries: TreeMap<string, Entry> = new TreeMap(); // PlacementId => Entry
     private placements: TreeMap<string, string> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
-
+    private locations: TreeMap<string,string> = new TreeMap();
     constructor(private keepingHistory = true) {
         this.ready = Promise.resolve();
     }
@@ -221,7 +220,7 @@ export class MemoryStore implements Store {
                 };
                 if (replacing) {
                     let search: Entry;
-                    // May be a better way to do this.
+                    // TODO May be a better way to do this.
                     for (const entry of this.entries.values()) {
                         if (muidTupleToString(entry.containerId) == muidTupleToString(containerId)) {
                             if ((Array.isArray(effectiveKey) && Array.isArray(entry.effectiveKey)) &&
@@ -241,6 +240,7 @@ export class MemoryStore implements Store {
                         }
                     }
                     if (search) {
+                        /*
                         if (this.keepingHistory) {
                             const removal: Removal = {
                                 removing: search.placementId,
@@ -252,52 +252,55 @@ export class MemoryStore implements Store {
                             this.removals.set(muidTupleToString(removal.removalId), removal);
                             this.removalsByPlacementId.set(muidTupleToString(placementId), removal);
                             const entryToMark = this.entries.get(muidTupleToString(search.entryId));
+                            // TODO: fix this, entries should never be changed!
                             entryToMark.deletion = true;
                             this.addEntry(entryToMark);
                         } else {
                             this.removeEntry(muidTupleToString(placementId));
                         }
+                        */
                     }
                 }
-                this.addEntry(entry);
+                const entryIdStr = muidTupleToString(entry.entryId);
+                this.entries.set(entryIdStr, entry);
+                const placementKey = this.entryToPlacementKey(entry);
+                this.placements.set(placementKey, entryIdStr);
+                if (behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE) {
+                    this.locations.set(
+                        `${muidTupleToString(entryId)},${muidTupleToString(placementId)}`,
+                        placementKey);
+                }
                 continue;
             }
             if (changeBuilder.hasMovement()) {
                 const { movementBuilder, entryId, movementId, containerId } = extractMovementInfo(changeBuilder, bundleInfo, offset);
-                const found: Entry = this.entries.get(muidTupleToString(entryId));
-                if (!found) {
-                    continue; // Nothing found to remove.
-                }
+                const entryIdStr = muidTupleToString(entryId);
+                const containerIdStr = muidTupleToString(containerId);
+                const movementIdStr = muidTupleToString(movementId);
                 const dest = movementBuilder.getDest();
-                if (dest != 0) {
-                    const destEntry: Entry = {
-                        behavior: found.behavior,
-                        containerId: found.containerId,
-                        effectiveKey: dest,
-                        entryId: found.entryId,
-                        pointeeList: found.pointeeList,
-                        value: found.value,
-                        expiry: found.expiry,
-                        deletion: found.deletion,
-                        placementId: movementId,
-                        sourceList: found.sourceList,
-                        targetList: found.targetList,
-                    };
-                    // Need to store keys using destinations to order
-                    this.addEntry(destEntry);
-                }
                 if (movementBuilder.getPurge() || !this.keepingHistory) {
-                    this.removeEntry(muidTupleToString(entryId));
+                    const iterator = this.locations.lowerBound(entryIdStr);
+                    while (true) {
+                        if (iterator.equals(this.locations.end())) break;
+                        if (!iterator.key.startsWith(entryIdStr)) break;
+                        this.placements.delete(iterator.value);
+                        this.locations.erase(iterator);
+                        iterator.next();
+                    }
+                    if (!dest) {
+                        this.entries.delete(entryIdStr);
+                    }
                 } else {
-                    const removal: Removal = {
-                        containerId,
-                        removalId: movementId,
-                        dest,
-                        entryId,
-                        removing: found.placementId,
-                    };
-                    this.removals.set(muidTupleToString(removal.removalId), removal);
-                    this.removalsByPlacementId.set(muidTupleToString(found.placementId), removal);
+                    const iterator = this.locations.upperBound(entryIdStr + ',~');
+                    iterator.prev();
+                    if (iterator.key && iterator.key.startsWith(entryIdStr)) break;
+                    // TODO: make sure that I'm looking up the removal appropriately
+                    this.removals.add(`${iterator.value},${movementIdStr}`);
+                }
+                if (dest != 0) {
+                    const placementKey = `${containerIdStr},${dest},${movementIdStr}`;
+                    this.placements.set(placementKey,entryIdStr);
+                    this.locations.set(`${entryIdStr},${movementIdStr}`, placementKey);
                 }
                 continue;
             }
@@ -332,6 +335,9 @@ export class MemoryStore implements Store {
                         lowerClearances.next();
                     }
                     // When doing a purging clear, remove all removals for the container.
+                    // TODO: fix
+                    throw new Error("not implemented");
+                    /*
                     const lowerRemovals = this.removals.lowerBound(muidTupleToString(containerMuidTuple));
                     while (lowerRemovals) {
                         if (lowerRemovals.value &&
@@ -340,6 +346,7 @@ export class MemoryStore implements Store {
                         if (lowerRemovals.equals(this.removals.end())) break;
                         lowerRemovals.next();
                     }
+                    */
                 }
                 const clearance: Clearance = {
                     containerId: containerMuidTuple,
@@ -523,16 +530,6 @@ export class MemoryStore implements Store {
             through < 0 ? from.prev() : from.next();
         }
         return returning;
-    }
-
-    /**
-     * Since we have to use multiple maps to act as indexes, this method
-     * should eliminate some of the pain of adding entries to multiple maps.
-     */
-    addEntry(entry: Entry) {
-        const entryIdStr = muidTupleToString(entry.entryId);
-        this.entries.set(entryIdStr, entry);
-        this.placements.set(this.entryToPlacementKey(entry), entryIdStr);
     }
 
     entryToPlacementKey(entry: Entry): string {
