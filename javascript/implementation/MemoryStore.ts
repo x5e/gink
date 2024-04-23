@@ -60,7 +60,7 @@ export class MemoryStore implements Store {
     private activeChains: ClaimedChain[] = [];
     private clearances: TreeMap<string, Clearance> = new TreeMap(); // ContainerId,ClearanceId => Clearance
     private containers: TreeMap<string, Uint8Array> = new TreeMap(); // ContainerId => bytes
-    private removals: TreeSet<string> = new TreeSet(); // containerId,placementId,removalId
+    private removals: TreeMap<string, string> = new TreeMap(); // containerId,placementId,removalId
     private entries: TreeMap<string, Entry> = new TreeMap(); // PlacementId => Entry
     private placements: TreeMap<string, string> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
@@ -295,7 +295,7 @@ export class MemoryStore implements Store {
                     iterator.prev();
                     if (iterator.key && iterator.key.startsWith(entryIdStr)) break;
                     // TODO: make sure that I'm looking up the removal appropriately
-                    this.removals.add(`${iterator.value},${movementIdStr}`);
+                    this.removals.set(`${iterator.value},${movementIdStr}`, "");
                 }
                 if (dest != 0) {
                     const placementKey = `${containerIdStr},${dest},${movementIdStr}`;
@@ -522,8 +522,9 @@ export class MemoryStore implements Store {
                     (entry.entryId[0] >= clearanceTime && entry.entryId[0] < asOfTs) : entry.entryId[0] < asOfTs;
 
                 if (afterClearance && muidToString(container) == muidTupleToString(entry.containerId)) {
-                    const removal = this.removalsByPlacementId.get(muidTupleToString(entry.placementId));
-                    if (!removal || removal.removalId[0] > asOfTs) returning.push(entry);
+                    throw new Error("not implemented");  // TODO
+                    //const removal = this.removalsByPlacementId.get(muidTupleToString(entry.placementId));
+                    //if (!removal || removal.removalId[0] > asOfTs) returning.push(entry);
                 }
             }
             if (from.equals(to)) break;
@@ -579,7 +580,6 @@ export class MemoryStore implements Store {
         delete this.clearances;
         delete this.containers;
         delete this.removals;
-        delete this.removalsByPlacementId;
         delete this.entries;
         delete this.placements;
         return Promise.resolve();
@@ -596,7 +596,7 @@ export class MemoryStore implements Store {
     };
 
     // for debugging, not part of the api/interface
-    getAllRemovals(): TreeMap<string, Removal> {
+    getAllRemovals(): TreeMap<string, string> {
         return this.removals;
     }
 
