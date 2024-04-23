@@ -503,10 +503,12 @@ export class MemoryStore implements Store {
     async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
         const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const containerId: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
-        const lower = this.placements.lowerBound(muidTupleToString(containerId));
-        const upper = this.placements.upperBound(`${muidTupleToString(containerId)},${asOfTs}`);
+        const containerIdStr = muidTupleToString(containerId);
+        const lower = this.placements.lowerBound(containerIdStr);
+        // TODO: switch sequence key to be appropriately padded/encoded
+        const upper = this.placements.upperBound(`${containerIdStr},${asOfTs}`);
 
-        let clearanceTime: Timestamp = this.getLastClearanceTimeForContainer(muidTupleToString(containerId), asOfTs);
+        let clearanceTime: Timestamp = this.getLastClearanceTimeForContainer(containerIdStr, asOfTs);
         const returning = <Entry[]>[];
 
         // If we need to iterate forward or backward
@@ -515,13 +517,17 @@ export class MemoryStore implements Store {
 
         const needed = through < 0 ? -through : through + 1;
         while (returning.length < needed) {
+            const placementKey = from.key;
+            // '0616C86BB4D7B4-1A86FC813F72F-00001,1713899916549000,0616C86BB4DB88-1A86FC813F72F-00001'
+            const placementId = placementKey.substr(-34,);
+            console.log(placementKey);
             const entryKey: string = from.value;
             if (entryKey) {
                 const entry = this.entries.get(entryKey);
                 const afterClearance = asOfTs > clearanceTime ?
                     (entry.entryId[0] >= clearanceTime && entry.entryId[0] < asOfTs) : entry.entryId[0] < asOfTs;
 
-                if (afterClearance && muidToString(container) == muidTupleToString(entry.containerId)) {
+                if (afterClearance && containerIdStr == muidTupleToString(entry.containerId)) {
                     throw new Error("not implemented");  // TODO
                     //const removal = this.removalsByPlacementId.get(muidTupleToString(entry.placementId));
                     //if (!removal || removal.removalId[0] > asOfTs) returning.push(entry);
