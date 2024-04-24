@@ -96,6 +96,8 @@ export class EntryBuilder extends ImplementedMessage {
     setDescribing(MuidBuilder);
     getDescribing(): MuidBuilder;
     hasDescribing(): boolean;
+    getPurge(): boolean;
+    setPurge(boolean);
 }
 
 export class GreetingBuilder extends ImplementedMessage {
