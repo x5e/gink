@@ -279,20 +279,12 @@ export class MemoryStore implements Store {
                 const containerMuidTuple: MuidTuple = [container.timestamp, container.medallion, container.offset];
                 if (clearanceBuilder.getPurge()) {
                     // When purging, remove all entries from the container.
-                    const lowerEntries = this.placements.lowerBound(muidTupleToString(containerMuidTuple));
-                    const upperEntries = this.placements.upperBound(`${muidTupleToString(containerMuidTuple)},~,~`);
-                    let prevKey = undefined;
-                    let prevEntry = undefined;
-                    for (const it = lowerEntries; it; it.next()) {
-                        // Have to delete the previous key, because iteration will be broken if the
-                        // current key is deleted.
-                        if (prevKey) {
-                            ensure(muidTupleToString(this.entries.get(prevEntry).containerId) == muidToString(container));
-                            this.removeEntry(prevEntry);
-                        }
-                        if (it.equals(upperEntries)) break;
-                        prevKey = it.key;
-                        prevEntry = it.value;
+                    const lowerBound = this.placements.lowerBound(muidTupleToString(containerMuidTuple));
+                    const upperBound = this.placements.upperBound(`${muidTupleToString(containerMuidTuple)},~,~`);
+                    for (const it = lowerBound; it && ! it.equals(upperBound); it.next()) {
+                        this.entries.delete(it.value);
+                        this.placements.erase(it);
+                        // TODO: also delete removals, locations
                     }
                     // When doing a purging clear, remove previous clearances for the container.
                     const lowerClearances = this.clearances.lowerBound(`${muidTupleToString(containerMuidTuple)}`);
@@ -303,25 +295,13 @@ export class MemoryStore implements Store {
                         this.clearances.delete(lowerClearances.key);
                         lowerClearances.next();
                     }
-                    // When doing a purging clear, remove all removals for the container.
-                    // TODO: fix
-                    throw new Error("remove all removals during purging clear not implemented");
-                    /*
-                    const lowerRemovals = this.removals.lowerBound(muidTupleToString(containerMuidTuple));
-                    while (lowerRemovals) {
-                        if (lowerRemovals.value &&
-                            muidTupleToString(lowerRemovals.value.containerId) != muidTupleToString(containerMuidTuple)) break;
-                        this.removals.delete(lowerRemovals.key);
-                        if (lowerRemovals.equals(this.removals.end())) break;
-                        lowerRemovals.next();
-                    }
-                    */
                 }
                 const clearance: Clearance = {
                     containerId: containerMuidTuple,
                     clearanceId: changeAddressTuple,
                     purging: clearanceBuilder.getPurge()
                 };
+                // TODO: have entries check to see if there's a purging clearance when accepting an entry
                 this.clearances.set(`${muidTupleToString(containerMuidTuple)},${muidTupleToString(clearance.clearanceId)}`, clearance);
                 continue;
             }
@@ -419,7 +399,9 @@ export class MemoryStore implements Store {
         for (;iterator && iterator.key && !iterator.equals(this.placements.end()); iterator.next()) {
             const parts = iterator.key.split(",");
             if (parts[0] != srcAsStr) break;
-            if (parts[-1] < clearTimeStr || parts[-1] > asOfTsStr) continue;
+            const placementIdStr = parts[parts.length-1];
+            if (placementIdStr < clearTimeStr || placementIdStr > asOfTsStr)
+                continue;
             const entry = this.entries.get(iterator.value);
             ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
                 entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
