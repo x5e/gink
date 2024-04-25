@@ -8,7 +8,8 @@ import {
     muidTupleToMuid,
     sameData,
     unwrapValue,
-    getActorId
+    getActorId,
+    muidTupleToString
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {
@@ -590,7 +591,9 @@ export class IndexedDbStore implements Store {
      * @param asOf show results as of a time in the past
      * @returns a promise of a list of ChangePairs
      */
-    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
+    //async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
+    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf):
+            Promise<Map<string, Entry>> {
         const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp() + 1;
         const containerId = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const lower = [containerId, 0];
@@ -607,16 +610,20 @@ export class IndexedDbStore implements Store {
 
         const entries = trxn.objectStore("entries");
         const removals = trxn.objectStore("removals");
-        const returning = <Entry[]>[];
+        const returning = new Map<string, Entry>();
         let entriesCursor = await entries.index("by-container-key-placement").openCursor(range, through < 0 ? "prev" : "next");
         const needed = through < 0 ? -through : through + 1;
-        while (entriesCursor && returning.length < needed) {
+        while (entriesCursor && returning.size < needed) {
             const entry: Entry = entriesCursor.value;
             if (entry.placementId[0] >= clearanceTime) {
                 const removalsBound = IDBKeyRange.bound([entry.placementId], [entry.placementId, [asOfTs]]);
                 // TODO: This seek-per-entry isn't very efficient and should be a replaced with a scan.
                 const removalsCursor = await removals.index("by-removing").openCursor(removalsBound);
-                if (!removalsCursor) returning.push(entry);
+                if (!removalsCursor) {
+                    const placementIdStr = muidTupleToString(entry.placementId);
+                    const returningKey = `${entry.effectiveKey},${placementIdStr}`;
+                    returning.set(returningKey, entry);
+                }
             }
             entriesCursor = await entriesCursor.continue();
         }

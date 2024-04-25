@@ -89,7 +89,12 @@ export interface Store {
     getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined>;
     getEntryByKey(container: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined>;
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>>;
-    getOrderedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Entry[]>;
+
+    /**
+     * returns a map where the entries were inserted in the desired order, and the keys
+     * correspond to <effectiveTs>,<placementIdStr>.
+     */
+    getOrderedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Map<string, Entry>>;
     getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]>;
 
     /**

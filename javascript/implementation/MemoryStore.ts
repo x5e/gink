@@ -36,7 +36,7 @@ import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { Container } from './Container';
-import { TreeMap } from 'jstreemap';
+import { MapIterator, TreeMap } from 'jstreemap';
 import {
     getEffectiveKey,
     extractMovementInfo,
@@ -262,9 +262,11 @@ export class MemoryStore implements Store {
                     }
                 } else {
                     const iterator = toLastWithPrefixBeforeSuffix(this.locations, entryIdStr);
-                    if (!iterator) continue;
+                    if (!iterator)
+                        continue;
                     ensure(iterator.key && iterator.key.startsWith(entryIdStr));
-                    this.removals.set(`${iterator.value},${movementIdStr}`, "");
+                    const removingIdStr = iterator.value.slice(-34);
+                    this.removals.set(`${removingIdStr},${movementIdStr}`, "");
                 }
                 if (dest != 0) {
                     const placementKey = `${containerIdStr},${dest},${movementIdStr}`;
@@ -279,13 +281,15 @@ export class MemoryStore implements Store {
                 const containerMuidTuple: MuidTuple = [container.timestamp, container.medallion, container.offset];
                 if (clearanceBuilder.getPurge()) {
                     // When purging, remove all entries from the container.
-                    const lowerBound = this.placements.lowerBound(muidTupleToString(containerMuidTuple));
-                    const upperBound = this.placements.upperBound(`${muidTupleToString(containerMuidTuple)},~,~`);
-                    for (const it = lowerBound; it && ! it.equals(upperBound); it.next()) {
+                    while (true) {
+                        const it = this.placements.lowerBound(muidTupleToString(containerMuidTuple));
+                        const to = this.placements.upperBound(`${muidTupleToString(containerMuidTuple)},~,~`);
+                        if (it.equals(to) || ! it.key)
+                            break;
                         this.entries.delete(it.value);
                         this.placements.erase(it);
                         // TODO: also delete removals, locations
-                    }
+                        }
                     // When doing a purging clear, remove previous clearances for the container.
                     const lowerClearances = this.clearances.lowerBound(`${muidTupleToString(containerMuidTuple)}`);
                     const upperClearances = this.clearances.upperBound(`${muidTupleToString(containerMuidTuple)},~`);
@@ -353,7 +357,7 @@ export class MemoryStore implements Store {
         const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const srcAsStr = muidTupleToString(desiredSrc);
-        let clearanceTime: Timestamp = this.getLastClearanceTimeForContainer(srcAsStr, asOfTs);
+        let clearanceTime: Timestamp = this.getLastClearanceTime(srcAsStr, asOfTs);
         const semanticKey = keyToSemanticKey(key);
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
         const prefix = `${srcAsStr},${semanticKey},`;
@@ -391,7 +395,7 @@ export class MemoryStore implements Store {
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
         const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const srcAsStr = muidTupleToString(desiredSrc);
-        const clearanceTime: Timestamp = this.getLastClearanceTimeForContainer(srcAsStr, asOfTs);
+        const clearanceTime: Timestamp = this.getLastClearanceTime(srcAsStr, asOfTs);
         const clearTimeStr = muidTupleToString([clearanceTime, 0, 0]);
         const iterator = this.placements.lowerBound(srcAsStr);
 
@@ -429,37 +433,56 @@ export class MemoryStore implements Store {
      * @param asOf show results as of a time in the past
      * @returns a promise of a list of ChangePairs
      */
-    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
+    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf):
+        Promise<Map<string, Entry>> {
+        return Promise.resolve(this.getOrderedEntriesHelper(container, through, asOf));
+    }
+
+    getOrderedEntriesHelper(container: Muid, through = Infinity, asOf?: AsOf): Map<string, Entry> {
         const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
+        const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
         const commaAsOfTsStr = "," + muidTupleToString([asOfTs, 0, 0]);
-        const containerId: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
+        const containerId: [number, number, number] = [
+            container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const containerIdStr = muidTupleToString(containerId);
-        let clearanceTime: Timestamp = this.getLastClearanceTimeForContainer(containerIdStr, asOfTs);
+        let clearanceTime: Timestamp = this.getLastClearanceTime(containerIdStr, asOfTs);
         const clearanceTimeStr = muidTupleToString([clearanceTime, 0, 0]);
         // TODO: switch sequence key to be appropriately padded/encoded
-        const lower = this.placements.lowerBound(`${containerIdStr},${clearanceTime}`);
+        const lower = this.placements.lowerBound(`${containerIdStr}`);
         const upper = this.placements.upperBound(`${containerIdStr},${asOfTs}`);
 
-        const returning = <Entry[]>[];
+        const returning = new Map<string, Entry>();
 
         // If we need to iterate forward or backward
-        let to = through < 0 ? lower : upper;
-        let from = through < 0 ? upper : lower;
-
+        let it: MapIterator<string, string>;
+        if (through < 0) {
+            it = upper;
+            it.prev();
+        } else {
+            it = lower;
+        }
         const needed = through < 0 ? -through : through + 1;
-        for (;returning.length < needed && ! from.equals(to); through < 0 ? from.prev() : from.next()) {
+        for (;returning.size < needed; through < 0 ? it.prev() : it.next()) {
             // '0616C86BB4D7B4-1A86FC813F72F-00001,1713899916549000,0616C86BB4DB88-1A86FC813F72F-00001'
-            const placementKey = from.key;
-            if (!placementKey) continue;
+            const placementKey = it.key;
+            if (!placementKey)
+                break;
+            const foundContainerStr = placementKey.substring(0, 34);
+            if (foundContainerStr != containerIdStr)
+                break;
             const placementIdStr = placementKey.slice(-34);
-            if (placementIdStr > clearanceTimeStr) continue;
-            if (toLastWithPrefixBeforeSuffix(this.removals, placementIdStr, commaAsOfTsStr)) continue;
-            const entryKey: string = from.value;
+            if (placementIdStr < clearanceTimeStr || placementIdStr > asOfTsStr)
+                continue;
+            if (toLastWithPrefixBeforeSuffix(this.removals, placementIdStr, commaAsOfTsStr))
+                continue;
+            const returningKey = placementKey.substring(35);
+            const entryKey: string = it.value;
             // TODO: maybe get rid of the entries TreeMap and just link directly to the entry
             const entry = this.entries.get(entryKey);
-            if (!entry) throw new Error(`missing entry for ${entryKey}`);
+            if (!entry)
+                throw new Error(`missing entry for ${entryKey}`);
             ensure(muidTupleToString(entry.containerId) == containerIdStr);
-            returning.push(entry);
+            returning.set(returningKey, entry);
         }
         return returning;
     }
@@ -488,7 +511,7 @@ export class MemoryStore implements Store {
      * @param asOf optional timestamp to query - finds the last clearance within the timeframe.
      * @returns the timestamp of the last clearance, or 0 if one wasn't found.
      */
-    getLastClearanceTimeForContainer(containerId: string, asOf?: Timestamp): number {
+    getLastClearanceTime(containerId: string, asOf?: Timestamp): number {
         const asOfStr = asOf ? muidTupleToString([asOf, 0, 0]) : '~';
         const upperClearance = this.clearances.upperBound(`${containerId},${asOfStr}`);
         upperClearance.prev();
