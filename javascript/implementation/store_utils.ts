@@ -36,6 +36,7 @@ export function getEffectiveKey(entryBuilder: EntryBuilder, timestamp: Timestamp
     } else if (behavior == Behavior.EDGE_TYPE) {
         ensure(entryBuilder.hasPair());
         effectiveKey = entryBuilder.getEffective() || timestamp;
+        replacing = false;
     } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
         ensure(entryBuilder.hasPair());
         const pair = entryBuilder.getPair();

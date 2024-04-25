@@ -39,7 +39,8 @@ it('push and pop', async function () {
             console.log(exit);
         }
         */
-        ensure(matches(await list.toArray(), ["A", "B"]), JSON.stringify(await list.toArray()));
+        const have = JSON.stringify(await list.toArray());
+        ensure(matches(await list.toArray(), ["A", "B"]), have);
         const shifted = await list.shift();
         ensure(shifted == "A");
         ensure(matches(await list.toArray(), ["B"]));

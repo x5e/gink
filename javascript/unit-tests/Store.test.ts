@@ -135,6 +135,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         ensure(address.medallion == 4);
         ensure(address.timestamp == 5);
         const entry = <Entry>await store.getEntryByKey(sourceAddress, "abc",);
+        ensure(entry);
         ensure(matches(entry.containerId, [2, 1, 3]));
         ensure(matches(entry.entryId, [5, 4, 1]));
         ensure(entry.value == "xyz");

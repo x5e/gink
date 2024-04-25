@@ -140,7 +140,7 @@ it('convert to standard Map', async function () {
         await directory.set("cheese", "fries");
 
         const asMap = await directory.toMap();
-        ensure(asMap.size == 2);
+        ensure(asMap.size == 2, `expected to be 2: ${asMap.size} ${JSON.stringify(asMap)}`);
         ensure(!asMap.has("foo"));
         ensure(asMap.get("bar") == "iron");
         ensure(asMap.get("cheese") == "fries");

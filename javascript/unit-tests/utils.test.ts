@@ -1,4 +1,9 @@
-import { ensure, muidTupleToString, muidToString, unwrapValue, wrapValue, matches, valueToJson, isPathDangerous, strToMuid, encodeToken, decodeToken, getActorId, isAlive } from "../implementation/utils";
+import { ensure, muidTupleToString, muidToString, unwrapValue, wrapValue, matches,
+    valueToJson, isPathDangerous, strToMuid, encodeToken, decodeToken,
+    getActorId, isAlive,
+    toLastWithPrefixBeforeSuffix,
+} from "../implementation/utils";
+import { TreeMap, MapIterator, Tree } from 'jstreemap';
 
 it('document', async function () {
     const wrapped = wrapValue((new Map()).set("fee", "parking").set("cost", 1000));
@@ -93,3 +98,26 @@ it('encodeToken and decodeToken', function () {
     ensure(backToToken.includes("token "));
     ensure(token == backToToken.substring(7), `original: '${token}' | fromHex: '${backToToken.substring(7)}'`);
 });
+
+it('toLastWithPrefixBeforeSuffix', function() {
+    const map = new TreeMap<string, string>();
+    const result1 = toLastWithPrefixBeforeSuffix(map, "foo", "bar");
+    ensure(!result1);
+    const result2 = toLastWithPrefixBeforeSuffix(map, "foo");
+    ensure(!result2);
+    map.set("goo", "bar");
+    const result3 = toLastWithPrefixBeforeSuffix(map, "foo");
+    ensure(!result3);
+    const result4 = toLastWithPrefixBeforeSuffix(map, "zoo");
+    ensure(!result4);
+    const result5 = toLastWithPrefixBeforeSuffix(map, "go");
+    ensure((!!result5) && result5.key == "goo" && result5.value=="bar");
+    map.set("gool", "bat");
+    const result6 = toLastWithPrefixBeforeSuffix(map, "goo");
+    ensure( (!! result6) && result6.value == "bat");
+    map.set("goz", "zzz");
+    const result7 = toLastWithPrefixBeforeSuffix(map, "goo");
+    ensure ( (!! result7) && result7.value == "bat");
+    const result8 = toLastWithPrefixBeforeSuffix(map, "goo", "f");
+    ensure( (!! result8) && result8.key == "goo");
+})

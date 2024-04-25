@@ -14,7 +14,18 @@ import {
 } from "./builders";
 
 import { hostname, userInfo } from 'os';
-import { getRandomValues } from 'crypto';
+
+import { TreeMap, MapIterator } from 'jstreemap';
+
+export function toLastWithPrefixBeforeSuffix<V>(
+    map: TreeMap<string,V>, prefix: string, suffix: string = '~'):
+        MapIterator<string, V> | undefined {
+    const iterator = map.upperBound(prefix + suffix);
+    iterator.prev();
+    if (!iterator.key) return undefined;
+    if (!iterator.key.startsWith(prefix)) return undefined;
+    return iterator;
+}
 
 // Since find-process uses child-process, we can't load this if gink
 // is running in a browser
