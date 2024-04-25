@@ -47,25 +47,21 @@ export class Sequence extends Container {
     }
 
     private async findDest(dest: number): Promise<number> {
-        if (dest > +1e6) return dest;
-        if (dest < -1e6) return generateTimestamp() + dest;
-        while (dest > 0) { // I'm using while/break to get go-to like behavior.
-            const thereNow = await this.getEntryAt(dest);
-            if (!thereNow) { dest = -1; break; } // move to end
-            const before = await this.getEntryAt(dest - 1);
-            const nowTs = <number>thereNow.effectiveKey;
-            const beforeTs = <number>before.effectiveKey;
-            if (nowTs - beforeTs < 2)
-                throw new Error("no space between entries");
-            const intended = beforeTs + Math.floor((nowTs - beforeTs) / 2);
-            ensure(intended > beforeTs && intended < nowTs, "can't find place to put entry");
-            return intended;
-        }
         if (dest == 0 || dest == -1) {
             const currentFrontOrBack = <number>(await this.getEntryAt(dest)).effectiveKey;
             return currentFrontOrBack - Math.sign(dest + .5) * Math.floor(1e3 * Math.random());
         }
-        throw new Error("not implemented");
+        if (dest > +1e6) return dest;
+        if (dest < -1e6) return generateTimestamp() + dest;
+        const entryMap = await this.database.store.getOrderedEntries(this.address, dest);
+        const entryArray = Array.from(entryMap.entries());
+        const a = entryArray[entryArray.length - 2];
+        const b = entryArray[entryArray.length - 1];
+        const aTs = Number.parseInt(a[0].split(",")[0]);
+        const bTs = Number.parseInt(b[0].split(",")[0]);
+        if (Math.abs(aTs - bTs) < 2)
+            throw new Error("can't find space between entries");
+        return Math.floor((aTs + bTs)/ 2);
     }
 
     /**

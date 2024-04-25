@@ -369,10 +369,6 @@ export class MemoryStore implements Store {
             // container was cleared after this entry
             return undefined;
         }
-        if (entry.deletion) {
-            // entry is serves as a deletion
-            return undefined;
-        }
         return entry;
     }
 
