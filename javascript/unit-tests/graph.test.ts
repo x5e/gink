@@ -13,8 +13,12 @@ it('isAlive and remove', async function () {
         const aliveTime = instance.getNow();
         ensure(await vertex.isAlive());
         await vertex.remove();
+        const deadTime = instance.getNow();
         ensure(!await vertex.isAlive());
         ensure(await vertex.isAlive(aliveTime));
+        await vertex.revive();
+        ensure(await vertex.isAlive());
+        ensure(!await vertex.isAlive(deadTime));
     }
 });
 

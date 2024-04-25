@@ -34,16 +34,21 @@ export class Vertex extends Container {
         return this.addEntry(undefined, Container.DELETION, change);
     }
 
+    async revive(change?: Bundler | string): Promise<Muid> {
+        return this.addEntry(undefined, Container.INCLUSION, change);
+    }
+
     async getEdgesFrom(asOf?: AsOf) {
-        return this.getEdges(true);
+        return this.getEdges(true, asOf);
     }
 
     async getEdgesTo(asOf?: AsOf) {
-        return this.getEdges(false);
+        return this.getEdges(false, asOf);
     }
 
     async getEdges(source: boolean, asOf?: AsOf): Promise<Edge[]> {
-        const entries = await this.database.store.getEntriesBySourceOrTarget(this.address, source, asOf);
+        const entries = await this.database.store.getEntriesBySourceOrTarget(
+            this.address, source, asOf);
         const thisVertex = this;
         const edges = entries.map(
             function (entry: Entry) {
