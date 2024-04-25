@@ -591,7 +591,6 @@ export class IndexedDbStore implements Store {
      * @param asOf show results as of a time in the past
      * @returns a promise of a list of ChangePairs
      */
-    //async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
     async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf):
             Promise<Map<string, Entry>> {
         const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp() + 1;
