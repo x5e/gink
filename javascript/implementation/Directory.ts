@@ -83,7 +83,7 @@ export class Directory extends Container {
         const resultMap = new Map();
         for (const [key, entry] of entries) {
             const val = await interpret(entry, this.database);
-            resultMap.set(key, val);
+            resultMap.set(entry.effectiveKey.toString(), val);
         }
         return resultMap;
     }

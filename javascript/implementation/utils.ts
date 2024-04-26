@@ -39,7 +39,7 @@ export function ensure(x: any, msg?: string) {
 }
 
 let lastTime = 0;
-export function generateTimestamp(): number {
+export function generateTimestamp() {
     // TODO: there's probably a better way ...
     let current = Date.now() * 1000;
     if (lastTime >= current) {
@@ -449,11 +449,12 @@ export function sameData(key1: any, key2: any): boolean {
     if (Array.isArray(key1) && Array.isArray(key2)) {
         if (key1.length != key2.length) return false;
         for (let i = 0; i < key1.length; i++) {
-            if (key1[i] != key2[i]) return false;
+            if (!sameData(key1[i], key2[i]))
+                return false;
         }
         return true;
     }
-    if (typeof key1 == "number" || typeof key1 == "string") {
+    if (typeof key1 == "number" || typeof key1 == "string" || typeof key1 == "undefined") {
         return key1 == key2;
     }
     return false;

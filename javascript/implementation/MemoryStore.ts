@@ -27,7 +27,6 @@ import {
     Muid,
     MuidTuple,
     Offset,
-    Removal,
     Timestamp,
     ActorId,
     BroadcastFunc,
@@ -38,7 +37,7 @@ import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders
 import { Container } from './Container';
 import { MapIterator, TreeMap } from 'jstreemap';
 import {
-    getEffectiveKey,
+    getEffectiveKey as getEffectiveKey,
     extractMovementInfo,
     extractContainerMuid,
     buildPairLists,
@@ -46,8 +45,9 @@ import {
     medallionChainStartToString,
     extractCommitInfo,
     buildChainTracker,
-    keyToSemanticKey,
-    commitKeyToInfo
+    userKeyToEffectiveKey,
+    commitKeyToInfo,
+    effectiveKeyToString,
 } from "./store_utils";
 
 export class MemoryStore implements Store {
@@ -179,6 +179,7 @@ export class MemoryStore implements Store {
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
+            const changeAddress = {timestamp, medallion, offset};
             if (changeBuilder.hasContainer()) {
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
                 this.containers.set(muidTupleToString(changeAddressTuple), containerBytes);
@@ -202,7 +203,7 @@ export class MemoryStore implements Store {
                 if (entryBuilder.hasPair()) {
                     [sourceList, targetList] = buildPairLists(entryBuilder, bundleInfo);
                 }
-                const [effectiveKey, replacing] = getEffectiveKey(entryBuilder, timestamp);
+                const effectiveKey = getEffectiveKey(entryBuilder, changeAddress);
                 const value = entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined;
                 const expiry = entryBuilder.getExpiry() || undefined;
                 const deletion = entryBuilder.getDeletion();
@@ -220,9 +221,9 @@ export class MemoryStore implements Store {
                     targetList,
                 };
                 const entryIdStr = muidTupleToString(entry.entryId);
-                if (replacing) {
+                if (!(entry.behavior == Behavior.EDGE_TYPE || entry.behavior == Behavior.SEQUENCE)) {
                     const containerIdStr = muidTupleToString(containerId);
-                    const prefix = `${containerIdStr},${effectiveKey}`;
+                    const prefix = `${containerIdStr},${effectiveKeyToString(effectiveKey)}`;
                     for (let iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix);
                         iterator && iterator.key && iterator.key.startsWith(prefix); iterator.prev()) {
                         if (entryBuilder.getPurge() || ! this.keepingHistory) {this.placements.erase(iterator);}
@@ -345,7 +346,7 @@ export class MemoryStore implements Store {
         throw new Error(`don't know how to interpret asOf=${asOf}`);
     }
 
-    getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined> {
+    getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
         try {
             return Promise.resolve(this.getEntryByKeyHelper(container, key, asOf));
         } catch (error) {
@@ -353,14 +354,14 @@ export class MemoryStore implements Store {
         }
     }
 
-    getEntryByKeyHelper(container?: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Entry | undefined {
+    getEntryByKeyHelper(container?: Muid, key?: KeyType | Muid | [Muid, Muid], asOf?: AsOf): Entry | undefined {
         const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const srcAsStr = muidTupleToString(desiredSrc);
         let clearanceTime: Timestamp = this.getLastClearanceTime(srcAsStr, asOfTs);
-        const semanticKey = keyToSemanticKey(key);
+        const semanticKey = userKeyToEffectiveKey(key);
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
-        const prefix = `${srcAsStr},${semanticKey},`;
+        const prefix = `${srcAsStr},${effectiveKeyToString(semanticKey)},`;
         const iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix, asOfTsStr);
         if (!iterator) return undefined;
         const entry: Entry = this.entries.get(iterator.value);
@@ -386,7 +387,7 @@ export class MemoryStore implements Store {
         return entry;
     }
 
-    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<string, Entry>> {
         const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
         const desiredSrc: [number, number, number] = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
@@ -406,16 +407,7 @@ export class MemoryStore implements Store {
             ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
                 entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
 
-            let key: Muid | string | number | Uint8Array | [];
-            if (typeof (entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof (entry.effectiveKey) == "number") {
-                key = entry.effectiveKey;
-            } else if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
-                // If the key is a MuidTuple
-                key = muidToString(muidTupleToMuid(entry.effectiveKey));
-            } else {
-                throw Error(`not sure what to do with a ${typeof (entry.effectiveKey)} key`);
-            }
-            ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
+            const key = effectiveKeyToString(entry.effectiveKey);
             if (entry.deletion) result.delete(key);
             else result.set(key, entry);
         }
@@ -486,8 +478,7 @@ export class MemoryStore implements Store {
     entryToPlacementKey(entry: Entry): string {
         const containerIdStr = muidTupleToString(entry.containerId);
         const placementIdStr = muidTupleToString(entry.placementId);
-        const placementKey = `${containerIdStr},${entry.effectiveKey},${placementIdStr}`;
-        return placementKey;
+        return `${containerIdStr},${effectiveKeyToString(entry.effectiveKey)},${placementIdStr}`;
     }
 
     /**
@@ -497,7 +488,7 @@ export class MemoryStore implements Store {
         const entry = this.entries.get(entryId);
         ensure(entry, "entry not found - something is broken");
         this.entries.delete(entryId);
-        const indexedKey = `${muidTupleToString(entry.containerId)},${entry.effectiveKey},${muidTupleToString(entry.placementId)}`;
+        const indexedKey = `${muidTupleToString(entry.containerId)},${effectiveKeyToString(entry.effectiveKey)},${muidTupleToString(entry.placementId)}`;
         this.placements.delete(indexedKey);
     }
 

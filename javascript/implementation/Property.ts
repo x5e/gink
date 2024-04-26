@@ -35,10 +35,4 @@ export class Property extends Container {
         return result !== undefined;
     }
 
-    async getAll(asOf?: AsOf): Promise<Map<KeyType, Entry>> {
-        const result = await this.database.store.getKeyedEntries(this.address, asOf);
-        return result;
-    }
-
-
 }

@@ -25,7 +25,10 @@ it('set and get Basic data', async function () {
         await schema.set(myKey, "another value");
         const another_result = await schema.get(myKey);
 
-        ensure(another_result == "another value");
+        if (another_result != "another value") {
+            const allEntries = await store.getAllEntries();
+            throw new Error("didnt' get what i expected");
+        }
         await store.close();
     }
 });
