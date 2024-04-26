@@ -49,12 +49,17 @@ export class Vertex extends Container {
     async getEdges(source: boolean, asOf?: AsOf): Promise<Edge[]> {
         const entries = await this.database.store.getEntriesBySourceOrTarget(
             this.address, source, asOf);
-        const thisVertex = this;
-        const edges = entries.map(
-            function (entry: Entry) {
-                return new Edge(thisVertex.database, muidTupleToMuid(entry.entryId), entryToEdgeData(entry));
-            }
-        );
+        const edges: Edge[] = [];
+        for (let i=0;i<entries.length;i++) {
+            const entry = entries[i];
+            if (entry.behavior != 8)
+                continue;
+            const edge = new Edge(
+                this.database,
+                muidTupleToMuid(entry.entryId),
+                entryToEdgeData(entry));
+            edges.push(edge);
+        }
         return edges;
     }
 }
