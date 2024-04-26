@@ -41,14 +41,14 @@ import {
     buildPairLists,
     buildPointeeList,
     buildChainTracker,
-    keyToSemanticKey,
+    userKeyToEffectiveKey,
     commitKeyToInfo,
-    commitInfoToKey
+    commitInfoToKey,
+    effectiveKeyToString
 } from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
-import { Container } from './Container';
 import { PromiseChainLock } from "./PromiseChainLock";
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
@@ -332,6 +332,7 @@ export class IndexedDbStore implements Store {
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
+            const changeAddress: Muid = {timestamp, medallion, offset};
             if (changeBuilder.hasContainer()) {
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
                 await wrappedTransaction.objectStore("containers").add(containerBytes, changeAddressTuple);
@@ -343,7 +344,7 @@ export class IndexedDbStore implements Store {
                 if (entryBuilder.hasContainer()) {
                     containerId = extractContainerMuid(entryBuilder, bundleInfo);
                 }
-                const [effectiveKey, replacing] = getEffectiveKey(entryBuilder, timestamp);
+                const effectiveKey = getEffectiveKey(entryBuilder, changeAddress);
                 const entryId: MuidTuple = [timestamp, medallion, offset];
                 const behavior: Behavior = entryBuilder.getBehavior();
                 const placementId: MuidTuple = entryId;
@@ -372,7 +373,7 @@ export class IndexedDbStore implements Store {
                     sourceList,
                     targetList,
                 };
-                if (replacing) {
+                if (!(behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE)) {
                     const range = IDBKeyRange.bound([containerId, effectiveKey], [containerId, effectiveKey, placementId]);
                     const search = await wrappedTransaction.objectStore("entries").index("by-container-key-placement"
                     ).openCursor(range, "prev");
@@ -478,7 +479,7 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction("containers", "readonly").objectStore('containers').get(<MuidTuple>addressTuple);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
@@ -490,15 +491,15 @@ export class IndexedDbStore implements Store {
         }
 
         let upperTuple = [asOfTs];
-        const semanticKey = keyToSemanticKey(key);
-        const lower = [desiredSrc];
-        const upper = [desiredSrc, semanticKey, upperTuple];
+        const effectiveKey = userKeyToEffectiveKey(key);
+        const lower = [desiredSrc, effectiveKey];
+        const upper = [desiredSrc, effectiveKey, upperTuple];
         const searchRange = IDBKeyRange.bound(lower, upper);
         const entriesCursor = await trxn.objectStore("entries").index(
             "by-container-key-placement").openCursor(searchRange, "prev");
         if (entriesCursor) {
             const entry: Entry = entriesCursor.value;
-            if (!sameData(entry.effectiveKey, semanticKey)) {
+            if (!sameData(entry.effectiveKey, effectiveKey)) {
                 return undefined;
             }
             if (entry.placementId[0] < clearanceTime) {
@@ -510,7 +511,7 @@ export class IndexedDbStore implements Store {
         return undefined;
     }
 
-    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<string, Entry>> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
@@ -532,18 +533,7 @@ export class IndexedDbStore implements Store {
 
             ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
                 entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
-            let key: Muid | string | number | Uint8Array | [];
-
-            if (typeof (entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof (entry.effectiveKey) == "number") {
-                key = entry.effectiveKey;
-            } else if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
-                // If the key is a MuidTuple
-                key = muidToString(muidTupleToMuid(entry.effectiveKey));
-
-            } else {
-                throw Error(`not sure what to do with a ${typeof (key)} key`);
-            }
-            ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
+            const key = effectiveKeyToString(entry.effectiveKey);
             if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime) {
                 if (entry.deletion) {
                     result.delete(key);

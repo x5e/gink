@@ -1,5 +1,4 @@
 import { ChainTracker } from "./ChainTracker";
-import { Container } from "./Container";
 import {
     Medallion,
     ChainStart,
@@ -87,8 +86,8 @@ export interface Store {
     getBackRefs(pointingTo: Muid): Promise<Entry[]>;
 
     getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined>;
-    getEntryByKey(container: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined>;
-    getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>>;
+    getEntryByKey(container: Muid, key?: KeyType | Muid | [Muid , Muid], asOf?: AsOf): Promise<Entry | undefined>;
+    getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<string, Entry>>;
 
     /**
      * returns a map where the entries were inserted in the desired order, and the keys

@@ -53,10 +53,5 @@ it('asOf and items work as intended', async function () {
         ensure(await pm1.get([box1, box2], time0));
         ensure(!await pm1.get([box1, box3], time0));
 
-        const items0 = await pm1.items(time0);
-        ensure(items0.size == 1);
-        ensure(items0.keys().next().value[0].timestamp == box1.address.timestamp);
-        ensure(items0.keys().next().value[1].timestamp == box2.address.timestamp);
-        ensure(items0.values().next().value == "box1 -> box2");
     }
 });

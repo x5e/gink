@@ -320,9 +320,9 @@ A parameter you may come across in many different functions of Gink is `asOf`. a
 const directory = await instance.createDirectory();
 
 // saving a timestamp before anything is added
-const time0 = instance.getNow();
+const time0 = generateTimestamp();
 await directory.set("foo", "bar");
-const time1 = instance.getNow();
+const time1 = generateTimestamp();
 await directory.set("A", "B");
 // current directory looks like
 // {"foo": "bar", "A": "B"}

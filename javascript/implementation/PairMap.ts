@@ -2,8 +2,7 @@ import { Database } from "./Database";
 import { Container } from "./Container";
 import { Muid, AsOf, Value } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, pairKeyToArray } from "./utils";
-import { toJson } from "./factories";
+import { ensure, } from "./utils";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class PairMap extends Container {
@@ -40,9 +39,16 @@ export class PairMap extends Container {
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to the value or container associated with the key.
      */
-    async get(key: [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Value | Container> {
-        const found = await this.database.store.getEntryByKey(this.address, key, asOf);
-        if (found && !found.deletion) return found.value;
+    async get(key: [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Value | Container | undefined> {
+
+        const aKey: [Muid, Muid] = [
+            key[0] instanceof Container ? key[0].address : key[0],
+            key[1] instanceof Container ? key[1].address : key[1],
+         ]
+        const found = await this.database.store.getEntryByKey(this.address, aKey, asOf);
+        if (found && !found.deletion)
+            return found.value;
+        return undefined;
     }
 
     /**
@@ -62,8 +68,8 @@ export class PairMap extends Container {
      * @returns a promise that resolves to a boolean - true if key is in the pair map
      */
     async has(key: [Muid | Container, Muid | Container], asOf?: AsOf): Promise<boolean> {
-        const found = await this.database.store.getEntryByKey(this.address, key, asOf);
-        return (found && !found.deletion);
+        const value = await this.get(key, asOf);
+        return value !== undefined;
     }
 
     /**
@@ -76,54 +82,7 @@ export class PairMap extends Container {
         return entries.size;
     }
 
-    /**
-     * Puts all entries in the pair map into a javascript map.
-     * @param asOf optional timestamp to look back to
-     * @returns a promise that resolves to a javascript map of [Muid, Muid] -> value
-     */
-    async items(asOf?: AsOf): Promise<Map<Array<Muid>, Value>> {
-        let toMap = new Map();
-        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
-        for (const [key, entry] of entries) {
-            if (!entry.deletion) {
-                if (typeof (entry.effectiveKey) == "string") {
-                    toMap.set(pairKeyToArray(entry.effectiveKey), entry.value);
-                } else {
-                    throw Error(`${typeof (entry.effectiveKey)} key shouldn't be here.`);
-                }
-            }
-        }
-        return toMap;
-    }
-
-    /**
-     * Generates a JSON representation of the data in the pair map.
-     * Mostly intended for demo/debug purposes.
-     * @param indent true to pretty print (not yet implemented)
-     * @param asOf optional timestamp to look back to
-     * @param seen (internal use only! This prevents cycles from breaking things)
-     * @returns a JSON string
-     */
     async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
-        //TODO(https://github.com/google/gink/issues/62): add indentation
-        ensure(indent === false, "indent not implemented");
-        if (seen === undefined) seen = new Set();
-        const mySig = muidToString(this.address);
-        if (seen.has(mySig)) return "null";
-        seen.add(mySig);
-        const asMap = await this.items(asOf);
-        let returning = "{";
-        let first = true;
-        for (const [key, value] of asMap) {
-            if (first) {
-                first = false;
-            } else {
-                returning += ", ";
-            }
-            returning += `["${muidToString(key[0])}", "${muidToString(key[1])}"]:`;
-            returning += await toJson(value, indent === false ? false : +indent + 1, asOf, seen);
-        }
-        returning += "}";
-        return returning;
+        return "null";
     }
 }

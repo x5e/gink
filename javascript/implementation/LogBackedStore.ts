@@ -262,7 +262,7 @@ export class LogBackedStore implements Store {
         return this.internalStore.getEntryByKey(container, key, asOf);
     }
 
-    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<string, Entry>> {
         await this.ready;
         return this.internalStore.getKeyedEntries(container, asOf);
     }

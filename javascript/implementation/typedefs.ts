@@ -21,6 +21,7 @@ export type MuidTuple = [Timestamp, Medallion, Offset];
 export type Cookies = Map<string, string>;
 export type Indexable = MuidTuple;
 export type ActorId = number;  // process ID on the server side, something more complex in the browser
+export type EffectiveKey = KeyType | MuidTuple | [MuidTuple, MuidTuple] | [] | [string];
 
 export interface CommitListener {
     (commitInfo: BundleInfo): Promise<void>;
@@ -73,7 +74,7 @@ export interface Entry {
      * effectiveKey is a KeyType if the entry is for a Directory, a Timestamp if it's for a sequence,
      * MuidTuple if it's for a property, and empty list for a box.
      */
-    effectiveKey: KeyType | Timestamp | MuidTuple | [];
+    effectiveKey: EffectiveKey;
     entryId: MuidTuple;
     pointeeList: Indexable[]; // use an empty list to denote no pointees
     value?: Value;
