@@ -13,7 +13,7 @@ it('test basic operations', async () => {
     const entries = memStore.getAllEntries();
     ensure(entries.length == 2);
     const removals = memStore.getAllRemovals();
-    ensure(removals.size == 1);
+    ensure(removals.size == 1, `removals.size is ${removals.size}, expected 1`);
     await memStore.dropHistory();
     const entriesAfterDrop = memStore.getAllEntryKeys();
     ensure(Array.from(entriesAfterDrop).length == 1);

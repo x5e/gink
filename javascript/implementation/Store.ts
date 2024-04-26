@@ -82,9 +82,6 @@ export interface Store {
     // TODO maybe return an actual data structure ?
     getContainerBytes: (address: Muid) => Promise<Bytes | undefined>;
 
-    // Returns the entries pointing to a particular container/node.
-    getBackRefs(pointingTo: Muid): Promise<Entry[]>;
-
     getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined>;
     getEntryByKey(container: Muid, key?: KeyType | Muid | [Muid , Muid], asOf?: AsOf): Promise<Entry | undefined>;
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<string, Entry>>;

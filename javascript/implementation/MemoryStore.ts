@@ -94,22 +94,6 @@ export class MemoryStore implements Store {
         this.keepingHistory = true;
     }
 
-    async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
-        const backRefs: Entry[] = [];
-        for (const [muidTupleString, entry] of this.entries.entries()) {
-            if (entry.pointeeList) {
-                for (const pointee of entry.pointeeList) {
-                    if (muidTupleToString(pointee) == muidToString(pointingTo)) {
-                        backRefs.push(entry);
-                        break;
-                    }
-                }
-
-            }
-        }
-        return Promise.resolve(backRefs);
-    }
-
     getClaimedChains(): Promise<Map<Medallion, ClaimedChain>> {
         const result = new Map();
         let lastTime = 0;
@@ -468,8 +452,14 @@ export class MemoryStore implements Store {
 
     addEntry(entry: Entry) {
         const entryIdStr = muidTupleToString(entry.entryId);
+        const placementKey = this.entryToPlacementKey(entry);
         const behavior = entry.behavior;
-        if (!(entry.behavior == Behavior.EDGE_TYPE || entry.behavior == Behavior.SEQUENCE)) {
+
+        if (behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE) {
+            this.locations.set(
+                `${muidTupleToString(entry.entryId)},${muidTupleToString(entry.placementId)}`,
+                placementKey);
+        } else {
             const containerIdStr = muidTupleToString(entry.containerId);
             const prefix = `${containerIdStr},${effectiveKeyToString(entry.effectiveKey)}`;
             for (let iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix);
@@ -483,13 +473,7 @@ export class MemoryStore implements Store {
             }
         }
         this.entries.set(entryIdStr, entry);
-        const placementKey = this.entryToPlacementKey(entry);
         this.placements.set(placementKey, entryIdStr);
-        if (behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE) {
-            this.locations.set(
-                `${muidTupleToString(entry.entryId)},${muidTupleToString(entry.placementId)}`,
-                placementKey);
-        }
     }
 
     /**

@@ -267,11 +267,6 @@ export class LogBackedStore implements Store {
         return this.internalStore.getKeyedEntries(container, asOf);
     }
 
-    async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
-        await this.ready;
-        return this.internalStore.getBackRefs(pointingTo);
-    }
-
     async getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
         await this.ready;
         return this.internalStore.getEntryById(entryMuid, asOf);

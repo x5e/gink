@@ -199,12 +199,6 @@ export class IndexedDbStore implements Store {
         this.keepingHistory = true;
     }
 
-    async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
-        await this.ready;
-        const indexable = dehydrate(pointingTo);
-        return this.wrapped.getAllFromIndex("entries", "pointees", indexable);
-    }
-
     async close() {
         try {
             await this.ready;
