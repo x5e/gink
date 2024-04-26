@@ -49,7 +49,6 @@ it('asOf and items work as intended', async function () {
         ensure(await pm1.size() == 3);
         ensure(await pm1.size(time0) == 1);
         ensure(await pm1.has([box1, box2], time0));
-        console.log("here");
         ensure(!await pm1.has([box1, box3], time0));
         ensure(await pm1.get([box1, box2], time0));
         ensure(!await pm1.get([box1, box3], time0));

@@ -1,6 +1,6 @@
 import { sleep } from "./test_utils";
 import { Database, Bundler, IndexedDbStore, Directory, MemoryStore } from "../implementation";
-import { ensure } from "../implementation/utils";
+import { ensure, generateTimestamp } from "../implementation/utils";
 
 it('set and get Basic data', async function () {
     for (const store of [
@@ -179,15 +179,15 @@ it('Directory.asOf', async function () {
         await instance.ready;
         const directory = await instance.createDirectory();
 
-        const time0 = instance.getNow();
+        const time0 = generateTimestamp();
         await sleep(10);
         await directory.set('A', 'B');
         await sleep(10);
-        const time1 = instance.getNow();
+        const time1 = generateTimestamp();
         await sleep(10);
         await directory.set('cheese', 4);
         await sleep(10);
-        const time2 = instance.getNow();
+        const time2 = generateTimestamp();
 
         const asJsonNow = await directory.toJson();
         ensure(asJsonNow == `{"A":"B","cheese":4}`);
@@ -220,7 +220,7 @@ it('Directory.purge', async function () {
 
         await directory.set('A', 99);
         await sleep(10);
-        const middle = instance.getNow();
+        const middle = generateTimestamp();
         await sleep(10);
         await directory.set('B', false);
 

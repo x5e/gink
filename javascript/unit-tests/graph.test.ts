@@ -1,6 +1,6 @@
 
 import { Database, IndexedDbStore, Vertex, EdgeType, MemoryStore } from "../implementation";
-import { ensure } from "../implementation/utils";
+import { ensure, generateTimestamp } from "../implementation/utils";
 
 it('isAlive and remove', async function () {
     for (const store of [
@@ -10,10 +10,10 @@ it('isAlive and remove', async function () {
         const instance = new Database(store);
         await instance.ready;
         const vertex = await instance.createVertex();
-        const aliveTime = instance.getNow();
+        const aliveTime = generateTimestamp();
         ensure(await vertex.isAlive());
         await vertex.remove();
-        const deadTime = instance.getNow();
+        const deadTime = generateTimestamp();
         ensure(!await vertex.isAlive());
         ensure(await vertex.isAlive(aliveTime));
         await vertex.revive();
