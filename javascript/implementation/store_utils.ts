@@ -1,6 +1,6 @@
 import { ChainTracker } from './ChainTracker';
 import { Behavior, ChangeBuilder, BundleBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
-import { KeyType, EffectiveKey, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple } from "./typedefs";
+import { KeyType, EffectiveKey, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple, Movement } from "./typedefs";
 import {
     ensure,
     unwrapKey,
@@ -51,7 +51,7 @@ export function effectiveKeyToString(effectiveKey: EffectiveKey): string {
     return effectiveKey.toString();
 }
 
-export function extractMovementInfo(changeBuilder: ChangeBuilder, bundleInfo: BundleInfo, offset: number) {
+export function extractMovement(changeBuilder: ChangeBuilder, bundleInfo: BundleInfo, offset: number): Movement {
     const movementBuilder: MovementBuilder = changeBuilder.getMovement();
     const entryMuid = movementBuilder.getEntry();
     const entryId: MuidTuple = [
@@ -67,10 +67,11 @@ export function extractMovementInfo(changeBuilder: ChangeBuilder, bundleInfo: Bu
         containerId[2] = srcMuid.getOffset();
     }
     return {
-        movementBuilder,
         entryId,
         movementId,
-        containerId
+        containerId,
+        dest: movementBuilder.getDest(),
+        purge: movementBuilder.getPurge(),
     };
 }
 

@@ -94,6 +94,14 @@ export interface Removal {
     entryId: MuidTuple;
 }
 
+export interface Movement {
+    entryId: MuidTuple;
+    movementId: MuidTuple;
+    containerId: MuidTuple;
+    dest: number;
+    purge: boolean;
+}
+
 export interface Clearance {
     containerId: MuidTuple;
     clearanceId: MuidTuple;
