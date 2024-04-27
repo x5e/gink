@@ -4,7 +4,6 @@ import {
     generateTimestamp,
     muidToString,
     muidToTuple,
-    muidTupleToMuid,
     muidTupleToString,
     unwrapValue,
     sameData,
@@ -34,7 +33,7 @@ import {
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder } from "./builders";
+import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { MapIterator, TreeMap } from 'jstreemap';
 import {
     getEffectiveKey as getEffectiveKey,
@@ -62,8 +61,7 @@ export class MemoryStore implements Store {
     private clearances: TreeMap<string, Clearance> = new TreeMap(); // ContainerId,ClearanceId => Clearance
     private containers: TreeMap<string, Uint8Array> = new TreeMap(); // ContainerId => bytes
     private removals: TreeMap<string, string> = new TreeMap(); // placementId,removalId => ""
-    private entries: TreeMap<string, Entry> = new TreeMap(); // PlacementId => Entry
-    private placements: TreeMap<string, string> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
+    private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
     private locations: TreeMap<string,string> = new TreeMap();
     constructor(private keepingHistory = true) {
@@ -71,19 +69,7 @@ export class MemoryStore implements Store {
     }
 
     dropHistory(container?: Muid, before?: AsOf): void {
-        const beforeTs = before ? this.asOfToTimestamp(before) : this.asOfToTimestamp(-1);
-        let lower = this.entries.lowerBound(muidTupleToString([0, 0, 0]));
-        let upper = this.entries.upperBound(muidTupleToString([beforeTs, 0, 0]));
-        if (container) {
-            const containerTuple = muidToTuple(container);
-            lower = this.entries.lowerBound(muidTupleToString(containerTuple));
-            upper = this.entries.upperBound(muidTupleToString([beforeTs, container.medallion, container.offset]));
-        }
-
-        while (!lower.equals(upper)) {
-            this.removeEntry(lower.key);
-            lower.next();
-        }
+        throw new Error("not implemented");
     }
 
     stopHistory(): void {
@@ -213,7 +199,6 @@ export class MemoryStore implements Store {
                         const to = this.placements.upperBound(`${containerIdStr},~,~`);
                         if (it.equals(to) || ! it.key)
                             break;
-                        this.entries.delete(it.value);
                         this.placements.erase(it);
                         // TODO: also delete removals, locations
                         }
@@ -251,29 +236,29 @@ export class MemoryStore implements Store {
         const entryIdStr = muidTupleToString(entryId);
         const containerIdStr = muidTupleToString(containerId);
         const movementIdStr = muidTupleToString(movementId);
+        let entry: Entry;
         if (purge || !this.keepingHistory) {
             const iterator = this.locations.lowerBound(entryIdStr);
             while (true) {
                 if (iterator.equals(this.locations.end())) break;
                 if (!iterator.key.startsWith(entryIdStr)) break;
+                entry = {placementId: movementId, effectiveKey: dest, ...this.placements.get(iterator.value)};
                 this.placements.delete(iterator.value);
                 this.locations.erase(iterator);
                 iterator.next();
-            }
-            if (!dest) {
-                this.entries.delete(entryIdStr);
             }
         } else {
             const iterator = toLastWithPrefixBeforeSuffix(this.locations, entryIdStr);
             if (!iterator)
                 return;
             ensure(iterator.key && iterator.key.startsWith(entryIdStr));
+            entry = {placementId: movementId, effectiveKey: dest, ...this.placements.get(iterator.value)};
             const removingIdStr = iterator.value.slice(-34);
             this.removals.set(`${removingIdStr},${movementIdStr}`, "");
         }
         if (dest != 0) {
             const placementKey = `${containerIdStr},${dest},${movementIdStr}`;
-            this.placements.set(placementKey,entryIdStr);
+            this.placements.set(placementKey, entry);
             this.locations.set(`${entryIdStr},${movementIdStr}`, placementKey);
         }
     }
@@ -323,7 +308,7 @@ export class MemoryStore implements Store {
         const prefix = `${srcAsStr},${effectiveKeyToString(semanticKey)},`;
         const iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix, asOfTsStr);
         if (!iterator) return undefined;
-        const entry: Entry = this.entries.get(iterator.value);
+        const entry: Entry = iterator.value;
         if (!entry) throw new Error(`missing entry for: ${iterator.value}`);
         if (entry.placementId[0] < clearanceTime) {
             // container was cleared after this entry
@@ -341,9 +326,17 @@ export class MemoryStore implements Store {
         }
     }
 
-    async getEntryById(entryMuid: Muid): Promise<Entry | undefined> {
-        const entry = this.entries.get(muidToString(entryMuid));
-        return entry;
+    getEntryById(entryMuid: Muid): Promise<Entry | undefined> {
+        return Promise.resolve(this.getEntryByIdSync(entryMuid));
+    }
+
+    // TODO: allow this to take an as-of timestamp
+    getEntryByIdSync(entryMuid: Muid): Entry | undefined {
+        const entryIdStr = muidToString(entryMuid);
+        const it = toLastWithPrefixBeforeSuffix(this.locations, entryIdStr);
+        if (! it)
+            return undefined;
+        return this.placements.get(it.value);
     }
 
     async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<string, Entry>> {
@@ -363,7 +356,7 @@ export class MemoryStore implements Store {
             const placementIdStr = parts[parts.length-1];
             if (placementIdStr < clearTimeStr || placementIdStr > asOfTsStr)
                 continue;
-            const entry = this.entries.get(iterator.value);
+            const entry: Entry = iterator.value;
             ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET ||
                 entry.behavior == Behavior.ROLE ||entry.behavior == Behavior.PAIR_SET ||
                 entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
@@ -384,10 +377,10 @@ export class MemoryStore implements Store {
      */
     async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf):
         Promise<Map<string, Entry>> {
-        return Promise.resolve(this.getOrderedEntriesHelper(container, through, asOf));
+        return Promise.resolve(this.getOrderedEntriesSync(container, through, asOf));
     }
 
-    getOrderedEntriesHelper(container: Muid, through = Infinity, asOf?: AsOf): Map<string, Entry> {
+    getOrderedEntriesSync(container: Muid, through = Infinity, asOf?: AsOf): Map<string, Entry> {
         const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
         const commaAsOfTsStr = "," + muidTupleToString([asOfTs, 0, 0]);
@@ -403,7 +396,7 @@ export class MemoryStore implements Store {
         const returning = new Map<string, Entry>();
 
         // If we need to iterate forward or backward
-        let it: MapIterator<string, string>;
+        let it: MapIterator<string, Entry>;
         if (through < 0) {
             it = upper;
             it.prev();
@@ -425,27 +418,11 @@ export class MemoryStore implements Store {
             if (toLastWithPrefixBeforeSuffix(this.removals, placementIdStr, commaAsOfTsStr))
                 continue;
             const returningKey = placementKey.substring(35);
-            const entryKey: string = it.value;
-            // TODO: maybe get rid of the entries TreeMap and just link directly to the entry
-            const entry = this.entries.get(entryKey);
-            if (!entry)
-                throw new Error(`missing entry for ${entryKey}`);
+            const entry: Entry = it.value;
             ensure(muidTupleToString(entry.containerId) == containerIdStr);
             returning.set(returningKey, entry);
         }
         return returning;
-    }
-
-
-    /**
-     * Helper to remove entries from all maps/indexes.
-     */
-    removeEntry(entryId: string) {
-        const entry = this.entries.get(entryId);
-        ensure(entry, "entry not found - something is broken");
-        this.entries.delete(entryId);
-        const indexedKey = `${muidTupleToString(entry.containerId)},${effectiveKeyToString(entry.effectiveKey)},${muidTupleToString(entry.placementId)}`;
-        this.placements.delete(indexedKey);
     }
 
     addEntry(entry: Entry) {
@@ -470,8 +447,7 @@ export class MemoryStore implements Store {
                 }
             }
         }
-        this.entries.set(entryIdStr, entry);
-        this.placements.set(placementKey, entryIdStr);
+        this.placements.set(placementKey, entry);
     }
 
     /**
@@ -503,19 +479,18 @@ export class MemoryStore implements Store {
         delete this.clearances;
         delete this.containers;
         delete this.removals;
-        delete this.entries;
         delete this.placements;
         return Promise.resolve();
     };
 
     // for debugging, not part of the api/interface
     getAllEntryKeys(): Array<string> {
-        return Array.from(this.entries.keys());
+        return Array.from(this.placements.keys());
     };
 
     // for debugging, not part of the api/interface
     getAllEntries(): Array<Entry> {
-        return Array.from(this.entries.values());
+        return Array.from(this.placements.values());
     };
 
     // for debugging, not part of the api/interface
