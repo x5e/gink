@@ -23,21 +23,25 @@ it('isAlive and remove', async function () {
 });
 
 it('verb.createEdge', async function () {
-    const store = new IndexedDbStore('verb.createEdge', true);
-    const instance = new Database(store);
-    await instance.ready;
-    const vertex1 = await instance.createVertex();
-    const vertex2 = await instance.createVertex();
-    const verb1 = await instance.createEdgeType();
-    const edge1 = await verb1.createEdge(vertex1, vertex2);
-    ensure((edge1.getSourceVertex()).equals(vertex1));
-    ensure((edge1.getTargetVertex()).equals(vertex2));
-    ensure(!(edge1.getSourceVertex()).equals(vertex2));
-    ensure((edge1.getEdgeType()).equals(verb1));
+    for (const store of [new IndexedDbStore('verb.createEdge', true), new MemoryStore(true)]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const vertex1 = await instance.createVertex();
+        const vertex2 = await instance.createVertex();
+        const verb1 = await instance.createEdgeType();
+        const edge1 = await verb1.createEdge(vertex1, vertex2);
+        ensure((edge1.getSourceVertex()).equals(vertex1));
+        ensure((edge1.getTargetVertex()).equals(vertex2));
+        ensure(!(edge1.getSourceVertex()).equals(vertex2));
+        ensure((edge1.getEdgeType()).equals(verb1));
+    }
 });
 
 it('from_to', async function () {
-    const store = new IndexedDbStore('source.target', true);
+    for (const store of [
+        new MemoryStore(true),
+        new IndexedDbStore('from_to', true),
+    ]) {
     const instance = new Database(store);
     await instance.ready;
     const vertex1 = await instance.createVertex();
@@ -65,8 +69,15 @@ it('from_to', async function () {
 
     const edgesFrom2 = await vertex2.getEdgesFrom();
     ensure(edgesFrom2.length == 3);
-    edgesFrom2.sort(function (a, b) { return a.getOriginalPosition() < b.getOriginalPosition() ? -1 : +1; });
+    edgesFrom2.sort(function (a, b) { return a.getPosition() < b.getPosition() ? -1 : +1; });
     ensure(edgesFrom2[0].equals(edge21));
     ensure(edgesFrom2[1].equals(edge22));
     ensure(edgesFrom2[2].equals(edge23));
+
+    await edge11.remove();
+    const edgesFrom1 = await vertex1.getEdgesFrom();
+    ensure(edgesFrom1.length == 2);
+    ensure(edgesFrom1[0].equals(edge12));
+    ensure(edgesFrom1[1].equals(edge13));
+}
 });

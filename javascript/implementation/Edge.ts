@@ -68,10 +68,6 @@ export class Edge extends Addressable {
         }
     }
 
-    getOriginalPosition(): number {
-        return this.effective;
-    }
-
     async remove(dest?: number, purge?: boolean, bundlerOrComment?: string | Bundler) {
         let immediate = false;
         let bundler: Bundler;

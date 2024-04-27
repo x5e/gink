@@ -47,8 +47,7 @@ export class Vertex extends Container {
     }
 
     async getEdges(source: boolean, asOf?: AsOf): Promise<Edge[]> {
-        const entries = await this.database.store.getEntriesBySourceOrTarget(
-            this.address, source, asOf);
+        const entries = await this.database.store.getEntriesBySourceOrTarget(this.address, source, asOf);
         const edges: Edge[] = [];
         for (let i=0;i<entries.length;i++) {
             const entry = entries[i];

@@ -64,6 +64,8 @@ export class MemoryStore implements Store {
     private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
     private locations: TreeMap<string,string> = new TreeMap();
+    private bySource: TreeMap<string, Entry> = new TreeMap();
+    private byTarget: TreeMap<string, Entry> = new TreeMap();
     constructor(private keepingHistory = true) {
         this.ready = Promise.resolve();
     }
@@ -375,8 +377,7 @@ export class MemoryStore implements Store {
      * @param asOf show results as of a time in the past
      * @returns a promise of a list of ChangePairs
      */
-    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf):
-        Promise<Map<string, Entry>> {
+    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Map<string, Entry>> {
         return Promise.resolve(this.getOrderedEntriesSync(container, through, asOf));
     }
 
@@ -433,7 +434,7 @@ export class MemoryStore implements Store {
         const behavior = entry.behavior;
 
         if (behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE) {
-            this.locations.set(`${entryIdStr},${placementIdStr}`,placementKey);
+            this.locations.set(`${entryIdStr},${placementIdStr}`, placementKey);
         } else {
             const containerIdStr = muidTupleToString(entry.containerId);
             const prefix = `${containerIdStr},${effectiveKeyToString(entry.effectiveKey)}`;
@@ -448,6 +449,14 @@ export class MemoryStore implements Store {
             }
         }
         this.placements.set(placementKey, entry);
+        if (entry.sourceList.length) {
+            // TODO: remove these on deletion/purge
+            const sourceIdStr = muidTupleToString(entry.sourceList[0]);
+            this.bySource.set(`${sourceIdStr},${placementIdStr}`, entry);
+            ensure(entry.targetList.length);
+            const targetIdStr = muidTupleToString(entry.targetList[0]);
+            this.byTarget.set(`${targetIdStr},${placementIdStr}`, entry);
+        }
     }
 
     /**
@@ -467,8 +476,32 @@ export class MemoryStore implements Store {
         return clearanceTime;
     }
 
-    async getEntriesBySourceOrTarget(): Promise<Entry[]> {
-        throw new Error("getEntriesBySourceOrTarget not implemented");
+    getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]> {
+        return Promise.resolve(this.getEntriesBySourceOrTargetSync(vertex, source, asOf));
+    }
+
+    getEntriesBySourceOrTargetSync(vertex: Muid, source: boolean, asOf?: AsOf): Entry[] {
+        const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
+        const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
+        const vertexIdStr = muidToString(vertex);
+        const map = source ? this.bySource : this.byTarget;
+        const upperBound = `${vertexIdStr},${asOfTsStr}`;
+        const entries: Entry[] = [];
+        for (const it = map.lowerBound(vertexIdStr); it.key && it.key < upperBound; it.next()) {
+            if (!this.isSoftDeleted(it.value, asOfTs))
+                entries.push(it.value);
+        }
+        return entries;
+    }
+
+    isSoftDeleted(entry: Entry, asOfTs: Timestamp): boolean {
+        const placementIdStr = muidTupleToString(entry.placementId);
+        const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
+        const upperBound = `${placementIdStr},${asOfTsStr}`;
+        for (const it = this.removals.lowerBound(placementIdStr); it.key && it.key < upperBound; it.next()) {
+            return true;
+        }
+        return false;
     }
 
     async close(): Promise<void> {
