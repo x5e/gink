@@ -1,5 +1,5 @@
 import { Database, IndexedDbStore, MemoryStore } from "../implementation";
-import { ensure, muidToString, sameData } from "../implementation/utils";
+import { ensure, sameData } from "../implementation/utils";
 
 it('Property.basics', async function () {
     for (const store of [new IndexedDbStore('Property.basics', true), new MemoryStore(true)]) {

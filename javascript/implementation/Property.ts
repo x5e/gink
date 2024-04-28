@@ -33,7 +33,7 @@ export class Property extends Container {
 
     async has(subject: Addressable, asOf?: AsOf): Promise<boolean> {
         const entry = await this.database.store.getEntryByKey(this.address, subject.address, asOf);
-        return entry && !entry.deletion;
+        return !!(entry && !entry.deletion);
     }
 
 }
