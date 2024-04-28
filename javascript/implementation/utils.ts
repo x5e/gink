@@ -462,8 +462,8 @@ export function sameData(key1: any, key2: any): boolean {
 
 export function entryToEdgeData(entry: Entry): EdgeData {
     return {
-        source: null, //muidTupleToMuid(entry.sourceList[0]),
-        target: null, //muidTupleToMuid(entry.targetList[0]),
+        source: muidTupleToMuid(entry.sourceList[0]),
+        target: muidTupleToMuid(entry.targetList[0]),
         value: entry.value,
         action: muidTupleToMuid(entry.containerId),
         effective: <number>entry.effectiveKey,

@@ -83,6 +83,7 @@ export interface Entry {
     placementId: MuidTuple;
     sourceList: Indexable[]; // used for edges
     targetList: Indexable[]; // used for edges
+    purging?: boolean;
 }
 
 export interface Removal {
@@ -91,6 +92,14 @@ export interface Removal {
     containerId: MuidTuple;
     dest: number;
     entryId: MuidTuple;
+}
+
+export interface Movement {
+    entryId: MuidTuple;
+    movementId: MuidTuple;
+    containerId: MuidTuple;
+    dest: number;
+    purge: boolean;
 }
 
 export interface Clearance {

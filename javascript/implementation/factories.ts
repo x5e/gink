@@ -117,32 +117,3 @@ export async function convertEntryBytes(database: Database, entryBytes: Bytes, e
     }
     throw new Error("unsupported entry type");
 }
-
-/*
-* I can't import List, Directory, etc. into this Container.ts because it will cause the inherits clauses to break.
-* So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
-*/
-Container._getBackRefsFunction = function (instance: Database, pointingTo: Container, asOf?: AsOf):
-    AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
-    return (async function* () {
-        const entries = await instance.store.getBackRefs(pointingTo.address);
-        for (const entry of entries) {
-            const containerMuid = muidTupleToMuid(entry.containerId);
-            const entryMuid = muidTupleToMuid(entry.entryId);
-            const there = await instance.store.getEntryById(entryMuid, asOf);
-            if (!there) continue;
-            const containerBytes = await instance.store.getContainerBytes(containerMuid);
-            const containerBuilder = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
-            if (entry.behavior == Behavior.DIRECTORY) {
-                yield <[KeyType | Muid | undefined, Container]>
-                    [entry.effectiveKey, new Directory(instance, containerMuid, containerBuilder)];
-            }
-            if (entry.behavior == Behavior.SEQUENCE) {
-                yield [entryMuid, new Sequence(instance, containerMuid, containerBuilder)];
-            }
-            if (entry.behavior == Behavior.BOX) {
-                yield [undefined, new Box(instance, containerMuid, containerBuilder)];
-            }
-        }
-    })();
-};

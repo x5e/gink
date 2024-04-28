@@ -79,7 +79,8 @@ export class Sequence extends Container {
         if (what && typeof (what) == "object") {
             muid = what;
             const entry = await this.database.store.getEntryById(muid);
-            if (!entry) return undefined;
+            if (!entry)
+                return undefined;
             ensure(entry.entryId[0] == muid.timestamp && entry.entryId[2] == muid.offset);
             returning = await interpret(entry, this.database);
         } else {

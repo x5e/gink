@@ -32,12 +32,13 @@ import {
     Offset,
     Removal,
     Timestamp,
+    Movement,
 } from "./typedefs";
 import {
     extractCommitInfo,
     extractContainerMuid,
     getEffectiveKey,
-    extractMovementInfo,
+    extractMovement,
     buildPairLists,
     buildPointeeList,
     buildChainTracker,
@@ -197,12 +198,6 @@ export class IndexedDbStore implements Store {
 
     startHistory(): void {
         this.keepingHistory = true;
-    }
-
-    async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
-        await this.ready;
-        const indexable = dehydrate(pointingTo);
-        return this.wrapped.getAllFromIndex("entries", "pointees", indexable);
     }
 
     async close() {
@@ -396,14 +391,14 @@ export class IndexedDbStore implements Store {
                 continue;
             }
             if (changeBuilder.hasMovement()) {
-                const { movementBuilder, entryId, movementId, containerId } = extractMovementInfo(changeBuilder, bundleInfo, offset);
+                const movement = extractMovement(changeBuilder, bundleInfo, offset);
+                const { entryId, movementId, containerId, dest, purge } = movement;
                 const range = IDBKeyRange.bound([entryId, [0]], [entryId, [Infinity]]);
                 const search = await wrappedTransaction.objectStore("entries").index("locations").openCursor(range, "prev");
                 if (!search) {
                     continue; // Nothing found to remove.
                 }
                 const found: Entry = search.value;
-                const dest = movementBuilder.getDest();
                 if (dest != 0) {
                     const destEntry: Entry = {
                         behavior: found.behavior,
@@ -420,7 +415,7 @@ export class IndexedDbStore implements Store {
                     };
                     await wrappedTransaction.objectStore("entries").add(destEntry);
                 }
-                if (movementBuilder.getPurge() || !this.keepingHistory) {
+                if (purge || !this.keepingHistory) {
                     search.delete();
                 } else {
                     const removal: Removal = {

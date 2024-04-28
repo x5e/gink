@@ -15,7 +15,7 @@ import { Store } from "./Store";
 import { FileHandle, open } from "fs/promises";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { flock } from "fs-ext";
-import { watch, FSWatcher } from "fs";
+import { watch, FSWatcher, Stats } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder } from "./builders";
 import { generateTimestamp, ensure, getActorId } from "./utils";
@@ -45,6 +45,8 @@ export class LogBackedStore implements Store {
     private redTo: number = 0;
     private fileWatcher: FSWatcher;
     private foundBundleCallBacks: BroadcastFunc[] = [];
+    private opened: boolean = false;
+    private closed: boolean = false;
 
     /**
      *
@@ -67,11 +69,19 @@ export class LogBackedStore implements Store {
         }
         const unlockingFunction = await this.memoryLock.acquireLock();
         await this.pullDataFromFile();
-
+        const thisLogBackedStore = this;
         this.fileWatcher =
             watch(this.filename, async (eventType, filename) => {
                 await new Promise(r => setTimeout(r, 10));
-                const size = (await this.fileHandle.stat()).size;
+                if (thisLogBackedStore.closed || !thisLogBackedStore.opened)
+                    return;
+                let size: number;
+                try {
+                    size = (await this.fileHandle.stat()).size;
+                } catch (problem) {
+                    console.error(`problem getting size! ${problem}`);
+                    throw problem;
+                }
                 if (eventType == "change" && size > this.redTo) {
                     const unlockingFunction = await this.memoryLock.acquireLock();
                     if (!this.exclusive)
@@ -86,14 +96,17 @@ export class LogBackedStore implements Store {
             });
 
         unlockingFunction();
+        this.opened = true;
     }
 
     async close() {
-        this.fileWatcher.close();
-        await new Promise(r => setTimeout(r, 100));
-        await this.ready.catch();
-        await this.fileHandle.close().catch();
-        await this.internalStore.close().catch();
+        this.closed = true;
+        if (this.fileWatcher)
+            this.fileWatcher.close();
+        if (this.fileHandle)
+            await this.fileHandle.close().catch();
+        if (this.internalStore)
+            await this.internalStore.close().catch();
     }
 
     private async lockFile(block: boolean): Promise<boolean> {
@@ -123,7 +136,15 @@ export class LogBackedStore implements Store {
     }
 
     private async pullDataFromFile(): Promise<void> {
-        const stats = await this.fileHandle.stat();
+        if (this.closed)
+            return;
+        let stats: Stats
+        try {
+            stats = await this.fileHandle.stat();
+        } catch (problem) {
+            console.error(`problem with fileHandle.stat ${problem}`);
+            throw problem;
+        }
         const totalSize = stats.size;
         if (this.redTo < totalSize) {
             const needToReed = totalSize - this.redTo;
@@ -265,11 +286,6 @@ export class LogBackedStore implements Store {
     async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<string, Entry>> {
         await this.ready;
         return this.internalStore.getKeyedEntries(container, asOf);
-    }
-
-    async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
-        await this.ready;
-        return this.internalStore.getBackRefs(pointingTo);
     }
 
     async getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
