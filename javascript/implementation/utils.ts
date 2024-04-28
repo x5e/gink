@@ -3,7 +3,7 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry, Indexer, Indexable, ActorId, ClaimedChain } from "./typedefs";
+import { Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry,  ActorId, Timestamp } from "./typedefs";
 import {
     MuidBuilder,
     ValueBuilder,
@@ -368,6 +368,10 @@ export function intToHex(value: number, padding?: number): string {
         : value;
 
     return twosComplement.toString(16).padStart(digits, '0').toUpperCase();
+}
+
+export function timestampToString(timestamp: Timestamp): string {
+    return intToHex(timestamp, 14);
 }
 
 export function valueToJson(value: Value): string {

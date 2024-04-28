@@ -69,7 +69,6 @@ it('from_to', async function () {
 
     const edgesFrom2 = await vertex2.getEdgesFrom();
     ensure(edgesFrom2.length == 3);
-    edgesFrom2.sort(function (a, b) { return a.getPosition() < b.getPosition() ? -1 : +1; });
     ensure(edgesFrom2[0].equals(edge21));
     ensure(edgesFrom2[1].equals(edge22));
     ensure(edgesFrom2[2].equals(edge23));
@@ -80,4 +79,31 @@ it('from_to', async function () {
     ensure(edgesFrom1[0].equals(edge12));
     ensure(edgesFrom1[1].equals(edge13));
 }
+});
+
+it('edge_reorder', async function () {
+    for (const store of [
+        new MemoryStore(true),
+        // new IndexedDbStore('edge_reorder', true), TODO: fix bySource and byTarget indexes
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+
+        const a = await instance.createVertex();
+        const b = await instance.createVertex();
+
+        const p = await instance.createEdgeType();
+
+        const beforeX = generateTimestamp();
+        const x = await p.createEdge(a, b);
+        const y = await p.createEdge(a, b);
+
+        const edges1 = await a.getEdgesFrom();
+        ensure(edges1.length == 2 && edges1[0].equals(x) && edges1[1].equals(y), edges1.toString());
+
+        await y.remove(beforeX);
+
+        const edges2 = await a.getEdgesFrom();
+        ensure(edges2.length == 2 && edges2[0].equals(y) && edges2[1].equals(x), edges2.toString());
+    }
 });

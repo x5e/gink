@@ -3,9 +3,7 @@ import {
     ensure,
     generateTimestamp, dehydrate,
     matches,
-    muidToString,
     muidToTuple,
-    muidTupleToMuid,
     sameData,
     unwrapValue,
     getActorId,
@@ -32,7 +30,6 @@ import {
     Offset,
     Removal,
     Timestamp,
-    Movement,
 } from "./typedefs";
 import {
     extractCommitInfo,
@@ -139,7 +136,6 @@ export class IndexedDbStore implements Store {
                 // The "entries" store has objects of type Entry (from typedefs)
                 const entries = db.createObjectStore('entries', { keyPath: "placementId" });
                 entries.createIndex("by-container-key-placement", ["containerId", "effectiveKey", "placementId"]);
-                entries.createIndex("pointees", "pointeeList", { multiEntry: true, unique: false });
                 entries.createIndex("locations", ["entryId", "placementId"]);
                 entries.createIndex("sources", "sourceList", { multiEntry: true, unique: false });
                 entries.createIndex("targets", "targetList", { multiEntry: true, unique: false });

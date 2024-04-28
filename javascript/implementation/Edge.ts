@@ -1,6 +1,6 @@
 import { Addressable } from "./Addressable";
 import { Database } from "./Database";
-import { AsOf, EdgeData, Muid, Value } from "./typedefs";
+import { AsOf, EdgeData, Muid, Value, Timestamp } from "./typedefs";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { muidToBuilder, entryToEdgeData } from "./utils";
@@ -13,7 +13,6 @@ export class Edge extends Addressable {
     private target: Muid;
     private action: Muid;
     private value?: Value;
-    private effective: number;
 
     constructor(
         database: Database,
@@ -28,7 +27,6 @@ export class Edge extends Addressable {
         this.target = data.target;
         this.action = data.action;
         this.value = data.value;
-        this.effective = data.effective;
     }
 
     static async load(database: Database, address: Muid): Promise<Edge> {
@@ -56,10 +54,10 @@ export class Edge extends Addressable {
     }
 
     async isAlive(asOf?: AsOf): Promise<boolean> {
-        return 0 != await this.getPosition(asOf);
+        return 0 != await this.getEffective(asOf);
     }
 
-    async getPosition(asOf?: AsOf): Promise<number> {
+    async getEffective(asOf?: AsOf): Promise<Timestamp> {
         const entry = await this.database.store.getEntryById(this.address, asOf);
         if (!entry) {
             return 0;

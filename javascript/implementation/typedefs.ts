@@ -113,7 +113,7 @@ export interface EdgeData {
     target: Muid;
     action: Muid;
     value?: Value;
-    effective: number;
+    effective?: number;
 }
 
 export interface IndexedDbStoreSchema extends DBSchema {

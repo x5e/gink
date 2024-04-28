@@ -23,7 +23,7 @@ export class Role extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the inclusion
      */
-    async include(key: Muid | Container, change?: Bundler | string): Promise<Muid> {
+    async include(key: Container, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.INCLUSION, change);
     }
 
@@ -33,7 +33,7 @@ export class Role extends Container {
      * @param change an optional bundler to put this in
      * @returns a promise that resolves to the Muid for the exclusion
      */
-    async exclude(key: Muid | Container, change?: Bundler | string): Promise<Muid> {
+    async exclude(key: Container, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 

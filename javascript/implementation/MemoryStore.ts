@@ -9,6 +9,7 @@ import {
     sameData,
     getActorId,
     toLastWithPrefixBeforeSuffix,
+    timestampToString,
 } from "./utils";
 import {
     AsOf,
@@ -234,9 +235,8 @@ export class MemoryStore implements Store {
     }
 
     applyMovement(movement: Movement) {
-        const { entryId, movementId, containerId, dest, purge } = movement;
+        const { entryId, movementId, dest, purge } = movement;
         const entryIdStr = muidTupleToString(entryId);
-        const containerIdStr = muidTupleToString(containerId);
         const movementIdStr = muidTupleToString(movementId);
         let entry: Entry;
         if (purge || !this.keepingHistory) {
@@ -244,24 +244,24 @@ export class MemoryStore implements Store {
             while (true) {
                 if (iterator.equals(this.locations.end())) break;
                 if (!iterator.key.startsWith(entryIdStr)) break;
-                entry = {placementId: movementId, effectiveKey: dest, ...this.placements.get(iterator.value)};
+                entry = {...this.placements.get(iterator.value), placementId: movementId, effectiveKey: dest};
                 this.placements.delete(iterator.value);
                 this.locations.erase(iterator);
                 iterator.next();
             }
         } else {
             const iterator = toLastWithPrefixBeforeSuffix(this.locations, entryIdStr);
-            if (!iterator)
+            if (!iterator) {
+                console.error(`attempting to move something I don't have any record of: ${entryIdStr}`);
                 return;
+            }
             ensure(iterator.key && iterator.key.startsWith(entryIdStr));
-            entry = {placementId: movementId, effectiveKey: dest, ...this.placements.get(iterator.value)};
+            entry = {...this.placements.get(iterator.value), placementId: movementId, effectiveKey: dest};
             const removingIdStr = iterator.value.slice(-34);
             this.removals.set(`${removingIdStr},${movementIdStr}`, "");
         }
         if (dest != 0) {
-            const placementKey = `${containerIdStr},${dest},${movementIdStr}`;
-            this.placements.set(placementKey, entry);
-            this.locations.set(`${entryIdStr},${movementIdStr}`, placementKey);
+            this.addEntry(entry);
         }
     }
 
@@ -451,11 +451,12 @@ export class MemoryStore implements Store {
         this.placements.set(placementKey, entry);
         if (entry.sourceList.length) {
             // TODO: remove these on deletion/purge
+            const middle = behavior == Behavior.EDGE_TYPE ? effectiveKeyToString(entry.effectiveKey) : "";
             const sourceIdStr = muidTupleToString(entry.sourceList[0]);
-            this.bySource.set(`${sourceIdStr},${placementIdStr}`, entry);
+            this.bySource.set(`${sourceIdStr},${middle},${placementIdStr}`, entry);
             ensure(entry.targetList.length);
             const targetIdStr = muidTupleToString(entry.targetList[0]);
-            this.byTarget.set(`${targetIdStr},${placementIdStr}`, entry);
+            this.byTarget.set(`${targetIdStr},${middle},${placementIdStr}`, entry);
         }
     }
 
@@ -482,14 +483,16 @@ export class MemoryStore implements Store {
 
     getEntriesBySourceOrTargetSync(vertex: Muid, source: boolean, asOf?: AsOf): Entry[] {
         const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
-        const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
         const vertexIdStr = muidToString(vertex);
         const map = source ? this.bySource : this.byTarget;
-        const upperBound = `${vertexIdStr},${asOfTsStr}`;
         const entries: Entry[] = [];
-        for (const it = map.lowerBound(vertexIdStr); it.key && it.key < upperBound; it.next()) {
-            if (!this.isSoftDeleted(it.value, asOfTs))
-                entries.push(it.value);
+        for (const it = map.lowerBound(vertexIdStr); it.key && it.key.startsWith(vertexIdStr); it.next()) {
+            const entry = it.value;
+            if (this.isSoftDeleted(entry, asOfTs))
+                continue;
+            if (entry.placementId[0] > asOfTs)
+                continue;
+            entries.push(it.value);
         }
         return entries;
     }

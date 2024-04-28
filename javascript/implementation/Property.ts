@@ -1,5 +1,5 @@
 import { Container } from "./Container";
-import { Value, Muid, KeyType, AsOf, Entry } from "./typedefs";
+import { Value, Muid, AsOf, } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure } from "./utils";
 import { Database } from "./Database";
@@ -18,7 +18,8 @@ export class Property extends Container {
     }
 
     async set(subject: Addressable, value: Value | Addressable, bundlerOrComment?: Bundler | string): Promise<Muid> {
-        return await this.addEntry(subject, value, bundlerOrComment);
+        return await this.addEntry(subject,
+            value instanceof Addressable ? value.address : value, bundlerOrComment);
     }
 
     async delete(subject: Addressable, change?: Bundler | string): Promise<Muid> {
@@ -31,8 +32,8 @@ export class Property extends Container {
     }
 
     async has(subject: Addressable, asOf?: AsOf): Promise<boolean> {
-        const result = await this.database.store.getEntryByKey(this.address, subject.address, asOf);
-        return result !== undefined;
+        const entry = await this.database.store.getEntryByKey(this.address, subject.address, asOf);
+        return entry && !entry.deletion;
     }
 
 }

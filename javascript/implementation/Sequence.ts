@@ -29,7 +29,7 @@ export class Sequence extends Container {
      * @returns
      */
     async push(value: Value | Container, change?: Bundler | string): Promise<Muid> {
-        return await this.addEntry(true, value, change);
+        return await this.addEntry(undefined, value, change);
     }
 
     async move(
