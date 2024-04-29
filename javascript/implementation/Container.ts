@@ -1,6 +1,6 @@
 import { Bundler } from "./Bundler";
-import { Value, KeyType, Muid, AsOf } from "./typedefs";
-import { muidToBuilder, wrapValue, wrapKey, ensure } from "./utils";
+import { Value, KeyType, Muid, } from "./typedefs";
+import { muidToBuilder, wrapValue, wrapKey, ensure, } from "./utils";
 import { Deletion } from "./Deletion";
 import { Inclusion } from "./Inclusion";
 import { Database } from "./Database";
@@ -13,31 +13,11 @@ export class Container extends Addressable {
     protected static readonly DELETION = new Deletion();
     protected static readonly INCLUSION = new Inclusion();
 
-    /**
-     * I can't import List, Directory, etc. into this file because it will cause the inherits clauses to break.
-     * So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
-     * See factories.ts for the actual implementation.
-     *
-     * The backref capability would allow you to find containers pointing to this container as of a particular time.
-     */
-    static _getBackRefsFunction: (a: Database, b: Container, c?: AsOf) => AsyncGenerator<[KeyType | Muid | undefined, Container], void>;
-
     protected constructor(
         database: Database,
         address: Muid,
         readonly behavior: Behavior) {
         super(database, address);
-    }
-
-    /**
-     * Starts an async iterator that returns all the containers pointing to the object in question.
-     * Note: the behavior of this method may change to only include backref to lists and vertices
-     * (e.g. those connections that are popped rather than overwritten, so I know when they're removed)
-     * @param asOf Effective time to look at.
-     * @returns an async generator of [key, Container], where key is they Directory key, or List entry muid, or undefined for Box
-     */
-    public getBackRefs(asOf?: AsOf): AsyncGenerator<[KeyType | Muid | undefined, Container], void> {
-        return Container._getBackRefsFunction(this.database, this, asOf);
     }
 
     public toString(): string {
@@ -77,8 +57,8 @@ export class Container extends Addressable {
      * @returns a promise the resolves to the muid of the change
      */
     protected addEntry(
-        key?: KeyType | true | Addressable | Muid | [Muid | Container, Muid | Container],
-        value?: Value | Addressable | Deletion | Inclusion,
+        key?: KeyType | Addressable | [Addressable, Addressable],
+        value?: Value | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string):
         Promise<Muid> {
         let immediate = false;
@@ -100,29 +80,13 @@ export class Container extends Addressable {
 
         if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
             entryBuilder.setKey(wrapKey(key));
-        }
-
-        else if (key instanceof Addressable) {
-            entryBuilder.setDescribing(muidToBuilder(key.address));
-        }
-        else if (Array.isArray(key)) {
+        } else if (Array.isArray(key)) {
             const pair = new PairBuilder();
-            if ("address" in key[0]) { // Left is a container
-                pair.setLeft(muidToBuilder(key[0].address));
-            }
-            if ("address" in key[1]) { // Right is a container
-                pair.setRite(muidToBuilder(key[1].address));
-            }
-            if (!("address" in key[0])) { // Left is a muid
-                pair.setLeft(muidToBuilder(key[0]));
-            }
-            if (!("address" in key[1])) { // Right is a Muid
-                pair.setRite(muidToBuilder(key[1]));
-            }
+            pair.setLeft(muidToBuilder(key[0].address));
+            pair.setRite(muidToBuilder(key[1].address));
             entryBuilder.setPair(pair);
-        }
-        else if (typeof (key) == "object" && key.medallion) { // Key is a Muid
-            entryBuilder.setDescribing(muidToBuilder(key));
+        } else if (key instanceof Addressable) {
+            entryBuilder.setDescribing(muidToBuilder(key.address));
         }
 
         // TODO: check that the destination/value is compatible with Container
