@@ -84,7 +84,7 @@ it('from_to', async function () {
 it('edge_reorder', async function () {
     for (const store of [
         new MemoryStore(true),
-        // new IndexedDbStore('edge_reorder', true), TODO: fix bySource and byTarget indexes
+        new IndexedDbStore('edge_reorder', true),
     ]) {
         const instance = new Database(store);
         await instance.ready;
@@ -97,6 +97,7 @@ it('edge_reorder', async function () {
         const beforeX = generateTimestamp();
         const x = await p.createEdge(a, b);
         const y = await p.createEdge(a, b);
+        const afterX = generateTimestamp();
 
         const edges1 = await a.getEdgesFrom();
         ensure(edges1.length == 2 && edges1[0].equals(x) && edges1[1].equals(y), edges1.toString());
@@ -105,5 +106,12 @@ it('edge_reorder', async function () {
 
         const edges2 = await a.getEdgesFrom();
         ensure(edges2.length == 2 && edges2[0].equals(y) && edges2[1].equals(x), edges2.toString());
+
+        const edges3 = await b.getEdgesTo(afterX);
+        ensure(edges3.length == 2 && edges3[0].equals(x) && edges3[1].equals(y), edges3.toString());
+
+        const edges4 = await b.getEdgesTo();
+        ensure(edges4.length == 2 && edges4[0].equals(y) && edges4[1].equals(x), edges4.toString());
+
     }
 });

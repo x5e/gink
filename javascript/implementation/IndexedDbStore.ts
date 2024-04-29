@@ -50,7 +50,8 @@ import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders
 import { PromiseChainLock } from "./PromiseChainLock";
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
-    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries" | "identities")[], "readwrite">;
+    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries" | "identities")[],
+    "readwrite">;
 
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
@@ -136,9 +137,12 @@ export class IndexedDbStore implements Store {
                 // The "entries" store has objects of type Entry (from typedefs)
                 const entries = db.createObjectStore('entries', { keyPath: "placementId" });
                 entries.createIndex("by-container-key-placement", ["containerId", "effectiveKey", "placementId"]);
+
+                // ideally the next three indexes would be partial indexes, covering only sequences and edges
+                // it might be worth pulling them out into separate lookup tables.
                 entries.createIndex("locations", ["entryId", "placementId"]);
-                entries.createIndex("sources", "sourceList", { multiEntry: true, unique: false });
-                entries.createIndex("targets", "targetList", { multiEntry: true, unique: false });
+                entries.createIndex("sources", ["sourceList", "effectiveKey", "placementId"]);
+                entries.createIndex("targets", ["targetList", "effectiveKey", "placementId"]);
             },
         });
         this.initialized = true;
@@ -502,18 +506,20 @@ export class IndexedDbStore implements Store {
         return undefined;
     }
 
-    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<string, Entry>> {
-        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
-        const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
-        const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
-
-        let clearanceTime: Timestamp = 0;
-        const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]]);
+    async getClearanceTime(trxn: Transaction, muidTuple: MuidTuple, asOfTs: Timestamp): Promise<Timestamp> {
+        const clearancesSearch = IDBKeyRange.bound([muidTuple], [muidTuple, [asOfTs]]);
         const clearancesCursor = await trxn.objectStore("clearances").openCursor(clearancesSearch, "prev");
         if (clearancesCursor) {
-            clearanceTime = clearancesCursor.value.clearanceId[0];
+            return <Timestamp> clearancesCursor.value.clearanceId[0];
         }
+        return <Timestamp>0;
+    }
 
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<string, Entry>> {
+        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
+        const desiredSrc: MuidTuple = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
+        const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
+        const clearanceTime = await this.getClearanceTime(<Transaction><unknown>trxn, desiredSrc, asOfTs);
         const lower = [desiredSrc, Behavior.DIRECTORY];
         const searchRange = IDBKeyRange.lowerBound(lower);
         let cursor = await trxn.objectStore("entries").index("by-container-key-placement")
@@ -540,20 +546,19 @@ export class IndexedDbStore implements Store {
         await this.ready;
         const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp() + 1;
         const indexable = dehydrate(vertex);
-        let unfiltered: Entry[] = [];
-        if (source) {
-            unfiltered = await this.wrapped.getAllFromIndex("entries", "sources", indexable);
-        } else {
-            unfiltered = await this.wrapped.getAllFromIndex("entries", "targets", indexable);
-        }
-        const trxn = this.wrapped.transaction(["removals"], "readonly");
+        const trxn = this.wrapped.transaction(["clearances", "entries", "removals"], "readonly");
+        const clearanceTime = await this.getClearanceTime(<Transaction><unknown>trxn, indexable, asOfTs);
+        const lower = [[indexable], -Infinity];
+        const upper = [[indexable], +Infinity];
+        const searchRange = IDBKeyRange.bound(lower, upper);
+        let entriesCursor = await trxn.objectStore("entries").index(
+            source ? "sources" : "targets").openCursor(searchRange);
         const returning: Entry[] = [];
         const removals = trxn.objectStore("removals");
-        for (let i = 0; i < unfiltered.length; i++) {
-            const entry: Entry = unfiltered[i];
-            if (entry.placementId[0] >= asOfTs) {
+        for (;entriesCursor; entriesCursor = await entriesCursor.continue()) {
+            const entry: Entry = entriesCursor.value;
+            if (entry.placementId[0] >= asOfTs || entry.placementId[0] < clearanceTime)
                 continue;
-            }
             const removalsBound = IDBKeyRange.bound([entry.placementId], [entry.placementId, [asOfTs]]);
             // TODO: This seek-per-entry isn't very efficient and should be a replaced with a scan.
             const removalsCursor = await removals.index("by-removing").openCursor(removalsBound);
