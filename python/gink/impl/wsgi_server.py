@@ -1,17 +1,19 @@
+"""
+WSGIServer is essentially a wrapper around an unknown, WSGI application (flask, django, etc).
+The point of this class is to integrate within the Database select loop.
+"""
+
 import socket
-import errno
 import io
 import sys
-
-from select import select
 from datetime import datetime
 
-class WSGIServer(object):
+class WSGIServer():
     address_family = socket.AF_INET
     socket_type = socket.SOCK_STREAM
     request_queue_size = 1024
 
-    def __init__(self, address, port=8081):
+    def __init__(self, address, port=8081, app=None):
         self.listen_socket = listen_socket = socket.socket(
             self.address_family,
             self.socket_type
@@ -28,48 +30,11 @@ class WSGIServer(object):
         self.server_port = port
         self.headers_set = []
 
-    def set_app(self, application):
-        self.application = application
+        # app would be the equivalent of a Flask app, or other WSGI compatible application
+        self.application = app
 
-    def serve_forever(self):
-        rlist, wlist, elist = [self.listen_socket], [], []
-
-        while True:
-            readables, writables, exceptions = select(rlist, wlist, elist)
-            for sock in readables:
-                if sock is self.listen_socket:
-                    try:
-                        conn, client_address = self.listen_socket.accept()
-                    except IOError as e:
-                        code, msg = e.args
-                        if code == errno.EINTR:
-                            continue
-                        else:
-                            raise
-                    rlist.append(conn)
-                else:
-                    try:
-                        request_data = sock.recv(1024)
-                    except ConnectionResetError as e:
-                        request_data = None
-                    if not request_data:
-                        sock.close()
-                        rlist.remove(sock)
-                    else:
-                        request_data = request_data.decode('utf-8')
-                        print(''.join(
-                            f'< {line}\n' for line in request_data.splitlines()
-                        ))
-                        # parse request
-                        (request_method, path, request_version) = self.parse_request(request_data)
-                        env = self.get_environ(
-                            request_data, request_method, path
-                        )
-                        result = self.application(env, self.start_response)
-                        self.finish_response(result, sock)
-
-    @classmethod
-    def parse_request(cls, text):
+    @staticmethod
+    def parse_request(text):
         request_line = text.splitlines()[0]
         request_line = request_line.rstrip('\r\n')
         return request_line.split()
@@ -78,7 +43,6 @@ class WSGIServer(object):
         env = {}
         # TODO: Ensure this follows PEP8 conventions
 
-        # Required WSGI variables
         env['wsgi.version'] = (1, 0)
         env['wsgi.url_scheme'] = 'http'
         env['wsgi.input'] = io.StringIO(request_data)
@@ -86,14 +50,13 @@ class WSGIServer(object):
         env['wsgi.multithread'] = False
         env['wsgi.multiprocess'] = False
         env['wsgi.run_once'] = False
-        # Required CGI variables
         env['REQUEST_METHOD'] = request_method
         env['PATH_INFO'] = path
         env['SERVER_NAME'] = self.server_name
         env['SERVER_PORT'] = str(self.server_port)
         return env
 
-    def start_response(self, status, response_headers, exc_info=None):
+    def start_response(self, status, response_headers):
         server_headers = [
             ('Date', datetime.now()),
             ('Server', 'WSGIServer 0.2'),

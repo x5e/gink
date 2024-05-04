@@ -52,7 +52,7 @@ class Database:
     def __init__(self,
                  store: Union[AbstractStore, str, None] = None,
                  identity = get_identity(),
-                 wsgi_server = None):
+                 web_server = None):
         setattr(Database, "_last", self)
         if isinstance(store, str):
             store = LmdbStore(store)
@@ -67,7 +67,11 @@ class Database:
         self._listeners = set()
         self._trackers = {}
         self._identity = identity
-        self._wsgi_server: WSGIServer = wsgi_server
+        self._wsgi_server: WSGIServer = None
+        # Web server would be a Flask app or other WSGI compatible app
+        if web_server:
+            # TODO: inherit host from provided app
+            self._wsgi_server = WSGIServer('localhost', app=web_server)
         self._sent_but_not_acked = set()
         self._logger = getLogger(self.__class__.__name__)
         self._callbacks: List[Callable[[BundleInfo], None]] = list()
@@ -319,8 +323,7 @@ class Database:
                             self._logger.info(''.join(
                                 f'< {line}\n' for line in decoded.splitlines()
                             ))
-                            # parse request
-                            (request_method, path, request_version) = self._wsgi_server.parse_request(request_data)
+                            (request_method, path, request_version) = self._wsgi_server.parse_request(decoded)
                             env = self._wsgi_server.get_environ(
                                 decoded, request_method, path
                             )
