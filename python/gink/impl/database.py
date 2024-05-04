@@ -300,7 +300,10 @@ class Database:
                     if isinstance(ready_reader, Connection):
                         for data in ready_reader.receive():
                             self._receive_data(data, ready_reader)
-                    elif ready_reader == self._wsgi_server.listen_socket:
+                        if ready_reader.is_closed():
+                            self._connections.remove(ready_reader)
+                            readers.remove(ready_reader)
+                    elif self._wsgi_server and ready_reader == self._wsgi_server.listen_socket:
                         try:
                             conn, client_address = self._wsgi_server.listen_socket.accept()
                         except BlockingIOError as e:
@@ -310,7 +313,7 @@ class Database:
                             else:
                                 raise
                         readers.append(conn)
-                    elif isinstance(ready_reader, Socket):
+                    elif self._wsgi_server and isinstance(ready_reader, Socket):
                         try:
                             request_data = ready_reader.recv(1024)
                         except ConnectionResetError as e:
@@ -323,7 +326,7 @@ class Database:
                             self._logger.info(''.join(
                                 f'< {line}\n' for line in decoded.splitlines()
                             ))
-                            (request_method, path, request_version) = self._wsgi_server.parse_request(decoded)
+                            (request_method, path, request_version) = WSGIServer.parse_request(decoded)
                             env = self._wsgi_server.get_environ(
                                 decoded, request_method, path
                             )
@@ -333,6 +336,7 @@ class Database:
                         sync_message = self._store.get_chain_tracker().to_greeting_message()
                         new_connection: Connection = ready_reader.accept(sync_message)
                         self._connections.add(new_connection)
+                        readers.append(new_connection)
                         self._logger.info("accepted incoming connection from %s", new_connection)
                     elif isinstance(ready_reader, SelectableConsole):
                         ready_reader.call_when_ready()
