@@ -14,10 +14,10 @@ export class Container extends Addressable {
     protected static readonly INCLUSION = new Inclusion();
 
     protected constructor(
-        database: Database,
+        readonly database: Database,
         address: Muid,
         readonly behavior: Behavior) {
-        super(database, address);
+        super(address);
     }
 
     public toString(): string {

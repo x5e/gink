@@ -1,9 +1,9 @@
 import { Container } from "./Container";
-import { Value, Muid, AsOf, } from "./typedefs";
+import { Value, Muid, AsOf, MuidTuple } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure } from "./utils";
+import { ensure, muidTupleToMuid, muidTupleToString } from "./utils";
 import { Database } from "./Database";
-import { interpret } from "./factories";
+import { construct, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 import { Addressable } from "./Addressable";
 
@@ -34,6 +34,18 @@ export class Property extends Container {
     async has(subject: Addressable, asOf?: AsOf): Promise<boolean> {
         const entry = await this.database.store.getEntryByKey(this.address, subject.address, asOf);
         return !!(entry && !entry.deletion);
+    }
+
+    async toMap(asOf?: AsOf): Promise<Map<string, Value | Container>> {
+        const entryMap = await this.database.store.getKeyedEntries(this.address, asOf);
+        const result: Map<string, Value | Container> = new Map();
+        for (const entry of entryMap.values()) {
+            const key = muidTupleToString(<MuidTuple>entry.effectiveKey);
+            const pointee = entry.pointeeList.length > 0 ? muidTupleToMuid(entry.pointeeList[0]) : undefined;
+            const val = entry.value !== undefined ? entry.value : await construct(this.database, pointee);
+            result.set(key, val);
+        }
+        return result;
     }
 
 }

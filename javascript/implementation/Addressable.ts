@@ -3,10 +3,7 @@ import { Muid } from "./typedefs";
 
 
 export class Addressable {
-    protected constructor(
-        readonly database: Database,
-        readonly address: Muid) {
-    }
+    protected constructor(readonly address: Muid) {}
 
     public equals(other: any): boolean {
         if (!(other instanceof Addressable)) return false;
