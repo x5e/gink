@@ -273,26 +273,22 @@ class Database:
             until = self.resolve_timestamp(until)
         context_manager = console or nullcontext()
         with context_manager:
-            socket_added = False
-            console_added = False
             # eventually will want to support epoll on platforms where its supported
             readers: List[Union[Listener, Connection, SelectableConsole, AbstractStore]] = []
-            while (until is None or generate_timestamp() < until):
-                if self._store.is_selectable():
+            if self._store.is_selectable():
                     readers.append(self._store)
-                for listener in self._listeners:
-                    readers.append(listener)
-                for connection in list(self._connections):
-                    if connection.is_closed():
-                        self._connections.remove(connection)
-                    else:
-                        readers.append(connection)
-                if self._wsgi_server and not socket_added:
-                    readers.append(self._wsgi_server.listen_socket)
-                    socket_added = True
-                if isinstance(console, SelectableConsole) and not console_added:
-                    readers.append(console)
-                    console_added = True
+            for listener in self._listeners:
+                readers.append(listener)
+            for connection in list(self._connections):
+                if connection.is_closed():
+                    self._connections.remove(connection)
+                else:
+                    readers.append(connection)
+            if self._wsgi_server:
+                readers.append(self._wsgi_server.listen_socket)
+            if isinstance(console, SelectableConsole):
+                readers.append(console)
+            while (until is None or generate_timestamp() < until):
                 if console:
                     console.refresh()
                 ready_readers, _, _ = select(readers, [], [], 0.1)
