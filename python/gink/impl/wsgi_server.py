@@ -56,14 +56,14 @@ class WSGIServer():
         env['SERVER_PORT'] = str(self.server_port)
         return env
 
-    def start_response(self, status, response_headers):
+    def start_response(self, status, response_headers, exc_info=None):
         server_headers = [
             ('Date', datetime.now()),
             ('Server', 'WSGIServer 0.2'),
         ]
         self.headers_set = [status, response_headers + server_headers]
-        # TODO: To adhere to WSGI specification the start_response must return
-        # a 'write' callable.
+        # TODO: Need to return a "write" callable to adhere to WSGI specifications
+        # https://peps.python.org/pep-3333/#the-write-callable
 
     def finish_response(self, result, conn):
         status, response_headers = self.headers_set

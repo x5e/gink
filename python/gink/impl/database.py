@@ -67,7 +67,7 @@ class Database:
         self._listeners = set()
         self._trackers = {}
         self._identity = identity
-        self._wsgi_server: WSGIServer = None
+        self._wsgi_server: Optional[WSGIServer] = None
         # Web server would be a Flask app or other WSGI compatible app
         if web_server:
             # TODO: inherit host from provided app
