@@ -10,7 +10,7 @@ from sys import stdout
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 from contextlib import nullcontext
-from socket import socket
+from socket import socket as Socket
 from errno import EINTR
 
 # builders
@@ -274,7 +274,7 @@ class Database:
         context_manager = console or nullcontext()
         with context_manager:
             # eventually will want to support epoll on platforms where its supported
-            readers: List[Union[Listener, Connection, SelectableConsole, AbstractStore]] = []
+            readers: List[Union[Listener, Connection, SelectableConsole, AbstractStore, Socket]] = []
             if self._store.is_selectable():
                     readers.append(self._store)
             for listener in self._listeners:
@@ -306,7 +306,7 @@ class Database:
                             else:
                                 raise
                         readers.append(conn)
-                    elif isinstance(ready_reader, socket):
+                    elif isinstance(ready_reader, Socket):
                         try:
                             request_data = ready_reader.recv(1024)
                         except ConnectionResetError as e:
@@ -315,15 +315,14 @@ class Database:
                             ready_reader.close()
                             readers.remove(ready_reader)
                         else:
-                            request_data = request_data.decode('utf-8')
+                            decoded = request_data.decode('utf-8')
                             self._logger.info(''.join(
-                                f'< {line}\n' for line in request_data.splitlines()
+                                f'< {line}\n' for line in decoded.splitlines()
                             ))
                             # parse request
                             (request_method, path, request_version) = self._wsgi_server.parse_request(request_data)
                             env = self._wsgi_server.get_environ(
-                                request_data, request_method, path,
-                                self._wsgi_server.server_name, self._wsgi_server.server_port
+                                decoded, request_method, path
                             )
                             result = self._wsgi_server.application(env, self._wsgi_server.start_response)
                             self._wsgi_server.finish_response(result, ready_reader)
