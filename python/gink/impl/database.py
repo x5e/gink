@@ -2,7 +2,7 @@
 """ contains the Database class """
 
 # standard python modules
-from typing import Optional, Set, Union, Iterable, Dict, List, Callable, Mapping
+from typing import Optional, Set, Union, Iterable, Dict, List, Callable
 from datetime import datetime, date, timedelta
 from threading import Lock
 from select import select
@@ -10,6 +10,8 @@ from sys import stdout
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 from contextlib import nullcontext
+from socket import socket
+from errno import EINTR
 
 # builders
 from .builders import SyncMessage, ContainerBuilder
@@ -30,7 +32,8 @@ from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
 from .selectable_console import SelectableConsole
 from .bundle_wrapper import BundleWrapper
-from .utilities import generate_timestamp, experimental, get_identity, is_certainly_gone, generate_medallion
+from .wsgi_server import WSGIServer
+from .utilities import generate_timestamp, experimental, get_identity, generate_medallion
 
 
 class Database:
@@ -48,7 +51,8 @@ class Database:
 
     def __init__(self,
                  store: Union[AbstractStore, str, None] = None,
-                 identity = get_identity()):
+                 identity = get_identity(),
+                 wsgi_server = None):
         setattr(Database, "_last", self)
         if isinstance(store, str):
             store = LmdbStore(store)
@@ -63,6 +67,7 @@ class Database:
         self._listeners = set()
         self._trackers = {}
         self._identity = identity
+        self._wsgi_server: WSGIServer = wsgi_server
         self._sent_but_not_acked = set()
         self._logger = getLogger(self.__class__.__name__)
         self._callbacks: List[Callable[[BundleInfo], None]] = list()
@@ -268,9 +273,11 @@ class Database:
             until = self.resolve_timestamp(until)
         context_manager = console or nullcontext()
         with context_manager:
+            socket_added = False
+            console_added = False
+            # eventually will want to support epoll on platforms where its supported
+            readers: List[Union[Listener, Connection, SelectableConsole, AbstractStore]] = []
             while (until is None or generate_timestamp() < until):
-                # eventually will want to support epoll on platforms where its supported
-                readers: List[Union[Listener, Connection, SelectableConsole, AbstractStore]] = []
                 if self._store.is_selectable():
                     readers.append(self._store)
                 for listener in self._listeners:
@@ -280,8 +287,12 @@ class Database:
                         self._connections.remove(connection)
                     else:
                         readers.append(connection)
-                if isinstance(console, SelectableConsole):
+                if self._wsgi_server and not socket_added:
+                    readers.append(self._wsgi_server.listen_socket)
+                    socket_added = True
+                if isinstance(console, SelectableConsole) and not console_added:
                     readers.append(console)
+                    console_added = True
                 if console:
                     console.refresh()
                 ready_readers, _, _ = select(readers, [], [], 0.1)
@@ -289,6 +300,37 @@ class Database:
                     if isinstance(ready_reader, Connection):
                         for data in ready_reader.receive():
                             self._receive_data(data, ready_reader)
+                    elif ready_reader == self._wsgi_server.listen_socket:
+                        try:
+                            conn, client_address = self._wsgi_server.listen_socket.accept()
+                        except BlockingIOError as e:
+                            code, msg = e.args
+                            if code == EINTR:
+                                continue
+                            else:
+                                raise
+                        readers.append(conn)
+                    elif isinstance(ready_reader, socket):
+                        try:
+                            request_data = ready_reader.recv(1024)
+                        except ConnectionResetError as e:
+                            request_data = None
+                        if not request_data:
+                            ready_reader.close()
+                            readers.remove(ready_reader)
+                        else:
+                            request_data = request_data.decode('utf-8')
+                            self._logger.info(''.join(
+                                f'< {line}\n' for line in request_data.splitlines()
+                            ))
+                            # parse request
+                            (request_method, path, request_version) = self._wsgi_server.parse_request(request_data)
+                            env = self._wsgi_server.get_environ(
+                                request_data, request_method, path,
+                                self._wsgi_server.server_name, self._wsgi_server.server_port
+                            )
+                            result = self._wsgi_server.application(env, self._wsgi_server.start_response)
+                            self._wsgi_server.finish_response(result, ready_reader)
                     elif isinstance(ready_reader, Listener):
                         sync_message = self._store.get_chain_tracker().to_greeting_message()
                         new_connection: Connection = ready_reader.accept(sync_message)
