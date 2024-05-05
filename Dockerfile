@@ -1,7 +1,7 @@
 FROM debian:latest
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update --fix-missing && apt-get upgrade -y
-RUN apt-get install -y make
+RUN apt-get install -y make unzip
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
 ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
@@ -15,6 +15,10 @@ RUN if [ `uname -m` != aarch64 ]; then apt-get update && apt-get install gnupg w
   apt-get install google-chrome-stable -y --no-install-recommends && \
   rm -rf /var/lib/apt/lists/* && export CHROME_BIN=/usr/bin/chrome; fi
 RUN if [ `uname -m` == aarch64 ]; then apt update && apt install chromium-browser && export CHROME_BIN=/usr/bin/chromium-browser; fi
+
+# Install ChromeDriver for selenium tests
+RUN wget https://storage.googleapis.com/chrome-for-testing-public/124.0.6367.91/linux64/chromedriver-linux64.zip && unzip chromedriver-linux64.zip
+RUN mv chromedriver-linux64/chromedriver /usr/bin/chromedriver
 
 ENV GINK=/opt/gink
 RUN mkdir -p $GINK
@@ -45,7 +49,6 @@ COPY javascript ./javascript
 RUN mv node_modules ./javascript/
 RUN make
 WORKDIR $GINK/javascript
-
 
 # JavaScript/TypeScript unit-tests
 RUN npm test

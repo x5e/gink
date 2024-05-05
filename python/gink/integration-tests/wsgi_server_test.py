@@ -1,3 +1,7 @@
+"""
+This test ensures a wsgi webserver can be passed into a gink database
+and the endpoints will be reachable as expected.
+"""
 from ..impl.database import Database
 from ..impl.memory_store import MemoryStore
 from selenium import webdriver
@@ -20,6 +24,9 @@ p.start()
 sleep(0.1)
 options = webdriver.ChromeOptions()
 options.add_argument("--headless=new")
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-gpu')
+
 driver = webdriver.Chrome(options=options)
 driver.get("http://localhost:8081/hello")
 elem = driver.find_element(By.ID, "test")
@@ -27,4 +34,3 @@ assert elem.text == "Hello World"
 
 driver.quit()
 p.terminate()
-

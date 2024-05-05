@@ -28,8 +28,6 @@ jobs:
       run: cd ../python && pip3 install .[test] --break-system-packages
     - name: Run Python unit tests
       run: cd ../python && nose2
-    - name: Run Python wsgi server integration test
-      run: cd ../python && python3 -m gink.integration-tests.wsgi_server_test
     - name: Run JS unit tests
       run: npm run test
     - name: Run JS node-client test
