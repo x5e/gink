@@ -23,7 +23,7 @@ import {
     Clearance,
     Entry, Indexable,
     IndexedDbStoreSchema,
-    KeyType,
+    UserKey,
     Medallion,
     Muid,
     MuidTuple,
@@ -474,7 +474,7 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction("containers", "readonly").objectStore('containers').get(<MuidTuple>addressTuple);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: UserKey | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");

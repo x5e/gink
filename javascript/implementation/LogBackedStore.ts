@@ -4,7 +4,7 @@ import {
     ChainStart,
     Bytes,
     AsOf,
-    KeyType,
+    UserKey,
     ClaimedChain,
     ActorId,
     BroadcastFunc,
@@ -278,7 +278,7 @@ export class LogBackedStore implements Store {
         return this.internalStore.getContainerBytes(address);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType, asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: UserKey, asOf?: AsOf): Promise<Entry | undefined> {
         await this.ready;
         return this.internalStore.getEntryByKey(container, key, asOf);
     }

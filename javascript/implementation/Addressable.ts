@@ -11,4 +11,8 @@ export class Addressable {
             (other.address.timestamp == this.address.timestamp));
     }
 
+    get timestamp() { return this.address.timestamp; }
+    get medallion() { return this.address.medallion; }
+    get offset() { return this.address.offset; }
+
 }

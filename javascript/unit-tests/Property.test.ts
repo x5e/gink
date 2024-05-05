@@ -32,9 +32,9 @@ it('Property.toMap', async function () {
         await property.set(gd, "foobar");
         await property.set(property, true);
         const asMap = await property.toMap();
-        //console.log(asMap);
+        const asObject = Object.fromEntries(asMap.entries());
         ensure(asMap.size == 2);
-        ensure(asMap.get('FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00004') === "foobar");
-        ensure(asMap.get('FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00009') === true);
+        ensure(asObject["-1,-1,4"] === "foobar", Array.from(asMap.keys()).toString());
+        ensure(asObject["-1,-1,9"] === true, Array.from(asMap.keys()).toString());
     }
 });

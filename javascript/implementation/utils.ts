@@ -3,7 +3,7 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry,  ActorId, Timestamp } from "./typedefs";
+import { Muid, Medallion, Value, MuidTuple, UserKey, EdgeData, Entry,  ActorId, Timestamp } from "./typedefs";
 import {
     MuidBuilder,
     ValueBuilder,
@@ -126,7 +126,7 @@ export function wrapKey(key: number | string | Uint8Array): KeyBuilder {
  * @param keyBuilder
  * @returns
  */
-export function unwrapKey(keyBuilder: KeyBuilder): KeyType {
+export function unwrapKey(keyBuilder: KeyBuilder): UserKey {
     ensure(keyBuilder);
     if (keyBuilder.hasCharacters()) {
         return keyBuilder.getCharacters();

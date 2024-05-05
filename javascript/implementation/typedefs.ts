@@ -12,8 +12,8 @@ export type Offset = number;
 export type DirPath = string;
 export type FilePath = string;
 export type NumberStr = string;
-export type KeyType = number | string | Bytes;
-export type Value = number | string | boolean | null | Bytes | Map<KeyType, Value> | Array<Value> | Date;
+export type UserKey = number | string | Bytes;
+export type Value = number | string | boolean | null | Bytes | Map<UserKey, Value> | Array<Value> | Date;
 export type BundleInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, string];
 export type ChangeSetOffset = number;
 export type AsOf = Timestamp | Date | ChangeSetOffset;
@@ -21,7 +21,7 @@ export type MuidTuple = [Timestamp, Medallion, Offset];
 export type Cookies = Map<string, string>;
 export type Indexable = MuidTuple;
 export type ActorId = number;  // process ID on the server side, something more complex in the browser
-export type EffectiveKey = KeyType | MuidTuple | [MuidTuple, MuidTuple] | [] | [string];
+export type EffectiveKey = UserKey | MuidTuple | [MuidTuple, MuidTuple] | [] | [string];
 
 export interface CommitListener {
     (commitInfo: BundleInfo): Promise<void>;
@@ -149,7 +149,7 @@ export interface IndexedDbStoreSchema extends DBSchema {
         value: Entry;
         key: MuidTuple;
         indexes: {
-            "by-container-key-placement": [MuidTuple, KeyType | Timestamp | MuidTuple | [], MuidTuple];
+            "by-container-key-placement": [MuidTuple, UserKey | Timestamp | MuidTuple | [], MuidTuple];
             'pointees': Indexable;
             'locations': [MuidTuple, MuidTuple];
             'sources': Indexable;

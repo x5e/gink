@@ -1,6 +1,6 @@
 import { ChainTracker } from './ChainTracker';
 import { Behavior, ChangeBuilder, BundleBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
-import { KeyType, EffectiveKey, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple, Movement } from "./typedefs";
+import { UserKey, EffectiveKey, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple, Movement } from "./typedefs";
 import {
     ensure,
     unwrapKey,
@@ -8,7 +8,8 @@ import {
     muidToTuple,
     muidToString,
     dehydrate,
-    intToHex
+    intToHex,
+    muidTupleToString
 } from "./utils";
 import { Container } from "./Container";
 
@@ -45,10 +46,15 @@ export function getEffectiveKey(entryBuilder: EntryBuilder, entryMuid: Muid): Ef
 }
 
 export function effectiveKeyToString(effectiveKey: EffectiveKey): string {
+    if (Array.isArray(effectiveKey)) {
+        if (effectiveKey.length == 3) {
+            return muidTupleToString(<MuidTuple>effectiveKey);
+        }
+        return effectiveKey.toString();
+    }
     if (effectiveKey instanceof Uint8Array) return `(${effectiveKey})`;
     if (typeof(effectiveKey) == "number" || typeof(effectiveKey) == "string")
         return JSON.stringify(effectiveKey);
-    return effectiveKey.toString();
 }
 
 export function extractMovement(changeBuilder: ChangeBuilder, bundleInfo: BundleInfo, offset: number): Movement {
@@ -142,7 +148,7 @@ export function buildChainTracker(chainInfos: Iterable<BundleInfo>): ChainTracke
     return hasMap;
 }
 
-export function userKeyToEffectiveKey(key: KeyType | Muid | [Muid | Container, Muid | Container]):
+export function userKeyToEffectiveKey(key: UserKey | Muid | [Muid | Container, Muid | Container]):
     EffectiveKey {
     if (key instanceof Uint8Array)
         return [key.toString()];
