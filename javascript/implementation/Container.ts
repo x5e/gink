@@ -1,6 +1,6 @@
 import { Bundler } from "./Bundler";
-import { Value, KeyType, Muid, } from "./typedefs";
-import { muidToBuilder, wrapValue, wrapKey, ensure, } from "./utils";
+import { Value, KeyType, Muid, AsOf, } from "./typedefs";
+import { muidToBuilder, wrapValue, wrapKey, } from "./utils";
 import { Deletion } from "./Deletion";
 import { Inclusion } from "./Inclusion";
 import { Database } from "./Database";
@@ -23,6 +23,10 @@ export class Container extends Addressable {
     public toString(): string {
         const address = this.address;
         return `Container(${address.timestamp},${address.medallion},${address.offset})`;
+    }
+
+    async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+        return Promise.resolve(`"${this.toString()}"`);
     }
 
     public async clear(purge?: boolean, bundlerOrComment?: Bundler | string): Promise<Muid> {

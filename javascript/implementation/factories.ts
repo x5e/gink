@@ -84,25 +84,15 @@ export async function interpret(entry: Entry, database: Database): Promise<Conta
 
 }
 
-export async function toJson(value: Value | Container, indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
-    ensure(indent === false, "indent not implemented");
-    if (value instanceof Container) {
-        if (value instanceof Directory || value instanceof Sequence || value instanceof Box) {
-            return await value.toJson(indent, asOf, seen);
-        }
-        if (value instanceof Role || value instanceof PairSet || value instanceof PairMap) {
-            return await value.toJson(indent, asOf, seen);
-        }
-        if (value instanceof KeySet) {
-            return await value.toJson(indent, asOf, seen);
-        }
-        throw new Error(`container type not recognized: ${value}`);
-    } else {
-        return valueToJson(value);
-    }
+export async function toJson(
+        value: Value | Container,
+        indent: number | boolean = false,
+        asOf?: AsOf, seen?: Set<string>): Promise<string> {
+    return value instanceof Container ? (await value.toJson(indent, asOf, seen)) : valueToJson(value);
 }
 
-export async function convertEntryBytes(database: Database, entryBytes: Bytes, entryAddress?: Muid): Promise<Value | Container | undefined> {
+export async function convertEntryBytes(database: Database, entryBytes: Bytes, entryAddress?: Muid):
+        Promise<Value | Container | undefined> {
     ensure(entryBytes instanceof Uint8Array);
     const entryBuilder = <EntryBuilder>EntryBuilder.deserializeBinary(entryBytes);
     if (entryBuilder.hasValue()) {
