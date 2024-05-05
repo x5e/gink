@@ -332,6 +332,8 @@ class Database:
                             )
                             result = self._wsgi_server.application(env, self._wsgi_server.start_response)
                             self._wsgi_server.finish_response(result, ready_reader)
+                            ready_reader.close()
+                            readers.remove(ready_reader)
                     elif isinstance(ready_reader, Listener):
                         sync_message = self._store.get_chain_tracker().to_greeting_message()
                         new_connection: Connection = ready_reader.accept(sync_message)

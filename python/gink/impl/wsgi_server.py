@@ -65,10 +65,10 @@ class WSGIServer():
         ]
         self.headers_set = [status, response_headers + server_headers]
 
-        def write(string: str):
-            raise NotImplementedError("Using the write callable has not been implemented.")
+        return self.write
 
-        return write
+    def write(self, string: str):
+            raise NotImplementedError("Using the write callable has not been implemented.")
 
     def finish_response(self, result: Iterable[bytes], conn: socket.socket):
         status, response_headers = self.headers_set
@@ -77,7 +77,10 @@ class WSGIServer():
             response += '{0}: {1}\r\n'.format(*header)
         response += '\r\n'
         for data in result:
-            response += data.decode('utf-8')
+            if isinstance(data, bytes):
+                response += data.decode('utf-8')
+            else:
+                response += data
         print(f'HTTP/1.1 {status}')
         response_bytes = response.encode()
         conn.sendall(response_bytes)
