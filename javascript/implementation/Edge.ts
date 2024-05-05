@@ -15,10 +15,10 @@ export class Edge extends Addressable {
     private value?: Value;
 
     constructor(
-        database: Database,
+        readonly database: Database,
         address: Muid,
         data: EdgeData) {
-        super(database, address);
+        super(address);
         this.setFromEdgeData(data);
     }
 

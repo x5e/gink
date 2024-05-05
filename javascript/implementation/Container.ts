@@ -1,6 +1,6 @@
 import { Bundler } from "./Bundler";
-import { Value, KeyType, Muid, } from "./typedefs";
-import { muidToBuilder, wrapValue, wrapKey, ensure, } from "./utils";
+import { Value, UserKey, Muid, AsOf, } from "./typedefs";
+import { muidToBuilder, wrapValue, wrapKey, } from "./utils";
 import { Deletion } from "./Deletion";
 import { Inclusion } from "./Inclusion";
 import { Database } from "./Database";
@@ -14,15 +14,19 @@ export class Container extends Addressable {
     protected static readonly INCLUSION = new Inclusion();
 
     protected constructor(
-        database: Database,
+        readonly database: Database,
         address: Muid,
         readonly behavior: Behavior) {
-        super(database, address);
+        super(address);
     }
 
     public toString(): string {
         const address = this.address;
         return `Container(${address.timestamp},${address.medallion},${address.offset})`;
+    }
+
+    async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+        return Promise.resolve(`"${this.toString()}"`);
     }
 
     public async clear(purge?: boolean, bundlerOrComment?: Bundler | string): Promise<Muid> {
@@ -57,7 +61,7 @@ export class Container extends Addressable {
      * @returns a promise the resolves to the muid of the change
      */
     protected addEntry(
-        key?: KeyType | Addressable | [Addressable, Addressable],
+        key?: UserKey | Addressable | [Addressable, Addressable],
         value?: Value | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string):
         Promise<Muid> {

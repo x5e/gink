@@ -22,3 +22,19 @@ it('Property.basics', async function () {
         ensure(fromBefore == "foobar");
     }
 });
+
+it('Property.toMap', async function () {
+    for (const store of [new IndexedDbStore('Property.toMap', true), new MemoryStore(true)]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const gd = instance.getGlobalDirectory();
+        const property = await instance.getGlobalProperty();
+        await property.set(gd, "foobar");
+        await property.set(property, true);
+        const asMap = await property.toMap();
+        const asObject = Object.fromEntries(asMap.entries());
+        ensure(asMap.size == 2);
+        ensure(asObject["-1,-1,4"] === "foobar", Array.from(asMap.keys()).toString());
+        ensure(asObject["-1,-1,9"] === true, Array.from(asMap.keys()).toString());
+    }
+});

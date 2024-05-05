@@ -4,7 +4,7 @@ import {
     ChainStart,
     Muid,
     Bytes,
-    KeyType,
+    UserKey,
     BundleInfo,
     ClaimedChain,
     Entry,
@@ -83,7 +83,7 @@ export interface Store {
     getContainerBytes: (address: Muid) => Promise<Bytes | undefined>;
 
     getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined>;
-    getEntryByKey(container: Muid, key?: KeyType | Muid | [Muid , Muid], asOf?: AsOf): Promise<Entry | undefined>;
+    getEntryByKey(container: Muid, key?: UserKey | Muid | [Muid , Muid], asOf?: AsOf): Promise<Entry | undefined>;
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<string, Entry>>;
 
     /**

@@ -22,7 +22,7 @@ import {
     Clearance,
     Entry,
     Indexable,
-    KeyType,
+    UserKey,
     Medallion,
     Muid,
     MuidTuple,
@@ -291,7 +291,7 @@ export class MemoryStore implements Store {
         throw new Error(`don't know how to interpret asOf=${asOf}`);
     }
 
-    getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
+    getEntryByKey(container?: Muid, key?: UserKey | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
         try {
             return Promise.resolve(this.getEntryByKeyHelper(container, key, asOf));
         } catch (error) {
@@ -299,7 +299,7 @@ export class MemoryStore implements Store {
         }
     }
 
-    getEntryByKeyHelper(container?: Muid, key?: KeyType | Muid | [Muid, Muid], asOf?: AsOf): Entry | undefined {
+    getEntryByKeyHelper(container?: Muid, key?: UserKey | Muid | [Muid, Muid], asOf?: AsOf): Entry | undefined {
         const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const desiredSrc: [number, number, number] = [
             container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
