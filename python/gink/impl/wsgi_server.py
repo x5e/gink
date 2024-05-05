@@ -8,7 +8,7 @@ from inspect import getfullargspec
 from io import StringIO
 from sys import stderr
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, Optional
 
 class WSGIServer():
     address_family = socket.AF_INET
@@ -58,7 +58,7 @@ class WSGIServer():
             'SERVER_PORT': str(self.server_port)
         }
 
-    def start_response(self, status, response_headers, exc_info: tuple=None):
+    def start_response(self, status, response_headers, exc_info: Optional[tuple]=None):
         server_headers = [
             ('Date', datetime.now()),
             ('Server', 'WSGIServer 0.2'),
