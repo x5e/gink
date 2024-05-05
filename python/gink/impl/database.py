@@ -71,7 +71,7 @@ class Database:
         self._wsgi_server: Optional[WSGIServer] = None
         # Web server would be a Flask app or other WSGI compatible app
         if web_server:
-            self._wsgi_server = WSGIServer(web_server_addr, app=web_server)
+            self._wsgi_server = WSGIServer(web_server, address=web_server_addr)
         self._sent_but_not_acked = set()
         self._logger = getLogger(self.__class__.__name__)
         self._callbacks: List[Callable[[BundleInfo], None]] = list()
@@ -311,7 +311,7 @@ class Database:
                             if code == EINTR:
                                 continue
                             else:
-                                raise
+                                raise e
                         readers.append(conn)
                     elif self._wsgi_server and isinstance(ready_reader, Socket):
                         try:

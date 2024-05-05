@@ -4,6 +4,7 @@ The point of this class is to integrate within the Database select loop.
 """
 
 import socket
+from inspect import getfullargspec
 from io import StringIO
 from sys import stderr
 from datetime import datetime
@@ -14,7 +15,12 @@ class WSGIServer():
     socket_type = socket.SOCK_STREAM
     request_queue_size = 1024
 
-    def __init__(self, address: tuple = ('localhost', 8081), app=None):
+    def __init__(self, app, address: tuple = ('localhost', 8081)):
+        # app would be the equivalent of a Flask app, or other WSGI compatible application
+        app_args = getfullargspec(app).args
+        assert "environ" in app_args and "start_response" in app_args, "Application is not WSGI compatible"
+        self.application = app
+
         self.listen_socket = listen_socket = socket.socket(
             self.address_family,
             self.socket_type
@@ -31,9 +37,6 @@ class WSGIServer():
         self.server_port = port
         self.headers_set: list[str] = []
 
-        # app would be the equivalent of a Flask app, or other WSGI compatible application
-        self.application = app
-
     @staticmethod
     def parse_request(text: str):
         request_line = text.splitlines()[0]
@@ -41,7 +44,6 @@ class WSGIServer():
         return request_line.split()
 
     def get_environ(self, request_data, request_method, path):
-        # TODO: Ensure this follows PEP8 conventions
         return {
             'wsgi.version':  (1, 0),
             'wsgi.url_scheme': 'http',
@@ -62,8 +64,11 @@ class WSGIServer():
             ('Server', 'WSGIServer 0.2'),
         ]
         self.headers_set = [status, response_headers + server_headers]
-        # TODO: Need to return a "write" callable to adhere to WSGI specifications
-        # https://peps.python.org/pep-3333/#the-write-callable
+
+        def write(string: str):
+            raise NotImplementedError("Using the write callable has not been implemented.")
+
+        return write
 
     def finish_response(self, result: Iterable[bytes], conn: socket.socket):
         status, response_headers = self.headers_set
