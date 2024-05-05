@@ -58,11 +58,16 @@ class WSGIServer():
             'SERVER_PORT': str(self.server_port)
         }
 
-    def start_response(self, status, response_headers, exc_info=None):
+    def start_response(self, status, response_headers, exc_info: tuple=None):
         server_headers = [
             ('Date', datetime.now()),
             ('Server', 'WSGIServer 0.2'),
         ]
+
+        # If headers have already been sent
+        if exc_info and self.headers_set:
+            raise exc_info[1].with_traceback(exc_info[2])
+
         self.headers_set = [status, response_headers + server_headers]
 
         return self.write
