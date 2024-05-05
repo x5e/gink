@@ -52,7 +52,8 @@ class Database:
     def __init__(self,
                  store: Union[AbstractStore, str, None] = None,
                  identity = get_identity(),
-                 web_server = None):
+                 web_server = None,
+                 web_server_addr: tuple = ('localhost', 8081)):
         setattr(Database, "_last", self)
         if isinstance(store, str):
             store = LmdbStore(store)
@@ -70,8 +71,7 @@ class Database:
         self._wsgi_server: Optional[WSGIServer] = None
         # Web server would be a Flask app or other WSGI compatible app
         if web_server:
-            # TODO: inherit host from provided app
-            self._wsgi_server = WSGIServer('localhost', app=web_server)
+            self._wsgi_server = WSGIServer(web_server_addr, app=web_server)
         self._sent_but_not_acked = set()
         self._logger = getLogger(self.__class__.__name__)
         self._callbacks: List[Callable[[BundleInfo], None]] = list()

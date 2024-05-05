@@ -37,6 +37,9 @@ RUN mypy gink/impl gink/tests
 # Python unit-tests
 RUN python3 -m nose2
 
+# Python integration tests
+RUN python3 -m gink.integration-tests.wsgi_server_test
+
 WORKDIR $GINK
 COPY javascript ./javascript
 RUN mv node_modules ./javascript/
