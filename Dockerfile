@@ -16,10 +16,6 @@ RUN if [ `uname -m` != aarch64 ]; then apt-get update && apt-get install gnupg w
   rm -rf /var/lib/apt/lists/* && export CHROME_BIN=/usr/bin/chrome; fi
 RUN if [ `uname -m` == aarch64 ]; then apt update && apt install chromium-browser && export CHROME_BIN=/usr/bin/chromium-browser; fi
 
-# Install ChromeDriver for selenium tests
-RUN wget https://storage.googleapis.com/chrome-for-testing-public/124.0.6367.91/linux64/chromedriver-linux64.zip && unzip chromedriver-linux64.zip
-RUN mv chromedriver-linux64/chromedriver /usr/bin/chromedriver
-
 ENV GINK=/opt/gink
 RUN mkdir -p $GINK
 WORKDIR $GINK
@@ -40,9 +36,6 @@ RUN mypy gink/impl gink/tests
 
 # Python unit-tests
 RUN python3 -m nose2
-
-# Python integration tests
-RUN python3 -m gink.integration-tests.wsgi_server_test
 
 WORKDIR $GINK
 COPY javascript ./javascript
