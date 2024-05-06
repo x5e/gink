@@ -33,8 +33,9 @@ def test_wsgi_integration():
 
     data = requests.get("http://localhost:8081/hello").text
     data2 = requests.get("http://localhost:8082").text
-    assert "Hello World" in data
-    assert "Hello universe!" in data2
-
-    p.terminate()
-    p2.terminate()
+    try:
+        assert "Hello World" in data
+        assert "Hello universe!" in data2
+    finally:
+        p.terminate()
+        p2.terminate()

@@ -65,6 +65,7 @@ class Database:
         self._lock = Lock()
         self._last_time = None
         self._connections = set()
+        self._wsgi_connections: set[Socket] = set()
         self._listeners = set()
         self._trackers = {}
         self._identity = identity
@@ -277,24 +278,27 @@ class Database:
             until = self.resolve_timestamp(until)
         context_manager = console or nullcontext()
         with context_manager:
-            # eventually will want to support epoll on platforms where its supported
-            readers: List[Union[Listener, Connection, SelectableConsole, AbstractStore, Socket]] = []
-            if self._store.is_selectable():
-                    readers.append(self._store)
-            for listener in self._listeners:
-                readers.append(listener)
-            for connection in list(self._connections):
-                if connection.is_closed():
-                    self._connections.remove(connection)
-                else:
-                    readers.append(connection)
-            if self._wsgi_server:
-                readers.append(self._wsgi_server.listen_socket)
-            if isinstance(console, SelectableConsole):
-                readers.append(console)
             while (until is None or generate_timestamp() < until):
-                if console:
-                    console.refresh()
+                # eventually will want to support epoll on platforms where its supported
+                readers: List[Union[Listener, Connection, SelectableConsole, AbstractStore, Socket]] = []
+                if self._store.is_selectable():
+                        readers.append(self._store)
+                for listener in self._listeners:
+                    readers.append(listener)
+                for connection in list(self._connections):
+                    if connection.is_closed():
+                        self._connections.remove(connection)
+                    else:
+                        readers.append(connection)
+                if self._wsgi_server:
+                    readers.append(self._wsgi_server.listen_socket)
+                for conn in list(self._wsgi_connections):
+                    readers.append(conn)
+
+                if isinstance(console, SelectableConsole):
+                    readers.append(console)
+                    if console:
+                        console.refresh()
                 ready_readers, _, _ = select(readers, [], [], 0.1)
                 for ready_reader in ready_readers:
                     if isinstance(ready_reader, Connection):
@@ -312,6 +316,7 @@ class Database:
                                 continue
                             else:
                                 raise e
+                        self._wsgi_connections.add(conn)
                         readers.append(conn)
                     elif self._wsgi_server and isinstance(ready_reader, Socket):
                         try:
@@ -320,6 +325,7 @@ class Database:
                             request_data = None
                         if not request_data:
                             ready_reader.close()
+                            self._wsgi_connections.remove(ready_reader)
                             readers.remove(ready_reader)
                         else:
                             decoded = request_data.decode('utf-8')
@@ -333,6 +339,7 @@ class Database:
                             result = self._wsgi_server.application(env, self._wsgi_server.start_response)
                             self._wsgi_server.finish_response(result, ready_reader)
                             ready_reader.close()
+                            self._wsgi_connections.remove(ready_reader)
                             readers.remove(ready_reader)
                     elif isinstance(ready_reader, Listener):
                         sync_message = self._store.get_chain_tracker().to_greeting_message()
