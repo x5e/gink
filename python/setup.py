@@ -28,7 +28,7 @@ setup(
         "protobuf<=3.20.3",
     ],
     extras_require={
-        "test": ["nose2", "Flask", "selenium"],
+        "test": ["nose2", "Flask", "requests"],
         "lint": ["mypy==0.812"],
         "performance": ["matplotlib"],
         "docs": [
