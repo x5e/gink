@@ -329,7 +329,7 @@ class Database:
                             readers.remove(ready_reader)
                         else:
                             decoded = request_data.decode('utf-8')
-                            self._logger.info(''.join(
+                            self._logger.debug(''.join(
                                 f'< {line}\n' for line in decoded.splitlines()
                             ))
                             (request_method, path, request_version) = WSGIServer.parse_request(decoded)
