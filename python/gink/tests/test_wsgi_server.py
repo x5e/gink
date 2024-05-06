@@ -9,6 +9,7 @@ from flask import Flask
 import multiprocessing
 
 def test_wsgi_integration():
+    multiprocessing.set_start_method("fork")
     # Flask Server
     flask_app = Flask(__name__)
     @flask_app.route('/hello')
