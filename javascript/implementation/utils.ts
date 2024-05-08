@@ -278,6 +278,17 @@ export function wrapValue(arg: Value): ValueBuilder {
         }
         return valueBuilder.setDocument(documentBuilder);
     }
+    if (typeof arg == "object") {
+        if (Object.getPrototypeOf(arg) !== Object.prototype) {
+            throw new Error(`Don't know how to serialize: ${arg}`);
+        }
+        const documentBuilder = new DocumentBuilder();
+        for (const [key, val] of Object.entries(arg)) {
+            documentBuilder.addKeys(wrapKey(key));
+            documentBuilder.addValues(wrapValue(<Value>val));
+        }
+        return valueBuilder.setDocument(documentBuilder);
+    }
     throw new Error(`don't know how to wrap: ${arg}`);
 }
 

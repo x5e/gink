@@ -6,7 +6,9 @@ import { ensure, muidTupleToString, muidToString, unwrapValue, wrapValue, matche
 import { TreeMap, MapIterator, Tree } from 'jstreemap';
 
 it('document', async function () {
-    const wrapped = wrapValue((new Map()).set("fee", "parking").set("cost", 1000));
+    for (const wrapped of [
+            wrapValue((new Map()).set("fee", "parking").set("cost", 1000)),
+            wrapValue(<any>{"free": "parking", "cost": 1000})]) {
     const unwrapped = unwrapValue(wrapped);
     if (unwrapped instanceof Map) {
         const keys = Array.from(unwrapped.keys()).sort();
@@ -15,6 +17,7 @@ it('document', async function () {
         ensure(unwrapped.get("cost") == 1000);
     } else {
         throw new Error("wrap/unwrap failed");
+    }
     }
 });
 
