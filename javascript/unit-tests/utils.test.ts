@@ -8,7 +8,7 @@ import { TreeMap, MapIterator, Tree } from 'jstreemap';
 it('document', async function () {
     for (const wrapped of [
             wrapValue((new Map()).set("fee", "parking").set("cost", 1000)),
-            wrapValue(<any>{"free": "parking", "cost": 1000})]) {
+            wrapValue(<any>{"fee": "parking", "cost": 1000})]) {
     const unwrapped = unwrapValue(wrapped);
     if (unwrapped instanceof Map) {
         const keys = Array.from(unwrapped.keys()).sort();
