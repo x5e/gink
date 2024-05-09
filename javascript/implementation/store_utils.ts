@@ -1,55 +1,62 @@
 import { ChainTracker } from './ChainTracker';
 import { Behavior, ChangeBuilder, BundleBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
-import { KeyType, Timestamp, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple } from "./typedefs";
+import { ScalarKey, StorageKey, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple, Movement } from "./typedefs";
 import {
     ensure,
     unwrapKey,
     builderToMuid,
     muidToTuple,
-    muidToString,
     dehydrate,
-    intToHex
+    intToHex,
+    muidTupleToString
 } from "./utils";
 import { Container } from "./Container";
 
-export function getEffectiveKey(entryBuilder: EntryBuilder, timestamp: Timestamp):
-    [KeyType | MuidTuple | [], boolean] {
+/**
+ *
+ * @param entryBuilder
+ * @param entryMuid
+ * @returns A well defined string that's different for each valid key, given the behavior
+ */
+export function getStorageKey(entryBuilder: EntryBuilder, entryMuid: Muid): StorageKey {
     const behavior: Behavior = entryBuilder.getBehavior();
-    let effectiveKey: KeyType | Timestamp | MuidTuple | [];
-    let replacing = true;
     if (behavior == Behavior.DIRECTORY || behavior == Behavior.KEY_SET) {
         ensure(entryBuilder.hasKey());
-        effectiveKey = unwrapKey(entryBuilder.getKey());
-    } else if (behavior == Behavior.SEQUENCE) {
-        effectiveKey = entryBuilder.getEffective() || timestamp;
-        replacing = false;
+        const key = unwrapKey(entryBuilder.getKey());
+        // if (key instanceof Uint8Array) return [key.toString()];
+        return key;
+    } else if (behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE) {
+        return (entryBuilder.getEffective() || entryMuid.timestamp);
     } else if (behavior == Behavior.BOX || behavior == Behavior.VERTEX) {
-        effectiveKey = [];
-    } else if (behavior == Behavior.PROPERTY) {
+        return [];
+    } else if (behavior == Behavior.PROPERTY || behavior == Behavior.GROUP) {
         ensure(entryBuilder.hasDescribing());
-        const describing = builderToMuid(entryBuilder.getDescribing());
-        effectiveKey = muidToTuple(describing);
-    } else if (behavior == Behavior.ROLE) {
-        ensure(entryBuilder.hasDescribing());
-        const describing = builderToMuid(entryBuilder.getDescribing());
-        effectiveKey = muidToTuple(describing);
-    } else if (behavior == Behavior.EDGE_TYPE) {
-        ensure(entryBuilder.hasPair());
-        effectiveKey = entryBuilder.getEffective() || timestamp;
+        return muidToTuple(builderToMuid(entryBuilder.getDescribing(), entryMuid));
     } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
         ensure(entryBuilder.hasPair());
         const pair = entryBuilder.getPair();
-        const left = pair.getLeft();
-        const rite = pair.getRite();
-        // There's probably a better way of doing this
-        effectiveKey = `${muidToString(builderToMuid(left))},${muidToString(builderToMuid(rite))}`;
+        const left = builderToMuid(pair.getLeft());
+        const rite = builderToMuid(pair.getRite());
+        return [muidToTuple(left), muidToTuple(rite)];
     } else {
         throw new Error(`unexpected behavior: ${behavior}`);
     }
-    return [effectiveKey, replacing];
 }
 
-export function extractMovementInfo(changeBuilder: ChangeBuilder, bundleInfo: BundleInfo, offset: number) {
+export function storageKeyToString(storageKey: StorageKey): string {
+    if (storageKey instanceof Uint8Array)
+        return `(${storageKey})`;
+    if (Array.isArray(storageKey)) {
+        if (storageKey.length == 3) {
+            return muidTupleToString(<MuidTuple>storageKey);
+        }
+        return storageKey.toString();
+    }
+    if (typeof(storageKey) == "number" || typeof(storageKey) == "string")
+        return JSON.stringify(storageKey);
+}
+
+export function extractMovement(changeBuilder: ChangeBuilder, bundleInfo: BundleInfo, offset: number): Movement {
     const movementBuilder: MovementBuilder = changeBuilder.getMovement();
     const entryMuid = movementBuilder.getEntry();
     const entryId: MuidTuple = [
@@ -65,10 +72,11 @@ export function extractMovementInfo(changeBuilder: ChangeBuilder, bundleInfo: Bu
         containerId[2] = srcMuid.getOffset();
     }
     return {
-        movementBuilder,
         entryId,
         movementId,
-        containerId
+        containerId,
+        dest: movementBuilder.getDest(),
+        purge: movementBuilder.getPurge(),
     };
 }
 
@@ -118,24 +126,6 @@ export function medallionChainStartToString(tuple: [number, number]): string {
     return `${intToHex(tuple[0])}-${intToHex(tuple[1])}`;
 }
 
-export function muidPairToSemanticKey(key: [Muid | Container, Muid | Container]): string {
-    let riteMuid: Muid;
-    let leftMuid: Muid;
-    if ("address" in key[0]) { // Left is a container
-        leftMuid = key[0].address;
-    }
-    if ("address" in key[1]) { // Right is a container
-        riteMuid = key[1].address;
-    }
-    if (!("address" in key[0])) { // Left is a muid
-        leftMuid = key[0];
-    }
-    if (!("address" in key[1])) { // Right is a Muid
-        riteMuid = key[1];
-    }
-    return `${muidToString(leftMuid)},${muidToString(riteMuid)}`;
-}
-
 export function extractCommitInfo(bundleData: Uint8Array | BundleBuilder): BundleInfo {
     if (bundleData instanceof Uint8Array) {
         bundleData = <BundleBuilder>BundleBuilder.deserializeBinary(bundleData);
@@ -157,18 +147,20 @@ export function buildChainTracker(chainInfos: Iterable<BundleInfo>): ChainTracke
     return hasMap;
 }
 
-export function keyToSemanticKey(key: KeyType | Muid | [Muid | Container, Muid | Container]):
-    KeyType | MuidTuple | [] {
-    let semanticKey: KeyType | MuidTuple | [] = [];
-    if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
-        semanticKey = key;
+export function toStorageKey(key: ScalarKey | Muid | [Muid | Container, Muid | Container]): StorageKey {
+    if (key instanceof Uint8Array)
+        return key;
+    if (typeof (key) == "number" || typeof (key) == "string") {
+        return key
     } else if (Array.isArray(key)) {
-        semanticKey = muidPairToSemanticKey(key);
+        return [muidToTuple(<Muid>key[0]), muidToTuple(<Muid>key[1])]
     } else if (key) {
         const muidKey = <Muid>key;
-        semanticKey = [muidKey.timestamp, muidKey.medallion, muidKey.offset];
+        return [muidKey.timestamp, muidKey.medallion, muidKey.offset];
     }
-    return semanticKey;
+    if (key == undefined || key == null) {
+        return [];
+    }
 }
 
 export function commitKeyToInfo(commitKey: BundleInfoTuple) {

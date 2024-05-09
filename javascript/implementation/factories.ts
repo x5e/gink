@@ -9,7 +9,7 @@ import { Container } from "./Container";
 import { Directory } from "./Directory";
 import { Sequence } from "./Sequence";
 import { Box } from "./Box";
-import { Role } from "./Role";
+import { Group } from "./Group";
 import { PairSet } from "./PairSet";
 import { PairMap } from "./PairMap";
 import { KeySet } from "./KeySet";
@@ -32,7 +32,7 @@ export async function construct(
         if (address.offset === Behavior.PAIR_MAP) return new PairMap(database, address);
         if (address.offset === Behavior.PAIR_SET) return new PairSet(database, address);
         if (address.offset === Behavior.KEY_SET) return new KeySet(database, address);
-        if (address.offset === Behavior.ROLE) return new Role(database, address);
+        if (address.offset === Behavior.GROUP) return new Group(database, address);
         if (address.offset === Behavior.PROPERTY) return new Property(database, address);
         if (address.offset === Behavior.VERTEX) return new Vertex(database, address);
     }
@@ -60,8 +60,8 @@ export async function construct(
         return (new EdgeType(database, address, containerBuilder));
     if (containerBuilder.getBehavior() == Behavior.PROPERTY)
         return (new Property(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.ROLE)
-        return (new Role(database, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.GROUP)
+        return (new Group(database, address, containerBuilder));
 
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
 }
@@ -76,33 +76,23 @@ export async function interpret(entry: Entry, database: Database): Promise<Conta
         const muid: Muid = rehydrate(entry.pointeeList[0]);
         return construct(database, muid);
     }
-    if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
+    if (Array.isArray(entry.storageKey) && entry.storageKey.length == 3) {
         // For a MuidTuple effective key
-        return await construct(database, muidTupleToMuid(entry.effectiveKey));
+        return await construct(database, muidTupleToMuid(entry.storageKey));
     }
     throw new Error(`don't know how to interpret entry: ${JSON.stringify(entry)}`);
 
 }
 
-export async function toJson(value: Value | Container, indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
-    ensure(indent === false, "indent not implemented");
-    if (value instanceof Container) {
-        if (value instanceof Directory || value instanceof Sequence || value instanceof Box) {
-            return await value.toJson(indent, asOf, seen);
-        }
-        if (value instanceof Role || value instanceof PairSet || value instanceof PairMap) {
-            return await value.toJson(indent, asOf, seen);
-        }
-        if (value instanceof KeySet) {
-            return await value.toJson(indent, asOf, seen);
-        }
-        throw new Error(`container type not recognized: ${value}`);
-    } else {
-        return valueToJson(value);
-    }
+export async function toJson(
+        value: Value | Container,
+        indent: number | boolean = false,
+        asOf?: AsOf, seen?: Set<string>): Promise<string> {
+    return value instanceof Container ? (await value.toJson(indent, asOf, seen)) : valueToJson(value);
 }
 
-export async function convertEntryBytes(database: Database, entryBytes: Bytes, entryAddress?: Muid): Promise<Value | Container | undefined> {
+export async function convertEntryBytes(database: Database, entryBytes: Bytes, entryAddress?: Muid):
+        Promise<Value | Container | undefined> {
     ensure(entryBytes instanceof Uint8Array);
     const entryBuilder = <EntryBuilder>EntryBuilder.deserializeBinary(entryBytes);
     if (entryBuilder.hasValue()) {
@@ -117,32 +107,3 @@ export async function convertEntryBytes(database: Database, entryBytes: Bytes, e
     }
     throw new Error("unsupported entry type");
 }
-
-/*
-* I can't import List, Directory, etc. into this Container.ts because it will cause the inherits clauses to break.
-* So anything that creates containers from the Container class has to be implemented elsewhere and patched in.
-*/
-Container._getBackRefsFunction = function (instance: Database, pointingTo: Container, asOf?: AsOf):
-    AsyncGenerator<[KeyType | Muid | undefined, Container], void, unknown> {
-    return (async function* () {
-        const entries = await instance.store.getBackRefs(pointingTo.address);
-        for (const entry of entries) {
-            const containerMuid = muidTupleToMuid(entry.containerId);
-            const entryMuid = muidTupleToMuid(entry.entryId);
-            const there = await instance.store.getEntryById(entryMuid, asOf);
-            if (!there) continue;
-            const containerBytes = await instance.store.getContainerBytes(containerMuid);
-            const containerBuilder = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
-            if (entry.behavior == Behavior.DIRECTORY) {
-                yield <[KeyType | Muid | undefined, Container]>
-                    [entry.effectiveKey, new Directory(instance, containerMuid, containerBuilder)];
-            }
-            if (entry.behavior == Behavior.SEQUENCE) {
-                yield [entryMuid, new Sequence(instance, containerMuid, containerBuilder)];
-            }
-            if (entry.behavior == Behavior.BOX) {
-                yield [undefined, new Box(instance, containerMuid, containerBuilder)];
-            }
-        }
-    })();
-};

@@ -9,6 +9,8 @@ import { Store, } from "./Store";
 import { CallBack, NumberStr, FilePath, DirPath, AuthFunction } from "./typedefs";
 import { Listener } from "./Listener";
 import { decodeToken } from './utils';
+import { ServerResponse, IncomingMessage } from 'http';
+
 
 /**
  * A server that connects all inbound websocket connections to a single database instance.
@@ -25,15 +27,17 @@ export class SimpleServer extends Database {
         sslCertFilePath?: FilePath;
         staticContentRoot?: DirPath;
         logger?: CallBack;
-        software?: string;
+        identity?: string;
         authFunc?: AuthFunction;
     }) {
-        super(store, { software: args.software || "SimpleServer" }, args.logger || (() => null));
+        super(store, args.identity, args.logger || (() => null));
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this),
-            instance: this,
+            requestListener: this.requestListener.bind(this),
+            index: '/static/dashboard/dashboard.html',
             ...args
         });
+
         this.connections = new Map();
         this.authFunc = args.authFunc || (() => true);
         this.ready = Promise.all([this.ready, this.listener.ready]).then(() => args.logger(`SimpleServer.ready`));
@@ -50,7 +54,6 @@ export class SimpleServer extends Database {
                     token = decodeToken(protocol);
                 }
             }
-
             if (request.requestedProtocols.includes(Database.PROTOCOL))
                 protocol = Database.PROTOCOL;
             else
@@ -66,7 +69,7 @@ export class SimpleServer extends Database {
         const sendFunc = (data: Uint8Array) => { connection.sendBytes(Buffer.from(data)); };
         const closeFunc = () => { connection.close(); };
         const connectionId = this.createConnectionId();
-        this.connections.set(connectionId, connection.remoteAddress);
+        this.connections.set(connectionId, connection);
         const peer = new Peer(sendFunc, closeFunc);
         this.peers.set(connectionId, peer);
         connection.on('close', function (_reasonCode, _description) {
@@ -89,4 +92,21 @@ export class SimpleServer extends Database {
             );
         }
     }
+
+    private requestListener(request: IncomingMessage, response: ServerResponse) {
+        const connectTo = this.connectTo.bind(this);
+        if (request.url.startsWith("/api/connections")) {
+            if (request.method == "GET") {
+                let connections = Object.fromEntries(this.connections);
+                response.end(JSON.stringify(connections));
+            }
+            if (request.method == 'POST') {
+                request.addListener('data', async function (chunk) {
+                    await connectTo(chunk);
+                });
+            }
+        } else {
+            this.listener.requestListener(request, response);
+        }
+    };
 }

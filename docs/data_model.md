@@ -266,18 +266,18 @@ Currenly properties may contain either values or references to other entities.  
 that the most common use case is to only set properties to be values, but it isn't that hard
 to allow the data type type be used for the more general case.
 
-### ROLE
+### GROUP
 
-Containers with the `ROLE` behavior have another change as a key ("describing"), but
+Containers with the `GROUP` behavior have another change as a key ("describing"), but
 don't have a value or pointee, and essentially just act as a boolean to differentiate
-things within them and those not in the role (though deletions are allowe to remove
-something from the role).
+things within them and those not in the group (though deletions are allowe to remove
+something from the group).
 
-In theory, what you could do with properties you could do with role, but since the
-role data type only allows for indication of inclusion or exclusion, it's expected that
-implementations will optimize to allow quick lookups of all items in a given role set.
+In theory, what you could do with properties you could do with group, but since the
+group data type only allows for indication of inclusion or exclusion, it's expected that
+implementations will optimize to allow quick lookups of all items in a given group set.
 
-Additionally, it's worth noting that role containers work like sets of entities.  In
+Additionally, it's worth noting that group containers work like sets of entities.  In
 addition to this set type, we also have the "key set" data type which only allows they key
 data types (ints, character strings, and byte strings).  Though in theory they could be combined
 into a single data type, in practice implementation will actually be easier to keep key-sets

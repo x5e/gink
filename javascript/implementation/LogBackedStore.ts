@@ -4,7 +4,7 @@ import {
     ChainStart,
     Bytes,
     AsOf,
-    KeyType,
+    ScalarKey,
     ClaimedChain,
     ActorId,
     BroadcastFunc,
@@ -13,12 +13,13 @@ import { BundleInfo, Muid, Entry } from "./typedefs";
 import { MemoryStore } from "./MemoryStore";
 import { Store } from "./Store";
 import { PromiseChainLock } from "./PromiseChainLock";
-
-import { watch, FSWatcher } from "fs";
+import { LockableLog } from "./LockableLog";
+import { flock } from "fs-ext";
+import { watch, FSWatcher, Stats } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder } from "./builders";
-import { generateTimestamp, ensure } from "./utils";
-import { LockableLog } from "./LockableLog";
+import { generateTimestamp, ensure, getActorId } from "./utils";
+
 
 /*
     At time of writing, there's only an in-memory implementation of
@@ -38,10 +39,14 @@ export class LogBackedStore extends LockableLog implements Store {
     private commitsProcessed = 0;
     private chainTracker: ChainTracker = new ChainTracker({});
     private claimedChains: ClaimedChain[] = [];
+    private identities: Map<string, string> = new Map(); // Medallion,ChainStart => identity
+
     private memoryLock: PromiseChainLock = new PromiseChainLock();
     private redTo: number = 0;
     private fileWatcher: FSWatcher;
     private foundBundleCallBacks: BroadcastFunc[] = [];
+    private opened: boolean = false;
+    private closed: boolean = false;
 
     /**
      *
@@ -61,11 +66,19 @@ export class LogBackedStore extends LockableLog implements Store {
         await this.internalStore.ready;
         const unlockingFunction = await this.memoryLock.acquireLock();
         await this.pullDataFromFile();
-
+        const thisLogBackedStore = this;
         this.fileWatcher =
             watch(this.filename, async (eventType, filename) => {
                 await new Promise(r => setTimeout(r, 10));
-                const size = (await this.fileHandle.stat()).size;
+                if (thisLogBackedStore.closed || !thisLogBackedStore.opened)
+                    return;
+                let size: number;
+                try {
+                    size = (await this.fileHandle.stat()).size;
+                } catch (problem) {
+                    console.error(`problem getting size! ${problem}`);
+                    throw problem;
+                }
                 if (eventType == "change" && size > this.redTo) {
                     const unlockingFunction = await this.memoryLock.acquireLock();
                     if (!this.exclusive)
@@ -80,18 +93,29 @@ export class LogBackedStore extends LockableLog implements Store {
             });
 
         unlockingFunction();
+        this.opened = true;
     }
 
     async close() {
-        this.fileWatcher.close();
-        await new Promise(r => setTimeout(r, 100));
-        await this.ready.catch();
-        await this.fileHandle.close().catch();
-        await this.internalStore.close().catch();
+        this.closed = true;
+        if (this.fileWatcher)
+            this.fileWatcher.close();
+        if (this.fileHandle)
+            await this.fileHandle.close().catch();
+        if (this.internalStore)
+            await this.internalStore.close().catch();
     }
 
     private async pullDataFromFile(): Promise<void> {
-        const stats = await this.fileHandle.stat();
+        if (this.closed)
+            return;
+        let stats: Stats
+        try {
+            stats = await this.fileHandle.stat();
+        } catch (problem) {
+            console.error(`problem with fileHandle.stat ${problem}`);
+            throw problem;
+        }
         const totalSize = stats.size;
         if (this.redTo < totalSize) {
             const needToReed = totalSize - this.redTo;
@@ -102,6 +126,10 @@ export class LogBackedStore extends LockableLog implements Store {
             for (const commit of commits) {
                 const info = await this.internalStore.addBundle(commit);
                 this.chainTracker.markAsHaving(info);
+                // This is the start of a chain, and we need to keep track of the identity.
+                if (info.timestamp == info.chainStart && !info.priorTime) {
+                    this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
+                }
                 for (const callback of this.foundBundleCallBacks) {
                     callback(commit, info);
                 }
@@ -120,7 +148,7 @@ export class LogBackedStore extends LockableLog implements Store {
         }
     }
 
-    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
+    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Map<string,Entry>> {
         await this.ready;
         return this.internalStore.getOrderedEntries(container, through, asOf);
     }
@@ -135,14 +163,21 @@ export class LogBackedStore extends LockableLog implements Store {
         return this.commitsProcessed;
     }
 
-    async addBundle(commitBytes: BundleBytes): Promise<BundleInfo> {
+    async addBundle(commitBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
         // TODO(https://github.com/x5e/gink/issues/182): delay unlocking the file to give better throughput
         await this.ready;
         const unlockingFunction = await this.memoryLock.acquireLock();
         if (!this.exclusive)
             await this.lockFile(true);
+
         await this.pullDataFromFile();
         const info: BundleInfo = await this.internalStore.addBundle(commitBytes);
+        if (claimChain) {
+            await this.claimChain(info.medallion, info.chainStart, getActorId());
+            if (info.timestamp == info.chainStart && !info.priorTime) {
+                this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
+            }
+        }
         const added = this.chainTracker.markAsHaving(info);
         if (added) {
             ensure(this.fileLocked);
@@ -169,13 +204,8 @@ export class LogBackedStore extends LockableLog implements Store {
         return result;
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
+    private async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         await this.ready;
-        const unlockingFunction = await this.memoryLock.acquireLock();
-        if (!this.exclusive) {
-            await this.lockFile(true);
-        }
-        ensure(this.fileLocked);
         await this.pullDataFromFile();
         const claimTime = generateTimestamp();
         const fragment = new LogFileBuilder();
@@ -189,15 +219,19 @@ export class LogBackedStore extends LockableLog implements Store {
         await this.fileHandle.appendFile(bytes);
         await this.fileHandle.sync();
         this.redTo += bytes.byteLength;
-        if (!this.exclusive)
-            await this.unlockFile();
-        unlockingFunction();
-        return {
+        const chain = {
             medallion,
             chainStart,
             actorId: actorId || 0,
             claimTime,
         };
+        this.claimedChains.push(chain);
+        return chain;
+    }
+
+    async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
+        await this.ready;
+        return this.identities.get(`${chainInfo[0]},${chainInfo[1]}`);
     }
 
     async getChainTracker(): Promise<ChainTracker> {
@@ -215,19 +249,14 @@ export class LogBackedStore extends LockableLog implements Store {
         return this.internalStore.getContainerBytes(address);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType, asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: ScalarKey, asOf?: AsOf): Promise<Entry | undefined> {
         await this.ready;
         return this.internalStore.getEntryByKey(container, key, asOf);
     }
 
-    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<string, Entry>> {
         await this.ready;
         return this.internalStore.getKeyedEntries(container, asOf);
-    }
-
-    async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
-        await this.ready;
-        return this.internalStore.getBackRefs(pointingTo);
     }
 
     async getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {

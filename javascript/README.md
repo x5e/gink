@@ -164,10 +164,10 @@ One easy way to interact with `asOf` is to save timestamps after certain operati
 const directory = instance.createDirectory();
 
 // saving a timestamp before anything is added
-const time0 = instance.getNow();
+const time0 = generateTimestamp();
 await directory.set("foo", "bar");
 // saving timestamp after key "foo" has been added.
-const time1 = instance.getNow();
+const time1 = generateTimestamp();
 await directory.set("A", "B");
 ```
 

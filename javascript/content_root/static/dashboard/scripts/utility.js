@@ -39,7 +39,7 @@ function determineContainerStorage(container) {
             keyType = "muid";
             valueType = "any";
             break;
-        case 10: // Role
+        case 10: // Group
             keyType = "muid";
             break;
         default:

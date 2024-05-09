@@ -38,16 +38,16 @@ async function test(instance) {
     aJSArray = [1, 5, 6, 14, 14, 41, "hmmmm", "buncha data"];
     await box.set(aJSArray);
 
-    const role = await instance.createRole();
-    await globalDir.set("role", role);
+    const group = await instance.createGroup();
+    await globalDir.set("group", group);
 
     const pm = await instance.createPairMap();
     await globalDir.set("pm", pm);
-    await pm.set([box, role], "box-role");
+    await pm.set([box, group], "box-group");
 
     const ps = await instance.createPairSet();
     await globalDir.set("ps", ps);
-    await ps.include([box, role]);
+    await ps.include([box, group]);
 
     const ks = await instance.createKeySet();
     await globalDir.set("ks", ks);
@@ -59,7 +59,7 @@ async function test(instance) {
         await seq.push(`test${i}`);
     }
 
-    await role.include(pm);
-    await role.include(box);
-    await role.include(ks);
+    await group.include(pm);
+    await group.include(box);
+    await group.include(ks);
 }

@@ -156,7 +156,7 @@ await seq.move(cMuid, 1);
 ```
 
 ### KeySet
-A Gink `KeySet` behaves similarly to a JavaScript Set. A `KeySet` may only contain unique values. These values may not include other Gink Containers (check out `Role` if you are looking for a collection of Containers).
+A Gink `KeySet` behaves similarly to a JavaScript Set. A `KeySet` may only contain unique values. These values may not include other Gink Containers (check out `Group` if you are looking for a collection of Containers).
 
 ```ts
 const ks = await instance.createKeySet();
@@ -248,11 +248,11 @@ const size = await pm.size();
 const items = await pm.items();
 ```
 
-### Role
-A `Role` acts as a collection of containers that all have something in common. Similar to the `PairSet`, the most common operations are pretty simple - include or exclude.
+### Group
+A `Group` acts as a collection of containers that all have something in common. Similar to the `PairSet`, the most common operations are pretty simple - include or exclude.
 
 ```ts
-const role = await instance.createRole();
+const group = await instance.createGroup();
 
 // create some containers to include
 const box1 = await instance.createBox();
@@ -260,26 +260,26 @@ const box2 = await instance.createBox();
 const directory1 = await instance.createDirectory();
 
 // include by Container instance
-await role.include(box1);
+await group.include(box1);
 // include by Muid
-await role.include(directory1.address);
+await group.include(directory1.address);
 
-await role.exclude(directory1);
+await group.exclude(directory1);
 
-// containers can be excluded from the role
+// containers can be excluded from the group
 // even if it had not been included.
-await role.exclude(box2);
+await group.exclude(box2);
 
 // returns true
-const isIncluded = await role.isIncluded(box1);
+const isIncluded = await group.isIncluded(box1);
 
 // returns a JavaScript Array of Gink Containers
-const asArray = await role.includedAsArray();
+const asArray = await group.includedAsArray();
 
-// returns an async generator of all containers in the role.
-const members = role.getMembers();
+// returns an async generator of all containers in the group.
+const members = group.getMembers();
 
-// iterating through the role members
+// iterating through the group members
 for await (const member of members) {
     const address = member.address;
     const instance = member.database;
@@ -320,9 +320,9 @@ A parameter you may come across in many different functions of Gink is `asOf`. a
 const directory = await instance.createDirectory();
 
 // saving a timestamp before anything is added
-const time0 = instance.getNow();
+const time0 = generateTimestamp();
 await directory.set("foo", "bar");
-const time1 = instance.getNow();
+const time1 = generateTimestamp();
 await directory.set("A", "B");
 // current directory looks like
 // {"foo": "bar", "A": "B"}

@@ -3,7 +3,7 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value, MuidTuple, KeyType, EdgeData, Entry, Indexer, Indexable, ActorId } from "./typedefs";
+import { Muid, Medallion, Value, MuidTuple, ScalarKey, EdgeData, Entry,  ActorId, Timestamp } from "./typedefs";
 import {
     MuidBuilder,
     ValueBuilder,
@@ -12,6 +12,20 @@ import {
     TimestampBuilder,
     TupleBuilder, DocumentBuilder
 } from "./builders";
+
+import { hostname, userInfo } from 'os';
+
+import { TreeMap, MapIterator } from 'jstreemap';
+
+export function toLastWithPrefixBeforeSuffix<V>(
+    map: TreeMap<string,V>, prefix: string, suffix: string = '~'):
+        MapIterator<string, V> | undefined {
+    const iterator = map.upperBound(prefix + suffix);
+    iterator.prev();
+    if (!iterator.key) return undefined;
+    if (!iterator.key.startsWith(prefix)) return undefined;
+    return iterator;
+}
 
 // Since find-process uses child-process, we can't load this if gink
 // is running in a browser
@@ -25,7 +39,7 @@ export function ensure(x: any, msg?: string) {
 }
 
 let lastTime = 0;
-export function generateTimestamp(): number {
+export function generateTimestamp() {
     // TODO: there's probably a better way ...
     let current = Date.now() * 1000;
     if (lastTime >= current) {
@@ -112,7 +126,7 @@ export function wrapKey(key: number | string | Uint8Array): KeyBuilder {
  * @param keyBuilder
  * @returns
  */
-export function unwrapKey(keyBuilder: KeyBuilder): KeyType {
+export function unwrapKey(keyBuilder: KeyBuilder): ScalarKey {
     ensure(keyBuilder);
     if (keyBuilder.hasCharacters()) {
         return keyBuilder.getCharacters();
@@ -264,6 +278,17 @@ export function wrapValue(arg: Value): ValueBuilder {
         }
         return valueBuilder.setDocument(documentBuilder);
     }
+    if (typeof arg == "object") {
+        if (Object.getPrototypeOf(arg) !== Object.prototype) {
+            throw new Error(`Don't know how to serialize: ${arg}`);
+        }
+        const documentBuilder = new DocumentBuilder();
+        for (const [key, val] of Object.entries(arg)) {
+            documentBuilder.addKeys(wrapKey(key));
+            documentBuilder.addValues(wrapValue(<Value>val));
+        }
+        return valueBuilder.setDocument(documentBuilder);
+    }
     throw new Error(`don't know how to wrap: ${arg}`);
 }
 
@@ -275,8 +300,8 @@ export function matches(a: any[], b: any[]) {
     return true;
 }
 
-export function pairKeyToArray(effectiveKey: String): Array<Muid> {
-    const split = effectiveKey.split(",");
+export function pairKeyToArray(storageKey: String): Array<Muid> {
+    const split = storageKey.split(",");
     ensure(split.length == 2);
     return [strToMuid(split[0]), strToMuid(split[1])];
 }
@@ -356,18 +381,23 @@ export function intToHex(value: number, padding?: number): string {
     return twosComplement.toString(16).padStart(digits, '0').toUpperCase();
 }
 
+export function bytesToHex(bytes: Uint8Array) {
+    return Array.from(bytes).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join("");
+}
+
+export function timestampToString(timestamp: Timestamp): string {
+    return intToHex(timestamp, 14);
+}
+
 export function valueToJson(value: Value): string {
     // Note that this function doesn't check for circular references or anything like that, but
     // I think this is okay because circular objects can't be encoded into the database in the first place.
-    if (typeof (value) == "string") {
-        return `"${value}"`;
-    }
-    if (typeof (value) == "number" || value === true || value === false || value === null) {
-        return `${value}`;
-    }
     if (value instanceof Uint8Array) {
-        const hexString = Array.from(value).map(intToHex).join("");
-        return `"${hexString}"`;
+        value = Array.from(value).map(intToHex).join("");
+    }
+    const type = typeof value;
+    if (type == "string" || type == "number" || value === true || value === false || value === null) {
+        return JSON.stringify(value);
     }
     if ("function" === typeof value["toISOString"]) {
         return `"${(value as Date).toISOString()}"`;
@@ -435,11 +465,12 @@ export function sameData(key1: any, key2: any): boolean {
     if (Array.isArray(key1) && Array.isArray(key2)) {
         if (key1.length != key2.length) return false;
         for (let i = 0; i < key1.length; i++) {
-            if (key1[i] != key2[i]) return false;
+            if (!sameData(key1[i], key2[i]))
+                return false;
         }
         return true;
     }
-    if (typeof key1 == "number" || typeof key1 == "string") {
+    if (typeof key1 == "number" || typeof key1 == "string" || typeof key1 == "undefined") {
         return key1 == key2;
     }
     return false;
@@ -447,11 +478,11 @@ export function sameData(key1: any, key2: any): boolean {
 
 export function entryToEdgeData(entry: Entry): EdgeData {
     return {
-        source: null, //muidTupleToMuid(entry.sourceList[0]),
-        target: null, //muidTupleToMuid(entry.targetList[0]),
+        source: muidTupleToMuid(entry.sourceList[0]),
+        target: muidTupleToMuid(entry.targetList[0]),
         value: entry.value,
         action: muidTupleToMuid(entry.containerId),
-        effective: <number>entry.effectiveKey,
+        effective: <number>entry.storageKey,
     };
 }
 
@@ -486,6 +517,21 @@ export function getActorId(): ActorId {
 }
 
 /**
+ * Used to (attempt to) identify the user who starts a gink chain.
+ * @returns either the 'username@hostname' of the process running gink,
+ * or a generic 'browser-client' if gink is running in a browser.
+ */
+export function getIdentity(): string {
+    if (typeof window == "undefined")
+        return `${userInfo().username}@${hostname()}`;
+    else {
+        return 'browser-client-' + ("10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+            (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
+        ));
+    }
+}
+
+/**
  * This function exists to determine if the process or window that previously wrote to a chain is still around.
  * If not, then it's safe to append to that chain (to reduce the number of chain starts).  If the creator of a
  * chain is still active, then you can't assume that the chain is free for reuse.
@@ -509,4 +555,23 @@ export async function isAlive(actorId: ActorId): Promise<boolean> {
         // Using 5 seconds here for a bit of a buffer
         return (currentTime - lastPingedTime) < 5000;
     }
+}
+
+export function getType(extension: string) {
+    const types = {
+        html: 'text/html',
+        css: 'text/css',
+        js: 'application/javascript',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        json: 'application/json',
+        xml: 'application/xml',
+    };
+    const result = types[extension];
+    if (!result) {
+        throw new Error(`type not found for extension: ${extension}`);
+    }
+    return result;
 }

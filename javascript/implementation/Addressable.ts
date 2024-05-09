@@ -1,12 +1,8 @@
-import { Database } from "./Database";
 import { Muid } from "./typedefs";
 
 
 export class Addressable {
-    protected constructor(
-        readonly database: Database,
-        readonly address: Muid) {
-    }
+    protected constructor(readonly address: Muid) {}
 
     public equals(other: any): boolean {
         if (!(other instanceof Addressable)) return false;
@@ -14,5 +10,9 @@ export class Addressable {
             (other.address.offset == this.address.offset) &&
             (other.address.timestamp == this.address.timestamp));
     }
+
+    get timestamp() { return this.address.timestamp; }
+    get medallion() { return this.address.medallion; }
+    get offset() { return this.address.offset; }
 
 }

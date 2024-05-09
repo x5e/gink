@@ -16,7 +16,7 @@ export declare enum Behavior {
     VERTEX = 7,
     EDGE_TYPE = 8,
     PROPERTY = 9,
-    ROLE = 10
+    GROUP = 10
 }
 export declare enum Special {
     MISSING = 0,
@@ -96,6 +96,8 @@ export class EntryBuilder extends ImplementedMessage {
     setDescribing(MuidBuilder);
     getDescribing(): MuidBuilder;
     hasDescribing(): boolean;
+    getPurge(): boolean;
+    setPurge(boolean);
 }
 
 export class GreetingBuilder extends ImplementedMessage {

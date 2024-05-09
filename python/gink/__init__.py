@@ -11,7 +11,7 @@ from .impl.container import Container
 from .impl.muid import Muid
 from .impl.bundle_info import BundleInfo
 from .impl.bundler import Bundler
-from .impl.role import Role
+from .impl.group import Group
 from .impl.key_set import KeySet
 from .impl.graph import Vertex, Verb, Edge
 from .impl.pair_set import PairSet
@@ -22,5 +22,5 @@ from .impl.tuples import Chain
 
 
 __all__ = ["LmdbStore", "MemoryStore", "Database", "Directory", "Sequence", "Box", "Bundler", "Chain",
-           "Property", "Container", "Muid", "LogBackedStore", "BundleInfo", "AbstractStore", "Role",
+           "Property", "Container", "Muid", "LogBackedStore", "BundleInfo", "AbstractStore", "Group",
            "Vertex", "Verb", "Edge", "KeySet", "PairSet", "PairMap", "generate_timestamp", "ClaimBuilder"]

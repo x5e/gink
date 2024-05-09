@@ -1,12 +1,12 @@
 import { createServer as createHttpServer, Server as HttpServer, ServerResponse, IncomingMessage } from 'http';
 import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
-import { readFileSync, createReadStream, existsSync } from 'fs';
-import {
-    server as WebSocketServer, request as WebSocketRequest,
-} from 'websocket';
+import { readFileSync } from 'fs';
+import {server as WebSocketServer, request as WebSocketRequest,} from 'websocket';
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
-import { SimpleServer } from './SimpleServer';
+import { createReadStream, existsSync } from 'fs';
+import { getType } from './utils';
 import { join, extname } from 'path';
+
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -15,75 +15,27 @@ export class Listener {
     ready: Promise<any>;
     private websocketServer: WebSocketServer;
     readonly httpServer: HttpServer | HttpsServer;
+    readonly staticContentRoot?: string;
+    readonly index?: string;
 
     constructor(args: {
         requestHandler: (request: WebSocketRequest) => void,
-        instance?: SimpleServer,
+        requestListener?:  (request: IncomingMessage, response: ServerResponse) => void,
         staticContentRoot?: DirPath,
         port?: NumberStr,
         logger?: CallBack,
         sslKeyFilePath?: FilePath,
-        sslCertFilePath?: FilePath;
+        sslCertFilePath?: FilePath,
+        index?: string,
     }) {
-        const staticContentRoot = args.staticContentRoot ?? join(__dirname, "../../content_root");
-        const thisListener = this;
+        this.staticContentRoot = args.staticContentRoot ?? join(__dirname, "../../content_root");
+        const requestListener = args.requestListener || this.requestListener.bind(this);
         const port = args.port || "8080";
         let callWhenReady: CallBack;
+        this.index = args.index;
         this.ready = new Promise((resolve) => {
             callWhenReady = resolve;
         });
-
-        const serveFile = (filePath: FilePath, statusCode: number, response: ServerResponse) => {
-            const readStream = createReadStream(join(staticContentRoot, filePath));
-            const types = {
-                html: 'text/html',
-                css: 'text/css',
-                js: 'application/javascript',
-                png: 'image/png',
-                jpg: 'image/jpeg',
-                jpeg: 'image/jpeg',
-                gif: 'image/gif',
-                json: 'application/json',
-                xml: 'application/xml',
-            };
-            const extension = extname(filePath).slice(1);
-            response.writeHead(statusCode, { 'Content-type': types[extension] });
-            readStream.pipe(response);
-        };
-
-        const requestListener = (request: IncomingMessage, response: ServerResponse) => {
-            const url = new URL(request.url, `http://${request.headers.host}`);
-            request.addListener('end', async function () {
-                if (url.pathname == "/") {
-                    serveFile('/static/dashboard/dashboard.html', 200, response);
-                }
-                else if (url.pathname == "/connections") {
-                    serveFile("/static/list_connections.html", 200, response);
-                }
-                else if (url.pathname == "/list_connections") {
-                    let connections = Object.fromEntries(args.instance.connections);
-                    response.end(JSON.stringify(connections));
-                }
-                else if (url.pathname == "/create_connection") {
-                    if (request.method == 'POST') {
-                        const ipAddress = url.searchParams.get("ipAddress");
-                        thisListener.handleConnection(ipAddress, args.instance, args.logger);
-                        response.end(JSON.stringify({ "status": 201, "message": "Connection created successfully" }));
-                    }
-                    else {
-                        response.end(JSON.stringify({ "status": 405, "message": "Bad Method." }));
-                    }
-                }
-                else {
-                    if (existsSync(join(staticContentRoot, url.pathname))) {
-                        serveFile(url.pathname, 200, response);
-                    }
-                    else {
-                        response.end(JSON.stringify({ "status": 401, "message": "File not found" }));
-                    }
-                }
-            }).resume();
-        };
 
         if (args.sslKeyFilePath && args.sslCertFilePath) {
             const options = {
@@ -104,20 +56,21 @@ export class Listener {
         this.websocketServer.on('request', args.requestHandler);
     }
 
-    async handleConnection(ipAddress: string, instance?: SimpleServer, logger?: CallBack): Promise<boolean> {
-        if (instance) {
-            // this will obviously change eventually, but adding some validation for now
-            const validURL = /^ws:\/\/\d{3}.\d{1}.\d{1}.\d{1}:\d{4}/;
-            if (!validURL.test(ipAddress)) {
-                logger("Needs to be a valid websocket connection.");
-            } else {
-                logger("Connecting to " + ipAddress);
-                await instance.connectTo(ipAddress);
-                return true;
-            }
-        } else if (!instance) {
-            logger("No instance provided.");
+    public requestListener(request: IncomingMessage, response: ServerResponse) {
+        const url = new URL(request.url, `http://${request.headers.host}`);
+        const requestedPath = url.pathname == "/" ? this.index : url.pathname;
+        const localPath = join(this.staticContentRoot, requestedPath);
+        if (existsSync(localPath)) {
+            const readStream = createReadStream(localPath);
+            const extension = extname(localPath).slice(1);
+            response.writeHead(200, { 'Content-type': getType(extension) });
+            readStream.pipe(response);
         }
-        return false;
-    }
+        else {
+            response.writeHead(404, "Not Found");
+            response.end("not found");
+        }
+    };
+
+
 }

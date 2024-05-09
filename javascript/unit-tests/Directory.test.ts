@@ -1,6 +1,6 @@
 import { sleep } from "./test_utils";
 import { Database, Bundler, IndexedDbStore, Directory, MemoryStore } from "../implementation";
-import { ensure } from "../implementation/utils";
+import { ensure, generateTimestamp } from "../implementation/utils";
 
 it('set and get Basic data', async function () {
     for (const store of [
@@ -25,7 +25,10 @@ it('set and get Basic data', async function () {
         await schema.set(myKey, "another value");
         const another_result = await schema.get(myKey);
 
-        ensure(another_result == "another value");
+        if (another_result != "another value") {
+            const allEntries = await store.getAllEntries();
+            throw new Error("didnt' get what i expected");
+        }
         await store.close();
     }
 });
@@ -140,11 +143,18 @@ it('convert to standard Map', async function () {
         await directory.set("cheese", "fries");
 
         const asMap = await directory.toMap();
-        ensure(asMap.size == 2);
+        ensure(asMap.size == 2, `expected to be 2: ${asMap.size} ${JSON.stringify(asMap)}`);
         ensure(!asMap.has("foo"));
         ensure(asMap.get("bar") == "iron");
         ensure(asMap.get("cheese") == "fries");
-        await store.close();
+
+        const another = await instance.createDirectory();
+        await another.set(new Uint8Array([94, 10]), "foo");
+        const anotherAsMap = await another.toMap();
+        ensure(anotherAsMap.size == 1);
+        const keys = Array.from(anotherAsMap.keys());
+        ensure(keys[0] instanceof Uint8Array);
+        ensure(keys[0][0] == 94 && keys[0][1] == 10);
     }
 });
 
@@ -160,12 +170,14 @@ it('Directory.toJSON', async function () {
         const other = await instance.createDirectory();
         await other.set("xxx", "yyy");
         await directory.set("blue", other);
-        const asJSON = await directory.toJson();
+        await directory.set(new Uint8Array([94,10]), "^\n");
+        const asJson = await directory.toJson();
         // MemoryStore returns entries in the order they were set,
         // so comparing an exact string won't work
-        const fromJSON = JSON.parse(asJSON);
-        ensure(fromJSON.bar == 3 && fromJSON.foo == "bar", fromJSON);
-        ensure(fromJSON.blue.xxx == "yyy" && fromJSON.zoom == null, fromJSON);
+        const fromJson = JSON.parse(asJson);
+        ensure(fromJson.bar == 3 && fromJson.foo == "bar", fromJson);
+        ensure(fromJson.blue.xxx == "yyy" && fromJson.zoom == null, fromJson);
+        ensure(fromJson["94,10"] == "^\n", asJson);
         await store.close();
     }
 });
@@ -176,15 +188,15 @@ it('Directory.asOf', async function () {
         await instance.ready;
         const directory = await instance.createDirectory();
 
-        const time0 = instance.getNow();
+        const time0 = generateTimestamp();
         await sleep(10);
         await directory.set('A', 'B');
         await sleep(10);
-        const time1 = instance.getNow();
+        const time1 = generateTimestamp();
         await sleep(10);
         await directory.set('cheese', 4);
         await sleep(10);
-        const time2 = instance.getNow();
+        const time2 = generateTimestamp();
 
         const asJsonNow = await directory.toJson();
         ensure(asJsonNow == `{"A":"B","cheese":4}`);
@@ -217,7 +229,7 @@ it('Directory.purge', async function () {
 
         await directory.set('A', 99);
         await sleep(10);
-        const middle = instance.getNow();
+        const middle = generateTimestamp();
         await sleep(10);
         await directory.set('B', false);
 

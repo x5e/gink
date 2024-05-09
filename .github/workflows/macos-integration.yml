@@ -25,7 +25,7 @@ jobs:
     - name: Update Python Version to install packages
       run: cd ../python && export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "" "s/\${VERSION}/${VERSION}/g" setup.py
     - name: Install Python packages
-      run: cd ../python && pip3 install .[test]
+      run: cd ../python && pip3 install .[test] --break-system-packages
     - name: Run Python unit tests
       run: cd ../python && nose2
     - name: Run JS unit tests
@@ -38,6 +38,8 @@ jobs:
       run: ./integration-tests/routing-server-test.js
     - name: Run JS logbacked peers test
       run: ./integration-tests/logbacked-peers-test.js
+    - name: Run JS reuse chain test
+      run: ./integration-tests/chain-reuse-ts-test.js
     - name: Run JS browser unit tests
       run: npm run browser-unit
     - name: Run JS browser integration tests
