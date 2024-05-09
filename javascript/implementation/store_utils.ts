@@ -24,8 +24,7 @@ export function getEffectiveKey(entryBuilder: EntryBuilder, entryMuid: Muid): Ef
     if (behavior == Behavior.DIRECTORY || behavior == Behavior.KEY_SET) {
         ensure(entryBuilder.hasKey());
         const key = unwrapKey(entryBuilder.getKey());
-        if (key instanceof Uint8Array)
-            return [key.toString()];
+        // if (key instanceof Uint8Array) return [key.toString()];
         return key;
     } else if (behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE) {
         return (entryBuilder.getEffective() || entryMuid.timestamp);
@@ -46,13 +45,14 @@ export function getEffectiveKey(entryBuilder: EntryBuilder, entryMuid: Muid): Ef
 }
 
 export function effectiveKeyToString(effectiveKey: EffectiveKey): string {
+    if (effectiveKey instanceof Uint8Array)
+        return `(${effectiveKey})`;
     if (Array.isArray(effectiveKey)) {
         if (effectiveKey.length == 3) {
             return muidTupleToString(<MuidTuple>effectiveKey);
         }
         return effectiveKey.toString();
     }
-    if (effectiveKey instanceof Uint8Array) return `(${effectiveKey})`;
     if (typeof(effectiveKey) == "number" || typeof(effectiveKey) == "string")
         return JSON.stringify(effectiveKey);
 }
@@ -148,10 +148,9 @@ export function buildChainTracker(chainInfos: Iterable<BundleInfo>): ChainTracke
     return hasMap;
 }
 
-export function userKeyToEffectiveKey(key: UserKey | Muid | [Muid | Container, Muid | Container]):
-    EffectiveKey {
+export function toEffectiveKey(key: UserKey | Muid | [Muid | Container, Muid | Container]): EffectiveKey {
     if (key instanceof Uint8Array)
-        return [key.toString()];
+        return key;
     if (typeof (key) == "number" || typeof (key) == "string") {
         return key
     } else if (Array.isArray(key)) {

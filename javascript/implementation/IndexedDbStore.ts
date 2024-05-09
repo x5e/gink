@@ -39,7 +39,7 @@ import {
     buildPairLists,
     buildPointeeList,
     buildChainTracker,
-    userKeyToEffectiveKey,
+    toEffectiveKey,
     commitKeyToInfo,
     commitInfoToKey,
     effectiveKeyToString
@@ -486,8 +486,8 @@ export class IndexedDbStore implements Store {
         }
 
         let upperTuple = [asOfTs];
-        const effectiveKey = userKeyToEffectiveKey(key);
-        const lower = [desiredSrc, effectiveKey];
+        const effectiveKey = toEffectiveKey(key);
+        const lower = [desiredSrc];
         const upper = [desiredSrc, effectiveKey, upperTuple];
         const searchRange = IDBKeyRange.bound(lower, upper);
         const entriesCursor = await trxn.objectStore("entries").index(

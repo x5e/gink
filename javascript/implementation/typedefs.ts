@@ -21,7 +21,7 @@ export type MuidTuple = [Timestamp, Medallion, Offset];
 export type Cookies = Map<string, string>;
 export type Indexable = MuidTuple;
 export type ActorId = number;  // process ID on the server side, something more complex in the browser
-export type EffectiveKey = UserKey | MuidTuple | [MuidTuple, MuidTuple] | [] | [string];
+export type EffectiveKey = UserKey | MuidTuple | [MuidTuple, MuidTuple] | [];
 
 export interface CommitListener {
     (commitInfo: BundleInfo): Promise<void>;
