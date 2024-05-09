@@ -1,12 +1,11 @@
 import { ChainTracker } from './ChainTracker';
 import { Behavior, ChangeBuilder, BundleBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
-import { UserKey, EffectiveKey, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple, Movement } from "./typedefs";
+import { ScalarKey, StorageKey, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple, Movement } from "./typedefs";
 import {
     ensure,
     unwrapKey,
     builderToMuid,
     muidToTuple,
-    muidToString,
     dehydrate,
     intToHex,
     muidTupleToString
@@ -19,7 +18,7 @@ import { Container } from "./Container";
  * @param entryMuid
  * @returns A well defined string that's different for each valid key, given the behavior
  */
-export function getEffectiveKey(entryBuilder: EntryBuilder, entryMuid: Muid): EffectiveKey {
+export function getStorageKey(entryBuilder: EntryBuilder, entryMuid: Muid): StorageKey {
     const behavior: Behavior = entryBuilder.getBehavior();
     if (behavior == Behavior.DIRECTORY || behavior == Behavior.KEY_SET) {
         ensure(entryBuilder.hasKey());
@@ -44,17 +43,17 @@ export function getEffectiveKey(entryBuilder: EntryBuilder, entryMuid: Muid): Ef
     }
 }
 
-export function effectiveKeyToString(effectiveKey: EffectiveKey): string {
-    if (effectiveKey instanceof Uint8Array)
-        return `(${effectiveKey})`;
-    if (Array.isArray(effectiveKey)) {
-        if (effectiveKey.length == 3) {
-            return muidTupleToString(<MuidTuple>effectiveKey);
+export function storageKeyToString(storageKey: StorageKey): string {
+    if (storageKey instanceof Uint8Array)
+        return `(${storageKey})`;
+    if (Array.isArray(storageKey)) {
+        if (storageKey.length == 3) {
+            return muidTupleToString(<MuidTuple>storageKey);
         }
-        return effectiveKey.toString();
+        return storageKey.toString();
     }
-    if (typeof(effectiveKey) == "number" || typeof(effectiveKey) == "string")
-        return JSON.stringify(effectiveKey);
+    if (typeof(storageKey) == "number" || typeof(storageKey) == "string")
+        return JSON.stringify(storageKey);
 }
 
 export function extractMovement(changeBuilder: ChangeBuilder, bundleInfo: BundleInfo, offset: number): Movement {
@@ -148,7 +147,7 @@ export function buildChainTracker(chainInfos: Iterable<BundleInfo>): ChainTracke
     return hasMap;
 }
 
-export function toEffectiveKey(key: UserKey | Muid | [Muid | Container, Muid | Container]): EffectiveKey {
+export function toStorageKey(key: ScalarKey | Muid | [Muid | Container, Muid | Container]): StorageKey {
     if (key instanceof Uint8Array)
         return key;
     if (typeof (key) == "number" || typeof (key) == "string") {

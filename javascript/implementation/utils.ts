@@ -3,7 +3,7 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value, MuidTuple, UserKey, EdgeData, Entry,  ActorId, Timestamp } from "./typedefs";
+import { Muid, Medallion, Value, MuidTuple, ScalarKey, EdgeData, Entry,  ActorId, Timestamp } from "./typedefs";
 import {
     MuidBuilder,
     ValueBuilder,
@@ -126,7 +126,7 @@ export function wrapKey(key: number | string | Uint8Array): KeyBuilder {
  * @param keyBuilder
  * @returns
  */
-export function unwrapKey(keyBuilder: KeyBuilder): UserKey {
+export function unwrapKey(keyBuilder: KeyBuilder): ScalarKey {
     ensure(keyBuilder);
     if (keyBuilder.hasCharacters()) {
         return keyBuilder.getCharacters();
@@ -300,8 +300,8 @@ export function matches(a: any[], b: any[]) {
     return true;
 }
 
-export function pairKeyToArray(effectiveKey: String): Array<Muid> {
-    const split = effectiveKey.split(",");
+export function pairKeyToArray(storageKey: String): Array<Muid> {
+    const split = storageKey.split(",");
     ensure(split.length == 2);
     return [strToMuid(split[0]), strToMuid(split[1])];
 }
@@ -482,7 +482,7 @@ export function entryToEdgeData(entry: Entry): EdgeData {
         target: muidTupleToMuid(entry.targetList[0]),
         value: entry.value,
         action: muidTupleToMuid(entry.containerId),
-        effective: <number>entry.effectiveKey,
+        effective: <number>entry.storageKey,
     };
 }
 

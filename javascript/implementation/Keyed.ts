@@ -1,12 +1,12 @@
 import { Container } from "./Container";
-import { Value, Muid, UserKey, AsOf, EffectiveKey } from "./typedefs";
+import { Value, Muid, ScalarKey, AsOf, StorageKey } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, muidTupleToMuid, intToHex, bytesToHex, valueToJson } from "./utils";
+import { ensure, muidToString, muidTupleToMuid, valueToJson } from "./utils";
 import { toJson, interpret, construct } from "./factories";
 import { Addressable } from "./Addressable";
-import { effectiveKeyToString } from "./store_utils";
+import { storageKeyToString } from "./store_utils";
 
-export class Keyed<GenericType extends UserKey | Addressable | [Addressable, Addressable]> extends Container {
+export class Keyed<GenericType extends ScalarKey | Addressable | [Addressable, Addressable]> extends Container {
 
 
     /**
@@ -67,13 +67,13 @@ export class Keyed<GenericType extends UserKey | Addressable | [Addressable, Add
      * @param asOf effective time to get the dump for, or undefined for the present
      * @returns a javascript map from keys (numbers or strings) to values or containers
      */
-    async toMap(asOf?: AsOf): Promise<Map<EffectiveKey, Value | Container>> {
+    async toMap(asOf?: AsOf): Promise<Map<StorageKey, Value | Container>> {
         const entries = await this.database.store.getKeyedEntries(this.address, asOf);
         const resultMap = new Map();
         for (const [key, entry] of entries) {
             const pointee = entry.pointeeList.length > 0 ? muidTupleToMuid(entry.pointeeList[0]) : undefined;
             const val = entry.value !== undefined ? entry.value : await construct(this.database, pointee);
-            resultMap.set(entry.effectiveKey, val);
+            resultMap.set(entry.storageKey, val);
         }
         return resultMap;
     }
@@ -102,13 +102,13 @@ export class Keyed<GenericType extends UserKey | Addressable | [Addressable, Add
             } else {
                 returning += ",";
             }
-            const effectiveKey: EffectiveKey = entry.effectiveKey;
-            if (typeof effectiveKey == "string") {
-                returning += JSON.stringify(effectiveKey);
-            } else if (effectiveKey instanceof Uint8Array) {
-                returning += '"' + effectiveKey.toString() + '"';
+            const storageKey: StorageKey = entry.storageKey;
+            if (typeof storageKey == "string") {
+                returning += JSON.stringify(storageKey);
+            } else if (storageKey instanceof Uint8Array) {
+                returning += '"' + storageKey.toString() + '"';
             } else {
-                returning += JSON.stringify(effectiveKeyToString(effectiveKey));
+                returning += JSON.stringify(storageKeyToString(storageKey));
             }
             returning += ":";
             if (entry.value !== undefined) {

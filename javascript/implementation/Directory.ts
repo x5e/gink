@@ -1,10 +1,10 @@
-import { Muid, UserKey } from "./typedefs";
+import { Muid, ScalarKey } from "./typedefs";
 import { ensure } from "./utils";
 import { Database } from "./Database";
 import { Behavior, ContainerBuilder } from "./builders";
 import { Keyed } from "./Keyed";
 
-export class Directory extends Keyed<UserKey> {
+export class Directory extends Keyed<ScalarKey> {
 
     constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(database, address, Behavior.DIRECTORY);

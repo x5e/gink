@@ -48,7 +48,7 @@ export class Sequence extends Container {
 
     private async findDest(dest: number): Promise<number> {
         if (dest == 0 || dest == -1) {
-            const currentFrontOrBack = <number>(await this.getEntryAt(dest)).effectiveKey;
+            const currentFrontOrBack = <number>(await this.getEntryAt(dest)).storageKey;
             return currentFrontOrBack - Math.sign(dest + .5) * Math.floor(1e3 * Math.random());
         }
         if (dest > +1e6) return dest;
