@@ -74,8 +74,8 @@ export class KeySet extends Container {
         return (async function* () {
             const entries = await thisSet.database.store.getKeyedEntries(thisSet.address, asOf);
             for (const [key, entry] of entries) {
-                const efffectiveKey = <ScalarKey>entry.storageKey;
-                yield [efffectiveKey, efffectiveKey];
+                const storageKey = <ScalarKey>entry.storageKey;
+                yield [storageKey, storageKey];
             }
         })();
     }
