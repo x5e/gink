@@ -154,7 +154,7 @@ class Page {
             const keyContainer = this.createElement("div", entryFields, undefined, "input-container");
             const keyH2 = this.createElement("h2", keyContainer);
             keyH2.innerText = "Key";
-            keyInput1 = this.createElement("input", keyContainer, "key-input-1", "commit-input");
+            keyInput1 = this.createElement("input", keyContainer, "key-input-1", "bundle-input");
             keyInput1.setAttribute("type", "text");
             keyInput1.setAttribute("placeholder", "Key");
             if (keyType == "muid" || keyType == "pair") {
@@ -164,7 +164,7 @@ class Page {
                 await this.enableContainersAutofill(datalist1);
             }
             if (keyType == "pair") {
-                keyInput2 = this.createElement("input", keyContainer, "key-input-2", "commit-input");
+                keyInput2 = this.createElement("input", keyContainer, "key-input-2", "bundle-input");
                 keyInput2.setAttribute("type", "text");
                 keyInput2.setAttribute("placeholder", "Muid");
                 keyInput2.setAttribute("list", "datalist-2");
@@ -178,7 +178,7 @@ class Page {
             const valueContainer = this.createElement("div", entryFields, undefined, "input-container");
             const valueH2 = this.createElement("h2", valueContainer);
             valueH2.innerText = "Value";
-            valueInput = this.createElement("input", valueContainer, "value-input", "commit-input");
+            valueInput = this.createElement("input", valueContainer, "value-input", "bundle-input");
             valueInput.setAttribute("type", "text");
             valueInput.setAttribute("placeholder", "Value");
         }
@@ -187,13 +187,13 @@ class Page {
         const commentContainer = this.createElement("div", entryFields, undefined, "input-container");
         const commentH2 = this.createElement("h2", commentContainer);
         commentH2.innerText = "Comment";
-        const commentInput = this.createElement("input", commentContainer, "comment-input", "commit-input");
+        const commentInput = this.createElement("input", commentContainer, "comment-input", "bundle-input");
         commentInput.setAttribute("type", "text");
-        commentInput.setAttribute("placeholder", "Commit message (optional)");
+        commentInput.setAttribute("placeholder", "Bundle message (optional)");
 
-        // Button to commit entry
-        const submitButton = this.createElement("button", entryFields, "commit-button");
-        submitButton.innerText = 'Commit Entry';
+        // Button to bundle entry
+        const submitButton = this.createElement("button", entryFields, "bundle-button");
+        submitButton.innerText = 'Bundle Entry';
         submitButton.onclick = async () => {
             // If any field is empty don't let submission go any further.
             if (keyInput1 && !keyInput1.value) return;
@@ -213,7 +213,7 @@ class Page {
             if (valueInput) newValue = valueInput.value;
             newComment = commentInput.value;
 
-            if (confirm("Commit entry?")) {
+            if (confirm("Bundle entry?")) {
                 await this.database.addEntry(interpretKey(newKey, container), newValue, container, newComment);
             }
             await this.displayPage(...this.unwrapHash(window.location.hash));
@@ -262,7 +262,7 @@ class Page {
         const deleteButton = this.createElement("button", buttonContainer, "delete-button");
         deleteButton.innerText = "Delete Entry";
         deleteButton.onclick = async () => {
-            if (confirm("Delete and commit?")) {
+            if (confirm("Delete and bundle?")) {
                 await this.database.deleteEntry(interpretKey(key, container), position, container);
             }
             await this.displayPage(...this.unwrapHash(window.location.hash));
@@ -291,9 +291,9 @@ class Page {
         if (oldKey != undefined) {
             const keyH2 = this.createElement("h2", entryContainer);
             keyH2.innerText = "Key";
-            keyInput1 = this.createElement("input", entryContainer, "key-input-1", "commit-input");
+            keyInput1 = this.createElement("input", entryContainer, "key-input-1", "bundle-input");
             if (keyType == "pair") {
-                keyInput2 = this.createElement("input", entryContainer, "key-input-2", "commit-input");
+                keyInput2 = this.createElement("input", entryContainer, "key-input-2", "bundle-input");
                 keyInput1.setAttribute("placeholder", gink.muidToString(oldKey[0]));
                 keyInput2.setAttribute("placeholder", gink.muidToString(oldKey[1]));
 
@@ -318,20 +318,20 @@ class Page {
         if (oldValue != undefined) {
             const valueH2 = this.createElement("h2", entryContainer);
             valueH2.innerText = "Value";
-            valueInput = this.createElement("input", entryContainer, "value-input", "commit-input");
+            valueInput = this.createElement("input", entryContainer, "value-input", "bundle-input");
             valueInput.setAttribute("placeholder", oldValue);
         }
         // Comment - optional for user
         const commentH2 = this.createElement("h2", entryContainer);
         commentH2.innerText = "Comment";
-        const commentInput = this.createElement("input", entryContainer, "comment-input", "commit-input");
-        commentInput.setAttribute("placeholder", "Commit Message (optional)");
+        const commentInput = this.createElement("input", entryContainer, "comment-input", "bundle-input");
+        commentInput.setAttribute("placeholder", "Bundle Message (optional)");
 
-        // Commit and Abort buttons
-        const buttonContainer = this.createElement("div", this.root, "commit-abort-container");
-        const commitButton = this.createElement("button", buttonContainer, "commit-button");
-        commitButton.innerText = "Commit Entry";
-        commitButton.onclick = async () => {
+        // Bundle and Abort buttons
+        const buttonContainer = this.createElement("div", this.root, "bundle-abort-container");
+        const bundleButton = this.createElement("button", buttonContainer, "bundle-button");
+        bundleButton.innerText = "Bundle Entry";
+        bundleButton.onclick = async () => {
             // Assume nothing has changed until we see what user has input.
             let newKey = oldKey;
             if (keyType == "pair") {
@@ -365,7 +365,7 @@ class Page {
             // Nothing has changed. Should this go back to container screen?
             if ((newKey == oldKey) && (newValue == oldValue)) return;
 
-            if (confirm("Commit updated entry?")) {
+            if (confirm("Bundle updated entry?")) {
                 await this.database.deleteEntry(interpretKey(oldKey, container), position, container, newComment);
                 await this.database.addEntry(interpretKey(newKey, container), newValue, container, newComment);
             }

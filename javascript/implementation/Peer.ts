@@ -38,30 +38,30 @@ export class Peer {
 
     /**
      * The Message proto contains an embedded one-of.  Essentially this will wrap
-     * the commit bytes payload in a wrapper by prefixing a few bytes to it.
+     * the bundle bytes payload in a wrapper by prefixing a few bytes to it.
      * In theory the "Message" proto could be expanded with some extra metadata
      * (e.g. send time) in the future.
-     * Note that the commit is always passed around as bytes and then
+     * Note that the bundle is always passed around as bytes and then
      * parsed as needed to avoid losing unknown fields.
-     * @param bundleBytes: the bytes corresponding to a commit
+     * @param bundleBytes: the bytes corresponding to a bundle
      * @returns a serialized "Message" proto
      */
-    private static makeCommitMessage(bundleBytes: Uint8Array): Uint8Array {
+    private static makeBundleMessage(bundleBytes: Uint8Array): Uint8Array {
         const message = new SyncMessageBuilder();
         message.setBundle(bundleBytes);
         return message.serializeBinary();
     }
 
     /**
-     * Sends a commit if we've received a greeting and our internal recordkeeping indicates
-     * that the peer could use this particular commit (but ensures that we're not sending
-     * commits that would cause gaps in the peer's chain.)
-     * @param bundleBytes The commit to be sent.
-     * @param bundleInfo Metadata about the commit.
+     * Sends a bundle if we've received a greeting and our internal recordkeeping indicates
+     * that the peer could use this particular bundle (but ensures that we're not sending
+     * bundles that would cause gaps in the peer's chain.)
+     * @param bundleBytes The bundle to be sent.
+     * @param bundleInfo Metadata about the bundle.
      */
     _sendIfNeeded(bundleBytes: BundleBytes, bundleInfo: BundleInfo) {
         if (this.hasMap?.markAsHaving(bundleInfo, true)) {
-            this.sendFunc(Peer.makeCommitMessage(bundleBytes));
+            this.sendFunc(Peer.makeBundleMessage(bundleBytes));
         }
     }
 

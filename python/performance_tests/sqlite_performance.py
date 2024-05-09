@@ -8,18 +8,18 @@ from datetime import datetime
 def test_write_fresh(db_file_path: Path|str, count: int) -> dict:
     """
     Test writes per second writing to an empty database.
-    Commits to the database for every write.
+    Bundles to the database for every write.
     """
     with sqlite3.connect(db_file_path) as con:
         cur = con.cursor()
         cur.execute("CREATE TABLE write_fresh(test)")
 
-        print("Testing SQLite writing performance to fresh database - each entry committed individually.")
+        print("Testing SQLite writing performance to fresh database - each entry bundleted individually.")
         print("Writing", count, "entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
             cur.execute(f"""INSERT INTO write_fresh VALUES ('test{i} data to be inserted')""")
-            con.commit()
+            con.bundle()
         after_time = datetime.utcnow()
 
     total_time = round((after_time - before_time).total_seconds(), 4)
@@ -34,22 +34,22 @@ def test_write_fresh(db_file_path: Path|str, count: int) -> dict:
             }
     return results
 
-def test_write_big_commit(db_file_path: Path|str, count: int) -> dict:
+def test_write_big_bundle(db_file_path: Path|str, count: int) -> dict:
     """
     Test writes per second writing to an empty database.
-    Bundles all transactions into one commit.
+    Bundles all transactions into one bundle.
     """
     with sqlite3.connect(db_file_path) as con:
         cur = con.cursor()
-        cur.execute("CREATE TABLE write_big_commit(test)")
+        cur.execute("CREATE TABLE write_big_bundle(test)")
 
-        print("Testing SQLite writing performance to fresh database - all entries in one commit.")
+        print("Testing SQLite writing performance to fresh database - all entries in one bundle.")
         print("Writing", count, "entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
-            cur.execute(f"""INSERT INTO write_big_commit VALUES ('test{i} data to be inserted')""")
-        # Instead of individual commits, bundle all transactions into one commit.
-        con.commit()
+            cur.execute(f"""INSERT INTO write_big_bundle VALUES ('test{i} data to be inserted')""")
+        # Instead of individual bundles, bundle all transactions into one bundle.
+        con.bundle()
         after_time = datetime.utcnow()
 
     total_time = round((after_time - before_time).total_seconds(), 4)
@@ -77,12 +77,12 @@ def test_write_occupied(db_file_path: Path|str, count: int) -> dict:
         print("Filling table with", count, "entries...")
         for i in range(0, count):
             cur.execute(f"""INSERT INTO write_occupied VALUES ('test{i} data to be inserted')""")
-        con.commit()
+        con.bundle()
         print("Writing", count, "new entries...")
         before_time = datetime.utcnow()
         for i in range(count, count*2):
             cur.execute(f"""INSERT INTO write_occupied VALUES ('test{i} data to be inserted')""")
-            con.commit()
+            con.bundle()
         after_time = datetime.utcnow()
 
     total_time = round((after_time - before_time).total_seconds(), 4)
@@ -110,8 +110,8 @@ def test_read(db_file_path: Path|str, count: int) -> dict:
         print("Populating database...")
         for i in range(0, count):
             cur.execute(f"""INSERT INTO read VALUES ('test{i} data to be inserted')""")
-        con.commit()
-        
+        con.bundle()
+
         print("Reading", count, "entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
@@ -138,12 +138,12 @@ def test_read_write(db_file_path: Path|str, count: int) -> dict:
         cur = con.cursor()
         cur.execute("CREATE TABLE read_write(test)")
 
-        print("Testing SQLite writing and reading performance to fresh database - each entry is committed individually.")
+        print("Testing SQLite writing and reading performance to fresh database - each entry is bundleted individually.")
         print("Writing then reading", count, "entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
             cur.execute(f"""INSERT INTO read_write VALUES ('test{i} data to be inserted')""")
-            con.commit()
+            con.bundle()
             assert cur.execute(f"""SELECT test FROM read_write WHERE test='test{i} data to be inserted'""").fetchone()
         after_time = datetime.utcnow()
 
@@ -171,13 +171,13 @@ def test_delete(db_file_path: Path|str, count: int) -> dict:
         print("Populating database with", count, "entries...")
         for i in range(0, count):
             cur.execute(f"""INSERT INTO delete_test VALUES ('test{i} data to be inserted')""")
-            con.commit()
-        
+            con.bundle()
+
         print("Deleting", count, "entries...")
         before_time = datetime.utcnow()
         for i in range(count, count*2):
             cur.execute(f"""DELETE FROM delete_test WHERE test='test{i} data to be inserted'""")
-            con.commit()
+            con.bundle()
         after_time = datetime.utcnow()
         # Making sure entries were actually deleted.
         assert not cur.execute(f"""SELECT test FROM delete_test WHERE test='test{count/2} data to be inserted'""").fetchone()
@@ -207,7 +207,7 @@ def test_random_read(db_file_path: Path|str, count: int) -> dict:
         print("Populating database...")
         for i in range(0, count):
             cur.execute(f"""INSERT INTO random_read VALUES ('test{i} data to be inserted')""")
-        con.commit()
+        con.bundle()
 
         random_numbers = [random.randint(0, count-1) for _ in range(0, 1000)]
 
@@ -243,14 +243,14 @@ def test_increasing(db_file_path: Path|str, count: int, num_inc_tests: int) -> d
         current_entries = 0
         results = {}
 
-        print("Testing SQLite writing performance to a growing database - each entry will committed individually.")
+        print("Testing SQLite writing performance to a growing database - each entry will bundleted individually.")
 
         for r in range(1, num_inc_tests+1):
             print(f"Writing {count} entries to a database with {current_entries} existing entries...")
             before_time = datetime.utcnow()
             for i in range(0, count):
                 cur.execute(f"""INSERT INTO increasing VALUES ('test{i} data to be inserted')""")
-                con.commit()
+                con.bundle()
             after_time = datetime.utcnow()
 
             write_total_time = round((after_time - before_time).total_seconds(), 4)
@@ -268,7 +268,7 @@ def test_increasing(db_file_path: Path|str, count: int, num_inc_tests: int) -> d
 
             read_total_time = round((after_time - before_time).total_seconds(), 4)
             reads_per_second = count/read_total_time
-            print(f"** For database with {count*r} entries **") 
+            print(f"** For database with {count*r} entries **")
             print("- Total time:", read_total_time, "seconds")
             print("- Reads per second:", round(reads_per_second, 2))
             print()
@@ -287,13 +287,13 @@ def test_increasing(db_file_path: Path|str, count: int, num_inc_tests: int) -> d
             current_entries = count * r
 
         return results
-    
+
 def test_all(db_file_path: Path|str, count: int, num_inc_tests: int) -> dict:
     results = {}
     results["write_fresh"] = test_write_fresh(db_file_path, count)
     results["read"] = test_read(db_file_path, count)
     results["write_occupied"] = test_write_occupied(db_file_path, count)
-    results["write_big_commit"] = test_write_big_commit(db_file_path, count)
+    results["write_big_bundle"] = test_write_big_bundle(db_file_path, count)
     results["read_write"] = test_read_write(db_file_path, count)
     results["delete"] = test_delete(db_file_path, count)
     results["random_read"] = test_random_read(db_file_path, count)
@@ -302,7 +302,7 @@ def test_all(db_file_path: Path|str, count: int, num_inc_tests: int) -> dict:
 
 if __name__ == "__main__":
     from argparse import ArgumentParser, Namespace
-    
+
     parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
     parser.add_argument("-c", "--count", help="number of records", type=int, default=100)
     dir_help = "directory for temporary database. alternatively, pass ::memory: to use fully in memory db."
@@ -320,7 +320,7 @@ if __name__ == "__main__":
     Specific tests to run:
 
     write_fresh
-    write_big_commit
+    write_big_bundle
     write_occupied
     read
     read_write
@@ -328,7 +328,7 @@ if __name__ == "__main__":
     random_read
     increasing
     """
-    choices_tests = ["write_fresh", "write_big_commit", "write_occupied", "read", "read_write", "delete", "random_read", "increasing"]
+    choices_tests = ["write_fresh", "write_big_bundle", "write_occupied", "read", "read_write", "delete", "random_read", "increasing"]
     parser.add_argument("-t", "--tests", help=help_tests, nargs="+", choices=choices_tests, default="all")
     args: Namespace = parser.parse_args()
 
@@ -348,8 +348,8 @@ if __name__ == "__main__":
         results = {}
         if "write_fresh" in args.tests:
             results["write_fresh"] = test_write_fresh(db_path, args.count)
-        if "write_big_commit" in args.tests:
-            results["write_big_commit"] = test_write_big_commit(db_path, args.count)
+        if "write_big_bundle" in args.tests:
+            results["write_big_bundle"] = test_write_big_bundle(db_path, args.count)
         if "write_occupied" in args.tests:
             results["write_occupied"] = test_write_occupied(db_path, args.count)
         if "read" in args.tests:

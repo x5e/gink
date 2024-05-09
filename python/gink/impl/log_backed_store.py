@@ -58,7 +58,7 @@ class LogBackedStore(MemoryStore):
         file_bytes = self._handle.read()
         self._log_file_builder.ParseFromString(file_bytes)  # type: ignore
         count = 0
-        for bundle_bytes in self._log_file_builder.commits:  # type: ignore # pylint: disable=maybe-no-member
+        for bundle_bytes in self._log_file_builder.bundles:  # type: ignore # pylint: disable=maybe-no-member
             MemoryStore.apply_bundle(self, bundle_bytes, callback=callback)
             count += 1
         for claim_builder in self._log_file_builder.claims:
@@ -84,7 +84,7 @@ class LogBackedStore(MemoryStore):
         added = MemoryStore.apply_bundle(self, bundle)
         if added:
             self._log_file_builder.Clear()  # type: ignore
-            self._log_file_builder.commits.append(bundle.get_bytes())  # type: ignore
+            self._log_file_builder.bundles.append(bundle.get_bytes())  # type: ignore
             if claim_chain:
                 claim_builder: ClaimBuilder = create_claim(bundle.get_info().get_chain())
                 self._log_file_builder.claims.append(claim_builder)

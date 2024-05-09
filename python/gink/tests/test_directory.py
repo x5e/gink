@@ -32,7 +32,7 @@ def test_set_get():
 
             bundler = Bundler("testing")
             global_directory.set("foo", "bar", bundler=bundler)
-            database.commit(bundler)
+            database.bundle(bundler)
             infos = store.get_bundle_infos()
             assert len(infos) == 2, infos
             result = global_directory["foo"]

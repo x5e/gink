@@ -52,29 +52,29 @@ export class ChainTracker {
     }
 
     /**
-     * First, determine if the commit is novel (represents data not previously marked),
+     * First, determine if the bundle is novel (represents data not previously marked),
      * then second, mark the data in the data structure (possibly checking that it's a sensible extension).
      * Note that checkValidExtension is used here as a safeguard to make sure we don't
      * send broken chains to the peer; the store should have its own check for receiving.
-     * @param commitInfo Metadata about a particular commit.
-     * @param checkValidExtension If true then barfs if this commit isn't a valid extension.
-     * @returns true if the commit represents data not seen before
+     * @param bundleInfo Metadata about a particular bundle.
+     * @param checkValidExtension If true then barfs if this bundle isn't a valid extension.
+     * @returns true if the bundle represents data not seen before
      */
-    markAsHaving(commitInfo: BundleInfo, checkValidExtension?: boolean): boolean {
-        if (!this.data.has(commitInfo.medallion))
-            this.data.set(commitInfo.medallion, new Map());
-        const innerMap = this.data.get(commitInfo.medallion);
-        const seenThrough = innerMap.get(commitInfo.chainStart)?.timestamp || 0;
-        if (commitInfo.timestamp > seenThrough) {
+    markAsHaving(bundleInfo: BundleInfo, checkValidExtension?: boolean): boolean {
+        if (!this.data.has(bundleInfo.medallion))
+            this.data.set(bundleInfo.medallion, new Map());
+        const innerMap = this.data.get(bundleInfo.medallion);
+        const seenThrough = innerMap.get(bundleInfo.chainStart)?.timestamp || 0;
+        if (bundleInfo.timestamp > seenThrough) {
             if (checkValidExtension) {
-                if (commitInfo.timestamp != commitInfo.chainStart && !commitInfo.priorTime)
-                    throw new Error(`commitInfo appears to be invalid: ${JSON.stringify(commitInfo)}`);
-                if ((commitInfo.priorTime ?? 0) != seenThrough)
-                    throw new Error(`proposed commit would be an invalid extension ${JSON.stringify(commitInfo)}`);
+                if (bundleInfo.timestamp != bundleInfo.chainStart && !bundleInfo.priorTime)
+                    throw new Error(`bundleInfo appears to be invalid: ${JSON.stringify(bundleInfo)}`);
+                if ((bundleInfo.priorTime ?? 0) != seenThrough)
+                    throw new Error(`proposed bundle would be an invalid extension ${JSON.stringify(bundleInfo)}`);
             }
-            innerMap.set(commitInfo.chainStart, commitInfo);
+            innerMap.set(bundleInfo.chainStart, bundleInfo);
             for (const [cb, pair] of this.waiters) {
-                if (pair[0] == commitInfo.medallion && pair[1] >= commitInfo.chainStart && pair[1] <= commitInfo.timestamp) {
+                if (pair[0] == bundleInfo.medallion && pair[1] >= bundleInfo.chainStart && pair[1] <= bundleInfo.timestamp) {
                     this.waiters.delete(cb);
                     cb();
                 }
@@ -92,11 +92,11 @@ export class ChainTracker {
     private constructGreeting(): GreetingBuilder {
         const greeting = new GreetingBuilder();
         for (const [medallion, medallionMap] of this.data) {
-            for (const [chainStart, commitInfo] of medallionMap) {
+            for (const [chainStart, bundleInfo] of medallionMap) {
                 const entry = new GreetingEntryBuilder();
                 entry.setMedallion(medallion);
                 entry.setChainStart(chainStart);
-                entry.setSeenThrough(commitInfo.timestamp);
+                entry.setSeenThrough(bundleInfo.timestamp);
                 greeting.addEntries(entry);
             }
         }
@@ -118,7 +118,7 @@ export class ChainTracker {
      * @param key A [Medallion, ChainStart] tuple
      * @returns SeenThrough (a Timestamp) or undefined if not yet seen
      */
-    getCommitInfo(key: [Medallion, ChainStart]): BundleInfo | undefined {
+    getBundleInfo(key: [Medallion, ChainStart]): BundleInfo | undefined {
         const inner = this.data.get(key[0]);
         if (!inner) return undefined;
         return inner.get(key[1]);

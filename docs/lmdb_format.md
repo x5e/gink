@@ -2,7 +2,7 @@
 
     Under the hood, each gink.mdb file stores several "databases" (tables/b-trees):
 
-        bundles - Used to keep track of all commits we have seen.
+        bundles - Used to keep track of all bundles we have seen.
             key: received_muts (packed into 8 bytes big endian)
             val: the bytes for the relevant bundle when it was sealed
 
@@ -26,7 +26,7 @@
             key: entry-muid
             val: entry binary proto
 
-        placements - Entry proto data from commits, ordered in a way that can be accessed easily.
+        placements - Entry proto data from bundles, ordered in a way that can be accessed easily.
             key: (container-muid, subject, placement-muid, expiry), with muids packed into 16 bytes
             val: entry-id
             A couple of other wrinkles of note:

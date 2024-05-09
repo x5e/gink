@@ -219,8 +219,8 @@ export class ClaimBuilder extends ImplementedMessage {
 }
 
 export class LogFileBuilder extends ImplementedMessage {
-    setCommitsList(commits: Array<Uint8Array>);
-    getCommitsList(): Array<Uint8Array>;
+    setBundlesList(bundles: Array<Uint8Array>);
+    getBundlesList(): Array<Uint8Array>;
     getClaimsList(): Array<ClaimBuilder>;
     setClaimsList(entries: Array<ClaimBuilder>);
 }

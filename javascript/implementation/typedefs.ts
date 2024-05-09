@@ -23,8 +23,8 @@ export type Indexable = MuidTuple;
 export type ActorId = number;  // process ID on the server side, something more complex in the browser
 export type StorageKey = ScalarKey | MuidTuple | [MuidTuple, MuidTuple] | [];
 
-export interface CommitListener {
-    (commitInfo: BundleInfo): Promise<void>;
+export interface BundleListener {
+    (bundleInfo: BundleInfo): Promise<void>;
 }
 
 export interface ClaimedChain {

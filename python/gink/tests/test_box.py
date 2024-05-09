@@ -33,7 +33,7 @@ def test_set_get():
 
             bundler = Bundler("testing")
             global_box.set("test value", bundler=bundler)
-            database.commit(bundler)
+            database.bundle(bundler)
             infos = store.get_bundle_infos()
             assert len(infos) == 2, infos
 

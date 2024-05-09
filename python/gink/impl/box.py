@@ -21,7 +21,7 @@ class Box(Container):
                  ):
         """
         muid: the global id of this sequence, created on the fly if None
-        database: where to send commits through, or last db instance created if None
+        database: where to send bundles through, or last db instance created if None
         """
         if arche:
             muid = Muid(-1, -1, BOX)
@@ -40,7 +40,7 @@ class Box(Container):
             self.clear(bundler=bundler)
             self.set(contents, bundler=bundler)
         if immediate and len(bundler):
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def set(self, value, *, bundler=None, comment=None):
         """ Sets a value in the box, returns the muid address of the entry.

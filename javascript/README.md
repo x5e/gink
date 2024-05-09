@@ -182,9 +182,9 @@ const emptyMap = directory.toMap(time0);
 let hasA = directory.has("A", time1);
 ```
 
-Another way to look back in time is by using a "relative" timestamp. In this case, relative just means looking back a certain number of commits ago. Think of the current state of the database as 0, so the previous commit would be -1, etc.
+Another way to look back in time is by using a "relative" timestamp. In this case, relative just means looking back a certain number of bundles ago. Think of the current state of the database as 0, so the previous bundle would be -1, etc.
 ```ts
-// Since adding "A": "B" was the last commit,
+// Since adding "A": "B" was the last bundle,
 // this looks back before it, so it will return false.
 let hasA = directory.has("A", -1);
 

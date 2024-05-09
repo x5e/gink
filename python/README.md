@@ -228,7 +228,7 @@ previous = directory.get("foo", as_of=clearance_muid.timestamp)
 ### Database Operations
 
 #### Bundling and comments
-Think of a bundle as a commit in Git. A bundle is just a collection of changes with an optional comment/message. Without specifying a bundler object, most Gink operations will immediately commit the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle, here is an example:
+Think of a bundle as a bundle in Git. A bundle is just a collection of changes with an optional comment/message. Without specifying a bundler object, most Gink operations will immediately bundle the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle, here is an example:
 ```python
 directory = Directory()
 bundler = Bundler(comment="example setting values in directory")
@@ -237,9 +237,9 @@ directory.set("key1", 1, bundler=bundler)
 directory.set("key2", "value2", bundler=bundler)
 directory.update({"key3": 3, "key4": 4}, bundler=bundler)
 
-# This seals the bundler and commits changes to database
+# This seals the bundler and bundles changes to database
 # at this point, no more changes may be added
-database.commit(bundler)
+database.bundle(bundler)
 ```
 
 #### Reset

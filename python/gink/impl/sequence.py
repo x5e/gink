@@ -26,7 +26,7 @@ class Sequence(Container):
                  ):
         """
         muid: the global id of this sequence, created on the fly if None
-        database: where to send commits through, or last db instance created if None
+        database: where to send bundles through, or last db instance created if None
         """
         if ordered:
             if isinstance(ordered[0], str):
@@ -48,7 +48,7 @@ class Sequence(Container):
             self.clear(bundler=bundler)
             self.extend(contents, bundler=bundler)
         if immediate and len(bundler):
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def __iter__(self):
         for thing in self.values():
@@ -119,7 +119,7 @@ class Sequence(Container):
             expiry = self._database.resolve_timestamp(expiry) if expiry else None  # type: ignore
             self._add_entry(value=items[i], bundler=bundler, expiry=expiry)
         if immediate and len(bundler):
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
         return bundler
 
     def yank(self, muid: Muid, *, dest: GenericTimestamp = None, bundler=None, comment=None):
@@ -153,7 +153,7 @@ class Sequence(Container):
         movement_builder.dest = dest
         muid = bundler.add_change(change_builder)
         if immediate:
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
         return muid
 
     def pop(self, index=-1, *, dest: GenericTimestamp = None, bundler=None, comment=None):

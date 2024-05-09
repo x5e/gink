@@ -95,7 +95,7 @@ class Addressable:
         encode_value(value, setting_change.entry.value)
         muid = bundler.add_change(setting_change)
         if immediate:
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
         return muid
 
     @abstractmethod

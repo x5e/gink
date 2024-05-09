@@ -2,27 +2,27 @@ import { BundleInfo } from "../implementation";
 import { ChainTracker } from "../implementation/ChainTracker";
 import { ensure } from "../implementation/utils";
 
-it('track two commits', async () => {
+it('track two bundles', async () => {
     const chainTracker = new ChainTracker({});
     const medallion = 521994040637930;
     const chainStart = 1662789574924000;
     const secondTime = 1662789590300000;
 
-    const commitInfo1: BundleInfo = { "timestamp": chainStart, medallion, chainStart, "comment": "node instance" };
-    chainTracker.markAsHaving(commitInfo1, true);
+    const bundleInfo1: BundleInfo = { "timestamp": chainStart, medallion, chainStart, "comment": "node instance" };
+    chainTracker.markAsHaving(bundleInfo1, true);
 
-    const commitInfo2: BundleInfo = {
+    const bundleInfo2: BundleInfo = {
         "timestamp": secondTime, medallion, chainStart, "priorTime": chainStart, "comment": "hello"
     };
-    chainTracker.markAsHaving(commitInfo2, true);
+    chainTracker.markAsHaving(bundleInfo2, true);
 
-    const commitInfo3 = chainTracker.getCommitInfo([medallion, chainStart]);
-    if (!commitInfo3) throw new Error("missing");
-    ensure(commitInfo3.medallion == medallion);
-    ensure(commitInfo3.chainStart == chainStart);
-    ensure(commitInfo3.timestamp == secondTime);
-    ensure(commitInfo3.priorTime == chainStart);
-    ensure(commitInfo3.comment == "hello");
+    const bundleInfo3 = chainTracker.getBundleInfo([medallion, chainStart]);
+    if (!bundleInfo3) throw new Error("missing");
+    ensure(bundleInfo3.medallion == medallion);
+    ensure(bundleInfo3.chainStart == chainStart);
+    ensure(bundleInfo3.timestamp == secondTime);
+    ensure(bundleInfo3.priorTime == chainStart);
+    ensure(bundleInfo3.comment == "hello");
 
     const chains = chainTracker.getChains();
     ensure(chains.length == 1);

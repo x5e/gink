@@ -21,7 +21,7 @@ class PairMap(Container):
 
         contents: dictionary of (Vertex, Vertex): Value to populate the pair map
         muid: the global id of this pair set, created on the fly if None
-        db: database to send commits through, or last db instance created if None
+        db: database to send bundles through, or last db instance created if None
         """
         if arche:
             muid = Muid(-1, -1, PAIR_MAP)
@@ -41,7 +41,7 @@ class PairMap(Container):
             for key_pair, value in contents.items():
                 self.set(key_pair, value, bundler)
         if immediate and len(bundler):
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def set(self, key: Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]],
             value: Union[UserValue, Container],

@@ -104,7 +104,7 @@ class Database:
             integers and floats that look like timestamps or microsecond timestamps are
             treated as such.
 
-            small integers are treated as "right before the <index> commit"
+            small integers are treated as "right before the <index> bundle"
         """
         if timestamp is None:
             return generate_timestamp()
@@ -156,7 +156,7 @@ class Database:
         self._store.apply_bundle(wrapper, self._on_bundle, True)
         return wrapper.get_info()
 
-    def commit(self, bundler: Bundler) -> BundleInfo:
+    def bundle(self, bundler: Bundler) -> BundleInfo:
         """ seals bundler and adds the resulting bundle to the local store """
         assert not bundler.sealed
         with self._lock:  # using an exclusive lock to ensure that we don't fork a chain
@@ -173,7 +173,7 @@ class Database:
             assert added
             info = wrap.get_info()
             self._last_link = info
-            self._logger.debug("locally committed bundle: %r", info)
+            self._logger.debug("locally bundleted bundle: %r", info)
             return info
 
     def _on_bundle(self, bundle_bytes: bytes, bundle_info: BundleInfo) -> None:
@@ -315,7 +315,7 @@ class Database:
         for change in self._store.get_reset_changes(to_time=to_time, container=None, user_key=None):
             bundler.add_change(change)
         if immediate and len(bundler):
-            self.commit(bundler=bundler)
+            self.bundle(bundler=bundler)
         return bundler
 
     def get_container(

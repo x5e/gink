@@ -43,10 +43,10 @@ import {
     buildPairLists,
     buildPointeeList,
     medallionChainStartToString,
-    extractCommitInfo,
+    extractBundleInfo,
     buildChainTracker,
     toStorageKey,
-    commitKeyToInfo,
+    bundleKeyToInfo,
     storageKeyToString,
 } from "./store_utils";
 
@@ -124,7 +124,7 @@ export class MemoryStore implements Store {
     async addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
         await this.ready;
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = extractCommitInfo(bundleBuilder);
+        const bundleInfo = extractBundleInfo(bundleBuilder);
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const oldChainInfo = this.chainInfos.get(medallionChainStartToString([medallion, chainStart]));
         if (oldChainInfo || priorTime) {
@@ -146,8 +146,8 @@ export class MemoryStore implements Store {
         }
 
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
-        const commitKey: BundleInfoTuple = MemoryStore.commitInfoToKey(bundleInfo);
-        this.trxns.set(commitKey, bundleBytes);
+        const bundleKey: BundleInfoTuple = MemoryStore.bundleInfoToKey(bundleInfo);
+        this.trxns.set(bundleKey, bundleBytes);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
@@ -229,9 +229,9 @@ export class MemoryStore implements Store {
         return bundleInfo;
     }
 
-    private static commitInfoToKey(commitInfo: BundleInfo): BundleInfoTuple {
-        return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
-        commitInfo.priorTime || 0, commitInfo.comment || ""];
+    private static bundleInfoToKey(bundleInfo: BundleInfo): BundleInfoTuple {
+        return [bundleInfo.timestamp, bundleInfo.medallion, bundleInfo.chainStart,
+        bundleInfo.priorTime || 0, bundleInfo.comment || ""];
     }
 
     applyMovement(movement: Movement) {
@@ -278,14 +278,14 @@ export class MemoryStore implements Store {
             return asOf;
         }
         if (asOf < 0 && asOf > -1000) {
-            // Interpret as number of commits in the past.
+            // Interpret as number of bundles in the past.
             try {
                 const trxnKeyArray = Array.from(this.trxns.keys());
                 const key = trxnKeyArray[trxnKeyArray.length + asOf];
                 return key[0];
             } catch {
-                // Looking further back than we have commits.
-                throw new Error("no commits that far back");
+                // Looking further back than we have bundles.
+                throw new Error("no bundles that far back");
             }
         }
         throw new Error(`don't know how to interpret asOf=${asOf}`);
@@ -319,12 +319,12 @@ export class MemoryStore implements Store {
         return entry;
     }
 
-    async getCommits(callBack: (commitBytes: BundleBytes, commitInfo: BundleInfo) => void) {
+    async getBundles(callBack: (bundleBytes: BundleBytes, bundleInfo: BundleInfo) => void) {
         for (const [key, val] of this.trxns) {
-            const commitKey: BundleInfoTuple = key;
-            const commitInfo = commitKeyToInfo(commitKey);
-            const commitBytes: BundleBytes = val;
-            callBack(commitBytes, commitInfo);
+            const bundleKey: BundleInfoTuple = key;
+            const bundleInfo = bundleKeyToInfo(bundleKey);
+            const bundleBytes: BundleBytes = val;
+            callBack(bundleBytes, bundleInfo);
         }
     }
 

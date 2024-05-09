@@ -35,7 +35,7 @@ parser.add_argument("--line_mode", action="store_true", help="read lines of inpu
 parser.add_argument("--interactive", action="store_true", help="force interactive mode")
 parser.add_argument("--heartbeat_to", type=Path, help="write on console refresh (for debugging)")
 parser.add_argument("--identity", help="explicitly set identity to be associated with changes")
-parser.add_argument("--starts", help="include starting commits when showing log", action="store_true")
+parser.add_argument("--starts", help="include starting bundles when showing log", action="store_true")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)

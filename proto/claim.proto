@@ -3,7 +3,7 @@ package gink;
 
 /**
     Each database instance may have one or more chains that it
-    can append commits to.  When a process opens a database, if
+    can append bundles to.  When a process opens a database, if
     no previously claimed chains are available, it can create a
     new chain.  If the process that created a chain no long exists,
     then that chain may be reclaimed by a new processes.
