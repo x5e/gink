@@ -554,7 +554,7 @@ class LmdbStore(AbstractStore):
         return self._handle.begin(write=True)
 
     def _release_lock(self, trxn: Trxn):
-        trxn.bundle()
+        trxn.commit()
 
     def get_last(self, chain: Chain) -> BundleInfo:
         with self._handle.begin() as trxn:
