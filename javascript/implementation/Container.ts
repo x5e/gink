@@ -1,5 +1,5 @@
 import { Bundler } from "./Bundler";
-import { Value, UserKey, Muid, AsOf, } from "./typedefs";
+import { Value, ScalarKey, Muid, AsOf, } from "./typedefs";
 import { muidToBuilder, wrapValue, wrapKey, } from "./utils";
 import { Deletion } from "./Deletion";
 import { Inclusion } from "./Inclusion";
@@ -61,7 +61,7 @@ export class Container extends Addressable {
      * @returns a promise the resolves to the muid of the change
      */
     protected addEntry(
-        key?: UserKey | Addressable | [Addressable, Addressable],
+        key?: ScalarKey | Addressable | [Addressable, Addressable],
         value?: Value | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string):
         Promise<Muid> {

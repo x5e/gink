@@ -139,7 +139,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         ensure(matches(entry.containerId, [2, 1, 3]));
         ensure(matches(entry.entryId, [5, 4, 1]));
         ensure(entry.value == "xyz");
-        ensure(entry.effectiveKey == "abc");
+        ensure(entry.storageKey == "abc");
     });
 
     it(`${implName} getChainIdentity works`, async () => {

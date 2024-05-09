@@ -62,7 +62,7 @@ export class Edge extends Addressable {
         if (!entry) {
             return 0;
         } else {
-            return <number>entry.effectiveKey;
+            return <number>entry.storageKey;
         }
     }
 

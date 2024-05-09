@@ -22,7 +22,7 @@ import {
     Clearance,
     Entry,
     Indexable,
-    UserKey,
+    ScalarKey,
     Medallion,
     Muid,
     MuidTuple,
@@ -37,7 +37,7 @@ import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { MapIterator, TreeMap } from 'jstreemap';
 import {
-    getEffectiveKey as getEffectiveKey,
+    getStorageKey as getStorageKey,
     extractMovement,
     extractContainerMuid,
     buildPairLists,
@@ -45,9 +45,9 @@ import {
     medallionChainStartToString,
     extractCommitInfo,
     buildChainTracker,
-    toEffectiveKey,
+    toStorageKey,
     commitKeyToInfo,
-    effectiveKeyToString,
+    storageKeyToString,
 } from "./store_utils";
 
 export class MemoryStore implements Store {
@@ -172,7 +172,7 @@ export class MemoryStore implements Store {
                 const entry: Entry = {
                     behavior: entryBuilder.getBehavior(),
                     containerId: extractContainerMuid(entryBuilder, bundleInfo),
-                    effectiveKey: getEffectiveKey(entryBuilder, changeAddress),
+                    storageKey: getStorageKey(entryBuilder, changeAddress),
                     entryId: [timestamp, medallion, offset],
                     pointeeList,
                     value: entryBuilder.hasValue() ? unwrapValue(entryBuilder.getValue()) : undefined,
@@ -244,7 +244,7 @@ export class MemoryStore implements Store {
             while (true) {
                 if (iterator.equals(this.locations.end())) break;
                 if (!iterator.key.startsWith(entryIdStr)) break;
-                entry = {...this.placements.get(iterator.value), placementId: movementId, effectiveKey: dest};
+                entry = {...this.placements.get(iterator.value), placementId: movementId, storageKey: dest};
                 this.placements.delete(iterator.value);
                 this.locations.erase(iterator);
                 iterator.next();
@@ -256,7 +256,7 @@ export class MemoryStore implements Store {
                 return;
             }
             ensure(iterator.key && iterator.key.startsWith(entryIdStr));
-            entry = {...this.placements.get(iterator.value), placementId: movementId, effectiveKey: dest};
+            entry = {...this.placements.get(iterator.value), placementId: movementId, storageKey: dest};
             const removingIdStr = iterator.value.slice(-34);
             this.removals.set(`${removingIdStr},${movementIdStr}`, "");
         }
@@ -291,7 +291,7 @@ export class MemoryStore implements Store {
         throw new Error(`don't know how to interpret asOf=${asOf}`);
     }
 
-    getEntryByKey(container?: Muid, key?: UserKey | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
+    getEntryByKey(container?: Muid, key?: ScalarKey | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
         try {
             return Promise.resolve(this.getEntryByKeyHelper(container, key, asOf));
         } catch (error) {
@@ -299,15 +299,15 @@ export class MemoryStore implements Store {
         }
     }
 
-    getEntryByKeyHelper(container?: Muid, key?: UserKey | Muid | [Muid, Muid], asOf?: AsOf): Entry | undefined {
+    getEntryByKeyHelper(container?: Muid, key?: ScalarKey | Muid | [Muid, Muid], asOf?: AsOf): Entry | undefined {
         const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
         const desiredSrc: [number, number, number] = [
             container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const srcAsStr = muidTupleToString(desiredSrc);
         let clearanceTime: Timestamp = this.getLastClearanceTime(srcAsStr, asOfTs);
-        const semanticKey = toEffectiveKey(key);
+        const semanticKey = toStorageKey(key);
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
-        const prefix = `${srcAsStr},${effectiveKeyToString(semanticKey)},`;
+        const prefix = `${srcAsStr},${storageKeyToString(semanticKey)},`;
         const iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix, asOfTsStr);
         if (!iterator) return undefined;
         const entry: Entry = iterator.value;
@@ -363,7 +363,7 @@ export class MemoryStore implements Store {
                 entry.behavior == Behavior.ROLE ||entry.behavior == Behavior.PAIR_SET ||
                 entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
 
-            const key = effectiveKeyToString(entry.effectiveKey);
+            const key = storageKeyToString(entry.storageKey);
             if (entry.deletion) result.delete(key);
             else result.set(key, entry);
         }
@@ -430,14 +430,14 @@ export class MemoryStore implements Store {
         const entryIdStr = muidTupleToString(entry.entryId);
         const containerIdStr = muidTupleToString(entry.containerId);
         const placementIdStr = muidTupleToString(entry.placementId);
-        const placementKey = `${containerIdStr},${effectiveKeyToString(entry.effectiveKey)},${placementIdStr}`;
+        const placementKey = `${containerIdStr},${storageKeyToString(entry.storageKey)},${placementIdStr}`;
         const behavior = entry.behavior;
 
         if (behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE) {
             this.locations.set(`${entryIdStr},${placementIdStr}`, placementKey);
         } else {
             const containerIdStr = muidTupleToString(entry.containerId);
-            const prefix = `${containerIdStr},${effectiveKeyToString(entry.effectiveKey)}`;
+            const prefix = `${containerIdStr},${storageKeyToString(entry.storageKey)}`;
             for (let iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix);
                 iterator && iterator.key && iterator.key.startsWith(prefix); iterator.prev()) {
                 if (entry.purging || ! this.keepingHistory) {
@@ -451,7 +451,7 @@ export class MemoryStore implements Store {
         this.placements.set(placementKey, entry);
         if (entry.sourceList.length) {
             // TODO: remove these on deletion/purge
-            const middle = behavior == Behavior.EDGE_TYPE ? effectiveKeyToString(entry.effectiveKey) : "";
+            const middle = behavior == Behavior.EDGE_TYPE ? storageKeyToString(entry.storageKey) : "";
             const sourceIdStr = muidTupleToString(entry.sourceList[0]);
             this.bySource.set(`${sourceIdStr},${middle},${placementIdStr}`, entry);
             ensure(entry.targetList.length);

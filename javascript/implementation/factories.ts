@@ -76,9 +76,9 @@ export async function interpret(entry: Entry, database: Database): Promise<Conta
         const muid: Muid = rehydrate(entry.pointeeList[0]);
         return construct(database, muid);
     }
-    if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
+    if (Array.isArray(entry.storageKey) && entry.storageKey.length == 3) {
         // For a MuidTuple effective key
-        return await construct(database, muidTupleToMuid(entry.effectiveKey));
+        return await construct(database, muidTupleToMuid(entry.storageKey));
     }
     throw new Error(`don't know how to interpret entry: ${JSON.stringify(entry)}`);
 

@@ -73,7 +73,7 @@ export class PairSet extends Container {
         const toSet = new Set<Array<Muid>>();
         for (const [key, entry] of entries) {
             if (!entry.deletion) {
-                toSet.add(<Array<Muid>>entry.effectiveKey)
+                toSet.add(<Array<Muid>>entry.storageKey)
             }
         }
         return toSet;

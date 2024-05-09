@@ -21,8 +21,8 @@ it('include and exclude work as intended', async function () {
         let found = false;
         const box2MuidStr = muidToString(box2.address);
         for (const entry of await store.getAllEntries()) {
-            if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
-                if (box2MuidStr == muidToString(muidTupleToMuid(entry.effectiveKey))) {
+            if (Array.isArray(entry.storageKey) && entry.storageKey.length == 3) {
+                if (box2MuidStr == muidToString(muidTupleToMuid(entry.storageKey))) {
                     found = true;
                 }
             }
