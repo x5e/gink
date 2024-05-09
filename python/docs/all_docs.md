@@ -51,7 +51,7 @@
 <hr>
 
 ```{eval-rst}
-.. automodule:: python.gink.impl.role
+.. automodule:: python.gink.impl.group
    :members:
 ```
 <hr>

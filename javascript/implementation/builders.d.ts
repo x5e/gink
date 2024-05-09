@@ -16,7 +16,7 @@ export declare enum Behavior {
     VERTEX = 7,
     EDGE_TYPE = 8,
     PROPERTY = 9,
-    ROLE = 10
+    GROUP = 10
 }
 export declare enum Special {
     MISSING = 0,

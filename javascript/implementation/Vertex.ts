@@ -51,7 +51,7 @@ export class Vertex extends Container {
         const edges: Edge[] = [];
         for (let i=0;i<entries.length;i++) {
             const entry = entries[i];
-            if (entry.behavior != 8)
+            if (entry.behavior != Behavior.EDGE_TYPE)
                 continue;
             const edge = new Edge(
                 this.database,

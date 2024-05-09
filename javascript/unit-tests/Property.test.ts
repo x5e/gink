@@ -35,6 +35,6 @@ it('Property.toMap', async function () {
         const asObject = Object.fromEntries(asMap.entries());
         ensure(asMap.size == 2);
         ensure(asObject["-1,-1,4"] === "foobar", Array.from(asMap.keys()).toString());
-        ensure(asObject["-1,-1,9"] === true, Array.from(asMap.keys()).toString());
+        ensure(asObject["-1,-1,10"] === true, Array.from(asMap.keys()).toString());
     }
 });

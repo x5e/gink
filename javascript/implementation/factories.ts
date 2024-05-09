@@ -9,7 +9,7 @@ import { Container } from "./Container";
 import { Directory } from "./Directory";
 import { Sequence } from "./Sequence";
 import { Box } from "./Box";
-import { Role } from "./Role";
+import { Group } from "./Group";
 import { PairSet } from "./PairSet";
 import { PairMap } from "./PairMap";
 import { KeySet } from "./KeySet";
@@ -32,7 +32,7 @@ export async function construct(
         if (address.offset === Behavior.PAIR_MAP) return new PairMap(database, address);
         if (address.offset === Behavior.PAIR_SET) return new PairSet(database, address);
         if (address.offset === Behavior.KEY_SET) return new KeySet(database, address);
-        if (address.offset === Behavior.ROLE) return new Role(database, address);
+        if (address.offset === Behavior.GROUP) return new Group(database, address);
         if (address.offset === Behavior.PROPERTY) return new Property(database, address);
         if (address.offset === Behavior.VERTEX) return new Vertex(database, address);
     }
@@ -60,8 +60,8 @@ export async function construct(
         return (new EdgeType(database, address, containerBuilder));
     if (containerBuilder.getBehavior() == Behavior.PROPERTY)
         return (new Property(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.ROLE)
-        return (new Role(database, address, containerBuilder));
+    if (containerBuilder.getBehavior() == Behavior.GROUP)
+        return (new Group(database, address, containerBuilder));
 
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
 }

@@ -88,7 +88,7 @@ if TYPE_CHECKING:
         VERTEX = 7
         EDGE_TYPE = 8
         PROPERTY = 9
-        ROLE = 10
+        GROUP = 10
 else:
     from ..builders.bundle_pb2 import Bundle as BundleBuilder
     from ..builders.sync_message_pb2 import SyncMessage

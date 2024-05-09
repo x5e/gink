@@ -83,8 +83,8 @@ it('from_to', async function () {
 
 it('edge_reorder', async function () {
     for (const store of [
-        new MemoryStore(true),
         new IndexedDbStore('edge_reorder', true),
+        new MemoryStore(true),
     ]) {
         const instance = new Database(store);
         await instance.ready;
@@ -98,7 +98,8 @@ it('edge_reorder', async function () {
         const x = await p.createEdge(a, b);
         const y = await p.createEdge(a, b);
         const afterX = generateTimestamp();
-
+        const entries = await store.getAllEntries();
+        ensure(entries.length == 2);
         const edges1 = await a.getEdgesFrom();
         ensure(edges1.length == 2 && edges1[0].equals(x) && edges1[1].equals(y), edges1.toString());
 

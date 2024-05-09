@@ -15,7 +15,7 @@ import { KeySet } from "./KeySet";
 import { Directory } from "./Directory";
 import { Box } from "./Box";
 import { Sequence } from "./Sequence";
-import { Role } from "./Role";
+import { Group } from "./Group";
 import { Store } from "./Store";
 import { Behavior, ChangeBuilder, ContainerBuilder, SyncMessageBuilder } from "./builders";
 import { Property } from "./Property";
@@ -164,13 +164,13 @@ export class Database {
     }
 
     /**
-     * Creates a new Role container.
+     * Creates a new Group container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Role container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the Group container (immediately if a bundler is passed in, otherwise after the commit)
      */
-    async createRole(change?: Bundler | string): Promise<Role> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.ROLE, change);
-        return new Role(this, muid, containerBuilder);
+    async createGroup(change?: Bundler | string): Promise<Group> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.GROUP, change);
+        return new Group(this, muid, containerBuilder);
     }
 
     /**
