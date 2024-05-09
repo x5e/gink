@@ -20,7 +20,7 @@ DIRECTORY: int = Behavior.DIRECTORY  # type: ignore
 PROPERTY: int = Behavior.PROPERTY  # type: ignore
 BOX: int = Behavior.BOX  # type: ignore
 VERTEX: int = Behavior.VERTEX  # type: ignore
-ROLE: int = Behavior.ROLE # type: ignore
+GROUP: int = Behavior.GROUP # type: ignore
 EDGE_TYPE: int = Behavior.EDGE_TYPE # type: ignore
 KEY_SET: int = Behavior.KEY_SET # type: ignore
 PAIR_SET: int = Behavior.PAIR_SET # type: ignore
@@ -161,7 +161,7 @@ class Placement(NamedTuple):
             middle_key = None
         elif behavior in (SEQUENCE, EDGE_TYPE):
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
-        elif behavior in (PROPERTY, ROLE):
+        elif behavior in (PROPERTY, GROUP):
             middle_key = Muid.create(context=entry_muid, builder=builder.describing)  # type: ignore
         elif behavior in (PAIR_SET, PAIR_MAP):
             left = Muid.create(context=entry_muid, builder=builder.pair.left)
@@ -193,7 +193,7 @@ class Placement(NamedTuple):
             middle_key = decode_key(middle_key_bytes)
         elif using == SEQUENCE:
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
-        elif using in (PROPERTY, ROLE):
+        elif using in (PROPERTY, GROUP):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using in (PAIR_SET, PAIR_MAP):
             middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
@@ -271,7 +271,7 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid
         encode_key(key, entry_builder.key)  # type: ignore
     elif behavior == BOX:
         assert key is None
-    elif behavior in (PROPERTY, ROLE):
+    elif behavior in (PROPERTY, GROUP):
         assert isinstance(key, Muid)
         key.put_into(entry_builder.describing)
     elif behavior in (PAIR_SET, PAIR_MAP):
@@ -296,7 +296,7 @@ def decode_entry_occupant(entry_muid: Muid, builder: EntryBuilder) -> Union[User
         return Muid.create(builder=builder.pointee, context=entry_muid)
     if builder.HasField("value"):  # type: ignore
         return decode_value(builder.value)
-    if builder.behavior in (ROLE, KEY_SET):
+    if builder.behavior in (GROUP, KEY_SET):
         return inclusion
     raise ValueError(f"can't interpret {builder}")
 

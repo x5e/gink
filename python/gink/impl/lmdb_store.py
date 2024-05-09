@@ -24,7 +24,7 @@ from .utilities import generate_timestamp, create_claim
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
-                     LocationKey, PROPERTY, BOX, ROLE, decode_value, EDGE_TYPE, PAIR_MAP, PAIR_SET, KEY_SET,
+                     LocationKey, PROPERTY, BOX, GROUP, decode_value, EDGE_TYPE, PAIR_MAP, PAIR_SET, KEY_SET,
                      normalize_entry_builder, VERTEX)
 
 
@@ -284,7 +284,7 @@ class LmdbStore(AbstractStore):
             for change in self._get_vertex_reset_changes(container, to_time, trxn):
                 yield change
             return
-        if behavior in (DIRECTORY, BOX, ROLE, KEY_SET, PROPERTY):
+        if behavior in (DIRECTORY, BOX, GROUP, KEY_SET, PROPERTY):
             for change in self._get_keyed_reset(container, to_time, trxn, seen, None, behavior):
                 yield change
             return
@@ -905,7 +905,7 @@ class LmdbStore(AbstractStore):
         entry_muid = placement_key.placer
         container_muid = placement_key.container
         serialized_placement_key = bytes(placement_key)
-        if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX, Behavior.PROPERTY, Behavior.ROLE):
+        if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX, Behavior.PROPERTY, Behavior.GROUP):
             found_entry = self.get_entry_by_key(container_muid, placement_key.middle)
             if found_entry:
                 if retaining:

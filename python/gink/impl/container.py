@@ -267,7 +267,7 @@ class Container(Addressable, ABC):
         return self.size()
 
     def get_describing(self, as_of: GenericTimestamp=None) -> Iterable[Container]:
-        """ Returns the properties and roles associated with this thing. """
+        """ Returns the properties and groups associated with this thing. """
         as_of = self._database.resolve_timestamp(as_of)
         for found in self._database.get_store().get_by_describing(self._muid, as_of):
             container_muid = Muid.create(found.address, found.builder.container)

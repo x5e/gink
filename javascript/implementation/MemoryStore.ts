@@ -360,7 +360,7 @@ export class MemoryStore implements Store {
                 continue;
             const entry: Entry = iterator.value;
             ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET ||
-                entry.behavior == Behavior.ROLE ||entry.behavior == Behavior.PAIR_SET ||
+                entry.behavior == Behavior.GROUP ||entry.behavior == Behavior.PAIR_SET ||
                 entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
 
             const key = storageKeyToString(entry.storageKey);

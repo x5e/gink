@@ -151,7 +151,7 @@ class Database {
             case 6: // PairMap
                 arr = Array.from((await container.items()).entries());
                 break;
-            case 10: // Role
+            case 10: // Group
                 tmp = await container.includedAsArray();
                 arr = [];
                 for (const key of tmp) {
@@ -204,7 +204,7 @@ class Database {
             case 9:
                 // REMEMBER TO ADD PROPERTY HERE!!
                 break;
-            case 10: // Role
+            case 10: // Group
                 gink.ensure("timestamp" in key, 'Expecting muid for key.');
                 await container.include(key, comment);
                 break;
@@ -251,7 +251,7 @@ class Database {
                     console.error(`Key is expecting array of 2 muids.`);
                 }
                 break;
-            case 10: // Role
+            case 10: // Group
                 try {
                     await container.exclude(key, comment);
                 } catch {

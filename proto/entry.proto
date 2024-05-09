@@ -15,13 +15,13 @@ message Entry {
         // some of these only apply to certain container types:
         Key key = 3;            // KEY_SET, DIRECTORY
         Pair pair = 4;          // PAIR_SET, PAIR_MAP, VERB
-        Muid describing = 6;    // PROPERTY, ROLE, VERB
+        Muid describing = 6;    // PROPERTY, GROUP, VERB
     }
 
     oneof contains {
         // some of these only apply to certain container types:
         Value value = 7;    // BOX, DIRECTORY, SEQUENCE, PROPERTY
-        bool deletion = 9;  // KEY_SET, DIRECTORY, ROLE, PROPERTY
+        bool deletion = 9;  // KEY_SET, DIRECTORY, GROUP, PROPERTY
         Muid pointee = 10;   // BOX, DIRECTORY, SEQUENCE
     }
 

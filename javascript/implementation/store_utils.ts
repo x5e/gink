@@ -29,7 +29,7 @@ export function getStorageKey(entryBuilder: EntryBuilder, entryMuid: Muid): Stor
         return (entryBuilder.getEffective() || entryMuid.timestamp);
     } else if (behavior == Behavior.BOX || behavior == Behavior.VERTEX) {
         return [];
-    } else if (behavior == Behavior.PROPERTY || behavior == Behavior.ROLE) {
+    } else if (behavior == Behavior.PROPERTY || behavior == Behavior.GROUP) {
         ensure(entryBuilder.hasDescribing());
         return muidToTuple(builderToMuid(entryBuilder.getDescribing(), entryMuid));
     } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
