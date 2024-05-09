@@ -1,5 +1,6 @@
 import { flock } from "fs-ext";
 import { FileHandle, open } from "fs/promises";
+import { ChainTracker } from "./ChainTracker";
 
 
 export class LockableLog {
@@ -7,6 +8,7 @@ export class LockableLog {
     public ready: Promise<void>;
     protected fileHandle: FileHandle;
     protected fileLocked: boolean = false;
+    protected chainTracker: ChainTracker = new ChainTracker({});
 
 
     constructor(

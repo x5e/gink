@@ -14,7 +14,6 @@ import { MemoryStore } from "./MemoryStore";
 import { Store } from "./Store";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { LockableLog } from "./LockableLog";
-import { flock } from "fs-ext";
 import { watch, FSWatcher, Stats } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder } from "./builders";
@@ -37,7 +36,7 @@ export class LogBackedStore extends LockableLog implements Store {
 
 
     private commitsProcessed = 0;
-    private chainTracker: ChainTracker = new ChainTracker({});
+
     private claimedChains: ClaimedChain[] = [];
     private identities: Map<string, string> = new Map(); // Medallion,ChainStart => identity
 
