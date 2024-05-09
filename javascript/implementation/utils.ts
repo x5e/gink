@@ -381,6 +381,10 @@ export function intToHex(value: number, padding?: number): string {
     return twosComplement.toString(16).padStart(digits, '0').toUpperCase();
 }
 
+export function bytesToHex(bytes: Uint8Array) {
+    return Array.from(bytes).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join("");
+}
+
 export function timestampToString(timestamp: Timestamp): string {
     return intToHex(timestamp, 14);
 }
@@ -388,15 +392,12 @@ export function timestampToString(timestamp: Timestamp): string {
 export function valueToJson(value: Value): string {
     // Note that this function doesn't check for circular references or anything like that, but
     // I think this is okay because circular objects can't be encoded into the database in the first place.
-    if (typeof (value) == "string") {
-        return `"${value}"`;
-    }
-    if (typeof (value) == "number" || value === true || value === false || value === null) {
-        return `${value}`;
-    }
     if (value instanceof Uint8Array) {
-        const hexString = Array.from(value).map(intToHex).join("");
-        return `"${hexString}"`;
+        value = Array.from(value).map(intToHex).join("");
+    }
+    const type = typeof value;
+    if (type == "string" || type == "number" || value === true || value === false || value === null) {
+        return JSON.stringify(value);
     }
     if ("function" === typeof value["toISOString"]) {
         return `"${(value as Date).toISOString()}"`;

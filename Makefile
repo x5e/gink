@@ -49,5 +49,5 @@ javascript/proto: $(PROTOS)
 javascript/content_root/generated: javascript/tsc.out
 	env npx webpack-cli build --config ./javascript/webpack.config.js
 
-javascript/tsc.out: javascript/node_modules
+javascript/tsc.out: javascript/node_modules $(wildcard javascript/implementation/*.ts)
 	env tsc -p javascript && chmod a+x javascript/tsc.out/implementation/main.js

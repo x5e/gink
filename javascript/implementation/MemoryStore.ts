@@ -45,7 +45,7 @@ import {
     medallionChainStartToString,
     extractCommitInfo,
     buildChainTracker,
-    userKeyToEffectiveKey,
+    toEffectiveKey,
     commitKeyToInfo,
     effectiveKeyToString,
 } from "./store_utils";
@@ -305,7 +305,7 @@ export class MemoryStore implements Store {
             container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const srcAsStr = muidTupleToString(desiredSrc);
         let clearanceTime: Timestamp = this.getLastClearanceTime(srcAsStr, asOfTs);
-        const semanticKey = userKeyToEffectiveKey(key);
+        const semanticKey = toEffectiveKey(key);
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
         const prefix = `${srcAsStr},${effectiveKeyToString(semanticKey)},`;
         const iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix, asOfTsStr);

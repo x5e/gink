@@ -147,7 +147,14 @@ it('convert to standard Map', async function () {
         ensure(!asMap.has("foo"));
         ensure(asMap.get("bar") == "iron");
         ensure(asMap.get("cheese") == "fries");
-        await store.close();
+
+        const another = await instance.createDirectory();
+        await another.set(new Uint8Array([94, 10]), "foo");
+        const anotherAsMap = await another.toMap();
+        ensure(anotherAsMap.size == 1);
+        const keys = Array.from(anotherAsMap.keys());
+        ensure(keys[0] instanceof Uint8Array);
+        ensure(keys[0][0] == 94 && keys[0][1] == 10);
     }
 });
 
@@ -163,12 +170,14 @@ it('Directory.toJSON', async function () {
         const other = await instance.createDirectory();
         await other.set("xxx", "yyy");
         await directory.set("blue", other);
-        const asJSON = await directory.toJson();
+        await directory.set(new Uint8Array([94,10]), "^\n");
+        const asJson = await directory.toJson();
         // MemoryStore returns entries in the order they were set,
         // so comparing an exact string won't work
-        const fromJSON = JSON.parse(asJSON);
-        ensure(fromJSON.bar == 3 && fromJSON.foo == "bar", fromJSON);
-        ensure(fromJSON.blue.xxx == "yyy" && fromJSON.zoom == null, fromJSON);
+        const fromJson = JSON.parse(asJson);
+        ensure(fromJson.bar == 3 && fromJson.foo == "bar", fromJson);
+        ensure(fromJson.blue.xxx == "yyy" && fromJson.zoom == null, fromJson);
+        ensure(fromJson["94,10"] == "^\n", asJson);
         await store.close();
     }
 });

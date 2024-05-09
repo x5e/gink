@@ -28,7 +28,7 @@ it('Property.toMap', async function () {
         const instance = new Database(store);
         await instance.ready;
         const gd = instance.getGlobalDirectory();
-        const property = await instance.getGlobalProperty();
+        const property = instance.getGlobalProperty();
         await property.set(gd, "foobar");
         await property.set(property, true);
         const asMap = await property.toMap();

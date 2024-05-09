@@ -1,7 +1,7 @@
 import { Container } from "./Container";
 import { Value, Muid, UserKey, AsOf, EffectiveKey } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, muidTupleToMuid } from "./utils";
+import { ensure, muidToString, muidTupleToMuid, intToHex, bytesToHex, valueToJson } from "./utils";
 import { toJson, interpret, construct } from "./factories";
 import { Addressable } from "./Addressable";
 import { effectiveKeyToString } from "./store_utils";
@@ -95,15 +95,30 @@ export class Keyed<GenericType extends UserKey | Addressable | [Addressable, Add
         const asMap = await this.toMap(asOf);
         let returning = "{";
         let first = true;
-        for (const [eKey, value] of asMap.entries()) {
+        const entries = (await this.database.store.getKeyedEntries(this.address, asOf)).values();
+        for (const entry of entries) {
             if (first) {
                 first = false;
             } else {
                 returning += ",";
             }
-            const sKey = typeof eKey == "string" ? eKey : effectiveKeyToString(eKey);
-            returning += `"${sKey}":`;
-            returning += await toJson(value, indent === false ? false : +indent + 1, asOf, seen);
+            const effectiveKey: EffectiveKey = entry.effectiveKey;
+            if (typeof effectiveKey == "string") {
+                returning += JSON.stringify(effectiveKey);
+            } else if (effectiveKey instanceof Uint8Array) {
+                returning += '"' + effectiveKey.toString() + '"';
+            } else {
+                returning += JSON.stringify(effectiveKeyToString(effectiveKey));
+            }
+            returning += ":";
+            if (entry.value !== undefined) {
+                returning += valueToJson(entry.value);
+            } else if (entry.pointeeList.length > 0) {
+                returning += await (await construct(this.database, muidTupleToMuid(entry.pointeeList[0]))).toJson(
+                    indent === false ? false : +indent + 1, asOf, seen);
+            } else {
+                throw new Error(`don't know how to interpret: ${entry}`);
+            }
         }
         returning += "}";
         return returning;
