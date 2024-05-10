@@ -6,39 +6,39 @@ import { ensure, muidToString } from "./utils";
 import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
-export class Role extends Container {
+export class Group extends Container {
 
     constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
-        super(database, address, Behavior.ROLE);
+        super(database, address, Behavior.GROUP);
         if (this.address.timestamp < 0) {
-            ensure(address.offset == Behavior.ROLE);
+            ensure(address.offset == Behavior.GROUP);
         } else {
-            ensure(containerBuilder.getBehavior() == Behavior.ROLE);
+            ensure(containerBuilder.getBehavior() == Behavior.GROUP);
         }
     }
 
     /**
-     * Includes a Muid or Container in the role.
+     * Includes a Muid or Container in the group.
      * @param key either a container or a Muid to include
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the inclusion
      */
-    async include(key: Muid | Container, change?: Bundler | string): Promise<Muid> {
+    async include(key: Container, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.INCLUSION, change);
     }
 
     /**
-     * Excludes a Muid or Container from the role.
+     * Excludes a Muid or Container from the group.
      * @param key either a Muid or container to exclude
      * @param change an optional bundler to put this in
      * @returns a promise that resolves to the Muid for the exclusion
      */
-    async exclude(key: Muid | Container, change?: Bundler | string): Promise<Muid> {
+    async exclude(key: Container, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 
     /**
-     * Whether or not the given key is explicitly included in the role.
+     * Whether or not the given key is explicitly included in the group.
      * @param key either a Muid or container to check if it is included
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to a boolean stating whether the key is explicitly included
@@ -55,17 +55,17 @@ export class Role extends Container {
     }
 
     /**
-     * Function to iterate over the containers in the role.
+     * Function to iterate over the containers in the group.
      * @param asOf optional timestamp to look back to
-     * @returns an async iterator across all containers in the role
+     * @returns an async iterator across all containers in the group
      */
     getMembers(asOf?: AsOf): AsyncGenerator<Container, void, unknown> {
-        const thisRole = this;
+        const thisGroup = this;
         let container;
         return (async function* () {
-            const entries = await thisRole.database.store.getKeyedEntries(thisRole.address, asOf);
+            const entries = await thisGroup.database.store.getKeyedEntries(thisGroup.address, asOf);
             for (const [key, entry] of entries) {
-                container = await interpret(entry, thisRole.database);
+                container = await interpret(entry, thisGroup.database);
                 if ("behavior" in container) {
                     yield container;
                 }
@@ -74,7 +74,7 @@ export class Role extends Container {
     }
 
     /**
-     * Dumps the contents of this role to a javascript array.Only includes explicitly included members.
+     * Dumps the contents of this group to a javascript array.Only includes explicitly included members.
      * useful for debugging and could also be used to export data by walking the tree
      * @param asOf effective time to get the dump for: leave undefined to get data as of the present
      * @returns an array containing Values (e.g. numbers, strings) and Containers (e.g. other Lists, Boxes, Directories)
@@ -96,7 +96,7 @@ export class Role extends Container {
     }
 
     /**
-     * Generates a JSON representation of the data in the role.
+     * Generates a JSON representation of the data in the group.
      * Mostly intended for demo/debug purposes.
      * @param indent true to pretty print (not yet implemented)
      * @param asOf optional timestamp to look back to

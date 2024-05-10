@@ -23,18 +23,18 @@ def test_database():
     assert last == database
 
 
-def test_add_commit() -> None:
-    """ tests that the add_commit works """
+def test_add_bundle() -> None:
+    """ tests that the add_bundle works """
     store = MemoryStore()
     database = Database(store=store)
     started = database.get_now()
     bundler = Bundler("just a test")
-    database.commit(bundler)
-    commits: List[BundleInfo] = []
-    store.get_bundles(lambda _, info: commits.append(info))
-    assert len(commits) == 2
-    assert commits[-1].comment == "just a test"
-    assert commits[-1].timestamp > started
+    database.bundle(bundler)
+    bundles: List[BundleInfo] = []
+    store.get_bundles(lambda _, info: bundles.append(info))
+    assert len(bundles) == 2
+    assert bundles[-1].comment == "just a test"
+    assert bundles[-1].timestamp > started
 
 
 def test_negative_as_of():
@@ -43,13 +43,13 @@ def test_negative_as_of():
             database = Database(store=store)
             bundler = Bundler("hello world")
             assert bundler._timestamp is None
-            database.commit(bundler)
+            database.bundle(bundler)
             assert bundler._timestamp is not None
             recent = store.get_one(BundleInfo)
             assert recent.timestamp == bundler._timestamp
 
 
-def test_commit_two():
+def test_bundle_two():
     for store in [
         LmdbStore(),
         MemoryStore(),
@@ -57,9 +57,9 @@ def test_commit_two():
         with closing(store):
             database = Database(store=store)
             first = Bundler("hello world")
-            database.commit(first)
+            database.bundle(first)
             second = Bundler("goodbye, world")
-            database.commit(second)
+            database.bundle(second)
 
 
 def test_reset_everything():

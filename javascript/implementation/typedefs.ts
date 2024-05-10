@@ -12,8 +12,8 @@ export type Offset = number;
 export type DirPath = string;
 export type FilePath = string;
 export type NumberStr = string;
-export type KeyType = number | string | Bytes;
-export type Value = number | string | boolean | null | Bytes | Map<KeyType, Value> | Array<Value> | Date;
+export type ScalarKey = number | string | Bytes;
+export type Value = number | string | boolean | null | Bytes | Map<ScalarKey, Value> | Array<Value> | Date;
 export type BundleInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, string];
 export type ChangeSetOffset = number;
 export type AsOf = Timestamp | Date | ChangeSetOffset;
@@ -21,9 +21,10 @@ export type MuidTuple = [Timestamp, Medallion, Offset];
 export type Cookies = Map<string, string>;
 export type Indexable = MuidTuple;
 export type ActorId = number;  // process ID on the server side, something more complex in the browser
+export type StorageKey = ScalarKey | MuidTuple | [MuidTuple, MuidTuple] | [];
 
-export interface CommitListener {
-    (commitInfo: BundleInfo): Promise<void>;
+export interface BundleListener {
+    (bundleInfo: BundleInfo): Promise<void>;
 }
 
 export interface ClaimedChain {
@@ -50,8 +51,8 @@ export interface BroadcastFunc {
 }
 
 export interface Muid {
-    medallion: Medallion | undefined;
-    timestamp: Timestamp | undefined;
+    medallion: Medallion;
+    timestamp: Timestamp;
     offset: number;
 }
 
@@ -70,10 +71,10 @@ export interface Entry {
     containerId: MuidTuple;
 
     /**
-     * effectiveKey is a KeyType if the entry is for a Directory, a Timestamp if it's for a sequence,
+     * storageKey is a KeyType if the entry is for a Directory, a Timestamp if it's for a sequence,
      * MuidTuple if it's for a property, and empty list for a box.
      */
-    effectiveKey: KeyType | Timestamp | MuidTuple | [];
+    storageKey: StorageKey;
     entryId: MuidTuple;
     pointeeList: Indexable[]; // use an empty list to denote no pointees
     value?: Value;
@@ -82,6 +83,7 @@ export interface Entry {
     placementId: MuidTuple;
     sourceList: Indexable[]; // used for edges
     targetList: Indexable[]; // used for edges
+    purging?: boolean;
 }
 
 export interface Removal {
@@ -90,6 +92,14 @@ export interface Removal {
     containerId: MuidTuple;
     dest: number;
     entryId: MuidTuple;
+}
+
+export interface Movement {
+    entryId: MuidTuple;
+    movementId: MuidTuple;
+    containerId: MuidTuple;
+    dest: number;
+    purge: boolean;
 }
 
 export interface Clearance {
@@ -103,7 +113,7 @@ export interface EdgeData {
     target: Muid;
     action: Muid;
     value?: Value;
-    effective: number;
+    effective?: number;
 }
 
 export interface IndexedDbStoreSchema extends DBSchema {
@@ -139,11 +149,15 @@ export interface IndexedDbStoreSchema extends DBSchema {
         value: Entry;
         key: MuidTuple;
         indexes: {
-            "by-container-key-placement": [MuidTuple, KeyType | Timestamp | MuidTuple | [], MuidTuple];
+            "by-container-key-placement": [MuidTuple, ScalarKey | Timestamp | MuidTuple | [], MuidTuple];
             'pointees': Indexable;
             'locations': [MuidTuple, MuidTuple];
             'sources': Indexable;
             'targets': Indexable;
         };
+    };
+    identities: {
+        value: string;
+        key: [Medallion, ChainStart];
     };
 }

@@ -4,7 +4,7 @@ import {
     ChainStart,
     Bytes,
     AsOf,
-    KeyType,
+    ScalarKey,
     ClaimedChain,
     ActorId,
     BroadcastFunc,
@@ -15,17 +15,17 @@ import { Store } from "./Store";
 import { FileHandle, open } from "fs/promises";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { flock } from "fs-ext";
-import { watch, FSWatcher } from "fs";
+import { watch, FSWatcher, Stats } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder } from "./builders";
-import { generateTimestamp, ensure } from "./utils";
+import { generateTimestamp, ensure, getActorId } from "./utils";
 
 /*
     At time of writing, there's only an in-memory implementation of
     IndexedDB available for Node.js.  This subclass will append all
     transactions it receives to a log file, making it possible to
     recreate the same in-memory database in the future by simply
-    replaying the receipt of each commit.
+    replaying the receipt of each bundle.
 
     This is obviously not ideal; eventually want to move to either
     a durable server side indexedDB implementation or create an
@@ -35,15 +35,18 @@ import { generateTimestamp, ensure } from "./utils";
 export class LogBackedStore implements Store {
 
     readonly ready: Promise<void>;
-    private commitsProcessed = 0;
+    private bundlesProcessed = 0;
     private fileHandle: FileHandle;
     private chainTracker: ChainTracker = new ChainTracker({});
     private claimedChains: ClaimedChain[] = [];
+    private identities: Map<string, string> = new Map(); // Medallion,ChainStart => identity
     private fileLocked: boolean = false;
     private memoryLock: PromiseChainLock = new PromiseChainLock();
     private redTo: number = 0;
     private fileWatcher: FSWatcher;
     private foundBundleCallBacks: BroadcastFunc[] = [];
+    private opened: boolean = false;
+    private closed: boolean = false;
 
     /**
      *
@@ -66,11 +69,19 @@ export class LogBackedStore implements Store {
         }
         const unlockingFunction = await this.memoryLock.acquireLock();
         await this.pullDataFromFile();
-
+        const thisLogBackedStore = this;
         this.fileWatcher =
             watch(this.filename, async (eventType, filename) => {
                 await new Promise(r => setTimeout(r, 10));
-                const size = (await this.fileHandle.stat()).size;
+                if (thisLogBackedStore.closed || !thisLogBackedStore.opened)
+                    return;
+                let size: number;
+                try {
+                    size = (await this.fileHandle.stat()).size;
+                } catch (problem) {
+                    console.error(`problem getting size! ${problem}`);
+                    throw problem;
+                }
                 if (eventType == "change" && size > this.redTo) {
                     const unlockingFunction = await this.memoryLock.acquireLock();
                     if (!this.exclusive)
@@ -85,14 +96,17 @@ export class LogBackedStore implements Store {
             });
 
         unlockingFunction();
+        this.opened = true;
     }
 
     async close() {
-        this.fileWatcher.close();
-        await new Promise(r => setTimeout(r, 100));
-        await this.ready.catch();
-        await this.fileHandle.close().catch();
-        await this.internalStore.close().catch();
+        this.closed = true;
+        if (this.fileWatcher)
+            this.fileWatcher.close();
+        if (this.fileHandle)
+            await this.fileHandle.close().catch();
+        if (this.internalStore)
+            await this.internalStore.close().catch();
     }
 
     private async lockFile(block: boolean): Promise<boolean> {
@@ -122,21 +136,33 @@ export class LogBackedStore implements Store {
     }
 
     private async pullDataFromFile(): Promise<void> {
-        const stats = await this.fileHandle.stat();
+        if (this.closed)
+            return;
+        let stats: Stats
+        try {
+            stats = await this.fileHandle.stat();
+        } catch (problem) {
+            console.error(`problem with fileHandle.stat ${problem}`);
+            throw problem;
+        }
         const totalSize = stats.size;
         if (this.redTo < totalSize) {
             const needToReed = totalSize - this.redTo;
             const uint8Array = new Uint8Array(needToReed);
             await this.fileHandle.read(uint8Array, 0, needToReed, this.redTo);
             const logFileBuilder = <LogFileBuilder>LogFileBuilder.deserializeBinary(uint8Array);
-            const commits = logFileBuilder.getCommitsList();
-            for (const commit of commits) {
-                const info = await this.internalStore.addBundle(commit);
+            const bundles = logFileBuilder.getBundlesList();
+            for (const bundle of bundles) {
+                const info = await this.internalStore.addBundle(bundle);
                 this.chainTracker.markAsHaving(info);
-                for (const callback of this.foundBundleCallBacks) {
-                    callback(commit, info);
+                // This is the start of a chain, and we need to keep track of the identity.
+                if (info.timestamp == info.chainStart && !info.priorTime) {
+                    this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
                 }
-                this.commitsProcessed += 1;
+                for (const callback of this.foundBundleCallBacks) {
+                    callback(bundle, info);
+                }
+                this.bundlesProcessed += 1;
             }
             const claims: ClaimBuilder[] = logFileBuilder.getClaimsList();
             for (let i = 0; i < claims.length; i++) {
@@ -151,7 +177,7 @@ export class LogBackedStore implements Store {
         }
     }
 
-    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
+    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Map<string,Entry>> {
         await this.ready;
         return this.internalStore.getOrderedEntries(container, through, asOf);
     }
@@ -161,25 +187,32 @@ export class LogBackedStore implements Store {
         return this.internalStore.getEntriesBySourceOrTarget(vertex, source, asOf);
     }
 
-    async getCommitsProcessed() {
+    async getBundlesProcessed() {
         await this.ready;
-        return this.commitsProcessed;
+        return this.bundlesProcessed;
     }
 
-    async addBundle(commitBytes: BundleBytes): Promise<BundleInfo> {
+    async addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
         // TODO(https://github.com/x5e/gink/issues/182): delay unlocking the file to give better throughput
         await this.ready;
         const unlockingFunction = await this.memoryLock.acquireLock();
         if (!this.exclusive)
             await this.lockFile(true);
+
         await this.pullDataFromFile();
-        const info: BundleInfo = await this.internalStore.addBundle(commitBytes);
+        const info: BundleInfo = await this.internalStore.addBundle(bundleBytes);
+        if (claimChain) {
+            await this.claimChain(info.medallion, info.chainStart, getActorId());
+            if (info.timestamp == info.chainStart && !info.priorTime) {
+                this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
+            }
+        }
         const added = this.chainTracker.markAsHaving(info);
         if (added) {
             ensure(this.fileLocked);
             await this.pullDataFromFile();
             const logFragment = new LogFileBuilder();
-            logFragment.setCommitsList([commitBytes]);
+            logFragment.setBundlesList([bundleBytes]);
             const bytes: Uint8Array = logFragment.serializeBinary();
             await this.fileHandle.writeFile(bytes);
             await this.fileHandle.sync();
@@ -200,13 +233,8 @@ export class LogBackedStore implements Store {
         return result;
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
+    private async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
         await this.ready;
-        const unlockingFunction = await this.memoryLock.acquireLock();
-        if (!this.exclusive) {
-            await this.lockFile(true);
-        }
-        ensure(this.fileLocked);
         await this.pullDataFromFile();
         const claimTime = generateTimestamp();
         const fragment = new LogFileBuilder();
@@ -220,15 +248,19 @@ export class LogBackedStore implements Store {
         await this.fileHandle.appendFile(bytes);
         await this.fileHandle.sync();
         this.redTo += bytes.byteLength;
-        if (!this.exclusive)
-            await this.unlockFile();
-        unlockingFunction();
-        return {
+        const chain = {
             medallion,
             chainStart,
             actorId: actorId || 0,
             claimTime,
         };
+        this.claimedChains.push(chain);
+        return chain;
+    }
+
+    async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
+        await this.ready;
+        return this.identities.get(`${chainInfo[0]},${chainInfo[1]}`);
     }
 
     async getChainTracker(): Promise<ChainTracker> {
@@ -236,9 +268,9 @@ export class LogBackedStore implements Store {
         return await this.internalStore.getChainTracker();
     }
 
-    async getCommits(callBack: (commitBytes: BundleBytes, commitInfo: BundleInfo) => void): Promise<void> {
+    async getBundles(callBack: (bundleBytes: BundleBytes, bundleInfo: BundleInfo) => void): Promise<void> {
         await this.ready;
-        await this.internalStore.getCommits(callBack);
+        await this.internalStore.getBundles(callBack);
     }
 
     async getContainerBytes(address: Muid): Promise<Bytes | undefined> {
@@ -246,19 +278,14 @@ export class LogBackedStore implements Store {
         return this.internalStore.getContainerBytes(address);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType, asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: ScalarKey, asOf?: AsOf): Promise<Entry | undefined> {
         await this.ready;
         return this.internalStore.getEntryByKey(container, key, asOf);
     }
 
-    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<string, Entry>> {
         await this.ready;
         return this.internalStore.getKeyedEntries(container, asOf);
-    }
-
-    async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
-        await this.ready;
-        return this.internalStore.getBackRefs(pointingTo);
     }
 
     async getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {

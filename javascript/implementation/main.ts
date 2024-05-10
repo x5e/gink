@@ -11,3 +11,8 @@ export { CommandLineInterface };
 if (require.main === module) {
     new CommandLineInterface(process).run();
 }
+
+process.on("unhandledRejection", (reason: string, promise) => {
+    if (reason) throw new Error(reason);
+    else console.log("Unhandled Promise Rejection: Likely due to closed websocket connection.");
+});

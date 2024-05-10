@@ -1,4 +1,4 @@
-""" Contains the `Role` Container class. """
+""" Contains the `Group` Container class. """
 from __future__ import annotations
 from typing import Optional, Union, Set, Iterable
 
@@ -11,26 +11,26 @@ from .bundler import Bundler
 from .builders import Behavior
 
 
-class Role(Container):
-    BEHAVIOR = Behavior.ROLE
+class Group(Container):
+    BEHAVIOR = Behavior.GROUP
 
     def __init__(self, *, contents: Optional[Set[Union[Muid, Container]]]=None,
                  muid: Optional[Muid] = None, database=None):
         """
-        Constructor for a role definition.
+        Constructor for a group definition.
 
         muid: the global id of this directory, created on the fly if None
-        db: database send commits through, or last db instance created if None
+        db: database send bundles through, or last db instance created if None
         """
         database = database or Database.get_last()
         bundler = Bundler()
         if muid is None:
-            muid = Container._create(Behavior.ROLE, database=database, bundler=bundler)
+            muid = Container._create(Behavior.GROUP, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         if contents:
             raise NotImplementedError()
         if len(bundler):
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def include(self, what: Union[Muid, Container], *,
                 bundler: Optional[Bundler]=None, comment: Optional[str]=None):
@@ -45,7 +45,7 @@ class Role(Container):
         return self._add_entry(key=what, value=deletion, bundler=bundler, comment=comment)
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        """ Dumps the contents of this role to a string.
+        """ Dumps the contents of this group to a string.
         """
         identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents="""
@@ -61,7 +61,7 @@ class Role(Container):
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         ts = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self._muid, as_of=ts, behavior=Behavior.ROLE)
+            container=self._muid, as_of=ts, behavior=Behavior.GROUP)
         count = 0
         for entry_pair in iterable:
             if not entry_pair.builder.deletion:
@@ -81,7 +81,7 @@ class Role(Container):
     def get_member_ids(self, *, as_of: GenericTimestamp = None) -> Iterable[Muid]:
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self._muid, as_of=as_of, behavior=Behavior.ROLE)
+            container=self._muid, as_of=as_of, behavior=Behavior.GROUP)
         for entry_pair in iterable:
             if entry_pair.builder.deletion:  # type: ignore
                 continue
@@ -99,4 +99,4 @@ class Role(Container):
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=what, as_of=ts)
         return bool(found and not found.builder.deletion)
 
-Database.register_container_type(Role)
+Database.register_container_type(Group)

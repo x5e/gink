@@ -20,8 +20,8 @@ DIRECTORY: int = Behavior.DIRECTORY  # type: ignore
 PROPERTY: int = Behavior.PROPERTY  # type: ignore
 BOX: int = Behavior.BOX  # type: ignore
 VERTEX: int = Behavior.VERTEX  # type: ignore
-ROLE: int = Behavior.ROLE # type: ignore
-VERB: int = Behavior.VERB # type: ignore
+GROUP: int = Behavior.GROUP # type: ignore
+EDGE_TYPE: int = Behavior.EDGE_TYPE # type: ignore
 KEY_SET: int = Behavior.KEY_SET # type: ignore
 PAIR_SET: int = Behavior.PAIR_SET # type: ignore
 PAIR_MAP: int = Behavior.PAIR_MAP # type: ignore
@@ -32,13 +32,35 @@ KEY_MAX: int = 2**53 - 1
 deletion = Deletion()
 inclusion = Inclusion()
 
+def normalize_entry_builder(entry_builder: EntryBuilder, entry_muid: Muid):
+    """ Make all relative muid references absolute muid refereces within an entry.
+    """
+    container_muid = Muid.create(context=entry_muid, builder=entry_builder.container)
+    container_muid.put_into(entry_builder.container)
 
-def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object()):
+    if entry_builder.HasField("describing"):
+        describes_muid = Muid.create(context=entry_muid, builder=entry_builder.describing)
+        describes_muid.put_into(entry_builder.describing)
+
+    if entry_builder.HasField("pointee"):
+        pointee_muid = Muid.create(context=entry_muid, builder=entry_builder.pointee)
+        pointee_muid.put_into(entry_builder.pointee)
+
+    if entry_builder.HasField("pair"):
+        left_muid = Muid.create(context=entry_muid, builder=entry_builder.pair.left)
+        left_muid.put_into(entry_builder.pair.left)
+        rite_muid = Muid.create(context=entry_muid, builder=entry_builder.pair.rite)
+        rite_muid.put_into(entry_builder.pair.rite)
+
+
+
+def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object(), offset: Optional[int]=None):
     if getattr(builder, "behavior") == UNSPECIFIED:
         raise ValueError("entry lacks a behavior")
     if not builder.HasField("container"):
         raise ValueError("no container specified in entry")
-    container_muid = Muid.create(context, builder=getattr(builder, "container"))
+    entry_muid = Muid.create(context, offset=offset)
+    container_muid = Muid.create(context=entry_muid, builder=getattr(builder, "container"))
     if container_muid.timestamp == -1 and container_muid.medallion > 0:
         if getattr(context, "medallion") != container_muid.medallion:
             raise ValueError("attempt to modify instance container from other instance")
@@ -128,8 +150,8 @@ class Placement(NamedTuple):
     @staticmethod
     def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):
         """ Create an EntryStorageKey from an Entry itself, plus address information. """
-        container = Muid.create(builder=getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(context=new_info, offset=offset)
+        container = Muid.create(builder=getattr(builder, "container"), context=entry_muid)
         behavior = getattr(builder, "behavior")
         position = getattr(builder, "effective")
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None, Tuple[Muid, Muid]]
@@ -137,13 +159,13 @@ class Placement(NamedTuple):
             middle_key = decode_key(builder)
         elif behavior in (BOX, VERTEX):
             middle_key = None
-        elif behavior in (SEQUENCE, VERB):
+        elif behavior in (SEQUENCE, EDGE_TYPE):
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
-        elif behavior in (PROPERTY, ROLE):
-            middle_key = Muid.create(context=new_info, builder=builder.describing)  # type: ignore
+        elif behavior in (PROPERTY, GROUP):
+            middle_key = Muid.create(context=entry_muid, builder=builder.describing)  # type: ignore
         elif behavior in (PAIR_SET, PAIR_MAP):
-            left = Muid.create(context=new_info, builder=builder.pair.left)
-            rite = Muid.create(context=new_info, builder=builder.pair.rite)
+            left = Muid.create(context=entry_muid, builder=builder.pair.left)
+            rite = Muid.create(context=entry_muid, builder=builder.pair.rite)
             middle_key = (left, rite)
         else:
             raise AssertionError(f"unexpected behavior: {behavior}")
@@ -171,7 +193,7 @@ class Placement(NamedTuple):
             middle_key = decode_key(middle_key_bytes)
         elif using in (SEQUENCE, VERB):
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
-        elif using in (PROPERTY, ROLE):
+        elif using in (PROPERTY, GROUP):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using in (PAIR_SET, PAIR_MAP):
             middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
@@ -249,7 +271,7 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid
         encode_key(key, entry_builder.key)  # type: ignore
     elif behavior == BOX:
         assert key is None
-    elif behavior in (PROPERTY, ROLE):
+    elif behavior in (PROPERTY, GROUP):
         assert isinstance(key, Muid)
         key.put_into(entry_builder.describing)
     elif behavior in (PAIR_SET, PAIR_MAP):
@@ -274,7 +296,7 @@ def decode_entry_occupant(entry_muid: Muid, builder: EntryBuilder) -> Union[User
         return Muid.create(builder=builder.pointee, context=entry_muid)
     if builder.HasField("value"):  # type: ignore
         return decode_value(builder.value)
-    if builder.behavior in (ROLE, KEY_SET):
+    if builder.behavior in (GROUP, KEY_SET):
         return inclusion
     raise ValueError(f"can't interpret {builder}")
 

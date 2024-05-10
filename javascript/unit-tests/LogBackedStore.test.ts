@@ -1,6 +1,6 @@
 import { Database, LogBackedStore } from "../implementation/main";
 import { testStore } from "./Store.test";
-import { truncateSync, existsSync } from "fs";
+import { truncateSync, existsSync, unlinkSync } from "fs";
 
 const TEST_FILE = "/tmp/test.store";
 
@@ -24,6 +24,9 @@ testStore('LogBackedStore',
 
 it('test locks', async () => {
     const TEST_FILE_FOR_LOCKS = "/tmp/test_file_for_locks.store";
+    if (existsSync(TEST_FILE_FOR_LOCKS)) {
+        unlinkSync(TEST_FILE_FOR_LOCKS);
+    }
     const lbs1 = new LogBackedStore(TEST_FILE_FOR_LOCKS, true);
     await lbs1.ready;
     const lbs2 = new LogBackedStore(TEST_FILE_FOR_LOCKS, true);
@@ -32,6 +35,7 @@ it('test locks', async () => {
         result = "acquired";
     }).catch(() => {
         result = "barfed";
+        lbs2.close();
     });
     if (result != "barfed") {
         throw new Error("locking broken");
@@ -56,6 +60,7 @@ it('test automatic data pulling & callbacks', async () => {
     const globalDir1 = instance1.getGlobalDirectory();
 
     await globalDir1.set("key", "value", "test bundle");
+
     await new Promise(r => setTimeout(r, 100));
 
     expect(cb.calledTimes > 0).toBe(true);

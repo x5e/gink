@@ -9,12 +9,12 @@ package gink;
     chosen because the IDs contain an embedded micro-second timestamp.
 
     * The timestamp and medallion may be omitted (=0) in muids found inside
-      rows when they point to another row in the same commit.
+      rows when they point to another row in the same bundle.
 
     * The medallion may be omitted (=0) for a muid that points to a row
       from the same stream.
 
-    * The offset value of 0 (omitted) referrs to the commit.
+    * The offset value of 0 (omitted) referrs to the bundle.
 
     The limits specified below allow a Muid to be packed into a canonical
     16 byte representation: effectively a 128-bit integer that
@@ -35,5 +35,5 @@ package gink;
 message Muid {
     sint64 timestamp = 1; // microseconds since epoch
     sint64 medallion = 2; // less than 2**52, version 1 between 2**48 and 2**49, exclusive
-    uint32 offset = 3; // less than 2**20 (== 16**5)
+    sint32 offset = 3; // less than 2**20 (== 16**5)
 }

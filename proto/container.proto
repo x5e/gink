@@ -6,6 +6,9 @@ import "proto/behavior.proto";
     Each new Container message establishes the existance of a mutable data structure.
     Those containers can have their contents changed with Entry messages,
     but the type ("behavior") of each Container cannot be changed.
+
+    In the future, this container definition may also define limitations on what
+    sort of data types may be stored in it.
 */
 
 message Container {

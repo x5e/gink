@@ -32,7 +32,7 @@ def test_set_get():
 
             bundler = Bundler("testing")
             global_directory.set("foo", "bar", bundler=bundler)
-            database.commit(bundler)
+            database.bundle(bundler)
             infos = store.get_bundle_infos()
             assert len(infos) == 2, infos
             result = global_directory["foo"]
@@ -153,7 +153,6 @@ def test_reset():
     for store in [LmdbStore(), MemoryStore()]:
         # TODO: implement reset in memory store
         with store:
-            # pylint: disable=unsupported-assignment-operation, unsupported-role-test
             database = Database(store=store)
             gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"

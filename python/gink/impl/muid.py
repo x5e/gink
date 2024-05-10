@@ -1,5 +1,6 @@
 """ contains the Muid class (basically a way to represent global addresses) """
-from typing import NamedTuple, Union
+from __future__ import annotations
+from typing import NamedTuple, Union, Optional
 from uuid import UUID
 
 from .builders import MuidBuilder
@@ -49,13 +50,25 @@ class Muid(NamedTuple):
         builder.medallion = self.medallion if self.medallion else 0  # type: ignore
 
     @classmethod
-    def create(cls, context, builder: Union[MuidBuilder, Dummy] = Dummy(), offset=None):
-        """ Creates a muid from a builder and optionally a bundle_info context object. """
+    def create(
+            cls,
+            context,
+            builder: Union[MuidBuilder, Dummy] = Dummy(),
+            offset: Optional[int]=None):
+        """ Creates a muid.
+
+            The context argument should either be a BundleInfo
+
+        """
         timestamp = builder.timestamp or context.timestamp  # type: ignore
         medallion = builder.medallion or context.medallion  # type: ignore
         offset = offset or builder.offset  # type: ignore
         if not offset:
             raise ValueError("no offset specified")
+        if offset < 0:
+            if not isinstance(context, Muid):
+                raise ValueError("invalid context for negative offset")
+            offset = context.offset + offset
         assert medallion, "no medallion"
         assert timestamp, "no timestamp"
         return cls(timestamp, medallion, offset)

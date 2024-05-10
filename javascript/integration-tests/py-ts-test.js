@@ -14,8 +14,8 @@ const { sleep } = require("./browser_test_utilities.js");
     await server.expect("accepted");
     await sleep(100);
 
-    server.send("await root.set(3,4, 'test commit');\n");
-    await server.expect("received commit", 1000);
+    server.send("await root.set(3,4, 'test bundle');\n");
+    await server.expect("received bundle", 1000);
     await sleep(100);
 
     client.send("root.get(3);\n");
@@ -27,5 +27,3 @@ const { sleep } = require("./browser_test_utilities.js");
     console.log("finished!");
     process.exit(0);
 })().catch((reason) => { console.error(reason); process.exit(1); });
-
-

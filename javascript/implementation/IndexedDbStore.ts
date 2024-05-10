@@ -3,11 +3,11 @@ import {
     ensure,
     generateTimestamp, dehydrate,
     matches,
-    muidToString,
     muidToTuple,
-    muidTupleToMuid,
     sameData,
-    unwrapValue
+    unwrapValue,
+    getActorId,
+    muidTupleToString
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {
@@ -23,7 +23,7 @@ import {
     Clearance,
     Entry, Indexable,
     IndexedDbStoreSchema,
-    KeyType,
+    ScalarKey,
     Medallion,
     Muid,
     MuidTuple,
@@ -32,25 +32,26 @@ import {
     Timestamp,
 } from "./typedefs";
 import {
-    extractCommitInfo,
+    extractBundleInfo,
     extractContainerMuid,
-    getEffectiveKey,
-    extractMovementInfo,
+    getStorageKey,
+    extractMovement,
     buildPairLists,
     buildPointeeList,
     buildChainTracker,
-    keyToSemanticKey,
-    commitKeyToInfo,
-    commitInfoToKey
+    toStorageKey,
+    bundleKeyToInfo,
+    bundleInfoToKey,
+    storageKeyToString
 } from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
-import { Container } from './Container';
 import { PromiseChainLock } from "./PromiseChainLock";
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
-    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries")[], "readwrite">;
+    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries" | "identities")[],
+    "readwrite">;
 
 if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
@@ -97,7 +98,7 @@ export class IndexedDbStore implements Store {
                      isn't a javascript object, we'll use
                      [timestamp, medallion] to keep transactions ordered in time.
                  */
-                db.createObjectStore('trxns'); // a map from CommitKey to CommitBytes
+                db.createObjectStore('trxns'); // a map from BundleKey to BundleBytes
 
                 /*
                     Stores ChainInfo objects.
@@ -116,6 +117,14 @@ export class IndexedDbStore implements Store {
                 */
                 db.createObjectStore('activeChains', { keyPath: ["claimTime"] });
 
+                /*
+                Keep track of the identities of who started each chain.
+                key: [medallion, chainStart]
+                value: identity (string)
+                Not setting keyPath since [medallion, chainStart] can't be pulled from the value
+                */
+                db.createObjectStore('identities');
+
                 db.createObjectStore("clearances", { keyPath: ["containerId", "clearanceId"] });
 
                 db.createObjectStore('containers'); // map from AddressTuple to ContainerBytes
@@ -127,11 +136,13 @@ export class IndexedDbStore implements Store {
 
                 // The "entries" store has objects of type Entry (from typedefs)
                 const entries = db.createObjectStore('entries', { keyPath: "placementId" });
-                entries.createIndex("by-container-key-placement", ["containerId", "effectiveKey", "placementId"]);
-                entries.createIndex("pointees", "pointeeList", { multiEntry: true, unique: false });
+                entries.createIndex("by-container-key-placement", ["containerId", "storageKey", "placementId"]);
+
+                // ideally the next three indexes would be partial indexes, covering only sequences and edges
+                // it might be worth pulling them out into separate lookup tables.
                 entries.createIndex("locations", ["entryId", "placementId"]);
-                entries.createIndex("sources", "sourceList", { multiEntry: true, unique: false });
-                entries.createIndex("targets", "targetList", { multiEntry: true, unique: false });
+                entries.createIndex("sources", ["sourceList", "storageKey", "placementId"]);
+                entries.createIndex("targets", ["targetList", "storageKey", "placementId"]);
             },
         });
         this.initialized = true;
@@ -150,7 +161,7 @@ export class IndexedDbStore implements Store {
             this.lastCaller = callerLine;
             this.countTrxns += 1;
             this.transaction = this.wrapped.transaction(
-                ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains', 'containers'],
+                ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains', 'containers', 'identities'],
                 'readwrite');
             this.transaction.done.finally(() => this.clearTransaction());
         } else {
@@ -189,12 +200,6 @@ export class IndexedDbStore implements Store {
         this.keepingHistory = true;
     }
 
-    async getBackRefs(pointingTo: Muid): Promise<Entry[]> {
-        await this.ready;
-        const indexable = dehydrate(pointingTo);
-        return this.wrapped.getAllFromIndex("entries", "pointees", indexable);
-    }
-
     async close() {
         try {
             await this.ready;
@@ -213,17 +218,17 @@ export class IndexedDbStore implements Store {
             return asOf;
         }
         if (asOf < 0 && asOf > -1000) {
-            // Interpret as number of commits in the past.
+            // Interpret as number of bundles in the past.
             let cursor = await this.wrapped.transaction("trxns", "readonly").objectStore("trxns").openCursor(undefined, "prev");
-            let commitsToTraverse = -asOf;
+            let bundlesToTraverse = -asOf;
             for (; cursor; cursor = await cursor.continue()) {
-                if (--commitsToTraverse == 0) {
+                if (--bundlesToTraverse == 0) {
                     const tuple = <BundleInfoTuple>cursor.key;
                     return tuple[0];
                 }
             }
-            // Looking further back then we have commits.
-            throw new Error("no commits that far back");
+            // Looking further back then we have bundles.
+            throw new Error("no bundles that far back");
         }
         throw new Error(`don't know how to interpret asOf=${asOf}`);
     }
@@ -243,9 +248,16 @@ export class IndexedDbStore implements Store {
         return result;
     }
 
-    async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId): Promise<ClaimedChain> {
+    async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
         await this.ready;
-        const wrappedTransaction = this.wrapped.transaction("activeChains", "readwrite");
+        const wrappedTransaction = this.getTransaction();
+        const identity = await wrappedTransaction.objectStore('identities').get(chainInfo);
+        return identity;
+    }
+
+    private async claimChain(medallion: Medallion, chainStart: ChainStart, actorId?: ActorId, transaction?: Transaction): Promise<ClaimedChain> {
+        await this.ready;
+        const wrappedTransaction = transaction ?? this.getTransaction();
         const claim = {
             chainStart,
             medallion,
@@ -253,7 +265,6 @@ export class IndexedDbStore implements Store {
             claimTime: generateTimestamp(),
         };
         await wrappedTransaction.objectStore('activeChains').add(claim);
-        await wrappedTransaction.done;
         return claim;
     }
 
@@ -266,23 +277,24 @@ export class IndexedDbStore implements Store {
 
     private async getChainInfos(): Promise<Array<BundleInfo>> {
         await this.ready;
-        return await this.wrapped.transaction("chainInfos", "readonly").objectStore('chainInfos').getAll();
+        return await this.getTransaction().objectStore('chainInfos').getAll();
     }
 
-    addBundle(bundleBytes: BundleBytes): Promise<BundleInfo> {
+    addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
         if (!this.initialized) throw new Error("not initialized! need to await on .ready");
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = extractCommitInfo(bundleBuilder);
+        const bundleInfo = extractBundleInfo(bundleBuilder);
         //console.log(`got ${JSON.stringify(bundleInfo)}`);
 
         return this.processingLock.acquireLock().then((unlock) => {
-            return this.addBundleHelper(bundleBytes, bundleInfo, bundleBuilder).then((trxn) => {
-                unlock(); return trxn.done.then(() => bundleInfo);
+            return this.addBundleHelper(bundleBytes, bundleInfo, bundleBuilder, claimChain).then((trxn) => {
+                unlock();
+                return trxn.done.then(() => bundleInfo);
             }).finally(unlock);
         });
     }
 
-    private async addBundleHelper(bundleBytes: BundleBytes, bundleInfo: BundleInfo, bundleBuilder: BundleBuilder):
+    private async addBundleHelper(bundleBytes: BundleBytes, bundleInfo: BundleInfo, bundleBuilder: BundleBuilder, claimChain?: boolean):
         Promise<Transaction> {
         // console.log(`starting addBundleHelper for: ` + JSON.stringify(bundleInfo));
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
@@ -298,15 +310,24 @@ export class IndexedDbStore implements Store {
                 throw new Error(`missing ${JSON.stringify(bundleInfo)}, have ${JSON.stringify(oldChainInfo)}`);
             }
         }
+        // If this is a new chain, save the identity & claim this chain
+        if (claimChain) {
+            ensure(bundleInfo.timestamp == bundleInfo.chainStart, "timestamp != chainstart");
+            ensure(bundleInfo.comment, "comment (identity) required to start a chain");
+            const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
+            await wrappedTransaction.objectStore('identities').add(bundleInfo.comment, chainInfo);
+            await this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId(), wrappedTransaction);
+        }
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring parsing again.
-        const commitKey: BundleInfoTuple = commitInfoToKey(bundleInfo);
-        await wrappedTransaction.objectStore("trxns").add(bundleBytes, commitKey);
+        const bundleKey: BundleInfoTuple = bundleInfoToKey(bundleInfo);
+        await wrappedTransaction.objectStore("trxns").add(bundleBytes, bundleKey);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
+            const changeAddress: Muid = {timestamp, medallion, offset};
             if (changeBuilder.hasContainer()) {
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
                 await wrappedTransaction.objectStore("containers").add(containerBytes, changeAddressTuple);
@@ -314,12 +335,11 @@ export class IndexedDbStore implements Store {
             }
             if (changeBuilder.hasEntry()) {
                 const entryBuilder: EntryBuilder = changeBuilder.getEntry();
-                // TODO(https://github.com/google/gink/issues/55): explain root
                 let containerId: MuidTuple = [0, 0, 0];
                 if (entryBuilder.hasContainer()) {
                     containerId = extractContainerMuid(entryBuilder, bundleInfo);
                 }
-                const [effectiveKey, replacing] = getEffectiveKey(entryBuilder, timestamp);
+                const storageKey = getStorageKey(entryBuilder, changeAddress);
                 const entryId: MuidTuple = [timestamp, medallion, offset];
                 const behavior: Behavior = entryBuilder.getBehavior();
                 const placementId: MuidTuple = entryId;
@@ -338,7 +358,7 @@ export class IndexedDbStore implements Store {
                 const entry: Entry = {
                     behavior,
                     containerId,
-                    effectiveKey,
+                    storageKey,
                     entryId,
                     pointeeList,
                     value,
@@ -348,8 +368,8 @@ export class IndexedDbStore implements Store {
                     sourceList,
                     targetList,
                 };
-                if (replacing) {
-                    const range = IDBKeyRange.bound([containerId, effectiveKey], [containerId, effectiveKey, placementId]);
+                if (!(behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE)) {
+                    const range = IDBKeyRange.bound([containerId, storageKey], [containerId, storageKey, placementId]);
                     const search = await wrappedTransaction.objectStore("entries").index("by-container-key-placement"
                     ).openCursor(range, "prev");
                     if (search) {
@@ -363,7 +383,7 @@ export class IndexedDbStore implements Store {
                             };
                             await wrappedTransaction.objectStore("removals").add(removal);
                         } else {
-                            await wrappedTransaction.objectStore("entries").delete(placementId);
+                            await wrappedTransaction.objectStore("entries").delete(search.value.placementId);
                         }
                     }
                 }
@@ -371,19 +391,19 @@ export class IndexedDbStore implements Store {
                 continue;
             }
             if (changeBuilder.hasMovement()) {
-                const { movementBuilder, entryId, movementId, containerId } = extractMovementInfo(changeBuilder, bundleInfo, offset);
+                const movement = extractMovement(changeBuilder, bundleInfo, offset);
+                const { entryId, movementId, containerId, dest, purge } = movement;
                 const range = IDBKeyRange.bound([entryId, [0]], [entryId, [Infinity]]);
                 const search = await wrappedTransaction.objectStore("entries").index("locations").openCursor(range, "prev");
                 if (!search) {
                     continue; // Nothing found to remove.
                 }
                 const found: Entry = search.value;
-                const dest = movementBuilder.getDest();
                 if (dest != 0) {
                     const destEntry: Entry = {
                         behavior: found.behavior,
                         containerId: found.containerId,
-                        effectiveKey: dest,
+                        storageKey: dest,
                         entryId: found.entryId,
                         pointeeList: found.pointeeList,
                         value: found.value,
@@ -395,7 +415,7 @@ export class IndexedDbStore implements Store {
                     };
                     await wrappedTransaction.objectStore("entries").add(destEntry);
                 }
-                if (movementBuilder.getPurge() || !this.keepingHistory) {
+                if (purge || !this.keepingHistory) {
                     search.delete();
                 } else {
                     const removal: Removal = {
@@ -454,7 +474,7 @@ export class IndexedDbStore implements Store {
         return await this.wrapped.transaction("containers", "readonly").objectStore('containers').get(<MuidTuple>addressTuple);
     }
 
-    async getEntryByKey(container?: Muid, key?: KeyType | Muid | [Muid | Container, Muid | Container], asOf?: AsOf): Promise<Entry | undefined> {
+    async getEntryByKey(container?: Muid, key?: ScalarKey | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
@@ -466,15 +486,15 @@ export class IndexedDbStore implements Store {
         }
 
         let upperTuple = [asOfTs];
-        const semanticKey = keyToSemanticKey(key);
+        const storageKey = toStorageKey(key);
         const lower = [desiredSrc];
-        const upper = [desiredSrc, semanticKey, upperTuple];
+        const upper = [desiredSrc, storageKey, upperTuple];
         const searchRange = IDBKeyRange.bound(lower, upper);
         const entriesCursor = await trxn.objectStore("entries").index(
             "by-container-key-placement").openCursor(searchRange, "prev");
         if (entriesCursor) {
             const entry: Entry = entriesCursor.value;
-            if (!sameData(entry.effectiveKey, semanticKey)) {
+            if (!sameData(entry.storageKey, storageKey)) {
                 return undefined;
             }
             if (entry.placementId[0] < clearanceTime) {
@@ -486,18 +506,20 @@ export class IndexedDbStore implements Store {
         return undefined;
     }
 
-    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<KeyType, Entry>> {
-        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
-        const desiredSrc = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
-        const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
-
-        let clearanceTime: Timestamp = 0;
-        const clearancesSearch = IDBKeyRange.bound([desiredSrc], [desiredSrc, [asOfTs]]);
+    async getClearanceTime(trxn: Transaction, muidTuple: MuidTuple, asOfTs: Timestamp): Promise<Timestamp> {
+        const clearancesSearch = IDBKeyRange.bound([muidTuple], [muidTuple, [asOfTs]]);
         const clearancesCursor = await trxn.objectStore("clearances").openCursor(clearancesSearch, "prev");
         if (clearancesCursor) {
-            clearanceTime = clearancesCursor.value.clearanceId[0];
+            return <Timestamp> clearancesCursor.value.clearanceId[0];
         }
+        return <Timestamp>0;
+    }
 
+    async getKeyedEntries(container: Muid, asOf?: AsOf): Promise<Map<string, Entry>> {
+        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
+        const desiredSrc: MuidTuple = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
+        const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
+        const clearanceTime = await this.getClearanceTime(<Transaction><unknown>trxn, desiredSrc, asOfTs);
         const lower = [desiredSrc, Behavior.DIRECTORY];
         const searchRange = IDBKeyRange.lowerBound(lower);
         let cursor = await trxn.objectStore("entries").index("by-container-key-placement")
@@ -506,20 +528,9 @@ export class IndexedDbStore implements Store {
         for (; cursor && matches(cursor.key[0], desiredSrc); cursor = await cursor.continue()) {
             const entry = <Entry>cursor.value;
 
-            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.ROLE ||
+            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.GROUP ||
                 entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
-            let key: Muid | string | number | Uint8Array | [];
-
-            if (typeof (entry.effectiveKey) == "string" || entry.effectiveKey instanceof Uint8Array || typeof (entry.effectiveKey) == "number") {
-                key = entry.effectiveKey;
-            } else if (Array.isArray(entry.effectiveKey) && entry.effectiveKey.length == 3) {
-                // If the key is a MuidTuple
-                key = muidToString(muidTupleToMuid(entry.effectiveKey));
-
-            } else {
-                throw Error(`not sure what to do with a ${typeof (key)} key`);
-            }
-            ensure((typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array || typeof (key) == "object"));
+            const key = storageKeyToString(entry.storageKey);
             if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime) {
                 if (entry.deletion) {
                     result.delete(key);
@@ -535,20 +546,19 @@ export class IndexedDbStore implements Store {
         await this.ready;
         const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp() + 1;
         const indexable = dehydrate(vertex);
-        let unfiltered: Entry[] = [];
-        if (source) {
-            unfiltered = await this.wrapped.getAllFromIndex("entries", "sources", indexable);
-        } else {
-            unfiltered = await this.wrapped.getAllFromIndex("entries", "targets", indexable);
-        }
-        const trxn = this.wrapped.transaction(["removals"], "readonly");
+        const trxn = this.wrapped.transaction(["clearances", "entries", "removals"], "readonly");
+        const clearanceTime = await this.getClearanceTime(<Transaction><unknown>trxn, indexable, asOfTs);
+        const lower = [[indexable], -Infinity];
+        const upper = [[indexable], +Infinity];
+        const searchRange = IDBKeyRange.bound(lower, upper);
+        let entriesCursor = await trxn.objectStore("entries").index(
+            source ? "sources" : "targets").openCursor(searchRange);
         const returning: Entry[] = [];
         const removals = trxn.objectStore("removals");
-        for (let i = 0; i < unfiltered.length; i++) {
-            const entry: Entry = unfiltered[i];
-            if (entry.placementId[0] >= asOfTs) {
+        for (;entriesCursor; entriesCursor = await entriesCursor.continue()) {
+            const entry: Entry = entriesCursor.value;
+            if (entry.placementId[0] >= asOfTs || entry.placementId[0] < clearanceTime)
                 continue;
-            }
             const removalsBound = IDBKeyRange.bound([entry.placementId], [entry.placementId, [asOfTs]]);
             // TODO: This seek-per-entry isn't very efficient and should be a replaced with a scan.
             const removalsCursor = await removals.index("by-removing").openCursor(removalsBound);
@@ -567,7 +577,8 @@ export class IndexedDbStore implements Store {
      * @param asOf show results as of a time in the past
      * @returns a promise of a list of ChangePairs
      */
-    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Entry[]> {
+    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf):
+            Promise<Map<string, Entry>> {
         const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp() + 1;
         const containerId = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const lower = [containerId, 0];
@@ -584,16 +595,20 @@ export class IndexedDbStore implements Store {
 
         const entries = trxn.objectStore("entries");
         const removals = trxn.objectStore("removals");
-        const returning = <Entry[]>[];
+        const returning = new Map<string, Entry>();
         let entriesCursor = await entries.index("by-container-key-placement").openCursor(range, through < 0 ? "prev" : "next");
         const needed = through < 0 ? -through : through + 1;
-        while (entriesCursor && returning.length < needed) {
+        while (entriesCursor && returning.size < needed) {
             const entry: Entry = entriesCursor.value;
             if (entry.placementId[0] >= clearanceTime) {
                 const removalsBound = IDBKeyRange.bound([entry.placementId], [entry.placementId, [asOfTs]]);
                 // TODO: This seek-per-entry isn't very efficient and should be a replaced with a scan.
                 const removalsCursor = await removals.index("by-removing").openCursor(removalsBound);
-                if (!removalsCursor) returning.push(entry);
+                if (!removalsCursor) {
+                    const placementIdStr = muidTupleToString(entry.placementId);
+                    const returningKey = `${entry.storageKey},${placementIdStr}`;
+                    returning.set(returningKey, entry);
+                }
             }
             entriesCursor = await entriesCursor.continue();
         }
@@ -639,17 +654,17 @@ export class IndexedDbStore implements Store {
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated
-    // to the current commit, so its best if `callBack` doesn't await.
-    async getCommits(callBack: (commitBytes: BundleBytes, commitInfo: BundleInfo) => void) {
+    // to the current bundle, so its best if `callBack` doesn't await.
+    async getBundles(callBack: (bundleBytes: BundleBytes, bundleInfo: BundleInfo) => void) {
         await this.ready;
 
-        // We loop through all commits and send those the peer doesn't have.
+        // We loop through all bundles and send those the peer doesn't have.
         for (let cursor = await this.wrapped.transaction("trxns", "readonly").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
-            const commitKey = <BundleInfoTuple>cursor.key;
-            const commitInfo = commitKeyToInfo(commitKey);
-            const commitBytes: BundleBytes = cursor.value;
-            callBack(commitBytes, commitInfo);
+            const bundleKey = <BundleInfoTuple>cursor.key;
+            const bundleInfo = bundleKeyToInfo(bundleKey);
+            const bundleBytes: BundleBytes = cursor.value;
+            callBack(bundleBytes, bundleInfo);
         }
     }
 

@@ -84,7 +84,7 @@ as_list = list(sequence)
 ```
 
 ### Key Set
-The Key Set is designed to work similarly to a Python Set - it is just a "list" of unique keys. If you are looking for a data structure to hold a reference to another container (or a Muid), check out [Role](#role-examples) below.\
+The Key Set is designed to work similarly to a Python Set - it is just a "list" of unique keys. If you are looking for a data structure to hold a reference to another container (or a Muid), check out [Group](#group-examples) below.\
 Note: a Key Set can hold keys of types str, int, and bytes.
 ```python
 ks = KeySet(database=database)
@@ -154,24 +154,24 @@ value = pm.get(key=(vertex1, vertex2)) # returns "vertex1->vertex2"
 items = pm.items() # returns a generator of ((Muid, Muid), value)
 ```
 
-(role-examples)=
-### Role
-A Role is simply a collection of Containers that have something in common.
+(group-examples)=
+### Group
+A Group is simply a collection of Containers that have something in common.
 ```python
-role = Role(database=database)
+group = Group(database=database)
 vertex1 = Vertex()
 vertex2 = Vertex()
 
-role.include(vertex1)
-role.include(vertex2._muid)
+group.include(vertex1)
+group.include(vertex2._muid)
 
 # returns a generator of the member Muids
-member_muids = role.get_member_ids()
+member_muids = group.get_member_ids()
 
 # returns a Set of the member Containers
-members = role.get_members()
+members = group.get_members()
 
-role.exclude(vertex1)
+group.exclude(vertex1)
 ```
 
 ### Property
@@ -344,7 +344,7 @@ new_size = pairset2.size()
 
 ## Database Operations
 #### Bundling, comments, and commits
-A bundle is simply a collection of changes with an optional comment/message, like a commit in Git. Without specifying a bundler object, Gink operations will immediately commit the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle (and when to commit them), here is an example:
+A bundle is simply a collection of changes with an optional comment/message, like a commit in Git. Without specifying a bundler object, Gink operations will immediately bundle the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle (and when to bundle them), here is an example:
 ```python
 directory = Directory()
 bundler = Bundler(comment="example setting values in directory")
@@ -353,9 +353,9 @@ directory.set("key1", 1, bundler=bundler)
 directory.set("key2", "value2", bundler=bundler)
 directory.update({"key3": 3, "key4": 4}, bundler=bundler)
 
-# This seals the bundler and commits changes to database
+# This seals the bundler and bundles changes to database
 # at this point, no more changes may be added
-database.commit(bundler)
+database.bundle(bundler)
 ```
 
 ### Reset

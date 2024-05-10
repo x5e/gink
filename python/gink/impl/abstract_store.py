@@ -70,7 +70,7 @@ class AbstractStore(ABC, Generic[Lock]):
 
     @abstractmethod
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
-        """ Gets the comment associated with a particular bundle/commit, if stored. """
+        """ Gets the comment associated with a particular bundle, if stored. """
         raise NotImplementedError()
 
     @abstractmethod
@@ -242,7 +242,7 @@ class AbstractStore(ABC, Generic[Lock]):
 
     @abstractmethod
     def get_identity(self, chain: Chain, lock: Optional[Lock]=None, /) -> str:
-        """ The comment on the first commit of each chain identifies who or what is responsible for it.
+        """ The comment on the first bundle of each chain identifies who or what is responsible for it.
         """
 
     @abstractmethod

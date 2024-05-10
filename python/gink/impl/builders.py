@@ -73,7 +73,7 @@ if TYPE_CHECKING:
         claim_time: MuTimestamp
 
     class LogFileBuilder(Message):
-        commits: List[bytes]
+        bundles: List[bytes]
         claims: List[ClaimBuilder]
 
 
@@ -86,9 +86,9 @@ if TYPE_CHECKING:
         PAIR_SET = 5
         PAIR_MAP = 6
         VERTEX = 7
-        VERB = 8
+        EDGE_TYPE = 8
         PROPERTY = 9
-        ROLE = 10
+        GROUP = 10
 else:
     from ..builders.bundle_pb2 import Bundle as BundleBuilder
     from ..builders.sync_message_pb2 import SyncMessage

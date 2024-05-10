@@ -15,6 +15,9 @@ class Addressable:
         self._database: Database = database
         self._muid: Muid = muid
 
+    def get_muid(self):
+        return self._muid
+
     def __eq__(self, other):
         return isinstance(other, self.__class__) and other._muid == self._muid
 
@@ -92,7 +95,7 @@ class Addressable:
         encode_value(value, setting_change.entry.value)
         muid = bundler.add_change(setting_change)
         if immediate:
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
         return muid
 
     @abstractmethod

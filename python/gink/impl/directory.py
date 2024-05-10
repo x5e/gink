@@ -25,7 +25,7 @@ class Directory(Container):
         Constructor for a directory proxy.
 
         muid: the global id of this directory, created on the fly if None
-        db: database send commits through, or last db instance created if None
+        db: database send bundles through, or last db instance created if None
         """
         self._logger = getLogger(self.__class__.__name__)
 
@@ -49,7 +49,7 @@ class Directory(Container):
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
         if immediate and len(bundler):
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this directory to a string.
@@ -137,7 +137,7 @@ class Directory(Container):
         """ If key exists in the mapping, returns the corresponding value and removes it.
 
             Otherwise returns default.  In the case that the key is found and removed,
-            then the change is added to the bundler (or committed immedately with comment
+            then the change is added to the bundler (or comitted immedately with comment
             if no bundler is specified.)
         """
         as_of = self._database.get_now()
@@ -212,7 +212,7 @@ class Directory(Container):
             for key, val in from_what:
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def blame(self, key: Optional[UserKey] = None, as_of: GenericTimestamp = None
               ) -> Dict[UserKey, Attribution]:

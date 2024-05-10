@@ -7,7 +7,7 @@ import {
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
 } from "./test_utils";
 import { muidToBuilder, ensure, wrapValue, matches, wrapKey } from "../implementation/utils";
-import { Bundler } from "../implementation";
+import { Bundler, Database } from "../implementation";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 
@@ -81,8 +81,8 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         await addTrxns(store);
         const hasMap = <ChainTracker>await store.getChainTracker();
 
-        expect(hasMap.getCommitInfo([MEDALLION1, START_MICROS1])!.timestamp).toBe(NEXT_TS1);
-        expect(hasMap.getCommitInfo([MEDALLION2, START_MICROS2])!.timestamp).toBe(NEXT_TS2);
+        expect(hasMap.getBundleInfo([MEDALLION1, START_MICROS1])!.timestamp).toBe(NEXT_TS1);
+        expect(hasMap.getBundleInfo([MEDALLION2, START_MICROS2])!.timestamp).toBe(NEXT_TS2);
     });
 
     it(`${implName} test sends trxns in order`, async () => {
@@ -92,26 +92,12 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
             store = await replacer();
         }
         const sent: Array<BundleBytes> = [];
-        await store.getCommits((x: BundleBytes) => { sent.push(x); });
+        await store.getBundles((x: BundleBytes) => { sent.push(x); });
         expect(sent.length).toBe(4);
         expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[0])).getTimestamp()).toBe(START_MICROS1);
         expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[1])).getTimestamp()).toBe(START_MICROS2);
         expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[2])).getTimestamp()).toBe(NEXT_TS1);
         expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[3])).getTimestamp()).toBe(NEXT_TS2);
-    });
-
-    it(`${implName} test claim chains`, async () => {
-        const actorId = 17;
-        await store.claimChain(MEDALLION1, START_MICROS1, actorId);
-        await store.claimChain(MEDALLION2, START_MICROS2, actorId);
-        if (replacer) {
-            await store.close();
-            store = await replacer();
-        }
-        const active = await store.getClaimedChains();
-        expect(active.size).toBe(2);
-        expect(active.get(MEDALLION1).chainStart).toBe(START_MICROS1);
-        expect(active.get(MEDALLION2).chainStart).toBe(START_MICROS2);
     });
 
     it(`${implName} test save/fetch container`, async () => {
@@ -125,9 +111,9 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         changeBuilder.setContainer(containerBuilder);
         bundleBuilder.getChangesMap().set(7, changeBuilder);
         const BundleBytes = bundleBuilder.serializeBinary();
-        const commitInfo = await store.addBundle(BundleBytes);
-        ensure(commitInfo.medallion == MEDALLION1);
-        ensure(commitInfo.timestamp == START_MICROS1);
+        const bundleInfo = await store.addBundle(BundleBytes);
+        ensure(bundleInfo.medallion == MEDALLION1);
+        ensure(bundleInfo.timestamp == START_MICROS1);
         const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
         ensure(containerBytes);
         const containerBuilder2 = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
@@ -149,9 +135,20 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         ensure(address.medallion == 4);
         ensure(address.timestamp == 5);
         const entry = <Entry>await store.getEntryByKey(sourceAddress, "abc",);
+        ensure(entry);
         ensure(matches(entry.containerId, [2, 1, 3]));
         ensure(matches(entry.entryId, [5, 4, 1]));
         ensure(entry.value == "xyz");
-        ensure(entry.effectiveKey == "abc");
+        ensure(entry.storageKey == "abc");
+    });
+
+    it(`${implName} getChainIdentity works`, async () => {
+        const db = new Database(store, 'test@identity');
+        await db.ready;
+        ensure((await store.getClaimedChains()).size == 0);
+        await db.getGlobalDirectory().set(3, 4);
+        const chain = [...(await store.getClaimedChains()).entries()][0][1];
+        const identity = await store.getChainIdentity([chain.medallion, chain.chainStart]);
+        ensure(identity == 'test@identity');
     });
 }

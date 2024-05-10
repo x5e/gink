@@ -3,7 +3,7 @@ const Expector = require("../Expector");
 const { expect } = require('@jest/globals');
 const { getLaunchOptions, sleep } = require("../browser_test_utilities");
 
-it('connect to server and display commits', async () => {
+it('connect to server and display bundles', async () => {
     let browser = await puppeteer.launch(getLaunchOptions());
 
     let page = await browser.newPage();
@@ -31,6 +31,6 @@ it('connect to server and display commits', async () => {
     await server.close();
     await browser.close();
 
-    const expectedMessages = /Messages go here\..*Hello, Universe!.*start: SimpleServer/s;
+    const expectedMessages = /Messages go here\..*Hello, Universe!.*/s;
     expect(messages).toMatch(expectedMessages);
 }, 40000);

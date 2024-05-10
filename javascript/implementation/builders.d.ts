@@ -14,9 +14,9 @@ export declare enum Behavior {
     PAIR_SET = 5,
     PAIR_MAP = 6,
     VERTEX = 7,
-    VERB = 8,
+    EDGE_TYPE = 8,
     PROPERTY = 9,
-    ROLE = 10
+    GROUP = 10
 }
 export declare enum Special {
     MISSING = 0,
@@ -96,6 +96,8 @@ export class EntryBuilder extends ImplementedMessage {
     setDescribing(MuidBuilder);
     getDescribing(): MuidBuilder;
     hasDescribing(): boolean;
+    getPurge(): boolean;
+    setPurge(boolean);
 }
 
 export class GreetingBuilder extends ImplementedMessage {
@@ -217,8 +219,8 @@ export class ClaimBuilder extends ImplementedMessage {
 }
 
 export class LogFileBuilder extends ImplementedMessage {
-    setCommitsList(commits: Array<Uint8Array>);
-    getCommitsList(): Array<Uint8Array>;
+    setBundlesList(bundles: Array<Uint8Array>);
+    getBundlesList(): Array<Uint8Array>;
     getClaimsList(): Array<ClaimBuilder>;
     setClaimsList(entries: Array<ClaimBuilder>);
 }

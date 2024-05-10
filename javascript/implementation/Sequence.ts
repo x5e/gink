@@ -29,7 +29,7 @@ export class Sequence extends Container {
      * @returns
      */
     async push(value: Value | Container, change?: Bundler | string): Promise<Muid> {
-        return await this.addEntry(true, value, change);
+        return await this.addEntry(undefined, value, change);
     }
 
     async move(
@@ -38,32 +38,30 @@ export class Sequence extends Container {
         purge?: boolean,
         bundlerOrComment?: Bundler | string) {
         const store = this.database.store;
+        // TODO: clarify what's going on here
         const muid = (typeof (muidOrPosition) == "object") ? muidOrPosition :
-            muidTupleToMuid((await store.getOrderedEntries(this.address, muidOrPosition)).pop().entryId);
+            muidTupleToMuid(Array.from(
+                (await store.getOrderedEntries(this.address, muidOrPosition)).values()).pop().entryId);
         ensure(muid.timestamp && muid.medallion && muid.offset);
         return this.movementHelper(muid, await this.findDest(dest), purge, bundlerOrComment);
     }
 
     private async findDest(dest: number): Promise<number> {
-        if (dest > +1e6) return dest;
-        if (dest < -1e6) return generateTimestamp() + dest;
-        while (dest > 0) { // I'm using while/break to get go-to like behavior.
-            const thereNow = await this.getEntryAt(dest);
-            if (!thereNow) { dest = -1; break; } // move to end
-            const before = await this.getEntryAt(dest - 1);
-            const nowTs = <number>thereNow.effectiveKey;
-            const beforeTs = <number>before.effectiveKey;
-            if (nowTs - beforeTs < 2)
-                throw new Error("no space between entries");
-            const intended = beforeTs + Math.floor((nowTs - beforeTs) / 2);
-            ensure(intended > beforeTs && intended < nowTs, "can't find place to put entry");
-            return intended;
-        }
         if (dest == 0 || dest == -1) {
-            const currentFrontOrBack = <number>(await this.getEntryAt(dest)).effectiveKey;
+            const currentFrontOrBack = <number>(await this.getEntryAt(dest)).storageKey;
             return currentFrontOrBack - Math.sign(dest + .5) * Math.floor(1e3 * Math.random());
         }
-        throw new Error("not implemented");
+        if (dest > +1e6) return dest;
+        if (dest < -1e6) return generateTimestamp() + dest;
+        const entryMap = await this.database.store.getOrderedEntries(this.address, dest);
+        const entryArray = Array.from(entryMap.entries());
+        const a = entryArray[entryArray.length - 2];
+        const b = entryArray[entryArray.length - 1];
+        const aTs = Number.parseInt(a[0].split(",")[0]);
+        const bTs = Number.parseInt(b[0].split(",")[0]);
+        if (Math.abs(aTs - bTs) < 2)
+            throw new Error("can't find space between entries");
+        return Math.floor((aTs + bTs)/ 2);
     }
 
     /**
@@ -74,19 +72,21 @@ export class Sequence extends Container {
      * @param purge - If true, removes so data cannot be recovered with "asOf" query
      * @param bundlerOrComment
      */
-    async pop(what?: Muid | number, purge?: boolean, bundlerOrComment?: Bundler | string): Promise<Container | Value | undefined> {
+    async pop(what?: Muid | number, purge?: boolean, bundlerOrComment?: Bundler | string):
+            Promise<Container | Value | undefined> {
         let returning: Container | Value;
         let muid: Muid;
         if (what && typeof (what) == "object") {
             muid = what;
             const entry = await this.database.store.getEntryById(muid);
-            if (!entry) return undefined;
+            if (!entry)
+                return undefined;
             ensure(entry.entryId[0] == muid.timestamp && entry.entryId[2] == muid.offset);
             returning = await interpret(entry, this.database);
         } else {
             what = (typeof (what) == "number") ? what : -1;
             // Should probably change the implementation to not copy all intermediate entries into memory.
-            const entries = await this.database.store.getOrderedEntries(this.address, what);
+            const entries = Array.from((await this.database.store.getOrderedEntries(this.address, what)).values());
             if (entries.length == 0) return undefined;
             const entry = entries[entries.length - 1];
             returning = await interpret(entry, this.database);
@@ -128,12 +128,19 @@ export class Sequence extends Container {
     }
 
     private async getEntryAt(position: number, asOf?: AsOf): Promise<Entry | undefined> {
-        //TODO(https://github.com/google/gink/issues/68): fix crummy algo
+        //TODO add a store method to only return the entry at a given location
         const entries = await this.database.store.getOrderedEntries(this.address, position, asOf);
-        if (entries.length == 0) return undefined;
-        if (position >= 0 && position >= entries.length) return undefined;
-        if (position < 0 && Math.abs(position) > entries.length) return undefined;
-        return entries[entries.length - 1];
+        if (entries.size == 0)
+            return undefined;
+        if (position >= 0 && position >= entries.size)
+            return undefined;
+        if (position < 0 && Math.abs(position) > entries.size)
+            return undefined;
+        let val: Entry;
+        for (let found of entries.values()) {
+            val = found;
+        }
+        return val;
     }
 
     /**
@@ -160,14 +167,15 @@ export class Sequence extends Container {
     async toArray(through = Infinity, asOf?: AsOf): Promise<(Container | Value)[]> {
         const thisList = this;
         const entries = await thisList.database.store.getOrderedEntries(thisList.address, through, asOf);
-        return await Promise.all(entries.map(async function (entry: Entry): Promise<Container | Value> {
+        const applied = Array.from(entries.values());
+        return await Promise.all(applied.map(async function (entry: Entry): Promise<Container | Value> {
             return await interpret(entry, thisList.database);
         }));
     }
 
     async size(asOf?: AsOf): Promise<number> {
         const entries = await this.database.store.getOrderedEntries(this.address, Infinity, asOf);
-        return entries.length;
+        return entries.size;
     }
 
     /**
@@ -184,8 +192,8 @@ export class Sequence extends Container {
             // the future and I can improve this.  Alternative, it might make sense to hydrate everything in a single pass.
             const entries = await thisList.database.store.getOrderedEntries(thisList.address, through, asOf);
             for (const entry of entries) {
-                const hydrated = await interpret(entry, thisList.database);
-                yield [muidTupleToMuid(entry.entryId), hydrated];
+                const hydrated = await interpret(entry[1], thisList.database);
+                yield [muidTupleToMuid(entry[1].entryId), hydrated];
             }
         })();
     }

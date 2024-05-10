@@ -23,7 +23,7 @@ export class PairSet extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the inclusion
      */
-    async include(key: [Muid | Container, Muid | Container], change?: Bundler | string): Promise<Muid> {
+    async include(key: [Container, Container], change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.INCLUSION, change);
     }
 
@@ -33,7 +33,7 @@ export class PairSet extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the exclusion
      */
-    async exclude(key: [Muid | Container, Muid | Container], change?: Bundler | string): Promise<Muid> {
+    async exclude(key: [Container, Container], change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 
@@ -44,7 +44,11 @@ export class PairSet extends Container {
      * @returns a promise that resolves to a boolean, true if the key is included, false if not
      */
     async contains(key: [Muid | Container, Muid | Container], asOf?: AsOf): Promise<boolean> {
-        const found = await this.database.store.getEntryByKey(this.address, key, asOf);
+        const aKey: [Muid, Muid] = [
+            key[0] instanceof Container ? key[0].address : key[0],
+            key[1] instanceof Container ? key[1].address : key[1],
+         ]
+        const found = await this.database.store.getEntryByKey(this.address, aKey, asOf);
         if (found && found.deletion) return false;
         return Boolean(found);
     }
@@ -69,10 +73,7 @@ export class PairSet extends Container {
         const toSet = new Set<Array<Muid>>();
         for (const [key, entry] of entries) {
             if (!entry.deletion) {
-                if (typeof (entry.effectiveKey) == "string") {
-                    const pair = entry.effectiveKey.split(",");
-                    toSet.add([strToMuid(pair[0]), strToMuid(pair[1])]);
-                }
+                toSet.add(<Array<Muid>>entry.storageKey)
             }
         }
         return toSet;

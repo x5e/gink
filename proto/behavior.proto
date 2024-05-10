@@ -5,12 +5,13 @@ enum Behavior {
     UNSPECIFIED = 0; // seeing this behavior usually means there's a bug somewhere
     BOX = 1; // only holds on entry at a time, only uses a contains, no key or subject
     SEQUENCE = 2; // entries have a value or pointee but no key, ordered by time
-    KEY_SET = 3; // entries have only key, no value, and may be removed with a deletion
+    PAIR_MAP = 3; // entries have only key, no value, and may be removed with a deletion
     DIRECTORY = 4; // entries have key and also something contained (value or pointee)
-    PAIR_SET = 5; //
-    PAIR_MAP = 6; // maps pairs of muids to values, could be used for neural net weights
-    VERTEX = 7; // entries correspond to removal (soft deletion)
-    VERB = 8;  // entries have a source vertex, target vertex, and optional value
-    PROPERTY = 9; // entries have a subject and value
-    ROLE = 10; // entries have describing and optionally deleting
+    KEY_SET = 5;
+    GROUP = 6; // entries have the describing field set and indicate either inclusion or deletion
+    VERTEX = 7; // entries correspond to removal (soft deletion) or revival
+    PAIR_SET = 8;  // entries have a source vertex, target vertex, and optional value
+    EVENT_TYPE = 9; // entries have a subject and value
+    PROPERTY = 10;
+    EDGE_TYPE = 11;
 };

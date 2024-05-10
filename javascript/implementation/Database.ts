@@ -1,9 +1,10 @@
 import { Peer } from "./Peer";
 import {
     makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
-    encodeToken, getActorId, isAlive
+    encodeToken, getActorId, isAlive,
+    getIdentity
 } from "./utils";
-import { BundleBytes, CommitListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
+import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
 import { IndexedDbStore } from "./IndexedDbStore";
@@ -14,12 +15,12 @@ import { KeySet } from "./KeySet";
 import { Directory } from "./Directory";
 import { Box } from "./Box";
 import { Sequence } from "./Sequence";
-import { Role } from "./Role";
+import { Group } from "./Group";
 import { Store } from "./Store";
 import { Behavior, ChangeBuilder, ContainerBuilder, SyncMessageBuilder } from "./builders";
 import { Property } from "./Property";
 import { Vertex } from "./Vertex";
-import { Verb } from "./Verb";
+import { EdgeType } from "./EdgeType";
 import { BundleBuilder } from "./builders";
 
 /**
@@ -33,9 +34,10 @@ export class Database {
     readonly peers: Map<number, Peer> = new Map();
     static readonly PROTOCOL = "gink";
 
-    private listeners: Map<string, CommitListener[]> = new Map();
+    private listeners: Map<string, BundleListener[]> = new Map();
     private countConnections = 0; // Includes disconnected clients.
     private myChain: ClaimedChain;
+    private identity: string;
     private initilized = false;
     protected iHave: ChainTracker;
 
@@ -43,53 +45,24 @@ export class Database {
     private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
         eval("require('websocket').w3cwebsocket");
 
-    constructor(readonly store: Store = new IndexedDbStore('Database-default'), info?: {
-        fullName?: string,
-        email?: string,
-        software?: string,
-    }, readonly logger: CallBack = noOp) {
-        this.ready = this.initialize(info);
+    constructor(readonly store: Store = new IndexedDbStore('Database-default'),
+        identity: string = getIdentity(),
+        readonly logger: CallBack = noOp) {
+        this.identity = identity;
+        this.ready = this.initialize();
     }
 
-    private async startChain(info?: {
-        fullName?: string,
-        email?: string,
-        software?: string,
-    }) {
-        const medallion = makeMedallion();
-        const chainStart = generateTimestamp();
-        const bundler = new Bundler(`start: ${info?.software || "Database"}`, medallion);
-        const medallionInfo = new Directory(this, { timestamp: -1, medallion, offset: Behavior.DIRECTORY });
-        if (info?.email) {
-            await medallionInfo.set("email", info.email, bundler);
-        }
-        if (info?.fullName) {
-            await medallionInfo.set("full-name", info.fullName, bundler);
-        }
-        if (info?.software) {
-            await medallionInfo.set("software", info.software, bundler);
-        }
-        bundler.seal({
-            medallion, timestamp: chainStart, chainStart
-        });
-        const commitBytes = bundler.bytes;
-        await this.store.addBundle(commitBytes);
-        this.myChain = await this.store.claimChain(medallion, chainStart, getActorId());
-        ensure(this.myChain.medallion > 0);
-    }
-
-    private async initialize(info?: {
-        fullName?: string,
-        email?: string,
-        software?: string,
-    }): Promise<void> {
-        await this.store.ready;
-        // TODO(181): make claiming of a chain as needed to facilitate read-only/relay use cases
+    /**
+     * Starts a chain or finds one to reuse, then sets myChain.
+     */
+    private async acquireAppendableChain(): Promise<void> {
+        if (this.myChain) return;
         const claimedChains = await this.store.getClaimedChains();
+        let reused;
         for (let value of claimedChains.values()) {
-            if (!(await isAlive(value.actorId))) {
+            if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity([value.medallion, value.chainStart]) == this.identity) {
                 // TODO: check to see if meta-data matches, and overwrite if not
-                this.myChain = value;
+                reused = value;
                 if (typeof window != "undefined") {
                     // If we are running in a browser and take over a chain,
                     // start a new heartbeat.
@@ -100,10 +73,34 @@ export class Database {
                 break;
             }
         }
-        if (!this.myChain) {
-            await this.startChain(info);
+        if (reused) {
+            ensure(reused.medallion > 0);
+            this.myChain = reused;
+        } else {
+            const medallion = makeMedallion();
+            const chainStart = generateTimestamp();
+            const bundler = new Bundler(this.identity, medallion);
+            const bundleInfo = bundler.seal({
+                medallion, timestamp: chainStart, chainStart
+            });
+            ensure(bundleInfo.comment == this.identity);
+            const bundleBytes = bundler.bytes;
+            await this.store.addBundle(bundleBytes, true);
+            this.myChain = (await this.store.getClaimedChains()).get(medallion);
+            this.iHave.markAsHaving(bundleInfo);
+            // If there is already a connection before we claim a chain, ensure the
+            // peers get this bundle as well so future bundles will be valid extensions.
+            for (const [peerId, peer] of this.peers) {
+                peer._sendIfNeeded(bundleBytes, bundleInfo);
+            }
         }
-        ensure(this.myChain.medallion > 0);
+        ensure(this.myChain, "myChain wasn't set.");
+        return;
+    }
+
+    private async initialize(): Promise<void> {
+        await this.store.ready;
+
         this.iHave = await this.store.getChainTracker();
         this.listeners.set("all", []);
         //this.logger(`Database.ready`);
@@ -139,7 +136,7 @@ export class Database {
     /**
      * Creates a new box container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Box container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the Box container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createBox(change?: Bundler | string): Promise<Box> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.BOX, change);
@@ -149,7 +146,7 @@ export class Database {
     /**
      * Creates a new List container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createSequence(change?: Bundler | string): Promise<Sequence> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.SEQUENCE, change);
@@ -159,7 +156,7 @@ export class Database {
     /**
      * Creates a new Key Set container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Key Set container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the Key Set container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createKeySet(change?: Bundler | string): Promise<KeySet> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.KEY_SET, change);
@@ -167,19 +164,19 @@ export class Database {
     }
 
     /**
-     * Creates a new Role container.
+     * Creates a new Group container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Role container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the Group container (immediately if a bundler is passed in, otherwise after the bundle)
      */
-    async createRole(change?: Bundler | string): Promise<Role> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.ROLE, change);
-        return new Role(this, muid, containerBuilder);
+    async createGroup(change?: Bundler | string): Promise<Group> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.GROUP, change);
+        return new Group(this, muid, containerBuilder);
     }
 
     /**
      * Creates a new PairSet container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the PairSet container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the PairSet container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createPairSet(change?: Bundler | string): Promise<PairSet> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_SET, change);
@@ -189,7 +186,7 @@ export class Database {
     /**
      * Creates a new PairMap container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the PairMap container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the PairMap container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createPairMap(change?: Bundler | string): Promise<PairMap> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_MAP, change);
@@ -199,7 +196,7 @@ export class Database {
     /**
      * Creates a new Directory container (like a javascript map or a python dict).
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Directory container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the Directory container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     // TODO: allow user to specify the types allowed for keys and values
     async createDirectory(change?: Bundler | string): Promise<Directory> {
@@ -213,9 +210,9 @@ export class Database {
     }
 
 
-    async createVerb(change?: Bundler | string): Promise<Verb> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.VERB, change);
-        return new Verb(this, muid, containerBuilder);
+    async createEdgeType(change?: Bundler | string): Promise<EdgeType> {
+        const [muid, containerBuilder] = await this.createContainer(Behavior.EDGE_TYPE, change);
+        return new EdgeType(this, muid, containerBuilder);
     }
 
 
@@ -240,21 +237,12 @@ export class Database {
     }
 
     /**
-     * Useful for interacting with asOf in other
-     * Gink functions.
-     * @returns now as a number of seconds.
-     */
-    public getNow(): number {
-        return Date.now() * 1000;
-    }
-
-    /**
-    * Adds a listener that will be called every time a commit is received with the
-    * CommitInfo (which contains chain information, timestamp, and commit comment).
+    * Adds a listener that will be called every time a bundle is received with the
+    * BundleInfo (which contains chain information, timestamp, and bundle comment).
     * @param listener a callback to be invoked when a change occurs in the database or container
     * @param containerMuid the Muid of a container to subscribe to. If left out, subscribe to all containers.
     */
-    public addListener(listener: CommitListener, containerMuid?: Muid) {
+    public addListener(listener: BundleListener, containerMuid?: Muid) {
         const key = containerMuid ? muidToString(containerMuid) : "all";
         if (!this.listeners.has(key)) {
             this.listeners.set(key, []);
@@ -263,30 +251,31 @@ export class Database {
     }
 
     /**
-     * Adds a commit to a chain, setting the medallion and timestamps on the commit in the process.
+     * Adds a bundle to a chain, setting the medallion and timestamps on the bundle in the process.
      *
-     * @param bundler a PendingCommit ready to be sealed
-     * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
+     * @param bundler a PendingBundle ready to be sealed
+     * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
         if (!this.initilized)
             throw new Error("Database not ready");
-        if (!(this.myChain.medallion > 0))
-            throw new Error("zero medallion?");
-        const nowMicros = generateTimestamp();
-        const lastBundleInfo = this.iHave.getCommitInfo([this.myChain.medallion, this.myChain.chainStart]);
-        const seenThrough = lastBundleInfo.timestamp;
-        ensure(seenThrough > 0 && (seenThrough < nowMicros));
-        const commitInfo: BundleInfo = {
-            medallion: this.myChain.medallion,
-            chainStart: this.myChain.chainStart,
-            timestamp: seenThrough >= nowMicros ? seenThrough + 10 : nowMicros,
-            priorTime: seenThrough,
-        };
-        bundler.seal(commitInfo);
-        this.iHave.markAsHaving(commitInfo);
-        // console.log(`sending: ` + JSON.stringify(commitInfo));
-        return this.receiveCommit(bundler.bytes);
+        return this.acquireAppendableChain().then(() => {
+            if (!(this.myChain.medallion > 0))
+                throw new Error("zero medallion?");
+            const nowMicros = generateTimestamp();
+            const lastBundleInfo = this.iHave.getBundleInfo([this.myChain.medallion, this.myChain.chainStart]);
+            const seenThrough = lastBundleInfo.timestamp;
+            ensure(seenThrough > 0 && (seenThrough < nowMicros));
+            const bundleInfo: BundleInfo = {
+                medallion: this.myChain.medallion,
+                chainStart: this.myChain.chainStart,
+                timestamp: seenThrough && (seenThrough >= nowMicros) ? seenThrough + 10 : nowMicros,
+                priorTime: seenThrough ?? nowMicros,
+            };
+            bundler.seal(bundleInfo);
+            this.iHave.markAsHaving(bundleInfo);
+            return this.receiveBundle(bundler.bytes);
+        });
     }
 
     /**
@@ -311,19 +300,19 @@ export class Database {
     }
 
     /**
-     * Tries to add a commit to the local store.  If successful (i.e. it hasn't seen it before)
-     * then it will also publish that commit to the connected peers.
+     * Tries to add a bundle to the local store.  If successful (i.e. it hasn't seen it before)
+     * then it will also publish that bundle to the connected peers.
      *
-     * This is called both from addPendingCommit (for locally produced commits) and
+     * This is called both from addPendingBundle (for locally produced bundles) and
      * being called by receiveMessage.
      *
-     * @param commitBytes The bytes that correspond to this transaction.
+     * @param bundleBytes The bytes that correspond to this transaction.
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns
      */
-    private receiveCommit(commitBytes: BundleBytes, fromConnectionId?: number): Promise<BundleInfo> {
-        return this.store.addBundle(commitBytes).then((bundleInfo) => {
-            this.logger(`commit from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
+    private receiveBundle(bundleBytes: BundleBytes, fromConnectionId?: number): Promise<BundleInfo> {
+        return this.store.addBundle(bundleBytes).then((bundleInfo) => {
+            this.logger(`bundle from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
             this.iHave.markAsHaving(bundleInfo);
             const peer = this.peers.get(fromConnectionId);
             if (peer) {
@@ -332,7 +321,7 @@ export class Database {
             }
             for (const [peerId, peer] of this.peers) {
                 if (peerId != fromConnectionId)
-                    peer._sendIfNeeded(commitBytes, bundleInfo);
+                    peer._sendIfNeeded(bundleBytes, bundleInfo);
             }
             // Send to listeners subscribed to all containers.
             for (const listener of this.listeners.get("all")) {
@@ -341,7 +330,7 @@ export class Database {
 
             // Loop through changes and gather a set of changed containers.
             const changedContainers: Set<string> = new Set();
-            const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(commitBytes);
+            const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
             const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
             for (const changeBuilder of changesMap.values()) {
                 const entry = changeBuilder.getEntry();
@@ -376,19 +365,18 @@ export class Database {
         await this.ready;
         const peer = this.peers.get(fromConnectionId);
         if (!peer) throw Error("Got a message from a peer I don't have a proxy for?");
-        //const unlockingFunction = await this.processingLock.acquireLock();
         try {
             const parsed = <SyncMessageBuilder>SyncMessageBuilder.deserializeBinary(messageBytes);
             if (parsed.hasBundle()) {
-                const commitBytes: BundleBytes = parsed.getBundle_asU8();
-                await this.receiveCommit(commitBytes, fromConnectionId);
+                const bundleBytes: BundleBytes = parsed.getBundle_asU8();
+                await this.receiveBundle(bundleBytes, fromConnectionId);
                 return;
             }
             if (parsed.hasGreeting()) {
                 this.logger(`got greeting from ${fromConnectionId}`);
                 const greeting = parsed.getGreeting();
                 peer._receiveHasMap(new ChainTracker({ greeting }));
-                await this.store.getCommits(peer._sendIfNeeded.bind(peer));
+                await this.store.getBundles(peer._sendIfNeeded.bind(peer));
                 return;
             }
             if (parsed.hasAck()) {
@@ -431,6 +419,7 @@ export class Database {
         const authToken: string = (options && options.authToken) ? options.authToken : undefined;
 
         await this.ready;
+        await this.acquireAppendableChain();
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
             let protocols = [Database.PROTOCOL];

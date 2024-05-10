@@ -14,7 +14,9 @@ module.exports = {
             "os": false,
             "child_process": false,
             "path": false,
-            "fs": false
+            "fs": false,
+            "https": false,
+            "http": false
         }
 
     },

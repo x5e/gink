@@ -1,5 +1,5 @@
 import { Database, IndexedDbStore, MemoryStore } from "../implementation";
-import { ensure, muidToString, sameData } from "../implementation/utils";
+import { ensure, sameData } from "../implementation/utils";
 
 it('Property.basics', async function () {
     for (const store of [new IndexedDbStore('Property.basics', true), new MemoryStore(true)]) {
@@ -15,14 +15,26 @@ it('Property.basics', async function () {
         const gotten2 = await property.get(gp);
         ensure(sameData(gotten2, [1, 2, 3]));
 
-        const allEntries = await property.getAll();
-        ensure(allEntries.get(muidToString(gd.address)).value == "foobar");
-        ensure(allEntries.get(muidToString(gp.address)).value.toString() == "1,2,3");
-
         const clearMuid = await property.clear();
         const hasGp = await property.has(gd);
         ensure(hasGp === false);
         const fromBefore = await property.get(gd, clearMuid.timestamp);
         ensure(fromBefore == "foobar");
+    }
+});
+
+it('Property.toMap', async function () {
+    for (const store of [new IndexedDbStore('Property.toMap', true), new MemoryStore(true)]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const gd = instance.getGlobalDirectory();
+        const property = instance.getGlobalProperty();
+        await property.set(gd, "foobar");
+        await property.set(property, true);
+        const asMap = await property.toMap();
+        const asObject = Object.fromEntries(asMap.entries());
+        ensure(asMap.size == 2);
+        ensure(asObject["-1,-1,4"] === "foobar", Array.from(asMap.keys()).toString());
+        ensure(asObject["-1,-1,10"] === true, Array.from(asMap.keys()).toString());
     }
 });

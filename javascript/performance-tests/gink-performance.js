@@ -28,11 +28,11 @@ async function testWriteFresh(count, keepHistory) {
     return results;
 }
 
-async function testWriteBigCommit(count, keepHistory) {
-    const instance = new gink.Database(new gink.IndexedDbStore('write_big_commit', true, keepingHistory = keepHistory));
+async function testWriteBigBundle(count, keepHistory) {
+    const instance = new gink.Database(new gink.IndexedDbStore('write_big_bundle', true, keepingHistory = keepHistory));
     const directory = await instance.createDirectory();
     const bundler = new gink.Bundler();
-    console.log("Testing Gink TypeScript writing performance to fresh database in one commit.");
+    console.log("Testing Gink TypeScript writing performance to fresh database in one bundle.");
     console.log("Writing", count, "key, value entries...");
     const beforeTime = Date.now();
     for (let i = 0; i < count; i++) {
@@ -270,7 +270,7 @@ async function testIncreasing(count, num_inc_tests, keepHistory) {
 async function testAll(count, num_inc_tests, keepHistory) {
     const results = {};
     results["write_fresh"] = await testWriteFresh(count);
-    results["write_big_commit"] = await testWriteBigCommit(count);
+    results["write_big_bundle"] = await testWriteBigBundle(count);
     results["write_occupied"] = await testWriteOccupied(count);
     results["read"] = await testRead(count);
     results["sequence_append"] = await testSequenceAppend(count);
@@ -290,8 +290,8 @@ async function main(tests, count, increasing, keepHistory) {
         if (tests.includes("write_fresh")) {
             results["write_fresh"] = await testWriteFresh(count, keepHistory);
         }
-        if (tests.includes("write_big_commit")) {
-            results["write_big_commit"] = await testWriteBigCommit(count, keepHistory);
+        if (tests.includes("write_big_bundle")) {
+            results["write_big_bundle"] = await testWriteBigBundle(count, keepHistory);
         }
         if (tests.includes("write_occupied")) {
             results["write_occupied"] = await testWriteOccupied(count, keepHistory);
@@ -340,7 +340,7 @@ if (require.main === module) {
         Specific tests to run:
 
         write_fresh
-        write_big_commit
+        write_big_bundle
         write_occupied
         sequence_append
         read
@@ -349,7 +349,7 @@ if (require.main === module) {
         random_read
         increasing
         `;
-    const choicesTests = ["write_fresh", "write_big_commit", "write_occupied", "sequence_append", "read", "read_write", "delete", "random_read", "increasing"];
+    const choicesTests = ["write_fresh", "write_big_bundle", "write_occupied", "sequence_append", "read", "read_write", "delete", "random_read", "increasing"];
     parser.add_argument("-t", "--tests", { help: helpTests, nargs: "+", choices: choicesTests, default: "all" });
     const args = parser.parse_args();
     (async () => {

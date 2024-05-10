@@ -1,6 +1,6 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
-import { KeyType, Muid, AsOf } from "./typedefs";
+import { ScalarKey, Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure, muidToString } from "./utils";
 import { toJson } from "./factories";
@@ -29,7 +29,7 @@ export class KeySet extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created entry
      */
-    async add(key: KeyType, change?: Bundler | string): Promise<Muid> {
+    async add(key: ScalarKey, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.INCLUSION, change);
     }
 
@@ -39,7 +39,7 @@ export class KeySet extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to a Bundler object for the created entries.
      */
-    async update(keys: Iterable<KeyType>, change?: Bundler | string): Promise<Bundler> {
+    async update(keys: Iterable<ScalarKey>, change?: Bundler | string): Promise<Bundler> {
         let bundler: Bundler;
         if (change instanceof Bundler) {
             bundler = change;
@@ -60,7 +60,7 @@ export class KeySet extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
-    async delete(key: KeyType, change?: Bundler | string): Promise<Muid> {
+    async delete(key: ScalarKey, change?: Bundler | string): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 
@@ -69,12 +69,13 @@ export class KeySet extends Container {
      * @param asOf
      * @returns an async iterator across everything in the key set, with values returned as pairs of Key, Key
      */
-    entries(asOf?: AsOf): AsyncGenerator<[KeyType, KeyType], void, unknown> {
+    entries(asOf?: AsOf): AsyncGenerator<[ScalarKey, ScalarKey], void, unknown> {
         const thisSet = this;
         return (async function* () {
             const entries = await thisSet.database.store.getKeyedEntries(thisSet.address, asOf);
             for (const [key, entry] of entries) {
-                yield [key, key];
+                const storageKey = <ScalarKey>entry.storageKey;
+                yield [storageKey, storageKey];
             }
         })();
     }
@@ -85,7 +86,7 @@ export class KeySet extends Container {
      * @param asOf
      * @returns true if the key set has the key, false if not.
      */
-    async has(key: KeyType, asOf?: AsOf): Promise<boolean> {
+    async has(key: ScalarKey, asOf?: AsOf): Promise<boolean> {
         const result = await this.database.store.getEntryByKey(this.address, key, asOf);
         if (result != undefined && result.deletion) {
             return false;
@@ -98,11 +99,12 @@ export class KeySet extends Container {
      * @param asOf
      * @returns a promise that resolves to a set with KeyTypes.
      */
-    async toSet(asOf?: AsOf): Promise<Set<KeyType>> {
+    async toSet(asOf?: AsOf): Promise<Set<ScalarKey>> {
         const entries = await this.database.store.getKeyedEntries(this.address, asOf);
-        const resultSet = new Set<KeyType>();
+        const resultSet = new Set<ScalarKey>();
         for (const [key, entry] of entries) {
-            resultSet.add(key);
+            const storageKey = <ScalarKey>entry.storageKey;
+            resultSet.add(storageKey);
         }
         return resultSet;
     }
