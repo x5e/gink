@@ -23,7 +23,7 @@ Separate documents will be created for all of those topics (eventually).
 ## Changes and Bundles
 
 Each modification to gink happens through one or more change messages.  A bundle wraps zero
-or more change messages into a single transaction (commit), with the understanding that all
+or more change messages into a single transaction (bundle), with the understanding that all
 of the changes in bundle should be applied or none of them should be.  Each bundle has a
 unique (timestamp, medallion) combination, where the medallion is the ID of the database
 instance that created the bundle, and the timestamp is the integer number of microseconds

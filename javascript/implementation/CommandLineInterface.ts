@@ -103,7 +103,7 @@ export class CommandLineInterface {
             globalThis.database = this.instance;
             globalThis.root = this.instance.getGlobalDirectory();
             this.instance.addListener(
-                async (commitInfo: BundleInfo) => logToStdErr(`received commit: ${JSON.stringify(commitInfo)}`));
+                async (bundleInfo: BundleInfo) => logToStdErr(`received bundle: ${JSON.stringify(bundleInfo)}`));
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
                 try {

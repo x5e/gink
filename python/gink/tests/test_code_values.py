@@ -117,7 +117,7 @@ def test_entry_to_from_builder():
         noun2.put_into(entry_builder.pair.rite)
 
         bundler.add_change(change_builder)
-        info = database.commit(bundler)
+        info = database.bundle(bundler)
 
         # From builder
         assert Placement.from_builder(

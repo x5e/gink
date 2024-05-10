@@ -11,12 +11,12 @@ import "proto/claim.proto";
 */
 message LogFile {
     /**
-        The writer must ensure that all commits per chain are in order
+        The writer must ensure that all bundles per chain are in order
         and that there are no gaps in any of the chains.  Storing the
-        bytes of the commit so that it's forward compatible and doesn't
+        bytes of the bundle so that it's forward compatible and doesn't
         drop unknown proto fields.
     */
-    repeated bytes commits = 1;
+    repeated bytes bundles = 1;
 
     repeated Claim claims = 2;
 }

@@ -4,7 +4,7 @@ import {
     encodeToken, getActorId, isAlive,
     getIdentity
 } from "./utils";
-import { BundleBytes, CommitListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
+import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
 import { IndexedDbStore } from "./IndexedDbStore";
@@ -34,7 +34,7 @@ export class Database {
     readonly peers: Map<number, Peer> = new Map();
     static readonly PROTOCOL = "gink";
 
-    private listeners: Map<string, CommitListener[]> = new Map();
+    private listeners: Map<string, BundleListener[]> = new Map();
     private countConnections = 0; // Includes disconnected clients.
     private myChain: ClaimedChain;
     private identity: string;
@@ -84,14 +84,14 @@ export class Database {
                 medallion, timestamp: chainStart, chainStart
             });
             ensure(bundleInfo.comment == this.identity);
-            const commitBytes = bundler.bytes;
-            await this.store.addBundle(commitBytes, true);
+            const bundleBytes = bundler.bytes;
+            await this.store.addBundle(bundleBytes, true);
             this.myChain = (await this.store.getClaimedChains()).get(medallion);
             this.iHave.markAsHaving(bundleInfo);
             // If there is already a connection before we claim a chain, ensure the
-            // peers get this commit as well so future commits will be valid extensions.
+            // peers get this bundle as well so future bundles will be valid extensions.
             for (const [peerId, peer] of this.peers) {
-                peer._sendIfNeeded(commitBytes, bundleInfo);
+                peer._sendIfNeeded(bundleBytes, bundleInfo);
             }
         }
         ensure(this.myChain, "myChain wasn't set.");
@@ -136,7 +136,7 @@ export class Database {
     /**
      * Creates a new box container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Box container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the Box container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createBox(change?: Bundler | string): Promise<Box> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.BOX, change);
@@ -146,7 +146,7 @@ export class Database {
     /**
      * Creates a new List container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createSequence(change?: Bundler | string): Promise<Sequence> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.SEQUENCE, change);
@@ -156,7 +156,7 @@ export class Database {
     /**
      * Creates a new Key Set container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Key Set container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the Key Set container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createKeySet(change?: Bundler | string): Promise<KeySet> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.KEY_SET, change);
@@ -166,7 +166,7 @@ export class Database {
     /**
      * Creates a new Group container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Group container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the Group container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createGroup(change?: Bundler | string): Promise<Group> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.GROUP, change);
@@ -176,7 +176,7 @@ export class Database {
     /**
      * Creates a new PairSet container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the PairSet container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the PairSet container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createPairSet(change?: Bundler | string): Promise<PairSet> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_SET, change);
@@ -186,7 +186,7 @@ export class Database {
     /**
      * Creates a new PairMap container.
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the PairMap container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the PairMap container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createPairMap(change?: Bundler | string): Promise<PairMap> {
         const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_MAP, change);
@@ -196,7 +196,7 @@ export class Database {
     /**
      * Creates a new Directory container (like a javascript map or a python dict).
      * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Directory container (immediately if a bundler is passed in, otherwise after the commit)
+     * @returns promise that resolves to the Directory container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     // TODO: allow user to specify the types allowed for keys and values
     async createDirectory(change?: Bundler | string): Promise<Directory> {
@@ -237,12 +237,12 @@ export class Database {
     }
 
     /**
-    * Adds a listener that will be called every time a commit is received with the
-    * CommitInfo (which contains chain information, timestamp, and commit comment).
+    * Adds a listener that will be called every time a bundle is received with the
+    * BundleInfo (which contains chain information, timestamp, and bundle comment).
     * @param listener a callback to be invoked when a change occurs in the database or container
     * @param containerMuid the Muid of a container to subscribe to. If left out, subscribe to all containers.
     */
-    public addListener(listener: CommitListener, containerMuid?: Muid) {
+    public addListener(listener: BundleListener, containerMuid?: Muid) {
         const key = containerMuid ? muidToString(containerMuid) : "all";
         if (!this.listeners.has(key)) {
             this.listeners.set(key, []);
@@ -251,10 +251,10 @@ export class Database {
     }
 
     /**
-     * Adds a commit to a chain, setting the medallion and timestamps on the commit in the process.
+     * Adds a bundle to a chain, setting the medallion and timestamps on the bundle in the process.
      *
-     * @param bundler a PendingCommit ready to be sealed
-     * @returns A promise that will resolve to the commit timestamp once it's persisted/sent.
+     * @param bundler a PendingBundle ready to be sealed
+     * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
         if (!this.initilized)
@@ -263,18 +263,18 @@ export class Database {
             if (!(this.myChain.medallion > 0))
                 throw new Error("zero medallion?");
             const nowMicros = generateTimestamp();
-            const lastBundleInfo = this.iHave.getCommitInfo([this.myChain.medallion, this.myChain.chainStart]);
+            const lastBundleInfo = this.iHave.getBundleInfo([this.myChain.medallion, this.myChain.chainStart]);
             const seenThrough = lastBundleInfo.timestamp;
             ensure(seenThrough > 0 && (seenThrough < nowMicros));
-            const commitInfo: BundleInfo = {
+            const bundleInfo: BundleInfo = {
                 medallion: this.myChain.medallion,
                 chainStart: this.myChain.chainStart,
                 timestamp: seenThrough && (seenThrough >= nowMicros) ? seenThrough + 10 : nowMicros,
                 priorTime: seenThrough ?? nowMicros,
             };
-            bundler.seal(commitInfo);
-            this.iHave.markAsHaving(commitInfo);
-            return this.receiveCommit(bundler.bytes);
+            bundler.seal(bundleInfo);
+            this.iHave.markAsHaving(bundleInfo);
+            return this.receiveBundle(bundler.bytes);
         });
     }
 
@@ -300,19 +300,19 @@ export class Database {
     }
 
     /**
-     * Tries to add a commit to the local store.  If successful (i.e. it hasn't seen it before)
-     * then it will also publish that commit to the connected peers.
+     * Tries to add a bundle to the local store.  If successful (i.e. it hasn't seen it before)
+     * then it will also publish that bundle to the connected peers.
      *
-     * This is called both from addPendingCommit (for locally produced commits) and
+     * This is called both from addPendingBundle (for locally produced bundles) and
      * being called by receiveMessage.
      *
-     * @param commitBytes The bytes that correspond to this transaction.
+     * @param bundleBytes The bytes that correspond to this transaction.
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns
      */
-    private receiveCommit(commitBytes: BundleBytes, fromConnectionId?: number): Promise<BundleInfo> {
-        return this.store.addBundle(commitBytes).then((bundleInfo) => {
-            this.logger(`commit from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
+    private receiveBundle(bundleBytes: BundleBytes, fromConnectionId?: number): Promise<BundleInfo> {
+        return this.store.addBundle(bundleBytes).then((bundleInfo) => {
+            this.logger(`bundle from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
             this.iHave.markAsHaving(bundleInfo);
             const peer = this.peers.get(fromConnectionId);
             if (peer) {
@@ -321,7 +321,7 @@ export class Database {
             }
             for (const [peerId, peer] of this.peers) {
                 if (peerId != fromConnectionId)
-                    peer._sendIfNeeded(commitBytes, bundleInfo);
+                    peer._sendIfNeeded(bundleBytes, bundleInfo);
             }
             // Send to listeners subscribed to all containers.
             for (const listener of this.listeners.get("all")) {
@@ -330,7 +330,7 @@ export class Database {
 
             // Loop through changes and gather a set of changed containers.
             const changedContainers: Set<string> = new Set();
-            const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(commitBytes);
+            const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
             const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
             for (const changeBuilder of changesMap.values()) {
                 const entry = changeBuilder.getEntry();
@@ -368,15 +368,15 @@ export class Database {
         try {
             const parsed = <SyncMessageBuilder>SyncMessageBuilder.deserializeBinary(messageBytes);
             if (parsed.hasBundle()) {
-                const commitBytes: BundleBytes = parsed.getBundle_asU8();
-                await this.receiveCommit(commitBytes, fromConnectionId);
+                const bundleBytes: BundleBytes = parsed.getBundle_asU8();
+                await this.receiveBundle(bundleBytes, fromConnectionId);
                 return;
             }
             if (parsed.hasGreeting()) {
                 this.logger(`got greeting from ${fromConnectionId}`);
                 const greeting = parsed.getGreeting();
                 peer._receiveHasMap(new ChainTracker({ greeting }));
-                await this.store.getCommits(peer._sendIfNeeded.bind(peer));
+                await this.store.getBundles(peer._sendIfNeeded.bind(peer));
                 return;
             }
             if (parsed.hasAck()) {

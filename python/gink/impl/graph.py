@@ -26,7 +26,7 @@ class Vertex(Container):
         Creates a placeholder node to contain the idea of something.
 
         muid: the global id of this vertex, created on the fly if None
-        db: database send commits through, or last db instance created if None
+        db: database send bundles through, or last db instance created if None
         """
         database = database or Database.get_last()
         immediate = False
@@ -39,7 +39,7 @@ class Vertex(Container):
             muid = Container._create(VERTEX, database=database, bundler=bundler)
         Container.__init__(self, muid=muid, database=database)
         if len(bundler) and immediate:
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         _ = as_of
@@ -87,7 +87,7 @@ class Vertex(Container):
             entry_builder.purge = True
         result = bundler.add_change(change_builder)
         if immediate:
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
         return result
 
 Database.register_container_type(Vertex)
@@ -112,7 +112,7 @@ class Verb(Container):
         if contents:
             pass  # This is intentional! The edge constructors will restore them!
         if len(bundler):
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def create_edge(
         self,
@@ -227,7 +227,7 @@ class Edge(Addressable):
                 entry_builder.effective = self._effective = effective
             muid = bundler.add_change(change_builder)
             if _immediate:
-                database.commit(bundler)
+                database.bundle(bundler)
         super().__init__(database=database, muid=muid)
 
     def dumps(self, indent=1) -> str:
@@ -290,5 +290,5 @@ class Edge(Addressable):
             movement_builder.purge = purge
         change_muid = bundler.add_change(change_builder)
         if immediate:
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
         return change_muid

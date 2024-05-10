@@ -20,7 +20,7 @@ class Property(Container):
         Constructor for a property definition.
 
         muid: the global id of this directory, created on the fly if None
-        db: database send commits through, or last db instance created if None
+        db: database send bundles through, or last db instance created if None
         """
         database = database or Database.get_last()
         bundler = Bundler()
@@ -34,7 +34,7 @@ class Property(Container):
             self.update(contents, bundler=bundler)
 
         if len(bundler):
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this property to a string.
@@ -101,7 +101,7 @@ class Property(Container):
             for key, val in from_what:
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def delete(self, describing: Union[Container, Edge], *, bundler=None, comment=None) -> Muid:
         """ Removes the value (if any) of this property on object pointed to by `describing`. """

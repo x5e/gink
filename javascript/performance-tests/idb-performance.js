@@ -270,7 +270,7 @@ async function testIncreasing(count, num_inc_tests = 5) {
 async function testAll(count, num_inc_tests) {
     const results = {};
     results["write_fresh"] = await testWriteFresh(count);
-    results["write_big_commit"] = {
+    results["write_big_bundle"] = {
         "total_time": 0,
         "writes_per_second": 0
     }; // this is a placeholder until I can figure out the best way

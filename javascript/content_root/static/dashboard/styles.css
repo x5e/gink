@@ -86,7 +86,7 @@ a {
     word-break: break-word;
 }
 
-#commit-button {
+#bundle-button {
     width: 8rem;
     margin-top: 3rem;
 }
@@ -117,7 +117,7 @@ a {
     /* Standard syntax */
 }
 
-.commit-input {
+.bundle-input {
     width: 15rem;
     height: 3rem;
 }

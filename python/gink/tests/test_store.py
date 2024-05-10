@@ -112,7 +112,7 @@ def generic_test_rejects_missing_start(store_maker: StoreMaker):
         assert thrown
 
 
-def generic_test_rejects_bad_commit(store_maker: StoreMaker):
+def generic_test_rejects_bad_bundle(store_maker: StoreMaker):
     """ Ensures that chains with missing links throw exceptions. """
     with closing(store_maker()) as store:
         gap_info = BundleInfo(medallion=123, chain_start=456, timestamp=789, comment="bad")
@@ -125,7 +125,7 @@ def generic_test_rejects_bad_commit(store_maker: StoreMaker):
         assert thrown
 
 
-def generic_test_orders_commits(store_maker: StoreMaker):
+def generic_test_orders_bundles(store_maker: StoreMaker):
     """ Ensures that the store orders change sets correctly. """
     info1 = BundleInfo(medallion=123, chain_start=456, timestamp=456)
     cs1 = make_empty_bundle(info1)

@@ -41,10 +41,10 @@ it('connect to server and display dashboard', async () => {
     }
 }, 40000);
 
-it('share commits between two pages', async () => {
+it('share bundles between two pages', async () => {
     /**
      * The idea here is to have two pages connected to the same server
-     * that can both send commits and have them reflected in the other
+     * that can both send bundles and have them reflected in the other
      * page.
      */
     let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
@@ -82,7 +82,7 @@ it('share commits between two pages', async () => {
         // Page1: set(key0, updated value)
 
         // This ensures the pages won't be missing any chain info after
-        // the other sends a commit.
+        // the other sends a bundle.
         for (let i = 0; i < 4; i++) {
             const page = pages[i % 2 == 0 ? 1 : 0];
             await page.bringToFront();
@@ -95,7 +95,7 @@ it('share commits between two pages', async () => {
             await page.type("#key-input-1", `key${i}`);
             await page.type("#value-input", `a value`);
             await page.type("#comment-input", `setting key${i}`);
-            await page.click("#commit-button");
+            await page.click("#bundle-button");
 
             if (i > 1) {
                 // Delete keys through dashboard UI
@@ -113,7 +113,7 @@ it('share commits between two pages', async () => {
         await element.click();
         await page1.click("#update-button");
         await page1.type("#value-input", `changed value`);
-        await page1.click("#commit-button");
+        await page1.click("#bundle-button");
         await sleep(1000);
 
         // Tables should both include the same keys and values:

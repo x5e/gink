@@ -20,7 +20,7 @@ class Group(Container):
         Constructor for a group definition.
 
         muid: the global id of this directory, created on the fly if None
-        db: database send commits through, or last db instance created if None
+        db: database send bundles through, or last db instance created if None
         """
         database = database or Database.get_last()
         bundler = Bundler()
@@ -30,7 +30,7 @@ class Group(Container):
         if contents:
             raise NotImplementedError()
         if len(bundler):
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def include(self, what: Union[Muid, Container], *,
                 bundler: Optional[Bundler]=None, comment: Optional[str]=None):
