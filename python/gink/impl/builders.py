@@ -73,7 +73,7 @@ if TYPE_CHECKING:
         claim_time: MuTimestamp
 
     class LogFileBuilder(Message):
-        commits: List[bytes]
+        bundles: List[bytes]
         claims: List[ClaimBuilder]
 
 

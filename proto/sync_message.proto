@@ -9,11 +9,11 @@ package gink;
     GreetingEntries within it communicate how far along each chain that instance has
     data for.  Once a peer has received a greeting from the other, then it can begin
     to send messages it knows that the destination peer doesn't have yet (ensuring though
-    that it doesn't send a commit unless it first sends the one immediately prior in the
-    chain or knows from the peer's greeting that it already has the prior commit).
+    that it doesn't send a bundle unless it first sends the one immediately prior in the
+    chain or knows from the peer's greeting that it already has the prior bundle).
 
     The bundles are passed along as opaque byte blobs.  In theory each will be an instance
-    of the Bundle proto, but we want each instance to save and forward along commits exactly
+    of the Bundle proto, but we want each instance to save and forward along bundles exactly
     as it receives them, so that fields can be added to the Bundle proto and we can ensure
     that nodes which haven't seen the expanded proto definition will still forward the full
     message and not drop fields that it doesn't know about.

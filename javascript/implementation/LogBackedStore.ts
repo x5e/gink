@@ -25,7 +25,7 @@ import { generateTimestamp, ensure, getActorId } from "./utils";
     IndexedDB available for Node.js.  This subclass will append all
     transactions it receives to a log file, making it possible to
     recreate the same in-memory database in the future by simply
-    replaying the receipt of each commit.
+    replaying the receipt of each bundle.
 
     This is obviously not ideal; eventually want to move to either
     a durable server side indexedDB implementation or create an
@@ -34,8 +34,10 @@ import { generateTimestamp, ensure, getActorId } from "./utils";
 
 export class LogBackedStore extends LockableLog implements Store {
 
-
-    private commitsProcessed = 0;
+    readonly ready: Promise<void>;
+    private bundlesProcessed = 0;
+    private fileHandle: FileHandle;
+    private chainTracker: ChainTracker = new ChainTracker({});
 
     private claimedChains: ClaimedChain[] = [];
     private identities: Map<string, string> = new Map(); // Medallion,ChainStart => identity
@@ -121,18 +123,18 @@ export class LogBackedStore extends LockableLog implements Store {
             const uint8Array = new Uint8Array(needToReed);
             await this.fileHandle.read(uint8Array, 0, needToReed, this.redTo);
             const logFileBuilder = <LogFileBuilder>LogFileBuilder.deserializeBinary(uint8Array);
-            const commits = logFileBuilder.getCommitsList();
-            for (const commit of commits) {
-                const info = await this.internalStore.addBundle(commit);
+            const bundles = logFileBuilder.getBundlesList();
+            for (const bundle of bundles) {
+                const info = await this.internalStore.addBundle(bundle);
                 this.chainTracker.markAsHaving(info);
                 // This is the start of a chain, and we need to keep track of the identity.
                 if (info.timestamp == info.chainStart && !info.priorTime) {
                     this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
                 }
                 for (const callback of this.foundBundleCallBacks) {
-                    callback(commit, info);
+                    callback(bundle, info);
                 }
-                this.commitsProcessed += 1;
+                this.bundlesProcessed += 1;
             }
             const claims: ClaimBuilder[] = logFileBuilder.getClaimsList();
             for (let i = 0; i < claims.length; i++) {
@@ -157,12 +159,12 @@ export class LogBackedStore extends LockableLog implements Store {
         return this.internalStore.getEntriesBySourceOrTarget(vertex, source, asOf);
     }
 
-    async getCommitsProcessed() {
+    async getBundlesProcessed() {
         await this.ready;
-        return this.commitsProcessed;
+        return this.bundlesProcessed;
     }
 
-    async addBundle(commitBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
+    async addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
         // TODO(https://github.com/x5e/gink/issues/182): delay unlocking the file to give better throughput
         await this.ready;
         const unlockingFunction = await this.memoryLock.acquireLock();
@@ -170,7 +172,7 @@ export class LogBackedStore extends LockableLog implements Store {
             await this.lockFile(true);
 
         await this.pullDataFromFile();
-        const info: BundleInfo = await this.internalStore.addBundle(commitBytes);
+        const info: BundleInfo = await this.internalStore.addBundle(bundleBytes);
         if (claimChain) {
             await this.claimChain(info.medallion, info.chainStart, getActorId());
             if (info.timestamp == info.chainStart && !info.priorTime) {
@@ -182,7 +184,7 @@ export class LogBackedStore extends LockableLog implements Store {
             ensure(this.fileLocked);
             await this.pullDataFromFile();
             const logFragment = new LogFileBuilder();
-            logFragment.setCommitsList([commitBytes]);
+            logFragment.setBundlesList([bundleBytes]);
             const bytes: Uint8Array = logFragment.serializeBinary();
             await this.fileHandle.writeFile(bytes);
             await this.fileHandle.sync();
@@ -238,9 +240,9 @@ export class LogBackedStore extends LockableLog implements Store {
         return await this.internalStore.getChainTracker();
     }
 
-    async getCommits(callBack: (commitBytes: BundleBytes, commitInfo: BundleInfo) => void): Promise<void> {
+    async getBundles(callBack: (bundleBytes: BundleBytes, bundleInfo: BundleInfo) => void): Promise<void> {
         await this.ready;
-        await this.internalStore.getCommits(callBack);
+        await this.internalStore.getBundles(callBack);
     }
 
     async getContainerBytes(address: Muid): Promise<Bytes | undefined> {

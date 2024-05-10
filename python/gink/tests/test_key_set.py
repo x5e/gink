@@ -32,7 +32,7 @@ def test_add_update_contains():
 
             bundler = Bundler("testing")
             gks.add("value1", bundler=bundler)
-            database.commit(bundler)
+            database.bundle(bundler)
             infos = store.get_bundle_infos()
             assert len(infos) == 2, infos
             assert gks.contains("value1")

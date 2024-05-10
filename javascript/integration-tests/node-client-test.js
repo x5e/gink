@@ -10,10 +10,10 @@ const Expector = require("./Expector");
 
     server.send("var misc = await root.set('x', 'y', 'hello'); \r\n");
     console.log("sent");
-    await client.expect(/received commit:.*hello/);
+    await client.expect(/received bundle:.*hello/);
     console.log("received");
     client.send("var misc = await root.set('a', 'b', 'world'); \r\n");
-    await server.expect(/received commit:.*world/);
+    await server.expect(/received bundle:.*world/);
 
     console.log("closing...");
     server.close();

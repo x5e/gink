@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await page.displayPage(...page.unwrapHash(window.location.hash));
         }
     };
-    // Add a listener to refresh when a new commit comes through
+    // Add a listener to refresh when a new bundle comes through
     // Eventually make sure this is only for specific containers.
     database.instance.addListener(refreshContainer);
 

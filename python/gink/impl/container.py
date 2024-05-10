@@ -137,7 +137,7 @@ class Container(Addressable, ABC):
         container_builder.behavior = behavior  # type: ignore
         muid = bundler.add_change(change_builder)
         if immediate:
-            database.commit(bundler)  # type: ignore
+            database.bundle(bundler)  # type: ignore
         return muid
 
     def clear(self, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
@@ -155,7 +155,7 @@ class Container(Addressable, ABC):
         self._muid.put_into(change_builder.clearance.container)  # type: ignore
         change_muid = bundler.add_change(change_builder)
         if immediate:
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
         return change_muid
 
     def  _add_entry(self, *,
@@ -220,7 +220,7 @@ class Container(Addressable, ABC):
             raise ValueError(f"don't know how to add this to gink: {value}")
         muid = bundler.add_change(change_builder)
         if immediate:
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
         return muid
 
     def reset(
@@ -256,7 +256,7 @@ class Container(Addressable, ABC):
                                                                    recursive=recursive):
             bundler.add_change(change)
         if immediate and len(bundler):
-            self._database.commit(bundler=bundler)
+            self._database.bundle(bundler=bundler)
         return bundler
 
     @abstractmethod

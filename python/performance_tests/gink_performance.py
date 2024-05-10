@@ -8,7 +8,7 @@ from gink import *
 def test_write_fresh(db_file_path: Path, count: int) -> dict:
     """
     Test writes per second writing to an empty database.
-    Commits to database every commit. Returns results as a 
+    Bundles to database every bundle. Returns results as a
     dictionary.
     """
     with LmdbStore(db_file_path, True) as store:
@@ -33,22 +33,22 @@ def test_write_fresh(db_file_path: Path, count: int) -> dict:
             }
     return results
 
-def test_write_big_commit(db_file_path: Path, count: int) -> dict:
+def test_write_big_bundle(db_file_path: Path, count: int) -> dict:
     """
     Test writes per second writing to an empty database.
-    Bundles all writes into one big commit.
+    Bundles all writes into one big bundle.
     Returns results as a dictionary.
     """
     with LmdbStore(db_file_path, True) as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
         bundler = Bundler('test')
-        print("Testing Gink Python writing performance to fresh database in one commit.")
+        print("Testing Gink Python writing performance to fresh database in one bundle.")
         print("Writing", count, "key, value entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
             directory.set(f"test{i}", "test data to be inserted", bundler=bundler)
-        db.commit(bundler)
+        db.bundle(bundler)
         after_time = datetime.utcnow()
 
     total_time = round((after_time - before_time).total_seconds(), 4)
@@ -73,7 +73,7 @@ def test_write_occupied(db_file_path: Path, count: int) -> dict:
     with LmdbStore(db_file_path, True) as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
-        
+
         print("Testing Gink Python writing performance to occupied database with", count, "entries.")
         print("Filling fresh database with key, value entries...")
         for i in range(0, count):
@@ -213,7 +213,7 @@ def test_delete(db_file_path: Path, count: int, retain: bool) -> dict:
             "deletes_per_second": deletes_per_second
             }
     return results
-    
+
 def test_random_read(db_file_path: Path, count: int) -> dict:
     """
     Tests reading random entries in a directory of 'count' size.
@@ -229,7 +229,7 @@ def test_random_read(db_file_path: Path, count: int) -> dict:
             directory.set(f"test{i}", "test data to be inserted")
 
         random_numbers = [random.randint(0, count-1) for _ in range(0, how_many)]
-        
+
         print(f"Reading {how_many} random entries.")
         before_time = datetime.utcnow()
         for i in random_numbers:
@@ -263,7 +263,7 @@ def test_increasing(db_file_path: Path, count: int, num_inc_tests: int) -> dict:
         directory = Directory(db, muid=Muid(1, 2, 3))
         current_entries = 0
         results = {}
-        
+
         print("Testing Gink Python writing and reading performance as database size increases.")
         for r in range(1, num_inc_tests+1):
             print(f"Testing Gink Python writing performance to database with {current_entries} entries.")
@@ -312,7 +312,7 @@ def test_all(db_file_path: Path, count: int, num_inc_tests: int, retain_entries:
     results["write_fresh"] = test_write_fresh(db_file_path, count)
     results["read"] = test_read(db_file_path, count)
     results["write_occupied"] = test_write_occupied(db_file_path, count)
-    results["write_big_commit"] = test_write_big_commit(db_file_path, count)
+    results["write_big_bundle"] = test_write_big_bundle(db_file_path, count)
     results["sequence_append"] = test_sequence_append(db_file_path, count)
     results["read_write"] = test_read_write(db_file_path, count)
     results["delete"] = test_delete(db_file_path, count, retain_entries)
@@ -322,7 +322,7 @@ def test_all(db_file_path: Path, count: int, num_inc_tests: int, retain_entries:
 
 if __name__ == "__main__":
     from argparse import ArgumentParser, Namespace
-    
+
     parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
     parser.add_argument("-c", "--count", help="number of records", type=int, default=100)
     parser.add_argument("-o", "--output", help="json file to save output. default to no file, stdout")
@@ -341,7 +341,7 @@ if __name__ == "__main__":
     Specific tests to run:
 
     write_fresh
-    write_big_commit
+    write_big_bundle
     write_occupied
     sequence_append
     read
@@ -350,7 +350,7 @@ if __name__ == "__main__":
     random_read
     increasing
     """
-    choices_tests = ["write_fresh", "write_big_commit","write_occupied", "sequence_append", "read", "read_write", "delete", "random_read", "increasing"]
+    choices_tests = ["write_fresh", "write_big_bundle","write_occupied", "sequence_append", "read", "read_write", "delete", "random_read", "increasing"]
     parser.add_argument("-t", "--tests", help=help_tests, nargs="+", choices=choices_tests, default="all")
     args: Namespace = parser.parse_args()
     try:
@@ -364,8 +364,8 @@ if __name__ == "__main__":
         results = {}
         if "write_fresh" in args.tests:
             results["write_fresh"] = test_write_fresh(db_path, args.count)
-        if "write_big_commit" in args.tests:
-            results["write_big_commit"] = test_write_big_commit(db_path, args.count)
+        if "write_big_bundle" in args.tests:
+            results["write_big_bundle"] = test_write_big_bundle(db_path, args.count)
         if "write_occupied" in args.tests:
             results["write_occupied"] = test_write_occupied(db_path, args.count)
         if "sequence_append" in args.tests:
@@ -380,7 +380,7 @@ if __name__ == "__main__":
             results["random_read"] = test_random_read(db_path, args.count)
         if "increasing" in args.tests:
             results["increasing"] = test_increasing(db_path, args.count, args.increasing)
-    
+
     if args.output:
         try:
             # If file already exists, meaning tests have been run

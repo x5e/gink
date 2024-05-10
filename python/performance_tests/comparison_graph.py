@@ -5,9 +5,9 @@ import numpy as np
 
 def graph_write(path_to_data: Path):
     """
-    Plots a bar chart for writing to fresh db with individual commits
-    writing to a fresh db with one big commit, and writing to an occupied db.
-    
+    Plots a bar chart for writing to fresh db with individual bundles
+    writing to a fresh db with one big bundle, and writing to an occupied db.
+
     This doesn't call plt.show(). Do that after creating as
     many of the graphs as necessary.
     """
@@ -23,7 +23,7 @@ def graph_write(path_to_data: Path):
     all_data = {
         "write_fresh": [],
         "write_occupied": [],
-        "write_big_commit": []
+        "write_big_bundle": []
     }
     plt.figure(1)
     ax = plt.subplot()
@@ -31,11 +31,11 @@ def graph_write(path_to_data: Path):
     for db in data.keys():
         wf = data[db]["write_fresh"]["writes_per_second"]
         wo = data[db]["write_occupied"]["writes_per_second"]
-        wbc = data[db]["write_big_commit"]["writes_per_second"]
+        wbc = data[db]["write_big_bundle"]["writes_per_second"]
         all_data["write_fresh"].append(wf)
         all_data["write_occupied"].append(wo)
-        all_data["write_big_commit"].append(wbc)
-    
+        all_data["write_big_bundle"].append(wbc)
+
         if x_max < wf or x_max < wo or x_max < wbc:
             x_max = max(wf, wo, wbc)
 
@@ -52,12 +52,12 @@ def graph_write(path_to_data: Path):
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
           fancybox=True, shadow=True, ncol=3)
     plt.subplots_adjust(left=0.2, bottom=0.2)
-    
+
 
 def graph_read(path_to_data: Path):
     """
     Plots a bar chart for write/read, read, and random reads.
-    
+
     This doesn't call plt.show(). Do that after creating as
     many of the graphs as necessary.
     """
@@ -88,7 +88,7 @@ def graph_read(path_to_data: Path):
 
         if x_max < read_rps or x_max < wr_rps or x_max < rand_rps:
             x_max = max(read_rps, wr_rps, rand_rps)
-    
+
     for test, results in all_data.items():
         offset = width * multiplier
         rects = ax.barh(y + offset, results, width, label=test)
@@ -105,8 +105,8 @@ def graph_read(path_to_data: Path):
 
 def graph_delete(path_to_data: Path):
     """
-    Plots bar chart for deletions per second. 
-    
+    Plots bar chart for deletions per second.
+
     This doesn't call plt.show(). Do that after creating as
     many of the graphs as necessary.
     """
@@ -127,7 +127,7 @@ def graph_delete(path_to_data: Path):
         all_data["delete"].append(dps)
         if y_max < dps:
             y_max = dps
-    
+
     for i in range(len(all_data["delete"])):
         rects = ax.bar(x[i], all_data["delete"][i], width, label=x_labels[i])
 
@@ -139,7 +139,7 @@ def graph_delete(path_to_data: Path):
 
 def graph_increasing(path_to_data: Path):
     """
-    Plots line graphs for both read and write as 
+    Plots line graphs for both read and write as
     data increases.
 
     This doesn't call plt.show(). Do that after creating as
@@ -189,11 +189,11 @@ def graph_increasing(path_to_data: Path):
     ax2.xaxis.set_major_locator(plt.MaxNLocator(num_bins))
     ax1.legend(legend, ncol=2)
     ax2.legend(legend, ncol=2)
-    
+
 
 if __name__ == "__main__":
     from argparse import ArgumentParser, Namespace
-    
+
     parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
     parser.add_argument("-d", "--data", help="json file that contains test data")
     graphs_help = """

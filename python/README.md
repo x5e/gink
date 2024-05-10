@@ -239,7 +239,7 @@ directory.update({"key3": 3, "key4": 4}, bundler=bundler)
 
 # This seals the bundler and commits changes to database
 # at this point, no more changes may be added
-database.commit(bundler)
+database.bundle(bundler)
 ```
 
 #### Reset

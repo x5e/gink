@@ -386,9 +386,10 @@ const asJSON = await directory.toJson();
 ```
 
 ## Database Operations
-### Bundling and commits
-Without specifying a bundler when performing an action, Gink defaults to immediately committing each change as they happen.\
-If you would like to control which changes are bundled together and control when the bundle is committed to the database, here is an example:
+### Bundling and bundles
+Without specifying a bundler when performing an action, Gink defaults to immediately committing each change
+as they happen. If you would like to control which changes are bundled together and control when the bundle
+is comitted to the database, here is an example:
 ```ts
 const{ Bundler } = require("@x5e/gink");
 
@@ -401,10 +402,10 @@ await directory.set("key1", "value1", bundler);
 await directory.set("key2", 2, bundler);
 // at this point, these changes have not been committed.
 
-// Update the commit comment
+// Update the bundle comment
 bundler.comment = "Testing bundles";
 
-// commit this bundle to the database
+// bundle this bundle to the database
 await instance.addBundler(bundler);
 ```
 
@@ -421,9 +422,10 @@ const instance = new Database(store);
 
 await instance.connectTo("ws://localhost:8080"); // or wherever your server is hosted
 ```
-The server and client should now sync commits. <br>
+The server and client should now sync bundles. <br>
 <br>
-Clients can also connect to multiple Gink servers, which can ensure a very high degree of  availability if they are hosted using different providers.<br>
+Clients can also connect to multiple Gink servers, which can ensure a very high degree of
+availability if they are hosted using different providers.<br>
 
 ```ts
 await instance.connectTo("ws://host1");

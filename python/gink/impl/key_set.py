@@ -20,7 +20,7 @@ class KeySet(Container):
         Constructor for a set proxy.
 
         muid: the global id of this set, created on the fly if None
-        db: database to send commits through, or last db instance created if None
+        db: database to send bundles through, or last db instance created if None
         """
         if arche:
             muid = Muid(-1, -1, KEY_SET)
@@ -39,7 +39,7 @@ class KeySet(Container):
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
         if immediate and len(bundler):
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def add(self, key: UserKey, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Adds a specified value to the key set """
@@ -54,7 +54,7 @@ class KeySet(Container):
         for key in keys:
             self._add_entry(key=key, value=inclusion, bundler=bundler)
         if immediate:
-            self._database.commit(bundler)
+            self._database.bundle(bundler)
 
     def contains(self, key: UserKey, as_of: GenericTimestamp=None):
         """ Returns a boolean stating whether the specified key is in the key set """
@@ -151,7 +151,7 @@ class KeySet(Container):
         for element in s:
             if self.contains(element):
                 self.remove(element, bundler=bundler, comment=comment)
-        self._database.commit(bundler)
+        self._database.bundle(bundler)
 
     def intersection_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, keeping only elements found in the key set and the specified iterables. """
@@ -167,7 +167,7 @@ class KeySet(Container):
             key = decode_key(entry_pair.builder)
             if key and not key in intersection:
                 self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
-        self._database.commit(bundler)
+        self._database.bundle(bundler)
 
     def symmetric_difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, keeping only elements found in either the key set or the specified set, not both. """

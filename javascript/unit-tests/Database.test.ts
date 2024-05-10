@@ -4,17 +4,17 @@ import { ensure } from "../implementation/utils";
 import { BundleBytes } from "../implementation/typedefs";
 import { BundleBuilder } from "../implementation/builders";
 
-it('test commit', async () => {
-    for (const store of [new IndexedDbStore('Database.commit', true), new MemoryStore(true)]) {
+it('test bundle', async () => {
+    for (const store of [new IndexedDbStore('Database.bundle', true), new MemoryStore(true)]) {
         const instance = new Database(store);
         await instance.ready;
-        const commitInfo = await instance.addBundler(new Bundler("hello world"));
-        ensure(commitInfo.comment == "hello world");
+        const bundleInfo = await instance.addBundler(new Bundler("hello world"));
+        ensure(bundleInfo.comment == "hello world");
         const chainTracker = await store.getChainTracker();
         const allChains = chainTracker.getChains();
         ensure(allChains.length == 1);
-        ensure(allChains[0][0] == commitInfo.medallion);
-        ensure(allChains[0][1] == commitInfo.chainStart);
+        ensure(allChains[0][0] == bundleInfo.medallion);
+        ensure(allChains[0][1] == bundleInfo.chainStart);
     }
 });
 

@@ -4,7 +4,7 @@ import { ensure } from "./utils";
 
 export class Bundler {
     // note: this class is unit tested as part of Store.test.ts
-    private commitInfo: BundleInfo | null = null;
+    private bundleInfo: BundleInfo | null = null;
     private serialized: Uint8Array | null = null;
     private bundleBuilder = new BundleBuilder();
     private countItems = 0;
@@ -13,7 +13,7 @@ export class Bundler {
     }
 
     private requireNotSealed() {
-        if (this.commitInfo)
+        if (this.bundleInfo)
             throw new Error("This Bundler has already been sealed.");
     }
 
@@ -27,15 +27,15 @@ export class Bundler {
     }
 
     get comment(): string | undefined {
-        return this.pendingComment || this.commitInfo?.comment;
+        return this.pendingComment || this.bundleInfo?.comment;
     }
 
     get medallion(): Medallion | undefined {
-        return this.preAssignedMedallion || this.commitInfo?.medallion;
+        return this.preAssignedMedallion || this.bundleInfo?.medallion;
     }
 
     get timestamp(): Timestamp | undefined {
-        return this.commitInfo?.timestamp;
+        return this.bundleInfo?.timestamp;
     }
 
     addEntry(entryBuilder: EntryBuilder): Muid {
@@ -75,23 +75,23 @@ export class Bundler {
 
 
     /**
-     * Intended to be called by a Database to finalize a commit.
-     * @param commitInfo the commit metadata to add when serializing
+     * Intended to be called by a Database to finalize a bundle.
+     * @param bundleInfo the bundle metadata to add when serializing
      * @returns serialized
      */
-    seal(commitInfo: BundleInfo): BundleInfo {
+    seal(bundleInfo: BundleInfo): BundleInfo {
         this.requireNotSealed();
-        if (this.preAssignedMedallion && this.preAssignedMedallion != commitInfo.medallion) {
-            throw new Error("specified commitInfo doesn't match pre-assigned medallion");
+        if (this.preAssignedMedallion && this.preAssignedMedallion != bundleInfo.medallion) {
+            throw new Error("specified bundleInfo doesn't match pre-assigned medallion");
         }
-        this.commitInfo = { ...commitInfo };
-        this.commitInfo.comment = this.pendingComment;
-        this.bundleBuilder.setTimestamp(commitInfo.timestamp);
-        this.bundleBuilder.setPrevious(commitInfo.priorTime);
-        this.bundleBuilder.setChainStart(commitInfo.chainStart);
-        this.bundleBuilder.setMedallion(commitInfo.medallion);
-        this.bundleBuilder.setComment(this.commitInfo.comment);
+        this.bundleInfo = { ...bundleInfo };
+        this.bundleInfo.comment = this.pendingComment;
+        this.bundleBuilder.setTimestamp(bundleInfo.timestamp);
+        this.bundleBuilder.setPrevious(bundleInfo.priorTime);
+        this.bundleBuilder.setChainStart(bundleInfo.chainStart);
+        this.bundleBuilder.setMedallion(bundleInfo.medallion);
+        this.bundleBuilder.setComment(this.bundleInfo.comment);
         this.serialized = this.bundleBuilder.serializeBinary();
-        return this.commitInfo;
+        return this.bundleInfo;
     }
 }

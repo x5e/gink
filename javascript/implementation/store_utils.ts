@@ -126,7 +126,7 @@ export function medallionChainStartToString(tuple: [number, number]): string {
     return `${intToHex(tuple[0])}-${intToHex(tuple[1])}`;
 }
 
-export function extractCommitInfo(bundleData: Uint8Array | BundleBuilder): BundleInfo {
+export function extractBundleInfo(bundleData: Uint8Array | BundleBuilder): BundleInfo {
     if (bundleData instanceof Uint8Array) {
         bundleData = <BundleBuilder>BundleBuilder.deserializeBinary(bundleData);
     }
@@ -163,17 +163,17 @@ export function toStorageKey(key: ScalarKey | Muid | [Muid | Container, Muid | C
     }
 }
 
-export function commitKeyToInfo(commitKey: BundleInfoTuple) {
+export function bundleKeyToInfo(bundleKey: BundleInfoTuple) {
     return {
-        timestamp: commitKey[0],
-        medallion: commitKey[1],
-        chainStart: commitKey[2],
-        priorTime: commitKey[3],
-        comment: commitKey[4],
+        timestamp: bundleKey[0],
+        medallion: bundleKey[1],
+        chainStart: bundleKey[2],
+        priorTime: bundleKey[3],
+        comment: bundleKey[4],
     };
 }
 
-export function commitInfoToKey(commitInfo: BundleInfo): BundleInfoTuple {
-    return [commitInfo.timestamp, commitInfo.medallion, commitInfo.chainStart,
-    commitInfo.priorTime || 0, commitInfo.comment || ""];
+export function bundleInfoToKey(bundleInfo: BundleInfo): BundleInfoTuple {
+    return [bundleInfo.timestamp, bundleInfo.medallion, bundleInfo.chainStart,
+    bundleInfo.priorTime || 0, bundleInfo.comment || ""];
 }

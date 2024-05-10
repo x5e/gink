@@ -81,8 +81,8 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         await addTrxns(store);
         const hasMap = <ChainTracker>await store.getChainTracker();
 
-        expect(hasMap.getCommitInfo([MEDALLION1, START_MICROS1])!.timestamp).toBe(NEXT_TS1);
-        expect(hasMap.getCommitInfo([MEDALLION2, START_MICROS2])!.timestamp).toBe(NEXT_TS2);
+        expect(hasMap.getBundleInfo([MEDALLION1, START_MICROS1])!.timestamp).toBe(NEXT_TS1);
+        expect(hasMap.getBundleInfo([MEDALLION2, START_MICROS2])!.timestamp).toBe(NEXT_TS2);
     });
 
     it(`${implName} test sends trxns in order`, async () => {
@@ -92,7 +92,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
             store = await replacer();
         }
         const sent: Array<BundleBytes> = [];
-        await store.getCommits((x: BundleBytes) => { sent.push(x); });
+        await store.getBundles((x: BundleBytes) => { sent.push(x); });
         expect(sent.length).toBe(4);
         expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[0])).getTimestamp()).toBe(START_MICROS1);
         expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[1])).getTimestamp()).toBe(START_MICROS2);
@@ -111,9 +111,9 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         changeBuilder.setContainer(containerBuilder);
         bundleBuilder.getChangesMap().set(7, changeBuilder);
         const BundleBytes = bundleBuilder.serializeBinary();
-        const commitInfo = await store.addBundle(BundleBytes);
-        ensure(commitInfo.medallion == MEDALLION1);
-        ensure(commitInfo.timestamp == START_MICROS1);
+        const bundleInfo = await store.addBundle(BundleBytes);
+        ensure(bundleInfo.medallion == MEDALLION1);
+        ensure(bundleInfo.timestamp == START_MICROS1);
         const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
         ensure(containerBytes);
         const containerBuilder2 = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);

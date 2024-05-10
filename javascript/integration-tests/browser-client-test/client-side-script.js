@@ -13,7 +13,7 @@ function getWebsocketTarget() {
     return target;
 }
 
-async function onCommit(changeSetInfo) {
+async function onBundle(changeSetInfo) {
     if (document == null) { throw new Error("unexpected"); }
     document.getElementById('messages').innerHTML +=
         `${changeSetInfo.medallion}, ${changeSetInfo.timestamp}, ` +
@@ -23,7 +23,7 @@ async function onCommit(changeSetInfo) {
 (async () => {
     const instance = new gink.Database(new gink.IndexedDbStore("browser-test", true));
     await instance.ready;
-    instance.addListener(onCommit);
+    instance.addListener(onBundle);
     await instance.addBundler(new gink.Bundler("Hello, Universe!"));
     await instance.connectTo(getWebsocketTarget());
 })();

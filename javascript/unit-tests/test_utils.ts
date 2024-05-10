@@ -11,12 +11,12 @@ export const START_MICROS2 = Date.parse("2022-02-20 00:38:21") * 1000;
 export const NEXT_TS2 = Date.parse("2022-02-20 00:40:12") * 1000;
 
 export function makeChainStart(comment: string, medallion: Medallion, chainStart: ChainStart): BundleBytes {
-    const commit = new BundleBuilder();
-    commit.setChainStart(chainStart);
-    commit.setTimestamp(chainStart);
-    commit.setMedallion(medallion);
-    commit.setComment(comment);
-    return commit.serializeBinary();
+    const bundle = new BundleBuilder();
+    bundle.setChainStart(chainStart);
+    bundle.setTimestamp(chainStart);
+    bundle.setMedallion(medallion);
+    bundle.setComment(comment);
+    return bundle.serializeBinary();
 }
 
 export function extendChain(comment: string, previous: BundleBytes, timestamp: Timestamp): BundleBytes {

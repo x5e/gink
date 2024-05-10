@@ -32,7 +32,7 @@ import {
     Timestamp,
 } from "./typedefs";
 import {
-    extractCommitInfo,
+    extractBundleInfo,
     extractContainerMuid,
     getStorageKey,
     extractMovement,
@@ -40,8 +40,8 @@ import {
     buildPointeeList,
     buildChainTracker,
     toStorageKey,
-    commitKeyToInfo,
-    commitInfoToKey,
+    bundleKeyToInfo,
+    bundleInfoToKey,
     storageKeyToString
 } from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
@@ -98,7 +98,7 @@ export class IndexedDbStore implements Store {
                      isn't a javascript object, we'll use
                      [timestamp, medallion] to keep transactions ordered in time.
                  */
-                db.createObjectStore('trxns'); // a map from CommitKey to CommitBytes
+                db.createObjectStore('trxns'); // a map from BundleKey to BundleBytes
 
                 /*
                     Stores ChainInfo objects.
@@ -218,17 +218,17 @@ export class IndexedDbStore implements Store {
             return asOf;
         }
         if (asOf < 0 && asOf > -1000) {
-            // Interpret as number of commits in the past.
+            // Interpret as number of bundles in the past.
             let cursor = await this.wrapped.transaction("trxns", "readonly").objectStore("trxns").openCursor(undefined, "prev");
-            let commitsToTraverse = -asOf;
+            let bundlesToTraverse = -asOf;
             for (; cursor; cursor = await cursor.continue()) {
-                if (--commitsToTraverse == 0) {
+                if (--bundlesToTraverse == 0) {
                     const tuple = <BundleInfoTuple>cursor.key;
                     return tuple[0];
                 }
             }
-            // Looking further back then we have commits.
-            throw new Error("no commits that far back");
+            // Looking further back then we have bundles.
+            throw new Error("no bundles that far back");
         }
         throw new Error(`don't know how to interpret asOf=${asOf}`);
     }
@@ -283,7 +283,7 @@ export class IndexedDbStore implements Store {
     addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
         if (!this.initialized) throw new Error("not initialized! need to await on .ready");
         const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = extractCommitInfo(bundleBuilder);
+        const bundleInfo = extractBundleInfo(bundleBuilder);
         //console.log(`got ${JSON.stringify(bundleInfo)}`);
 
         return this.processingLock.acquireLock().then((unlock) => {
@@ -321,8 +321,8 @@ export class IndexedDbStore implements Store {
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring parsing again.
-        const commitKey: BundleInfoTuple = commitInfoToKey(bundleInfo);
-        await wrappedTransaction.objectStore("trxns").add(bundleBytes, commitKey);
+        const bundleKey: BundleInfoTuple = bundleInfoToKey(bundleInfo);
+        await wrappedTransaction.objectStore("trxns").add(bundleBytes, bundleKey);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
@@ -654,17 +654,17 @@ export class IndexedDbStore implements Store {
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated
-    // to the current commit, so its best if `callBack` doesn't await.
-    async getCommits(callBack: (commitBytes: BundleBytes, commitInfo: BundleInfo) => void) {
+    // to the current bundle, so its best if `callBack` doesn't await.
+    async getBundles(callBack: (bundleBytes: BundleBytes, bundleInfo: BundleInfo) => void) {
         await this.ready;
 
-        // We loop through all commits and send those the peer doesn't have.
+        // We loop through all bundles and send those the peer doesn't have.
         for (let cursor = await this.wrapped.transaction("trxns", "readonly").objectStore("trxns").openCursor();
             cursor; cursor = await cursor.continue()) {
-            const commitKey = <BundleInfoTuple>cursor.key;
-            const commitInfo = commitKeyToInfo(commitKey);
-            const commitBytes: BundleBytes = cursor.value;
-            callBack(commitBytes, commitInfo);
+            const bundleKey = <BundleInfoTuple>cursor.key;
+            const bundleInfo = bundleKeyToInfo(bundleKey);
+            const bundleBytes: BundleBytes = cursor.value;
+            callBack(bundleBytes, bundleInfo);
         }
     }
 

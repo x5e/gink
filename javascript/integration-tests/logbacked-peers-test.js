@@ -30,8 +30,8 @@ automatically pull the changes and broadcast them.
     console.log("wrote to first instance");
 
     await new Promise(r => setTimeout(r, 100));
-    await server.expect(/received commit:.*testing peer callback/, 10000);
-    console.log("received expected commit");
+    await server.expect(/received bundle:.*testing peer callback/, 10000);
+    console.log("received expected bundle");
 
     await server.close();
     process.exit(0);

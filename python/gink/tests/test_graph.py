@@ -32,12 +32,12 @@ def test_to_from():
     bundler = Bundler()
     vertex1 = Vertex(bundler=bundler)
     vertex2 = Vertex(bundler=bundler)
-    db.commit(bundler=bundler)
+    db.bundle(bundler=bundler)
     verb = Verb()
     bundler = Bundler()
     edge12 = verb.create_edge(vertex1, vertex2, bundler=bundler)
     edge21 = verb.create_edge(vertex2, vertex1, bundler=bundler)
-    db.commit(bundler=bundler)
+    db.bundle(bundler=bundler)
     edges_from1 = set(vertex1.get_edges_from())
     assert edges_from1 == {edge12}, edges_from1
     edges_to = set(vertex1.get_edges_to())
@@ -80,7 +80,7 @@ def test_reissue_properties():
             assert len(after_removed) == 0, after_removed
             bundler = Bundler()
             db.reset(to_time=timestamp, bundler=bundler)
-            db.commit(bundler)
+            db.bundle(bundler)
             after_reset = list(noun1.get_edges_from())
             assert len(after_reset) == 1, after_reset
             edge2 = after_reset[0]
@@ -103,5 +103,5 @@ def test_reset_vertex():
             assert not noun1.is_alive()
             bundler = Bundler()
             noun1.reset(timestamp, bundler=bundler)
-            db.commit(bundler)
+            db.bundle(bundler)
             assert noun1.is_alive()
