@@ -34,9 +34,7 @@ import { generateTimestamp, ensure, getActorId } from "./utils";
 
 export class LogBackedStore extends LockableLog implements Store {
 
-    readonly ready: Promise<void>;
     private bundlesProcessed = 0;
-    private fileHandle: FileHandle;
     private chainTracker: ChainTracker = new ChainTracker({});
 
     private claimedChains: ClaimedChain[] = [];
@@ -48,6 +46,7 @@ export class LogBackedStore extends LockableLog implements Store {
     private foundBundleCallBacks: BroadcastFunc[] = [];
     private opened: boolean = false;
     private closed: boolean = false;
+    private logBackedStoreReady: Promise<void>;
 
     /**
      *
@@ -60,10 +59,12 @@ export class LogBackedStore extends LockableLog implements Store {
         private internalStore = new MemoryStore(),
     ) {
         super(filename, exclusive);
-        this.ready = this.ready.then(() => this.initialize());
+        this.logBackedStoreReady = super.ready.then(() => this.initializeLogBackedStore());
     }
 
-    private async initialize(): Promise<void> {
+    get ready() { return this.logBackedStoreReady; }
+
+    private async initializeLogBackedStore(): Promise<void> {
         await this.internalStore.ready;
         const unlockingFunction = await this.memoryLock.acquireLock();
         await this.pullDataFromFile();
@@ -73,13 +74,7 @@ export class LogBackedStore extends LockableLog implements Store {
                 await new Promise(r => setTimeout(r, 10));
                 if (thisLogBackedStore.closed || !thisLogBackedStore.opened)
                     return;
-                let size: number;
-                try {
-                    size = (await this.fileHandle.stat()).size;
-                } catch (problem) {
-                    console.error(`problem getting size! ${problem}`);
-                    throw problem;
-                }
+                let size: number = await thisLogBackedStore.getFileLength();
                 if (eventType == "change" && size > this.redTo) {
                     const unlockingFunction = await this.memoryLock.acquireLock();
                     if (!this.exclusive)
@@ -110,19 +105,9 @@ export class LogBackedStore extends LockableLog implements Store {
     private async pullDataFromFile(): Promise<void> {
         if (this.closed)
             return;
-        let stats: Stats
-        try {
-            stats = await this.fileHandle.stat();
-        } catch (problem) {
-            console.error(`problem with fileHandle.stat ${problem}`);
-            throw problem;
-        }
-        const totalSize = stats.size;
+        const totalSize = await this.getFileLength();
         if (this.redTo < totalSize) {
-            const needToReed = totalSize - this.redTo;
-            const uint8Array = new Uint8Array(needToReed);
-            await this.fileHandle.read(uint8Array, 0, needToReed, this.redTo);
-            const logFileBuilder = <LogFileBuilder>LogFileBuilder.deserializeBinary(uint8Array);
+            const logFileBuilder = await this.getContents(this.redTo, totalSize);
             const bundles = logFileBuilder.getBundlesList();
             for (const bundle of bundles) {
                 const info = await this.internalStore.addBundle(bundle);
@@ -170,8 +155,9 @@ export class LogBackedStore extends LockableLog implements Store {
         const unlockingFunction = await this.memoryLock.acquireLock();
         if (!this.exclusive)
             await this.lockFile(true);
-
         await this.pullDataFromFile();
+        if (this.redTo == 0)
+            await this.writeMagicNumber();
         const info: BundleInfo = await this.internalStore.addBundle(bundleBytes);
         if (claimChain) {
             await this.claimChain(info.medallion, info.chainStart, getActorId());
