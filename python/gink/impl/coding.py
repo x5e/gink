@@ -191,7 +191,7 @@ class Placement(NamedTuple):
         middle_key: Union[MuTimestamp, UserKey, Muid, None, Tuple[Muid, Muid]]
         if using in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(middle_key_bytes)
-        elif using in (SEQUENCE, VERB):
+        elif using in (SEQUENCE, EDGE_TYPE):
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
         elif using in (PROPERTY, GROUP):
             middle_key = Muid.from_bytes(middle_key_bytes)
