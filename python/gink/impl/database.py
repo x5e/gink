@@ -173,7 +173,7 @@ class Database:
             assert added
             info = wrap.get_info()
             self._last_link = info
-            self._logger.debug("locally bundleted bundle: %r", info)
+            self._logger.debug("locally committed bundle: %r", info)
             return info
 
     def _on_bundle(self, bundle_bytes: bytes, bundle_info: BundleInfo) -> None:

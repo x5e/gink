@@ -70,7 +70,7 @@ class AbstractStore(ABC, Generic[Lock]):
 
     @abstractmethod
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
-        """ Gets the comment associated with a particular bundle/bundle, if stored. """
+        """ Gets the comment associated with a particular bundle, if stored. """
         raise NotImplementedError()
 
     @abstractmethod

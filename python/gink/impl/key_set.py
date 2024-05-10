@@ -80,7 +80,7 @@ class KeySet(Container):
         """ If key exists in the key set, returns it and removes it.
 
             Otherwise returns default.  In the case that the key is found and removed,
-            then the change is added to the bundler (or bundleted immedately with comment
+            then the change is added to the bundler (or committed immedately with comment
             if no bundler is specified.)
         """
         as_of = self._database.get_now()

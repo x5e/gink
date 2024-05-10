@@ -14,7 +14,7 @@ def test_write_fresh(db_file_path: Path|str, count: int) -> dict:
         cur = con.cursor()
         cur.execute("CREATE TABLE write_fresh(test)")
 
-        print("Testing SQLite writing performance to fresh database - each entry bundleted individually.")
+        print("Testing SQLite writing performance to fresh database - each entry comitted individually.")
         print("Writing", count, "entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
@@ -138,7 +138,7 @@ def test_read_write(db_file_path: Path|str, count: int) -> dict:
         cur = con.cursor()
         cur.execute("CREATE TABLE read_write(test)")
 
-        print("Testing SQLite writing and reading performance to fresh database - each entry is bundleted individually.")
+        print("Testing SQLite writing and reading performance to fresh database - each entry is committed individually.")
         print("Writing then reading", count, "entries...")
         before_time = datetime.utcnow()
         for i in range(0, count):
@@ -243,14 +243,14 @@ def test_increasing(db_file_path: Path|str, count: int, num_inc_tests: int) -> d
         current_entries = 0
         results = {}
 
-        print("Testing SQLite writing performance to a growing database - each entry will bundleted individually.")
+        print("Testing SQLite writing performance to a growing database - each entry will committed individually.")
 
         for r in range(1, num_inc_tests+1):
             print(f"Writing {count} entries to a database with {current_entries} existing entries...")
             before_time = datetime.utcnow()
             for i in range(0, count):
                 cur.execute(f"""INSERT INTO increasing VALUES ('test{i} data to be inserted')""")
-                con.bundle()
+                con.commits()
             after_time = datetime.utcnow()
 
             write_total_time = round((after_time - before_time).total_seconds(), 4)

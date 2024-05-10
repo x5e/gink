@@ -387,8 +387,9 @@ const asJSON = await directory.toJson();
 
 ## Database Operations
 ### Bundling and bundles
-Without specifying a bundler when performing an action, Gink defaults to immediately bundleting each change as they happen.\
-If you would like to control which changes are bundled together and control when the bundle is bundleted to the database, here is an example:
+Without specifying a bundler when performing an action, Gink defaults to immediately committing each change
+as they happen. If you would like to control which changes are bundled together and control when the bundle
+is comitted to the database, here is an example:
 ```ts
 const{ Bundler } = require("@x5e/gink");
 
@@ -399,7 +400,7 @@ const bundler = new Bundler();
 // pass the bundler into each operation
 await directory.set("key1", "value1", bundler);
 await directory.set("key2", 2, bundler);
-// at this point, these changes have not been bundleted.
+// at this point, these changes have not been committed.
 
 // Update the bundle comment
 bundler.comment = "Testing bundles";
@@ -423,7 +424,8 @@ await instance.connectTo("ws://localhost:8080"); // or wherever your server is h
 ```
 The server and client should now sync bundles. <br>
 <br>
-Clients can also connect to multiple Gink servers, which can ensure a very high degree of  availability if they are hosted using different providers.<br>
+Clients can also connect to multiple Gink servers, which can ensure a very high degree of
+availability if they are hosted using different providers.<br>
 
 ```ts
 await instance.connectTo("ws://host1");

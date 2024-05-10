@@ -343,8 +343,8 @@ new_size = pairset2.size()
 ```
 
 ## Database Operations
-#### Bundling, comments, and bundles
-A bundle is simply a collection of changes with an optional comment/message, like a bundle in Git. Without specifying a bundler object, Gink operations will immediately bundle the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle (and when to bundle them), here is an example:
+#### Bundling, comments, and commits
+A bundle is simply a collection of changes with an optional comment/message, like a commit in Git. Without specifying a bundler object, Gink operations will immediately bundle the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle (and when to bundle them), here is an example:
 ```python
 directory = Directory()
 bundler = Bundler(comment="example setting values in directory")
