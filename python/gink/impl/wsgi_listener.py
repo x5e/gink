@@ -9,8 +9,11 @@ from io import StringIO
 from sys import stderr
 from datetime import datetime
 from typing import Iterable, Optional
+from errno import EINTR
 
-class WSGIServer():
+from .wsgi_connection import WSGIConnection
+
+class WSGIListener():
     address_family = socket.AF_INET
     socket_type = socket.SOCK_STREAM
     request_queue_size = 1024
@@ -36,6 +39,17 @@ class WSGIServer():
         self.server_name = socket.getfqdn(host)
         self.server_port = port
         self.headers_set: list[str] = []
+
+    def accept(self):
+        try:
+            conn, _ = self.listen_socket.accept()
+        except BlockingIOError as e:
+            code, msg = e.args
+            if code == EINTR:
+                conn = None
+            else:
+                raise e
+        return WSGIConnection(conn)
 
     @staticmethod
     def parse_request(text: str):

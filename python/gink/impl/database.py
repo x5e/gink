@@ -11,7 +11,6 @@ from logging import getLogger
 from re import fullmatch, IGNORECASE
 from contextlib import nullcontext
 from socket import socket as Socket
-from errno import EINTR
 
 # builders
 from .builders import SyncMessage, ContainerBuilder
@@ -32,7 +31,8 @@ from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
 from .selectable_console import SelectableConsole
 from .bundle_wrapper import BundleWrapper
-from .wsgi_server import WSGIServer
+from .wsgi_listener import WSGIListener
+from .wsgi_connection import WSGIConnection
 from .utilities import generate_timestamp, experimental, get_identity, generate_medallion
 
 
@@ -43,6 +43,7 @@ class Database:
     _last_time: Optional[MuTimestamp]
     _store: AbstractStore
     _connections: Set[Connection]
+    _wsgi_connections: Set[WSGIConnection]
     _listeners: Set[Listener]
     _sent_but_not_acked: Set[BundleInfo]
     _trackers: Dict[Connection, ChainTracker]  # tracks what we know a peer has
@@ -65,14 +66,14 @@ class Database:
         self._lock = Lock()
         self._last_time = None
         self._connections = set()
-        self._wsgi_connections: set[Socket] = set()
+        self._wsgi_connections = set()
         self._listeners = set()
         self._trackers = {}
         self._identity = identity
-        self._wsgi_server: Optional[WSGIServer] = None
+        self._wsgi_server: Optional[WSGIListener] = None
         # Web server would be a Flask app or other WSGI compatible app
         if web_server:
-            self._wsgi_server = WSGIServer(web_server, address=web_server_addr)
+            self._wsgi_server = WSGIListener(web_server, address=web_server_addr)
         self._sent_but_not_acked = set()
         self._logger = getLogger(self.__class__.__name__)
         self._callbacks: List[Callable[[BundleInfo], None]] = list()
@@ -308,21 +309,12 @@ class Database:
                             self._connections.remove(ready_reader)
                             readers.remove(ready_reader)
                     elif self._wsgi_server and ready_reader == self._wsgi_server.listen_socket:
-                        try:
-                            conn, client_address = self._wsgi_server.listen_socket.accept()
-                        except BlockingIOError as e:
-                            code, msg = e.args
-                            if code == EINTR:
-                                continue
-                            else:
-                                raise e
-                        self._wsgi_connections.add(conn)
-                        readers.append(conn)
-                    elif self._wsgi_server and isinstance(ready_reader, Socket):
-                        try:
-                            request_data = ready_reader.recv(1024)
-                        except ConnectionResetError as e:
-                            request_data = None
+                        conn = self._wsgi_server.accept()
+                        if conn:
+                            self._wsgi_connections.add(conn)
+                            readers.append(conn)
+                    elif self._wsgi_server and isinstance(ready_reader, WSGIConnection):
+                        request_data = ready_reader.receive_data()
                         if not request_data:
                             ready_reader.close()
                             self._wsgi_connections.remove(ready_reader)
@@ -332,7 +324,7 @@ class Database:
                             self._logger.debug(''.join(
                                 f'< {line}\n' for line in decoded.splitlines()
                             ))
-                            (request_method, path, request_version) = WSGIServer.parse_request(decoded)
+                            (request_method, path, request_version) = WSGIListener.parse_request(decoded)
                             env = self._wsgi_server.get_environ(
                                 decoded, request_method, path
                             )
