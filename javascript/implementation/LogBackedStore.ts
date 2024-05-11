@@ -14,7 +14,7 @@ import { MemoryStore } from "./MemoryStore";
 import { Store } from "./Store";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { LockableLog } from "./LockableLog";
-import { watch, FSWatcher, Stats } from "fs";
+import { watch, FSWatcher } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder } from "./builders";
 import { generateTimestamp, ensure, getActorId } from "./utils";
@@ -40,6 +40,11 @@ export class LogBackedStore extends LockableLog implements Store {
     private claimedChains: ClaimedChain[] = [];
     private identities: Map<string, string> = new Map(); // Medallion,ChainStart => identity
 
+    // While the operating system lock prevents other processes from writing to this file,
+    // we need to prevent multiple async tasks within this process from trying to interleave operations.
+    // The memory lock accomplishes this.  It might not strictly be necessary, because of how the
+    // rest of the system is designed, but the overhead is expected to be minimal and may prevent
+    // some foot shooting.
     private memoryLock: PromiseChainLock = new PromiseChainLock();
     private redTo: number = 0;
     private fileWatcher: FSWatcher;
@@ -151,6 +156,7 @@ export class LogBackedStore extends LockableLog implements Store {
 
     async addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
         // TODO(https://github.com/x5e/gink/issues/182): delay unlocking the file to give better throughput
+
         await this.ready;
         const unlockingFunction = await this.memoryLock.acquireLock();
         if (!this.exclusive)
@@ -171,10 +177,7 @@ export class LogBackedStore extends LockableLog implements Store {
             await this.pullDataFromFile();
             const logFragment = new LogFileBuilder();
             logFragment.setBundlesList([bundleBytes]);
-            const bytes: Uint8Array = logFragment.serializeBinary();
-            await this.fileHandle.writeFile(bytes);
-            await this.fileHandle.sync();
-            this.redTo += bytes.byteLength;
+            this.redTo += await this.writeFragment(logFragment, true);
         }
         if (!this.exclusive)
             await this.unlockFile();
@@ -202,10 +205,7 @@ export class LogBackedStore extends LockableLog implements Store {
         claim.setProcessId(actorId);
         claim.setClaimTime(claimTime);
         fragment.setClaimsList([claim]);
-        const bytes: Uint8Array = fragment.serializeBinary();
-        await this.fileHandle.appendFile(bytes);
-        await this.fileHandle.sync();
-        this.redTo += bytes.byteLength;
+        this.redTo += await this.writeFragment(fragment);
         const chain = {
             medallion,
             chainStart,
