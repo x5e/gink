@@ -1,8 +1,19 @@
 """ One connection to a WSGIListener """
 from socket import socket as Socket
-class WSGIConnection(Socket):
+
+class WSGIConnection(object):
     def __init__(self, socket: Socket):
         self.sock = socket
+        self.fd = socket.fileno()
+
+    def fileno(self):
+        return self.fd
+
+    def close(self):
+        self.sock.close()
+
+    def sendall(self, data: bytes):
+        self.sock.sendall(data)
 
     def receive_data(self):
         try:

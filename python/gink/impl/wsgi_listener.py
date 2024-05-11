@@ -1,5 +1,5 @@
 """
-WSGIServer is essentially a wrapper around an unknown WSGI application (flask, django, etc).
+WSGIServer is a wrapper around an unknown WSGI application (flask, django, etc).
 The point of this class is to integrate within the Database select loop.
 """
 
@@ -10,6 +10,7 @@ from sys import stderr
 from datetime import datetime
 from typing import Iterable, Optional
 from errno import EINTR
+from logging import Logger
 
 from .wsgi_connection import WSGIConnection
 
@@ -28,6 +29,7 @@ class WSGIListener():
             self.address_family,
             self.socket_type
         )
+        self.fd = self.listen_socket.fileno()
 
         listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         listen_socket.setblocking(False)
@@ -39,6 +41,9 @@ class WSGIListener():
         self.server_name = socket.getfqdn(host)
         self.server_port = port
         self.headers_set: list[str] = []
+
+    def fileno(self):
+        return self.fd
 
     def accept(self):
         try:
@@ -89,7 +94,7 @@ class WSGIListener():
     def write(self, string: str):
             raise NotImplementedError("Using the write callable has not been implemented.")
 
-    def finish_response(self, result: Iterable[bytes], conn: socket.socket):
+    def finish_response(self, result: Iterable[bytes], conn: WSGIConnection):
         status, response_headers = self.headers_set
         response = f'HTTP/1.1 {status}\r\n'
         for header in response_headers:
@@ -103,3 +108,19 @@ class WSGIListener():
         print(f'HTTP/1.1 {status}')
         response_bytes = response.encode()
         conn.sendall(response_bytes)
+
+    def process_request(self, request_data: Optional[bytes], logger: Optional[Logger] = None):
+        """
+        Holds all of the request processing that does not involve a connection.
+        The result from this method will need to be passed to finish_response along
+        with the connection.
+        """
+        if not request_data:
+            return False
+        decoded = request_data.decode('utf-8')
+        if logger:
+            logger.debug(''.join(f'< {line}\n' for line in decoded.splitlines()))
+        (request_method, path, request_version) = WSGIListener.parse_request(decoded)
+        env = self.get_environ(decoded, request_method, path)
+        result = self.application(env, self.start_response)
+        return result

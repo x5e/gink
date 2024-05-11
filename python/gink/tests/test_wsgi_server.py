@@ -32,9 +32,9 @@ def test_wsgi_integration():
     p2 = multiprocessing.Process(target=wsgi_db.run)
     p2.start()
 
-    data = requests.get("http://localhost:8081/hello").text
-    data2 = requests.get("http://localhost:8082").text
     try:
+        data = requests.get("http://localhost:8081/hello").text
+        data2 = requests.get("http://localhost:8082").text
         assert "Hello World" in data
         assert "Hello universe!" in data2
     finally:

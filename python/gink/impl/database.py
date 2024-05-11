@@ -70,10 +70,10 @@ class Database:
         self._listeners = set()
         self._trackers = {}
         self._identity = identity
-        self._wsgi_server: Optional[WSGIListener] = None
+        self._wsgi_listener: Optional[WSGIListener] = None
         # Web server would be a Flask app or other WSGI compatible app
         if web_server:
-            self._wsgi_server = WSGIListener(web_server, address=web_server_addr)
+            self._wsgi_listener = WSGIListener(web_server, address=web_server_addr)
         self._sent_but_not_acked = set()
         self._logger = getLogger(self.__class__.__name__)
         self._callbacks: List[Callable[[BundleInfo], None]] = list()
@@ -281,7 +281,7 @@ class Database:
         with context_manager:
             while (until is None or generate_timestamp() < until):
                 # eventually will want to support epoll on platforms where its supported
-                readers: List[Union[Listener, Connection, SelectableConsole, AbstractStore, Socket]] = []
+                readers: List[Union[Listener, WSGIListener, Connection, WSGIConnection, SelectableConsole, AbstractStore]] = []
                 if self._store.is_selectable():
                         readers.append(self._store)
                 for listener in self._listeners:
@@ -291,11 +291,10 @@ class Database:
                         self._connections.remove(connection)
                     else:
                         readers.append(connection)
-                if self._wsgi_server:
-                    readers.append(self._wsgi_server.listen_socket)
+                if self._wsgi_listener:
+                    readers.append(self._wsgi_listener)
                 for conn in list(self._wsgi_connections):
                     readers.append(conn)
-
                 if isinstance(console, SelectableConsole):
                     readers.append(console)
                     if console:
@@ -308,31 +307,19 @@ class Database:
                         if ready_reader.is_closed():
                             self._connections.remove(ready_reader)
                             readers.remove(ready_reader)
-                    elif self._wsgi_server and ready_reader == self._wsgi_server.listen_socket:
-                        conn = self._wsgi_server.accept()
+                    elif isinstance(ready_reader, WSGIListener) and self._wsgi_listener:
+                        conn = self._wsgi_listener.accept()
                         if conn:
                             self._wsgi_connections.add(conn)
                             readers.append(conn)
-                    elif self._wsgi_server and isinstance(ready_reader, WSGIConnection):
+                    elif isinstance(ready_reader, WSGIConnection) and self._wsgi_listener:
                         request_data = ready_reader.receive_data()
-                        if not request_data:
-                            ready_reader.close()
-                            self._wsgi_connections.remove(ready_reader)
-                            readers.remove(ready_reader)
-                        else:
-                            decoded = request_data.decode('utf-8')
-                            self._logger.debug(''.join(
-                                f'< {line}\n' for line in decoded.splitlines()
-                            ))
-                            (request_method, path, request_version) = WSGIListener.parse_request(decoded)
-                            env = self._wsgi_server.get_environ(
-                                decoded, request_method, path
-                            )
-                            result = self._wsgi_server.application(env, self._wsgi_server.start_response)
-                            self._wsgi_server.finish_response(result, ready_reader)
-                            ready_reader.close()
-                            self._wsgi_connections.remove(ready_reader)
-                            readers.remove(ready_reader)
+                        result = self._wsgi_listener.process_request(request_data, self._logger)
+                        if result != False:
+                            self._wsgi_listener.finish_response(result, ready_reader)
+                        ready_reader.close()
+                        self._wsgi_connections.remove(ready_reader)
+                        readers.remove(ready_reader)
                     elif isinstance(ready_reader, Listener):
                         sync_message = self._store.get_chain_tracker().to_greeting_message()
                         new_connection: Connection = ready_reader.accept(sync_message)
