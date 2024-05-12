@@ -114,6 +114,9 @@ export class LogBackedStore extends LockableLog implements Store {
         const totalSize = await this.getFileLength();
         if (this.redTo < totalSize) {
             const logFileBuilder = await this.getContents(this.redTo, totalSize);
+            if (this.redTo == 0) {
+                ensure(logFileBuilder.getMagicNumber() == 1263421767, "log file doesn't have magic number");
+            }
             const bundles = logFileBuilder.getBundlesList();
             for (const bundleBytes of bundles) {
                 const bundle: BundleView = new Decomposition(bundleBytes);

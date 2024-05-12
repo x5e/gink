@@ -1,15 +1,13 @@
-import { Database, LogBackedStore } from "../implementation/main";
+import { Database, LogBackedStore, ensure } from "../implementation/main";
 import { testStore } from "./Store.test";
-import { truncateSync, existsSync, unlinkSync } from "fs";
+import { truncateSync, existsSync, unlinkSync, readFileSync } from "fs";
 
-const TEST_FILE = "/tmp/test.store";
-
-function createMaker(reset: boolean) {
+function createMaker(reset: boolean, testFile = "/tmp/test.store") {
     return async function () {
-        if (reset && existsSync(TEST_FILE)) {
-            truncateSync(TEST_FILE);
+        if (reset && existsSync(testFile)) {
+            truncateSync(testFile);
         }
-        const new_store = new LogBackedStore(TEST_FILE, true);
+        const new_store = new LogBackedStore(testFile, true);
         await new_store.ready;
         return new_store;
     };
@@ -68,4 +66,27 @@ it('test automatic data pulling & callbacks', async () => {
 
     await store1.close();
     await store2.close();
+});
+
+it('test magic', async () => {
+
+    const fn = "/tmp/testMagic.bin";
+    const store1 = await createMaker(true, fn)();
+
+    const instance1 = new Database(store1);
+    await instance1.ready;
+
+    const globalDir1 = instance1.getGlobalDirectory();
+
+    await globalDir1.set("key", "value");
+
+    await store1.close();
+
+    const contents = readFileSync(fn);
+    console.log(contents);
+    ensure(contents[1] == 71); // G
+    ensure(contents[2] == 73); // I
+    ensure(contents[3] == 78); // N
+    ensure(contents[4] == 75); // K
+
 });
