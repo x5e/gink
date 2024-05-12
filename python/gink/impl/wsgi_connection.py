@@ -1,7 +1,7 @@
-""" One connection to a WSGIListener """
+""" One connection to a WsgiListener """
 from socket import socket as Socket
 
-class WSGIConnection(object):
+class WsgiConnection(object):
     def __init__(self, socket: Socket):
         self.sock = socket
         self.fd = socket.fileno()
