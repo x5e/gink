@@ -1,4 +1,4 @@
-import { BundleBytes, BundleInfo, CallBack } from "./typedefs";
+import { BundleBytes, BundleInfo, BundleView, CallBack } from "./typedefs";
 import { ensure, noOp } from "./utils";
 import { ChainTracker } from "./ChainTracker";
 import { AckBuilder, SyncMessageBuilder } from "./builders";
@@ -59,9 +59,9 @@ export class Peer {
      * @param bundleBytes The bundle to be sent.
      * @param bundleInfo Metadata about the bundle.
      */
-    _sendIfNeeded(bundleBytes: BundleBytes, bundleInfo: BundleInfo) {
-        if (this.hasMap?.markAsHaving(bundleInfo, true)) {
-            this.sendFunc(Peer.makeBundleMessage(bundleBytes));
+    _sendIfNeeded(bundle: BundleView) {
+        if (this.hasMap?.markAsHaving(bundle.info, true)) {
+            this.sendFunc(Peer.makeBundleMessage(bundle.bytes));
         }
     }
 

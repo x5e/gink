@@ -47,7 +47,7 @@ export interface AuthFunction {
 }
 
 export interface BroadcastFunc {
-    (bundleBytes: BundleBytes, bundleInfo: BundleInfo): Promise<void>;
+    (bundle: BundleView): Promise<void>;
 }
 
 export interface Muid {

@@ -1,4 +1,4 @@
-import { BundleBytes, Entry } from "../implementation/typedefs";
+import { BundleBytes, Entry, BundleView } from "../implementation/typedefs";
 import { ChainTracker } from "../implementation/ChainTracker";
 import { Store } from "../implementation/Store";
 import { Decomposition } from "../implementation/Decomposition";
@@ -93,7 +93,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
             store = await replacer();
         }
         const sent: Array<BundleBytes> = [];
-        await store.getBundles((x: BundleBytes) => { sent.push(x); });
+        await store.getBundles((x: BundleView) => { sent.push(x.bytes); });
         expect(sent.length).toBe(4);
         expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[0])).getTimestamp()).toBe(START_MICROS1);
         expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[1])).getTimestamp()).toBe(START_MICROS2);

@@ -5,7 +5,7 @@ import { BundleInfo, BundleView, BundleBytes } from "./typedefs";
  * Creates a bundle view from the encoded bytes and metadata info, only parsing
  * the bytes to create the builder if actually needed.
  */
-class Retrieval implements BundleView {
+export class Retrieval implements BundleView {
     private bundleBytes: BundleBytes;
     private bundleInfo: BundleInfo;
     private bundleBuilder?: BundleBuilder;

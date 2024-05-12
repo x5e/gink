@@ -3,13 +3,11 @@ import {
     ensure,
     generateTimestamp,
     muidToString,
-    muidToTuple,
     muidTupleToString,
     unwrapValue,
     sameData,
     getActorId,
     toLastWithPrefixBeforeSuffix,
-    timestampToString,
 } from "./utils";
 import {
     AsOf,
@@ -35,7 +33,7 @@ import {
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
+import { Behavior, ChangeBuilder, EntryBuilder } from "./builders";
 import { MapIterator, TreeMap } from 'jstreemap';
 import {
     getStorageKey as getStorageKey,
@@ -49,6 +47,7 @@ import {
     bundleKeyToInfo,
     storageKeyToString,
 } from "./store_utils";
+import { Retrieval } from "./Retrieval";
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
@@ -319,12 +318,12 @@ export class MemoryStore implements Store {
         return entry;
     }
 
-    async getBundles(callBack: (bundleBytes: BundleBytes, bundleInfo: BundleInfo) => void) {
+    async getBundles(callBack: (bundle: BundleView) => void) {
         for (const [key, val] of this.trxns) {
             const bundleKey: BundleInfoTuple = key;
             const bundleInfo = bundleKeyToInfo(bundleKey);
             const bundleBytes: BundleBytes = val;
-            callBack(bundleBytes, bundleInfo);
+            callBack(new Retrieval({bundleBytes, bundleInfo}));
         }
     }
 

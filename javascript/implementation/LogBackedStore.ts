@@ -163,7 +163,7 @@ export class LogBackedStore implements Store {
                     this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
                 }
                 for (const callback of this.foundBundleCallBacks) {
-                    callback(bundleBytes, info);
+                    callback(bundle);
                 }
                 this.bundlesProcessed += 1;
             }
@@ -271,7 +271,7 @@ export class LogBackedStore implements Store {
         return await this.internalStore.getChainTracker();
     }
 
-    async getBundles(callBack: (bundleBytes: BundleBytes, bundleInfo: BundleInfo) => void): Promise<void> {
+    async getBundles(callBack: (bundle: BundleView) => void): Promise<void> {
         await this.ready;
         await this.internalStore.getBundles(callBack);
     }

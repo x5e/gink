@@ -74,7 +74,7 @@ export interface Store {
      *
      * Implicitly awaits on this.ready;
      */
-    getBundles: (callback: (bundleBytes: Bytes, bundleInfo: BundleInfo) => void) => Promise<void>;
+    getBundles: (callback: (bundle: BundleView) => void) => Promise<void>;
 
     /**
      * Gets the protobuf bytes corresponding to a particular container's address.
