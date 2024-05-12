@@ -5,7 +5,7 @@ import { truncateSync, existsSync, unlinkSync, readFileSync } from "fs";
 function createMaker(reset: boolean, testFile = "/tmp/test.store") {
     return async function () {
         if (reset && existsSync(testFile)) {
-            truncateSync(testFile);
+            unlinkSync(testFile);
         }
         const new_store = new LogBackedStore(testFile, true);
         await new_store.ready;
@@ -42,8 +42,12 @@ it('test locks', async () => {
 });
 
 it('test automatic data pulling & callbacks', async () => {
-    const store1 = new LogBackedStore("/tmp/basic_test.store");
-    const store2 = new LogBackedStore("/tmp/basic_test.store");
+    const testFile = "/tmp/basic_test.store";
+    if (existsSync(testFile)) {
+        unlinkSync(testFile);
+    }
+    const store1 = new LogBackedStore(testFile);
+    const store2 = new LogBackedStore(testFile);
 
     const cb = (bundle) => {
         cb.calledTimes++;

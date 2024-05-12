@@ -113,7 +113,7 @@ export class LogBackedStore extends LockableLog implements Store {
             return;
         const totalSize = await this.getFileLength();
         if (this.redTo < totalSize) {
-            const logFileBuilder = await this.getContents(this.redTo, totalSize);
+            const logFileBuilder = await this.getLogContents(this.redTo, totalSize);
             if (this.redTo == 0) {
                 ensure(logFileBuilder.getMagicNumber() == 1263421767, "log file doesn't have magic number");
             }
@@ -183,7 +183,7 @@ export class LogBackedStore extends LockableLog implements Store {
             await this.pullDataFromFile();
             const logFragment = new LogFileBuilder();
             logFragment.setBundlesList([bundle.bytes]);
-            this.redTo += await this.writeFragment(logFragment, true);
+            this.redTo += await this.writeLogFragment(logFragment, true);
         }
         if (!this.exclusive)
             await this.unlockFile();
@@ -211,7 +211,7 @@ export class LogBackedStore extends LockableLog implements Store {
         claim.setProcessId(actorId);
         claim.setClaimTime(claimTime);
         fragment.setClaimsList([claim]);
-        this.redTo += await this.writeFragment(fragment);
+        this.redTo += await this.writeLogFragment(fragment);
         const chain = {
             medallion,
             chainStart,
