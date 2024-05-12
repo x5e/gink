@@ -126,18 +126,6 @@ export function medallionChainStartToString(tuple: [number, number]): string {
     return `${intToHex(tuple[0])}-${intToHex(tuple[1])}`;
 }
 
-export function extractBundleInfo(bundleData: Uint8Array | BundleBuilder): BundleInfo {
-    if (bundleData instanceof Uint8Array) {
-        bundleData = <BundleBuilder>BundleBuilder.deserializeBinary(bundleData);
-    }
-    return {
-        timestamp: bundleData.getTimestamp(),
-        medallion: bundleData.getMedallion(),
-        chainStart: bundleData.getChainStart(),
-        priorTime: bundleData.getPrevious() || undefined,
-        comment: bundleData.getComment() || undefined,
-    };
-}
 
 export function buildChainTracker(chainInfos: Iterable<BundleInfo>): ChainTracker {
     const hasMap: ChainTracker = new ChainTracker({});

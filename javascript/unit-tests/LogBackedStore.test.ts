@@ -47,7 +47,7 @@ it('test automatic data pulling & callbacks', async () => {
     const store1 = new LogBackedStore("/tmp/basic_test.store");
     const store2 = new LogBackedStore("/tmp/basic_test.store");
 
-    const cb = (bytes, info) => {
+    const cb = (bundle) => {
         cb.calledTimes++;
         return Promise.resolve();
     };

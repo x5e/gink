@@ -9,7 +9,7 @@ import {
     ClaimedChain,
     Entry,
     AsOf,
-    ActorId,
+    BundleView,
     BroadcastFunc,
 } from "./typedefs";
 
@@ -62,7 +62,7 @@ export interface Store {
      *
      * Implicitly awaits on this.ready;
      */
-    addBundle(bundleBytes: Bytes, claimChain?: boolean): Promise<BundleInfo>;
+    addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo>;
 
     /**
      * Get all bundles from a store ordered by [timestamp, medallion].
@@ -74,7 +74,7 @@ export interface Store {
      *
      * Implicitly awaits on this.ready;
      */
-    getBundles: (callback: (bundleBytes: Bytes, bundleInfo: BundleInfo) => void) => Promise<void>;
+    getBundles: (callback: (bundle: BundleView) => void) => Promise<void>;
 
     /**
      * Gets the protobuf bytes corresponding to a particular container's address.

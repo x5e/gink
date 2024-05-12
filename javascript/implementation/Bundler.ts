@@ -1,11 +1,11 @@
-import { Muid, BundleInfo, Medallion, Timestamp } from "./typedefs";
+import { Muid, BundleInfo, Medallion, Timestamp, BundleView, BundleBytes } from "./typedefs";
 import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder } from "./builders";
 import { ensure } from "./utils";
 
-export class Bundler {
+export class Bundler implements BundleView {
     // note: this class is unit tested as part of Store.test.ts
-    private bundleInfo: BundleInfo | null = null;
-    private serialized: Uint8Array | null = null;
+    private bundleInfo?: BundleInfo = undefined;
+    private bundleBytes?: BundleBytes = undefined;
     private bundleBuilder = new BundleBuilder();
     private countItems = 0;
 
@@ -17,8 +17,18 @@ export class Bundler {
             throw new Error("This Bundler has already been sealed.");
     }
 
-    get bytes() {
-        return ensure(this.serialized, "not yet sealed!");
+    get info(): BundleInfo {
+        return ensure(this.bundleInfo, "not yet sealed");
+    }
+
+    get bytes(): BundleBytes {
+        return ensure(this.bundleBytes, "not yet sealed!");
+    }
+
+    get builder(): BundleBuilder {
+        if (!this.bundleInfo)
+            throw new Error("Bundle not yet sealed.");
+        return this.bundleBuilder;
     }
 
     set comment(value) {
@@ -79,7 +89,7 @@ export class Bundler {
      * @param bundleInfo the bundle metadata to add when serializing
      * @returns serialized
      */
-    seal(bundleInfo: BundleInfo): BundleInfo {
+    seal(bundleInfo: BundleInfo): void {
         this.requireNotSealed();
         if (this.preAssignedMedallion && this.preAssignedMedallion != bundleInfo.medallion) {
             throw new Error("specified bundleInfo doesn't match pre-assigned medallion");
@@ -91,7 +101,6 @@ export class Bundler {
         this.bundleBuilder.setChainStart(bundleInfo.chainStart);
         this.bundleBuilder.setMedallion(bundleInfo.medallion);
         this.bundleBuilder.setComment(this.bundleInfo.comment);
-        this.serialized = this.bundleBuilder.serializeBinary();
-        return this.bundleInfo;
+        this.bundleBytes = this.bundleBuilder.serializeBinary();
     }
 }
