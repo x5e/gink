@@ -22,6 +22,7 @@ import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { BundleBuilder } from "./builders";
+import { Decomposition } from "./Decomposition";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -85,7 +86,7 @@ export class Database {
             });
             ensure(bundleInfo.comment == this.identity);
             const bundleBytes = bundler.bytes;
-            await this.store.addBundle(bundleBytes, true);
+            await this.store.addBundle(bundler, true);
             this.myChain = (await this.store.getClaimedChains()).get(medallion);
             this.iHave.markAsHaving(bundleInfo);
             // If there is already a connection before we claim a chain, ensure the
@@ -257,9 +258,7 @@ export class Database {
      * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
-        if (!this.initilized)
-            throw new Error("Database not ready");
-        return this.acquireAppendableChain().then(() => {
+        return this.ready.then(() => this.acquireAppendableChain().then(() => {
             if (!(this.myChain.medallion > 0))
                 throw new Error("zero medallion?");
             const nowMicros = generateTimestamp();
@@ -275,7 +274,7 @@ export class Database {
             bundler.seal(bundleInfo);
             this.iHave.markAsHaving(bundleInfo);
             return this.receiveBundle(bundler.bytes);
-        });
+        }));
     }
 
     /**
@@ -311,7 +310,8 @@ export class Database {
      * @returns
      */
     private receiveBundle(bundleBytes: BundleBytes, fromConnectionId?: number): Promise<BundleInfo> {
-        return this.store.addBundle(bundleBytes).then((bundleInfo) => {
+        const bundleView = new Decomposition(bundleBytes);
+        return this.store.addBundle(bundleView).then((bundleInfo) => {
             this.logger(`bundle from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
             this.iHave.markAsHaving(bundleInfo);
             const peer = this.peers.get(fromConnectionId);

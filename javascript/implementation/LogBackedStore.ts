@@ -8,6 +8,7 @@ import {
     ClaimedChain,
     ActorId,
     BroadcastFunc,
+    BundleView,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
 import { IndexedDbStore } from "./IndexedDbStore";
@@ -19,6 +20,7 @@ import { watch, FSWatcher, Stats } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder } from "./builders";
 import { generateTimestamp, ensure, getActorId } from "./utils";
+import { Decomposition } from "./Decomposition";
 
 /*
     At time of writing, there's only an in-memory implementation of
@@ -152,7 +154,8 @@ export class LogBackedStore implements Store {
             await this.fileHandle.read(uint8Array, 0, needToReed, this.redTo);
             const logFileBuilder = <LogFileBuilder>LogFileBuilder.deserializeBinary(uint8Array);
             const bundles = logFileBuilder.getBundlesList();
-            for (const bundle of bundles) {
+            for (const bundleBytes of bundles) {
+                const bundle: BundleView = new Decomposition(bundleBytes);
                 const info = await this.internalStore.addBundle(bundle);
                 this.chainTracker.markAsHaving(info);
                 // This is the start of a chain, and we need to keep track of the identity.
@@ -160,7 +163,7 @@ export class LogBackedStore implements Store {
                     this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
                 }
                 for (const callback of this.foundBundleCallBacks) {
-                    callback(bundle, info);
+                    callback(bundleBytes, info);
                 }
                 this.bundlesProcessed += 1;
             }
@@ -192,7 +195,7 @@ export class LogBackedStore implements Store {
         return this.bundlesProcessed;
     }
 
-    async addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
+    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo> {
         // TODO(https://github.com/x5e/gink/issues/182): delay unlocking the file to give better throughput
         await this.ready;
         const unlockingFunction = await this.memoryLock.acquireLock();
@@ -200,7 +203,7 @@ export class LogBackedStore implements Store {
             await this.lockFile(true);
 
         await this.pullDataFromFile();
-        const info: BundleInfo = await this.internalStore.addBundle(bundleBytes);
+        const info: BundleInfo = await this.internalStore.addBundle(bundle);
         if (claimChain) {
             await this.claimChain(info.medallion, info.chainStart, getActorId());
             if (info.timestamp == info.chainStart && !info.priorTime) {
@@ -212,7 +215,7 @@ export class LogBackedStore implements Store {
             ensure(this.fileLocked);
             await this.pullDataFromFile();
             const logFragment = new LogFileBuilder();
-            logFragment.setBundlesList([bundleBytes]);
+            logFragment.setBundlesList([bundle.bytes]);
             const bytes: Uint8Array = logFragment.serializeBinary();
             await this.fileHandle.writeFile(bytes);
             await this.fileHandle.sync();

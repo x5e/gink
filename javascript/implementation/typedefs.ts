@@ -1,4 +1,4 @@
-import { Behavior } from "./builders";
+import { Behavior, BundleBuilder } from "./builders";
 import { DBSchema } from "idb";
 
 export type Bytes = Uint8Array;
@@ -62,6 +62,12 @@ export interface BundleInfo {
     chainStart: ChainStart;
     priorTime?: PriorTime;
     comment?: string;
+}
+
+export interface BundleView {
+    bytes: BundleBytes;
+    info: BundleInfo;
+    builder: BundleBuilder;
 }
 
 // data structure to represent an Entry; some fields are tuples of 0 or 1 entries because

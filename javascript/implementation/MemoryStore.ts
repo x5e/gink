@@ -31,6 +31,7 @@ import {
     ActorId,
     BroadcastFunc,
     Movement,
+    BundleView,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
@@ -43,7 +44,6 @@ import {
     buildPairLists,
     buildPointeeList,
     medallionChainStartToString,
-    extractBundleInfo,
     buildChainTracker,
     toStorageKey,
     bundleKeyToInfo,
@@ -121,10 +121,10 @@ export class MemoryStore implements Store {
         return this.chainInfos.values();
     }
 
-    async addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
+    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo> {
         await this.ready;
-        const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = extractBundleInfo(bundleBuilder);
+        const bundleBuilder = bundle.builder;
+        const bundleInfo = bundle.info;
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const oldChainInfo = this.chainInfos.get(medallionChainStartToString([medallion, chainStart]));
         if (oldChainInfo || priorTime) {
@@ -147,7 +147,7 @@ export class MemoryStore implements Store {
 
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const bundleKey: BundleInfoTuple = MemoryStore.bundleInfoToKey(bundleInfo);
-        this.trxns.set(bundleKey, bundleBytes);
+        this.trxns.set(bundleKey, bundle.bytes);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);

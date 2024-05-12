@@ -1,24 +1,34 @@
-import { Muid, BundleInfo, Medallion, Timestamp } from "./typedefs";
+import { Muid, BundleInfo, Medallion, Timestamp, BundleView, Bytes } from "./typedefs";
 import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder } from "./builders";
 import { ensure } from "./utils";
 
-export class Bundler {
+export class Bundler implements BundleView {
     // note: this class is unit tested as part of Store.test.ts
-    private bundleInfo: BundleInfo | null = null;
+    private _bundleInfo: BundleInfo | null = null;
     private serialized: Uint8Array | null = null;
-    private bundleBuilder = new BundleBuilder();
+    private _builder = new BundleBuilder();
     private countItems = 0;
 
     constructor(private pendingComment?: string, readonly preAssignedMedallion?: Medallion) {
     }
 
     private requireNotSealed() {
-        if (this.bundleInfo)
+        if (this._bundleInfo)
             throw new Error("This Bundler has already been sealed.");
     }
 
-    get bytes() {
+    get info(): BundleInfo {
+        return ensure(this._bundleInfo, "not yet sealed");
+    }
+
+    get bytes(): Bytes {
         return ensure(this.serialized, "not yet sealed!");
+    }
+
+    get builder(): BundleBuilder {
+        if (!this._bundleInfo)
+            throw new Error("Bundle not yet sealed.");
+        return this._builder;
     }
 
     set comment(value) {
@@ -27,15 +37,15 @@ export class Bundler {
     }
 
     get comment(): string | undefined {
-        return this.pendingComment || this.bundleInfo?.comment;
+        return this.pendingComment || this._bundleInfo?.comment;
     }
 
     get medallion(): Medallion | undefined {
-        return this.preAssignedMedallion || this.bundleInfo?.medallion;
+        return this.preAssignedMedallion || this._bundleInfo?.medallion;
     }
 
     get timestamp(): Timestamp | undefined {
-        return this.bundleInfo?.timestamp;
+        return this._bundleInfo?.timestamp;
     }
 
     addEntry(entryBuilder: EntryBuilder): Muid {
@@ -55,7 +65,7 @@ export class Bundler {
     addChange(changeBuilder: ChangeBuilder): Muid {
         this.requireNotSealed();
         const offset = ++this.countItems;
-        this.bundleBuilder.getChangesMap().set(offset, changeBuilder);
+        this._builder.getChangesMap().set(offset, changeBuilder);
         // Using an anonymous class here because I only need the interface of Address,
         // but I need some non-trivial behavior: the timestamp and possibly medallion
         // are undefined until the associated bundle is finalized, then all the
@@ -69,7 +79,7 @@ export class Bundler {
 
     removeChange(address: Muid) {
         this.requireNotSealed();
-        const map = this.bundleBuilder.getChangesMap();
+        const map = this._builder.getChangesMap();
         map.delete(address.offset);
     }
 
@@ -84,14 +94,14 @@ export class Bundler {
         if (this.preAssignedMedallion && this.preAssignedMedallion != bundleInfo.medallion) {
             throw new Error("specified bundleInfo doesn't match pre-assigned medallion");
         }
-        this.bundleInfo = { ...bundleInfo };
-        this.bundleInfo.comment = this.pendingComment;
-        this.bundleBuilder.setTimestamp(bundleInfo.timestamp);
-        this.bundleBuilder.setPrevious(bundleInfo.priorTime);
-        this.bundleBuilder.setChainStart(bundleInfo.chainStart);
-        this.bundleBuilder.setMedallion(bundleInfo.medallion);
-        this.bundleBuilder.setComment(this.bundleInfo.comment);
-        this.serialized = this.bundleBuilder.serializeBinary();
-        return this.bundleInfo;
+        this._bundleInfo = { ...bundleInfo };
+        this._bundleInfo.comment = this.pendingComment;
+        this._builder.setTimestamp(bundleInfo.timestamp);
+        this._builder.setPrevious(bundleInfo.priorTime);
+        this._builder.setChainStart(bundleInfo.chainStart);
+        this._builder.setMedallion(bundleInfo.medallion);
+        this._builder.setComment(this._bundleInfo.comment);
+        this.serialized = this._builder.serializeBinary();
+        return this._bundleInfo;
     }
 }

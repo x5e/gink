@@ -30,9 +30,9 @@ import {
     Offset,
     Removal,
     Timestamp,
+    BundleView,
 } from "./typedefs";
 import {
-    extractBundleInfo,
     extractContainerMuid,
     getStorageKey,
     extractMovement,
@@ -280,14 +280,14 @@ export class IndexedDbStore implements Store {
         return await this.getTransaction().objectStore('chainInfos').getAll();
     }
 
-    addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
+    addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo> {
         if (!this.initialized) throw new Error("not initialized! need to await on .ready");
-        const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = extractBundleInfo(bundleBuilder);
+        const bundleBuilder = bundle.builder;
+        const bundleInfo = bundle.info;
         //console.log(`got ${JSON.stringify(bundleInfo)}`);
 
         return this.processingLock.acquireLock().then((unlock) => {
-            return this.addBundleHelper(bundleBytes, bundleInfo, bundleBuilder, claimChain).then((trxn) => {
+            return this.addBundleHelper(bundle.bytes, bundleInfo, bundleBuilder, claimChain).then((trxn) => {
                 unlock();
                 return trxn.done.then(() => bundleInfo);
             }).finally(unlock);
