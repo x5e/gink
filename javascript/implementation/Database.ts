@@ -4,10 +4,9 @@ import {
     encodeToken, getActorId, isAlive,
     getIdentity
 } from "./utils";
-import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, } from "./typedefs";
+import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
-import { IndexedDbStore } from "./IndexedDbStore";
 
 import { PairSet } from './PairSet';
 import { PairMap } from "./PairMap";
@@ -22,6 +21,8 @@ import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { BundleBuilder } from "./builders";
+import { Decomposition } from "./Decomposition";
+import { MemoryStore } from "./MemoryStore";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -45,7 +46,7 @@ export class Database {
     private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
         eval("require('websocket').w3cwebsocket");
 
-    constructor(readonly store: Store = new IndexedDbStore('Database-default'),
+    constructor(readonly store: Store = new MemoryStore(true),
         identity: string = getIdentity(),
         readonly logger: CallBack = noOp) {
         this.identity = identity;
@@ -80,18 +81,17 @@ export class Database {
             const medallion = makeMedallion();
             const chainStart = generateTimestamp();
             const bundler = new Bundler(this.identity, medallion);
-            const bundleInfo = bundler.seal({
+            bundler.seal({
                 medallion, timestamp: chainStart, chainStart
             });
-            ensure(bundleInfo.comment == this.identity);
-            const bundleBytes = bundler.bytes;
-            await this.store.addBundle(bundleBytes, true);
+            ensure(bundler.info.comment == this.identity);
+            await this.store.addBundle(bundler, true);
             this.myChain = (await this.store.getClaimedChains()).get(medallion);
-            this.iHave.markAsHaving(bundleInfo);
+            this.iHave.markAsHaving(bundler.info);
             // If there is already a connection before we claim a chain, ensure the
             // peers get this bundle as well so future bundles will be valid extensions.
-            for (const [peerId, peer] of this.peers) {
-                peer._sendIfNeeded(bundleBytes, bundleInfo);
+            for (const peer of this.peers.values()) {
+                peer._sendIfNeeded(bundler);
             }
         }
         ensure(this.myChain, "myChain wasn't set.");
@@ -104,13 +104,13 @@ export class Database {
         this.iHave = await this.store.getChainTracker();
         this.listeners.set("all", []);
         //this.logger(`Database.ready`);
-        const callback = async (bundleBytes: BundleBytes, bundleInfo: BundleInfo): Promise<void> => {
+        const callback = async (bundle: BundleView): Promise<void> => {
             for (const [peerId, peer] of this.peers) {
-                peer._sendIfNeeded(bundleBytes, bundleInfo);
+                peer._sendIfNeeded(bundle);
             }
             // Send to listeners subscribed to all containers.
             for (const listener of this.listeners.get("all")) {
-                listener(bundleInfo);
+                listener(bundle.info);
             }
         };
         this.store.addFoundBundleCallBack(callback);
@@ -257,9 +257,7 @@ export class Database {
      * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
-        if (!this.initilized)
-            throw new Error("Database not ready");
-        return this.acquireAppendableChain().then(() => {
+        return this.ready.then(() => this.acquireAppendableChain().then(() => {
             if (!(this.myChain.medallion > 0))
                 throw new Error("zero medallion?");
             const nowMicros = generateTimestamp();
@@ -275,7 +273,7 @@ export class Database {
             bundler.seal(bundleInfo);
             this.iHave.markAsHaving(bundleInfo);
             return this.receiveBundle(bundler.bytes);
-        });
+        }));
     }
 
     /**
@@ -311,27 +309,27 @@ export class Database {
      * @returns
      */
     private receiveBundle(bundleBytes: BundleBytes, fromConnectionId?: number): Promise<BundleInfo> {
-        return this.store.addBundle(bundleBytes).then((bundleInfo) => {
-            this.logger(`bundle from ${fromConnectionId}: ${JSON.stringify(bundleInfo)}`);
-            this.iHave.markAsHaving(bundleInfo);
+        const bundle = new Decomposition(bundleBytes);
+        return this.store.addBundle(bundle).then(() => {
+            this.logger(`bundle from ${fromConnectionId}: ${JSON.stringify(bundle.info)}`);
+            this.iHave.markAsHaving(bundle.info);
             const peer = this.peers.get(fromConnectionId);
             if (peer) {
-                peer.hasMap?.markAsHaving(bundleInfo);
-                peer._sendAck(bundleInfo);
+                peer.hasMap?.markAsHaving(bundle.info);
+                peer._sendAck(bundle.info);
             }
             for (const [peerId, peer] of this.peers) {
                 if (peerId != fromConnectionId)
-                    peer._sendIfNeeded(bundleBytes, bundleInfo);
+                    peer._sendIfNeeded(bundle);
             }
             // Send to listeners subscribed to all containers.
             for (const listener of this.listeners.get("all")) {
-                listener(bundleInfo);
+                listener(bundle.info);
             }
 
             // Loop through changes and gather a set of changed containers.
             const changedContainers: Set<string> = new Set();
-            const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-            const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
+            const changesMap: Map<Offset, ChangeBuilder> = bundle.builder.getChangesMap();
             for (const changeBuilder of changesMap.values()) {
                 const entry = changeBuilder.getEntry();
                 if (entry) {
@@ -348,11 +346,11 @@ export class Database {
                 const containerListeners = this.listeners.get(strMuid);
                 if (containerListeners) {
                     for (const listener of containerListeners) {
-                        listener(bundleInfo);
+                        listener(bundle.info);
                     }
                 }
             }
-            return bundleInfo;
+            return bundle.info;
         });
     }
 

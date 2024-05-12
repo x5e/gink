@@ -3,13 +3,11 @@ import {
     ensure,
     generateTimestamp,
     muidToString,
-    muidToTuple,
     muidTupleToString,
     unwrapValue,
     sameData,
     getActorId,
     toLastWithPrefixBeforeSuffix,
-    timestampToString,
 } from "./utils";
 import {
     AsOf,
@@ -31,10 +29,11 @@ import {
     ActorId,
     BroadcastFunc,
     Movement,
+    BundleView,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
+import { Behavior, ChangeBuilder, EntryBuilder } from "./builders";
 import { MapIterator, TreeMap } from 'jstreemap';
 import {
     getStorageKey as getStorageKey,
@@ -43,12 +42,12 @@ import {
     buildPairLists,
     buildPointeeList,
     medallionChainStartToString,
-    extractBundleInfo,
     buildChainTracker,
     toStorageKey,
     bundleKeyToInfo,
     storageKeyToString,
 } from "./store_utils";
+import { Retrieval } from "./Retrieval";
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
@@ -121,10 +120,10 @@ export class MemoryStore implements Store {
         return this.chainInfos.values();
     }
 
-    async addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
+    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo> {
         await this.ready;
-        const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = extractBundleInfo(bundleBuilder);
+        const bundleBuilder = bundle.builder;
+        const bundleInfo = bundle.info;
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const oldChainInfo = this.chainInfos.get(medallionChainStartToString([medallion, chainStart]));
         if (oldChainInfo || priorTime) {
@@ -147,7 +146,7 @@ export class MemoryStore implements Store {
 
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const bundleKey: BundleInfoTuple = MemoryStore.bundleInfoToKey(bundleInfo);
-        this.trxns.set(bundleKey, bundleBytes);
+        this.trxns.set(bundleKey, bundle.bytes);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
@@ -319,12 +318,12 @@ export class MemoryStore implements Store {
         return entry;
     }
 
-    async getBundles(callBack: (bundleBytes: BundleBytes, bundleInfo: BundleInfo) => void) {
+    async getBundles(callBack: (bundle: BundleView) => void) {
         for (const [key, val] of this.trxns) {
             const bundleKey: BundleInfoTuple = key;
             const bundleInfo = bundleKeyToInfo(bundleKey);
             const bundleBytes: BundleBytes = val;
-            callBack(bundleBytes, bundleInfo);
+            callBack(new Retrieval({bundleBytes, bundleInfo}));
         }
     }
 

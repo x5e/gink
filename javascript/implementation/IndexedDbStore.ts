@@ -30,9 +30,9 @@ import {
     Offset,
     Removal,
     Timestamp,
+    BundleView,
 } from "./typedefs";
 import {
-    extractBundleInfo,
     extractContainerMuid,
     getStorageKey,
     extractMovement,
@@ -48,6 +48,7 @@ import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { PromiseChainLock } from "./PromiseChainLock";
+import { Retrieval } from "./Retrieval";
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
     "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries" | "identities")[],
@@ -280,14 +281,14 @@ export class IndexedDbStore implements Store {
         return await this.getTransaction().objectStore('chainInfos').getAll();
     }
 
-    addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
+    addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo> {
         if (!this.initialized) throw new Error("not initialized! need to await on .ready");
-        const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = extractBundleInfo(bundleBuilder);
+        const bundleBuilder = bundle.builder;
+        const bundleInfo = bundle.info;
         //console.log(`got ${JSON.stringify(bundleInfo)}`);
 
         return this.processingLock.acquireLock().then((unlock) => {
-            return this.addBundleHelper(bundleBytes, bundleInfo, bundleBuilder, claimChain).then((trxn) => {
+            return this.addBundleHelper(bundle.bytes, bundleInfo, bundleBuilder, claimChain).then((trxn) => {
                 unlock();
                 return trxn.done.then(() => bundleInfo);
             }).finally(unlock);
@@ -655,7 +656,7 @@ export class IndexedDbStore implements Store {
 
     // Note the IndexedDB has problems when await is called on anything unrelated
     // to the current bundle, so its best if `callBack` doesn't await.
-    async getBundles(callBack: (bundleBytes: BundleBytes, bundleInfo: BundleInfo) => void) {
+    async getBundles(callBack: (bundle: BundleView) => void) {
         await this.ready;
 
         // We loop through all bundles and send those the peer doesn't have.
@@ -664,7 +665,7 @@ export class IndexedDbStore implements Store {
             const bundleKey = <BundleInfoTuple>cursor.key;
             const bundleInfo = bundleKeyToInfo(bundleKey);
             const bundleBytes: BundleBytes = cursor.value;
-            callBack(bundleBytes, bundleInfo);
+            callBack(new Retrieval({bundleBytes, bundleInfo}));
         }
     }
 
