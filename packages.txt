@@ -2,6 +2,8 @@ npm
 protobuf-compiler
 python3-nose2
 mypy
+python3-requests
+python3-flask
 python3-wsproto
 python3-sortedcontainers
 python3-lmdb

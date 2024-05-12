@@ -1,7 +1,7 @@
 FROM debian:latest
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update --fix-missing && apt-get upgrade -y
-RUN apt-get install -y make
+RUN apt-get install -y make unzip
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
 ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
@@ -42,7 +42,6 @@ COPY javascript ./javascript
 RUN mv node_modules ./javascript/
 RUN make
 WORKDIR $GINK/javascript
-
 
 # JavaScript/TypeScript unit-tests
 RUN npm test

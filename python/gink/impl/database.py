@@ -2,7 +2,7 @@
 """ contains the Database class """
 
 # standard python modules
-from typing import Optional, Set, Union, Iterable, Dict, List, Callable, Mapping
+from typing import Optional, Set, Union, Iterable, Dict, List, Callable
 from datetime import datetime, date, timedelta
 from threading import Lock
 from select import select
@@ -10,6 +10,7 @@ from sys import stdout
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 from contextlib import nullcontext
+from socket import socket as Socket
 
 # builders
 from .builders import SyncMessage, ContainerBuilder
@@ -30,7 +31,9 @@ from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
 from .selectable_console import SelectableConsole
 from .bundle_wrapper import BundleWrapper
-from .utilities import generate_timestamp, experimental, get_identity, is_certainly_gone, generate_medallion
+from .wsgi_listener import WsgiListener
+from .wsgi_connection import WsgiConnection
+from .utilities import generate_timestamp, experimental, get_identity, generate_medallion
 
 
 class Database:
@@ -40,6 +43,7 @@ class Database:
     _last_time: Optional[MuTimestamp]
     _store: AbstractStore
     _connections: Set[Connection]
+    _wsgi_connections: Set[WsgiConnection]
     _listeners: Set[Listener]
     _sent_but_not_acked: Set[BundleInfo]
     _trackers: Dict[Connection, ChainTracker]  # tracks what we know a peer has
@@ -48,7 +52,9 @@ class Database:
 
     def __init__(self,
                  store: Union[AbstractStore, str, None] = None,
-                 identity = get_identity()):
+                 identity = get_identity(),
+                 web_server = None,
+                 web_server_addr: tuple = ('localhost', 8081)):
         setattr(Database, "_last", self)
         if isinstance(store, str):
             store = LmdbStore(store)
@@ -60,11 +66,16 @@ class Database:
         self._lock = Lock()
         self._last_time = None
         self._connections = set()
+        self._wsgi_connections = set()
         self._listeners = set()
         self._trackers = {}
         self._identity = identity
-        self._sent_but_not_acked = set()
         self._logger = getLogger(self.__class__.__name__)
+        self._wsgi_listener: Optional[WsgiListener] = None
+        # Web server would be a Flask app or other WSGI compatible app
+        if web_server:
+            self._wsgi_listener = WsgiListener(app=web_server, address=web_server_addr, logger=self._logger)
+        self._sent_but_not_acked = set()
         self._callbacks: List[Callable[[BundleInfo], None]] = list()
 
     @experimental
@@ -270,9 +281,9 @@ class Database:
         with context_manager:
             while (until is None or generate_timestamp() < until):
                 # eventually will want to support epoll on platforms where its supported
-                readers: List[Union[Listener, Connection, SelectableConsole, AbstractStore]] = []
+                readers: List[Union[Listener, WsgiListener, Connection, WsgiConnection, SelectableConsole, AbstractStore]] = []
                 if self._store.is_selectable():
-                    readers.append(self._store)
+                        readers.append(self._store)
                 for listener in self._listeners:
                     readers.append(listener)
                 for connection in list(self._connections):
@@ -280,19 +291,39 @@ class Database:
                         self._connections.remove(connection)
                     else:
                         readers.append(connection)
+                if self._wsgi_listener:
+                    readers.append(self._wsgi_listener)
+                for conn in list(self._wsgi_connections):
+                    readers.append(conn)
                 if isinstance(console, SelectableConsole):
                     readers.append(console)
-                if console:
                     console.refresh()
                 ready_readers, _, _ = select(readers, [], [], 0.1)
                 for ready_reader in ready_readers:
                     if isinstance(ready_reader, Connection):
                         for data in ready_reader.receive():
                             self._receive_data(data, ready_reader)
+                        if ready_reader.is_closed():
+                            self._connections.remove(ready_reader)
+                            readers.remove(ready_reader)
+                    elif isinstance(ready_reader, WsgiListener) and self._wsgi_listener:
+                        conn = self._wsgi_listener.accept()
+                        if conn:
+                            self._wsgi_connections.add(conn)
+                            readers.append(conn)
+                    elif isinstance(ready_reader, WsgiConnection) and self._wsgi_listener:
+                        request_data = ready_reader.receive_data()
+                        result = self._wsgi_listener.process_request(request_data)
+                        if result != False:
+                            self._wsgi_listener.finish_response(result, ready_reader)
+                        ready_reader.close()
+                        self._wsgi_connections.remove(ready_reader)
+                        readers.remove(ready_reader)
                     elif isinstance(ready_reader, Listener):
                         sync_message = self._store.get_chain_tracker().to_greeting_message()
                         new_connection: Connection = ready_reader.accept(sync_message)
                         self._connections.add(new_connection)
+                        readers.append(new_connection)
                         self._logger.info("accepted incoming connection from %s", new_connection)
                     elif isinstance(ready_reader, SelectableConsole):
                         ready_reader.call_when_ready()
