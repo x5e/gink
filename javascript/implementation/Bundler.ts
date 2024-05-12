@@ -1,34 +1,34 @@
-import { Muid, BundleInfo, Medallion, Timestamp, BundleView, Bytes } from "./typedefs";
+import { Muid, BundleInfo, Medallion, Timestamp, BundleView, BundleBytes } from "./typedefs";
 import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder } from "./builders";
 import { ensure } from "./utils";
 
 export class Bundler implements BundleView {
     // note: this class is unit tested as part of Store.test.ts
-    private _bundleInfo: BundleInfo | null = null;
-    private serialized: Uint8Array | null = null;
-    private _builder = new BundleBuilder();
+    private bundleInfo?: BundleInfo = undefined;
+    private bundleBytes?: BundleBytes = undefined;
+    private bundleBuilder = new BundleBuilder();
     private countItems = 0;
 
     constructor(private pendingComment?: string, readonly preAssignedMedallion?: Medallion) {
     }
 
     private requireNotSealed() {
-        if (this._bundleInfo)
+        if (this.bundleInfo)
             throw new Error("This Bundler has already been sealed.");
     }
 
     get info(): BundleInfo {
-        return ensure(this._bundleInfo, "not yet sealed");
+        return ensure(this.bundleInfo, "not yet sealed");
     }
 
-    get bytes(): Bytes {
-        return ensure(this.serialized, "not yet sealed!");
+    get bytes(): BundleBytes {
+        return ensure(this.bundleBytes, "not yet sealed!");
     }
 
     get builder(): BundleBuilder {
-        if (!this._bundleInfo)
+        if (!this.bundleInfo)
             throw new Error("Bundle not yet sealed.");
-        return this._builder;
+        return this.bundleBuilder;
     }
 
     set comment(value) {
@@ -37,15 +37,15 @@ export class Bundler implements BundleView {
     }
 
     get comment(): string | undefined {
-        return this.pendingComment || this._bundleInfo?.comment;
+        return this.pendingComment || this.bundleInfo?.comment;
     }
 
     get medallion(): Medallion | undefined {
-        return this.preAssignedMedallion || this._bundleInfo?.medallion;
+        return this.preAssignedMedallion || this.bundleInfo?.medallion;
     }
 
     get timestamp(): Timestamp | undefined {
-        return this._bundleInfo?.timestamp;
+        return this.bundleInfo?.timestamp;
     }
 
     addEntry(entryBuilder: EntryBuilder): Muid {
@@ -65,7 +65,7 @@ export class Bundler implements BundleView {
     addChange(changeBuilder: ChangeBuilder): Muid {
         this.requireNotSealed();
         const offset = ++this.countItems;
-        this._builder.getChangesMap().set(offset, changeBuilder);
+        this.bundleBuilder.getChangesMap().set(offset, changeBuilder);
         // Using an anonymous class here because I only need the interface of Address,
         // but I need some non-trivial behavior: the timestamp and possibly medallion
         // are undefined until the associated bundle is finalized, then all the
@@ -79,7 +79,7 @@ export class Bundler implements BundleView {
 
     removeChange(address: Muid) {
         this.requireNotSealed();
-        const map = this._builder.getChangesMap();
+        const map = this.bundleBuilder.getChangesMap();
         map.delete(address.offset);
     }
 
@@ -89,19 +89,18 @@ export class Bundler implements BundleView {
      * @param bundleInfo the bundle metadata to add when serializing
      * @returns serialized
      */
-    seal(bundleInfo: BundleInfo): BundleInfo {
+    seal(bundleInfo: BundleInfo): void {
         this.requireNotSealed();
         if (this.preAssignedMedallion && this.preAssignedMedallion != bundleInfo.medallion) {
             throw new Error("specified bundleInfo doesn't match pre-assigned medallion");
         }
-        this._bundleInfo = { ...bundleInfo };
-        this._bundleInfo.comment = this.pendingComment;
-        this._builder.setTimestamp(bundleInfo.timestamp);
-        this._builder.setPrevious(bundleInfo.priorTime);
-        this._builder.setChainStart(bundleInfo.chainStart);
-        this._builder.setMedallion(bundleInfo.medallion);
-        this._builder.setComment(this._bundleInfo.comment);
-        this.serialized = this._builder.serializeBinary();
-        return this._bundleInfo;
+        this.bundleInfo = { ...bundleInfo };
+        this.bundleInfo.comment = this.pendingComment;
+        this.bundleBuilder.setTimestamp(bundleInfo.timestamp);
+        this.bundleBuilder.setPrevious(bundleInfo.priorTime);
+        this.bundleBuilder.setChainStart(bundleInfo.chainStart);
+        this.bundleBuilder.setMedallion(bundleInfo.medallion);
+        this.bundleBuilder.setComment(this.bundleInfo.comment);
+        this.bundleBytes = this.bundleBuilder.serializeBinary();
     }
 }

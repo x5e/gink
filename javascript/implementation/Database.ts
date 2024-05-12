@@ -81,16 +81,16 @@ export class Database {
             const medallion = makeMedallion();
             const chainStart = generateTimestamp();
             const bundler = new Bundler(this.identity, medallion);
-            const bundleInfo = bundler.seal({
+            bundler.seal({
                 medallion, timestamp: chainStart, chainStart
             });
-            ensure(bundleInfo.comment == this.identity);
+            ensure(bundler.info.comment == this.identity);
             await this.store.addBundle(bundler, true);
             this.myChain = (await this.store.getClaimedChains()).get(medallion);
-            this.iHave.markAsHaving(bundleInfo);
+            this.iHave.markAsHaving(bundler.info);
             // If there is already a connection before we claim a chain, ensure the
             // peers get this bundle as well so future bundles will be valid extensions.
-            for (const [peerId, peer] of this.peers) {
+            for (const peer of this.peers.values()) {
                 peer._sendIfNeeded(bundler);
             }
         }
