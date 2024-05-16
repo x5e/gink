@@ -10,7 +10,6 @@ from sys import stdout
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 from contextlib import nullcontext
-from socket import socket as Socket
 
 # builders
 from .builders import SyncMessage, ContainerBuilder
@@ -74,7 +73,7 @@ class Database:
         self._wsgi_listener: Optional[WsgiListener] = None
         # Web server would be a Flask app or other WSGI compatible app
         if web_server:
-            self._wsgi_listener = WsgiListener(app=web_server, address=web_server_addr, logger=self._logger)
+            self._wsgi_listener = WsgiListener(app=web_server, address=web_server_addr)
         self._sent_but_not_acked = set()
         self._callbacks: List[Callable[[BundleInfo], None]] = list()
 
