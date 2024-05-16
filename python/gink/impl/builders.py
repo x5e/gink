@@ -8,12 +8,13 @@ from .typedefs import Medallion, MuTimestamp
 
 if TYPE_CHECKING:
 
-    class BundleBuilder(Message):
-        pass
 
-
-    class SyncMessage(Message):
-        pass
+    class HeaderBuilder(Message):
+        timestamp: int
+        medallion: int
+        previous: int
+        comment: str
+        chain_start: int
 
 
     class ChangeBuilder(Message):
@@ -21,9 +22,20 @@ if TYPE_CHECKING:
         container: ContainerBuilder
         movement: MovementBuilder
 
+
+    class BundleBuilder(Message):
+        header: HeaderBuilder
+        changes: List[ChangeBuilder]
+
+    class SyncMessage(Message):
+        pass
+
+
+
     class Pair:
         left: MuidBuilder
         rite: MuidBuilder
+
 
     class EntryBuilder(Message):
         describing: MuidBuilder
@@ -38,25 +50,20 @@ if TYPE_CHECKING:
         key: KeyBuilder
         effective: int
 
-
     class ValueBuilder(Message):
         pass
-
 
     class KeyBuilder(Message):
         pass
 
-
     class ContainerBuilder(Message):
         behavior: int
-
 
     class MovementBuilder(Message):
         container: MuidBuilder
         entry: MuidBuilder
         dest: int
         purge: bool
-
 
     class ClearanceBuilder(Message):
         pass
@@ -75,7 +82,6 @@ if TYPE_CHECKING:
     class LogFileBuilder(Message):
         bundles: List[bytes]
         claims: List[ClaimBuilder]
-
 
     class Behavior(IntEnum):
         UNSPECIFIED = 0
@@ -105,3 +111,4 @@ else:
     from ..builders.behavior_pb2 import Behavior
     from ..builders.log_file_pb2 import LogFile as LogFileBuilder
     from ..builders.claim_pb2 import Claim as ClaimBuilder
+    from ..builders.header_pb2 import Header as HeaderBuilder
