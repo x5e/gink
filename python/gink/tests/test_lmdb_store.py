@@ -20,7 +20,7 @@ install_tests(globals(), globals(), maker)
 def test_bundle_no_retention():
     lmdb_store = LmdbStore(TEST_FILE, reset=True, retain_bundles=False)
     try:
-        lmdb_store.get_bundles(lambda *_: None)
+        lmdb_store.get_bundles(callback=lambda *_: None)
     except ValueError:
         return
     raise AssertionError("expected get_bundles to barf")

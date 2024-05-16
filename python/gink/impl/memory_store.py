@@ -10,7 +10,7 @@ from pathlib import Path
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder,
                        ContainerBuilder, Message, ChangeBuilder, ClaimBuilder)
-from .typedefs import UserKey, MuTimestamp, Medallion, Deletion
+from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, BundleWrapper, BundleCallback, Lock
@@ -335,13 +335,20 @@ class MemoryStore(AbstractStore):
         entries_location_key = LocationKey(placement.placer, placement.placer)
         self._locations[entries_location_key] = encoded_placement_key
 
-    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
-        for bundle_info_key in self._bundles.irange(minimum=encode_muts(since)):
+    def get_bundles(
+        self, *,
+        callback: Callable[[BundleWrapper], None],
+        limit_to: Optional[Mapping[Chain, Limit]] = None,
+        **_
+    ):
+        start_scan_at: MuTimestamp = 0
+        for bundle_info_key in self._bundles.irange(minimum=encode_muts(start_scan_at)):
             bundle_info = BundleInfo.from_bytes(bundle_info_key)
-            assert isinstance(bundle_info, BundleInfo)
-            data = self._bundles[bundle_info]
-            assert isinstance(data, bytes)
-            callback(data, bundle_info)
+            if limit_to is None or bundle_info.timestamp <= limit_to.get(bundle_info.get_chain(), 0):
+                bundle_bytes = self._bundles[bundle_info]
+                assert isinstance(bundle_bytes, bytes)
+                bundle_wrapper = BundleWrapper(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
+                callback(bundle_wrapper)
 
     def get_chain_tracker(self) -> ChainTracker:
         chain_tracker = ChainTracker()

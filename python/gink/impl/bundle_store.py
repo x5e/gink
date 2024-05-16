@@ -4,9 +4,10 @@ from abc import ABC, abstractmethod
 
 from .bundle_wrapper import BundleWrapper
 from .tuples import Chain
-from .typedefs import MuTimestamp
+from .typedefs import MuTimestamp, Limit
 from .chain_tracker import ChainTracker
 from .bundle_info import BundleInfo
+from .bundle_wrapper import BundleWrapper
 
 BundleCallback = Callable[[bytes, BundleInfo], None]
 
@@ -27,16 +28,28 @@ class BundleStore(ABC):
 
     @abstractmethod
     def get_bundles(
-        self,
-        callback: BundleCallback,
-        filter: Optional[Mapping[Chain, MuTimestamp]]):
-        """ Calls `callback` for all bunles stored,  limited to those designed by the filter (if present).
+        self, *,
+        callback: Callable[[BundleWrapper], None],
+        peer_has: Optional[ChainTracker] = None,
+        limit_to: Optional[Mapping[Chain, Limit]] = None,
+    ):
+        """ Calls `callback` for all bunles stored,  limited to those designed by the `limit_to` (if present).
 
-            If the filter[chain] => x, then return all entries in that chain with timestamp <= x.
+            Calls the callback with each bundle currently in the store.
 
-            Gives everything if filter is None.  Filter value of -1 will be treated as infinity.
+            Calls in order received by this store, which may not correspond to the bundle creation times.
+            But we still expect dependency order to be respected, that is if B1 references objects from B0,
+            then B0 should come before B1.
+
+            This is done callback style because we don't want to leave dangling transactions
+            in the store, which could easily happen if we offered up an iterator interface instead.
+
+            If the limit_to[chain] is x, then return all entries in that chain with timestamp <= x.
+
+            The peer_has data can be used to optimize what the store is sending to only what the
+            peer needs, but it can be ignored, and it's up to the callback to drop unneeded bundles.
         """
 
     @abstractmethod
-    def get_chain_tracker(self, filter: Optional[Mapping[Chain, MuTimestamp]]) -> ChainTracker:
+    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, MuTimestamp]]) -> ChainTracker:
         """Returns a tracker showing what this store has at the time this function is called."""

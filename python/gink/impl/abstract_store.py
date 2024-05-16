@@ -178,26 +178,14 @@ class AbstractStore(BundleStore, Generic[Lock]):
         self._release_lock(lock)
         return count
 
-    @abstractmethod
-    def get_bundles(self, callback: BundleCallback, since: MuTimestamp=0):
-        """ Calls the callback with each bundle currently in the store since the `since` argument (default 0).
-
-            Calls in order received by this store, which may not correspond to the bundle creation times.
-            But we still expect dependency order to be respected, that is if B1 references objects from B0,
-            then B0 should come before B1.
-
-            This is done callback style because we don't want to leave dangling transactions
-            in the store, which could easily happen if we offered up an iterator interface instead.
-        """
-
     def get_bundle_infos(self) -> List[BundleInfo]:
         """ Gets a list of bundle infos; mostly for testing. """
         result = []
 
-        def callback(_, info: BundleInfo):
-            result.append(info)
+        def callback(bundle_wrapper: BundleWrapper):
+            result.append(bundle_wrapper.get_info())
 
-        self.get_bundles(callback)
+        self.get_bundles(callback=callback)
         return result
 
     @abstractmethod

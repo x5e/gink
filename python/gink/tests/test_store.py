@@ -11,6 +11,7 @@ from google.protobuf.text_format import Parse  # type: ignore
 # gink stuff
 from ..impl.abstract_store import AbstractStore
 from ..impl.bundle_info import BundleInfo
+from ..impl.bundle_wrapper import BundleWrapper
 from ..impl.muid import Muid
 
 StoreMaker = Callable[[], AbstractStore]
@@ -147,10 +148,10 @@ def generic_test_orders_bundles(store_maker: StoreMaker):
 
         ordered = []
 
-        def appender(bundle, info):
-            ordered.append((bundle, info))
+        def appender(wrapper: BundleWrapper):
+            ordered.append((wrapper.get_bytes(), wrapper.get_info()))
 
-        store.get_bundles(appender)
+        store.get_bundles(callback=appender)
         assert len(ordered) == 4
         assert ordered[0] == (cs1, info1)
         assert ordered[1] == (cs3, info3) or ordered[1] == (cs2, info2)
