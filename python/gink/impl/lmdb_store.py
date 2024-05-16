@@ -1001,7 +1001,7 @@ class LmdbStore(AbstractStore):
                     callback(bundle_wrapper)
                 data_remaining = bundle_infos_cursor.next()
 
-    def get_chain_tracker(self) -> ChainTracker:
+    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
         chain_tracker = ChainTracker()
         with self._handle.begin() as txn:
             infos_cursor = txn.cursor(self._chains)

@@ -51,5 +51,5 @@ class BundleStore(ABC):
         """
 
     @abstractmethod
-    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, MuTimestamp]]) -> ChainTracker:
+    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
         """Returns a tracker showing what this store has at the time this function is called."""

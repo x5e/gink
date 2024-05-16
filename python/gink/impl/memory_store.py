@@ -350,7 +350,7 @@ class MemoryStore(AbstractStore):
                 bundle_wrapper = BundleWrapper(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
                 callback(bundle_wrapper)
 
-    def get_chain_tracker(self) -> ChainTracker:
+    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
         chain_tracker = ChainTracker()
         for bundle_info in self._chain_infos.values():
             assert isinstance(bundle_info, BundleInfo)

@@ -10,7 +10,7 @@ from pathlib import Path
 from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder, ClaimBuilder
 from .bundle_info import BundleInfo
 from .chain_tracker import ChainTracker
-from .typedefs import UserKey, MuTimestamp, Medallion
+from .typedefs import UserKey, MuTimestamp, Medallion, Limit
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_wrapper import BundleWrapper
@@ -221,7 +221,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
             return None
 
     @abstractmethod
-    def get_chain_tracker(self) -> ChainTracker:
+    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
         """Returns a tracker showing what this store has at the time this function is called."""
 
     @abstractmethod
