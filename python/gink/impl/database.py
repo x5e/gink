@@ -190,7 +190,7 @@ class Database:
         """ Sends a bundle either created locally or received from a peer to other peers.
         """
         outbound_message_with_bundle = SyncMessage()
-        outbound_message_with_bundle.bundle = bundle_bytes  # type: ignore
+        outbound_message_with_bundle.bundle = bundle_bytes
         for peer in self._connections:
             tracker = self._trackers.get(peer)
             if tracker is None:
@@ -209,7 +209,7 @@ class Database:
     def _receive_data(self, sync_message: SyncMessage, from_peer: Connection):
         with self._lock:
             if sync_message.HasField("bundle"):
-                bundle_bytes = sync_message.bundle  # type: ignore # pylint: disable=maybe-no-member
+                bundle_bytes = sync_message.bundle
                 wrap = BundleWrapper(bundle_bytes)
                 info = wrap.get_info()
                 if (tracker := self._trackers.get(from_peer)):
@@ -224,7 +224,7 @@ class Database:
                 def callback(bundle_bytes: bytes, info: BundleInfo):
                     if not chain_tracker.has(info):
                         outgoing_builder = SyncMessage()
-                        outgoing_builder.bundle = bundle_bytes  # type: ignore
+                        outgoing_builder.bundle = bundle_bytes
                         from_peer.send(outgoing_builder)
 
                 self._store.get_bundles(callback=callback)

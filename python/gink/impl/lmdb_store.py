@@ -989,7 +989,7 @@ class LmdbStore(AbstractStore):
                 bundle_bytes = bundles_cursor.value()
                 bundle_builder = BundleBuilder()
                 bundle_builder.ParseFromString(bundle_bytes)
-                bundle_info = BundleInfo(builder=bundle_builder)
+                bundle_info = BundleInfo(builder=bundle_builder.header)
                 callback(bundle_bytes, bundle_info)
                 data_remaining = bundles_cursor.next()
 

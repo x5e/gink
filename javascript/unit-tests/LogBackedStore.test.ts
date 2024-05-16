@@ -87,7 +87,6 @@ it('test magic', async () => {
     await store1.close();
 
     const contents = readFileSync(fn);
-    console.log(contents);
     ensure(contents[1] == 71); // G
     ensure(contents[2] == 73); // I
     ensure(contents[3] == 78); // N

@@ -15,6 +15,7 @@ const MuidBuilder = require("../proto/muid_pb")["Muid"];
 const KeyBuilder = require("../proto/key_pb")["Key"];
 const PairBuilder = require("../proto/pair_pb")["Pair"];
 const ValueBuilder = require("../proto/value_pb")["Value"];
+const HeaderBuilder = require("../proto/header_pb")["Header"];
 const ClearanceBuilder = require("../proto/clearance_pb")["Clearance"];
 const Special = ValueBuilder.Special;
 const NumberBuilder = ValueBuilder.Number;
@@ -23,6 +24,7 @@ const DocumentBuilder = ValueBuilder.Document;
 const TupleBuilder = ValueBuilder.Tuple;
 
 module.exports = {
+    HeaderBuilder,
     BundleBuilder,
     Behavior,
     ChangeBuilder,
