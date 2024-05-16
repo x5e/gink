@@ -45,12 +45,12 @@ def install_tests(into_where, from_place, store_maker):
 def make_empty_bundle(bundle_info: BundleInfo) -> bytes:
     """ Makes an empty change set that matches the given metadata. """
     builder = BundleBuilder()
-    builder.medallion = bundle_info.medallion  # type: ignore
-    builder.chain_start = bundle_info.chain_start  # type: ignore
-    builder.timestamp = bundle_info.timestamp  # type: ignore
-    builder.previous = bundle_info.previous  # type: ignore
+    builder.header.medallion = bundle_info.medallion  # type: ignore
+    builder.header.chain_start = bundle_info.chain_start  # type: ignore
+    builder.header.timestamp = bundle_info.timestamp  # type: ignore
+    builder.header.previous = bundle_info.previous  # type: ignore
     if bundle_info.comment:
-        builder.comment = bundle_info.comment  # type: ignore
+        builder.header.comment = bundle_info.comment  # type: ignore
     return builder.SerializeToString()  # type: ignore
 
 
@@ -190,9 +190,11 @@ def generic_test_tracks(store_maker: StoreMaker):
 def generic_test_get_ordered_entries(store_maker: StoreMaker):
     """ makes sure that the get_ordered_entries works """
     textproto1 = """
-        medallion: 789
-        chain_start: 123
-        timestamp: 123
+        header {
+            medallion: 789
+            chain_start: 123
+            timestamp: 123
+        }
         changes {
             key: 1
             value {
@@ -233,10 +235,12 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         }
     """
     textproto2 = """
-        medallion: 789
-        chain_start: 123
-        timestamp: 234
-        previous: 123
+        header {
+            medallion: 789
+            chain_start: 123
+            timestamp: 234
+            previous: 123
+        }
         changes {
             key: 1
             value {
@@ -314,9 +318,11 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
 def generic_test_negative_offsets(store_maker: StoreMaker):
     """ makes sure that the get_ordered_entries works """
     textproto1 = """
-        medallion: 789
-        chain_start: 123
-        timestamp: 123
+        header {
+            medallion: 789
+            chain_start: 123
+            timestamp: 123
+        }
         changes {
             key: 1
             value {

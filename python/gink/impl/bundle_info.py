@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Optional
 from struct import Struct
 
-from .builders import SyncMessage, BundleBuilder
+from .builders import SyncMessage, HeaderBuilder
 from .typedefs import Medallion, MuTimestamp
 from .tuples import Chain
 
@@ -20,7 +20,7 @@ class BundleInfo:
     previous: MuTimestamp
     comment: str
 
-    def __init__(self, *, builder: Optional[BundleBuilder] = None, encoded: bytes = b'\x00' * 32, **kwargs):
+    def __init__(self, *, builder: Optional[HeaderBuilder] = None, encoded: bytes = b'\x00' * 32, **kwargs):
 
         if len(encoded) < 32:
             raise ValueError("need at least 32 bytes to unpack")

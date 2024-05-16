@@ -20,7 +20,6 @@ import { Behavior, ChangeBuilder, ContainerBuilder, SyncMessageBuilder } from ".
 import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
-import { BundleBuilder } from "./builders";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
 
