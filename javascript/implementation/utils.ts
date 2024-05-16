@@ -3,14 +3,25 @@
  * manipulating the types defined in typedefs.ts.
  */
 
-import { Muid, Medallion, Value, MuidTuple, ScalarKey, EdgeData, Entry,  ActorId, Timestamp } from "./typedefs";
+import {
+    Muid,
+    Medallion,
+    Value,
+    MuidTuple,
+    ScalarKey,
+    EdgeData,
+    Entry,
+    ActorId,
+    Timestamp,
+} from "./typedefs";
 import {
     MuidBuilder,
     ValueBuilder,
     KeyBuilder,
     Special,
     TimestampBuilder,
-    TupleBuilder, DocumentBuilder
+    TupleBuilder,
+    DocumentBuilder,
 } from "./builders";
 
 import { hostname, userInfo } from 'os';

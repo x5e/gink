@@ -19,4 +19,6 @@ message LogFile {
     repeated bytes bundles = 1;
 
     repeated Claim claims = 2;
+
+    fixed32 magic_number = 3;  // should be 1263421767
 }

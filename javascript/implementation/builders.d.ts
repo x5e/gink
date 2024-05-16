@@ -223,6 +223,8 @@ export class LogFileBuilder extends ImplementedMessage {
     getBundlesList(): Array<Uint8Array>;
     getClaimsList(): Array<ClaimBuilder>;
     setClaimsList(entries: Array<ClaimBuilder>);
+    setMagicNumber(number);
+    getMagicNumber(): number;
 }
 
 export class MovementBuilder extends ImplementedMessage {

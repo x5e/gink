@@ -327,7 +327,7 @@ export class MemoryStore implements Store {
         }
     }
 
-    getEntryById(entryMuid: Muid): Promise<Entry | undefined> {
+    getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
         return Promise.resolve(this.getEntryByIdSync(entryMuid));
     }
 
