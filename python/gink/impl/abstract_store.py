@@ -1,7 +1,7 @@
 """Contains AbstractStore class."""
 
 # standard python modules
-from typing import Tuple, Callable, Optional, Iterable, List, Union, Mapping, TypeVar, Generic
+from typing import Tuple, Optional, Iterable, List, Union, Mapping, TypeVar, Generic
 from abc import ABC, abstractmethod
 
 from pathlib import Path
@@ -16,11 +16,11 @@ from .muid import Muid
 from .bundle_wrapper import BundleWrapper
 from .utilities import is_certainly_gone
 from .watcher import Watcher
-BundleCallback = Callable[[bytes, BundleInfo], None]
+from .bundle_store import BundleStore, BundleCallback
 Lock = TypeVar('Lock')
 
 
-class AbstractStore(ABC, Generic[Lock]):
+class AbstractStore(BundleStore, Generic[Lock]):
     """ abstract base class for the gink data store
 
         Stores both the bundles received and the contents of those
