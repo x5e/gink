@@ -9,6 +9,7 @@ import {
 } from "./test_utils";
 import { muidToBuilder, ensure, wrapValue, matches, wrapKey } from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
+import { HeaderBuilder } from "../implementation/builders";
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 
@@ -95,17 +96,19 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sent: Array<BundleBytes> = [];
         await store.getBundles((x: BundleView) => { sent.push(x.bytes); });
         expect(sent.length).toBe(4);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[0])).getTimestamp()).toBe(START_MICROS1);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[1])).getTimestamp()).toBe(START_MICROS2);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[2])).getTimestamp()).toBe(NEXT_TS1);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[3])).getTimestamp()).toBe(NEXT_TS2);
+        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[0])).getHeader().getTimestamp()).toBe(START_MICROS1);
+        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[1])).getHeader().getTimestamp()).toBe(START_MICROS2);
+        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[2])).getHeader().getTimestamp()).toBe(NEXT_TS1);
+        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[3])).getHeader().getTimestamp()).toBe(NEXT_TS2);
     });
 
     it(`${implName} test save/fetch container`, async () => {
         const bundleBuilder = new BundleBuilder();
-        bundleBuilder.setChainStart(START_MICROS1);
-        bundleBuilder.setTimestamp(START_MICROS1);
-        bundleBuilder.setMedallion(MEDALLION1);
+        const headerBuilder = new HeaderBuilder();
+        headerBuilder.setChainStart(START_MICROS1);
+        headerBuilder.setTimestamp(START_MICROS1);
+        headerBuilder.setMedallion(MEDALLION1);
+        bundleBuilder.setHeader(headerBuilder);
         const changeBuilder = new ChangeBuilder();
         const containerBuilder = new ContainerBuilder();
         containerBuilder.setBehavior(Behavior.DIRECTORY);

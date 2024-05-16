@@ -49,18 +49,23 @@ export class ChangeBuilder extends ImplementedMessage {
     setClearance(ClearanceBuilder);
 }
 
-export class BundleBuilder extends ImplementedMessage {
+export class HeaderBuilder extends ImplementedMessage {
     setTimestamp(number);
     setPrevious(number);
     setChainStart(number);
     setMedallion(number);
     setComment(string);
-    getChangesMap(): Map<number, ChangeBuilder>;
     getTimestamp(): number;
     getMedallion(): number;
     getChainStart(): number;
     getPrevious(): number;
     getComment(): string;
+}
+
+export class BundleBuilder extends ImplementedMessage {
+    getHeader(): HeaderBuilder;
+    setHeader(HeaderBuilder);
+    getChangesMap(): Map<number, ChangeBuilder>;
 }
 
 export class PairBuilder extends ImplementedMessage {
