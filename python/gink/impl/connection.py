@@ -48,11 +48,11 @@ class Connection(ABC):
         return self._closed
 
     @abstractmethod
-    def receive_messages(self) -> Iterable[SyncMessage]:
+    def receive(self) -> Iterable[SyncMessage]:
         """ receive a (possibly empty) series of encoded SyncMessages from a peer. """
 
     @abstractmethod
-    def send_message(self, sync_message: SyncMessage):
+    def send(self, sync_message: SyncMessage):
         """ Send an encoded SyncMessage to a peer. """
 
     @abstractmethod
@@ -69,11 +69,11 @@ class Connection(ABC):
             raise ValueError("bundle would be an invalid extension!")
         sync_message = SyncMessage()
         sync_message.bundle = bundle_wrapper.get_bytes()
-        self.send_message(sync_message)
+        self.send(sync_message)
         self._tracker.mark_as_having(bundle_wrapper.get_info())
 
     def receive_objects(self) -> Iterable[Union[BundleInfo|BundleWrapper|ChainTracker]]:
-        for sync_message in self.receive_messages():
+        for sync_message in self.receive():
             if sync_message.HasField("bundle"):
                 bundle_bytes = sync_message.bundle
                 wrap = BundleWrapper(bundle_bytes)
@@ -81,7 +81,7 @@ class Connection(ABC):
                 if self._tracker is not None:
                     self._tracker.mark_as_having(info)
                 yield wrap
-                self.send_message(info.as_acknowledgement())
+                self.send(info.as_acknowledgement())
             elif sync_message.HasField("greeting"):
                 self._tracker = ChainTracker(sync_message=sync_message)
                 yield self._tracker

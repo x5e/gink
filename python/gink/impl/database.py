@@ -201,7 +201,7 @@ class Database:
                 # peer already has or has been previously sent this bundle
                 continue
             self._logger.debug("sending %r to %r", bundle_info, peer)
-            peer.send_message(outbound_message_with_bundle)
+            peer.send(outbound_message_with_bundle)
             tracker.mark_as_having(bundle_info)
         for callback in self._callbacks:
             callback(bundle_info)
