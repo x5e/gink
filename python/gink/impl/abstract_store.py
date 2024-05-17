@@ -178,14 +178,14 @@ class AbstractStore(BundleStore, Generic[Lock]):
         self._release_lock(lock)
         return count
 
-    def get_bundle_infos(self) -> List[BundleInfo]:
+    def get_bundle_infos(self, limit_to: Mapping[Chain, Limit] | None = None) -> List[BundleInfo]:
         """ Gets a list of bundle infos; mostly for testing. """
         result = []
 
         def callback(bundle_wrapper: BundleWrapper):
             result.append(bundle_wrapper.get_info())
 
-        self.get_bundles(callback)
+        self.get_bundles(callback, limit_to=limit_to)
         return result
 
     @abstractmethod

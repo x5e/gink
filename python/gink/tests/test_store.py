@@ -13,6 +13,7 @@ from ..impl.abstract_store import AbstractStore
 from ..impl.bundle_info import BundleInfo
 from ..impl.bundle_wrapper import BundleWrapper
 from ..impl.muid import Muid
+from ..impl.tuples import Chain
 
 StoreMaker = Callable[[], AbstractStore]
 
@@ -79,6 +80,32 @@ def generic_test_accepts_only_once(store_maker: StoreMaker):
         assert not result_ext_second
     finally:
         store.close()
+
+
+def generic_limit_to(store_maker: StoreMaker):
+    """ Ensures that chains with missing links throw exceptions. """
+    with closing(store_maker()) as store:
+        store.apply_bundle(make_empty_bundle(BundleInfo(medallion=123, chain_start=456, timestamp=456, comment="a1")))
+        store.apply_bundle(make_empty_bundle(
+            BundleInfo(medallion=123, chain_start=456, timestamp=456, previous=456, comment="a2")))
+
+        store.apply_bundle(make_empty_bundle(BundleInfo(medallion=775, chain_start=456, timestamp=456, comment="b1")))
+        store.apply_bundle(make_empty_bundle(
+            BundleInfo(medallion=775, chain_start=456, timestamp=456, previous=456, comment="b2")))
+
+        store.apply_bundle(make_empty_bundle(BundleInfo(medallion=137, chain_start=456, timestamp=456, comment="c1")))
+        store.apply_bundle(make_empty_bundle(
+            BundleInfo(medallion=137, chain_start=456, timestamp=456, previous=456, comment="c2")))
+
+        limit_to = {
+            Chain(123, 456): float("inf"),
+            Chain(775, 456): 456,
+        }
+
+        infos = store.get_bundle_infos(limit_to=limit_to)
+        assert len(infos) == 3
+        comments = [info.comment for info in infos]
+        assert comments == ["a1", "b1", "a2"], comments
 
 
 def generic_test_rejects_gap(store_maker: StoreMaker):
