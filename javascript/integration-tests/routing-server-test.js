@@ -1,6 +1,7 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
 const { Database, IndexedDbStore } = require("../tsc.out/implementation");
+process.chdir(__dirname + "/..");
 (async function () {
     new Expector("mkdir", ["-p", "/tmp/routing-server-test"]);
     await new Promise((resolve) => setTimeout(resolve, 10));

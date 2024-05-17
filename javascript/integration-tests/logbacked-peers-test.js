@@ -10,6 +10,7 @@ Logbacked1 <- Share File -> Logbacked2
 Ensures if logbacked1 changes the file, logbacked2 will
 automatically pull the changes and broadcast them.
 */
+process.chdir(__dirname + "/..");
 (async () => {
     console.log("starting");
     const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: "8081", ...process.env } });

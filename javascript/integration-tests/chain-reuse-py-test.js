@@ -4,7 +4,7 @@
 const fs = require("fs");
 const {spawnSync} = require("child_process");
 const TEST_DB_PATH = "/tmp/client-reuse-test.db";
-
+process.chdir(__dirname + "/..");
 (async () => {
     console.log("starting");
     if (fs.existsSync(TEST_DB_PATH)) {
