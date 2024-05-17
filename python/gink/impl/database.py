@@ -212,7 +212,7 @@ class Database:
                 if isinstance(thing, BundleWrapper):  # some data
                     self._store.apply_bundle(thing, self._on_bundle)
                 elif isinstance(thing, ChainTracker):  # greeting message
-                    self._store.get_bundles(callback=peer.send_bundle, peer_has=thing)
+                    self._store.get_bundles(peer.send_bundle, peer_has=thing)
                 elif isinstance(thing, BundleInfo):  # an ack:
                     self._sent_but_not_acked.discard(thing)
                 else:

@@ -151,7 +151,7 @@ def generic_test_orders_bundles(store_maker: StoreMaker):
         def appender(wrapper: BundleWrapper):
             ordered.append((wrapper.get_bytes(), wrapper.get_info()))
 
-        store.get_bundles(callback=appender)
+        store.get_bundles(appender)
         assert len(ordered) == 4
         assert ordered[0] == (cs1, info1)
         assert ordered[1] == (cs3, info3) or ordered[1] == (cs2, info2)

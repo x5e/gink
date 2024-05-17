@@ -28,7 +28,7 @@ class BundleStore(ABC):
 
     @abstractmethod
     def get_bundles(
-        self, *,
+        self,
         callback: Callable[[BundleWrapper], None],
         peer_has: Optional[ChainTracker] = None,
         limit_to: Optional[Mapping[Chain, Limit]] = None,

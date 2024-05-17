@@ -80,7 +80,7 @@ if args.show_bundles:
         builder.ParseFromString(data)  # type: ignore
         print("=" * 79)
         print(builder)
-    store.get_bundles(callback=show)
+    store.get_bundles(show)
     store.close()
     exit(0)
 

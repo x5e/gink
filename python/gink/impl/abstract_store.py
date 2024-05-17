@@ -185,7 +185,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
         def callback(bundle_wrapper: BundleWrapper):
             result.append(bundle_wrapper.get_info())
 
-        self.get_bundles(callback=callback)
+        self.get_bundles(callback)
         return result
 
     @abstractmethod
