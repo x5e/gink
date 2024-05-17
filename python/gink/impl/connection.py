@@ -1,5 +1,5 @@
 """ Contains the Peer class that manages a connection to another gink instance. """
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Union
 from socket import (
     socket as Socket,
     AF_INET,
@@ -9,6 +9,9 @@ from logging import getLogger
 from abc import ABC, abstractmethod
 
 from .builders import SyncMessage
+from .chain_tracker import ChainTracker
+from .bundle_info import BundleInfo
+from .bundle_wrapper import BundleWrapper
 
 
 class Connection(ABC):
@@ -33,7 +36,7 @@ class Connection(ABC):
         self._port = port
         self._logger = getLogger(self.__class__.__name__)
         self._closed = False
-        self._replied_to_greeting = False
+        self._tracker: Optional[ChainTracker] = None
 
     def fileno(self):
         """ Return the file descriptor of the underlying socket.
@@ -44,20 +47,45 @@ class Connection(ABC):
         """ a way to check if the connection is still active """
         return self._closed
 
-    def set_replied_to_greeting(self):
-        self._replied_to_greeting = True
-
-    def get_replied_to_greeting(self) -> bool:
-        return self._replied_to_greeting
-
     @abstractmethod
-    def receive(self) -> Iterable[SyncMessage]:
+    def receive_messages(self) -> Iterable[SyncMessage]:
         """ receive a (possibly empty) series of encoded SyncMessages from a peer. """
 
     @abstractmethod
-    def send(self, sync_message: SyncMessage):
+    def send_message(self, sync_message: SyncMessage):
         """ Send an encoded SyncMessage to a peer. """
 
     @abstractmethod
     def close(self, reason=None):
         """ End the connection and release resources. """
+
+    def send_bundle(self, bundle_wrapper: BundleWrapper) -> None:
+        if self._tracker is None:  # haven't received greeting
+            return
+        info = bundle_wrapper.get_info()
+        if self._tracker.has(info):
+            return
+        if not self._tracker.is_valid_extension(info):
+            raise ValueError("bundle would be an invalid extension!")
+        sync_message = SyncMessage()
+        sync_message.bundle = bundle_wrapper.get_bytes()
+        self.send_message(sync_message)
+        self._tracker.mark_as_having(bundle_wrapper.get_info())
+
+    def receive_objects(self) -> Iterable[Union[BundleInfo|BundleWrapper|ChainTracker]]:
+        for sync_message in self.receive_messages():
+            if sync_message.HasField("bundle"):
+                bundle_bytes = sync_message.bundle
+                wrap = BundleWrapper(bundle_bytes)
+                info = wrap.get_info()
+                if self._tracker is not None:
+                    self._tracker.mark_as_having(info)
+                yield wrap
+                self.send_message(info.as_acknowledgement())
+            elif sync_message.HasField("greeting"):
+                self._tracker = ChainTracker(sync_message=sync_message)
+                yield self._tracker
+            elif sync_message.HasField("ack"):
+                yield BundleInfo.from_ack(sync_message)
+            else:
+                self._logger.warning("got binary message without ack, bundle, or greeting")

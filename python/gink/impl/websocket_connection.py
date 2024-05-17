@@ -74,7 +74,7 @@ class WebsocketConnection(Connection):
     def __repr__(self):
         return f"{self.__class__.__name__}(host={self._host!r})"
 
-    def receive(self) -> Iterable[SyncMessage]:
+    def receive_messages(self) -> Iterable[SyncMessage]:
         if self._closed:
             return
         data = self._socket.recv(4096 * 4096)
@@ -148,10 +148,10 @@ class WebsocketConnection(Connection):
         if self._greeting is None:
             self._logger.warning("no greeting message to send")
             return
-        sent = self.send(self._greeting)
+        sent = self.send_message(self._greeting)
         self._logger.debug("sent greeting of %d bytes", sent)
 
-    def send(self, sync_message: SyncMessage) -> int:
+    def send_message(self, sync_message: SyncMessage) -> int:
         assert not self._closed
         data = self._ws.send(BytesMessage(sync_message.SerializeToString()))
         return self._socket.send(data)

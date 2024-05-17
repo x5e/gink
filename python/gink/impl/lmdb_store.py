@@ -1011,6 +1011,8 @@ class LmdbStore(AbstractStore):
                 bundle_info = BundleInfo(encoded=info_bytes)
                 chain_tracker.mark_as_having(bundle_info)
                 data_remaining = infos_cursor.next()
+        if limit_to is not None:
+            chain_tracker = chain_tracker.get_subset(limit_to.keys())
         return chain_tracker
 
     def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:

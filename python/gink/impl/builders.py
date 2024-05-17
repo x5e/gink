@@ -27,9 +27,9 @@ if TYPE_CHECKING:
         header: HeaderBuilder
         changes: List[ChangeBuilder]
 
-    class SyncMessage(Message):
-        pass
 
+    class SyncMessage(Message):
+        bundle: bytes
 
 
     class Pair:

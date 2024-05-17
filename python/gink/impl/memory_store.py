@@ -355,6 +355,8 @@ class MemoryStore(AbstractStore):
         for bundle_info in self._chain_infos.values():
             assert isinstance(bundle_info, BundleInfo)
             chain_tracker.mark_as_having(bundle_info)
+        if limit_to is not None:
+            chain_tracker = chain_tracker.get_subset(limit_to.keys())
         return chain_tracker
 
     def get_last(self, chain: Chain) -> BundleInfo:

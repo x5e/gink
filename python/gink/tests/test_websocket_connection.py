@@ -23,11 +23,11 @@ def test_chit_chat():
     getattr(client, "_logger").setLevel(logging.ERROR)
 
     # force the server to receive the initial request and send a response
-    for incoming in server.receive():
+    for incoming in server.receive_messages():
         raise Exception("didn't expect any user messages")
 
     # force the client to process the connection accepted message
-    for incoming in client.receive():
+    for incoming in client.receive_messages():
         raise Exception("Didn't expect any user messages!")
 
     sync_message = SyncMessage()
@@ -42,17 +42,17 @@ def test_chit_chat():
     assert sync_message2 == sync_message
 
     for message in [sync_message]:
-        server.send(message)
-        for incoming in client.receive():
+        server.send_message(message)
+        for incoming in client.receive_messages():
             assert incoming == message, incoming
 
     for message in [sync_message]:
-        client.send(message)
-        for incoming in server.receive():
+        client.send_message(message)
+        for incoming in server.receive_messages():
             assert incoming == message, incoming
 
     client.close()
-    for _ in server.receive():
+    for _ in server.receive_messages():
         raise Exception("not expected")
 
     assert client.is_closed() and server.is_closed()
@@ -73,7 +73,7 @@ def test_auth():
     let_auth_through = False
     try:
         # force the server to receive the initial request and send a response
-        for _ in server.receive():
+        for _ in server.receive_messages():
             pass
         # The above should error when the connection gets rejected,
         # so let_auth_through should remain false.
