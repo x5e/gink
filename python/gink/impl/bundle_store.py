@@ -4,12 +4,9 @@ from abc import ABC, abstractmethod
 
 from .bundle_wrapper import BundleWrapper
 from .tuples import Chain
-from .typedefs import MuTimestamp, Limit
+from .typedefs import Limit
 from .chain_tracker import ChainTracker
-from .bundle_info import BundleInfo
 from .bundle_wrapper import BundleWrapper
-
-BundleCallback = Callable[[bytes, BundleInfo], None]
 
 class BundleStore(ABC):
     """ Abstract base class for the data store that would serve up data for multiple users. """
@@ -18,7 +15,7 @@ class BundleStore(ABC):
     def apply_bundle(
             self,
             bundle: Union[BundleWrapper, bytes],
-            callback: Optional[BundleCallback]=None,
+            callback: Optional[Callable[[BundleWrapper], None]]=None,
             claim_chain: bool=False) -> bool:
         """ Tries to add data from a particular bundle to this store.
 

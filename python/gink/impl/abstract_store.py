@@ -1,8 +1,8 @@
 """Contains AbstractStore class."""
 
 # standard python modules
-from typing import Tuple, Optional, Iterable, List, Union, Mapping, TypeVar, Generic
-from abc import ABC, abstractmethod
+from typing import Tuple, Optional, Iterable, List, Union, Mapping, TypeVar, Generic, Callable
+from abc import abstractmethod
 
 from pathlib import Path
 
@@ -16,7 +16,7 @@ from .muid import Muid
 from .bundle_wrapper import BundleWrapper
 from .utilities import is_certainly_gone
 from .watcher import Watcher
-from .bundle_store import BundleStore, BundleCallback
+from .bundle_store import BundleStore
 Lock = TypeVar('Lock')
 
 
@@ -114,13 +114,13 @@ class AbstractStore(BundleStore, Generic[Lock]):
         """Safely releases resources."""
 
     @abstractmethod
-    def _refresh_helper(self, lock: Lock, callback: Optional[BundleCallback] = None, /) -> int:
+    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[BundleWrapper], None]]=None, /) -> int:
         """ do a refresh using a lock/transaction """
 
     def maybe_reuse_chain(
             self,
             identity: str,
-            callback: Optional[BundleCallback] = None) -> Optional[BundleInfo]:
+            callback: Optional[Callable[[BundleWrapper], None]]=None) -> Optional[BundleInfo]:
         """ Tries to find a chain for reuse.  The callback is used for refresh.
         """
         lock: Lock = self._acquire_lock()
@@ -157,7 +157,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
     def apply_bundle(
             self,
             bundle: Union[BundleWrapper, bytes],
-            callback: Optional[BundleCallback]=None,
+            callback: Optional[Callable[[BundleWrapper], None]]=None,
             claim_chain: bool=False) -> bool:
         """ Tries to add data from a particular bundle to this store.
 
@@ -165,7 +165,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
             and will throw an exception in the case of an invalid extension.
         """
 
-    def refresh(self, callback: Optional[BundleCallback] = None) -> int:
+    def refresh(self, callback: Optional[Callable[[BundleWrapper], None]]=None) -> int:
         """ Checks the source file for bundles that haven't come from this process and calls the callback.
 
             Intended to allow the process to send bundles to peers and otherwise get the model in line with the file.

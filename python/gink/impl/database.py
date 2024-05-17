@@ -45,7 +45,6 @@ class Database:
     _wsgi_connections: Set[WsgiConnection]
     _listeners: Set[Listener]
     _sent_but_not_acked: Set[BundleInfo]
-    _trackers: Dict[Connection, ChainTracker]  # tracks what we know a peer has
     _last_link: Optional[BundleInfo]
     _container_types: dict = {}
 
@@ -67,7 +66,6 @@ class Database:
         self._connections = set()
         self._wsgi_connections = set()
         self._listeners = set()
-        self._trackers = {}
         self._identity = identity
         self._logger = getLogger(self.__class__.__name__)
         self._wsgi_listener: Optional[WsgiListener] = None
@@ -186,25 +184,13 @@ class Database:
             self._logger.debug("locally committed bundle: %r", info)
             return info
 
-    def _on_bundle(self, bundle_bytes: bytes, bundle_info: BundleInfo) -> None:
+    def _on_bundle(self, bundle_wrapper: BundleWrapper) -> None:
         """ Sends a bundle either created locally or received from a peer to other peers.
         """
-        outbound_message_with_bundle = SyncMessage()
-        outbound_message_with_bundle.bundle = bundle_bytes
         for peer in self._connections:
-            tracker = self._trackers.get(peer)
-            if tracker is None:
-                # In this case we haven't received a greeting from the peer, and so don't want to
-                # send any bundles because it might result in gaps in their chain.
-                continue
-            if tracker.has(bundle_info):
-                # peer already has or has been previously sent this bundle
-                continue
-            self._logger.debug("sending %r to %r", bundle_info, peer)
-            peer.send(outbound_message_with_bundle)
-            tracker.mark_as_having(bundle_info)
+            peer.send_bundle(bundle_wrapper)
         for callback in self._callbacks:
-            callback(bundle_info)
+            callback(bundle_wrapper.get_info())
 
     def _on_peer_ready(self, peer: Connection):
         with self._lock:

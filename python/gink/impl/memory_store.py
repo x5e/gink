@@ -13,7 +13,7 @@ from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBu
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper, BundleCallback, Lock
+from .abstract_store import AbstractStore, BundleWrapper, Lock
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
@@ -178,7 +178,7 @@ class MemoryStore(AbstractStore):
     def _get_claims(self, _: Lock, /) -> Mapping[Medallion, ClaimBuilder]:
         return self._claims
 
-    def _refresh_helper(self, lock: Lock, callback: Optional[BundleCallback] = None, /) -> int:
+    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[BundleWrapper], None]]=None, /) -> int:
         return 0
 
     def get_ordered_entries(
@@ -232,8 +232,8 @@ class MemoryStore(AbstractStore):
     def apply_bundle(
             self,
             bundle: Union[BundleWrapper, bytes],
-            callback: Optional[Callable]=None,
-            claim_chain: bool=False
+            callback: Optional[Callable[[BundleWrapper], None]]=None,
+            claim_chain: bool=False,
             ) -> bool:
         if isinstance(bundle, bytes):
             bundle = BundleWrapper(bundle)
@@ -266,7 +266,7 @@ class MemoryStore(AbstractStore):
                     continue
                 raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         if needed and callback is not None:
-            callback(bundle.get_bytes(), bundle.get_info())
+            callback(bundle)
         return needed
 
     def _acquire_lock(self) -> bool:

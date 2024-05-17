@@ -60,17 +60,21 @@ class Connection(ABC):
         """ End the connection and release resources. """
 
     def send_bundle(self, bundle_wrapper: BundleWrapper) -> None:
-        if self._tracker is None:  # haven't received greeting
-            return
         info = bundle_wrapper.get_info()
+        self._logger.debug("send_bundle %s", info)
+        if self._tracker is None:  # haven't received greeting
+            self._logger.debug("_tracker is None")
+            return
+
         if self._tracker.has(info):
+            self._logger.debug("peer already has %s", info)
             return
         if not self._tracker.is_valid_extension(info):
             raise ValueError("bundle would be an invalid extension!")
         sync_message = SyncMessage()
         sync_message.bundle = bundle_wrapper.get_bytes()
         self.send(sync_message)
-        self._tracker.mark_as_having(bundle_wrapper.get_info())
+        self._tracker.mark_as_having(info)
 
     def receive_objects(self) -> Iterable[Union[BundleInfo|BundleWrapper|ChainTracker]]:
         for sync_message in self.receive():
