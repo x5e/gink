@@ -336,7 +336,7 @@ class MemoryStore(AbstractStore):
         self._locations[entries_location_key] = encoded_placement_key
 
     def get_bundles(
-        self, *,
+        self,
         callback: Callable[[BundleWrapper], None],
         limit_to: Optional[Mapping[Chain, Limit]] = None,
         **_

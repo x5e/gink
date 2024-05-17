@@ -979,7 +979,7 @@ class LmdbStore(AbstractStore):
                     trxn.delete(by_name_key, db=self._by_name)
 
     def get_bundles(
-        self, *,
+        self,
         callback: Callable[[BundleWrapper], None],
         limit_to: Optional[Mapping[Chain, Limit]] = None,
         **_
