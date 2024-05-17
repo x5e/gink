@@ -980,7 +980,7 @@ class LmdbStore(AbstractStore):
 
     def get_bundles(
         self,
-        callback: Callable[[BundleWrapper], None],
+        callback: Callable[[BundleWrapper], None], *,
         limit_to: Optional[Mapping[Chain, Limit]] = None,
         **_
     ):
