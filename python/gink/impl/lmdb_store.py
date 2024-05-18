@@ -5,7 +5,7 @@ from os import unlink
 from os.path import exists
 from logging import getLogger
 import uuid
-from typing import Tuple, Iterable, Optional, Set, Union, Mapping
+from typing import Tuple, Iterable, Optional, Set, Union, Mapping, Callable
 from struct import pack
 from pathlib import Path
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
@@ -13,11 +13,11 @@ from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
 # Gink Implementation
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
                        ContainerBuilder, ClearanceBuilder, Message, Behavior, ClaimBuilder)
-from .typedefs import MuTimestamp, UserKey, Medallion
+from .typedefs import MuTimestamp, UserKey, Medallion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper, BundleCallback
+from .abstract_store import AbstractStore, BundleWrapper
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .utilities import generate_timestamp, create_claim
@@ -25,7 +25,7 @@ from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, de
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
                      LocationKey, PROPERTY, BOX, GROUP, decode_value, EDGE_TYPE, PAIR_MAP, PAIR_SET, KEY_SET,
-                     normalize_entry_builder, VERTEX)
+                     normalize_entry_builder, VERTEX, FLOAT_INF)
 
 
 class LmdbStore(AbstractStore):
@@ -721,21 +721,21 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=placement_key.placer, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def refresh(self, callback: Optional[BundleCallback] = None) -> int:
+    def refresh(self, callback: Optional[Callable[[BundleWrapper], None]]=None) -> int:
         with self._handle.begin(write=False) as trxn:
             count = self._refresh_helper(trxn=trxn, callback=callback)
         if count:
             self._clear_notifications()
         return count
 
-    def _refresh_helper(self, trxn: Trxn, callback: Optional[BundleCallback] = None) -> int:
+    def _refresh_helper(self, trxn: Trxn, callback: Optional[Callable[[BundleWrapper], None]]=None) -> int:
         cursor = trxn.cursor(self._bundles)
         count = 0
         while cursor.set_range(encode_muts(self._seen_through + 1)):
             byte_key = cursor.key()
             wrapper = BundleWrapper(cursor.value())
             if callback is not None:
-                callback(wrapper.get_bytes(), wrapper.get_info())
+                callback(wrapper)
                 count += 1
             self._seen_through = decode_muts(byte_key) or 0
         return count
@@ -743,7 +743,7 @@ class LmdbStore(AbstractStore):
     def apply_bundle(
             self,
             bundle: Union[BundleWrapper, bytes],
-            callback: Optional[BundleCallback]=None,
+            callback: Optional[Callable[[BundleWrapper], None]]=None,
             claim_chain: bool=False
             ) -> bool:
         wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
@@ -788,7 +788,7 @@ class LmdbStore(AbstractStore):
                     raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         self._clear_notifications()
         if needed and callback is not None:
-            callback(wrapper.get_bytes(), wrapper.get_info())
+            callback(wrapper)
         return needed
 
     def get_identity(self, chain: Chain, trxn: Optional[Trxn]=None, /) -> str:
@@ -978,22 +978,30 @@ class LmdbStore(AbstractStore):
                     by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
                     trxn.delete(by_name_key, db=self._by_name)
 
-    def get_bundles(self, callback: BundleCallback, since: MuTimestamp = 0):
+    def get_bundles(
+        self,
+        callback: Callable[[BundleWrapper], None], *,
+        limit_to: Optional[Mapping[Chain, Limit]] = None,
+        **_
+    ):
         with self._handle.begin() as txn:
             retention = decode_muts(txn.get(b"bundles", db=self._retentions))
-            if retention is None or (retention != 1 and retention > since):
-                raise ValueError("haven't been retaining bundles that long")
-            bundles_cursor = txn.cursor(self._bundles)
-            data_remaining = bundles_cursor.set_range(encode_muts(since))
+            if retention is None or retention != 1:
+                # TODO: handle the case of partial bundle retention, which would require computing the
+                # minimum lookback time necessary to service the request.
+                raise ValueError("don't have full bundle retention")
+            bundle_infos_cursor = txn.cursor(self._bundle_infos)
+            start_scan_at_time: MuTimestamp = 0  # would need to put the minimum lookback time here
+            data_remaining = bundle_infos_cursor.set_range(encode_muts(start_scan_at_time))
             while data_remaining:
-                bundle_bytes = bundles_cursor.value()
-                bundle_builder = BundleBuilder()
-                bundle_builder.ParseFromString(bundle_bytes)
-                bundle_info = BundleInfo(builder=bundle_builder.header)
-                callback(bundle_bytes, bundle_info)
-                data_remaining = bundles_cursor.next()
+                bundle_info = BundleInfo(encoded=bundle_infos_cursor.key())
+                if limit_to is None or bundle_info.timestamp <= limit_to.get(bundle_info.get_chain(), 0):
+                    bundle_bytes = txn.get(bundle_infos_cursor.value(), db=self._bundles)
+                    bundle_wrapper = BundleWrapper(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
+                    callback(bundle_wrapper)
+                data_remaining = bundle_infos_cursor.next()
 
-    def get_chain_tracker(self) -> ChainTracker:
+    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
         chain_tracker = ChainTracker()
         with self._handle.begin() as txn:
             infos_cursor = txn.cursor(self._chains)
@@ -1003,6 +1011,8 @@ class LmdbStore(AbstractStore):
                 bundle_info = BundleInfo(encoded=info_bytes)
                 chain_tracker.mark_as_having(bundle_info)
                 data_remaining = infos_cursor.next()
+        if limit_to is not None:
+            chain_tracker = chain_tracker.get_subset(limit_to.keys())
         return chain_tracker
 
     def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:

@@ -1,12 +1,11 @@
 """ implementation of the LogBackedStore class """
-from typing import Optional, Union, Dict
+from typing import Optional, Union, Callable
 from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN, LOCK_SH
 from pathlib import Path
 from .builders import LogFileBuilder, ClaimBuilder
 from .memory_store import MemoryStore
 from .bundle_wrapper import BundleWrapper
-from .abstract_store import BundleCallback, Lock
-from .typedefs import Medallion
+from .abstract_store import Lock
 from .tuples import Chain
 from .utilities import create_claim
 
@@ -54,7 +53,7 @@ class LogBackedStore(MemoryStore):
     def _get_file_path(self) -> Optional[Path]:
         return self._filepath
 
-    def _refresh_helper(self, _: Lock, callback: Optional[BundleCallback] = None, /) -> int:
+    def _refresh_helper(self, _: Lock, callback: Optional[Callable[[BundleWrapper], None]]=None, /) -> int:
         file_bytes = self._handle.read()
         self._log_file_builder.ParseFromString(file_bytes)  # type: ignore
         count = 0
@@ -69,7 +68,7 @@ class LogBackedStore(MemoryStore):
     def apply_bundle(
             self,
             bundle: Union[BundleWrapper, bytes],
-            callback: Optional[BundleCallback]=None,
+            callback: Optional[Callable[[BundleWrapper], None]]=None,
             claim_chain: bool=False,
             ) -> bool:
         if self._handle.closed:
@@ -93,7 +92,7 @@ class LogBackedStore(MemoryStore):
             self._handle.write(data)
             self._handle.flush()
             if callback is not None:
-                callback(bundle.get_bytes(), bundle.get_info())
+                callback(bundle)
         if flocked_by_apply:
             flock(self._handle, LOCK_UN)
             self._flocked = False

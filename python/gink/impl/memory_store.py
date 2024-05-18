@@ -10,10 +10,10 @@ from pathlib import Path
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder,
                        ContainerBuilder, Message, ChangeBuilder, ClaimBuilder)
-from .typedefs import UserKey, MuTimestamp, Medallion, Deletion
+from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper, BundleCallback, Lock
+from .abstract_store import AbstractStore, BundleWrapper, Lock
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
@@ -178,7 +178,7 @@ class MemoryStore(AbstractStore):
     def _get_claims(self, _: Lock, /) -> Mapping[Medallion, ClaimBuilder]:
         return self._claims
 
-    def _refresh_helper(self, lock: Lock, callback: Optional[BundleCallback] = None, /) -> int:
+    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[BundleWrapper], None]]=None, /) -> int:
         return 0
 
     def get_ordered_entries(
@@ -232,8 +232,8 @@ class MemoryStore(AbstractStore):
     def apply_bundle(
             self,
             bundle: Union[BundleWrapper, bytes],
-            callback: Optional[Callable]=None,
-            claim_chain: bool=False
+            callback: Optional[Callable[[BundleWrapper], None]]=None,
+            claim_chain: bool=False,
             ) -> bool:
         if isinstance(bundle, bytes):
             bundle = BundleWrapper(bundle)
@@ -266,7 +266,7 @@ class MemoryStore(AbstractStore):
                     continue
                 raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
         if needed and callback is not None:
-            callback(bundle.get_bytes(), bundle.get_info())
+            callback(bundle)
         return needed
 
     def _acquire_lock(self) -> bool:
@@ -335,19 +335,28 @@ class MemoryStore(AbstractStore):
         entries_location_key = LocationKey(placement.placer, placement.placer)
         self._locations[entries_location_key] = encoded_placement_key
 
-    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
-        for bundle_info_key in self._bundles.irange(minimum=encode_muts(since)):
+    def get_bundles(
+        self,
+        callback: Callable[[BundleWrapper], None], *,
+        limit_to: Optional[Mapping[Chain, Limit]] = None,
+        **_
+    ):
+        start_scan_at: MuTimestamp = 0
+        for bundle_info_key in self._bundles.irange(minimum=encode_muts(start_scan_at)):
             bundle_info = BundleInfo.from_bytes(bundle_info_key)
-            assert isinstance(bundle_info, BundleInfo)
-            data = self._bundles[bundle_info]
-            assert isinstance(data, bytes)
-            callback(data, bundle_info)
+            if limit_to is None or bundle_info.timestamp <= limit_to.get(bundle_info.get_chain(), 0):
+                bundle_bytes = self._bundles[bundle_info]
+                assert isinstance(bundle_bytes, bytes)
+                bundle_wrapper = BundleWrapper(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
+                callback(bundle_wrapper)
 
-    def get_chain_tracker(self) -> ChainTracker:
+    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
         chain_tracker = ChainTracker()
         for bundle_info in self._chain_infos.values():
             assert isinstance(bundle_info, BundleInfo)
             chain_tracker.mark_as_having(bundle_info)
+        if limit_to is not None:
+            chain_tracker = chain_tracker.get_subset(limit_to.keys())
         return chain_tracker
 
     def get_last(self, chain: Chain) -> BundleInfo:

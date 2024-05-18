@@ -45,7 +45,6 @@ class Database:
     _wsgi_connections: Set[WsgiConnection]
     _listeners: Set[Listener]
     _sent_but_not_acked: Set[BundleInfo]
-    _trackers: Dict[Connection, ChainTracker]  # tracks what we know a peer has
     _last_link: Optional[BundleInfo]
     _container_types: dict = {}
 
@@ -67,7 +66,6 @@ class Database:
         self._connections = set()
         self._wsgi_connections = set()
         self._listeners = set()
-        self._trackers = {}
         self._identity = identity
         self._logger = getLogger(self.__class__.__name__)
         self._wsgi_listener: Optional[WsgiListener] = None
@@ -186,58 +184,25 @@ class Database:
             self._logger.debug("locally committed bundle: %r", info)
             return info
 
-    def _on_bundle(self, bundle_bytes: bytes, bundle_info: BundleInfo) -> None:
+    def _on_bundle(self, bundle_wrapper: BundleWrapper) -> None:
         """ Sends a bundle either created locally or received from a peer to other peers.
         """
-        outbound_message_with_bundle = SyncMessage()
-        outbound_message_with_bundle.bundle = bundle_bytes
         for peer in self._connections:
-            tracker = self._trackers.get(peer)
-            if tracker is None:
-                # In this case we haven't received a greeting from the peer, and so don't want to
-                # send any bundles because it might result in gaps in their chain.
-                continue
-            if tracker.has(bundle_info):
-                # peer already has or has been previously sent this bundle
-                continue
-            self._logger.debug("sending %r to %r", bundle_info, peer)
-            peer.send(outbound_message_with_bundle)
-            tracker.mark_as_having(bundle_info)
+            peer.send_bundle(bundle_wrapper)
         for callback in self._callbacks:
-            callback(bundle_info)
+            callback(bundle_wrapper.get_info())
 
-    def _receive_data(self, sync_message: SyncMessage, from_peer: Connection):
+    def _on_peer_ready(self, peer: Connection):
         with self._lock:
-            if sync_message.HasField("bundle"):
-                bundle_bytes = sync_message.bundle
-                wrap = BundleWrapper(bundle_bytes)
-                info = wrap.get_info()
-                if (tracker := self._trackers.get(from_peer)):
-                    tracker.mark_as_having(info)
-                self._store.apply_bundle(wrap, self._on_bundle)
-                from_peer.send(info.as_acknowledgement())
-            elif sync_message.HasField("greeting"):
-                self._logger.debug("received greeting from %s", from_peer)
-                chain_tracker = ChainTracker(sync_message=sync_message)
-                self._trackers[from_peer] = chain_tracker
-
-                def callback(bundle_bytes: bytes, info: BundleInfo):
-                    if not chain_tracker.has(info):
-                        outgoing_builder = SyncMessage()
-                        outgoing_builder.bundle = bundle_bytes
-                        from_peer.send(outgoing_builder)
-
-                self._store.get_bundles(callback=callback)
-                from_peer.set_replied_to_greeting()
-            elif sync_message.HasField("ack"):
-                acked_info = BundleInfo.from_ack(sync_message)
-                tracker = self._trackers.get(from_peer)
-                if tracker is not None:
-                    tracker.mark_as_having(acked_info)
-                if acked_info in self._sent_but_not_acked:
-                    self._sent_but_not_acked.remove(acked_info)
-            else:
-                self._logger.warning("got binary message without ack, bundle, or greeting")
+            for thing in peer.receive_objects():
+                if isinstance(thing, BundleWrapper):  # some data
+                    self._store.apply_bundle(thing, self._on_bundle)
+                elif isinstance(thing, ChainTracker):  # greeting message
+                    self._store.get_bundles(peer.send_bundle, peer_has=thing)
+                elif isinstance(thing, BundleInfo):  # an ack:
+                    self._sent_but_not_acked.discard(thing)
+                else:
+                    raise AssertionError("unexpected object")
 
     def start_listening(self, ip_addr="", port: Union[str, int] = "8080"):
         """ Listen for incoming connections on the given port.
@@ -300,8 +265,7 @@ class Database:
                 ready_readers, _, _ = select(readers, [], [], 0.1)
                 for ready_reader in ready_readers:
                     if isinstance(ready_reader, Connection):
-                        for data in ready_reader.receive():
-                            self._receive_data(data, ready_reader)
+                        self._on_peer_ready(ready_reader)
                         if ready_reader.is_closed():
                             self._connections.remove(ready_reader)
                             readers.remove(ready_reader)

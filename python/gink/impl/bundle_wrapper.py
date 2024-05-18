@@ -3,10 +3,10 @@ from .builders import BundleBuilder
 from .bundle_info import BundleInfo
 
 class BundleWrapper:
-    def __init__(self, bundle_bytes: bytes):
+    def __init__(self, bundle_bytes: bytes, bundle_info: Optional[BundleInfo] = None):
         self._bundle_bytes = bundle_bytes
         self._bundle_builder: Optional[BundleBuilder] = None
-        self._bundle_info: Optional[BundleInfo] = None
+        self._bundle_info: Optional[BundleInfo] = bundle_info
 
     def get_bytes(self):
         return self._bundle_bytes

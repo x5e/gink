@@ -31,7 +31,7 @@ def test_add_bundle() -> None:
     bundler = Bundler("just a test")
     database.bundle(bundler)
     bundles: List[BundleInfo] = []
-    store.get_bundles(lambda _, info: bundles.append(info))
+    store.get_bundles(lambda _: bundles.append(_.get_info()))
     assert len(bundles) == 2
     assert bundles[-1].comment == "just a test"
     assert bundles[-1].timestamp > started

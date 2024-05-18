@@ -1,13 +1,13 @@
 """
 Defines the ChainTracker class.
 """
-
-from typing import Union, Optional
+from __future__ import annotations
+from typing import Union, Optional, Iterable
 
 from sortedcontainers import SortedDict  # type: ignore
 
 from .builders import SyncMessage
-from .typedefs import MuTimestamp, Medallion
+from .typedefs import MuTimestamp, Medallion, Limit
 from .muid import Muid
 from .tuples import Chain
 from .bundle_info import BundleInfo
@@ -31,9 +31,19 @@ class ChainTracker:
                     chain_start=greeting_entry.chain_start)
                 self._data[chain] = greeting_entry.seen_through
 
-    def get_seen_to(self, chain: Chain) -> Optional[MuTimestamp]:
-        """ Says how far along a giving chain the given instance has seen. """
-        return self._data.get(chain)
+    def get_subset(self, chains=Iterable[Chain]) -> ChainTracker:
+        result = ChainTracker()
+        for chain in chains:
+            i_have = self._data.get(chain)
+            if i_have is not None:
+                result._data[chain] = i_have
+        return result
+
+    def is_valid_extension(self, bundle_info: BundleInfo) -> bool:
+        if bundle_info.timestamp == bundle_info.chain_start:
+            return True
+        seen_to = self._data.get(bundle_info.get_chain())
+        return seen_to == bundle_info.previous
 
     def mark_as_having(self, bundle_info: BundleInfo):
         """ Indicates has everything along the chain in bundle_info up to its timestamp. """

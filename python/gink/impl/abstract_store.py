@@ -1,8 +1,8 @@
 """Contains AbstractStore class."""
 
 # standard python modules
-from typing import Tuple, Callable, Optional, Iterable, List, Union, Mapping, TypeVar, Generic
-from abc import ABC, abstractmethod
+from typing import Tuple, Optional, Iterable, List, Union, Mapping, TypeVar, Generic, Callable
+from abc import abstractmethod
 
 from pathlib import Path
 
@@ -10,17 +10,17 @@ from pathlib import Path
 from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder, ClaimBuilder
 from .bundle_info import BundleInfo
 from .chain_tracker import ChainTracker
-from .typedefs import UserKey, MuTimestamp, Medallion
+from .typedefs import UserKey, MuTimestamp, Medallion, Limit
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_wrapper import BundleWrapper
 from .utilities import is_certainly_gone
 from .watcher import Watcher
-BundleCallback = Callable[[bytes, BundleInfo], None]
+from .bundle_store import BundleStore
 Lock = TypeVar('Lock')
 
 
-class AbstractStore(ABC, Generic[Lock]):
+class AbstractStore(BundleStore, Generic[Lock]):
     """ abstract base class for the gink data store
 
         Stores both the bundles received and the contents of those
@@ -114,13 +114,13 @@ class AbstractStore(ABC, Generic[Lock]):
         """Safely releases resources."""
 
     @abstractmethod
-    def _refresh_helper(self, lock: Lock, callback: Optional[BundleCallback] = None, /) -> int:
+    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[BundleWrapper], None]]=None, /) -> int:
         """ do a refresh using a lock/transaction """
 
     def maybe_reuse_chain(
             self,
             identity: str,
-            callback: Optional[BundleCallback] = None) -> Optional[BundleInfo]:
+            callback: Optional[Callable[[BundleWrapper], None]]=None) -> Optional[BundleInfo]:
         """ Tries to find a chain for reuse.  The callback is used for refresh.
         """
         lock: Lock = self._acquire_lock()
@@ -157,7 +157,7 @@ class AbstractStore(ABC, Generic[Lock]):
     def apply_bundle(
             self,
             bundle: Union[BundleWrapper, bytes],
-            callback: Optional[BundleCallback]=None,
+            callback: Optional[Callable[[BundleWrapper], None]]=None,
             claim_chain: bool=False) -> bool:
         """ Tries to add data from a particular bundle to this store.
 
@@ -165,7 +165,7 @@ class AbstractStore(ABC, Generic[Lock]):
             and will throw an exception in the case of an invalid extension.
         """
 
-    def refresh(self, callback: Optional[BundleCallback] = None) -> int:
+    def refresh(self, callback: Optional[Callable[[BundleWrapper], None]]=None) -> int:
         """ Checks the source file for bundles that haven't come from this process and calls the callback.
 
             Intended to allow the process to send bundles to peers and otherwise get the model in line with the file.
@@ -178,26 +178,14 @@ class AbstractStore(ABC, Generic[Lock]):
         self._release_lock(lock)
         return count
 
-    @abstractmethod
-    def get_bundles(self, callback: BundleCallback, since: MuTimestamp=0):
-        """ Calls the callback with each bundle currently in the store since the `since` argument (default 0).
-
-            Calls in order received by this store, which may not correspond to the bundle creation times.
-            But we still expect dependency order to be respected, that is if B1 references objects from B0,
-            then B0 should come before B1.
-
-            This is done callback style because we don't want to leave dangling transactions
-            in the store, which could easily happen if we offered up an iterator interface instead.
-        """
-
-    def get_bundle_infos(self) -> List[BundleInfo]:
+    def get_bundle_infos(self, limit_to: Mapping[Chain, Limit] | None = None) -> List[BundleInfo]:
         """ Gets a list of bundle infos; mostly for testing. """
         result = []
 
-        def callback(_, info: BundleInfo):
-            result.append(info)
+        def callback(bundle_wrapper: BundleWrapper):
+            result.append(bundle_wrapper.get_info())
 
-        self.get_bundles(callback)
+        self.get_bundles(callback, limit_to=limit_to)
         return result
 
     @abstractmethod
@@ -233,7 +221,7 @@ class AbstractStore(ABC, Generic[Lock]):
             return None
 
     @abstractmethod
-    def get_chain_tracker(self) -> ChainTracker:
+    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
         """Returns a tracker showing what this store has at the time this function is called."""
 
     @abstractmethod
