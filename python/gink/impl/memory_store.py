@@ -233,7 +233,7 @@ class MemoryStore(AbstractStore):
             self,
             bundle: Union[BundleWrapper, bytes],
             callback: Optional[Callable[[BundleWrapper], None]]=None,
-            **_
+            claim_chain: bool=False,
             ) -> bool:
         if isinstance(bundle, bytes):
             bundle = BundleWrapper(bundle)

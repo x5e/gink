@@ -34,7 +34,7 @@ def test_repr():
             assert list(sequence) == ["Hello, World!"]
             assert repr(sequence) == "Sequence(arche=True)"
             sequence = Sequence(muid=Muid(1673009484969039, 362514588210531, 1))
-            assert repr(sequence) == "Sequence('05F197E00EB44F-149B481419563-00001')"
+            assert repr(sequence) == "Sequence(muid=Muid(1673009484969039, 362514588210531, 1))"
 
 
 def test_basics():
