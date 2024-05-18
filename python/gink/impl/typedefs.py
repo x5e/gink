@@ -1,5 +1,5 @@
 """ Various types classes for use throughout the codebase. """
-from typing import NewType, Union
+from typing import NewType, Union, TypeVar
 from datetime import datetime, timedelta, date
 
 Medallion = int
@@ -11,6 +11,8 @@ UserKey = Union[str, int, bytes]
 UserValue = Union[str, int, float, datetime, bytes, bool, list, tuple, dict, None]
 EPOCH = 0
 Limit = Union[int, float]
+T = TypeVar('T')
+inf = float("inf")
 
 class Deletion: # pylint: disable=too-few-public-methods
     """ Used internally to indicate that a key/value assocation has been removed. """

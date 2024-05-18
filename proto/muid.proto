@@ -14,7 +14,7 @@ package gink;
     * The medallion may be omitted (=0) for a muid that points to a row
       from the same stream.
 
-    * The offset value of 0 (omitted) referrs to the bundle.
+    * The offset value of 0 (omitted) referrs to the bundle or chain.
 
     The limits specified below allow a Muid to be packed into a canonical
     16 byte representation: effectively a 128-bit integer that

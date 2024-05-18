@@ -25,7 +25,7 @@ from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, de
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
                      LocationKey, PROPERTY, BOX, GROUP, decode_value, EDGE_TYPE, PAIR_MAP, PAIR_SET, KEY_SET,
-                     normalize_entry_builder, VERTEX, FLOAT_INF)
+                     normalize_entry_builder, VERTEX, new_entries_replace)
 
 
 class LmdbStore(AbstractStore):
@@ -767,25 +767,28 @@ class LmdbStore(AbstractStore):
                     trxn.put(bundle_location, wrapper.get_bytes(), db=self._bundles)
                     trxn.put(bytes(new_info), bundle_location, db=self._bundle_infos)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
-                change_items = list(builder.changes.items())  # type: ignore
+                change_items: List[int, ChangeBuilder] = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
                 if new_info.chain_start == new_info.timestamp:
                     trxn.put(bytes(chain_key), new_info.comment.encode())
-                for offset, change in change_items:  # type: ignore
-                    if change.HasField("container"):
-                        trxn.put(bytes(Muid(new_info.timestamp, new_info.medallion, offset)),
-                                 change.container.SerializeToString(), db=self._containers)
-                        continue
-                    if change.HasField("entry"):
-                        self._add_entry(new_info, trxn, offset, change.entry)
-                        continue
-                    if change.HasField("movement"):
-                        self._apply_movement(new_info, trxn, offset, change.movement)
-                        continue
-                    if change.HasField("clearance"):
-                        self._apply_clearance(new_info, trxn, offset, change.clearance)
-                        continue
-                    raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
+                for offset, change in change_items:
+                    try:
+                        if change.HasField("container"):
+                            trxn.put(bytes(Muid(new_info.timestamp, new_info.medallion, offset)),
+                                    change.container.SerializeToString(), db=self._containers)
+                            continue
+                        if change.HasField("entry"):
+                            self._add_entry(new_info, trxn, offset, change.entry)
+                            continue
+                        if change.HasField("movement"):
+                            self._apply_movement(new_info, trxn, offset, change.movement)
+                            continue
+                        if change.HasField("clearance"):
+                            self._apply_clearance(new_info, trxn, offset, change.clearance)
+                            continue
+                        raise ValueError(f"Can't process change: {new_info} {offset} {change}")
+                    except ValueError as value_error:
+                        self._logger.error("could not process change %s, %s", value_error, change)
         self._clear_notifications()
         if needed and callback is not None:
             callback(wrapper)
@@ -905,7 +908,7 @@ class LmdbStore(AbstractStore):
         entry_muid = placement_key.placer
         container_muid = placement_key.container
         serialized_placement_key = bytes(placement_key)
-        if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX, Behavior.PROPERTY, Behavior.GROUP):
+        if new_entries_replace(builder.behavior):
             found_entry = self.get_entry_by_key(container_muid, placement_key.middle)
             if found_entry:
                 if retaining:

@@ -12,6 +12,7 @@ from .database import Database
 from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, Deletion, Inclusion
 from .coding import encode_key, encode_value, decode_value, deletion, inclusion
 from .addressable import Addressable
+from .tuples import Chain
 
 class Container(Addressable, ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
@@ -19,7 +20,7 @@ class Container(Addressable, ABC):
     def __repr__(self):
         if self._muid.timestamp == -1 and self._muid.medallion == -1:
             return f"{self.__class__.__name__}(arche=True)"
-        return f"{self.__class__.__name__}('{self._muid}')"
+        return f"{self.__class__.__name__}(muid={self._muid!r})"
 
     def _get_container(self) -> Muid:
         return self._muid
@@ -160,7 +161,7 @@ class Container(Addressable, ABC):
 
     def  _add_entry(self, *,
                    value: Union[UserValue, Deletion, Inclusion, Container],
-                   key: Union[Muid, str, int, bytes, None,
+                   key: Union[Muid, str, int, bytes, None, Chain,
                               Tuple[Container, Container], Tuple[Muid, Muid]] = None,
                    effective: Optional[MuTimestamp] = None,
                    bundler: Optional[Bundler] = None,
@@ -190,6 +191,8 @@ class Container(Addressable, ABC):
         on_muid.put_into(entry_builder.container)  # type: ignore
         if isinstance(key, (str, int, bytes)):
             encode_key(key, entry_builder.key)  # type: ignore
+        elif isinstance(key, Chain):
+            Muid(key.chain_start, key.medallion, 0).put_into(entry_builder.describing)
         elif isinstance(key, Muid):
             key.put_into(entry_builder.describing)  # type: ignore
         elif isinstance(key, Container):
