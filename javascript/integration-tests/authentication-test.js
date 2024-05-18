@@ -1,5 +1,6 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
+process.chdir(__dirname + "/..");
 (async () => {
     console.log("starting");
     const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: "8081", GINK_TOKEN: "abc", ...process.env } });

@@ -2,7 +2,7 @@ const puppeteer = require('puppeteer');
 const Expector = require("./Expector");
 const { expect } = require('@jest/globals');
 const { getLaunchOptions, sleep } = require("./browser_test_utilities");
-
+process.chdir(__dirname + "/..");
 it('connect to server and display dashboard', async () => {
     let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
     let page = await browser.newPage();
