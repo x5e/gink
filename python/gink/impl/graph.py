@@ -145,7 +145,7 @@ class Verb(Container):
         source = source._muid if isinstance(source, Vertex) else source
         target = target._muid if isinstance(target, Vertex) else target
         for found_entry in self._database.get_store().get_edge_entries(
-                ts, verb=self._muid, source=source, target=target):
+                as_of=ts, verb=self._muid, source=source, target=target):
             yield Edge(muid=found_entry.address, _builder=found_entry.builder)
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
