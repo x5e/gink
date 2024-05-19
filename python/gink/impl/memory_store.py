@@ -247,24 +247,27 @@ class MemoryStore(AbstractStore):
                 self._identities[new_info.get_chain()] = new_info.comment
             self._bundles[bytes(new_info)] = bundle.get_bytes()
             self._chain_infos[chain_key] = new_info
-            change_items = list(bundle_builder.changes.items())  # type: ignore
+            change_items: List[int, ChangeBuilder] = list(bundle_builder.changes.items())  # type: ignore
             change_items.sort()  # the protobuf library doesn't maintain order of maps
-            for offset, change in change_items:  # type: ignore
-                if change.HasField("container"):
-                    container_muid = Muid.create(
-                        context=new_info, offset=offset)
-                    self._containers[container_muid] = change.container
-                    continue
-                if change.HasField("entry"):
-                    self._add_entry(new_info=new_info, offset=offset, entry_builder=change.entry)
-                    continue
-                if change.HasField("movement"):
-                    self._add_movement(new_info=new_info, offset=offset, builder=change.movement)
-                    continue
-                if change.HasField("clearance"):
-                    self._add_clearance(new_info=new_info, offset=offset, builder=change.clearance)
-                    continue
-                raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
+            for offset, change in change_items:
+                try:
+                    if change.HasField("container"):
+                        container_muid = Muid.create(
+                            context=new_info, offset=offset)
+                        self._containers[container_muid] = change.container
+                        continue
+                    if change.HasField("entry"):
+                        self._add_entry(new_info=new_info, offset=offset, entry_builder=change.entry)
+                        continue
+                    if change.HasField("movement"):
+                        self._add_movement(new_info=new_info, offset=offset, builder=change.movement)
+                        continue
+                    if change.HasField("clearance"):
+                        self._add_clearance(new_info=new_info, offset=offset, builder=change.clearance)
+                        continue
+                    raise ValueError(f"didn't recognize change: {new_info} {offset} {change}")
+                except ValueError as value_error:
+                    self._logger.error("problem processing change: %s", value_error)
         if needed and callback is not None:
             callback(bundle)
         return needed

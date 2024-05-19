@@ -161,7 +161,7 @@ class Database:
         bundler = Bundler(self._identity)
         bundle_bytes = bundler.seal(chain=chain, timestamp=chain_start)
         wrapper = BundleWrapper(bundle_bytes=bundle_bytes)
-        self._store.apply_bundle(wrapper, self._on_bundle, True)
+        self._store.apply_bundle(wrapper, self._on_bundle, claim_chain=True)
         return wrapper.get_info()
 
     def bundle(self, bundler: Bundler) -> BundleInfo:
@@ -177,7 +177,7 @@ class Database:
             assert timestamp > seen_to
             bundle_bytes = bundler.seal(chain=chain, timestamp=timestamp, previous=seen_to)
             wrap = BundleWrapper(bundle_bytes)
-            added = self._store.apply_bundle(wrap, self._on_bundle, False)
+            added = self._store.apply_bundle(wrap, self._on_bundle, claim_chain=False)
             assert added
             info = wrap.get_info()
             self._last_link = info

@@ -62,9 +62,7 @@ class Muid(NamedTuple):
         """
         timestamp = builder.timestamp or context.timestamp  # type: ignore
         medallion = builder.medallion or context.medallion  # type: ignore
-        offset = offset or builder.offset  # type: ignore
-        if not offset:
-            raise ValueError("no offset specified")
+        offset = offset or builder.offset or 0
         if offset < 0:
             if not isinstance(context, Muid):
                 raise ValueError("invalid context for negative offset")
