@@ -116,7 +116,7 @@ class LmdbStore(AbstractStore):
         return self._file_path
 
     def get_edge_entries(
-            self,
+            self, *,
             as_of: MuTimestamp,
             verb: Optional[Muid] = None,
             source: Optional[Muid] = None,

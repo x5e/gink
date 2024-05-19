@@ -3,6 +3,7 @@ from typing import List
 from contextlib import closing
 from pathlib import Path
 from platform import system
+from io import StringIO
 
 from ..impl.database import Database
 from ..impl.memory_store import MemoryStore
@@ -130,3 +131,31 @@ def test_react_to_store_changes():
         assert bundle_infos and bundle_infos[-1].comment == "abc"
         found = root1b.get("foo")
         assert found == "bar", found
+
+
+def test_dump():
+    """
+        currently only tests that dump doesn't crash, in the future
+        this should test if the data output by dump can be re-read in
+        to reconsitute the database (thought might be done in an integraion test)
+    """
+    for store_type in [
+        LmdbStore,
+        MemoryStore,
+    ]:
+        store = store_type()
+        with closing(store):
+            database = Database(store=store)
+            root = Directory(arche=True, database=database)
+            root["foo"] = Directory()
+            root["foo"]["bar"] = 91
+            string_io = StringIO()
+            database.dump(file=string_io)
+            """
+            db2 = Database(store=store_type())
+            dumped = string_io.getvalue()
+            print(dumped)
+            eval(dumped.replace("\n", ";"))
+            root2 = Directory(arche=True, database=db2)
+            assert root2["foo"]["bar"] == 91
+            """

@@ -80,15 +80,31 @@ class MemoryStore(AbstractStore):
         return claim_builder
 
     def get_edge_entries(
-            self,
+            self, *,
             as_of: MuTimestamp,
             verb: Optional[Muid] = None,
             source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:
-        raise NotImplementedError()
+        if verb is None:
+            raise NotImplementedError("edge scans without an edge type aren't currently supported in memory store")
+        verb_bytes = bytes(verb)
+        for placement_bytes in self._placements.irange(minimum=verb_bytes):
+            if not placement_bytes.startswith(verb_bytes):
+                break
+            placement = Placement.from_bytes(placement_bytes)
+            if placement.placer.timestamp > as_of:
+                continue
+            entry_muid = self._placements[placement_bytes]
+            entry_builder: EntryBuilder = self._entries[entry_muid]
+            # TODO: check for removals
+            if source and source != Muid.create(builder=entry_builder.pair.left, context=entry_muid):
+                continue
+            if target and target != Muid.create(builder=entry_builder.pair.rite, context=entry_muid):
+                continue
+            yield FoundEntry(entry_muid, entry_builder)
 
     def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:
-        raise NotImplementedError()
+        return self._entries.get(muid)
 
     def get_some(self, cls, last_index: Optional[int] = None):
         sorted_dict = {
