@@ -65,7 +65,6 @@ def experimental(thing):
                 DeprecationWarning, stacklevel=2,)
             warned[0] = True
         return thing(*a, **b)
-
     if the_class:
         the_class.__init__ = wrapped
         return the_class

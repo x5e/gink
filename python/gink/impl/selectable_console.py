@@ -51,7 +51,7 @@ class SelectableConsole(InteractiveInterpreter):
         ioctl(self.fileno(), FIONREAD, self._c_int)  # type: ignore
         return self._c_int.value
 
-    def call_when_ready(self):
+    def call_when_ready(self, *_):
         try:
             if self._interactive:
                 for _ in range(self._bytes_available()):

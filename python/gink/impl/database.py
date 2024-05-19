@@ -2,17 +2,15 @@
 """ contains the Database class """
 
 # standard python modules
-from typing import Optional, Set, Union, Iterable, Dict, List, Callable
+from typing import Optional, Set, Union, Iterable, List, Callable
 from datetime import datetime, date, timedelta
 from threading import Lock
-from select import select
 from sys import stdout
 from logging import getLogger
 from re import fullmatch, IGNORECASE
-from contextlib import nullcontext
 
 # builders
-from .builders import SyncMessage, ContainerBuilder
+from .builders import ContainerBuilder
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -28,12 +26,9 @@ from .chain_tracker import ChainTracker
 from .attribution import Attribution
 from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
-from .selectable_console import SelectableConsole
 from .bundle_wrapper import BundleWrapper
-from .wsgi_listener import WsgiListener
-from .wsgi_connection import WsgiConnection
 from .utilities import generate_timestamp, experimental, get_identity, generate_medallion
-
+from .looping import SelectablePair
 
 class Database:
     """ A class that mediates user interaction with a datastore and peers. """
@@ -42,17 +37,12 @@ class Database:
     _last_time: Optional[MuTimestamp]
     _store: AbstractStore
     _connections: Set[Connection]
-    _wsgi_connections: Set[WsgiConnection]
     _listeners: Set[Listener]
     _sent_but_not_acked: Set[BundleInfo]
     _last_link: Optional[BundleInfo]
     _container_types: dict = {}
 
-    def __init__(self,
-                 store: Union[AbstractStore, str, None] = None,
-                 identity = get_identity(),
-                 web_server = None,
-                 web_server_addr: tuple = ('localhost', 8081)):
+    def __init__(self, store: Union[AbstractStore, str, None] = None, identity = get_identity()):
         setattr(Database, "_last", self)
         if isinstance(store, str):
             store = LmdbStore(store)
@@ -64,14 +54,9 @@ class Database:
         self._lock = Lock()
         self._last_time = None
         self._connections = set()
-        self._wsgi_connections = set()
         self._listeners = set()
         self._identity = identity
         self._logger = getLogger(self.__class__.__name__)
-        self._wsgi_listener: Optional[WsgiListener] = None
-        # Web server would be a Flask app or other WSGI compatible app
-        if web_server:
-            self._wsgi_listener = WsgiListener(app=web_server, address=web_server_addr)
         self._sent_but_not_acked = set()
         self._callbacks: List[Callable[[BundleInfo], None]] = list()
 
@@ -95,12 +80,14 @@ class Database:
         """ returns the store managed by this database """
         return self._store
 
+    @experimental
     def get_chain(self) -> Optional[Chain]:
         """ gets the chain this database is appending to (or None if it hasn't started writing yet) """
         if self._last_link is not None:
             return self._last_link.get_chain()
         return None
 
+    @experimental
     def get_now(self):
         return generate_timestamp()
 
@@ -192,7 +179,7 @@ class Database:
         for callback in self._callbacks:
             callback(bundle_wrapper.get_info())
 
-    def _on_peer_ready(self, peer: Connection):
+    def _on_connection_ready(self, peer: Connection) -> None:
         with self._lock:
             for thing in peer.receive_objects():
                 if isinstance(thing, BundleWrapper):  # some data
@@ -204,6 +191,13 @@ class Database:
                 else:
                     raise AssertionError("unexpected object")
 
+    def _on_listener_ready(self, listener: Listener) -> Iterable[SelectablePair]:
+        sync_message = self._store.get_chain_tracker().to_greeting_message()
+        new_connection: Connection = listener.accept(sync_message)
+        self._connections.add(new_connection)
+        self._logger.info("accepted incoming connection from %s", new_connection)
+        return [SelectablePair(new_connection, self._on_connection_ready)]
+
     def start_listening(self, ip_addr="", port: Union[str, int] = "8080"):
         """ Listen for incoming connections on the given port.
 
@@ -212,6 +206,7 @@ class Database:
         port = int(port)
         self._logger.info("starting to listen on %r:%r", ip_addr, port)
         self._listeners.add(Listener(WebsocketConnection, ip_addr=ip_addr, port=port))
+        self._indicate_selectables_changed()
 
     def connect_to(self, target: str):
         """ initiate a connection to another gink instance """
@@ -227,71 +222,29 @@ class Database:
         connection = WebsocketConnection(host=host, port=int(port), path=path, greeting=greeting)
         self._connections.add(connection)
         self._logger.debug("connection added")
+        self._indicate_selectables_changed()
 
-    def run(self,
-            until: GenericTimestamp = None,
-            console: Optional[SelectableConsole]=None,
-            connect_to: Optional[list[str]]=None):
-        """ Waits for activity on ports then exchanges data with peers.
-            Optionally connects to other database instances.
-        """
-        if connect_to:
-            for target in connect_to:
-                self.connect_to(target)
-        self._logger.debug("starting run loop until %r", until)
-        if until is not None:
-            until = self.resolve_timestamp(until)
-        context_manager = console or nullcontext()
-        with context_manager:
-            while (until is None or generate_timestamp() < until):
-                # eventually will want to support epoll on platforms where its supported
-                readers: List[Union[Listener, WsgiListener, Connection, WsgiConnection, SelectableConsole, AbstractStore]] = []
-                if self._store.is_selectable():
-                        readers.append(self._store)
-                for listener in self._listeners:
-                    readers.append(listener)
-                for connection in list(self._connections):
-                    if connection.is_closed():
-                        self._connections.remove(connection)
-                    else:
-                        readers.append(connection)
-                if self._wsgi_listener:
-                    readers.append(self._wsgi_listener)
-                for conn in list(self._wsgi_connections):
-                    readers.append(conn)
-                if isinstance(console, SelectableConsole):
-                    readers.append(console)
-                    console.refresh()
-                ready_readers, _, _ = select(readers, [], [], 0.1)
-                for ready_reader in ready_readers:
-                    if isinstance(ready_reader, Connection):
-                        self._on_peer_ready(ready_reader)
-                        if ready_reader.is_closed():
-                            self._connections.remove(ready_reader)
-                            readers.remove(ready_reader)
-                    elif isinstance(ready_reader, WsgiListener) and self._wsgi_listener:
-                        conn = self._wsgi_listener.accept()
-                        if conn:
-                            self._wsgi_connections.add(conn)
-                            readers.append(conn)
-                    elif isinstance(ready_reader, WsgiConnection) and self._wsgi_listener:
-                        request_data = ready_reader.receive_data()
-                        result = self._wsgi_listener.process_request(request_data)
-                        if result != False:
-                            self._wsgi_listener.finish_response(result, ready_reader)
-                        ready_reader.close()
-                        self._wsgi_connections.remove(ready_reader)
-                        readers.remove(ready_reader)
-                    elif isinstance(ready_reader, Listener):
-                        sync_message = self._store.get_chain_tracker().to_greeting_message()
-                        new_connection: Connection = ready_reader.accept(sync_message)
-                        self._connections.add(new_connection)
-                        readers.append(new_connection)
-                        self._logger.info("accepted incoming connection from %s", new_connection)
-                    elif isinstance(ready_reader, SelectableConsole):
-                        ready_reader.call_when_ready()
-                    elif isinstance(ready_reader, AbstractStore):
-                        ready_reader.refresh(self._on_bundle)
+    def _on_store_ready(self, store: AbstractStore):
+        store.refresh(self._on_bundle)
+
+    def get_selectables(self, *_) -> Iterable[SelectablePair]:
+        yield SelectablePair(self, self.get_selectables)
+        if self._store.is_selectable():
+            yield SelectablePair(self._store, self._on_store_ready)
+        for listener in self._listeners:
+            yield SelectablePair(listener, self._on_listener_ready)
+        for connection in self._connections:
+            yield SelectablePair(connection, self._on_connection_ready)
+
+    def _indicate_selectables_changed(self):
+        self._logger.warning("_indicate_selectables_changed not implemented")
+
+    def close(self):
+        for connection in self._connections:
+            connection.close()
+        for listener in self._listeners:
+            listener.close()
+        self._store.close()
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):
         """ Resets the database to a specific point in time.

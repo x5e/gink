@@ -10,6 +10,7 @@ from . import *
 from .impl.builders import BundleBuilder
 from .impl.selectable_console import SelectableConsole
 from .impl.utilities import get_identity
+from .impl.looping import loop, SelectablePair
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
@@ -81,7 +82,7 @@ if args.show_bundles:
         print("=" * 79)
         print(builder)
     store.get_bundles(show)
-    store.close()
+    database.close()
     exit(0)
 
 if args.set:
@@ -89,12 +90,14 @@ if args.set:
     container = root
     key = args.set
     container.set(key, value, comment=args.comment)
+    database.close()
     exit(0)
 
 if args.get:
     container = root
     result = container.get(args.get, as_of=args.as_of)
     print(result)
+    database.close()
     exit(0)
 
 if args.blame:
@@ -107,6 +110,7 @@ if args.blame:
             old_directory = old_directory.get(component, as_of=args.as_of)
             assert isinstance(old_directory, Directory)
         old_directory.show_blame()
+    database.close()
     exit(0)
 
 if args.mkdir:
@@ -118,10 +122,12 @@ if args.mkdir:
         assert isinstance(old_directory, Directory)
     new_directory = Directory.create(database=database)
     old_directory.set(path_components[-1], new_directory, comment=args.comment)
+    database.close()
     exit(0)
 
 if args.log:
     database.show_log(args.log, include_starts=args.starts)
+    database.close()
     exit(0)
 
 if args.listen_on:
@@ -151,7 +157,7 @@ else:
 
 console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
 
-try:
-    database.run(console=console)
-except EOFError:
-    pass
+loop([
+    SelectablePair(console, console.call_when_ready),
+    SelectablePair(database, database.get_selectables),
+], context_manager=console)
