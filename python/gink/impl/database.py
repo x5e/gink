@@ -34,7 +34,7 @@ from .utilities import (
     generate_medallion,
     resolve_timestamp,
 )
-from .looping import Selectable
+from .looping import Selectable, Finished
 
 class Database:
     """ A class that mediates user interaction with a datastore and peers. """
@@ -167,17 +167,21 @@ class Database:
         for callback in self._callbacks:
             callback(bundle_wrapper.get_info())
 
-    def _on_connection_ready(self, peer: Connection) -> None:
+    def _on_connection_ready(self, connection: Connection) -> None:
         with self._lock:
-            for thing in peer.receive_objects():
-                if isinstance(thing, BundleWrapper):  # some data
-                    self._store.apply_bundle(thing, self._on_bundle)
-                elif isinstance(thing, ChainTracker):  # greeting message
-                    self._store.get_bundles(peer.send_bundle, peer_has=thing)
-                elif isinstance(thing, BundleInfo):  # an ack:
-                    self._sent_but_not_acked.discard(thing)
-                else:
-                    raise AssertionError("unexpected object")
+            try:
+                for thing in connection.receive_objects():
+                    if isinstance(thing, BundleWrapper):  # some data
+                        self._store.apply_bundle(thing, self._on_bundle)
+                    elif isinstance(thing, ChainTracker):  # greeting message
+                        self._store.get_bundles(connection.send_bundle, peer_has=thing)
+                    elif isinstance(thing, BundleInfo):  # an ack:
+                        self._sent_but_not_acked.discard(thing)
+                    else:
+                        raise AssertionError("unexpected object")
+            except Finished:
+                self._connections.remove(connection)
+                raise
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         sync_message = self._store.get_chain_tracker().to_greeting_message()
@@ -211,6 +215,7 @@ class Database:
         path = path or "/"
         greeting = self._store.get_chain_tracker().to_greeting_message()
         connection = WebsocketConnection(host=host, port=int(port), path=path, greeting=greeting)
+        connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
         self._logger.debug("connection added")
         self._indicate_selectables_changed()
@@ -218,7 +223,7 @@ class Database:
     def _on_store_ready(self):
         self._store.refresh(self._on_bundle)
 
-    def on_ready(self, *_) -> Iterable[Selectable]:
+    def on_ready(self) -> Iterable[Selectable]:
         if self._indication_sent:
             self._socket_rite.recv(1)
             self._indication_sent = False

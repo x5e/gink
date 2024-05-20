@@ -1,7 +1,7 @@
 """ Contains the WsPeer class to manage a connection to a websocket (gink) peer. """
 
 # batteries included python imports
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Callable
 from socket import (
     socket as Socket,
     SHUT_WR, SHUT_RDWR
@@ -29,6 +29,7 @@ from .builders import SyncMessage
 
 # gink modules
 from .connection import Connection
+from .looping import Finished
 
 
 class WebsocketConnection(Connection):
@@ -38,7 +39,7 @@ class WebsocketConnection(Connection):
         If there's no socket provided then one will be established, and is_client is implied.
     """
     PROTOCOL = "gink"
-
+    on_ready: Callable
     def __init__(
             self,
             host: Optional[str] = None,
@@ -76,10 +77,10 @@ class WebsocketConnection(Connection):
 
     def receive(self) -> Iterable[SyncMessage]:
         if self._closed:
-            return
+            raise Finished()
         data = self._socket.recv(4096 * 4096)
         if not data:
-            self._closed = True
+            raise Finished()
         self._ws.receive_data(data)
         for event in self._ws.events():
             if isinstance(event, Request):
@@ -109,14 +110,11 @@ class WebsocketConnection(Connection):
                     self._ready = True
             elif isinstance(event, CloseConnection):
                 self._logger.info("got close msg, code=%d, reason=%s", event.code, event.reason)
-                self._closed = True
                 try:
                     self._socket.send(self._ws.send(event.response()))
-                    self._socket.shutdown(SHUT_RDWR)
                 except BrokenPipeError:
                     self._logger.warning("could not send websocket close ack")
-                self._socket.close()
-                return
+                raise Finished()
             elif isinstance(event, TextMessage):
                 self._logger.info('Text message received: %r', event.data)
             elif isinstance(event, BytesMessage):
@@ -157,12 +155,14 @@ class WebsocketConnection(Connection):
         return self._socket.send(data)
 
     def close(self, reason=None):
-        self._closed = True
+        if self._closed:
+            return
         code = 1000
         if reason is not None:
             raise NotImplementedError()
         try:
             self._socket.send(self._ws.send(CloseConnection(code=code)))
+            """
             self._socket.shutdown(SHUT_WR)
             self._logger.debug("Sent connection close message, waiting for close ack.")
             while True:
@@ -177,5 +177,7 @@ class WebsocketConnection(Connection):
                         self._logger.debug("Received close connnection ack.")
                         break
                     self._logger.warning("got something unexpected waiting for close: %s", event)
+            """
         finally:
             self._socket.close()
+            self._closed = True
