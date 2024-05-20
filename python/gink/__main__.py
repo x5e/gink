@@ -10,7 +10,7 @@ from . import *
 from .impl.builders import BundleBuilder
 from .impl.selectable_console import SelectableConsole
 from .impl.utilities import get_identity
-from .impl.looping import loop, SelectablePair
+from .impl.looping import loop
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
@@ -157,4 +157,4 @@ else:
 
 console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
 
-loop([console, database], context_manager=console)
+loop(console, database, context_manager=console)
