@@ -93,7 +93,7 @@ def resolve_timestamp(timestamp: GenericTimestamp) -> MuTimestamp:
             timestamp = int(timestamp)
         else:
             timestamp = datetime.fromisoformat(timestamp)
-    if hasattr(timestamp, "timestamp"):
+    if timestamp is not None and hasattr(timestamp, "timestamp"):
         muid_timestamp = timestamp.timestamp
         if not isinstance(muid_timestamp, MuTimestamp):
             raise ValueError("timestamp.timestamp doesn't have a resolved timestamp")
