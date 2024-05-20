@@ -26,9 +26,10 @@ class Selectable(Protocol):
 def loop(
         *selectables: Selectable,
         context_manager: ContextManager = nullcontext(),
-        selector: BaseSelector = DefaultSelector(),
+        selector: Optional[BaseSelector] = None,
         until: GenericTimestamp = None,
         ) -> None:
+    selector = selector or DefaultSelector()
     registered: Set[Selectable] = set()
     until_muts = None if until is None else resolve_timestamp(until)
 
