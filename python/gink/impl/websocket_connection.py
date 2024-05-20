@@ -48,7 +48,7 @@ class WebsocketConnection(Connection):
             path: Optional[str] = None,
             greeting: Optional[SyncMessage] = None
     ):
-        Connection.__init__(self, socket=socket, host=host, port=port)
+        Connection.__init__(self, socket=socket, host=host, port=port, greeting=greeting)
         if socket is None:
             force_to_be_client = True
         connection_type = ConnectionType.CLIENT if force_to_be_client else ConnectionType.SERVER
@@ -69,7 +69,7 @@ class WebsocketConnection(Connection):
             self._socket.send(self._ws.send(request))
         self._logger.debug("finished setup")
         self._socket.settimeout(0.2)
-        self._greeting = greeting
+
 
     def __repr__(self):
         return f"{self.__class__.__name__}(host={self._host!r})"

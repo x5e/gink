@@ -29,6 +29,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
         Warning! Since data stores are viewed as part of the internal implementation,
         this interface may change at any time without warning on a minor version change.
     """
+    on_ready: Callable  # needs to by dynamically assigned
 
     def __enter__(self):
         pass
@@ -39,7 +40,6 @@ class AbstractStore(BundleStore, Generic[Lock]):
     @abstractmethod
     def _get_file_path(self) -> Optional[Path]:
         """ Return the underlying file name, or None if the store isn't file backed.
-
         """
 
     def is_selectable(self) -> bool:

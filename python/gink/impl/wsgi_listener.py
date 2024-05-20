@@ -5,12 +5,13 @@ The point of this class is to integrate within the Database select loop.
 
 from socket import socket as Socket, SOL_SOCKET, SO_REUSEADDR, getfqdn, AF_INET, SOCK_STREAM
 from inspect import getfullargspec
-from errno import EINTR
 from logging import getLogger
+from typing import Iterable
 
 from .wsgi_connection import WsgiConnection
+from .looping import Selectable
 
-class WsgiListener():
+class WsgiListener(Selectable):
     address_family = AF_INET
     socket_type = SOCK_STREAM
     request_queue_size = 1024
@@ -39,13 +40,10 @@ class WsgiListener():
     def fileno(self) -> int:
         return self._fd
 
-    def accept(self) -> WsgiConnection:
-        try:
-            conn, _ = self._socket.accept()
-        except BlockingIOError as e:
-            code, _ = e.args
-            if code == EINTR:
-                conn = None
-            else:
-                raise e
-        return WsgiConnection(conn)
+    def on_ready(self) -> Iterable[WsgiConnection]:
+        socket, _ = self._socket.accept()
+        yield WsgiConnection(
+            self._app,
+            socket=socket,
+            server_name=self._server_name,
+            server_port=self._server_port)

@@ -3,31 +3,50 @@ from socket import socket as Socket
 from io import StringIO
 from sys import stderr
 from datetime import datetime
-from typing import Iterable, Optional, Dict, Any
+from typing import Iterable, Optional, Dict, Any, List
+from logging import getLogger
 
-class WsgiConnection(object):
-    def __init__(self, socket: Socket):
-        self.sock = socket
-        self.fd = socket.fileno()
+from .looping import Selectable, Finished
+
+class WsgiConnection(Selectable):
+
+    def __init__(self, app, socket: Socket, server_name: str, server_port: int):
+        self._app = app
+        self._socket = socket
+        self._fd = socket.fileno()
+        self._logger = getLogger(self.__class__.__name__)
+        self._server_name = server_name
+        self._server_port = server_port
+        self._response_headers: Optional[List[tuple]] = None
+        self._status: Optional[str] = None
+        self._response_started = False
 
     def fileno(self):
-        return self.fd
+        return self._fd
 
     def close(self):
-        self.sock.close()
+        self._socket.close()
 
-    def sendall(self, data: bytes):
-        self.sock.sendall(data)
-
-    def receive_data(self):
+    def on_ready(self) -> None:
         try:
-            request_data = self.sock.recv(1024)
-        except ConnectionResetError as e:
-            request_data = None
-        return request_data
+            request_data = self._socket.recv(1024)
+        except ConnectionResetError:
+            raise Finished()
+        decoded = request_data.decode('utf-8')
+        lines = decoded.splitlines()
+        if self._logger:
+            self._logger.debug(''.join(f'< {line}\n' for line in lines))
+        (request_method, path, _) = lines[0].split(maxsplit=3)
+        env = self._get_environ(decoded, request_method, path)
+        result: Iterable[bytes] = self._app(env, self._start_response)
+        for data in result:
+            if data:
+                self._write(data)
+        if not self._response_started:
+            self._write(b"")
+        raise Finished()  # will cause the loop to call close after deregistering
 
-
-    def get_environ(self, request_data, request_method, path) -> Dict[str, Any]:
+    def _get_environ(self, request_data, request_method, path) -> Dict[str, Any]:
         return {
             'wsgi.version':  (1, 0),
             'wsgi.url_scheme': 'http',
@@ -39,55 +58,29 @@ class WsgiConnection(object):
             'REQUEST_METHOD': request_method,
             'PATH_INFO': path,
             'SERVER_NAME': self._server_name,
-            'SERVER_PORT': str(self._server_port)
+            'SERVER_PORT': str(self._server_port),
         }
 
-    def start_response(self, status, response_headers, exc_info: Optional[tuple]=None):
-        server_headers = [
+    def _start_response(self, status: str, response_headers: List[tuple], exc_info: Optional[tuple]=None):
+        server_headers: List[tuple] = [
             ('Date', datetime.now()),
             ('Server', 'WSGIServer 0.2'),
         ]
-
-        # If headers have already been sent
-        if exc_info and self._headers_set:
+        if exc_info and self._response_started:
             raise exc_info[1].with_traceback(exc_info[2])
+        self._status = status
+        self._response_headers = response_headers + server_headers
+        return self._write
 
-        self._headers_set = [status, response_headers + server_headers]
-
-        return self.write
-
-    def write(self, _: str):
-            raise NotImplementedError("Using the write callable has not been implemented.")
-
-    def finish_response(self, result: Iterable[bytes], conn: WsgiConnection):
-        status, response_headers = self._headers_set
-        response = f'HTTP/1.0 {status}\r\n'
-        for header in response_headers:
-            response += '{0}: {1}\r\n'.format(*header)
-        response += '\r\n'
-        for data in result:
-            if isinstance(data, bytes):
-                response += data.decode('utf-8')
-            else:
-                response += data
-        if self._logger:
-            self._logger.debug(f'HTTP/1.0 {status}')
-        response_bytes = response.encode()
-        conn.sendall(response_bytes)
-
-    def process_request(self, request_data: Optional[bytes]):
-        """
-        Holds all of the request processing that does not involve a connection.
-        The result from this method will need to be passed to finish_response along
-        with the connection.
-        """
-        if not request_data:
-            return False
-        decoded = request_data.decode('utf-8')
-        lines = decoded.splitlines()
-        if self._logger:
-            self._logger.debug(''.join(f'< {line}\n' for line in lines))
-        (request_method, path, _) = lines[0].split(maxsplit=3)
-        env = self.get_environ(decoded, request_method, path)
-        result = self._app(env, self.start_response)
-        return result
+    def _write(self, blob: bytes):
+        if self._status is None:
+            raise ValueError("write before start_response")
+        if not self._response_started:
+            response = f'HTTP/1.0 {self._status}\r\n'
+            assert self._response_headers is not None
+            for header in self._response_headers:
+                response += '{0}: {1}\r\n'.format(*header)
+            response += '\r\n'
+            self._socket.sendall(response.encode())
+            self._response_started = True
+        self._socket.sendall(blob)

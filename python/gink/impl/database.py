@@ -28,7 +28,7 @@ from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
 from .bundle_wrapper import BundleWrapper
 from .utilities import generate_timestamp, experimental, get_identity, generate_medallion
-from .looping import SelectablePair
+from .looping import Selectable
 
 class Database:
     """ A class that mediates user interaction with a datastore and peers. """
@@ -191,12 +191,13 @@ class Database:
                 else:
                     raise AssertionError("unexpected object")
 
-    def _on_listener_ready(self, listener: Listener) -> Iterable[SelectablePair]:
+    def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         sync_message = self._store.get_chain_tracker().to_greeting_message()
         new_connection: Connection = listener.accept(sync_message)
         self._connections.add(new_connection)
         self._logger.info("accepted incoming connection from %s", new_connection)
-        return [SelectablePair(new_connection, self._on_connection_ready)]
+        new_connection.on_ready = self._on_connection_ready
+        return [new_connection]
 
     def start_listening(self, ip_addr="", port: Union[str, int] = "8080"):
         """ Listen for incoming connections on the given port.
@@ -227,14 +228,14 @@ class Database:
     def _on_store_ready(self, store: AbstractStore):
         store.refresh(self._on_bundle)
 
-    def get_selectables(self, *_) -> Iterable[SelectablePair]:
-        yield SelectablePair(self, self.get_selectables)
+    def on_ready(self, *_) -> Iterable[Selectable]:
         if self._store.is_selectable():
-            yield SelectablePair(self._store, self._on_store_ready)
+            self._store.on_ready = self._on_store_ready
+            yield self._store
         for listener in self._listeners:
-            yield SelectablePair(listener, self._on_listener_ready)
+            yield listener
         for connection in self._connections:
-            yield SelectablePair(connection, self._on_connection_ready)
+            yield connection
 
     def _indicate_selectables_changed(self):
         self._logger.warning("_indicate_selectables_changed not implemented")

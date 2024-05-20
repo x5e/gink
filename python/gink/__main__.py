@@ -157,7 +157,4 @@ else:
 
 console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
 
-loop([
-    SelectablePair(console, console.call_when_ready),
-    SelectablePair(database, database.get_selectables),
-], context_manager=console)
+loop([console, database], context_manager=console)
