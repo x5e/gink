@@ -24,7 +24,7 @@ class Selectable(Protocol):
 
 
 def loop(
-        *selectables: Iterable[Selectable],
+        *selectables: Selectable,
         context_manager: ContextManager = nullcontext(),
         selector: BaseSelector = DefaultSelector(),
         until: GenericTimestamp = None,
