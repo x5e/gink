@@ -181,11 +181,11 @@ class Database:
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         sync_message = self._store.get_chain_tracker().to_greeting_message()
-        new_connection: Connection = listener.accept(sync_message)
-        self._connections.add(new_connection)
-        self._logger.info("accepted incoming connection from %s", new_connection)
-        new_connection.on_ready = self._on_connection_ready
-        return [new_connection]
+        connection: Connection = listener.accept(sync_message)
+        connection.on_ready = lambda: self._on_connection_ready(connection)
+        self._connections.add(connection)
+        self._logger.info("accepted incoming connection from %s", connection)
+        return [connection]
 
     def start_listening(self, ip_addr="", port: Union[str, int] = "8080"):
         """ Listen for incoming connections on the given port.
@@ -194,7 +194,9 @@ class Database:
         """
         port = int(port)
         self._logger.info("starting to listen on %r:%r", ip_addr, port)
-        self._listeners.add(Listener(WebsocketConnection, ip_addr=ip_addr, port=port))
+        listener = Listener(WebsocketConnection, ip_addr=ip_addr, port=port)
+        listener.on_ready = lambda: self._on_listener_ready(listener)
+        self._listeners.add(listener)
         self._indicate_selectables_changed()
 
     def connect_to(self, target: str):
