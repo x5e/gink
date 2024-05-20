@@ -54,6 +54,7 @@ class WebsocketConnection(Connection):
             force_to_be_client = True
         connection_type = ConnectionType.CLIENT if force_to_be_client else ConnectionType.SERVER
         self._ws = WSConnection(connection_type=connection_type)
+        self._ws_closed = False
         self._buffered: bytes = b""
         self._ready = False
         self.auth_token = environ.get("GINK_AUTH_TOKEN")
@@ -80,6 +81,7 @@ class WebsocketConnection(Connection):
             raise Finished()
         data = self._socket.recv(4096 * 4096)
         if not data:
+            self._ws_closed = True
             raise Finished()
         self._ws.receive_data(data)
         for event in self._ws.events():
@@ -114,6 +116,7 @@ class WebsocketConnection(Connection):
                     self._socket.send(self._ws.send(event.response()))
                 except BrokenPipeError:
                     self._logger.warning("could not send websocket close ack")
+                self._ws_closed = True
                 raise Finished()
             elif isinstance(event, TextMessage):
                 self._logger.info('Text message received: %r', event.data)
@@ -161,9 +164,11 @@ class WebsocketConnection(Connection):
         if reason is not None:
             raise NotImplementedError()
         try:
-            self._socket.send(self._ws.send(CloseConnection(code=code)))
+            if not self._ws_closed:
+                self._socket.send(self._ws.send(CloseConnection(code=code)))
+                self._socket.shutdown(SHUT_WR)
+                self._ws_closed = True
             """
-            self._socket.shutdown(SHUT_WR)
             self._logger.debug("Sent connection close message, waiting for close ack.")
             while True:
                 ready = select([self._socket], [], [], 0.2)
