@@ -3,11 +3,11 @@
 
 # standard python modules
 from typing import Optional, Set, Union, Iterable, List, Callable
-from datetime import datetime, date, timedelta
 from threading import Lock
 from sys import stdout
 from logging import getLogger
 from re import fullmatch, IGNORECASE
+from socket import socketpair
 
 # builders
 from .builders import ContainerBuilder
@@ -27,7 +27,13 @@ from .attribution import Attribution
 from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
 from .bundle_wrapper import BundleWrapper
-from .utilities import generate_timestamp, experimental, get_identity, generate_medallion
+from .utilities import (
+    generate_timestamp,
+    experimental,
+    get_identity,
+    generate_medallion,
+    resolve_timestamp,
+)
 from .looping import Selectable
 
 class Database:
@@ -59,6 +65,13 @@ class Database:
         self._logger = getLogger(self.__class__.__name__)
         self._sent_but_not_acked = set()
         self._callbacks: List[Callable[[BundleInfo], None]] = list()
+        (self._socket_left, self._socket_rite) = socketpair()
+        self._indication_sent = False
+        if self._store.is_selectable():
+            self._indicate_selectables_changed()
+
+    def fileno(self) -> int:
+        return self._socket_rite.fileno()
 
     @experimental
     def add_callback(self, callback: Callable[[BundleInfo], None]):
@@ -103,38 +116,13 @@ class Database:
         """
         if timestamp is None:
             return generate_timestamp()
-        if isinstance(timestamp, str):
-            if fullmatch(r"-?\d+", timestamp):
-                timestamp = int(timestamp)
-            else:
-                timestamp = datetime.fromisoformat(timestamp)
-        if isinstance(timestamp, Muid):
-            muid_timestamp = timestamp.timestamp
-            if not isinstance(muid_timestamp, MuTimestamp):
-                raise ValueError("muid doesn't have a resolved timestamp")
-            return muid_timestamp
-        if isinstance(timestamp, timedelta):
-            return generate_timestamp() + int(timestamp.total_seconds() * 1e6)
-        if isinstance(timestamp, date):
-            timestamp = datetime(timestamp.year, timestamp.month, timestamp.day)
-        if isinstance(timestamp, datetime):
-            timestamp = timestamp.timestamp()
-        if isinstance(timestamp, (int, float)):
-            if 1671697316392367 < timestamp < 2147483648000000:
-                # appears to be a microsecond timestamp
-                return int(timestamp)
-            if 1671697630 < timestamp < 2147483648:
-                # appears to be seconds since epoch
-                return int(timestamp * 1e6)
         if isinstance(timestamp, int) and -1e6 < timestamp < 1e6:
             bundle_info = self._store.get_one(BundleInfo, int(timestamp))
             if bundle_info is None:
                 raise ValueError("don't have that many bundles")
             assert isinstance(bundle_info, BundleInfo)
             return bundle_info.timestamp
-        if isinstance(timestamp, float) and 1e6 > timestamp > -1e6:
-            return generate_timestamp() + int(1e6 * timestamp)
-        raise ValueError(f"don't know how to resolve {timestamp} into a timestamp")
+        return resolve_timestamp(timestamp)
 
     def _acquire_appendable_chain(self) -> BundleInfo:
         """ Either starts a chain or finds one to reuse, then returns the last link in it.
@@ -225,10 +213,13 @@ class Database:
         self._logger.debug("connection added")
         self._indicate_selectables_changed()
 
-    def _on_store_ready(self, store: AbstractStore):
-        store.refresh(self._on_bundle)
+    def _on_store_ready(self):
+        self._store.refresh(self._on_bundle)
 
     def on_ready(self, *_) -> Iterable[Selectable]:
+        if self._indication_sent:
+            self._socket_rite.recv(1)
+            self._indication_sent = False
         if self._store.is_selectable():
             self._store.on_ready = self._on_store_ready
             yield self._store
@@ -238,7 +229,9 @@ class Database:
             yield connection
 
     def _indicate_selectables_changed(self):
-        self._logger.warning("_indicate_selectables_changed not implemented")
+        if not self._indication_sent:
+            self._socket_left.send(b'0x01')
+            self._indication_sent = True
 
     def close(self):
         for connection in self._connections:
@@ -246,6 +239,8 @@ class Database:
         for listener in self._listeners:
             listener.close()
         self._store.close()
+        self._socket_left.close()
+        self._socket_rite.close()
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):
         """ Resets the database to a specific point in time.

@@ -17,21 +17,15 @@ class WsgiListener(Selectable):
     request_queue_size = 1024
 
     def __init__(self, app, ip_addr: str = "", port: int = 8081):
-        # app would be the equivalent of a Flask app, or other WSGI compatible application
-        app_args = getfullargspec(app).args
-        assert "environ" in app_args and "start_response" in app_args, "Application is not WSGI compatible"
         self._app = app
-
         self._socket = Socket(self.address_family, self.socket_type)
         self._fd = self._socket.fileno()
         self._logger = getLogger(self.__class__.__name__)
-
         self._socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self._socket.setblocking(False)
         self._socket.bind((ip_addr, port))
         self._socket.listen(self.request_queue_size)
         self._logger.info(f"Web server listening on interface: '{ip_addr}' port {port}")
-
         host, port = self._socket.getsockname()[:2]
         self._server_name = getfqdn(host)
         self._server_port = port

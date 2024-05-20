@@ -14,6 +14,7 @@ from ..impl.directory import Directory
 from ..impl.sequence import Sequence
 from ..impl.key_set import KeySet
 from ..impl.log_backed_store import LogBackedStore
+from ..impl.looping import loop
 
 
 def test_database():
@@ -123,11 +124,11 @@ def test_react_to_store_changes():
         root1a = Directory(arche=True, database=db1a)
         root1b = Directory(arche=True, database=db1b)
 
-        db1b.run(0.01)
+        loop(db1b, until=.01)
         bundle_infos = list()
         db1b.add_callback(lambda bi: bundle_infos.append(bi))
         root1a.set("foo", "bar", comment="abc")
-        db1b.run(0.01)
+        loop(db1b, until=.01)
         assert bundle_infos and bundle_infos[-1].comment == "abc"
         found = root1b.get("foo")
         assert found == "bar", found
