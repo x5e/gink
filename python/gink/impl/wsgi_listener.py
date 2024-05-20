@@ -4,7 +4,6 @@ The point of this class is to integrate within the Database select loop.
 """
 
 from socket import socket as Socket, SOL_SOCKET, SO_REUSEADDR, getfqdn, AF_INET, SOCK_STREAM
-from inspect import getfullargspec
 from logging import getLogger
 from typing import Iterable
 
@@ -41,3 +40,6 @@ class WsgiListener(Selectable):
             socket=socket,
             server_name=self._server_name,
             server_port=self._server_port)
+
+    def close(self):
+        self._socket.close()

@@ -4,18 +4,18 @@ and the endpoints will be reachable as expected.
 """
 import requests
 from flask import Flask
-from multiprocessing import Process
+from multiprocessing import Process, set_start_method
 
 from ..impl.wsgi_listener import WsgiListener
 from ..impl.looping import loop
 
+set_start_method("fork")  # flask can't be pickled
 
 def wsgi_app(_, start_response):
     status = '200 OK'
     headers = [('Content-type', 'text/html')]
     start_response(status, headers)
     return [b'<h1 id="test">Hello universe!</h1>']
-
 
 def test_wsgi_integration():
     flask_app = Flask(__name__)
