@@ -2,11 +2,12 @@
 This test ensures a wsgi webserver can be passed into a gink database
 and the endpoints will be reachable as expected.
 """
-from ..impl.database import Database
-from ..impl.memory_store import MemoryStore
 import requests
 from flask import Flask
 import multiprocessing
+
+from ..impl.wsgi_listener import WsgiListener
+from ..impl.looping import loop
 
 def test_wsgi_integration():
     multiprocessing.set_start_method("fork")
@@ -23,11 +24,11 @@ def test_wsgi_integration():
         start_response(status, headers)
         return [b'<h1 id="test">Hello universe!</h1>']
 
-    store = MemoryStore()
-    flask_db = Database(store=store, web_server=flask_app)
-    wsgi_db = Database(store=store, web_server=wsgi_app, web_server_addr=('localhost', 8082))
 
-    p = multiprocessing.Process(target=flask_db.run)
+    flask_wrapper = WsgiListener(flask_app, port=8081)
+    basic_wrapper = WsgiListener(wsgi_app, port=8082)
+
+    p = multiprocessing.Process(target=flask_wrapper.run)
     p.start()
     p2 = multiprocessing.Process(target=wsgi_db.run)
     p2.start()

@@ -16,7 +16,7 @@ class WsgiListener(Selectable):
     socket_type = SOCK_STREAM
     request_queue_size = 1024
 
-    def __init__(self, app, address: tuple = ('localhost', 8081)):
+    def __init__(self, app, ip_addr: str = "", port: int = 8081):
         # app would be the equivalent of a Flask app, or other WSGI compatible application
         app_args = getfullargspec(app).args
         assert "environ" in app_args and "start_response" in app_args, "Application is not WSGI compatible"
@@ -28,9 +28,9 @@ class WsgiListener(Selectable):
 
         self._socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self._socket.setblocking(False)
-        self._socket.bind(address)
+        self._socket.bind((ip_addr, port))
         self._socket.listen(self.request_queue_size)
-        self._logger.info(f"Web server listening on port {address[1]}")
+        self._logger.info(f"Web server listening on interface: '{ip_addr}' port {port}")
 
         host, port = self._socket.getsockname()[:2]
         self._server_name = getfqdn(host)
