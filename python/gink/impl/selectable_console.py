@@ -51,7 +51,7 @@ class SelectableConsole(InteractiveInterpreter):
         ioctl(self.fileno(), FIONREAD, self._c_int)  # type: ignore
         return self._c_int.value
 
-    def call_when_ready(self):
+    def on_ready(self):
         try:
             if self._interactive:
                 for _ in range(self._bytes_available()):
@@ -68,7 +68,7 @@ class SelectableConsole(InteractiveInterpreter):
         if result is True:
             self._logger.warning("multi-line input not yet implemented")
 
-    def refresh(self):
+    def on_timeout(self):
         if self._interactive:
             data = self._prompt + "".join(self._buffer)
             self._output.write("\r" + data + " ")

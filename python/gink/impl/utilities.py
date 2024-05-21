@@ -8,8 +8,10 @@ from functools import wraps
 from warnings import warn
 from random import randint
 from platform import system
+from datetime import datetime, date, timedelta
+from re import fullmatch, IGNORECASE
 
-from .typedefs import MuTimestamp, Medallion
+from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
 from .builders import ClaimBuilder
 
@@ -65,7 +67,6 @@ def experimental(thing):
                 DeprecationWarning, stacklevel=2,)
             warned[0] = True
         return thing(*a, **b)
-
     if the_class:
         the_class.__init__ = wrapped
         return the_class
@@ -85,3 +86,31 @@ def create_claim(chain: Chain) -> ClaimBuilder:
     claim_builder.chain_start = chain.chain_start
     claim_builder.process_id = getpid()
     return claim_builder
+
+def resolve_timestamp(timestamp: GenericTimestamp) -> MuTimestamp:
+    if isinstance(timestamp, str):
+        if fullmatch(r"-?\d+", timestamp):
+            timestamp = int(timestamp)
+        else:
+            timestamp = datetime.fromisoformat(timestamp)
+    if timestamp is not None and hasattr(timestamp, "timestamp"):
+        muid_timestamp = timestamp.timestamp
+        if not isinstance(muid_timestamp, MuTimestamp):
+            raise ValueError("timestamp.timestamp doesn't have a resolved timestamp")
+        return muid_timestamp
+    if isinstance(timestamp, timedelta):
+        return generate_timestamp() + int(timestamp.total_seconds() * 1e6)
+    if isinstance(timestamp, date):
+        timestamp = datetime(timestamp.year, timestamp.month, timestamp.day)
+    if isinstance(timestamp, datetime):
+        timestamp = timestamp.timestamp()
+    if isinstance(timestamp, (int, float)):
+        if 1671697316392367 < timestamp < 2147483648000000:
+            # appears to be a microsecond timestamp
+            return int(timestamp)
+        if 1671697630 < timestamp < 2147483648:
+            # appears to be seconds since epoch
+            return int(timestamp * 1e6)
+    if isinstance(timestamp, float) and 1e6 > timestamp > -1e6:
+        return generate_timestamp() + int(1e6 * timestamp)
+    raise ValueError(f"don't know how to resolve {timestamp} into a timestamp")

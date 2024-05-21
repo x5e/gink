@@ -1,5 +1,5 @@
 """ Contains the Peer class that manages a connection to another gink instance. """
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional, Union, Callable
 from socket import (
     socket as Socket,
     AF_INET,
@@ -20,12 +20,13 @@ class Connection(ABC):
         Eventually there will be two subclasses: one to manage websocket connections,
         and another subclass to manage raw socket connections.
     """
-
+    on_ready: Callable
     def __init__(
             self,
             host: Optional[str] = None,
             port: Optional[int] = None,
-            socket: Optional[Socket] = None
+            socket: Optional[Socket] = None,
+            greeting: Optional[SyncMessage] = None,
     ):
         if socket is None:
             assert host is not None and port is not None
@@ -37,6 +38,7 @@ class Connection(ABC):
         self._logger = getLogger(self.__class__.__name__)
         self._closed = False
         self._tracker: Optional[ChainTracker] = None
+        self._greeting = greeting
 
     def fileno(self):
         """ Return the file descriptor of the underlying socket.

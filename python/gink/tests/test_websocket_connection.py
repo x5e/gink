@@ -8,7 +8,7 @@ import os
 from ..impl.builders import SyncMessage
 from google.protobuf.text_format import Parse  # type: ignore
 
-from ..impl.websocket_connection import WebsocketConnection
+from ..impl.websocket_connection import WebsocketConnection, Finished
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -52,8 +52,11 @@ def test_chit_chat():
             assert incoming == message, incoming
 
     client.close()
-    for _ in server.receive():
-        raise Exception("not expected")
+    try:
+        for _ in server.receive():
+            raise Exception("not expected")
+    except Finished:
+        server.close()
 
     assert client.is_closed() and server.is_closed()
 
