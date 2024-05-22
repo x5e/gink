@@ -30,10 +30,12 @@ def loop(
         until: GenericTimestamp = None,
         ) -> None:
     selector = selector or DefaultSelector()
+    assert isinstance(selector, BaseSelector)
     registered: Set[Selectable] = set()
     until_muts = None if until is None else resolve_timestamp(until)
 
     def add(_selectables: Iterable[Optional[Selectable]]):
+        assert isinstance(selector, BaseSelector)
         for selectable in _selectables:
             if selectable and selectable not in registered:
                 selector.register(selectable, EVENT_READ)
