@@ -15,7 +15,6 @@ process.chdir(__dirname + "/..");
     );
     await client.expect(/hello/i);
 
-    await client.close();
     await server.close();
     console.log("finished!");
     process.exit(0);
