@@ -53,6 +53,8 @@ RUN ./integration-tests/py-ts-test.js
 RUN ./integration-tests/ts-py-test.js
 RUN ./integration-tests/chain-reuse-py-test.js lmdb
 RUN ./integration-tests/chain-reuse-py-test.js binlog
+RUN ./integration-tests/chain-reuse-py-test.js binlog
+RUN ./integration-tests/wsgi-test.js
 
 # JavaScript/TypeScript integration tests
 RUN ./integration-tests/node-client-test.js
