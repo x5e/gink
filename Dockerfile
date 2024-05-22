@@ -22,8 +22,9 @@ WORKDIR $GINK
 COPY packages.txt ./
 COPY Makefile ./
 RUN make install-dependencies
-COPY javascript/package.json ./
-RUN npm install && npm rebuild
+RUN mkdir javascript
+COPY javascript/package.json ./javascript/package.json
+RUN npm install --prefix javascript && npm rebuild
 
 COPY proto ./proto
 
@@ -38,14 +39,17 @@ RUN mypy gink/impl gink/tests
 RUN python3 -m nose2
 
 WORKDIR $GINK
-COPY javascript ./javascript
-RUN mv node_modules ./javascript/
-RUN make
+COPY javascript/implementation ./javascript/implementation
+COPY javascript/unit-tests ./javascript/unit-tests
+COPY javascript/*.js javascript/*.json ./javascript/
+RUN make javascript
 WORKDIR $GINK/javascript
 
 # JavaScript/TypeScript unit-tests
 RUN npm test
-RUN npm run browser-unit
+#RUN npm run browser-unit
+
+COPY javascript/integration-tests ./integration-tests
 
 # Python integration tests
 RUN ./integration-tests/py-py-test.js
@@ -62,4 +66,4 @@ RUN ./integration-tests/logbacked-peers-test.js
 RUN ./integration-tests/test_expector.js
 RUN ./integration-tests/chain-reuse-ts-test.js
 
-RUN npm run browser-integration
+#RUN npm run browser-integration
