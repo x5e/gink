@@ -10,6 +10,8 @@ from termios import FIONREAD
 from pathlib import Path
 from datetime import datetime as DateTime
 
+from .looping import Finished
+
 class SelectableConsole(InteractiveInterpreter):
 
     def __init__(self, locals, interactive: bool, heartbeat_to: Optional[Path]=None):
@@ -23,12 +25,11 @@ class SelectableConsole(InteractiveInterpreter):
         self._settings: Optional[list] = None
         self._prompt = "python+gink> "
         self._logger = getLogger(self.__class__.__name__)
-        self._ended = False
         self._c_int = c_int()
         self._heartbeat_to = open(heartbeat_to, "a") if heartbeat_to else None
 
-    def is_active(self) -> bool:
-        return not self._ended
+    def close(self):
+        pass
 
     def fileno(self) -> int:
       return self._input.fileno()
@@ -62,6 +63,8 @@ class SelectableConsole(InteractiveInterpreter):
             self.write("\nKeyboardInterrupt\n")
         except StopIteration:
             pass
+        except EOFError:
+            raise Finished()
 
     def on_line(self, line):
         result = self.runsource(line)

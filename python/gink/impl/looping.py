@@ -24,7 +24,7 @@ class Selectable(Protocol):
 
 
 def loop(
-        *selectables: Selectable,
+        *selectables: Optional[Selectable],
         context_manager: ContextManager = nullcontext(),
         selector: Optional[BaseSelector] = None,
         until: GenericTimestamp = None,
@@ -33,7 +33,7 @@ def loop(
     registered: Set[Selectable] = set()
     until_muts = None if until is None else resolve_timestamp(until)
 
-    def add(_selectables):
+    def add(_selectables: Iterable[Optional[Selectable]]):
         for selectable in _selectables:
             if selectable and selectable not in registered:
                 selector.register(selectable, EVENT_READ)
@@ -56,6 +56,8 @@ def loop(
                     selector.unregister(selectable)
                     selectable.close()
                     registered.remove(selectable)
+                    if selectable is context_manager:
+                        until_muts = 0
             else:
                 for selectable in registered:
                     if hasattr(selectable, "on_timeout"):

@@ -5,12 +5,15 @@ from sys import exit, stdin
 from re import fullmatch
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+from typing import Optional, Tuple, Union
+from importlib import import_module
 
 from . import *
 from .impl.builders import BundleBuilder
 from .impl.selectable_console import SelectableConsole
 from .impl.utilities import get_identity
 from .impl.looping import loop
+from .impl.wsgi_listener import WsgiListener
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
@@ -37,6 +40,8 @@ parser.add_argument("--interactive", action="store_true", help="force interactiv
 parser.add_argument("--heartbeat_to", type=Path, help="write on console refresh (for debugging)")
 parser.add_argument("--identity", help="explicitly set identity to be associated with changes")
 parser.add_argument("--starts", help="include starting bundles when showing log", action="store_true")
+parser.add_argument("--wsgi", help="serve module.function via wsgi")
+parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defaults to *:8081)")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -130,19 +135,34 @@ if args.log:
     database.close()
     exit(0)
 
-if args.listen_on:
-    ip_addr = "*"
-    port = "8080"
-    if args.listen_on is True:
+def parse_listen_on(listen_on: Union[str, None, bool], ip_addr = "*", port = "8080") -> Tuple[str, str]:
+    if listen_on is True or listen_on is None:
         pass
-    elif ":" in args.listen_on:
-        ip_addr, port = args.listen_on.split(":")
-    elif fullmatch(r"\d+", args.listen_on):
-        port = args.listen_on
+    elif ":" in listen_on:
+        ip_addr, port = listen_on.split(":")
+    elif fullmatch(r"\d+", listen_on):
+        port = listen_on
     else:
-        ip_addr = args.listen_on
+        ip_addr = listen_on
     if ip_addr == "*":
         ip_addr = ""
+    return (ip_addr, port)
+
+wsgi_listener: Optional[WsgiListener] = None
+if args.wsgi:
+    match = fullmatch(r"([\w.]+)\.(\w+)", args.wsgi)
+    if not match:
+        raise ValueError(f"need to specify module.function, got '{args.wsgi}'")
+    module, function = match.groups()
+    imported = import_module(module)
+    app = getattr(imported, function, None)
+    if not app:
+        raise ValueError(f"{function} not found in {module}")
+    ip_addr, port = parse_listen_on(args.wsgi_listen_on, "*", "8081")
+    wsgi_listener = WsgiListener(app, ip_addr=ip_addr, port=int(port))
+
+if args.listen_on:
+    ip_addr, port = parse_listen_on(args.listen_on, "*", "8080")
     database.start_listening(ip_addr=ip_addr, port=port)
 
 for target in (args.connect_to or []):
@@ -157,4 +177,4 @@ else:
 
 console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
 
-loop(console, database, context_manager=console)
+loop(console, database, wsgi_listener, context_manager=console)
