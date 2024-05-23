@@ -41,13 +41,14 @@ RUN python3 -m nose2
 WORKDIR $GINK
 COPY javascript/implementation ./javascript/implementation
 COPY javascript/unit-tests ./javascript/unit-tests
+COPY javascript/content_root ./javascript/content_root
 COPY javascript/*.js javascript/*.json ./javascript/
 RUN make javascript
 WORKDIR $GINK/javascript
 
 # JavaScript/TypeScript unit-tests
 RUN npm test
-#RUN npm run browser-unit
+RUN npm run browser-unit
 
 COPY javascript/integration-tests ./integration-tests
 
@@ -65,5 +66,4 @@ RUN ./integration-tests/routing-server-test.js
 RUN ./integration-tests/logbacked-peers-test.js
 RUN ./integration-tests/test_expector.js
 RUN ./integration-tests/chain-reuse-ts-test.js
-
-#RUN npm run browser-integration
+RUN npm run browser-integration
