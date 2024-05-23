@@ -1,7 +1,7 @@
 FROM debian:latest
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update --fix-missing && apt-get upgrade -y
-RUN apt-get install -y make unzip
+RUN apt-get install -y make unzip curl
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
 ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
@@ -52,6 +52,8 @@ RUN ./integration-tests/py-ts-test.js
 RUN ./integration-tests/ts-py-test.js
 RUN ./integration-tests/chain-reuse-py-test.js lmdb
 RUN ./integration-tests/chain-reuse-py-test.js binlog
+RUN ./integration-tests/chain-reuse-py-test.js binlog
+RUN ./integration-tests/wsgi-test.js
 
 # JavaScript/TypeScript integration tests
 RUN ./integration-tests/node-client-test.js

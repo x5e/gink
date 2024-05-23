@@ -19,8 +19,15 @@ module.exports = class Expector {
         this.proc.stdout.on('data', appender);
         this.proc.stderr.on('data', appender);
         this.proc.on('error', (e) => {
-            console.log(e);
-            this.proc.close();
+            try {
+                // If the spawn errors, this.proc will not have a close method
+                this.proc.close();
+            } catch {
+                console.log(`${program} doesn't exist?`);
+            }
+            finally {
+                console.log(e);
+            }
         });
     }
 
