@@ -61,6 +61,7 @@ RUN ./integration-tests/authentication-test.js
 RUN ./integration-tests/routing-server-test.js
 RUN ./integration-tests/logbacked-peers-test.js
 RUN ./integration-tests/test_expector.js
+RUN ./integration-tests/test_spawn.js
 RUN ./integration-tests/chain-reuse-ts-test.js
 
 RUN npm run browser-integration
