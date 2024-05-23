@@ -64,7 +64,7 @@ class Database:
         self._identity = identity
         self._logger = getLogger(self.__class__.__name__)
         self._sent_but_not_acked = set()
-        self._callbacks: List[Callable[[BundleInfo], None]] = list()
+        self._callbacks: List[Callable[[BundleWrapper], None]] = list()
         (self._socket_left, self._socket_rite) = socketpair()
         self._indication_sent = False
         if self._store.is_selectable():
@@ -74,7 +74,7 @@ class Database:
         return self._socket_rite.fileno()
 
     @experimental
-    def add_callback(self, callback: Callable[[BundleInfo], None]):
+    def add_callback(self, callback: Callable[[BundleWrapper], None]):
         self._callbacks.append(callback)
 
     @staticmethod
@@ -165,7 +165,7 @@ class Database:
         for peer in self._connections:
             peer.send_bundle(bundle_wrapper)
         for callback in self._callbacks:
-            callback(bundle_wrapper.get_info())
+            callback(bundle_wrapper)
 
     def _on_connection_ready(self, connection: Connection) -> None:
         with self._lock:
