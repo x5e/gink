@@ -22,8 +22,8 @@ WORKDIR $GINK
 COPY packages.txt ./
 COPY Makefile ./
 RUN make install-dependencies
-COPY javascript/package.json ./
-RUN npm install && npm rebuild
+COPY javascript/package*.json ./
+RUN npm ci && npm rebuild
 
 COPY proto ./proto
 
@@ -39,7 +39,6 @@ RUN python3 -m nose2
 
 WORKDIR $GINK
 COPY javascript ./javascript
-RUN mv node_modules ./javascript/
 RUN make
 WORKDIR $GINK/javascript
 
