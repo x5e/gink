@@ -4,7 +4,7 @@ PYTHON_CODE=$(wildcard python/*.py python/gink/impl/*.py python/gink/tests/*.py 
 
 all: python/gink/builders javascript/proto javascript/tsc.out javascript/content_root/generated
 
-.PHONY: clean running-as-root install-dependencies install-debian-packages
+.PHONY: clean running-as-root install-dependencies install-debian-packages javascript
 
 clean:
 	rm -rf javascript/proto javascript/content_root/generated javascript/tsc.out python/gink/builders

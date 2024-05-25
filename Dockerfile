@@ -1,23 +1,17 @@
-FROM debian:latest
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update --fix-missing && apt-get upgrade -y
-RUN apt-get install -y make unzip curl
+FROM darinmcgill/base
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
 ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 
-RUN apt-get update && apt-get install -y chromium
 ENV CHROME_BIN=/usr/bin/chromium
 
 ENV GINK=/opt/gink
 RUN mkdir -p $GINK
 WORKDIR $GINK
-COPY packages.txt ./
-COPY Makefile ./
-RUN make install-dependencies
+
 COPY javascript/package*.json ./
 RUN npm ci && npm rebuild
-
+COPY Makefile ./
 COPY proto ./proto
 
 COPY python ./python
@@ -32,7 +26,7 @@ RUN python3 -m nose2
 
 WORKDIR $GINK
 COPY javascript ./javascript
-RUN make
+RUN make javascript
 WORKDIR $GINK/javascript
 
 # JavaScript/TypeScript unit-tests
