@@ -9,3 +9,6 @@ python3-sortedcontainers
 python3-lmdb
 python3-protobuf
 make
+chromium
+unzip
+curl

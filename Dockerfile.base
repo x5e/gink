@@ -1,0 +1,6 @@
+FROM debian:latest
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update --fix-missing && apt-get upgrade -y
+COPY packages.txt ./
+RUN apt-get install -y `cat packages.txt | tr '\n' ' '`
+RUN npm install -g protoc-gen-js

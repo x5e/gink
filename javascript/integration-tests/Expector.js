@@ -18,16 +18,9 @@ module.exports = class Expector {
         const appender = this.notify.bind(this);
         this.proc.stdout.on('data', appender);
         this.proc.stderr.on('data', appender);
-        this.proc.on('error', (e) => {
-            try {
-                // If the spawn errors, this.proc will not have a close method
-                this.proc.close();
-            } catch {
-                console.log(`${program} doesn't exist?`);
-            }
-            finally {
-                console.log(e);
-            }
+        this.spawned = new Promise((resolve, reject) => {
+            this.proc.on('error', (e) => reject(`spawn error ${e}`));
+            this.proc.on('spawn', () => resolve());
         });
     }
 
@@ -60,6 +53,7 @@ module.exports = class Expector {
     * but reject the promise if timeout happens before the expected string appears.
     */
     async expect(what, timeout = 1000) {
+        await this.spawned;
         this.expecting = what;
         const thisExpector = this;
         const returning = new Promise((resolve, reject) => {
@@ -87,6 +81,7 @@ module.exports = class Expector {
     * TODO(https://github.com/google/gink/issues/30): kill decendants
     */
     async close(timeout = 1000) {
+        await this.spawned;
         //TODO: detect when the underlying process has already exited so we don't reject on timeout
         const thisExpector = this;
         const returning = new Promise((resolve, reject) => {
