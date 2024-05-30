@@ -8,14 +8,14 @@ process.chdir(__dirname + "/..");
         "python3",
         ["-u", "-m", "gink", "-l", "*:8086"]
     );
-    await server.expect("listen");
+    await server.expect("listen", 2000);
 
     const client = new Expector(
         "python3",
         ["-u", "-m", "gink", "-c", "ws://localhost:8086"]
     );
-    await client.expect("connect");
-    await server.expect("accepted");
+    await client.expect("connect", 2000);
+    await server.expect("accepted", 2000);
 
     server.send("Directory(arche=True).set(3,4);\n");
     await server.expect("Muid", 1000);
