@@ -18,7 +18,7 @@ process.chdir(__dirname + "/..");
         "python3",
         ["-u", "-m", "gink", TEST_DB_PATH, "--format", format,
             "--identity", "abc", "--set", "foo", "<<<", "bar"],
-        { shell: "/usr/bin/bash" }
+        // { shell: "/usr/bin/bash" }
     );
 
     if (result1.status != 0) {
@@ -30,7 +30,7 @@ process.chdir(__dirname + "/..");
         "python3",
         ["-u", "-m", "gink", TEST_DB_PATH, "--format", format,
             "--identity", "abc", "--set", "bar", "<<<", "baz"],
-        { shell: "/usr/bin/bash" }
+        // { shell: "/usr/bin/bash" }
     );
 
     if (result2.status != 0) {
@@ -42,7 +42,7 @@ process.chdir(__dirname + "/..");
         "python3",
         ["-u", "-m", "gink", TEST_DB_PATH, "--format", format,
             "--identity", "xyz", "--set", "xxx", "<<<", "zzz"],
-        { shell: "/usr/bin/bash" }
+        // { shell: "/usr/bin/bash" }
     );
 
     if (result3.status != 0) {
@@ -53,7 +53,7 @@ process.chdir(__dirname + "/..");
     const result4 = spawnSync(
         "/usr/bin/bash", ["-c",
         `"python3 -m gink ${TEST_DB_PATH} --log --format ${format} | cut -b 1-13 | sort -u | wc -l "`],
-        { shell: "/usr/bin/bash" }
+        // { shell: "/usr/bin/bash" }
     );
 
 
