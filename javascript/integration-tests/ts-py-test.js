@@ -7,7 +7,7 @@ process.chdir(__dirname + "/..");
     const python = new Expector(
         "python3",
         ["-u", "-m", "gink", "-l", "*:8085"]);
-    await python.expect("listen");
+    await python.expect("listen", 2000);
     await sleep(500);
 
     const client = new Expector("node", ["./tsc.out/implementation/main.js", "ws://0.0.0.0:8085"],

@@ -10,7 +10,7 @@ process.chdir(__dirname + "/..");
         server = new Expector("./tsc.out/implementation/main.js", [],
             { env: { GINK_PORT: "8080", GINK_DATA_ROOT: "/tmp/routing-server-test", ...process.env } });
 
-        await server.expect("RoutingServer ready");
+        await server.expect("RoutingServer ready", 2000);
     }
 
     // This test ensures that it can connect to two different paths and write data

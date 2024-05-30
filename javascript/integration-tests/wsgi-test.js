@@ -7,13 +7,13 @@ process.chdir(__dirname + "/..");
         "python3",
         ["-u", "-m", "gink", "--wsgi", "examples.wsgi.hello"]
     );
-    await server.expect("listening");
+    await server.expect("listening", 2000);
 
     const client = new Expector(
         "curl",
         ["http://localhost:8081", "-s"]
     );
-    await client.expect(/hello/i);
+    await client.expect(/hello/i, 2000);
 
     await server.close();
     console.log("finished!");
