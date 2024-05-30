@@ -8,7 +8,7 @@ process.chdir(__dirname + "/..");
     let server;
     if (!process.env["GINK_DEBUG"]) {
         server = new Expector("./tsc.out/implementation/main.js", [],
-            { env: { GINK_PORT: "8080", GINK_DATA_ROOT: "/tmp/routing-server-test", ...process.env } });
+            { env: { GINK_PORT: "8088", GINK_DATA_ROOT: "/tmp/routing-server-test", ...process.env } });
 
         await server.expect("RoutingServer ready", 2000);
     }
@@ -18,7 +18,7 @@ process.chdir(__dirname + "/..");
 
     const firstAbcStore = new IndexedDbStore("firstAbc");
     const firstAbcInstance = new Database(firstAbcStore, undefined, (msg) => console.log('firstAbc: ' + msg));
-    const firstAbcPeer = await firstAbcInstance.connectTo("ws://127.0.0.1:8080/abc");
+    const firstAbcPeer = await firstAbcInstance.connectTo("ws://127.0.0.1:8088/abc");
     const firstAbcDir = firstAbcInstance.getGlobalDirectory();
     const change = await firstAbcDir.set("abc", 123, "firstAbc");
     const valueAfterSet = await firstAbcDir.get("abc");
@@ -27,7 +27,7 @@ process.chdir(__dirname + "/..");
     await firstAbcInstance.close();
 
     const firstXyzInstance = new Database(new IndexedDbStore("firstXyz"), "firstXyz@identity", (msg) => console.log('firstXyz: ' + msg));
-    const firstXyzPeer = await firstXyzInstance.connectTo("ws://127.0.0.1:8080/xyz");
+    const firstXyzPeer = await firstXyzInstance.connectTo("ws://127.0.0.1:8088/xyz");
     const firstXyzDir = firstXyzInstance.getGlobalDirectory();
     console.log(await firstXyzInstance.store.getClaimedChains());
     const xyzChange = await firstXyzDir.set("xyz", 789, "firstXyz");
@@ -35,7 +35,7 @@ process.chdir(__dirname + "/..");
     await firstXyzInstance.close();
 
     const secondAbcInstance = new Database(new IndexedDbStore("secondAbc"), undefined, (msg) => console.log('secondAbc: ' + msg));
-    await secondAbcInstance.connectTo("ws://127.0.0.1:8080/abc");
+    await secondAbcInstance.connectTo("ws://127.0.0.1:8088/abc");
     // TODO: Add a way to ask to wait until instances are caught up with each other.
     await new Promise((resolve) => setTimeout(resolve, 100));
     const secondAbcDir = secondAbcInstance.getGlobalDirectory();
@@ -47,7 +47,7 @@ process.chdir(__dirname + "/..");
 
     const secondXyzStore = new IndexedDbStore("secondXyz");
     const secondXyzInstance = new Database(secondXyzStore, "secondXyz@identity", (msg) => console.log('secondXyz: ' + msg));
-    await secondXyzInstance.connectTo("ws://127.0.0.1:8080/xyz");
+    await secondXyzInstance.connectTo("ws://127.0.0.1:8088/xyz");
     await new Promise((resolve) => setTimeout(resolve, 100));
     const secondXyzDir = secondXyzInstance.getGlobalDirectory();
     const v3 = await secondXyzDir.get("abc");
