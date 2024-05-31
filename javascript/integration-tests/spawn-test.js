@@ -1,4 +1,4 @@
-#!/usr/bin/node --unhandled-rejections=strict
+#!/usr/bin/env -S node --unhandled-rejections=strict
 
 const Expector = require("./Expector");
 (async () => {
@@ -11,7 +11,7 @@ const Expector = require("./Expector");
     process.exit(0);
 }).then(
     () => {
-        console.error("did not want this to succeed!")
-        process.exit(1)
+        console.error("did not want this to succeed!");
+        process.exit(1);
     }
 );
