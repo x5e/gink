@@ -32,6 +32,8 @@ jobs:
       run: cd ../python && nose2
     - name: Run JS unit tests
       run: npm run test
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
     - name: Run JS integration tests
       run: ./integration-tests/run_integration_tests.sh
     - name: Run JS browser unit tests
