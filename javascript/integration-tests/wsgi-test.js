@@ -6,14 +6,14 @@ process.chdir(__dirname + "/..");
     console.log("starting");
     const server = new Expector(
         "python3",
-        ["-u", "-m", "gink", "--wsgi", "examples.wsgi.hello"]
+        ["-u", "-m", "gink", "--wsgi", "examples.wsgi.hello", "--wsgi_listen_on", "*:8091"]
     );
     await server.expect("listening", 2000);
     await sleep(500);
 
     const client = new Expector(
         "curl",
-        ["http://0.0.0.0:8081", "-s"]
+        ["http://0.0.0.0:8091", "-s"]
     );
     await client.expect(/hello/i, 2000);
 
