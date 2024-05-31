@@ -14,7 +14,6 @@ process.chdir(__dirname + "/..");
             fs.unlinkSync(TEST_DB_PATH);
         }
 
-        // const format = process.argv.length >= 3 ? process.argv[2] : "lmdb";
         console.log(`using format=${format}`);
 
         const result1 = spawnSync(
@@ -63,9 +62,10 @@ process.chdir(__dirname + "/..");
         const found = result4.stdout.toString();
         if (found.match(/^2\s*$/)) {
             console.log("success!");
+        } else {
+            console.error(`found=>${found}<=`);
+            process.exit(1);
         }
-        console.error(`found=>${found}<=`);
-        process.exit(1);
     }
 })().catch((reason) => { console.error(reason); process.exit(1); });
 process.exit(0);

@@ -10,6 +10,7 @@ from random import randint
 from platform import system
 from datetime import datetime, date, timedelta
 from re import fullmatch, IGNORECASE
+from psutil import pid_exists
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
@@ -74,9 +75,8 @@ def experimental(thing):
         return wrapped
 
 def is_certainly_gone(process_id: int) -> bool:
-    if system() == 'Linux' and exists("/proc") and not exists("/proc/%s" % process_id):
+    if not pid_exists(process_id):
         return True
-    # TODO(https://github.com/x5e/gink/issues/203) figure out a solution for macos
     return False
 
 def create_claim(chain: Chain) -> ClaimBuilder:
