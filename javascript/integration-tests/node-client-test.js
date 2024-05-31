@@ -17,8 +17,8 @@ process.chdir(__dirname + "/..");
     await server.expect(/received bundle:.*world/);
 
     console.log("closing...");
-    server.close();
-    client.close();
+    await server.close();
+    await client.close();
     console.log("ok!");
     process.exit(0);
 })().catch((reason) => { console.error(reason); process.exit(1); });
