@@ -2,14 +2,18 @@
 from typing import *
 from abc import ABC, abstractmethod
 
+from pathlib import Path
 from .bundle_wrapper import BundleWrapper
 from .tuples import Chain
 from .typedefs import Limit
 from .chain_tracker import ChainTracker
 from .bundle_wrapper import BundleWrapper
+from .watcher import Watcher
 
 class BundleStore(ABC):
     """ Abstract base class for the data store that would serve up data for multiple users. """
+
+    on_ready: Callable  # needs to by dynamically assigned
 
     @abstractmethod
     def apply_bundle(
@@ -50,3 +54,34 @@ class BundleStore(ABC):
     @abstractmethod
     def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
         """Returns a tracker showing what this store has at the time this function is called."""
+
+    @abstractmethod
+    def _get_file_path(self) -> Optional[Path]:
+        """ Return the underlying file name, or None if the store isn't file backed.
+        """
+
+    @abstractmethod
+    def close(self):
+        """ free resources """
+
+    def is_selectable(self) -> bool:
+        return self._get_watcher() is not None
+
+    def _get_watcher(self) -> Optional[Watcher]:
+        if not Watcher.supported():
+            return None
+        file_path = self._get_file_path()
+        if file_path is None:
+            return None
+        if not hasattr(self, "_watcher"):
+            setattr(self, "_watcher", Watcher(file_path))
+        return getattr(self, "_watcher")
+
+    def fileno(self) -> int:
+        watcher = self._get_watcher()
+        assert watcher is not None
+        return watcher.fileno()
+
+    def _clear_notifications(self):
+        if hasattr(self, "_watcher"):
+            self._watcher.clear()

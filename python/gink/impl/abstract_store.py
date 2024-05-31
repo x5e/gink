@@ -4,7 +4,6 @@
 from typing import Tuple, Optional, Iterable, List, Union, Mapping, TypeVar, Generic, Callable
 from abc import abstractmethod
 
-from pathlib import Path
 
 # Gink specific modules
 from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder, ClaimBuilder
@@ -15,7 +14,6 @@ from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_wrapper import BundleWrapper
 from .utilities import is_certainly_gone
-from .watcher import Watcher
 from .bundle_store import BundleStore
 Lock = TypeVar('Lock')
 
@@ -29,40 +27,12 @@ class AbstractStore(BundleStore, Generic[Lock]):
         Warning! Since data stores are viewed as part of the internal implementation,
         this interface may change at any time without warning on a minor version change.
     """
-    on_ready: Callable  # needs to by dynamically assigned
 
     def __enter__(self):
         pass
 
     def __exit__(self, *_):
         self.close()
-
-    @abstractmethod
-    def _get_file_path(self) -> Optional[Path]:
-        """ Return the underlying file name, or None if the store isn't file backed.
-        """
-
-    def is_selectable(self) -> bool:
-        return self._get_watcher() is not None
-
-    def _get_watcher(self) -> Optional[Watcher]:
-        if not Watcher.supported():
-            return None
-        file_path = self._get_file_path()
-        if file_path is None:
-            return None
-        if not hasattr(self, "_watcher"):
-            setattr(self, "_watcher", Watcher(file_path))
-        return getattr(self, "_watcher")
-
-    def fileno(self) -> int:
-        watcher = self._get_watcher()
-        assert watcher is not None
-        return watcher.fileno()
-
-    def _clear_notifications(self):
-        if hasattr(self, "_watcher"):
-            self._watcher.clear()
 
     @abstractmethod
     def get_container(self, container: Muid) -> Optional[ContainerBuilder]:

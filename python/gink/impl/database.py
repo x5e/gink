@@ -2,12 +2,10 @@
 """ contains the Database class """
 
 # standard python modules
-from typing import Optional, Set, Union, Iterable, List, Callable
-from threading import Lock
+from typing import Optional, Union, Iterable, List
 from sys import stdout
 from logging import getLogger
-from re import fullmatch, IGNORECASE
-from socket import socketpair
+
 
 # builders
 from .builders import ContainerBuilder
@@ -18,14 +16,8 @@ from .bundler import Bundler
 from .bundle_info import BundleInfo
 from .typedefs import Medallion, MuTimestamp, GenericTimestamp, EPOCH
 from .tuples import Chain
-from .connection import Connection
-from .websocket_connection import WebsocketConnection
-from .listener import Listener
 from .muid import Muid
-from .chain_tracker import ChainTracker
 from .attribution import Attribution
-from .lmdb_store import LmdbStore
-from .memory_store import MemoryStore
 from .bundle_wrapper import BundleWrapper
 from .utilities import (
     generate_timestamp,
@@ -34,48 +26,27 @@ from .utilities import (
     generate_medallion,
     resolve_timestamp,
 )
-from .looping import Selectable, Finished
+from .relay import Relay
 
-class Database:
+class Database(Relay):
     """ A class that mediates user interaction with a datastore and peers. """
     _chain: Optional[Chain]
-    _lock: Lock
     _last_time: Optional[MuTimestamp]
     _store: AbstractStore
-    _connections: Set[Connection]
-    _listeners: Set[Listener]
-    _sent_but_not_acked: Set[BundleInfo]
     _last_link: Optional[BundleInfo]
     _container_types: dict = {}
 
     def __init__(self, store: Union[AbstractStore, str, None] = None, identity = get_identity()):
+        super().__init__(store=store)
         setattr(Database, "_last", self)
-        if isinstance(store, str):
-            store = LmdbStore(store)
-        if isinstance(store, type(None)):
-            store = MemoryStore()
-        assert isinstance(store, AbstractStore)
-        self._store = store
         self._last_link = None
-        self._lock = Lock()
         self._last_time = None
-        self._connections = set()
-        self._listeners = set()
         self._identity = identity
         self._logger = getLogger(self.__class__.__name__)
-        self._sent_but_not_acked = set()
-        self._callbacks: List[Callable[[BundleWrapper], None]] = list()
-        (self._socket_left, self._socket_rite) = socketpair()
-        self._indication_sent = False
-        if self._store.is_selectable():
-            self._indicate_selectables_changed()
 
-    def fileno(self) -> int:
-        return self._socket_rite.fileno()
-
-    @experimental
-    def add_callback(self, callback: Callable[[BundleWrapper], None]):
-        self._callbacks.append(callback)
+    def get_store(self) -> AbstractStore:
+        """ returns the store managed by this database """
+        return self._store
 
     @staticmethod
     def get_last():
@@ -88,10 +59,6 @@ class Database:
         assert hasattr(container_cls, "BEHAVIOR")
         behavior = getattr(container_cls, "BEHAVIOR")
         cls._container_types[behavior] = container_cls
-
-    def get_store(self) -> AbstractStore:
-        """ returns the store managed by this database """
-        return self._store
 
     @experimental
     def get_chain(self) -> Optional[Chain]:
@@ -158,96 +125,6 @@ class Database:
             self._last_link = info
             self._logger.debug("locally committed bundle: %r", info)
             return info
-
-    def _on_bundle(self, bundle_wrapper: BundleWrapper) -> None:
-        """ Sends a bundle either created locally or received from a peer to other peers.
-        """
-        for peer in self._connections:
-            peer.send_bundle(bundle_wrapper)
-        for callback in self._callbacks:
-            callback(bundle_wrapper)
-
-    def _on_connection_ready(self, connection: Connection) -> None:
-        with self._lock:
-            try:
-                for thing in connection.receive_objects():
-                    if isinstance(thing, BundleWrapper):  # some data
-                        self._store.apply_bundle(thing, self._on_bundle)
-                    elif isinstance(thing, ChainTracker):  # greeting message
-                        self._store.get_bundles(connection.send_bundle, peer_has=thing)
-                    elif isinstance(thing, BundleInfo):  # an ack:
-                        self._sent_but_not_acked.discard(thing)
-                    else:
-                        raise AssertionError("unexpected object")
-            except Finished:
-                self._connections.remove(connection)
-                raise
-
-    def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
-        sync_message = self._store.get_chain_tracker().to_greeting_message()
-        connection: Connection = listener.accept(sync_message)
-        connection.on_ready = lambda: self._on_connection_ready(connection)
-        self._connections.add(connection)
-        self._logger.info("accepted incoming connection from %s", connection)
-        return [connection]
-
-    def start_listening(self, ip_addr="", port: Union[str, int] = "8080"):
-        """ Listen for incoming connections on the given port.
-
-            Note that you'll still need to call "run" to actually accept those connections.
-        """
-        port = int(port)
-        self._logger.info("starting to listen on %r:%r", ip_addr, port)
-        listener = Listener(WebsocketConnection, ip_addr=ip_addr, port=port)
-        listener.on_ready = lambda: self._on_listener_ready(listener)
-        self._listeners.add(listener)
-        self._indicate_selectables_changed()
-
-    def connect_to(self, target: str):
-        """ initiate a connection to another gink instance """
-        self._logger.info("initating connection to %s", target)
-        match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
-        assert match, f"can't connect to: {target}"
-        prefix, host, port, path = match.groups()
-        if prefix and prefix != "ws://":
-            raise NotImplementedError("only vanilla websockets currently supported")
-        port = port or "8080"
-        path = path or "/"
-        greeting = self._store.get_chain_tracker().to_greeting_message()
-        connection = WebsocketConnection(host=host, port=int(port), path=path, greeting=greeting)
-        connection.on_ready = lambda: self._on_connection_ready(connection)
-        self._connections.add(connection)
-        self._logger.debug("connection added")
-        self._indicate_selectables_changed()
-
-    def _on_store_ready(self):
-        self._store.refresh(self._on_bundle)
-
-    def on_ready(self) -> Iterable[Selectable]:
-        if self._indication_sent:
-            self._socket_rite.recv(1)
-            self._indication_sent = False
-        if self._store.is_selectable():
-            self._store.on_ready = self._on_store_ready
-            yield self._store
-        for listener in self._listeners:
-            yield listener
-        for connection in self._connections:
-            yield connection
-
-    def _indicate_selectables_changed(self):
-        if not self._indication_sent:
-            self._socket_left.send(b'0x01')
-            self._indication_sent = True
-
-    def close(self):
-        for connection in self._connections:
-            connection.close()
-        for listener in self._listeners:
-            listener.close()
-        self._store.close()
-        self._socket_left.close()
-        self._socket_rite.close()
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):
         """ Resets the database to a specific point in time.
