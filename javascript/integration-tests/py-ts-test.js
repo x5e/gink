@@ -6,7 +6,7 @@ process.chdir(__dirname + "/..");
 (async () => {
     console.log("starting");
     const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: "8087", ...process.env } });
-    await server.expect("ready");
+    await server.expect("ready", 2000);
 
     const client = new Expector(
         "python3",
