@@ -1,15 +1,13 @@
 from time import time as get_time, sleep
 from math import floor
 from os import getuid, getpid
-from os.path import exists
 from socket import gethostname
 from pwd import getpwuid
 from functools import wraps
 from warnings import warn
 from random import randint
-from platform import system
 from datetime import datetime, date, timedelta
-from re import fullmatch, IGNORECASE
+from re import fullmatch
 from psutil import pid_exists
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp

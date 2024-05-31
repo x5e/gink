@@ -59,11 +59,11 @@ process.chdir(__dirname + "/..");
             throw Error(`invocation 4 failed ${result4.stderr}`);
         }
 
-        const found = result4.stdout.toString();
-        if (found.match(/^2\s*$/)) {
+        const found = result4.stdout.toString().trim();
+        if (found == "2") {
             console.log("success!");
         } else {
-            console.error(`found=>${found}<=`);
+            console.error(`failure. found =>${found}<= chains.`);
             process.exit(1);
         }
     }
