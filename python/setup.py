@@ -29,7 +29,7 @@ setup(
         "psutil"
     ],
     extras_require={
-        "test": ["nose2", "Flask", "requests"],
+        "test": ["nose2", "flask", "requests"],
         "lint": ["mypy==0.812"],
         "performance": ["matplotlib"],
         "docs": [

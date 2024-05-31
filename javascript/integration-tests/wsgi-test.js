@@ -13,7 +13,7 @@ process.chdir(__dirname + "/..");
 
     const client = new Expector(
         "curl",
-        ["http://localhost:8081", "-s"]
+        ["http://0.0.0.0:8081", "-s"]
     );
     await client.expect(/hello/i, 2000);
 
