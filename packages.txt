@@ -8,6 +8,7 @@ python3-wsproto
 python3-sortedcontainers
 python3-lmdb
 python3-protobuf
+python3-psutil
 make
 chromium
 unzip
