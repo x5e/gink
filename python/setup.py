@@ -26,9 +26,10 @@ setup(
         "sortedcontainers",
         "lmdb",
         "protobuf<=3.20.3",
+        "psutil"
     ],
     extras_require={
-        "test": ["nose2", "Flask", "requests"],
+        "test": ["nose2", "flask", "requests"],
         "lint": ["mypy==0.812"],
         "performance": ["matplotlib"],
         "docs": [
