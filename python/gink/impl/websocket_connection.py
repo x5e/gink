@@ -40,7 +40,7 @@ class WebsocketConnection(Connection):
     PROTOCOL = "gink"
     on_ready: Callable
     def __init__(
-            self,
+            self, *,
             host: Optional[str] = None,
             port: Optional[int] = None,
             socket: Optional[Socket] = None,
@@ -50,7 +50,7 @@ class WebsocketConnection(Connection):
             auth_func: Optional[AuthFunc] = None,
             auth_data: Optional[str] = None,
     ):
-        Connection.__init__(self, socket=socket, host=host, port=port, greeting=greeting)
+        Connection.__init__(self, socket=socket, host=host, port=port, greeting=greeting, auth_func=auth_func)
         if socket is None:
             force_to_be_client = True
         connection_type = ConnectionType.CLIENT if force_to_be_client else ConnectionType.SERVER
