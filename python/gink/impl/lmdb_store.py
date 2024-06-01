@@ -38,6 +38,7 @@ class LmdbStore(AbstractStore):
             reset=False,
             retain_bundles=True,
             retain_entries=True,
+            apply_changes=True,
             map_size: int=2**30) -> None:
         """ Opens a gink.mdb file for use as a Store.
 
@@ -50,6 +51,7 @@ class LmdbStore(AbstractStore):
         """
         self._logger = getLogger(self.__class__.__name__)
         self._temporary = False
+        self._apply_changes = apply_changes
         if file_path is None:
             prefix = "/tmp/temp."
             if exists("/dev/shm"):
@@ -772,6 +774,8 @@ class LmdbStore(AbstractStore):
                 if new_info.chain_start == new_info.timestamp:
                     trxn.put(bytes(chain_key), new_info.comment.encode())
                 for offset, change in change_items:
+                    if not self._apply_changes:
+                        break
                     try:
                         if change.HasField("container"):
                             trxn.put(bytes(Muid(new_info.timestamp, new_info.medallion, offset)),

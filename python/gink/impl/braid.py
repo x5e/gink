@@ -1,4 +1,4 @@
-""" Contains the `Property` Container class. """
+""" Contains the `Braid` Container class, which is primarily intended for internal use in the braid server. """
 from __future__ import annotations
 from typing import Optional, Dict, Tuple, Iterable, Union
 

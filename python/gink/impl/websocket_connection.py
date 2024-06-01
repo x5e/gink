@@ -6,8 +6,6 @@ from socket import (
     socket as Socket,
     SHUT_WR, SHUT_RDWR
 )
-from select import select
-from os import environ
 
 from .utilities import decodeFromHex, encodeToHex
 
@@ -30,13 +28,14 @@ from .builders import SyncMessage
 # gink modules
 from .connection import Connection
 from .looping import Finished
+from .typedefs import AuthFunc, AUTH_BOTH
 
 
 class WebsocketConnection(Connection):
     """ Manages the connection to one peer via a websocket.
 
-        Set is_client to indicate that the provided socket is a client connection.
-        If there's no socket provided then one will be established, and is_client is implied.
+        Set force_to_be_client to indicate that the provided socket is a client connection.
+        If there's no socket provided then one will be established, and force_to_be_client is implied.
     """
     PROTOCOL = "gink"
     on_ready: Callable
@@ -47,7 +46,9 @@ class WebsocketConnection(Connection):
             socket: Optional[Socket] = None,
             force_to_be_client: bool = False,
             path: Optional[str] = None,
-            greeting: Optional[SyncMessage] = None
+            greeting: Optional[SyncMessage] = None,
+            auth_func: Optional[AuthFunc] = None,
+            auth_data: Optional[str] = None,
     ):
         Connection.__init__(self, socket=socket, host=host, port=port, greeting=greeting)
         if socket is None:
@@ -57,21 +58,21 @@ class WebsocketConnection(Connection):
         self._ws_closed = False
         self._buffered: bytes = b""
         self._ready = False
-        self.auth_token = environ.get("GINK_AUTH_TOKEN")
         if force_to_be_client:
             subprotocols = [self.PROTOCOL]
-
-            if self.auth_token:
-                assert self.auth_token.lower().startswith("token "), "auth token should start with 'token '"
-                subprotocols.append(encodeToHex(self.auth_token))
-
+            if auth_data:
+                subprotocols.append(encodeToHex(auth_data))
             host = host or "localhost"
             path = path or "/"
             request = Request(host=host, target=path, subprotocols=subprotocols)
             self._socket.send(self._ws.send(request))
         self._logger.debug("finished setup")
         self._socket.settimeout(0.2)
+        self._auth_func = auth_func
+        self._permissions: int = 0 if auth_func else AUTH_BOTH
 
+    def is_alive(self) -> bool:
+        return not (self._ws_closed or self._closed)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(host={self._host!r})"
@@ -86,22 +87,15 @@ class WebsocketConnection(Connection):
         self._ws.receive_data(data)
         for event in self._ws.events():
             if isinstance(event, Request):
-                if self.auth_token:
-                    # Ensures any capitalization of 'Token' and any number of spaces works
-                    key = self.auth_token.lower().split("token ")[1].lstrip()
-                    token = None
+                if self._auth_func:
                     for protocol in event.subprotocols:
-                        # if we find a hex string in the subprotocols, see if its an auth token
                         if protocol.lower().startswith("0x"):
                             decoded = decodeFromHex(protocol)
-                            if decoded.lower().startswith("token "):
-                                token = decoded.lower().split("token ")[1].lstrip()
-                                break
-                    if not token or token != key:
-                        self._logger.warning("invalid authentication token")
-                        self._socket.send(self._ws.send(RejectConnection()))
-
-                if "gink" not in event.subprotocols:
+                            self._permissions |= self._auth_func(decoded)
+                if not self._permissions:
+                    self._logger.warning("could not authenticated connection")
+                    self._socket.send(self._ws.send(RejectConnection()))
+                elif "gink" not in event.subprotocols:
                     self._logger.warning("got a non gink connection attempt")
                     self._socket.send(self._ws.send(RejectConnection()))
                 else:

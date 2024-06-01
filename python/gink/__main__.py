@@ -7,11 +7,12 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Optional, Tuple, Union
 from importlib import import_module
+from os import environ
 
 from . import *
 from .impl.builders import BundleBuilder
 from .impl.selectable_console import SelectableConsole
-from .impl.utilities import get_identity
+from .impl.utilities import get_identity, make_auth_func
 from .impl.looping import loop
 from .impl.wsgi_listener import WsgiListener
 
@@ -42,6 +43,7 @@ parser.add_argument("--identity", help="explicitly set identity to be associated
 parser.add_argument("--starts", help="include starting bundles when showing log", action="store_true")
 parser.add_argument("--wsgi", help="serve module.function via wsgi")
 parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defaults to *:8081)")
+parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help="auth token for connections")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -161,12 +163,15 @@ if args.wsgi:
     ip_addr, port = parse_listen_on(args.wsgi_listen_on, "*", "8081")
     wsgi_listener = WsgiListener(app, ip_addr=ip_addr, port=int(port))
 
+auth_func = make_auth_func(args.auth_token) if args.auth_token else None
+
 if args.listen_on:
     ip_addr, port = parse_listen_on(args.listen_on, "*", "8080")
-    database.start_listening(ip_addr=ip_addr, port=port)
+    database.start_listening(ip_addr=ip_addr, port=port, auth_func=auth_func)
 
 for target in (args.connect_to or []):
-    database.connect_to(target)
+    auth_data = f"Token {args.auth_token}" if args.auth_token else None
+    database.connect_to(target, auth_data=auth_data)
 
 if args.interactive:
     interactive = True
