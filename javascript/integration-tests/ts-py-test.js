@@ -6,11 +6,11 @@ process.chdir(__dirname + "/..");
     console.log("starting");
     const python = new Expector(
         "python3",
-        ["-u", "-m", "gink", "-l", "*:8085"]);
+        ["-u", "-m", "gink", "-l", "*:8089"]);
     await python.expect("listen", 2000);
     await sleep(500);
 
-    const client = new Expector("node", ["./tsc.out/implementation/main.js", "ws://0.0.0.0:8085"],
+    const client = new Expector("node", ["./tsc.out/implementation/main.js", "ws://0.0.0.0:8089"],
         { env: { ...process.env } });
     await python.expect("connection established!", 2000);
     await client.expect("connected!", 2000);

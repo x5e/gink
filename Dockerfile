@@ -33,22 +33,7 @@ WORKDIR $GINK/javascript
 RUN npm test
 RUN npm run browser-unit
 
-# # Python integration tests
-RUN ./integration-tests/py-py-test.js
-RUN ./integration-tests/py-ts-test.js
-RUN ./integration-tests/ts-py-test.js
-RUN ./integration-tests/chain-reuse-py-test.js lmdb
-RUN ./integration-tests/chain-reuse-py-test.js binlog
-RUN ./integration-tests/chain-reuse-py-test.js binlog
-RUN ./integration-tests/wsgi-test.js
-
-# JavaScript/TypeScript integration tests
-RUN ./integration-tests/node-client-test.js
-RUN ./integration-tests/authentication-test.js
-RUN ./integration-tests/routing-server-test.js
-RUN ./integration-tests/logbacked-peers-test.js
-RUN ./integration-tests/test_expector.js
-RUN ./integration-tests/test_spawn.js
-RUN ./integration-tests/chain-reuse-ts-test.js
+# Integration tests
+RUN ./integration-tests/run_integration_tests.sh
 
 RUN npm run browser-integration
