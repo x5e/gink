@@ -43,7 +43,7 @@ parser.add_argument("--identity", help="explicitly set identity to be associated
 parser.add_argument("--starts", help="include starting bundles when showing log", action="store_true")
 parser.add_argument("--wsgi", help="serve module.function via wsgi")
 parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defaults to *:8081)")
-parser.add_argument("--auth_token", default=environ("GINK_AUTH_TOKEN"), help="auth token for connections")
+parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help="auth token for connections")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
