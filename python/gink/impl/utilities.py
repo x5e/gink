@@ -7,7 +7,7 @@ from functools import wraps
 from warnings import warn
 from random import randint
 from datetime import datetime, date, timedelta
-from re import fullmatch
+from re import fullmatch, IGNORECASE
 from psutil import pid_exists
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
