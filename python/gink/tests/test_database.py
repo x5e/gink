@@ -126,7 +126,7 @@ def test_react_to_store_changes():
 
         loop(db1b, until=.01)
         bundle_infos = list()
-        db1b.add_callback(lambda bi: bundle_infos.append(bi))
+        db1b.add_callback(lambda bw: bundle_infos.append(bw.get_info()))
         root1a.set("foo", "bar", comment="abc")
         loop(db1b, until=.01)
         assert bundle_infos and bundle_infos[-1].comment == "abc"

@@ -1,7 +1,7 @@
 """ contains the Relay class """
 
 # standard python modules
-from typing import Set, Union, Iterable, List, Callable
+from typing import Set, Union, Iterable, List, Callable, Optional
 from threading import Lock
 from logging import getLogger
 from re import fullmatch, IGNORECASE
@@ -22,6 +22,7 @@ from .utilities import (
 )
 from .looping import Selectable, Finished
 from .bundle_store import BundleStore
+from .typedefs import AuthFunc
 
 class Relay:
 
@@ -56,19 +57,19 @@ class Relay:
     def add_callback(self, callback: Callable[[BundleWrapper], None]):
         self._callbacks.append(callback)
 
-    def start_listening(self, ip_addr="", port: Union[str, int] = "8080"):
+    def start_listening(self, ip_addr="", port: Union[str, int] = "8080", auth_func: Optional[AuthFunc]=None):
         """ Listen for incoming connections on the given port.
 
             Note that you'll still need to call "run" to actually accept those connections.
         """
         port = int(port)
         self._logger.info("starting to listen on %r:%r", ip_addr, port)
-        listener = Listener(WebsocketConnection, ip_addr=ip_addr, port=port)
+        listener = Listener(WebsocketConnection, ip_addr=ip_addr, port=port, auth_func=auth_func)
         listener.on_ready = lambda: self._on_listener_ready(listener)
         self._listeners.add(listener)
         self._indicate_selectables_changed()
 
-    def connect_to(self, target: str):
+    def connect_to(self, target: str, auth_data: Optional[str] = None):
         """ initiate a connection to another gink instance """
         self._logger.info("initating connection to %s", target)
         match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
@@ -79,7 +80,13 @@ class Relay:
         port = port or "8080"
         path = path or "/"
         greeting = self._store.get_chain_tracker().to_greeting_message()
-        connection = WebsocketConnection(host=host, port=int(port), path=path, greeting=greeting)
+        connection = WebsocketConnection(
+            host=host,
+            port=int(port),
+            path=path,
+            greeting=greeting,
+            auth_data=auth_data,
+            )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
         self._logger.debug("connection added")

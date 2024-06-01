@@ -14,6 +14,12 @@ from re import fullmatch, IGNORECASE
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
 from .builders import ClaimBuilder
+from .typedefs import AuthFunc, AUTH_BOTH, AUTH_NONE
+
+def make_auth_func(token: str) -> AuthFunc:
+    def auth_func(data: str) -> int:
+        return AUTH_BOTH if fullmatch(f"token\s+{token}\s*", data, IGNORECASE) else AUTH_NONE
+    return auth_func
 
 def encodeToHex(string: str) -> str:
     """

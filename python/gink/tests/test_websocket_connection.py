@@ -2,13 +2,13 @@
 import logging
 from socket import socketpair
 
-import os
-
 # builders
 from ..impl.builders import SyncMessage
 from google.protobuf.text_format import Parse  # type: ignore
 
 from ..impl.websocket_connection import WebsocketConnection, Finished
+from ..impl.utilities import make_auth_func
+from ..impl.looping import loop
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -62,28 +62,46 @@ def test_chit_chat():
 
 def test_auth():
     """ tests authentication """
-    server_socket, client_socket = socketpair()
+    for correct in [True, False]:
+        server_socket, client_socket = socketpair()
+        token = "ABCXYZ123"
+        auth_func = make_auth_func(token)
+        # creating a client connection implicitly sends a request
+        server = WebsocketConnection(socket=server_socket, auth_func=auth_func)
+        server.on_ready = lambda: server.receive() and None
 
-    os.environ["GINK_AUTH_TOKEN"] = "Token    kjnakjnfakjnfakjnwadhbhbadab"
-    # creating a client connection implicitly sends a request
-    server = WebsocketConnection(socket=server_socket)
+        if correct:
+            auth_data = f"Token {token}"
+        else:
+            auth_data = "Token bad"
 
-    os.environ["GINK_AUTH_TOKEN"] = "Token WRONGAUTHTOKENDONTLETTHROUGH"
+        client = WebsocketConnection(socket=client_socket, force_to_be_client=True, auth_data=auth_data)
+        client.on_ready = lambda: client.receive() and None
+        getattr(client, "_logger").setLevel(logging.ERROR)
 
-    client = WebsocketConnection(socket=client_socket, force_to_be_client=True)
-    getattr(client, "_logger").setLevel(logging.ERROR)
+        if correct:
+            loop(server, client, until=.010)
+            assert client.is_alive()
+            assert server.is_alive()
+        else:
+            let_auth_through = False
+            try:
+                # force the server to receive the initial request and send a response
+                loop(server, client, until=.010)
+                assert (not client.is_alive()) and (not server.is_alive())
+                # The above should error when the connection gets rejected,
+                # so let_auth_through should remain false.
+                let_auth_through = True
+            except:
+                pass
+            if let_auth_through:
+                raise AssertionError("auth allowed when token was bad")
 
-    let_auth_through = False
-    try:
-        # force the server to receive the initial request and send a response
-        for _ in server.receive():
+        try:
+            server_socket.close()
+            client_socket.close()
+        except:
             pass
-        # The above should error when the connection gets rejected,
-        # so let_auth_through should remain false.
-        let_auth_through = True
-    except:
-        pass
-    assert not let_auth_through, "Server let bad auth token through"
 
 if __name__ == "__main__":
     test_chit_chat()

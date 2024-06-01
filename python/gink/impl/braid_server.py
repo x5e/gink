@@ -7,6 +7,7 @@ from .connection import Connection
 from .listener import Listener
 from .websocket_connection import WebsocketConnection
 from .relay import Relay
+from .typedefs import AuthFunc
 
 
 class BraidServer:
@@ -15,9 +16,10 @@ class BraidServer:
     _listener: Listener
 
     def __init__(
-            self,
+            self, *,
             data_relay: Relay,
             control_db: Database,
+            auth_func: Optional[AuthFunc] = None,
             braiding_port: int = 8088,
         ):
         (self._socket_left, self._socket_rite) = socketpair()
@@ -25,7 +27,7 @@ class BraidServer:
         self._indication_sent = False
         self._data_relay = data_relay
         self._control_db = control_db
-        self._listener = Listener(WebsocketConnection, port=braiding_port)
+        self._listener = Listener(WebsocketConnection, port=braiding_port, auth_func=auth_func)
 
     def fileno(self) -> int:
         return self._socket_rite.fileno()

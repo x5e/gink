@@ -1,5 +1,5 @@
 """ Various types classes for use throughout the codebase. """
-from typing import NewType, Union, TypeVar
+from typing import NewType, Union, TypeVar, Callable
 from datetime import datetime, timedelta, date
 
 Medallion = int
@@ -19,3 +19,10 @@ class Deletion: # pylint: disable=too-few-public-methods
 
 class Inclusion:
     """ Used to indicate adding something to a set or group. """
+
+AuthFunc = Callable[[str], int]
+
+AUTH_NONE = 0
+AUTH_READ = 1
+AUTH_RITE = 2
+AUTH_BOTH = 3
