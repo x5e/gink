@@ -1,6 +1,7 @@
 """ Various types classes for use throughout the codebase. """
 from typing import NewType, Union, TypeVar, Callable
 from datetime import datetime, timedelta, date
+from pathlib import Path
 
 Medallion = int
 MuTimestamp = int
@@ -20,9 +21,10 @@ class Deletion: # pylint: disable=too-few-public-methods
 class Inclusion:
     """ Used to indicate adding something to a set or group. """
 
-AuthFunc = Callable[[str], int]
+AuthFunc = Callable[[str, Path], int]
 
 AUTH_NONE = 0
 AUTH_READ = 1
 AUTH_RITE = 2
-AUTH_BOTH = 3
+AUTH_MAKE = 4
+AUTH_FULL = 7

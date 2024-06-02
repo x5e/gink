@@ -12,6 +12,7 @@ from .builders import SyncMessage
 from .chain_tracker import ChainTracker
 from .bundle_info import BundleInfo
 from .bundle_wrapper import BundleWrapper
+from .typedefs import AuthFunc
 
 
 class Connection(ABC):
@@ -22,11 +23,10 @@ class Connection(ABC):
     """
     on_ready: Callable
     def __init__(
-            self,
+            self, *,
             host: Optional[str] = None,
             port: Optional[int] = None,
             socket: Optional[Socket] = None,
-            greeting: Optional[SyncMessage] = None,
     ):
         if socket is None:
             assert host is not None and port is not None
@@ -38,7 +38,6 @@ class Connection(ABC):
         self._logger = getLogger(self.__class__.__name__)
         self._closed = False
         self._tracker: Optional[ChainTracker] = None
-        self._greeting = greeting
 
     def fileno(self):
         """ Return the file descriptor of the underlying socket.

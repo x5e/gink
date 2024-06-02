@@ -167,7 +167,7 @@ auth_func = make_auth_func(args.auth_token) if args.auth_token else None
 
 if args.listen_on:
     ip_addr, port = parse_listen_on(args.listen_on, "*", "8080")
-    database.start_listening(ip_addr=ip_addr, port=port, auth_func=auth_func)
+    database.start_listening(addr=ip_addr, port=port, auth=auth_func)
 
 for target in (args.connect_to or []):
     auth_data = f"Token {args.auth_token}" if args.auth_token else None

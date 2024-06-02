@@ -110,10 +110,7 @@ def test_react_to_store_changes():
         if system() != 'Linux':
             return
         path1 = Path("/tmp/test1.gink")
-        path2 = Path("/tmp/test2.gink")
-
         path1.unlink(missing_ok=True)
-        path2.unlink(missing_ok=True)
 
         store1a = store_class(path1)
         store1b = store_class(path1)
@@ -129,7 +126,7 @@ def test_react_to_store_changes():
         db1b.add_callback(lambda bw: bundle_infos.append(bw.get_info()))
         root1a.set("foo", "bar", comment="abc")
         loop(db1b, until=.01)
-        assert bundle_infos and bundle_infos[-1].comment == "abc"
+        assert bundle_infos and bundle_infos[-1].comment == "abc", (bundle_infos, store_class)
         found = root1b.get("foo")
         assert found == "bar", found
 
