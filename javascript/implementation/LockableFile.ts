@@ -51,7 +51,7 @@ export class LockableFile {
     }
 
     protected async getFileLength(): Promise<number> {
-        let stats: Stats
+        let stats: Stats;
         try {
             stats = await this.fileHandle.stat();
         } catch (problem) {

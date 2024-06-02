@@ -47,4 +47,4 @@ module.exports = {
     TupleBuilder,
     ClearanceBuilder,
     AckBuilder
-}
+};

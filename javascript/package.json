@@ -2,7 +2,7 @@
   "name": "@x5e/gink",
   "version": "${VERSION}",
   "description": "an eventually consistent database",
-  "main": "tsc.out/implementation/main.js",
+  "main": "tsc.out/implementation/index.js",
   "browser": {
     "@x5e/gink": "content_root/generated/packed.js",
     "fs": false,

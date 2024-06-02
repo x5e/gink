@@ -85,14 +85,14 @@ export async function interpret(entry: Entry, database: Database): Promise<Conta
 }
 
 export async function toJson(
-        value: Value | Container,
-        indent: number | boolean = false,
-        asOf?: AsOf, seen?: Set<string>): Promise<string> {
+    value: Value | Container,
+    indent: number | boolean = false,
+    asOf?: AsOf, seen?: Set<string>): Promise<string> {
     return value instanceof Container ? (await value.toJson(indent, asOf, seen)) : valueToJson(value);
 }
 
 export async function convertEntryBytes(database: Database, entryBytes: Bytes, entryAddress?: Muid):
-        Promise<Value | Container | undefined> {
+    Promise<Value | Container | undefined> {
     ensure(entryBytes instanceof Uint8Array);
     const entryBuilder = <EntryBuilder>EntryBuilder.deserializeBinary(entryBytes);
     if (entryBuilder.hasValue()) {

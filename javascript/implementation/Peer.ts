@@ -1,4 +1,4 @@
-import { BundleBytes, BundleInfo, BundleView, CallBack } from "./typedefs";
+import { BundleInfo, BundleView, CallBack } from "./typedefs";
 import { ensure, noOp } from "./utils";
 import { ChainTracker } from "./ChainTracker";
 import { AckBuilder, SyncMessageBuilder } from "./builders";

@@ -63,7 +63,7 @@ export class MemoryStore implements Store {
     private removals: TreeMap<string, string> = new TreeMap(); // placementId,removalId => ""
     private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
-    private locations: TreeMap<string,string> = new TreeMap();
+    private locations: TreeMap<string, string> = new TreeMap();
     private bySource: TreeMap<string, Entry> = new TreeMap();
     private byTarget: TreeMap<string, Entry> = new TreeMap();
     constructor(private keepingHistory = true) {
@@ -151,7 +151,7 @@ export class MemoryStore implements Store {
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
-            const changeAddress = {timestamp, medallion, offset};
+            const changeAddress = { timestamp, medallion, offset };
             if (changeBuilder.hasContainer()) {
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
                 this.containers.set(muidTupleToString(changeAddressTuple), containerBytes);
@@ -199,11 +199,11 @@ export class MemoryStore implements Store {
                     while (true) {
                         const it = this.placements.lowerBound(containerIdStr);
                         const to = this.placements.upperBound(`${containerIdStr},~,~`);
-                        if (it.equals(to) || ! it.key)
+                        if (it.equals(to) || !it.key)
                             break;
                         this.placements.erase(it);
                         // TODO: also delete removals, locations
-                        }
+                    }
                     // When doing a purging clear, remove previous clearances for the container.
                     const lowerClearances = this.clearances.lowerBound(`${containerIdStr}`);
                     const upperClearances = this.clearances.upperBound(`${containerIdStr},~`);
@@ -243,7 +243,7 @@ export class MemoryStore implements Store {
             while (true) {
                 if (iterator.equals(this.locations.end())) break;
                 if (!iterator.key.startsWith(entryIdStr)) break;
-                entry = {...this.placements.get(iterator.value), placementId: movementId, storageKey: dest};
+                entry = { ...this.placements.get(iterator.value), placementId: movementId, storageKey: dest };
                 this.placements.delete(iterator.value);
                 this.locations.erase(iterator);
                 iterator.next();
@@ -255,7 +255,7 @@ export class MemoryStore implements Store {
                 return;
             }
             ensure(iterator.key && iterator.key.startsWith(entryIdStr));
-            entry = {...this.placements.get(iterator.value), placementId: movementId, storageKey: dest};
+            entry = { ...this.placements.get(iterator.value), placementId: movementId, storageKey: dest };
             const removingIdStr = iterator.value.slice(-34);
             this.removals.set(`${removingIdStr},${movementIdStr}`, "");
         }
@@ -323,7 +323,7 @@ export class MemoryStore implements Store {
             const bundleKey: BundleInfoTuple = key;
             const bundleInfo = bundleKeyToInfo(bundleKey);
             const bundleBytes: BundleBytes = val;
-            callBack(new Retrieval({bundleBytes, bundleInfo}));
+            callBack(new Retrieval({ bundleBytes, bundleInfo }));
         }
     }
 
@@ -335,7 +335,7 @@ export class MemoryStore implements Store {
     getEntryByIdSync(entryMuid: Muid): Entry | undefined {
         const entryIdStr = muidToString(entryMuid);
         const it = toLastWithPrefixBeforeSuffix(this.locations, entryIdStr);
-        if (! it)
+        if (!it)
             return undefined;
         return this.placements.get(it.value);
     }
@@ -351,15 +351,15 @@ export class MemoryStore implements Store {
         const iterator = this.placements.lowerBound(srcAsStr);
 
         const result = new Map();
-        for (;iterator && iterator.key && !iterator.equals(this.placements.end()); iterator.next()) {
+        for (; iterator && iterator.key && !iterator.equals(this.placements.end()); iterator.next()) {
             const parts = iterator.key.split(",");
             if (parts[0] != srcAsStr) break;
-            const placementIdStr = parts[parts.length-1];
+            const placementIdStr = parts[parts.length - 1];
             if (placementIdStr < clearTimeStr || placementIdStr > asOfTsStr)
                 continue;
             const entry: Entry = iterator.value;
             ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET ||
-                entry.behavior == Behavior.GROUP ||entry.behavior == Behavior.PAIR_SET ||
+                entry.behavior == Behavior.GROUP || entry.behavior == Behavior.PAIR_SET ||
                 entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
 
             const key = storageKeyToString(entry.storageKey);
@@ -404,7 +404,7 @@ export class MemoryStore implements Store {
             it = lower;
         }
         const needed = through < 0 ? -through : through + 1;
-        for (;returning.size < needed; through < 0 ? it.prev() : it.next()) {
+        for (; returning.size < needed; through < 0 ? it.prev() : it.next()) {
             // '0616C86BB4D7B4-1A86FC813F72F-00001,1713899916549000,0616C86BB4DB88-1A86FC813F72F-00001'
             const placementKey = it.key;
             if (!placementKey)
@@ -439,7 +439,7 @@ export class MemoryStore implements Store {
             const prefix = `${containerIdStr},${storageKeyToString(entry.storageKey)}`;
             for (let iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix);
                 iterator && iterator.key && iterator.key.startsWith(prefix); iterator.prev()) {
-                if (entry.purging || ! this.keepingHistory) {
+                if (entry.purging || !this.keepingHistory) {
                     this.placements.erase(iterator);
                 } else {
                     const placementIdStr = iterator.key.slice(-34);

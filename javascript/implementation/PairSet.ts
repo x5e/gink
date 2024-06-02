@@ -2,7 +2,7 @@ import { Database } from "./Database";
 import { Container } from "./Container";
 import { Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, strToMuid } from "./utils";
+import { ensure, muidToString } from "./utils";
 import { toJson } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
@@ -47,7 +47,7 @@ export class PairSet extends Container {
         const aKey: [Muid, Muid] = [
             key[0] instanceof Container ? key[0].address : key[0],
             key[1] instanceof Container ? key[1].address : key[1],
-         ]
+        ];
         const found = await this.database.store.getEntryByKey(this.address, aKey, asOf);
         if (found && found.deletion) return false;
         return Boolean(found);
@@ -73,7 +73,7 @@ export class PairSet extends Container {
         const toSet = new Set<Array<Muid>>();
         for (const [key, entry] of entries) {
             if (!entry.deletion) {
-                toSet.add(<Array<Muid>>entry.storageKey)
+                toSet.add(<Array<Muid>>entry.storageKey);
             }
         }
         return toSet;

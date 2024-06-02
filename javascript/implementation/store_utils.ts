@@ -1,5 +1,5 @@
 import { ChainTracker } from './ChainTracker';
-import { Behavior, ChangeBuilder, BundleBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
+import { Behavior, ChangeBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
 import { ScalarKey, StorageKey, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple, Movement } from "./typedefs";
 import {
     ensure,
@@ -52,7 +52,7 @@ export function storageKeyToString(storageKey: StorageKey): string {
         }
         return storageKey.toString();
     }
-    if (typeof(storageKey) == "number" || typeof(storageKey) == "string")
+    if (typeof (storageKey) == "number" || typeof (storageKey) == "string")
         return JSON.stringify(storageKey);
 }
 
@@ -139,9 +139,9 @@ export function toStorageKey(key: ScalarKey | Muid | [Muid | Container, Muid | C
     if (key instanceof Uint8Array)
         return key;
     if (typeof (key) == "number" || typeof (key) == "string") {
-        return key
+        return key;
     } else if (Array.isArray(key)) {
-        return [muidToTuple(<Muid>key[0]), muidToTuple(<Muid>key[1])]
+        return [muidToTuple(<Muid>key[0]), muidToTuple(<Muid>key[1])];
     } else if (key) {
         const muidKey = <Muid>key;
         return [muidKey.timestamp, muidKey.medallion, muidKey.offset];
