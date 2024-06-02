@@ -59,12 +59,12 @@ class Relay(Server):
             raise NotImplementedError("only vanilla websockets currently supported")
         port = port or "8080"
         path = path or "/"
-        greeting = self._store.get_chain_tracker().to_greeting_message()
+        sync_func = lambda _: self._store.get_chain_tracker().to_greeting_message()
         connection = WebsocketConnection(
             host=host,
             port=int(port),
             path=path,
-            greeting=greeting,
+            sync_func=sync_func,
             auth_data=auth_data,
             )
         connection.on_ready = lambda: self._on_connection_ready(connection)
@@ -110,7 +110,7 @@ class Relay(Server):
             socket=socket,
             host=addr[0],
             port=addr[1],
-            greeting=self._store.get_chain_tracker().to_greeting_message(),
+            sync_func=lambda _: self._store.get_chain_tracker().to_greeting_message(),
             auth_func=self._auth_func,
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)

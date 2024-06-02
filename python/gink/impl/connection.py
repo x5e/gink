@@ -27,8 +27,6 @@ class Connection(ABC):
             host: Optional[str] = None,
             port: Optional[int] = None,
             socket: Optional[Socket] = None,
-            greeting: Optional[SyncMessage] = None,
-            auth_func: Optional[AuthFunc] = None,
     ):
         if socket is None:
             assert host is not None and port is not None
@@ -40,8 +38,6 @@ class Connection(ABC):
         self._logger = getLogger(self.__class__.__name__)
         self._closed = False
         self._tracker: Optional[ChainTracker] = None
-        self._greeting = greeting
-        self._auth_func = auth_func
 
     def fileno(self):
         """ Return the file descriptor of the underlying socket.
