@@ -103,14 +103,14 @@ class Relay(Server):
                 self._remove_selectable(connection)
                 raise
 
-    def _on_listener_ready(self, listener: Listener, auth_func: Optional[AuthFunc]) -> Iterable[Selectable]:
+    def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         (socket, addr) = listener.accept()
         connection: Connection = WebsocketConnection(
             socket=socket,
             host=addr[0],
             port=addr[1],
             sync_func=lambda _: self._store.get_chain_tracker().to_greeting_message(),
-            auth_func=auth_func,
+            auth_func=listener.get_auth(),
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
