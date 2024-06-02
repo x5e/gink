@@ -1,11 +1,11 @@
 name: Publish to NPM
-on:
-  push:
+on: [push]
+  # push:
     # branches: [main]
-    paths:
-    - javascript/content_root/**
-    - javascript/implementation/**
-    - javascript/package.json
+    # paths:
+    # - javascript/content_root/**
+    # - javascript/implementation/**
+    # - javascript/package.json
 
 jobs:
   build:
