@@ -328,7 +328,7 @@ export class IndexedDbStore implements Store {
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
-            const changeAddress: Muid = {timestamp, medallion, offset};
+            const changeAddress: Muid = { timestamp, medallion, offset };
             if (changeBuilder.hasContainer()) {
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
                 await wrappedTransaction.objectStore("containers").add(containerBytes, changeAddressTuple);
@@ -511,7 +511,7 @@ export class IndexedDbStore implements Store {
         const clearancesSearch = IDBKeyRange.bound([muidTuple], [muidTuple, [asOfTs]]);
         const clearancesCursor = await trxn.objectStore("clearances").openCursor(clearancesSearch, "prev");
         if (clearancesCursor) {
-            return <Timestamp> clearancesCursor.value.clearanceId[0];
+            return <Timestamp>clearancesCursor.value.clearanceId[0];
         }
         return <Timestamp>0;
     }
@@ -556,7 +556,7 @@ export class IndexedDbStore implements Store {
             source ? "sources" : "targets").openCursor(searchRange);
         const returning: Entry[] = [];
         const removals = trxn.objectStore("removals");
-        for (;entriesCursor; entriesCursor = await entriesCursor.continue()) {
+        for (; entriesCursor; entriesCursor = await entriesCursor.continue()) {
             const entry: Entry = entriesCursor.value;
             if (entry.placementId[0] >= asOfTs || entry.placementId[0] < clearanceTime)
                 continue;
@@ -579,7 +579,7 @@ export class IndexedDbStore implements Store {
      * @returns a promise of a list of ChangePairs
      */
     async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf):
-            Promise<Map<string, Entry>> {
+        Promise<Map<string, Entry>> {
         const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp() + 1;
         const containerId = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const lower = [containerId, 0];
@@ -665,7 +665,7 @@ export class IndexedDbStore implements Store {
             const bundleKey = <BundleInfoTuple>cursor.key;
             const bundleInfo = bundleKeyToInfo(bundleKey);
             const bundleBytes: BundleBytes = cursor.value;
-            callBack(new Retrieval({bundleBytes, bundleInfo}));
+            callBack(new Retrieval({ bundleBytes, bundleInfo }));
         }
     }
 

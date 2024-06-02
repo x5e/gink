@@ -1,6 +1,6 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
-import { EdgeData, Muid, Value, Timestamp } from "./typedefs";
+import { EdgeData, Muid, Value } from "./typedefs";
 import { Behavior, ContainerBuilder } from "./builders";
 import { Bundler } from "./Bundler";
 import { ensure } from "./utils";
@@ -19,10 +19,10 @@ export class EdgeType extends Container {
     }
 
     async createEdge(
-            source: Vertex,
-            target: Vertex,
-            value?: Value,
-            change?: Bundler | string): Promise<Edge> {
+        source: Vertex,
+        target: Vertex,
+        value?: Value,
+        change?: Bundler | string): Promise<Edge> {
         const muid = await this.addEntry([source, target], value, change);
         const edgeData: EdgeData = {
             source: source.address,

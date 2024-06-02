@@ -2,7 +2,7 @@ import { Container } from "./Container";
 import { Value, Muid, ScalarKey, AsOf, StorageKey } from "./typedefs";
 import { Bundler } from "./Bundler";
 import { ensure, muidToString, muidTupleToMuid, valueToJson } from "./utils";
-import { toJson, interpret, construct } from "./factories";
+import { interpret, construct } from "./factories";
 import { Addressable } from "./Addressable";
 import { storageKeyToString } from "./store_utils";
 

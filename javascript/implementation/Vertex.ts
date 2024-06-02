@@ -1,6 +1,6 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
-import { Muid, AsOf, Entry } from "./typedefs";
+import { Muid, AsOf } from "./typedefs";
 import { Behavior, ContainerBuilder } from "./builders";
 import { Bundler } from "./Bundler";
 import { ensure, entryToEdgeData, muidTupleToMuid } from "./utils";
@@ -49,7 +49,7 @@ export class Vertex extends Container {
     async getEdges(source: boolean, asOf?: AsOf): Promise<Edge[]> {
         const entries = await this.database.store.getEntriesBySourceOrTarget(this.address, source, asOf);
         const edges: Edge[] = [];
-        for (let i=0;i<entries.length;i++) {
+        for (let i = 0; i < entries.length; i++) {
             const entry = entries[i];
             if (entry.behavior != Behavior.EDGE_TYPE)
                 continue;

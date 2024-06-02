@@ -144,7 +144,7 @@ export class LogBackedStore extends LockableLog implements Store {
         }
     }
 
-    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Map<string,Entry>> {
+    async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf): Promise<Map<string, Entry>> {
         await this.ready;
         return this.internalStore.getOrderedEntries(container, through, asOf);
     }

@@ -9,9 +9,9 @@ export class Retrieval implements BundleView {
     private bundleBytes: BundleBytes;
     private bundleInfo: BundleInfo;
     private bundleBuilder?: BundleBuilder;
-    constructor(bundle: {bundleBytes: BundleBytes, bundleInfo: BundleInfo}) {
+    constructor(bundle: { bundleBytes: BundleBytes, bundleInfo: BundleInfo; }) {
         this.bundleBytes = bundle.bundleBytes;
-        this.bundleInfo = bundle.bundleInfo
+        this.bundleInfo = bundle.bundleInfo;
     }
     get info(): BundleInfo { return this.bundleInfo; }
     get bytes(): BundleBytes { return this.bundleBytes; }
