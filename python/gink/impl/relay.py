@@ -101,6 +101,7 @@ class Relay(Server):
                         raise AssertionError("unexpected object")
             except Finished:
                 self._connections.remove(connection)
+                self._remove_selectable(connection)
                 raise
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:

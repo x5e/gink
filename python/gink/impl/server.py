@@ -14,24 +14,26 @@ class Server(ABC):
         (self._socket_left, self._socket_rite) = socketpair()
         self._listeners: Set[Listener] = set()
         self._indication_sent = False
-        self._needs_to_be_added_to_loop: Set[Selectable] = set()
+        self._selectables: Set[Selectable] = set()
 
     def fileno(self) -> int:
         return self._socket_rite.fileno()
 
     def _add_selectable(self, selectable: Selectable):
-        self._needs_to_be_added_to_loop.add(selectable)
+        self._selectables.add(selectable)
         if not self._indication_sent:
             self._socket_left.send(b'0x01')
             self._indication_sent = True
+
+    def _remove_selectable(self, selectable: Selectable):
+        self._selectables.discard(selectable)
 
     def on_ready(self) -> Iterable[Selectable]:
         if self._indication_sent:
             self._socket_rite.recv(1)
             self._indication_sent = False
-        for selectable in list(self._needs_to_be_added_to_loop):
+        for selectable in list(self._selectables):
             yield selectable
-            self._needs_to_be_added_to_loop.discard(selectable)
 
     def close(self):
         self._socket_left.close()
