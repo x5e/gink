@@ -3,7 +3,6 @@ import { LogBackedStore } from "./LogBackedStore";
 import { Store } from "./Store";
 import { Database } from "./Database";
 import { AuthFunction, BundleInfo } from "./typedefs";
-import { Bundler } from "./Bundler";
 import { SimpleServer } from "./SimpleServer";
 import { ensure, generateTimestamp, getIdentity, logToStdErr } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";

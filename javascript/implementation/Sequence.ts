@@ -61,7 +61,7 @@ export class Sequence extends Container {
         const bTs = Number.parseInt(b[0].split(",")[0]);
         if (Math.abs(aTs - bTs) < 2)
             throw new Error("can't find space between entries");
-        return Math.floor((aTs + bTs)/ 2);
+        return Math.floor((aTs + bTs) / 2);
     }
 
     /**
@@ -73,7 +73,7 @@ export class Sequence extends Container {
      * @param bundlerOrComment
      */
     async pop(what?: Muid | number, purge?: boolean, bundlerOrComment?: Bundler | string):
-            Promise<Container | Value | undefined> {
+        Promise<Container | Value | undefined> {
         let returning: Container | Value;
         let muid: Muid;
         if (what && typeof (what) == "object") {

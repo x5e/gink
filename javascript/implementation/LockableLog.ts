@@ -1,4 +1,4 @@
-import { ensure } from "./utils"
+import { ensure } from "./utils";
 import { LogFileBuilder } from "./builders";
 import { LockableFile } from "./LockableFile";
 
@@ -23,7 +23,7 @@ export class LockableLog extends LockableFile {
         return bytes.byteLength;
     }
 
-    async getLogContents(start: number=0, finish?: number): Promise<LogFileBuilder> {
+    async getLogContents(start: number = 0, finish?: number): Promise<LogFileBuilder> {
         // I could imagine replacing this with a async iterator that only reads fragments of the
         // file, though that would only be worth the trouble if the file gets large enough that
         // the memory required to read the whole thing is an expensive resource.

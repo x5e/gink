@@ -1,7 +1,7 @@
 import { Peer } from "./Peer";
 import {
     makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
-    encodeToken, getActorId, isAlive,
+    encodeToken, isAlive,
     getIdentity
 } from "./utils";
 import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, } from "./typedefs";

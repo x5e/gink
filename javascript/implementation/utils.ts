@@ -29,8 +29,8 @@ import { hostname, userInfo } from 'os';
 import { TreeMap, MapIterator } from 'jstreemap';
 
 export function toLastWithPrefixBeforeSuffix<V>(
-    map: TreeMap<string,V>, prefix: string, suffix: string = '~'):
-        MapIterator<string, V> | undefined {
+    map: TreeMap<string, V>, prefix: string, suffix: string = '~'):
+    MapIterator<string, V> | undefined {
     const iterator = map.upperBound(prefix + suffix);
     iterator.prev();
     if (!iterator.key) return undefined;
