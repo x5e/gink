@@ -21,10 +21,10 @@ class Listener(Socket):
             port: int = 8080,
             auth: Optional[AuthFunc] = None,
             ):
-        self._socket = Socket(AF_INET, SOCK_STREAM)
-        self._socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        self._socket.bind((addr, int(port)))
-        self._socket.listen(128)
+        Socket.__init__(self, AF_INET, SOCK_STREAM)
+        self.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        self.bind((addr, int(port)))
+        self.listen(128)
         self._auth_func = auth
 
     def get_auth(self) -> Optional[AuthFunc]:
