@@ -4,6 +4,7 @@ export * from "./index";
 export { LogBackedStore } from "./LogBackedStore";
 export { SimpleServer } from "./SimpleServer";
 export { RoutingServer } from "./RoutingServer";
+export { RoutingServerInstance } from "./RoutingServerInstance";
 import { CommandLineInterface } from "./CommandLineInterface";
 export { CommandLineInterface };
 
