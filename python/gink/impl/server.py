@@ -1,10 +1,11 @@
-from typing import Union, Set, Iterable
+from typing import Union, Set, Iterable, Optional
 from logging import getLogger
 from socket import socketpair
 from abc import ABC, abstractmethod
 
 from .listener import Listener
 from .looping import Selectable
+from .typedefs import AuthFunc
 
 
 class Server(ABC):
@@ -41,16 +42,16 @@ class Server(ABC):
         for listener in self._listeners:
             listener.close()
 
-    def start_listening(self, ip_addr="", port: Union[str, int] = "8080"):
+    def start_listening(self, ip_addr="", port: Union[str, int] = "8080", auth_func: Optional[AuthFunc]=None):
         """ Listen for incoming connections on the given port.
         """
         port = int(port)
         self._logger.info("starting to listen on %r:%r", ip_addr, port)
         listener = Listener(ip_addr=ip_addr, port=port)
-        listener.on_ready = lambda: self._on_listener_ready(listener)
+        listener.on_ready = lambda: self._on_listener_ready(listener, auth_func)
         self._listeners.add(listener)
         self._add_selectable(listener)
 
     @abstractmethod
-    def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
+    def _on_listener_ready(self, listener: Listener, auth_func: Optional[AuthFunc]) -> Iterable[Selectable]:
         """ Abstract method called whenever someone attempts to connect to server. """

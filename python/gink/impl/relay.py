@@ -19,8 +19,8 @@ from .memory_store import MemoryStore
 from .bundle_wrapper import BundleWrapper
 from .looping import Selectable, Finished
 from .bundle_store import BundleStore
-from .typedefs import AuthFunc
 from .server import Server
+from .typedefs import AuthFunc
 
 class Relay(Server):
 
@@ -28,9 +28,8 @@ class Relay(Server):
     _lock: Lock
     _not_acked: Set[BundleInfo]
 
-    def __init__(self, store: Union[BundleStore, str, None] = None, auth_func: Optional[AuthFunc]=None):
+    def __init__(self, store: Union[BundleStore, str, None] = None):
         super().__init__()
-        self._auth_func = auth_func
         if isinstance(store, str):
             store = LmdbStore(store)
         if isinstance(store, type(None)):
@@ -104,14 +103,14 @@ class Relay(Server):
                 self._remove_selectable(connection)
                 raise
 
-    def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
+    def _on_listener_ready(self, listener: Listener, auth_func: Optional[AuthFunc]) -> Iterable[Selectable]:
         (socket, addr) = listener.accept()
         connection: Connection = WebsocketConnection(
             socket=socket,
             host=addr[0],
             port=addr[1],
             sync_func=lambda _: self._store.get_chain_tracker().to_greeting_message(),
-            auth_func=self._auth_func,
+            auth_func=auth_func,
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
