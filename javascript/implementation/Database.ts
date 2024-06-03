@@ -244,6 +244,12 @@ export class Database {
         return await this.getGlobalProperty().get(container);
     }
 
+    /**
+     * Returns an array of Muids of containers that have the provided name.
+     * @param name
+     * @param asOf optional timestamp to look back to.
+     * @returns an array of Muids.
+     */
     public async getContainersWithName(name: string, asOf?: AsOf): Promise<Muid[]> {
         return await this.store.getContainersByName(name, asOf);
     }
