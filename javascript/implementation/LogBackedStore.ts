@@ -19,7 +19,6 @@ import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder } from "./builders";
 import { generateTimestamp, ensure, getActorId } from "./utils";
 import { Decomposition } from "./Decomposition";
-import { Container } from "./Container";
 
 
 /*

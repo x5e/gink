@@ -50,7 +50,6 @@ import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { Retrieval } from "./Retrieval";
-import { Container } from "./Container";
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
     "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries" | "identities")[],
@@ -657,10 +656,8 @@ export class IndexedDbStore implements Store {
             }
             ensure(key, "Unexpected storageKey for property: " + entry.storageKey);
 
-            if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime) {
-                if (!entry.deletion) {
-                    result.push(muidTupleToMuid(key));
-                }
+            if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime && !entry.deletion) {
+                result.push(muidTupleToMuid(key));
             }
         }
         return result;
