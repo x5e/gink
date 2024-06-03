@@ -1,5 +1,4 @@
 import { ChainTracker } from "./ChainTracker";
-import { Container } from "./Container";
 import {
     Medallion,
     ChainStart,

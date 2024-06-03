@@ -39,6 +39,7 @@ export class Database {
     private countConnections = 0; // Includes disconnected clients.
     private myChain: ClaimedChain;
     private identity: string;
+    private containerNames: Property;
     private initilized = false;
     protected iHave: ChainTracker;
 
@@ -50,6 +51,7 @@ export class Database {
         identity: string = getIdentity(),
         readonly logger: CallBack = noOp) {
         this.identity = identity;
+        this.containerNames = this.getGlobalProperty();
         this.ready = this.initialize();
     }
 
@@ -237,11 +239,11 @@ export class Database {
     }
 
     public async setContainerName(container: Container, name: string): Promise<void> {
-        await this.getGlobalProperty().set(container, name);
+        await this.containerNames.set(container, name);
     }
 
     public async getContainerName(container: Container) {
-        return await this.getGlobalProperty().get(container);
+        return await this.containerNames.get(container);
     }
 
     /**

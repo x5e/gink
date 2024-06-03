@@ -1,5 +1,5 @@
 import { Database, IndexedDbStore, Bundler, MemoryStore } from "../implementation";
-import { ensure, sameData } from "../implementation/utils";
+import { ensure } from "../implementation/utils";
 
 it('test bundle', async () => {
     for (const store of [new IndexedDbStore('Database.bundle', true), new MemoryStore(true)]) {
