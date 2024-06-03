@@ -280,3 +280,23 @@ it('List.move', async function () {
         ensure((await seq.toArray()).toString() == "D,C,B,A", (await seq.toArray()).toString());
     }
 });
+
+it('extend', async function () {
+    for (const store of [new IndexedDbStore('list-extend', true), new MemoryStore(true)]) {
+        const instance = new Database(store);
+        await instance.ready;
+
+        const seq = await instance.createSequence();
+        const array = [0, 1, 2, 3, 4, 5, 6];
+        await seq.extend(array);
+        ensure(await seq.at(0) == 0);
+        ensure(await seq.at(6) == 6);
+
+        const bundler = new Bundler();
+        const array2 = [7, 8, 9, 10];
+        await seq.extend(array2, bundler);
+        await instance.addBundler(bundler);
+        ensure(await seq.at(7) == 7);
+        ensure(await seq.at(10) == 10);
+    }
+});
