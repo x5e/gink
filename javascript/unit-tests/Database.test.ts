@@ -53,7 +53,7 @@ it('test listeners', async () => {
 it('test container naming', async function () {
     for (const store of [
         new IndexedDbStore('Database.naming.test', true),
-        // new MemoryStore(true),
+        new MemoryStore(true),
     ]) {
         await store.ready;
         const db = new Database(store);
