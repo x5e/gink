@@ -1,4 +1,5 @@
 import { ChainTracker } from "./ChainTracker";
+import { Container } from "./Container";
 import {
     Medallion,
     ChainStart,
@@ -92,6 +93,14 @@ export interface Store {
      */
     getOrderedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Map<string, Entry>>;
     getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]>;
+
+    /**
+     * Returns an Array of all containers matching the provided name.
+     * Names are set using the global property.
+     * @param name
+     * @param asOf optional timestamp to look back to
+     */
+    getContainersByName(name: string, asOf?: AsOf): Promise<Array<Muid>>;
 
     /**
      * Adds a callback to be called when a bundle was added by a

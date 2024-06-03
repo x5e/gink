@@ -4,7 +4,7 @@ import {
     encodeToken, isAlive,
     getIdentity
 } from "./utils";
-import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, } from "./typedefs";
+import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, AsOf, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
 
@@ -22,6 +22,7 @@ import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
+import { Container } from "./Container";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -233,6 +234,18 @@ export class Database {
             await this.addBundler(change);
         }
         return [address, containerBuilder];
+    }
+
+    public async setContainerName(container: Container, name: string): Promise<void> {
+        await this.getGlobalProperty().set(container, name);
+    }
+
+    public async getContainerName(container: Container) {
+        return await this.getGlobalProperty().get(container);
+    }
+
+    public async getContainersWithName(name: string, asOf?: AsOf): Promise<Muid[]> {
+        return await this.store.getContainersByName(name, asOf);
     }
 
     /**

@@ -62,6 +62,7 @@ export class MemoryStore implements Store {
     private containers: TreeMap<string, Uint8Array> = new TreeMap(); // ContainerId => bytes
     private removals: TreeMap<string, string> = new TreeMap(); // placementId,removalId => ""
     private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
+    private byName: TreeMap<string, Entry> = new TreeMap(); // ContainerID,value(name) => Entry - for container names
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
     private locations: TreeMap<string, string> = new TreeMap();
     private bySource: TreeMap<string, Entry> = new TreeMap();
@@ -368,6 +369,32 @@ export class MemoryStore implements Store {
         }
         return result;
     };
+
+    async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
+        const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
+        const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
+        const desiredSrc: [number, number, number] = [-1, -1, Behavior.PROPERTY];
+        const srcAsStr = muidTupleToString(desiredSrc);
+        const clearanceTime: Timestamp = this.getLastClearanceTime(srcAsStr, asOfTs);
+        const clearTimeStr = muidTupleToString([clearanceTime, 0, 0]);
+        const iterator = this.placements.lowerBound(srcAsStr);
+
+        const result = [];
+        for (; iterator && iterator.key && !iterator.equals(this.placements.end()); iterator.next()) {
+            const parts = iterator.key.split(",");
+            if (parts[0] != srcAsStr) break;
+            const placementIdStr = parts[parts.length - 1];
+            if (placementIdStr < clearTimeStr || placementIdStr > asOfTsStr)
+                continue;
+            const entry: Entry = iterator.value;
+            ensure(entry.behavior == Behavior.PROPERTY);
+            if (entry.value != name) continue;
+
+            const key = storageKeyToString(entry.storageKey);
+            if (!entry.deletion) result.push(key);
+        }
+        return result;
+    }
 
     /**
      * Returns entry data for a List.

@@ -19,6 +19,7 @@ import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder } from "./builders";
 import { generateTimestamp, ensure, getActorId } from "./utils";
 import { Decomposition } from "./Decomposition";
+import { Container } from "./Container";
 
 
 /*
@@ -260,6 +261,10 @@ export class LogBackedStore extends LockableLog implements Store {
     async getAllEntries(): Promise<Entry[]> {
         await this.ready;
         return this.internalStore.getAllEntries();
+    }
+
+    async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
+        return await this.internalStore.getContainersByName(name, asOf);
     }
 
     /**

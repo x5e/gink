@@ -7,7 +7,8 @@ import {
     sameData,
     unwrapValue,
     getActorId,
-    muidTupleToString
+    muidTupleToString,
+    muidTupleToMuid
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {
@@ -49,6 +50,7 @@ import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { Retrieval } from "./Retrieval";
+import { Container } from "./Container";
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
     "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries" | "identities")[],
@@ -119,10 +121,10 @@ export class IndexedDbStore implements Store {
                 db.createObjectStore('activeChains', { keyPath: ["claimTime"] });
 
                 /*
-                Keep track of the identities of who started each chain.
-                key: [medallion, chainStart]
-                value: identity (string)
-                Not setting keyPath since [medallion, chainStart] can't be pulled from the value
+                    Keep track of the identities of who started each chain.
+                    key: [medallion, chainStart]
+                    value: identity (string)
+                    Not setting keyPath since [medallion, chainStart] can't be pulled from the value
                 */
                 db.createObjectStore('identities');
 
@@ -138,6 +140,7 @@ export class IndexedDbStore implements Store {
                 // The "entries" store has objects of type Entry (from typedefs)
                 const entries = db.createObjectStore('entries', { keyPath: "placementId" });
                 entries.createIndex("by-container-key-placement", ["containerId", "storageKey", "placementId"]);
+                entries.createIndex("by-container-name", ["containerId", "value"]); // Useful for quickly looking up a container by its name
 
                 // ideally the next three indexes would be partial indexes, covering only sequences and edges
                 // it might be worth pulling them out into separate lookup tables.
@@ -632,6 +635,35 @@ export class IndexedDbStore implements Store {
             return undefined;
         }
         return entry;
+    }
+
+    async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
+        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
+        const desiredSrc: MuidTuple = [-1, -1, Behavior.PROPERTY];
+        const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
+        const clearanceTime = await this.getClearanceTime(<Transaction><unknown>trxn, desiredSrc, asOfTs);
+        const lower = [desiredSrc, name];
+        const searchRange = IDBKeyRange.lowerBound(lower);
+        let cursor = await trxn.objectStore("entries").index("by-container-name")
+            .openCursor(searchRange, "next");
+        const result = [];
+
+        for (; cursor && matches(cursor.key[0], desiredSrc) && cursor.key[1] == name; cursor = await cursor.continue()) {
+            const entry = <Entry>cursor.value;
+            ensure(entry.behavior == Behavior.PROPERTY);
+            let key: [number, number, number];
+            if (Array.isArray(entry.storageKey) && entry.storageKey.length == 3) {
+                key = entry.storageKey;
+            }
+            ensure(key, "Unexpected storageKey for property: " + entry.storageKey);
+
+            if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime) {
+                if (!entry.deletion) {
+                    result.push(muidTupleToMuid(key));
+                }
+            }
+        }
+        return result;
     }
 
     // for debugging, not part of the api/interface
