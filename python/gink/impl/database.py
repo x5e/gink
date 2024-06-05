@@ -44,10 +44,6 @@ class Database(Relay):
         self._identity = identity
         self._logger = getLogger(self.__class__.__name__)
 
-    def get_store(self) -> AbstractStore:
-        """ returns the store managed by this database """
-        return self._store
-
     @staticmethod
     def get_last():
         last = getattr(Database, "_last")

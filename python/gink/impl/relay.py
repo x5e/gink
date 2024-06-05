@@ -48,6 +48,10 @@ class Relay(Server):
     def add_callback(self, callback: Callable[[BundleWrapper], None]):
         self._callbacks.append(callback)
 
+    def get_store(self) -> AbstractStore:
+        """ returns the store managed by this database """
+        return self._store
+
     def connect_to(self, target: str, auth_data: Optional[str] = None):
         """ initiate a connection to another gink instance """
         self._logger.info("initating connection to %s", target)
@@ -58,7 +62,7 @@ class Relay(Server):
             raise NotImplementedError("only vanilla websockets currently supported")
         port = port or "8080"
         path = path or "/"
-        sync_func = lambda _: self._store.get_chain_tracker().to_greeting_message()
+        sync_func = lambda **_: self._store.get_chain_tracker().to_greeting_message()
         connection = WebsocketConnection(
             host=host,
             port=int(port),
@@ -109,7 +113,7 @@ class Relay(Server):
             socket=socket,
             host=addr[0],
             port=addr[1],
-            sync_func=lambda _: self._store.get_chain_tracker().to_greeting_message(),
+            sync_func=lambda **_: self._store.get_chain_tracker().to_greeting_message(),
             auth_func=listener.get_auth(),
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)
