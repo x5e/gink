@@ -48,7 +48,7 @@ class Relay(Server):
     def add_callback(self, callback: Callable[[BundleWrapper], None]):
         self._callbacks.append(callback)
 
-    def get_store(self) -> AbstractStore:
+    def get_store(self) -> BundleStore:
         """ returns the store managed by this database """
         return self._store
 

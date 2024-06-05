@@ -68,7 +68,7 @@ class WebsocketConnection(Connection):
                 subprotocols.append(encodeToHex(auth_data))
             host = host or "localhost"
             self._path = Path(path or "/")
-            request = Request(host=host, target=self._path, subprotocols=subprotocols)
+            request = Request(host=host, target=str(self._path), subprotocols=subprotocols)
             self._socket.send(self._ws.send(request))
         self._logger.debug("finished setup")
         self._socket.settimeout(0.2)
@@ -111,9 +111,10 @@ class WebsocketConnection(Connection):
                     self._logger.warning("rejected a non-gink connection")
                     self._socket.send(self._ws.send(RejectConnection()))
                     raise Finished()
+                greeting = None
                 try:
-                    assert self._sync_func is not None
-                    greeting = self._sync_func(path=self._path, permissions=self._permissions)
+                    if self._sync_func is not None:
+                        greeting = self._sync_func(path=self._path, permissions=self._permissions, misc=self)
                 except Exception as exception:
                     self._logger.warning(f"could not generate greeting", exc_info=exception)
                     self._socket.send(self._ws.send(RejectConnection()))
@@ -121,7 +122,7 @@ class WebsocketConnection(Connection):
                 self._logger.debug("got a Request, sending an AcceptConnection")
                 self._socket.send(self._ws.send(AcceptConnection("gink")))
                 self._logger.info("Server connection established!")
-                if self._permissions & AUTH_RITE:
+                if greeting and self._permissions & AUTH_RITE:
                     sent = self.send(greeting)
                     self._logger.debug("sent greeting of %d bytes", sent)
                 self._ready = True

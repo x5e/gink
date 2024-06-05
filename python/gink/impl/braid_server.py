@@ -49,7 +49,7 @@ class BraidServer(Server):
         return braid
 
     def get_greeting(self, path: Path, permissions: int, misc: Any) -> SyncMessage:
-        braid = self._get_braid(path=path, create_if_missing=permissions & AUTH_MAKE)
+        braid = self._get_braid(path=path, create_if_missing=bool(permissions & AUTH_MAKE))
         assert isinstance(misc, Connection)
         self._braids[misc] = braid
         ct = self._data_relay.get_store().get_chain_tracker(limit_to=dict(braid.items()))
