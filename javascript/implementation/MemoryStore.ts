@@ -8,6 +8,7 @@ import {
     sameData,
     getActorId,
     toLastWithPrefixBeforeSuffix,
+    strToMuid
 } from "./utils";
 import {
     AsOf,
@@ -368,6 +369,32 @@ export class MemoryStore implements Store {
         }
         return result;
     };
+
+    async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
+        const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
+        const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
+        const desiredSrc: [number, number, number] = [-1, -1, Behavior.PROPERTY];
+        const srcAsStr = muidTupleToString(desiredSrc);
+        const clearanceTime: Timestamp = this.getLastClearanceTime(srcAsStr, asOfTs);
+        const clearTimeStr = muidTupleToString([clearanceTime, 0, 0]);
+        const iterator = this.placements.lowerBound(srcAsStr);
+
+        // TODO: This is a full scan and should definitely be replaced by an index
+        const result = [];
+        for (; iterator && iterator.key && !iterator.equals(this.placements.end()); iterator.next()) {
+            const parts = iterator.key.split(",");
+            if (parts[0] != srcAsStr) break;
+            const placementIdStr = muidTupleToString(iterator.value.placementId);
+            if (placementIdStr < clearTimeStr || placementIdStr > asOfTsStr)
+                continue;
+            const entry: Entry = iterator.value;
+            ensure(entry.behavior == Behavior.PROPERTY);
+            if (entry.value != name) continue;
+            const key = storageKeyToString(entry.storageKey);
+            if (!entry.deletion) result.push(strToMuid(key));
+        }
+        return result;
+    }
 
     /**
      * Returns entry data for a List.

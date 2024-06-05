@@ -10,6 +10,7 @@ from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
+from ..impl.utilities import generate_timestamp
 
 def test_creation():
     """ test that I can create new boxes as well as proxies for existing ones """
@@ -66,10 +67,10 @@ def test_reset():
 
         global_box.set("first value")
         global_box.set("second value")
-        after_second = database.get_now()
+        after_second = generate_timestamp()
 
         global_box.set("third value")
-        after_third = database.get_now()
+        after_third = generate_timestamp()
 
         global_box.set("fourth value")
 

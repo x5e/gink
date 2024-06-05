@@ -8,6 +8,7 @@ from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
+from ..impl.utilities import generate_timestamp
 
 def test_creation():
     """ test that I can create new key sets as well as proxies for existing ones """
@@ -137,7 +138,7 @@ def test_asof():
             gks = KeySet.get_global_instance(database=database)
             gks.update(["value1", "value2", "value3"])
             gks.add("value4")
-            after4 = database.get_now()
+            after4 = generate_timestamp()
 
             # Tests as_of for items
             assert set(gks.items(as_of=None)) == {"value1", "value2", "value3", "value4"}

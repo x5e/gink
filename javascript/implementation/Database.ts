@@ -4,7 +4,7 @@ import {
     encodeToken, isAlive,
     getIdentity
 } from "./utils";
-import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, } from "./typedefs";
+import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, AsOf, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
 
@@ -22,6 +22,7 @@ import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
+import { Container } from "./Container";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -38,6 +39,7 @@ export class Database {
     private countConnections = 0; // Includes disconnected clients.
     private myChain: ClaimedChain;
     private identity: string;
+    private containerNames: Property;
     private initilized = false;
     protected iHave: ChainTracker;
 
@@ -49,6 +51,7 @@ export class Database {
         identity: string = getIdentity(),
         readonly logger: CallBack = noOp) {
         this.identity = identity;
+        this.containerNames = this.getGlobalProperty();
         this.ready = this.initialize();
     }
 
@@ -233,6 +236,16 @@ export class Database {
             await this.addBundler(change);
         }
         return [address, containerBuilder];
+    }
+
+    /**
+     * Returns an array of Muids of containers that have the provided name.
+     * @param name
+     * @param asOf optional timestamp to look back to.
+     * @returns an array of Muids.
+     */
+    public async getContainersWithName(name: string, asOf?: AsOf): Promise<Muid[]> {
+        return await this.store.getContainersByName(name, asOf);
     }
 
     /**

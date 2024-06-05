@@ -262,6 +262,10 @@ export class LogBackedStore extends LockableLog implements Store {
         return this.internalStore.getAllEntries();
     }
 
+    async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
+        return await this.internalStore.getContainersByName(name, asOf);
+    }
+
     /**
      * Add a callback if you want another function to run when a new
      * bundle is pulled from the log file.

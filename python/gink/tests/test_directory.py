@@ -9,6 +9,7 @@ from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
+from ..impl.utilities import generate_timestamp
 
 def test_creation():
     """ test that I can create new directories as well as proxies for existing ones """
@@ -58,7 +59,7 @@ def test_delete():
             gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
             assert gdi.has("foo") and gdi["foo"] == "bar"
-            a_time = database.get_now()
+            a_time = generate_timestamp()
             del gdi["foo"]
             assert not gdi.has("foo"), store
             assert gdi.get("foo", as_of=a_time) == "bar"
@@ -105,7 +106,7 @@ def test_items_and_keys():
             gdi["foo"] = "bar"
             gdi["bar"] = "zoo"
             gdi["zoo"] = 3
-            a_time = database.get_now()
+            a_time = generate_timestamp()
             gdi["foo"] = "baz"
             del gdi["bar"]
             sorted_items = sorted(gdi.items())
@@ -160,7 +161,7 @@ def test_reset():
             gdi[7] = {"cheese": "wiz", "foo": [True, False, None]}
             gdi["nope"] = Directory()
             gdi["nope"][33] = [1, 2]  # type: ignore
-            middle = database.get_now()
+            middle = generate_timestamp()
             gdi["bar"] = "moo"
             gdi["foo"] = "zoo"
             gdi[99] = 30
@@ -202,7 +203,7 @@ def test_reset_over_clear():
             gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi["bar"] = "baz"
-            set_timestamp = database.get_now()
+            set_timestamp = generate_timestamp()
             gdi.clear()
             assert "foo" not in gdi
             assert "bar" not in gdi

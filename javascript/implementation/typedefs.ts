@@ -156,6 +156,7 @@ export interface IndexedDbStoreSchema extends DBSchema {
         key: MuidTuple;
         indexes: {
             "by-container-key-placement": [MuidTuple, ScalarKey | Timestamp | MuidTuple | [], MuidTuple];
+            "by-container-name": [MuidTuple, string]; // for use with global property and container names
             'pointees': Indexable;
             'locations': [MuidTuple, MuidTuple];
             'sources': Indexable;

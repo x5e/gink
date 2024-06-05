@@ -94,6 +94,14 @@ export interface Store {
     getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]>;
 
     /**
+     * Returns an Array of all containers matching the provided name.
+     * Names are set using the global property.
+     * @param name
+     * @param asOf optional timestamp to look back to
+     */
+    getContainersByName(name: string, asOf?: AsOf): Promise<Array<Muid>>;
+
+    /**
      * Adds a callback to be called when a bundle was added by a
      * different store and is found by the current store.
      * Primarily intended for use with the LogBackedStore and file sharing.
