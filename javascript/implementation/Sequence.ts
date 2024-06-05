@@ -127,6 +127,21 @@ export class Sequence extends Container {
         return await this.pop(0, purge, bundlerOrComment);
     }
 
+    /**
+     * Adds multiple entries into this sequence.
+     * NOTE: If you pass a bundler, all changes will share the same timestamp. This means you will
+     * not be able to move new entries in between these (you may move these entries between one another).
+     * Without a bundler, each item from the iterable will be committed separately, which will be costly,
+     * but there won't be the same restrictions on moving.
+     * @param iterable An iterable of stuff to add to the sequence.
+     * @param bundlerOrComment A bundler or comment for these changes
+     */
+    async extend(iterable: Iterable<Value | Container>, bundlerOrComment?: Bundler | string): Promise<void> {
+        for (const value of iterable) {
+            await this.push(value, bundlerOrComment);
+        }
+    }
+
     private async getEntryAt(position: number, asOf?: AsOf): Promise<Entry | undefined> {
         //TODO add a store method to only return the entry at a given location
         const entries = await this.database.store.getOrderedEntries(this.address, position, asOf);
