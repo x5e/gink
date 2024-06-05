@@ -64,13 +64,13 @@ it('test container naming', async function () {
         const seq2 = await db.createSequence();
         const seq3 = await db.createSequence();
 
-        await db.setContainerName(root, "root");
-        await db.setContainerName(seq1, "seq");
-        await db.setContainerName(seq2, "seq");
-        await db.setContainerName(seq3, "seq");
+        await root.setName("root");
+        await seq1.setName("seq");
+        await seq2.setName("seq");
+        await seq3.setName("seq");
 
-        ensure(await db.getContainerName(root) == "root");
-        ensure(await db.getContainerName(seq1) == "seq");
+        ensure(await root.getName() == "root");
+        ensure(await seq1.getName() == "seq");
 
         const rootContainers = await db.getContainersWithName("root");
         ensure(rootContainers.length == 1);

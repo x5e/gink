@@ -238,14 +238,6 @@ export class Database {
         return [address, containerBuilder];
     }
 
-    public async setContainerName(container: Container, name: string): Promise<void> {
-        await this.containerNames.set(container, name);
-    }
-
-    public async getContainerName(container: Container) {
-        return await this.containerNames.get(container);
-    }
-
     /**
      * Returns an array of Muids of containers that have the provided name.
      * @param name
