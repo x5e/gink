@@ -12,7 +12,6 @@ from .builders import SyncMessage
 from .chain_tracker import ChainTracker
 from .bundle_info import BundleInfo
 from .bundle_wrapper import BundleWrapper
-from .typedefs import AuthFunc
 
 
 class Connection(ABC):

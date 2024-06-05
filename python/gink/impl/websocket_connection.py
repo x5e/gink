@@ -156,7 +156,7 @@ class WebsocketConnection(Connection):
                 self._logger.debug("received pong")
             elif isinstance(event, AcceptConnection):
                 self._logger.info("Client connection established!")
-                if self._permissions & AUTH_RITE:
+                if self._sync_func and self._permissions & AUTH_RITE:
                     greeting = self._sync_func(path=self._path, permissions=self._permissions, misc=self)
                     sent = self.send(greeting)
                     self._logger.debug("sent greeting of %d bytes", sent)
