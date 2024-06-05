@@ -157,18 +157,12 @@ class WebsocketConnection(Connection):
             elif isinstance(event, AcceptConnection):
                 self._logger.info("Client connection established!")
                 if self._permissions & AUTH_RITE:
-                    self._send_greeting()
+                    greeting = self._sync_func(path=self._path, permissions=self._permissions, misc=self)
+                    sent = self.send(greeting)
+                    self._logger.debug("sent greeting of %d bytes", sent)
                 self._ready = True
             else:
                 self._logger.warning("got an unexpected event type: %s", event)
-
-    def _send_greeting(self):
-        if self._sync_func is None or self._path is None:
-            self._logger.warning("cannot send greeting message")
-            return
-        greeting = self._sync_func(Path(self._path))
-        sent = self.send(greeting)
-        self._logger.debug("sent greeting of %d bytes", sent)
 
     def send(self, sync_message: SyncMessage) -> int:
         assert not self._closed

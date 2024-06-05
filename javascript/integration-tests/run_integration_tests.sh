@@ -1,5 +1,6 @@
 set -o errexit
-for file in integration-tests/*-test.js;
+cd $(dirname $0)
+for file in ./*-test.js;
 do
     echo $file
     ./$file;
