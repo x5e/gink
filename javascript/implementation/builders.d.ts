@@ -9,14 +9,17 @@ export declare enum Behavior {
     UNSPECIFIED,
     BOX = 1,
     SEQUENCE = 2,
-    KEY_SET = 3,
+    PAIR_MAP = 3,
     DIRECTORY = 4,
-    PAIR_SET = 5,
-    PAIR_MAP = 6,
+    KEY_SET = 5,
+    GROUP = 6,
     VERTEX = 7,
-    EDGE_TYPE = 8,
-    PROPERTY = 9,
-    GROUP = 10
+    PAIR_SET = 8,
+    EVENT_TYPE = 9,
+    PROPERTY = 10,
+    EDGE_TYPE = 11,
+    TABLE = 12,
+    BRAID = 13
 }
 export declare enum Special {
     MISSING = 0,
