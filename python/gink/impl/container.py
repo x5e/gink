@@ -13,6 +13,7 @@ from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, 
 from .coding import encode_key, encode_value, decode_value, deletion, inclusion
 from .addressable import Addressable
 from .tuples import Chain
+from .utilities import generate_timestamp
 
 class Container(Addressable, ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
@@ -179,7 +180,7 @@ class Container(Addressable, ABC):
         entry_builder: EntryBuilder = change_builder.entry  # type: ignore
         entry_builder.behavior = behavior or self.get_behavior()  # type: ignore
         if expiry is not None:
-            now = self._database.get_now()
+            now = generate_timestamp()
             expiry = self._database.resolve_timestamp(expiry)
             if expiry < now:
                 raise ValueError("can't set an expiry to be in the past")
