@@ -12,6 +12,7 @@ from .coding import decode_key, DIRECTORY, deletion
 from .bundler import Bundler
 from .typedefs import UserKey, GenericTimestamp
 from .attribution import Attribution
+from .utilities import generate_timestamp
 
 
 class Directory(Container):
@@ -124,7 +125,7 @@ class Directory(Container):
             if the most recent entry in the directory for the key is a delete entry. In this
             case it will return whatever has been passed into respect_deletion.
         """
-        as_of = self._database.get_now()
+        as_of = generate_timestamp()
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         if found and found.builder.deletion and respect_deletion:  # type: ignore
             return respect_deletion
@@ -140,7 +141,7 @@ class Directory(Container):
             then the change is added to the bundler (or comitted immedately with comment
             if no bundler is specified.)
         """
-        as_of = self._database.get_now()
+        as_of = generate_timestamp()
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore
             return default
@@ -183,7 +184,7 @@ class Directory(Container):
 
             Order is determined by implementation of the store.
         """
-        as_of = self._database.get_now()
+        as_of = generate_timestamp()
         iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=DIRECTORY)
         for entry_pair in iterable:
             if entry_pair.builder.deletion:  # type: ignore
@@ -238,7 +239,7 @@ class Directory(Container):
 
     def log(self, key: UserKey) -> Iterable[Attribution]:
         """ Get the history of modifications for a particular key. """
-        as_of = self._database.get_now()
+        as_of = generate_timestamp()
         while as_of:
             found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
             if not found:

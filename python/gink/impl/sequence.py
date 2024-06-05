@@ -10,6 +10,7 @@ from .database import Database
 from .bundler import Bundler
 from .coding import SEQUENCE
 from .tuples import PositionedEntry, SequenceKey
+from .utilities import generate_timestamp
 
 
 class Sequence(Container):
@@ -142,7 +143,7 @@ class Sequence(Container):
         self._muid.put_into(movement_builder.container)
         muid.put_into(movement_builder.entry)
         if dest == -1:
-            dest = self._database.get_now()
+            dest = generate_timestamp()
         elif isinstance(dest, int) and dest < 1e15:
             dest = self._position(before=dest) if dest >= 0 else self._position(after=dest)
         elif dest is None:

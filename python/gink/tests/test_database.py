@@ -15,6 +15,7 @@ from ..impl.sequence import Sequence
 from ..impl.key_set import KeySet
 from ..impl.log_backed_store import LogBackedStore
 from ..impl.looping import loop
+from ..impl.utilities import generate_timestamp
 
 
 def test_database():
@@ -29,7 +30,7 @@ def test_add_bundle() -> None:
     """ tests that the add_bundle works """
     store = MemoryStore()
     database = Database(store=store)
-    started = database.get_now()
+    started = generate_timestamp()
     bundler = Bundler("just a test")
     database.bundle(bundler)
     bundles: List[BundleInfo] = []

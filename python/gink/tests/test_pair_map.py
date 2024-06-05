@@ -7,7 +7,7 @@ from ..impl.graph import Vertex
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
-from ..impl.bundler import Bundler
+from ..impl.utilities import generate_timestamp
 from ..impl.abstract_store import AbstractStore
 
 def test_creation():
@@ -35,7 +35,7 @@ def test_basic():
             vertex2 = Vertex()
             vertex3 = Vertex()
             pairmap1.set(key=(vertex1, vertex2), value="test vertex1 -> vertex2")
-            after_first = database.get_now()
+            after_first = generate_timestamp()
 
             assert pairmap1.get(key=(vertex1, vertex2)) == "test vertex1 -> vertex2"
             assert pairmap1.has(key=(vertex1, vertex2))

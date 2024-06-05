@@ -8,6 +8,7 @@ from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.abstract_store import AbstractStore
+from ..impl.utilities import generate_timestamp
 
 def test_creation():
     """ test that I can create new pair sets """
@@ -42,7 +43,7 @@ def test_include_exclude():
             assert pairset1.size() == 1
 
             vertex3 = Vertex(database=database)
-            as_of = database.get_now()
+            as_of = generate_timestamp()
             pairset1.include(pair=(vertex1, vertex3))
             assert pairset1.size() == 2
 
@@ -67,7 +68,6 @@ def test_reset_asof():
 
             pairset1.include(pair=(vertex1, vertex2))
             assert pairset1.size() == 1
-            as_of = database.get_now()
 
             vertex3 = Vertex(database=database)
             pairset1.include(pair=(vertex1, vertex3))
