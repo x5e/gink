@@ -122,10 +122,10 @@ class WebsocketConnection(Connection):
                 self._logger.debug("got a Request, sending an AcceptConnection")
                 self._socket.send(self._ws.send(AcceptConnection("gink")))
                 self._logger.info("Server connection established!")
+                self._ready = True
                 if greeting and self._permissions & AUTH_RITE:
                     sent = self.send(greeting)
                     self._logger.debug("sent greeting of %d bytes", sent)
-                self._ready = True
             elif isinstance(event, CloseConnection):
                 self._logger.info("got close msg, code=%d, reason=%s", event.code, event.reason)
                 try:
@@ -156,16 +156,21 @@ class WebsocketConnection(Connection):
                 self._logger.debug("received pong")
             elif isinstance(event, AcceptConnection):
                 self._logger.info("Client connection established!")
+                self._ready = True
                 if self._sync_func and self._permissions & AUTH_RITE:
                     greeting = self._sync_func(path=self._path, permissions=self._permissions, misc=self)
                     sent = self.send(greeting)
                     self._logger.debug("sent greeting of %d bytes", sent)
-                self._ready = True
             else:
                 self._logger.warning("got an unexpected event type: %s", event)
 
     def send(self, sync_message: SyncMessage) -> int:
-        assert not self._closed
+        if self._closed:
+            raise ValueError("connection already closed!")
+        if self._ws_closed:
+            raise ValueError("websocket shut down")
+        if not self._ready:
+            raise ValueError("connection not ready!")
         data = self._ws.send(BytesMessage(sync_message.SerializeToString()))
         return self._socket.send(data)
 
