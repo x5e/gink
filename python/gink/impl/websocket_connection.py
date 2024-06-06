@@ -20,7 +20,8 @@ from wsproto.events import (
     TextMessage,
     Ping,
     Pong,
-    RejectConnection
+    RejectConnection,
+    RejectData,
 )
 
 # builders
@@ -118,6 +119,7 @@ class WebsocketConnection(Connection):
                 except Exception as exception:
                     self._logger.warning(f"could not generate greeting", exc_info=exception)
                     self._socket.send(self._ws.send(RejectConnection()))
+                    self._ws_closed = True
                     raise Finished()
                 self._logger.debug("got a Request, sending an AcceptConnection")
                 self._socket.send(self._ws.send(AcceptConnection("gink")))
@@ -161,6 +163,9 @@ class WebsocketConnection(Connection):
                     greeting = self._sync_func(path=self._path, permissions=self._permissions, misc=self)
                     sent = self.send(greeting)
                     self._logger.debug("sent greeting of %d bytes", sent)
+            elif isinstance(event, RejectConnection):
+                self._ws_closed = True
+                raise Finished()
             else:
                 self._logger.warning("got an unexpected event type: %s", event)
 

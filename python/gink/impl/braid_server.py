@@ -1,4 +1,3 @@
-from socket import socketpair
 from pathlib import Path
 from typing import *
 from logging import getLogger
@@ -47,19 +46,19 @@ class BraidServer(Server):
 
     def _get_braid(self, path: Path, create_if_missing: bool) -> Braid:
         parts = path.parts
-        if len(parts) < 2 or parts[0] != "/":
+        if len(parts) == 0 or parts[0] == "/":
             raise ValueError(f"invaid path: {path}")
-        directory_keys = parts[1:-1]
+        directory_keys = parts[:-1]
         braid_key = parts[-1]
         current = Directory(arche=True, database=self._control_db)
         for key in directory_keys:
             if create_if_missing and key not in current:
-                current[key] = Directory()
+                current[key] = Directory(database=self._control_db)
             current = current[key]
             if not isinstance(current, Directory):
                 raise ValueError(f"could not traverse: {key}")
         if create_if_missing and key not in current:
-            current[braid_key] = Braid()
+            current[braid_key] = Braid(database=self._control_db)
         braid = current[braid_key]
         if not isinstance(braid, Braid):
             raise ValueError("not a braid")

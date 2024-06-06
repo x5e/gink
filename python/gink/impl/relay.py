@@ -19,7 +19,6 @@ from .bundle_wrapper import BundleWrapper
 from .looping import Selectable, Finished
 from .bundle_store import BundleStore
 from .server import Server
-from .typedefs import AuthFunc
 
 class Relay(Server):
 
@@ -48,6 +47,10 @@ class Relay(Server):
     def get_store(self) -> BundleStore:
         """ returns the store managed by this database """
         return self._store
+
+    def get_connections(self) -> Iterable[Connection]:
+        for connection in self._connections:
+            yield connection
 
     def connect_to(self, target: str, auth_data: Optional[str] = None):
         """ initiate a connection to another gink instance """
