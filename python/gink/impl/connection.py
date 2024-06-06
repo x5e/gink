@@ -89,7 +89,6 @@ class Connection(ABC):
                 if self._tracker is not None:
                     self._tracker.mark_as_having(info)
                 yield wrap
-                self.send(info.as_acknowledgement())
             elif sync_message.HasField("greeting"):
                 self._tracker = ChainTracker(sync_message=sync_message)
                 yield self._tracker

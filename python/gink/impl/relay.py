@@ -102,6 +102,7 @@ class Relay(Server):
                 for thing in connection.receive_objects():
                     if isinstance(thing, BundleWrapper):  # some data
                         self.receive(thing)
+                        connection.send(thing.get_info().as_acknowledgement())
                     elif isinstance(thing, ChainTracker):  # greeting message
                         self._store.get_bundles(connection.send_bundle, peer_has=thing)
                     elif isinstance(thing, BundleInfo):  # an ack:

@@ -1,6 +1,7 @@
 from socket import socketpair
 from pathlib import Path
 from typing import *
+from logging import getLogger
 
 from .database import Database
 from .connection import Connection
@@ -26,13 +27,14 @@ class BraidServer(Server):
             control_db: Database,
             auth_func: Optional[AuthFunc] = None,
         ):
-        (self._socket_left, self._socket_rite) = socketpair()
+        super().__init__()
         self._connections: Set[Connection] = set()
         self._braids: Dict[Connection, Braid] = dict()
         data_relay.add_callback(self._after_relay_recieves_bundle)
         self._data_relay = data_relay
         self._control_db = control_db
         self._auth_func = auth_func
+        self._logger = getLogger(self.__class__.__name__)
 
     def _after_relay_recieves_bundle(self, bundle_wrapper: BundleWrapper) -> None:
         info = bundle_wrapper.get_info()
@@ -104,6 +106,7 @@ class BraidServer(Server):
                             raise Finished()
                         braid.set(chain, inf)
                     self._data_relay.receive(thing)
+                    connection.send(thing.get_info().as_acknowledgement())
                 elif isinstance(thing, ChainTracker):  # greeting message
                     if not connection.get_permissions() & AUTH_READ:
                         self._logger.debug("ignoring greeting from connection without read perms")
