@@ -52,7 +52,7 @@ class Relay(Server):
         for connection in self._connections:
             yield connection
 
-    def connect_to(self, target: str, auth_data: Optional[str] = None):
+    def connect_to(self, target: str, auth_data: Optional[str] = None, name: Optional[str] = None):
         """ initiate a connection to another gink instance """
         self._logger.info("initating connection to %s", target)
         match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
@@ -67,6 +67,7 @@ class Relay(Server):
             host=host,
             port=int(port),
             path=path,
+            name=name,
             sync_func=sync_func,
             auth_data=auth_data,
             )

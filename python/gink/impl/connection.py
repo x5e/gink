@@ -25,6 +25,7 @@ class Connection(ABC):
             self, *,
             host: Optional[str] = None,
             port: Optional[int] = None,
+            name: Optional[str] = None,
             socket: Optional[Socket] = None,
     ):
         if socket is None:
@@ -38,6 +39,7 @@ class Connection(ABC):
         self._closed = False
         self._tracker: Optional[ChainTracker] = None
         self._permissions = 0
+        self._name = name
 
     def get_permissions(self) -> int:
         return self._permissions
@@ -65,13 +67,13 @@ class Connection(ABC):
 
     def send_bundle(self, bundle_wrapper: BundleWrapper) -> None:
         info = bundle_wrapper.get_info()
-        self._logger.debug("send_bundle %s", info)
+        self._logger.debug("(%s) send_bundle %s", self._name, info)
         if self._tracker is None:  # haven't received greeting
             self._logger.debug("_tracker is None")
             return
 
         if self._tracker.has(info):
-            self._logger.debug("peer already has %s", info)
+            self._logger.debug("(%s) peer already has %s", self._name, info)
             return
         if not self._tracker.is_valid_extension(info):
             raise ValueError("bundle would be an invalid extension!")

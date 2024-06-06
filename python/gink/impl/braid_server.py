@@ -79,6 +79,7 @@ class BraidServer(Server):
             port=addr[1],
             sync_func=self.get_greeting,
             auth_func=listener.get_auth(),
+            name="accepted #%s" % (len(self._connections)+1,)
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)

@@ -50,12 +50,13 @@ class WebsocketConnection(Connection):
             socket: Optional[Socket] = None,
             force_to_be_client: bool = False,
             path: Optional[str] = None,
+            name: Optional[str] = None,
             sync_func: Optional[SyncFunc] = None,
             auth_func: Optional[AuthFunc] = None,
             auth_data: Optional[str] = None,
             permissions: int = AUTH_FULL,
     ):
-        Connection.__init__(self, socket=socket, host=host, port=port)
+        Connection.__init__(self, socket=socket, host=host, port=port, name=name)
         if socket is None:
             force_to_be_client = True
         connection_type = ConnectionType.CLIENT if force_to_be_client else ConnectionType.SERVER
@@ -127,7 +128,7 @@ class WebsocketConnection(Connection):
                 self._ready = True
                 if greeting and self._permissions & AUTH_RITE:
                     sent = self.send(greeting)
-                    self._logger.debug("sent greeting of %d bytes", sent)
+                    self._logger.debug("sent greeting of %d bytes (%s)", sent, self._name)
             elif isinstance(event, CloseConnection):
                 self._logger.info("got close msg, code=%d, reason=%s", event.code, event.reason)
                 try:
@@ -141,11 +142,11 @@ class WebsocketConnection(Connection):
             elif isinstance(event, BytesMessage):
                 received = bytes(event.data) if isinstance(event.data, bytearray) else event.data
                 assert isinstance(received, bytes)
-                self._logger.debug('We got %d bytes!', len(received))
                 if event.message_finished:
                     if self._buffered:
                         received = self._buffered + received
                         self._buffered = b""
+                    self._logger.debug('We got %d bytes! (%s)', len(received), self._name)
                     sync_message = SyncMessage()
                     sync_message.ParseFromString(received)
                     yield sync_message
@@ -162,7 +163,7 @@ class WebsocketConnection(Connection):
                 if self._sync_func and self._permissions & AUTH_RITE:
                     greeting = self._sync_func(path=self._path, permissions=self._permissions, misc=self)
                     sent = self.send(greeting)
-                    self._logger.debug("sent greeting of %d bytes", sent)
+                    self._logger.debug("sent greeting of %d bytes (%s)", sent, self._name)
             elif isinstance(event, RejectConnection):
                 self._ws_closed = True
                 raise Finished()
