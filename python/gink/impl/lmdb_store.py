@@ -765,8 +765,10 @@ class LmdbStore(AbstractStore):
                 if new_info.timestamp == new_info.chain_start:
                     trxn.put(bytes(new_info.get_chain()), new_info.comment.encode(), db=self._identities)
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
-                    bundle_location = encode_muts(generate_timestamp())
+                    bundle_receive_time = generate_timestamp()
+                    bundle_location = encode_muts(bundle_receive_time)
                     trxn.put(bundle_location, wrapper.get_bytes(), db=self._bundles)
+                    self._seen_through = bundle_receive_time
                     trxn.put(bytes(new_info), bundle_location, db=self._bundle_infos)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 change_items: List[int, ChangeBuilder] = list(builder.changes.items())  # type: ignore

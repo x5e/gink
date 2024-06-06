@@ -1,5 +1,5 @@
 from .. import *
-from ..impl.braid_server import BraidServer, Database
+from ..impl.braid_server import BraidServer, Database, Relay
 from ..impl.looping import loop
 from logging import getLogger
 
@@ -7,7 +7,7 @@ def test_happy_path():
     logger = getLogger(__name__)
     data_store = LmdbStore()
     ctrl_store = LmdbStore()
-    relay = Database(data_store)
+    relay = Relay(data_store)
     control_db = Database(ctrl_store)
     braid_server = BraidServer(data_relay=relay, control_db=control_db)
     external1 = Database()

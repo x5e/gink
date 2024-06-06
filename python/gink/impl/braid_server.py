@@ -40,6 +40,7 @@ class BraidServer(Server):
         chain = info.get_chain()
         #TODO: do something more efficient than looping over connections
         for connection, braid in self._braids.items():
+            self._logger.debug("considering connection: %s", connection._name)
             if braid.get(chain, default=0) > info.timestamp:
                 # Note: connection internally keeps track of what peer has and will prevent echo
                 connection.send_bundle(bundle_wrapper)
@@ -53,11 +54,13 @@ class BraidServer(Server):
         current = Directory(arche=True, database=self._control_db)
         for key in directory_keys:
             if create_if_missing and key not in current:
+                self._logger.debug("creating intermediate directory for %s", key)
                 current[key] = Directory(database=self._control_db)
             current = current[key]
             if not isinstance(current, Directory):
                 raise ValueError(f"could not traverse: {key}")
-        if create_if_missing and key not in current:
+        if create_if_missing and braid_key not in current:
+            self._logger.debug("creating braid for %s", braid_key)
             current[braid_key] = Braid(database=self._control_db)
         braid = current[braid_key]
         if not isinstance(braid, Braid):

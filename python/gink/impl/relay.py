@@ -88,6 +88,7 @@ class Relay(Server):
 
             Should only be called when a bundle has been successfully added to the local store.
         """
+        self._logger.debug("_on_bundle for %s", bundle_wrapper.get_info())
         for peer in self._connections:
             peer.send_bundle(bundle_wrapper)
         for callback in self._callbacks:
