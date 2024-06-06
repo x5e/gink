@@ -19,6 +19,7 @@ from .tuples import Chain
 from .muid import Muid
 from .attribution import Attribution
 from .bundle_wrapper import BundleWrapper
+from threading import Lock
 from .utilities import (
     generate_timestamp,
     experimental,
@@ -43,6 +44,7 @@ class Database(Relay):
         self._last_time = None
         self._identity = identity
         self._logger = getLogger(self.__class__.__name__)
+        self._lock = Lock()
 
     def get_store(self) -> AbstractStore:
         """ returns the store managed by this database """
@@ -119,7 +121,7 @@ class Database(Relay):
             assert timestamp > seen_to
             bundle_bytes = bundler.seal(chain=chain, timestamp=timestamp, previous=seen_to)
             wrap = BundleWrapper(bundle_bytes)
-            added = self._store.apply_bundle(wrap, self._on_bundle, claim_chain=False)
+            added = self.receive(wrap)
             assert added
             info = wrap.get_info()
             self._last_link = info

@@ -20,7 +20,8 @@ from wsproto.events import (
     TextMessage,
     Ping,
     Pong,
-    RejectConnection
+    RejectConnection,
+    RejectData,
 )
 
 # builders
@@ -30,6 +31,7 @@ from .builders import SyncMessage
 from .connection import Connection
 from .looping import Finished
 from .typedefs import AuthFunc, AUTH_FULL, AUTH_RITE
+from .sync_func import SyncFunc
 
 
 class WebsocketConnection(Connection):
@@ -40,7 +42,7 @@ class WebsocketConnection(Connection):
     """
     PROTOCOL = "gink"
     on_ready: Callable
-    _path: Optional[str]
+    _path: Path
     def __init__(
             self, *,
             host: Optional[str] = None,
@@ -48,12 +50,13 @@ class WebsocketConnection(Connection):
             socket: Optional[Socket] = None,
             force_to_be_client: bool = False,
             path: Optional[str] = None,
-            sync_func: Optional[Callable[[Path], SyncMessage]] = None,
+            name: Optional[str] = None,
+            sync_func: Optional[SyncFunc] = None,
             auth_func: Optional[AuthFunc] = None,
             auth_data: Optional[str] = None,
             permissions: int = AUTH_FULL,
     ):
-        Connection.__init__(self, socket=socket, host=host, port=port)
+        Connection.__init__(self, socket=socket, host=host, port=port, name=name)
         if socket is None:
             force_to_be_client = True
         connection_type = ConnectionType.CLIENT if force_to_be_client else ConnectionType.SERVER
@@ -66,11 +69,9 @@ class WebsocketConnection(Connection):
             if auth_data:
                 subprotocols.append(encodeToHex(auth_data))
             host = host or "localhost"
-            self._path = path or "/"
-            request = Request(host=host, target=self._path, subprotocols=subprotocols)
+            self._path = Path(path or "/")
+            request = Request(host=host, target=str(self._path), subprotocols=subprotocols)
             self._socket.send(self._ws.send(request))
-        else:
-            self._path = None
         self._logger.debug("finished setup")
         self._socket.settimeout(0.2)
         self._auth_func = auth_func
@@ -94,28 +95,40 @@ class WebsocketConnection(Connection):
         for event in self._ws.events():
             if isinstance(event, Request):
                 if "?" in event.target:
-                    (self._path, _) = event.target.split("?", 2)
+                    (path, _) = event.target.split("?", 2)
                 else:
-                    self._path = event.target
+                    path = event.target
+                self._path = Path(path)
                 if self._auth_func:
                     for protocol in event.subprotocols:
                         if protocol.lower().startswith("0x"):
                             decoded = decodeFromHex(protocol)
                             assert self._path is not None
-                            self._permissions |= self._auth_func(decoded, Path(self._path))
+                            self._permissions |= self._auth_func(decoded, self._path)
                 if not self._permissions:
-                    self._logger.warning("could not authenticated connection")
+                    self._logger.warning("rejected a connection due to insufficient permissions")
                     self._socket.send(self._ws.send(RejectConnection()))
-                elif "gink" not in event.subprotocols:
-                    self._logger.warning("got a non gink connection attempt")
+                    raise Finished()
+                if "gink" not in event.subprotocols:
+                    self._logger.warning("rejected a non-gink connection")
                     self._socket.send(self._ws.send(RejectConnection()))
-                else:
-                    self._logger.debug("got a Request, sending an AcceptConnection")
-                    self._socket.send(self._ws.send(AcceptConnection("gink")))
-                    self._logger.info("Server connection established!")
-                    if self._permissions & AUTH_RITE:
-                        self._send_greeting()
-                    self._ready = True
+                    raise Finished()
+                greeting = None
+                try:
+                    if self._sync_func is not None:
+                        greeting = self._sync_func(path=self._path, permissions=self._permissions, misc=self)
+                except Exception as exception:
+                    self._logger.warning(f"could not generate greeting", exc_info=exception)
+                    self._socket.send(self._ws.send(RejectConnection()))
+                    self._ws_closed = True
+                    raise Finished()
+                self._logger.debug("got a Request, sending an AcceptConnection")
+                self._socket.send(self._ws.send(AcceptConnection("gink")))
+                self._logger.info("Server connection established!")
+                self._ready = True
+                if greeting and self._permissions & AUTH_RITE:
+                    sent = self.send(greeting)
+                    self._logger.debug("sent greeting of %d bytes (%s)", sent, self._name)
             elif isinstance(event, CloseConnection):
                 self._logger.info("got close msg, code=%d, reason=%s", event.code, event.reason)
                 try:
@@ -129,11 +142,11 @@ class WebsocketConnection(Connection):
             elif isinstance(event, BytesMessage):
                 received = bytes(event.data) if isinstance(event.data, bytearray) else event.data
                 assert isinstance(received, bytes)
-                self._logger.debug('We got %d bytes!', len(received))
                 if event.message_finished:
                     if self._buffered:
                         received = self._buffered + received
                         self._buffered = b""
+                    self._logger.debug('We got %d bytes! (%s)', len(received), self._name)
                     sync_message = SyncMessage()
                     sync_message.ParseFromString(received)
                     yield sync_message
@@ -146,22 +159,24 @@ class WebsocketConnection(Connection):
                 self._logger.debug("received pong")
             elif isinstance(event, AcceptConnection):
                 self._logger.info("Client connection established!")
-                if self._permissions & AUTH_RITE:
-                    self._send_greeting()
                 self._ready = True
+                if self._sync_func and self._permissions & AUTH_RITE:
+                    greeting = self._sync_func(path=self._path, permissions=self._permissions, misc=self)
+                    sent = self.send(greeting)
+                    self._logger.debug("sent greeting of %d bytes (%s)", sent, self._name)
+            elif isinstance(event, RejectConnection):
+                self._ws_closed = True
+                raise Finished()
             else:
                 self._logger.warning("got an unexpected event type: %s", event)
 
-    def _send_greeting(self):
-        if self._sync_func is None or self._path is None:
-            self._logger.warning("cannot send greeting message")
-            return
-        greeting = self._sync_func(Path(self._path))
-        sent = self.send(greeting)
-        self._logger.debug("sent greeting of %d bytes", sent)
-
     def send(self, sync_message: SyncMessage) -> int:
-        assert not self._closed
+        if self._closed:
+            raise ValueError("connection already closed!")
+        if self._ws_closed:
+            raise ValueError("websocket shut down")
+        if not self._ready:
+            raise ValueError("connection not ready!")
         data = self._ws.send(BytesMessage(sync_message.SerializeToString()))
         return self._socket.send(data)
 

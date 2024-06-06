@@ -2,7 +2,6 @@
 
 # standard python modules
 from typing import Set, Union, Iterable, List, Callable, Optional
-from threading import Lock
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 
@@ -20,12 +19,10 @@ from .bundle_wrapper import BundleWrapper
 from .looping import Selectable, Finished
 from .bundle_store import BundleStore
 from .server import Server
-from .typedefs import AuthFunc
 
 class Relay(Server):
 
     _store: BundleStore
-    _lock: Lock
     _not_acked: Set[BundleInfo]
 
     def __init__(self, store: Union[BundleStore, str, None] = None):
@@ -39,7 +36,6 @@ class Relay(Server):
         self._logger = getLogger(self.__class__.__name__)
         self._callbacks: List[Callable[[BundleWrapper], None]] = list()
         self._connections: Set[Connection] = set()
-        self._lock = Lock()
         self._not_acked = set()
         if self._store.is_selectable():
             self._store.on_ready = self._on_store_ready
@@ -48,7 +44,15 @@ class Relay(Server):
     def add_callback(self, callback: Callable[[BundleWrapper], None]):
         self._callbacks.append(callback)
 
-    def connect_to(self, target: str, auth_data: Optional[str] = None):
+    def get_store(self) -> BundleStore:
+        """ returns the store managed by this database """
+        return self._store
+
+    def get_connections(self) -> Iterable[Connection]:
+        for connection in self._connections:
+            yield connection
+
+    def connect_to(self, target: str, auth_data: Optional[str] = None, name: Optional[str] = None):
         """ initiate a connection to another gink instance """
         self._logger.info("initating connection to %s", target)
         match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
@@ -58,11 +62,12 @@ class Relay(Server):
             raise NotImplementedError("only vanilla websockets currently supported")
         port = port or "8080"
         path = path or "/"
-        sync_func = lambda _: self._store.get_chain_tracker().to_greeting_message()
+        sync_func = lambda **_: self._store.get_chain_tracker().to_greeting_message()
         connection = WebsocketConnection(
             host=host,
             port=int(port),
             path=path,
+            name=name,
             sync_func=sync_func,
             auth_data=auth_data,
             )
@@ -80,24 +85,35 @@ class Relay(Server):
 
     def _on_bundle(self, bundle_wrapper: BundleWrapper) -> None:
         """ Sends a bundle either created locally or received from a peer to other peers.
+
+            Should only be called when a bundle has been successfully added to the local store.
         """
+        self._logger.debug("_on_bundle for %s", bundle_wrapper.get_info())
         for peer in self._connections:
             peer.send_bundle(bundle_wrapper)
         for callback in self._callbacks:
             callback(bundle_wrapper)
 
+    def receive(self, bundle_wrapper: BundleWrapper) -> bool:
+        """ Receive a bundle, either created locally or from a peer.
+
+            Returns true if the bundle is novel.
+        """
+        return self._store.apply_bundle(bundle_wrapper, self._on_bundle)
+
     def _on_connection_ready(self, connection: Connection) -> None:
-        with self._lock:
+        if connection in self._connections:
             try:
                 for thing in connection.receive_objects():
                     if isinstance(thing, BundleWrapper):  # some data
-                        self._store.apply_bundle(thing, self._on_bundle)
+                        self.receive(thing)
+                        connection.send(thing.get_info().as_acknowledgement())
                     elif isinstance(thing, ChainTracker):  # greeting message
                         self._store.get_bundles(connection.send_bundle, peer_has=thing)
                     elif isinstance(thing, BundleInfo):  # an ack:
                         self._not_acked.discard(thing)
                     else:
-                        raise AssertionError("unexpected object")
+                        raise AssertionError(f"unexpected object {thing}")
             except Finished:
                 self._connections.remove(connection)
                 self._remove_selectable(connection)
@@ -109,7 +125,7 @@ class Relay(Server):
             socket=socket,
             host=addr[0],
             port=addr[1],
-            sync_func=lambda _: self._store.get_chain_tracker().to_greeting_message(),
+            sync_func=lambda **_: self._store.get_chain_tracker().to_greeting_message(),
             auth_func=listener.get_auth(),
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)

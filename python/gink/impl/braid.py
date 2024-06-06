@@ -87,8 +87,14 @@ class Braid(Container):
     def delete(self, describing: Chain, *, bundler=None, comment=None) -> Muid:
         return self._add_entry(key=describing, value=deletion, bundler=bundler, comment=comment)
 
-    def get(self, chain: Chain, /, default: Optional[T]= None, *,
-            as_of: GenericTimestamp = None) -> Union[T, Limit, None]:
+    def __contains__(self, thing):
+        if not isinstance(thing, Chain):
+            return False
+        got = self.get(thing, None)
+        return got is not None
+
+    def get(self, chain: Chain, /, default: T, *,
+            as_of: GenericTimestamp = None) -> Union[T, Limit]:
         """ Gets the extent allowed for a given chain. """
         as_of = self._database.resolve_timestamp(as_of)
         key = Muid(timestamp=chain.chain_start, medallion=chain.medallion, offset=0)

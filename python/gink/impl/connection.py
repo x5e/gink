@@ -12,7 +12,6 @@ from .builders import SyncMessage
 from .chain_tracker import ChainTracker
 from .bundle_info import BundleInfo
 from .bundle_wrapper import BundleWrapper
-from .typedefs import AuthFunc
 
 
 class Connection(ABC):
@@ -26,6 +25,7 @@ class Connection(ABC):
             self, *,
             host: Optional[str] = None,
             port: Optional[int] = None,
+            name: Optional[str] = None,
             socket: Optional[Socket] = None,
     ):
         if socket is None:
@@ -38,6 +38,11 @@ class Connection(ABC):
         self._logger = getLogger(self.__class__.__name__)
         self._closed = False
         self._tracker: Optional[ChainTracker] = None
+        self._permissions = 0
+        self._name = name
+
+    def get_permissions(self) -> int:
+        return self._permissions
 
     def fileno(self):
         """ Return the file descriptor of the underlying socket.
@@ -62,13 +67,13 @@ class Connection(ABC):
 
     def send_bundle(self, bundle_wrapper: BundleWrapper) -> None:
         info = bundle_wrapper.get_info()
-        self._logger.debug("send_bundle %s", info)
+        self._logger.debug("(%s) send_bundle %s", self._name, info)
         if self._tracker is None:  # haven't received greeting
             self._logger.debug("_tracker is None")
             return
 
         if self._tracker.has(info):
-            self._logger.debug("peer already has %s", info)
+            self._logger.debug("(%s) peer already has %s", self._name, info)
             return
         if not self._tracker.is_valid_extension(info):
             raise ValueError("bundle would be an invalid extension!")
@@ -86,7 +91,6 @@ class Connection(ABC):
                 if self._tracker is not None:
                     self._tracker.mark_as_having(info)
                 yield wrap
-                self.send(info.as_acknowledgement())
             elif sync_message.HasField("greeting"):
                 self._tracker = ChainTracker(sync_message=sync_message)
                 yield self._tracker
