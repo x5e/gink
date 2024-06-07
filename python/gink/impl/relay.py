@@ -1,7 +1,7 @@
 """ contains the Relay class """
 
 # standard python modules
-from typing import Set, Union, Iterable, List, Callable, Optional
+from typing import Set, Union, Iterable, List, Callable, Optional, cast
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 
@@ -19,6 +19,8 @@ from .bundle_wrapper import BundleWrapper
 from .looping import Selectable, Finished
 from .bundle_store import BundleStore
 from .server import Server
+from .sync_func import SyncFunc
+
 
 class Relay(Server):
 
@@ -62,7 +64,7 @@ class Relay(Server):
             raise NotImplementedError("only vanilla websockets currently supported")
         port = port or "8080"
         path = path or "/"
-        sync_func = lambda **_: self._store.get_chain_tracker().to_greeting_message()
+        sync_func = cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message())
         connection = WebsocketConnection(
             host=host,
             port=int(port),
@@ -125,7 +127,7 @@ class Relay(Server):
             socket=socket,
             host=addr[0],
             port=addr[1],
-            sync_func=lambda **_: self._store.get_chain_tracker().to_greeting_message(),
+            sync_func=cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message()),
             auth_func=listener.get_auth(),
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)

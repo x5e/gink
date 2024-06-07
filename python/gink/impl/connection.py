@@ -21,6 +21,7 @@ class Connection(ABC):
         and another subclass to manage raw socket connections.
     """
     on_ready: Callable
+
     def __init__(
             self, *,
             host: Optional[str] = None,
@@ -40,6 +41,9 @@ class Connection(ABC):
         self._tracker: Optional[ChainTracker] = None
         self._permissions = 0
         self._name = name
+
+    def get_name(self) -> Optional[str]:
+        return self._name
 
     def get_permissions(self) -> int:
         return self._permissions

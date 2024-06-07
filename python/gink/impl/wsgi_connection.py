@@ -8,6 +8,7 @@ from logging import getLogger
 
 from .looping import Selectable, Finished
 
+
 class WsgiConnection(Selectable):
 
     def __init__(self, app, socket: Socket, server_name: str, server_port: int):
@@ -48,7 +49,7 @@ class WsgiConnection(Selectable):
 
     def _get_environ(self, request_data, request_method, path) -> Dict[str, Any]:
         return {
-            'wsgi.version':  (1, 0),
+            'wsgi.version': (1, 0),
             'wsgi.url_scheme': 'http',
             'wsgi.input': StringIO(request_data),
             'wsgi.errors': stderr,
@@ -61,7 +62,7 @@ class WsgiConnection(Selectable):
             'SERVER_PORT': str(self._server_port),
         }
 
-    def _start_response(self, status: str, response_headers: List[tuple], exc_info: Optional[tuple]=None):
+    def _start_response(self, status: str, response_headers: List[tuple], exc_info: Optional[tuple] = None):
         server_headers: List[tuple] = [
             ('Date', datetime.now()),
             ('Server', 'WSGIServer 0.2'),

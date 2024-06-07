@@ -1,5 +1,6 @@
 from .muid import Muid
 
+
 class Deferred(Muid):
     """ Version of a muid that references a bundle.
 

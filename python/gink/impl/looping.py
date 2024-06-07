@@ -36,10 +36,10 @@ def loop(
 
     def add(_selectables: Iterable[Optional[Selectable]]):
         assert isinstance(selector, BaseSelector)
-        for selectable in _selectables:
-            if selectable and selectable not in registered:
-                selector.register(selectable, EVENT_READ)
-                registered.add(selectable)
+        for selectable_ in _selectables:
+            if selectable_ and selectable_ not in registered:
+                selector.register(selectable_, EVENT_READ)
+                registered.add(selectable_)
 
     add(selectables)
     with context_manager:

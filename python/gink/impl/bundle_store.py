@@ -3,12 +3,12 @@ from typing import *
 from abc import ABC, abstractmethod
 
 from pathlib import Path
-from .bundle_wrapper import BundleWrapper
 from .tuples import Chain
 from .typedefs import Limit
 from .chain_tracker import ChainTracker
 from .bundle_wrapper import BundleWrapper
 from .watcher import Watcher
+
 
 class BundleStore(ABC):
     """ Abstract base class for the data store that would serve up data for multiple users. """

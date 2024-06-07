@@ -6,7 +6,6 @@ from typing import Optional, Union, Iterable, List
 from sys import stdout
 from logging import getLogger
 
-
 # builders
 from .builders import ContainerBuilder
 
@@ -29,6 +28,7 @@ from .utilities import (
 )
 from .relay import Relay
 
+
 class Database(Relay):
     """ A class that mediates user interaction with a datastore and peers. """
     _chain: Optional[Chain]
@@ -37,7 +37,7 @@ class Database(Relay):
     _last_link: Optional[BundleInfo]
     _container_types: dict = {}
 
-    def __init__(self, store: Union[AbstractStore, str, None] = None, identity = get_identity()):
+    def __init__(self, store: Union[AbstractStore, str, None] = None, identity=get_identity()):
         super().__init__(store=store)
         setattr(Database, "_last", self)
         self._last_link = None
@@ -152,7 +152,7 @@ class Database(Relay):
             muid: Muid, *,
             container_builder: Optional[ContainerBuilder] = None,
             behavior: Optional[int] = None,
-        ):
+    ):
         """ Gets a pre-existing container associated with a particular muid """
         if muid.timestamp == -1:
             behavior = muid.offset

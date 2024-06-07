@@ -90,7 +90,7 @@ class PairMap(Container):
             key = (Muid(left.timestamp, left.medallion, left.offset),
                     (Muid(rite.timestamp, rite.medallion, rite.offset)))
             contained = self._get_occupant(entry_pair.builder, entry_pair.address)
-            yield (key, contained)
+            yield key, contained
 
     def __contains__(self, key):
         return self.has(key)

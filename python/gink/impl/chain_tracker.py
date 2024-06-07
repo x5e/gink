@@ -7,7 +7,7 @@ from typing import Union, Optional, Iterable
 from sortedcontainers import SortedDict  # type: ignore
 
 from .builders import SyncMessage
-from .typedefs import MuTimestamp, Medallion, Limit
+from .typedefs import Medallion
 from .muid import Muid
 from .tuples import Chain
 from .bundle_info import BundleInfo

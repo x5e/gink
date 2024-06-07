@@ -82,7 +82,7 @@ class Sequence(Container):
             The resulting entry expires at expiry time if specified, which must be in the future.
 
             If no bundler is passed, applies the changes immediately, with comment.
-            Otherwise just appends the necessary changes to the passed bundler.
+            Otherwise, just appends the necessary changes to the passed bundler.
 
             returns the muid of the entry
         """
@@ -300,5 +300,6 @@ class Sequence(Container):
         if p2 - p1 < 2:
             raise ValueError("not enough space between them")
         return randint(p1 + 1, p2 - 1)
+
 
 Database.register_container_type(Sequence)

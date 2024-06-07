@@ -15,47 +15,58 @@ from .tuples import Chain
 from .builders import ClaimBuilder
 from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE
 
+
 def make_auth_func(token: str) -> AuthFunc:
     def auth_func(data: str, *_) -> int:
         return AUTH_FULL if fullmatch(f"token\s+{token}\s*", data, IGNORECASE) else AUTH_NONE
     return auth_func
 
-def encodeToHex(string: str) -> str:
+
+def encode_to_hex(string: str) -> str:
     """
     Takes a string and encodes it into a hex string prefixed with '0x'.
     """
     # Adding 0x so we can easily determine if a subprotocol is a hex string
     return "0x" + string.encode("utf-8").hex()
 
-def decodeFromHex(hexStr: str) -> str:
+
+def decode_from_hex(hex_str: str) -> str:
     """
     Decodes a hex string into a string using utf-8.
     """
-    hexStr = hexStr[2:] # Cut off the '0x'
-    bytes_obj = bytes.fromhex(hexStr)
+    hex_str = hex_str[2:]  # Cut off the '0x'
+    bytes_obj = bytes.fromhex(hex_str)
     string = bytes_obj.decode('utf-8')
     return string
 
-def generate_timestamp(_last_time=[get_time()]) -> MuTimestamp:
+
+_last_time = get_time()
+
+
+def generate_timestamp() -> MuTimestamp:
     """ returns the current time in microseconds since epoch
 
         sleeps if needed to ensure no duplicate timestamps and
         that the timestamps returned are monotonically increasing
     """
+    global _last_time
     while True:
         now = floor(get_time() * 1_000_000)
-        if now > _last_time[0]:
+        if now > _last_time:
             break
         sleep(1e-5)
-    _last_time[0] = now
+    _last_time = now
     return now
+
 
 def generate_medallion() -> Medallion:
     return randint((2 ** 48) + 1, (2 ** 49) - 1)
 
+
 def get_identity() -> str:
     user_data = getpwuid(getuid())
     return "%s@%s" % (user_data[0], gethostname())
+
 
 def experimental(thing):
     warned = [False]
@@ -64,6 +75,7 @@ def experimental(thing):
     if isinstance(thing, type):
         the_class = thing
         thing = the_class.__init__
+
     @wraps(thing)
     def wrapped(*a, **b):
         if not warned[0]:
@@ -78,10 +90,12 @@ def experimental(thing):
     else:
         return wrapped
 
+
 def is_certainly_gone(process_id: int) -> bool:
     if not pid_exists(process_id):
         return True
     return False
+
 
 def create_claim(chain: Chain) -> ClaimBuilder:
     claim_builder = ClaimBuilder()
@@ -90,6 +104,7 @@ def create_claim(chain: Chain) -> ClaimBuilder:
     claim_builder.chain_start = chain.chain_start
     claim_builder.process_id = getpid()
     return claim_builder
+
 
 def resolve_timestamp(timestamp: GenericTimestamp) -> MuTimestamp:
     if isinstance(timestamp, str):

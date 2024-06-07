@@ -39,7 +39,6 @@ class FoundEntry(NamedTuple):
         return hash(self.address)
 
 
-
 class FoundContainer(NamedTuple):
     address: Muid
     builder: ContainerBuilder

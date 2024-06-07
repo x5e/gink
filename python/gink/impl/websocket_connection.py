@@ -8,7 +8,7 @@ from socket import (
     SHUT_WR, SHUT_RDWR
 )
 
-from .utilities import decodeFromHex, encodeToHex
+from .utilities import decode_from_hex, encode_to_hex
 
 # modules from requirements.txt
 from wsproto import WSConnection, ConnectionType
@@ -43,6 +43,7 @@ class WebsocketConnection(Connection):
     PROTOCOL = "gink"
     on_ready: Callable
     _path: Path
+
     def __init__(
             self, *,
             host: Optional[str] = None,
@@ -67,7 +68,7 @@ class WebsocketConnection(Connection):
         if force_to_be_client:
             subprotocols = [self.PROTOCOL]
             if auth_data:
-                subprotocols.append(encodeToHex(auth_data))
+                subprotocols.append(encode_to_hex(auth_data))
             host = host or "localhost"
             self._path = Path(path or "/")
             request = Request(host=host, target=str(self._path), subprotocols=subprotocols)
@@ -102,7 +103,7 @@ class WebsocketConnection(Connection):
                 if self._auth_func:
                     for protocol in event.subprotocols:
                         if protocol.lower().startswith("0x"):
-                            decoded = decodeFromHex(protocol)
+                            decoded = decode_from_hex(protocol)
                             assert self._path is not None
                             self._permissions |= self._auth_func(decoded, self._path)
                 if not self._permissions:

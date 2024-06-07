@@ -212,7 +212,8 @@ class KeySet(Container):
         identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
-        stuffing = [str(decode_key(entry_pair.builder)) for entry_pair in self._database.get_store().get_keyed_entries(container=self._muid, behavior=self.BEHAVIOR, as_of=as_of)]
+        src = self._database.get_store().get_keyed_entries(container=self._muid, behavior=self.BEHAVIOR, as_of=as_of)
+        stuffing = [str(decode_key(entry_pair.builder)) for entry_pair in src]
         as_one_line = result + ",".join(stuffing) + "})"
         if len(as_one_line) < 80:
             return as_one_line
@@ -229,5 +230,6 @@ class KeySet(Container):
 
     def __contains__(self, key: UserKey) -> bool:
         return self.contains(key)
+
 
 Database.register_container_type(KeySet)

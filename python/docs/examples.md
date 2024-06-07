@@ -12,14 +12,15 @@ database = Database(store=store)
 
 ### Box
 A Box is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.
+
 ```python
 box = Box(database=database)
 
 box.set({"foo": "bar", "key2": 15})
-result = box.get() # Returns the python dictionary just added
+result = box.get()  # Returns the python dictionary just added
 
-if not box.isEmpty():
-    print(box.size()) # This will only return 0 or 1 (1 in this case).
+if not box.is_empty():
+    print(box.size())  # This will only return 0 or 1 (1 in this case).
 ```
 
 ### Directory

@@ -10,6 +10,7 @@ from typing import Iterable
 from .wsgi_connection import WsgiConnection
 from .looping import Selectable
 
+
 class WsgiListener(Selectable):
     address_family = AF_INET
     socket_type = SOCK_STREAM

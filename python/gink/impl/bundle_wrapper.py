@@ -2,6 +2,7 @@ from typing import Optional
 from .builders import BundleBuilder
 from .bundle_info import BundleInfo
 
+
 class BundleWrapper:
     def __init__(self, bundle_bytes: bytes, bundle_info: Optional[BundleInfo] = None):
         self._bundle_bytes = bundle_bytes
