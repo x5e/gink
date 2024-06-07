@@ -49,7 +49,8 @@ class BraidServer(Server):
         parts = path.parts
         if len(parts) == 0 or parts[0] == "/":
             raise ValueError(f"invaid path: {path}")
-        directory_keys = parts[:-1]
+        directory_keys = list(parts[:-1])
+        directory_keys.insert(0, 'braids')
         braid_key = parts[-1]
         current = Directory(arche=True, database=self._control_db)
         for key in directory_keys:
