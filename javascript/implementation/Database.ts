@@ -339,26 +339,33 @@ export class Database {
                 listener(bundle.info);
             }
 
-            // Loop through changes and gather a set of changed containers.
-            const changedContainers: Set<string> = new Set();
-            const changesMap: Map<Offset, ChangeBuilder> = bundle.builder.getChangesMap();
-            for (const changeBuilder of changesMap.values()) {
-                const entry = changeBuilder.getEntry();
-                if (entry) {
-                    const container = entry.getContainer();
-                    if (container.getTimestamp() && container.getMedallion() && container.getOffset()) {
-                        const muid = builderToMuid(entry.getContainer());
+            if (this.listeners.size > 1) {
+                // Loop through changes and gather a set of changed containers.
+                const changedContainers: Set<string> = new Set();
+                const changesMap: Map<Offset, ChangeBuilder> = bundle.builder.getChangesMap();
+                for (const changeBuilder of changesMap.values()) {
+                    const entry = changeBuilder.getEntry();
+                    const clearance = changeBuilder.getClearance();
+                    let container;
+                    if (entry) {
+                        container = entry.getContainer();
+                    }
+                    else if (clearance) {
+                        container = clearance.getContainer();
+                    }
+                    if (container && container.getTimestamp() && container.getMedallion() && container.getOffset()) {
+                        const muid = builderToMuid(container);
                         const stringMuid = muidToString(muid);
                         changedContainers.add(stringMuid);
                     }
                 }
-            }
-            // Send to listeners specifically subscribed to each container.
-            for (const strMuid of changedContainers) {
-                const containerListeners = this.listeners.get(strMuid);
-                if (containerListeners) {
-                    for (const listener of containerListeners) {
-                        listener(bundle.info);
+                // Send to listeners specifically subscribed to each container.
+                for (const strMuid of changedContainers) {
+                    const containerListeners = this.listeners.get(strMuid);
+                    if (containerListeners) {
+                        for (const listener of containerListeners) {
+                            listener(bundle.info);
+                        }
                     }
                 }
             }

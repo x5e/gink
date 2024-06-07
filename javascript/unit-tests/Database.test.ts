@@ -47,6 +47,9 @@ it('test listeners', async () => {
 
         ensure(globalDirListener.calledTimes == 1);
         ensure(allContainersListener.calledTimes == 3);
+
+        await globalDir.clear();
+        ensure(globalDirListener.calledTimes == 2);
     }
 });
 
