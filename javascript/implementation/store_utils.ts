@@ -35,8 +35,8 @@ export function getStorageKey(entryBuilder: EntryBuilder, entryMuid: Muid): Stor
     } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
         ensure(entryBuilder.hasPair());
         const pair = entryBuilder.getPair();
-        const left = builderToMuid(pair.getLeft());
-        const rite = builderToMuid(pair.getRite());
+        const left = builderToMuid(pair.getLeft(), entryMuid);
+        const rite = builderToMuid(pair.getRite(), entryMuid);
         return [muidToTuple(left), muidToTuple(rite)];
     } else {
         throw new Error(`unexpected behavior: ${behavior}`);
