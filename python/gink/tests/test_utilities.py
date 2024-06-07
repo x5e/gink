@@ -1,10 +1,10 @@
-from ..impl.utilities import decodeFromHex, encodeToHex, experimental
+from ..impl.utilities import decode_from_hex, encode_to_hex, experimental
 
 def test_encode_decode_hex():
     """ Tests authentication tokens and hex encoding and decoding """
     token = "Token 0=9v8inrhngv0v1ven-koad"
-    asHex = encodeToHex(token)
-    fromHex = decodeFromHex(asHex)
+    asHex = encode_to_hex(token)
+    fromHex = decode_from_hex(asHex)
     assert token == fromHex
 
 def test_experimental():

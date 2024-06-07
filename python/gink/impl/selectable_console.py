@@ -12,12 +12,13 @@ from datetime import datetime as DateTime
 
 from .looping import Finished
 
+
 class SelectableConsole(InteractiveInterpreter):
 
-    def __init__(self, locals, interactive: bool, heartbeat_to: Optional[Path]=None):
+    def __init__(self, locals_, interactive: bool, heartbeat_to: Optional[Path] = None):
         """ Line mode (non-interactive), if specified, or if not using a TTY.
         """
-        super().__init__(locals)
+        super().__init__(locals_)
         self._interactive = interactive
         self._buffer: List[str] = []
         self._input: TextIO = stdin
@@ -32,7 +33,7 @@ class SelectableConsole(InteractiveInterpreter):
         pass
 
     def fileno(self) -> int:
-      return self._input.fileno()
+        return self._input.fileno()
 
     def __enter__(self):
         if self._settings is None and self._interactive:
@@ -40,7 +41,7 @@ class SelectableConsole(InteractiveInterpreter):
             self._settings = tcgetattr(fd)
             setraw(fd)
             mode = tcgetattr(fd)
-            mode[OFLAG] =  mode[OFLAG] | OPOST
+            mode[OFLAG] = mode[OFLAG] | OPOST
             tcsetattr(fd, TCSADRAIN, mode)
 
     def __exit__(self, *_):
@@ -56,7 +57,7 @@ class SelectableConsole(InteractiveInterpreter):
         try:
             if self._interactive:
                 for _ in range(self._bytes_available()):
-                  self.on_character(self._input.read(1))
+                    self.on_character(self._input.read(1))
             else:
                 self.on_line(input())
         except KeyboardInterrupt:
@@ -87,9 +88,9 @@ class SelectableConsole(InteractiveInterpreter):
     def on_character(self, character: str) -> None:
         if character == '\x1b':
             self._logger.info("history and line editing keys not yet supported")
-            self._input.read(2) # swallow extra characters
+            self._input.read(2)  # swallow extra characters
             raise StopIteration()
-        elif character in ('\r'):  # return/enter
+        elif character == '\r':  # return/enter
             if self._buffer:
                 print(end="\r\n", file=self._output)
                 combined = "".join(self._buffer)
@@ -104,7 +105,7 @@ class SelectableConsole(InteractiveInterpreter):
             need_to_wipe = len(self._buffer) + len(self._prompt)
             self._output.write("\r" + " " * need_to_wipe)
             self._buffer = []
-        elif character == '\x0c': # control-L
+        elif character == '\x0c':  # control-L
             self._output.write("\033[H\033[2J")
         elif character == '\x04':  # control-D
             if self._buffer:
@@ -112,7 +113,7 @@ class SelectableConsole(InteractiveInterpreter):
             else:
                 print(file=self._output, end="\r\n")
                 raise EOFError()
-        elif character in ('\x03'):  # control-C
+        elif character == '\x03':  # control-C
             self._buffer = []
             raise KeyboardInterrupt()
         elif character in ('\x08', '\x7f'):  # backspace / control-h

@@ -15,11 +15,14 @@ Limit = Union[int, float]
 T = TypeVar('T')
 inf = float("inf")
 
+
 class Deletion: # pylint: disable=too-few-public-methods
     """ Used internally to indicate that a key/value assocation has been removed. """
 
+
 class Inclusion:
     """ Used to indicate adding something to a set or group. """
+
 
 AuthFunc = Callable[[str, Path], int]
 

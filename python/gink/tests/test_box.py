@@ -124,11 +124,11 @@ def test_isEmpty():
             database = Database(store=store)
             global_box = Box.get_global_instance(database=database)
 
-            result = global_box.isEmpty()
+            result = global_box.is_empty()
             assert result == True
 
             global_box.set("test value")
-            result = global_box.isEmpty()
+            result = global_box.is_empty()
             assert result == False
 
 def test_as_of():

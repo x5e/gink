@@ -8,6 +8,7 @@ from .database import Database
 from .bundler import Bundler
 from .coding import BOX
 
+
 class Box(Container):
     BEHAVIOR = BOX
 
@@ -47,7 +48,7 @@ class Box(Container):
 
             If bundler is specified, then simply adds an entry to that bundler.
             If no bundler is specified, then creates one just for this entry,
-            sets it's comment to the comment arg (if set) then adds it to the database.
+            sets its comment to the comment arg (if set) then adds it to the database.
 
         """
         return self._add_entry(value=value, bundler=bundler, comment=comment)
@@ -57,8 +58,8 @@ class Box(Container):
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(container=self._muid, key=None, as_of=as_of)
 
-        if found is None or found.builder.deletion: #type: ignore
-                    return default
+        if found is None or found.builder.deletion:  # type: ignore
+            return default
 
         contents = self._get_occupant(found.builder, found.address)
 
@@ -74,15 +75,13 @@ class Box(Container):
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(container=self._muid, key=None, as_of=as_of)
 
-        if found is None or found.builder.deletion: #type: ignore
-                    result = f"""{self.__class__.__name__}({identifier}, contents={None})"""
-                    return result
+        if found is None or found.builder.deletion:  # type: ignore
+            return f"""{self.__class__.__name__}({identifier}, contents={None})"""
 
         contents = self._get_occupant(found.builder, found.address)
 
         result = f"""{self.__class__.__name__}({identifier}, contents={repr(contents)})"""
         return result
-
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)
@@ -90,7 +89,8 @@ class Box(Container):
 
         return 1 if found else 0
 
-    def isEmpty(self, *, as_of: GenericTimestamp = None) -> int:
+    def is_empty(self, *, as_of: GenericTimestamp = None) -> int:
         return True if self.size(as_of=as_of) == 0 else False
+
 
 Database.register_container_type(Box)

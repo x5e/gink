@@ -62,7 +62,7 @@ class Property(Container):
                 continue
             muid = Muid.create(builder=entry_pair.builder.describing, context=entry_pair.address)
             value = self._get_occupant(entry_pair.builder, address=entry_pair.address)
-            yield (self._database.get_container(muid), value)
+            yield self._database.get_container(muid), value
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)

@@ -34,8 +34,10 @@ KEY_MAX: int = 2**53 - 1
 deletion = Deletion()
 inclusion = Inclusion()
 
+
 def new_entries_replace(behavior: int) -> bool:
     return behavior in (BOX, PAIR_MAP, DIRECTORY, KEY_SET, GROUP, PAIR_SET, PROPERTY, TABLE, BRAID)
+
 
 def normalize_entry_builder(entry_builder: EntryBuilder, entry_muid: Muid):
     """ Make all relative muid references absolute muid refereces within an entry.
@@ -57,6 +59,7 @@ def normalize_entry_builder(entry_builder: EntryBuilder, entry_muid: Muid):
         rite_muid = Muid.create(context=entry_muid, builder=entry_builder.pair.rite)
         rite_muid.put_into(entry_builder.pair.rite)
 
+
 def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object(), offset: Optional[int]=None):
     if getattr(builder, "behavior") == UNSPECIFIED:
         raise ValueError("entry lacks a behavior")
@@ -67,6 +70,7 @@ def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object(), offset
     if container_muid.timestamp == -1 and container_muid.medallion > 0:
         if getattr(context, "medallion") != container_muid.medallion:
             raise ValueError("attempt to modify instance container from other instance")
+
 
 def serialize(thing) -> bytes:
     """ Converts a protobuf builder or a timestamp into binary data. """
@@ -190,7 +194,7 @@ class Placement(NamedTuple):
         entry_muid_bytes = data[-24:-8]
         expiry_bytes = data[-8:]
         entry_muid = Muid.from_bytes(entry_muid_bytes)
-        middle_key: Union[MuTimestamp, UserKey, Muid, None, Tuple[Muid, Muid]]
+        middle_key: Union[QueueMiddleKey, MuTimestamp,  UserKey, Muid, None, Tuple[Muid, Muid]]
         if using in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(middle_key_bytes)
         elif using == SEQUENCE:
@@ -453,7 +457,8 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
         value_builder.special = ValueBuilder.Special.NULL
         return value_builder
     if isinstance(value, (tuple, list)):
-        value_builder.tuple
+        the_tuple = value_builder.tuple
+        assert the_tuple is not None
         if len(value) == 0:
             value_builder.tuple.values.append(ValueBuilder())
             value_builder.tuple.values.pop()

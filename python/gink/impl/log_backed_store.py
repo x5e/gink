@@ -9,6 +9,7 @@ from .abstract_store import Lock
 from .tuples import Chain
 from .utilities import create_claim
 
+
 class LogBackedStore(MemoryStore):
     """A Store backed by a simple append-only file."""
 

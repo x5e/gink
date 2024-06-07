@@ -25,7 +25,7 @@ class BraidServer(Server):
             data_relay: Relay,
             control_db: Database,
             auth_func: Optional[AuthFunc] = None,
-        ):
+    ):
         super().__init__()
         self._connections: Set[Connection] = set()
         self._braids: Dict[Connection, Braid] = dict()
@@ -38,9 +38,9 @@ class BraidServer(Server):
     def _after_relay_recieves_bundle(self, bundle_wrapper: BundleWrapper) -> None:
         info = bundle_wrapper.get_info()
         chain = info.get_chain()
-        #TODO: do something more efficient than looping over connections
+        # TODO: do something more efficient than looping over connections
         for connection, braid in self._braids.items():
-            self._logger.debug("considering connection: %s", connection._name)
+            self._logger.debug("considering connection: %s", connection.get_name())
             if braid.get(chain, default=0) > info.timestamp:
                 # Note: connection internally keeps track of what peer has and will prevent echo
                 connection.send_bundle(bundle_wrapper)
@@ -82,7 +82,7 @@ class BraidServer(Server):
             port=addr[1],
             sync_func=self.get_greeting,
             auth_func=listener.get_auth(),
-            name="accepted #%s" % (len(self._connections)+1,)
+            name="accepted #%s" % (len(self._connections) + 1,)
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)

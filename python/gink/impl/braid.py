@@ -55,7 +55,7 @@ class Braid(Container):
             muid = Muid.create(builder=entry_pair.builder.describing, context=entry_pair.address)
             value = self._get_occupant(entry_pair.builder, address=entry_pair.address)
             assert isinstance(value, (float, int))
-            yield (Chain(muid.medallion, muid.timestamp), value)
+            yield Chain(muid.medallion, muid.timestamp), value
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)
@@ -104,5 +104,6 @@ class Braid(Container):
         value = self._get_occupant(found.builder, found.address)
         assert isinstance(value, (int, float))
         return value
+
 
 Database.register_container_type(Braid)

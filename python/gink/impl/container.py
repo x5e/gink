@@ -160,7 +160,7 @@ class Container(Addressable, ABC):
             self._database.bundle(bundler)
         return change_muid
 
-    def  _add_entry(self, *,
+    def _add_entry(self, *,
                    value: Union[UserValue, Deletion, Inclusion, Container],
                    key: Union[Muid, str, int, bytes, None, Chain,
                               Tuple[Container, Container], Tuple[Muid, Muid]] = None,
@@ -168,8 +168,8 @@ class Container(Addressable, ABC):
                    bundler: Optional[Bundler] = None,
                    comment: Optional[str] = None,
                    expiry: GenericTimestamp = None,
-                   behavior: Optional[int] = None, # defaults to behavior of current container
-                   on_muid: Optional[Muid] = None, # defaults to current container
+                   behavior: Optional[int] = None,  # defaults to behavior of current container
+                   on_muid: Optional[Muid] = None,  # defaults to current container
                    ) -> Muid:
         immediate = False
         if not isinstance(bundler, Bundler):
