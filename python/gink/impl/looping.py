@@ -38,6 +38,8 @@ def loop(
         assert isinstance(selector, BaseSelector)
         for selectable_ in _selectables:
             if selectable_ and selectable_ not in registered:
+                if hasattr(selectable_, "get_selectables"):
+                    add(selectable_.get_selectables())
                 selector.register(selectable_, EVENT_READ)
                 registered.add(selectable_)
 
