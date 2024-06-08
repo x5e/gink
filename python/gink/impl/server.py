@@ -33,8 +33,7 @@ class Server(ABC):
 
     def on_ready(self) -> Iterable[Selectable]:
         self._socket_rite.recv(1)
-        for selectable in list(self._selectables):
-            yield selectable
+        return self.get_selectables()
 
     def close(self):
         self._socket_left.close()
