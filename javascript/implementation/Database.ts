@@ -22,7 +22,6 @@ import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
-import { Container } from "./Container";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -39,8 +38,6 @@ export class Database {
     private countConnections = 0; // Includes disconnected clients.
     private myChain: ClaimedChain;
     private identity: string;
-    private containerNames: Property;
-    private initilized = false;
     protected iHave: ChainTracker;
 
     //TODO: centralize platform dependent code
@@ -51,7 +48,6 @@ export class Database {
         identity: string = getIdentity(),
         readonly logger: CallBack = noOp) {
         this.identity = identity;
-        this.containerNames = this.getGlobalProperty();
         this.ready = this.initialize();
     }
 
@@ -116,7 +112,6 @@ export class Database {
             }
         };
         this.store.addFoundBundleCallBack(callback);
-        this.initilized = true;
     }
 
     /**
@@ -343,7 +338,7 @@ export class Database {
                 // Loop through changes and gather a set of changed containers.
                 const changedContainers: Set<string> = new Set();
                 const changesMap: Map<Offset, ChangeBuilder> = bundle.builder.getChangesMap();
-                for (const changeBuilder of changesMap.values()) {
+                for (const [offset, changeBuilder] of changesMap.entries()) {
                     const entry = changeBuilder.getEntry();
                     const clearance = changeBuilder.getClearance();
                     let container;
@@ -354,7 +349,14 @@ export class Database {
                         container = clearance.getContainer();
                     }
                     if (container && container.getTimestamp() && container.getMedallion() && container.getOffset()) {
-                        const muid = builderToMuid(container);
+                        const muid = builderToMuid(
+                            container,
+                            {
+                                timestamp: bundle.info.timestamp,
+                                medallion: bundle.info.medallion,
+                                offset: offset
+                            }
+                        );
                         const stringMuid = muidToString(muid);
                         changedContainers.add(stringMuid);
                     }
