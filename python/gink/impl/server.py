@@ -17,22 +17,22 @@ class Server(ABC):
         self._indication_sent = False
         self._selectables: Set[Selectable] = set()
 
+    def get_selectables(self)-> Iterable[Selectable]:
+        for selectable in self._selectables:
+            yield selectable
+
     def fileno(self) -> int:
         return self._socket_rite.fileno()
 
     def _add_selectable(self, selectable: Selectable):
         self._selectables.add(selectable)
-        if not self._indication_sent:
-            self._socket_left.send(b'0x01')
-            self._indication_sent = True
+        self._socket_left.send(b'1')
 
     def _remove_selectable(self, selectable: Selectable):
         self._selectables.discard(selectable)
 
     def on_ready(self) -> Iterable[Selectable]:
-        if self._indication_sent:
-            self._socket_rite.recv(1)
-            self._indication_sent = False
+        self._socket_rite.recv(1)
         for selectable in list(self._selectables):
             yield selectable
 
