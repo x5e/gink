@@ -116,7 +116,7 @@ export class Database {
 
     /**
      * Either returns the existing chain, or starts a new one and returns that.
-     * Useful if you need to explicitly start a chain without actually committing any data.
+     * Useful if you need to explicitly start a chain without committing an entry to a container.
      * @returns a new or existing ClaimedChain
      */
     public async getOrStartChain(): Promise<ClaimedChain> {
