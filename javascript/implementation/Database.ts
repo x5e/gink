@@ -51,11 +51,29 @@ export class Database {
         this.ready = this.initialize();
     }
 
+    private async initialize(): Promise<void> {
+        await this.store.ready;
+
+        this.iHave = await this.store.getChainTracker();
+        this.listeners.set("all", []);
+        //this.logger(`Database.ready`);
+        const callback = async (bundle: BundleView): Promise<void> => {
+            for (const [peerId, peer] of this.peers) {
+                peer._sendIfNeeded(bundle);
+            }
+            // Send to listeners subscribed to all containers.
+            for (const listener of this.listeners.get("all")) {
+                listener(bundle.info);
+            }
+        };
+        this.store.addFoundBundleCallBack(callback);
+    }
+
     /**
      * Starts a chain or finds one to reuse, then sets myChain.
      */
-    private async acquireAppendableChain(): Promise<void> {
-        if (this.myChain) return;
+    private async acquireAppendableChain(): Promise<ClaimedChain> {
+        if (this.myChain) return this.myChain;
         const claimedChains = await this.store.getClaimedChains();
         let reused;
         for (let value of claimedChains.values()) {
@@ -93,25 +111,16 @@ export class Database {
             }
         }
         ensure(this.myChain, "myChain wasn't set.");
-        return;
+        return this.myChain;
     }
 
-    private async initialize(): Promise<void> {
-        await this.store.ready;
-
-        this.iHave = await this.store.getChainTracker();
-        this.listeners.set("all", []);
-        //this.logger(`Database.ready`);
-        const callback = async (bundle: BundleView): Promise<void> => {
-            for (const [peerId, peer] of this.peers) {
-                peer._sendIfNeeded(bundle);
-            }
-            // Send to listeners subscribed to all containers.
-            for (const listener of this.listeners.get("all")) {
-                listener(bundle.info);
-            }
-        };
-        this.store.addFoundBundleCallBack(callback);
+    /**
+     * Either returns the existing chain, or starts a new one and returns that.
+     * Useful if you need to explicitly start a chain without actually committing any data.
+     * @returns a new or existing ClaimedChain
+     */
+    public async getOrStartChain(): Promise<ClaimedChain> {
+        return await this.acquireAppendableChain();
     }
 
     /**
