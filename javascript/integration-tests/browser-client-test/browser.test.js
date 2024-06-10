@@ -5,15 +5,15 @@ const { getLaunchOptions, sleep } = require("../browser_test_utilities");
 
 it('connect to server and display bundles', async () => {
     const port = 9997;
+    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
+        { env: { GINK_PORT: port, GINK_STATIC_PATH: ".", ...process.env } },
+        false);
+    let browser = await puppeteer.launch(getLaunchOptions());
     try {
-        let browser = await puppeteer.launch(getLaunchOptions());
-        let page = await browser.newPage();
-
-        const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-            { env: { GINK_PORT: port, GINK_STATIC_PATH: ".", ...process.env } },
-            false);
         await sleep(1000);
         await server.expect("ready");
+
+        let page = await browser.newPage();
 
         // For some reason if I don't handle console output, this test fails because
         // the messages aren't displayed properly..?

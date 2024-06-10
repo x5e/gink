@@ -5,15 +5,15 @@ const { getLaunchOptions, sleep } = require("./browser_test_utilities");
 process.chdir(__dirname + "/..");
 it('connect to server and display dashboard', async () => {
     const port = 9998;
-    try {
-        let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
-        let page = await browser.newPage();
+    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
+        { env: { GINK_PORT: port, ...process.env } },
+        false);
+    let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
 
-        const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-            { env: { GINK_PORT: port, ...process.env } },
-            false);
+    try {
         await sleep(1000);
         await server.expect("ready");
+        let page = await browser.newPage();
 
         page.on('console', async e => {
             const args = await Promise.all(e.args().map(a => a.jsonValue()));
@@ -49,16 +49,16 @@ it('share bundles between two pages', async () => {
      * page.
      */
     const port = 9999;
+    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
+        { env: { GINK_PORT: port, ...process.env } }, false);
+    let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
     try {
-        let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
+        await sleep(1000);
+        await server.expect("ready");
+
         let page1 = await browser.newPage();
         let page2 = await browser.newPage();
         const pages = [page1, page2];
-
-        const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-            { env: { GINK_PORT: port, ...process.env } });
-        await sleep(1000);
-        await server.expect("ready");
 
         for (const page of pages) {
             await page.goto(`http://localhost:${port}/`);
