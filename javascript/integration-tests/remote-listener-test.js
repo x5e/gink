@@ -1,11 +1,11 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector.js");
 const { Database, ensure } = require("../tsc.out/implementation/index.js");
-const { sleep, getSafePort } = require("./browser_test_utilities.js");
+const { sleep } = require("./browser_test_utilities.js");
 process.chdir(__dirname + "/..");
 
 (async () => {
-    const port = getSafePort();
+    const port = process.env.CURRENT_SAFE_PORT;
     console.log("starting remote listener test");
     const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: port, ...process.env } }, false);
     await server.expect("ready", 2000);

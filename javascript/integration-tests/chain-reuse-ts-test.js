@@ -1,7 +1,5 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
-const { Database } = require("../tsc.out/implementation/Database.js");
-const { LogBackedStore } = require("../tsc.out/implementation/LogBackedStore.js");
 const { existsSync, unlinkSync } = require('fs');
 const { sleep } = require('./browser_test_utilities.js');
 const TEST_DB_PATH = "/tmp/chain-reuse-ts-test.db";

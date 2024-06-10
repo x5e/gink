@@ -1,38 +1,38 @@
 const puppeteer = require('puppeteer');
 const Expector = require("./Expector");
 const { expect } = require('@jest/globals');
-const { getLaunchOptions, sleep, getSafePort } = require("./browser_test_utilities");
+const { getLaunchOptions, sleep } = require("./browser_test_utilities");
 process.chdir(__dirname + "/..");
 it('connect to server and display dashboard', async () => {
-    const port = getSafePort();
-    let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
-    let page = await browser.newPage();
-
-    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: port, ...process.env } },
-        false);
-    await sleep(1000);
-    await server.expect("ready");
-
-    page.on('console', async e => {
-        const args = await Promise.all(e.args().map(a => a.jsonValue()));
-    });
-
-    await page.goto(`http://localhost:${port}/`);
-    await page.waitForSelector('#root');
-
-    await sleep(4000);
-
-    const title = await page.$eval("#title-bar", e => e.innerHTML);
-    expect(title).toMatch("Root Directory");
-
-    await page.reload();
-    await server.expect("disconnected.");
-
-    await sleep(4000);
-
-    // Make sure server does not crash after page reload.
+    const port = 9998;
     try {
+        let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
+        let page = await browser.newPage();
+
+        const server = new Expector("node", ["./tsc.out/implementation/main.js"],
+            { env: { GINK_PORT: port, ...process.env } },
+            false);
+        await sleep(1000);
+        await server.expect("ready");
+
+        page.on('console', async e => {
+            const args = await Promise.all(e.args().map(a => a.jsonValue()));
+        });
+
+        await page.goto(`http://localhost:${port}/`);
+        await page.waitForSelector('#root');
+
+        await sleep(4000);
+
+        const title = await page.$eval("#title-bar", e => e.innerHTML);
+        expect(title).toMatch("Root Directory");
+
+        await page.reload();
+        await server.expect("disconnected.");
+
+        await sleep(4000);
+
+        // Make sure server does not crash after page reload.
         await server.expect("got greeting from 2");
     } catch (e) {
         throw new Error(e);
@@ -48,18 +48,18 @@ it('share bundles between two pages', async () => {
      * that can both send bundles and have them reflected in the other
      * page.
      */
-    const port = getSafePort();
-    let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
-    let page1 = await browser.newPage();
-    let page2 = await browser.newPage();
-    const pages = [page1, page2];
-
-    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: port, ...process.env } });
-    await sleep(1000);
-    await server.expect("ready");
-
+    const port = 9999;
     try {
+        let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
+        let page1 = await browser.newPage();
+        let page2 = await browser.newPage();
+        const pages = [page1, page2];
+
+        const server = new Expector("node", ["./tsc.out/implementation/main.js"],
+            { env: { GINK_PORT: port, ...process.env } });
+        await sleep(1000);
+        await server.expect("ready");
+
         for (const page of pages) {
             await page.goto(`http://localhost:${port}/`);
             await page.waitForSelector('#root');

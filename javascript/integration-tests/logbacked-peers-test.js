@@ -2,7 +2,6 @@
 const Expector = require("./Expector");
 const { Database } = require("../tsc.out/implementation/Database.js");
 const { LogBackedStore } = require("../tsc.out/implementation/LogBackedStore.js");
-const { getSafePort } = require("./browser_test_utilities.js");
 /*
 Logbacked1 <- Share File -> Logbacked2
                                 v
@@ -13,7 +12,7 @@ automatically pull the changes and broadcast them.
 */
 process.chdir(__dirname + "/..");
 (async () => {
-    const port = getSafePort();
+    const port = process.env.CURRENT_SAFE_PORT;
     console.log("starting");
     const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: port, ...process.env } });
     await server.expect("listening", 10000);

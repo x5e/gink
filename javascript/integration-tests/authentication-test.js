@@ -1,10 +1,9 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
-const { getSafePort } = require("./browser_test_utilities");
 process.chdir(__dirname + "/..");
 
 (async () => {
-    const port = getSafePort();
+    const port = process.env.CURRENT_SAFE_PORT;
     console.log("starting");
     const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: port, GINK_TOKEN: "abc", ...process.env } });
     await server.expect("ready", 2000);

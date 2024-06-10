@@ -1,10 +1,9 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
 const { Database, IndexedDbStore } = require("../tsc.out/implementation");
-const { getSafePort } = require("./browser_test_utilities");
 process.chdir(__dirname + "/..");
 (async function () {
-    const port = getSafePort();
+    const port = process.env.CURRENT_SAFE_PORT;
     new Expector("mkdir", ["-p", "/tmp/routing-server-test"]);
     await new Promise((resolve) => setTimeout(resolve, 10));
     let server;
