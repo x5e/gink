@@ -32,11 +32,17 @@ function getLaunchOptions(headless = true) {
     return launchOptions;
 };
 
+let currentPort = 8080;
+function getSafePort() {
+    return `${currentPort++}`;
+}
+
 async function sleep(ms) {
     return new Promise(r => setTimeout(r, ms));
 };
 
 module.exports = {
     getLaunchOptions: getLaunchOptions,
-    sleep: sleep
+    sleep: sleep,
+    getSafePort: getSafePort
 };

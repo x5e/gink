@@ -1,11 +1,13 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
+const { getSafePort } = require("./browser_test_utilities");
 process.chdir(__dirname + "/..");
 (async () => {
+    const port = getSafePort();
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: "8085", ...process.env } });
+    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: port, ...process.env } });
     await server.expect("listening", 10000);
-    const client = new Expector("./tsc.out/implementation/main.js", ["ws://127.0.0.1:8085/"]);
+    const client = new Expector("./tsc.out/implementation/main.js", [`ws://127.0.0.1:${port}/`]);
     await client.expect("using", 10000);
     console.log("all ready");
 

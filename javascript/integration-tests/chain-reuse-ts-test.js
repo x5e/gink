@@ -44,8 +44,6 @@ process.chdir(__dirname + "/..");
     await sleep(100);
     await instance2.close();
 
-
-
     process.exit(0);
 })().catch(async (reason) => {
     console.error(reason);

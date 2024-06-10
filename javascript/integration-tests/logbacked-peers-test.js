@@ -2,6 +2,7 @@
 const Expector = require("./Expector");
 const { Database } = require("../tsc.out/implementation/Database.js");
 const { LogBackedStore } = require("../tsc.out/implementation/LogBackedStore.js");
+const { getSafePort } = require("./browser_test_utilities.js");
 /*
 Logbacked1 <- Share File -> Logbacked2
                                 v
@@ -12,8 +13,9 @@ automatically pull the changes and broadcast them.
 */
 process.chdir(__dirname + "/..");
 (async () => {
+    const port = getSafePort();
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: "8082", ...process.env } });
+    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: port, ...process.env } });
     await server.expect("listening", 10000);
     console.log("server started");
 
@@ -24,7 +26,7 @@ process.chdir(__dirname + "/..");
     const lbstore2 = new LogBackedStore("/tmp/test_peer.store");
     const instance2 = new Database(lbstore2);
     await instance2.ready;
-    await instance2.connectTo("ws://localhost:8082");
+    await instance2.connectTo(`ws://localhost:${port}`);
     console.log("second store connected to server");
 
     await instance1.getGlobalDirectory().set("foo", "bar", "testing peer callback");

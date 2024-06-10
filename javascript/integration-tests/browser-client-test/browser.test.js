@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 const Expector = require("../Expector");
 const { expect } = require('@jest/globals');
-const { getLaunchOptions, sleep } = require("../browser_test_utilities");
+const { getLaunchOptions, sleep, getSafePort } = require("../browser_test_utilities");
 
 it('connect to server and display bundles', async () => {
     let browser = await puppeteer.launch(getLaunchOptions());
@@ -9,7 +9,7 @@ it('connect to server and display bundles', async () => {
     let page = await browser.newPage();
 
     const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: "8082", GINK_STATIC_PATH: ".", ...process.env } },
+        { env: { GINK_PORT: getSafePort(), GINK_STATIC_PATH: ".", ...process.env } },
         false);
     await sleep(1000);
     await server.expect("ready");
