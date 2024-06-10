@@ -1,4 +1,5 @@
-import { TreeMap } from "jstreemap";
+import { MapIterator, TreeMap } from "jstreemap";
+import { ensure } from "./utils";
 
 class Index extends TreeMap<any, any> {
     private keyPath: string[];
@@ -12,24 +13,45 @@ class Index extends TreeMap<any, any> {
         return this.keyPath;
     }
 
+    put(value: any): void {
+        ensure(this.keyPath.length, "need a keypath to use put");
+        let newKey = '';
+        for (const key of this.keyPath) {
+            newKey = newKey + `${value[key].toString()},`;
+        }
+        newKey = newKey.slice(0, newKey.length - 1);
+        this.set(newKey, value);
+    }
+
+    toLastWithPrefixBeforeSuffix<V>(
+        prefix: string, suffix: string = '~'):
+        MapIterator<string, V> | undefined {
+        const iterator = this.upperBound(prefix + suffix);
+        iterator.prev();
+        if (!iterator.key) return undefined;
+        if (!iterator.key.startsWith(prefix)) return undefined;
+        return iterator;
+    }
+
 }
 
 export class IndexableTreeMap extends Index {
     private indexes: Map<string, Index>;
-    constructor() {
-        super();
+    /**
+     *
+     * @param keyPath optional keyPath for the primary index. If this is passed,
+     * you can use thisITM.put(value). Otherwise, you will need to specify a key to
+     * setForAllIndexes().
+     */
+    constructor(keyPath?: string[]) {
+        super(keyPath);
         this.indexes = new Map();
     }
 
-    setForAllIndexes(key: any, value: any) {
-        this.set(key, value);
+    setForAllIndexes(value: any, key?: any) {
+        key ? this.set(key, value) : this.put(value);
         for (const index of this.indexes.values()) {
-            let newKey = '';
-            for (const key of index.getKeyPath()) {
-                newKey = newKey + `${value[key]},`;
-            }
-            newKey = newKey.slice(0, newKey.length - 1);
-            index.set(newKey, value);
+            index.put(value);
         }
     }
 
@@ -42,12 +64,7 @@ export class IndexableTreeMap extends Index {
     addIndex(name: string, keyPath: string[]): void {
         const index = new Index(keyPath);
         this.forEach((e) => {
-            let newKey = '';
-            for (const key of keyPath) {
-                newKey = newKey + `${e[key]},`;
-            }
-            newKey = newKey.slice(0, newKey.length - 1);
-            index.set(newKey, e);
+            index.put(e);
         });
         this.indexes.set(name, index);
     }
