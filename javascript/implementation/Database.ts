@@ -274,8 +274,6 @@ export class Database {
     }
 
     /**
-    * NOTE: "all" is a valid containerId for the purpose of this operation.
-    * Otherwise, the containerId should be the muid as a string.
     * Gets a list of bundle listeners per container, listening to all bundles or just remote.
     * @param remoteOnly true if looking for listeners only subscribed to remote bundles.
     * @param containerMuid optional container muid to find listeners subscribed to a specific container.
