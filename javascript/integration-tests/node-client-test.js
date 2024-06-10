@@ -2,7 +2,7 @@
 const Expector = require("./Expector");
 process.chdir(__dirname + "/..");
 (async () => {
-    const port = process.env.CURRENT_SAFE_PORT;
+    const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
     const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: port, ...process.env } });
     await server.expect("listening", 10000);
