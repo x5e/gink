@@ -72,7 +72,7 @@ export class Database {
     /**
      * Starts a chain or finds one to reuse, then sets myChain.
      */
-    private async acquireAppendableChain(): Promise<ClaimedChain> {
+    public async getOrStartChain(): Promise<ClaimedChain> {
         if (this.myChain) return this.myChain;
         const claimedChains = await this.store.getClaimedChains();
         let reused;
@@ -112,15 +112,6 @@ export class Database {
         }
         ensure(this.myChain, "myChain wasn't set.");
         return this.myChain;
-    }
-
-    /**
-     * Either returns the existing chain, or starts a new one and returns that.
-     * Useful if you need to explicitly start a chain without committing an entry to a container.
-     * @returns a new or existing ClaimedChain
-     */
-    public async getOrStartChain(): Promise<ClaimedChain> {
-        return await this.acquireAppendableChain();
     }
 
     /**
@@ -273,7 +264,7 @@ export class Database {
      * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
-        return this.ready.then(() => this.acquireAppendableChain().then(() => {
+        return this.ready.then(() => this.getOrStartChain().then(() => {
             if (!(this.myChain.medallion > 0))
                 throw new Error("zero medallion?");
             const nowMicros = generateTimestamp();
@@ -447,7 +438,7 @@ export class Database {
         const authToken: string = (options && options.authToken) ? options.authToken : undefined;
 
         await this.ready;
-        await this.acquireAppendableChain();
+        await this.getOrStartChain();
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
             let protocols = [Database.PROTOCOL];
