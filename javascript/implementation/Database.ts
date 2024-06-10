@@ -26,7 +26,7 @@ import { MemoryStore } from "./MemoryStore";
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
  * ts-node on a server.  Because of the need to work within a browser it doesn't do any port
- * listening (see GinkListener and GinkServerInstance for that capability).
+ * listening (see SimpleServer for that capability).
  */
 export class Database {
 
@@ -34,7 +34,7 @@ export class Database {
     readonly peers: Map<number, Peer> = new Map();
     static readonly PROTOCOL = "gink";
 
-    private listeners: Map<string, BundleListener[]> = new Map();
+    private listeners: Map<string, Map<string, BundleListener[]>> = new Map();
     private countConnections = 0; // Includes disconnected clients.
     private myChain: ClaimedChain;
     private identity: string;
@@ -51,11 +51,32 @@ export class Database {
         this.ready = this.initialize();
     }
 
+    private async initialize(): Promise<void> {
+        await this.store.ready;
+        this.iHave = await this.store.getChainTracker();
+
+        const innerMap = new Map();
+        innerMap.set("all_bundles", []);
+        innerMap.set("remote_only", []);
+        this.listeners.set("all", innerMap);
+
+        const callback = async (bundle: BundleView): Promise<void> => {
+            for (const [peerId, peer] of this.peers) {
+                peer._sendIfNeeded(bundle);
+            }
+            // Send to listeners subscribed to all containers.
+            for (const listener of this.getListeners()) {
+                listener(bundle.info);
+            }
+        };
+        this.store.addFoundBundleCallBack(callback);
+    }
+
     /**
      * Starts a chain or finds one to reuse, then sets myChain.
      */
-    private async acquireAppendableChain(): Promise<void> {
-        if (this.myChain) return;
+    public async getOrStartChain(): Promise<ClaimedChain> {
+        if (this.myChain) return this.myChain;
         const claimedChains = await this.store.getClaimedChains();
         let reused;
         for (let value of claimedChains.values()) {
@@ -93,25 +114,7 @@ export class Database {
             }
         }
         ensure(this.myChain, "myChain wasn't set.");
-        return;
-    }
-
-    private async initialize(): Promise<void> {
-        await this.store.ready;
-
-        this.iHave = await this.store.getChainTracker();
-        this.listeners.set("all", []);
-        //this.logger(`Database.ready`);
-        const callback = async (bundle: BundleView): Promise<void> => {
-            for (const [peerId, peer] of this.peers) {
-                peer._sendIfNeeded(bundle);
-            }
-            // Send to listeners subscribed to all containers.
-            for (const listener of this.listeners.get("all")) {
-                listener(bundle.info);
-            }
-        };
-        this.store.addFoundBundleCallBack(callback);
+        return this.myChain;
     }
 
     /**
@@ -249,12 +252,29 @@ export class Database {
     * @param listener a callback to be invoked when a change occurs in the database or container
     * @param containerMuid the Muid of a container to subscribe to. If left out, subscribe to all containers.
     */
-    public addListener(listener: BundleListener, containerMuid?: Muid) {
+    public addListener(listener: BundleListener, containerMuid?: Muid, remoteOnly: boolean = false) {
         const key = containerMuid ? muidToString(containerMuid) : "all";
         if (!this.listeners.has(key)) {
-            this.listeners.set(key, []);
+            const innerMap = new Map();
+            innerMap.set("all_bundles", []);
+            innerMap.set("remote_only", []);
+            this.listeners.set(key, innerMap);
         }
-        this.listeners.get(key).push(listener);
+        const which = remoteOnly ? "remote_only" : "all_bundles";
+        this.listeners.get(key).get(which).push(listener);
+    }
+
+    /**
+    * Gets a list of bundle listeners per container, listening to all bundles or just remote.
+    * @param remoteOnly true if looking for listeners only subscribed to remote bundles.
+    * @param containerMuid optional container muid to find listeners subscribed to a specific container.
+    */
+    private getListeners(remoteOnly: boolean = false, containerMuid?: Muid): BundleListener[] {
+        const key = containerMuid ? muidToString(containerMuid) : "all";
+        const containerMap = this.listeners.get(key);
+        if (!containerMap) return [];
+        const innerMap = remoteOnly ? containerMap.get("remote_only") : containerMap.get("all_bundles");
+        return innerMap || [];
     }
 
     /**
@@ -264,7 +284,7 @@ export class Database {
      * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
-        return this.ready.then(() => this.acquireAppendableChain().then(() => {
+        return this.ready.then(() => this.getOrStartChain().then(() => {
             if (!(this.myChain.medallion > 0))
                 throw new Error("zero medallion?");
             const nowMicros = generateTimestamp();
@@ -330,13 +350,13 @@ export class Database {
                     peer._sendIfNeeded(bundle);
             }
             // Send to listeners subscribed to all containers.
-            for (const listener of this.listeners.get("all")) {
+            for (const listener of this.getListeners()) {
                 listener(bundle.info);
             }
 
             if (this.listeners.size > 1) {
                 // Loop through changes and gather a set of changed containers.
-                const changedContainers: Set<string> = new Set();
+                const changedContainers: Set<Muid> = new Set();
                 const changesMap: Map<Offset, ChangeBuilder> = bundle.builder.getChangesMap();
                 for (const [offset, changeBuilder] of changesMap.entries()) {
                     const entry = changeBuilder.getEntry();
@@ -357,16 +377,19 @@ export class Database {
                                 offset: offset
                             }
                         );
-                        const stringMuid = muidToString(muid);
-                        changedContainers.add(stringMuid);
+                        changedContainers.add(muid);
                     }
                 }
                 // Send to listeners specifically subscribed to each container.
-                for (const strMuid of changedContainers) {
-                    const containerListeners = this.listeners.get(strMuid);
-                    if (containerListeners) {
-                        for (const listener of containerListeners) {
-                            listener(bundle.info);
+                for (const muid of changedContainers) {
+                    const containerListeners = this.getListeners(false, muid);
+                    const remoteOnlyListeners = this.getListeners(true, muid);
+                    for (const listener of containerListeners) {
+                        listener(bundle.info);
+                    }
+                    if (fromConnectionId) {
+                        for (const remoteListener of remoteOnlyListeners) {
+                            remoteListener(bundle.info);
                         }
                     }
                 }
@@ -438,7 +461,7 @@ export class Database {
         const authToken: string = (options && options.authToken) ? options.authToken : undefined;
 
         await this.ready;
-        await this.acquireAppendableChain();
+        await this.getOrStartChain();
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
             let protocols = [Database.PROTOCOL];
