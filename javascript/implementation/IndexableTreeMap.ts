@@ -1,6 +1,7 @@
 import { MapIterator, TreeMap } from "jstreemap";
 import { ensure } from "./utils";
 
+
 class Index<V> extends TreeMap<string, V> {
     private keyPath: string[];
 
@@ -13,7 +14,7 @@ class Index<V> extends TreeMap<string, V> {
         return this.keyPath;
     }
 
-    put(value: any): void {
+    put(value: V): void {
         ensure(this.keyPath.length, "need a keypath to use put");
         let newKey = '';
         for (const key of this.keyPath) {
@@ -33,10 +34,13 @@ class Index<V> extends TreeMap<string, V> {
 
 }
 
+
 export class IndexableTreeMap<V> extends Index<V> {
     private indexes: Map<string, Index<V>>;
+
     /**
-     *
+     * Note: The type parameter V declares the type of value to be stored.
+     * At least for now, the IndexableTreeMap can only use string keys.
      * @param keyPath optional keyPath for the primary index. If this is passed,
      * you can use thisITM.put(value). Otherwise, you will need to specify a key to
      * setForAllIndexes().
@@ -46,23 +50,49 @@ export class IndexableTreeMap<V> extends Index<V> {
         this.indexes = new Map();
     }
 
-    setForAllIndexes(value: any, key?: any) {
+    /**
+     * Sets a key, value pair in every index, not just the primary tree map.
+     * For the secondary indexes, the key will be inferred from the keyPath of the
+     * index and the value. If no key argument is present, the primary index will also
+     * use its keyPath.
+     * @param value
+     * @param key
+     */
+    setForAllIndexes(value: V, key?: string) {
         key ? this.set(key, value) : this.put(value);
         for (const index of this.indexes.values()) {
             index.put(value);
         }
     }
 
+    /**
+     * Returns the index registered with this name - you can chain
+     * a query by using this.useIndex(name).get(key)
+     * @param name name of the index
+     * @returns an Index (which inherits from TreeMap) to perform queries on.
+     */
     useIndex(name: string): Index<V> {
         const index = this.indexes.get(name);
         if (!index) throw new Error("index does not exist");
         return index;
     }
 
-    addIndex(name: string, keyPath: string[]): void {
+    /**
+     * Creates a new index on the given keyPath.
+     * @param name the name to refer to this index
+     * @param keyPath the properties of the value to be used in the key.
+     * For example, if the value is a Muid: {
+     *  timestamp,
+     *  medallion,
+     *  offset
+     * }
+     * and the provided keyPath was ["medallion", "offset"],
+     * the keys for the index would be "medallion,offset"
+     */
+    createIndex(name: string, keyPath: string[]): void {
         const index: Index<V> = new Index(keyPath);
         this.forEach((e) => {
-            index.put(e);
+            index.put(e[1]);
         });
         this.indexes.set(name, index);
     }

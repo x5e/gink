@@ -23,8 +23,8 @@ it('test basic functionality', async function () {
         "medallion": 987654321,
         "offset": 4
     });
-    m.addIndex("by-medallion-timestamp", ["medallion", "timestamp"]);
-    m.addIndex("by-timestamp", ["timestamp"]);
+    m.createIndex("by-medallion-timestamp", ["medallion", "timestamp"]);
+    m.createIndex("by-timestamp", ["timestamp"]);
     ensure(m.get("4,123456789"));
     ensure(m.useIndex("by-medallion-timestamp").get(`987654321,123456789`));
     ensure(m.useIndex("by-timestamp").get(`123456789`));
@@ -43,7 +43,7 @@ it('test basic functionality', async function () {
     ensure(found2.value["offset"] == 5);
 
     const fakeEntries = new IndexableTreeMap(["key", "placementId"]);
-    fakeEntries.addIndex("by-container-key-placement", ["containerId", "key", "placementId"]);
+    fakeEntries.createIndex("by-container-key-placement", ["containerId", "key", "placementId"]);
     const byCKPIndex = fakeEntries.useIndex("by-container-key-placement");
     fakeEntries.setForAllIndexes({
         containerId: [123456789, 111111111, 4],
@@ -89,4 +89,27 @@ it('test basic functionality', async function () {
     for (const e of found4) {
         ensure(!(e.key == "new container"));
     }
+});
+
+it('toLastWithPrefixBeforeSuffix', function () {
+    const map = new IndexableTreeMap<string>();
+    const result1 = map.toLastWithPrefixBeforeSuffix("foo", "bar");
+    ensure(!result1);
+    const result2 = map.toLastWithPrefixBeforeSuffix("foo");
+    ensure(!result2);
+    map.set("goo", "bar");
+    const result3 = map.toLastWithPrefixBeforeSuffix("foo");
+    ensure(!result3);
+    const result4 = map.toLastWithPrefixBeforeSuffix("zoo");
+    ensure(!result4);
+    const result5 = map.toLastWithPrefixBeforeSuffix("go");
+    ensure((!!result5) && result5.key == "goo" && result5.value == "bar");
+    map.set("gool", "bat");
+    const result6 = map.toLastWithPrefixBeforeSuffix("goo");
+    ensure((!!result6) && result6.value == "bat");
+    map.set("goz", "zzz");
+    const result7 = map.toLastWithPrefixBeforeSuffix("goo");
+    ensure((!!result7) && result7.value == "bat");
+    const result8 = map.toLastWithPrefixBeforeSuffix("goo", "f");
+    ensure((!!result8) && result8.key == "goo");
 });

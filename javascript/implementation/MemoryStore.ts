@@ -7,7 +7,6 @@ import {
     unwrapValue,
     sameData,
     getActorId,
-    toLastWithPrefixBeforeSuffix,
     strToMuid
 } from "./utils";
 import {
@@ -49,24 +48,25 @@ import {
     storageKeyToString,
 } from "./store_utils";
 import { Retrieval } from "./Retrieval";
+import { IndexableTreeMap } from "./IndexableTreeMap";
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
     private foundBundleCallBacks: BroadcastFunc[] = [];
+    private activeChains: ClaimedChain[] = [];
     // Awkward, but need to use strings to represent objects, since we won't always
     // have the original reference to use.
     private trxns: TreeMap<BundleInfoTuple, Uint8Array> = new TreeMap(); // BundleInfoTuple => bytes
-    private chainInfos: TreeMap<string, BundleInfo> = new TreeMap(); // [Medallion, ChainStart] => BundleInfo
-    private activeChains: ClaimedChain[] = [];
-    private clearances: TreeMap<string, Clearance> = new TreeMap(); // ContainerId,ClearanceId => Clearance
-    private containers: TreeMap<string, Uint8Array> = new TreeMap(); // ContainerId => bytes
-    private removals: TreeMap<string, string> = new TreeMap(); // placementId,removalId => ""
-    private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
+    private chainInfos: IndexableTreeMap<BundleInfo> = new IndexableTreeMap(); // [Medallion, ChainStart] => BundleInfo
+    private clearances: IndexableTreeMap<Clearance> = new IndexableTreeMap(); // ContainerId,ClearanceId => Clearance
+    private containers: IndexableTreeMap<Uint8Array> = new IndexableTreeMap(); // ContainerId => bytes
+    private removals: IndexableTreeMap<string> = new IndexableTreeMap(); // placementId,removalId => ""
+    private placements: IndexableTreeMap<Entry> = new IndexableTreeMap(); // ContainerID,Key,PlacementId => PlacementId
+    private locations: IndexableTreeMap<string> = new IndexableTreeMap();
+    private bySource: IndexableTreeMap<Entry> = new IndexableTreeMap();
+    private byTarget: IndexableTreeMap<Entry> = new IndexableTreeMap();
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
-    private locations: TreeMap<string, string> = new TreeMap();
-    private bySource: TreeMap<string, Entry> = new TreeMap();
-    private byTarget: TreeMap<string, Entry> = new TreeMap();
     constructor(private keepingHistory = true) {
         this.ready = Promise.resolve();
     }
@@ -250,7 +250,7 @@ export class MemoryStore implements Store {
                 iterator.next();
             }
         } else {
-            const iterator = toLastWithPrefixBeforeSuffix(this.locations, entryIdStr);
+            const iterator = this.locations.toLastWithPrefixBeforeSuffix(entryIdStr);
             if (!iterator) {
                 console.error(`attempting to move something I don't have any record of: ${entryIdStr}`);
                 return;
@@ -308,7 +308,7 @@ export class MemoryStore implements Store {
         const semanticKey = toStorageKey(key);
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
         const prefix = `${srcAsStr},${storageKeyToString(semanticKey)},`;
-        const iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix, asOfTsStr);
+        const iterator = this.placements.toLastWithPrefixBeforeSuffix(prefix, asOfTsStr);
         if (!iterator) return undefined;
         const entry: Entry = iterator.value;
         if (!entry) throw new Error(`missing entry for: ${iterator.value}`);
@@ -335,7 +335,7 @@ export class MemoryStore implements Store {
     // TODO: allow this to take an as-of timestamp
     getEntryByIdSync(entryMuid: Muid): Entry | undefined {
         const entryIdStr = muidToString(entryMuid);
-        const it = toLastWithPrefixBeforeSuffix(this.locations, entryIdStr);
+        const it = this.locations.toLastWithPrefixBeforeSuffix(entryIdStr);
         if (!it)
             return undefined;
         return this.placements.get(it.value);
@@ -442,7 +442,7 @@ export class MemoryStore implements Store {
             const placementIdStr = placementKey.slice(-34);
             if (placementIdStr < clearanceTimeStr || placementIdStr > asOfTsStr)
                 continue;
-            if (toLastWithPrefixBeforeSuffix(this.removals, placementIdStr, commaAsOfTsStr))
+            if (this.removals.toLastWithPrefixBeforeSuffix(placementIdStr, commaAsOfTsStr))
                 continue;
             const returningKey = placementKey.substring(35);
             const entry: Entry = it.value;
@@ -464,7 +464,7 @@ export class MemoryStore implements Store {
         } else {
             const containerIdStr = muidTupleToString(entry.containerId);
             const prefix = `${containerIdStr},${storageKeyToString(entry.storageKey)}`;
-            for (let iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix);
+            for (let iterator = this.placements.toLastWithPrefixBeforeSuffix(prefix);
                 iterator && iterator.key && iterator.key.startsWith(prefix); iterator.prev()) {
                 if (entry.purging || !this.keepingHistory) {
                     this.placements.erase(iterator);
