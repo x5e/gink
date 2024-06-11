@@ -5,14 +5,15 @@ const { sleep } = require("./browser_test_utilities.js");
 process.chdir(__dirname + "/..");
 
 (async () => {
+    const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting remote listener test");
-    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: "9090", ...process.env } }, false);
+    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: port, ...process.env } }, false);
     await server.expect("ready", 2000);
 
     const client1 = new Database();
-    await client1.connectTo("ws://localhost:9090");
+    await client1.connectTo(`ws://localhost:${port}`);
     const client2 = new Database();
-    await client2.connectTo("ws://localhost:9090");
+    await client2.connectTo(`ws://localhost:${port}`);
 
     await sleep(200);
     console.log("connections established");

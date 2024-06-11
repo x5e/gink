@@ -4,13 +4,14 @@ const { sleep } = require("./browser_test_utilities.js");
 process.chdir(__dirname + "/..");
 
 (async () => {
+    const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: "8087", ...process.env } });
+    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: port, ...process.env } });
     await server.expect("ready", 2000);
 
     const client = new Expector(
         "python3",
-        ["-u", "-m", "gink", "-c", "ws://localhost:8087"]);
+        ["-u", "-m", "gink", "-c", `ws://localhost:${port}`]);
     await client.expect("connect");
     await server.expect("accepted");
     await sleep(100);
