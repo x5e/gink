@@ -21,7 +21,7 @@ export class Index<K, V> {
     constructor(keyPath?: string[], isPrimary: boolean = false) {
         this.isPrimary = isPrimary;
         if (!this.isPrimary) {
-            ensure(keyPath, "need a keypath to use an index");
+            ensure(keyPath, "need a keypath to use a secondary index");
         }
         this.treeMap = new TreeMap();
         this.keyPath = keyPath;
@@ -44,7 +44,6 @@ export class Index<K, V> {
      * have a keyPath, it throws an error.
      */
     put(value: V, key?: K): void {
-        if (this.isPrimary) ensure(key);
         if (!key && this.keyPath.length && !(Object.getPrototypeOf(value) == Object.prototype)) {
             throw new Error("Cannot put non-object values into an index with a keyPath.");
         }
@@ -68,7 +67,7 @@ export class Index<K, V> {
      * have a keyPath, it throws an error.
      */
     add(value: V, key?: K) {
-        if (!key && this.keyPath.length && !(Object.getPrototypeOf(value) == Object.prototype)) {
+        if (this.keyPath.length && !(Object.getPrototypeOf(value) == Object.prototype)) {
             throw new Error("Cannot put non-object values into an index with a keyPath.");
         }
         let newKey: string = '';
@@ -103,7 +102,7 @@ export class Index<K, V> {
         return this.treeMap.end();
     }
 
-    values() {
+    values(): IterableIterator<V> {
         return this.treeMap.values();
     }
 
@@ -201,12 +200,12 @@ export class IndexableTreeMap<K, V> {
      * @param key
      * @returns Either the found Object or undefined.
      */
-    get(key: K): Object {
+    get(key: K): V {
         return this.primary.get(key);
     }
 
 
-    values(): IterableIterator<Object> {
+    values(): IterableIterator<V> {
         return this.primary.values();
     }
 
@@ -240,7 +239,6 @@ export class IndexableTreeMap<K, V> {
     toLastWithPrefixBeforeSuffix(prefix: string, suffix?: string) {
         return this.primary.toLastWithPrefixBeforeSuffix(prefix, suffix);
     }
-
 
     /**
      * Returns the index registered with this name - you can chain

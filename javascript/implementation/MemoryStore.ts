@@ -49,6 +49,7 @@ import {
     storageKeyToString,
 } from "./store_utils";
 import { Retrieval } from "./Retrieval";
+import { IndexableTreeMap } from "./IndexableTreeMap";
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
@@ -57,7 +58,7 @@ export class MemoryStore implements Store {
     // Awkward, but need to use strings to represent objects, since we won't always
     // have the original reference to use.
     private trxns: TreeMap<BundleInfoTuple, Uint8Array> = new TreeMap(); // BundleInfoTuple => bytes
-    private chainInfos: TreeMap<string, BundleInfo> = new TreeMap(); // [Medallion, ChainStart] => BundleInfo
+    private chainInfos: IndexableTreeMap<Array<number>, BundleInfo> = new IndexableTreeMap(["medallion", "chainStart"]); // [Medallion, ChainStart] => BundleInfo
     private activeChains: ClaimedChain[] = [];
     private clearances: TreeMap<string, Clearance> = new TreeMap(); // ContainerId,ClearanceId => Clearance
     private containers: TreeMap<string, Uint8Array> = new TreeMap(); // ContainerId => bytes
@@ -126,7 +127,7 @@ export class MemoryStore implements Store {
         const bundleBuilder = bundle.builder;
         const bundleInfo = bundle.info;
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
-        const oldChainInfo = this.chainInfos.get(medallionChainStartToString([medallion, chainStart]));
+        const oldChainInfo = this.chainInfos.get([medallion, chainStart]);
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
                 return bundleInfo;
@@ -145,7 +146,7 @@ export class MemoryStore implements Store {
             this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId());
         }
 
-        this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
+        this.chainInfos.put(bundleInfo);
         const bundleKey: BundleInfoTuple = MemoryStore.bundleInfoToKey(bundleInfo);
         this.trxns.set(bundleKey, bundle.bytes);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
