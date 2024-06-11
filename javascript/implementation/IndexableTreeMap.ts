@@ -78,7 +78,7 @@ export class IndexableTreeMap<V> extends Index<V> {
     }
 
     /**
-     * Creates a new index on the given keyPath.
+     * Creates and returns a new index on the given keyPath.
      * @param name the name to refer to this index
      * @param keyPath the properties of the value to be used in the key.
      * For example, if the value is a Muid: {
@@ -88,13 +88,15 @@ export class IndexableTreeMap<V> extends Index<V> {
      * }
      * and the provided keyPath was ["medallion", "offset"],
      * the keys for the index would be "medallion,offset"
+     * @returns the created Index (basically a TreeMap)
      */
-    createIndex(name: string, keyPath: string[]): void {
+    createIndex(name: string, keyPath: string[]): Index<V> {
         const index: Index<V> = new Index(keyPath);
         this.forEach((e) => {
             index.put(e[1]);
         });
         this.indexes.set(name, index);
+        return index;
     }
 
     dropIndex(name: string): void {
