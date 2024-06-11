@@ -1,7 +1,7 @@
 import { MapIterator, TreeMap } from "jstreemap";
 import { ensure } from "./utils";
 
-class Index extends TreeMap<any, any> {
+class Index<V> extends TreeMap<string, V> {
     private keyPath: string[];
 
     constructor(keyPath?: string[]) {
@@ -23,9 +23,7 @@ class Index extends TreeMap<any, any> {
         this.set(newKey, value);
     }
 
-    toLastWithPrefixBeforeSuffix<V>(
-        prefix: string, suffix: string = '~'):
-        MapIterator<string, V> | undefined {
+    toLastWithPrefixBeforeSuffix(prefix: string, suffix: string = '~'): MapIterator<string, V> | undefined {
         const iterator = this.upperBound(prefix + suffix);
         iterator.prev();
         if (!iterator.key) return undefined;
@@ -35,8 +33,8 @@ class Index extends TreeMap<any, any> {
 
 }
 
-export class IndexableTreeMap extends Index {
-    private indexes: Map<string, Index>;
+export class IndexableTreeMap<V> extends Index<V> {
+    private indexes: Map<string, Index<V>>;
     /**
      *
      * @param keyPath optional keyPath for the primary index. If this is passed,
@@ -55,14 +53,14 @@ export class IndexableTreeMap extends Index {
         }
     }
 
-    useIndex(name: string): Index {
+    useIndex(name: string): Index<V> {
         const index = this.indexes.get(name);
         if (!index) throw new Error("index does not exist");
         return index;
     }
 
     addIndex(name: string, keyPath: string[]): void {
-        const index = new Index(keyPath);
+        const index: Index<V> = new Index(keyPath);
         this.forEach((e) => {
             index.put(e);
         });
