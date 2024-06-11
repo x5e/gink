@@ -29,7 +29,7 @@ it('test basic functionality', async function () {
     ensure(m.useIndex("by-medallion-timestamp").get(`987654321,123456789`));
     ensure(m.useIndex("by-timestamp").get(`123456789`));
 
-    m.setForAllIndexes({
+    m.put({
         "timestamp": 111111111,
         "medallion": 222222222,
         "offset": 5
@@ -45,28 +45,28 @@ it('test basic functionality', async function () {
     const fakeEntries = new IndexableTreeMap(["key", "placementId"]);
     fakeEntries.createIndex("by-container-key-placement", ["containerId", "key", "placementId"]);
     const byCKPIndex = fakeEntries.useIndex("by-container-key-placement");
-    fakeEntries.setForAllIndexes({
+    fakeEntries.put({
         containerId: [123456789, 111111111, 4],
         key: "test1",
         value: "value1",
         placementId: [987654321, 111111111, 1],
         deletion: false
     });
-    fakeEntries.setForAllIndexes({
+    fakeEntries.put({
         containerId: [123456789, 111111111, 4],
         key: "test2",
         value: "value2",
         placementId: [876543210, 111111111, 1],
         deletion: false
     });
-    fakeEntries.setForAllIndexes({
+    fakeEntries.put({
         containerId: [123456789, 111111111, 4],
         key: "test3",
         value: "value3",
         placementId: [765432100, 111111111, 1],
         deletion: false
     });
-    fakeEntries.setForAllIndexes({
+    fakeEntries.put({
         containerId: [223456789, 111111111, 4], // different container
         key: "new container",
         value: "new value",
@@ -92,24 +92,35 @@ it('test basic functionality', async function () {
 });
 
 it('toLastWithPrefixBeforeSuffix', function () {
-    const map = new IndexableTreeMap<string>();
+    const map = new IndexableTreeMap<string, string>(["key"]);
     const result1 = map.toLastWithPrefixBeforeSuffix("foo", "bar");
     ensure(!result1);
     const result2 = map.toLastWithPrefixBeforeSuffix("foo");
     ensure(!result2);
-    map.set("goo", "bar");
+    map.put("bar", "goo");
     const result3 = map.toLastWithPrefixBeforeSuffix("foo");
     ensure(!result3);
     const result4 = map.toLastWithPrefixBeforeSuffix("zoo");
     ensure(!result4);
     const result5 = map.toLastWithPrefixBeforeSuffix("go");
     ensure((!!result5) && result5.key == "goo" && result5.value == "bar");
-    map.set("gool", "bat");
+    map.put("bat", "gool");
     const result6 = map.toLastWithPrefixBeforeSuffix("goo");
     ensure((!!result6) && result6.value == "bat");
-    map.set("goz", "zzz");
+    map.put("zzz", "goz");
     const result7 = map.toLastWithPrefixBeforeSuffix("goo");
     ensure((!!result7) && result7.value == "bat");
     const result8 = map.toLastWithPrefixBeforeSuffix("goo", "f");
     ensure((!!result8) && result8.key == "goo");
+});
+
+it('correctly throws errors', () => {
+    const itm1 = new IndexableTreeMap();
+    let failure = false;
+    try {
+        itm1.put("hello");
+    } catch (e) {
+        failure = true;
+    }
+    ensure(failure);
 });
