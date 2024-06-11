@@ -93,7 +93,7 @@ export class IndexableTreeMap<V> extends Index<V> {
     createIndex(name: string, keyPath: string[]): Index<V> {
         const index: Index<V> = new Index(keyPath);
         this.forEach((e) => {
-            index.put(e[1]);
+            index.put(<V>e);
         });
         this.indexes.set(name, index);
         return index;
