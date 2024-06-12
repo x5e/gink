@@ -1,5 +1,5 @@
 import { Entry, MapIterator, TreeMap } from "jstreemap";
-import { ensure } from "./utils";
+import { ensure, muidToString, muidTupleToString } from "./utils";
 
 
 /**
@@ -50,10 +50,7 @@ export class Index<K, V> {
         let newKey: string = '';
         if (key) newKey = key.toString();
         else {
-            for (const key of this.keyPath) {
-                newKey = newKey + `${value[key].toString()},`;
-            }
-            newKey = newKey.slice(0, newKey.length - 1);
+            newKey = this.valueToKey(value);
         }
         this.treeMap.set(newKey, value);
     }
@@ -73,13 +70,25 @@ export class Index<K, V> {
         let newKey: string = '';
         if (key) newKey = key.toString();
         else {
-            for (const key of this.keyPath) {
-                newKey = newKey + `${value[key].toString()},`;
-            }
-            newKey = newKey.slice(0, newKey.length - 1);
+            newKey = this.valueToKey(value);
         }
         if (this.treeMap.get(newKey)) throw new Error("Key already exists. Use put if you want to overwrite.");
         this.treeMap.set(newKey, value);
+    }
+
+    private valueToKey(value: V): string {
+        let newKey = '';
+        for (const key of this.keyPath) {
+            const prop = value[key];
+            let part = prop;
+            if (Array.isArray(prop) && prop.length == 3) {
+                part = muidTupleToString(<any>prop);
+            }
+
+            newKey = newKey + `${part},`;
+        }
+        newKey = newKey.slice(0, newKey.length - 1);
+        return newKey;
     }
 
     delete(key: K) {
@@ -104,6 +113,10 @@ export class Index<K, V> {
 
     values(): IterableIterator<V> {
         return this.treeMap.values();
+    }
+
+    keys(): IterableIterator<string> {
+        return this.treeMap.keys();
     }
 
     forEach(callback: (element: Entry<string, V>) => void) {
@@ -207,6 +220,10 @@ export class IndexableTreeMap<K, V> {
 
     values(): IterableIterator<V> {
         return this.primary.values();
+    }
+
+    keys(): IterableIterator<string> {
+        return this.primary.keys();
     }
 
     /**

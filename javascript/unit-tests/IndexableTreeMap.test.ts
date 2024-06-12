@@ -1,4 +1,4 @@
-import { ensure } from "../implementation";
+import { ensure, muidTupleToString } from "../implementation";
 import { IndexableTreeMap } from "../implementation/IndexableTreeMap";
 
 it('test basic functionality', async function () {
@@ -25,6 +25,7 @@ it('test basic functionality', async function () {
     });
     m.createIndex("by-medallion-timestamp", ["medallion", "timestamp"]);
     m.createIndex("by-timestamp", ["timestamp"]);
+
     ensure(m.get("4,123456789"));
     ensure(m.useIndex("by-medallion-timestamp").get(`987654321,123456789`));
     ensure(m.useIndex("by-timestamp").get(`123456789`));
@@ -73,15 +74,15 @@ it('test basic functionality', async function () {
         placementId: [654321000, 111111111, 1],
         deletion: false
     });
-    let found3 = byCKPIndex.toLastWithPrefixBeforeSuffix('123456789,111111111,4,test1');
+    let found3 = byCKPIndex.toLastWithPrefixBeforeSuffix(`${muidTupleToString([123456789, 111111111, 4])},test1`);
     ensure(found3.value["value"] == "value1");
 
     let found4 = [];
     const testContainer = [123456789, 111111111, 4];
-    const iterator = byCKPIndex.lowerBound(testContainer.toString());
+    const iterator = byCKPIndex.lowerBound(muidTupleToString(<any>testContainer));
     while (true) {
         if (iterator.equals(byCKPIndex.end())) break;
-        if (!iterator.key.startsWith(testContainer.toString())) break;
+        if (!iterator.key.startsWith(muidTupleToString(<any>testContainer))) break;
         found4.push(iterator.value);
         iterator.next();
     }
