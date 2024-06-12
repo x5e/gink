@@ -170,7 +170,7 @@ it('Directory.toJSON', async function () {
         const other = await instance.createDirectory();
         await other.set("xxx", "yyy");
         await directory.set("blue", other);
-        await directory.set(new Uint8Array([94,10]), "^\n");
+        await directory.set(new Uint8Array([94, 10]), "^\n");
         const asJson = await directory.toJson();
         // MemoryStore returns entries in the order they were set,
         // so comparing an exact string won't work
@@ -200,6 +200,8 @@ it('Directory.asOf', async function () {
 
         const asJsonNow = await directory.toJson();
         ensure(asJsonNow == `{"A":"B","cheese":4}`);
+        console.log(await directory.get('cheese'));
+
         ensure((await directory.get('cheese')) === 4);
 
         const asJson2 = await directory.toJson(false, time2);

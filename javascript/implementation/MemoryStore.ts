@@ -42,7 +42,6 @@ import {
     extractContainerMuid,
     buildPairLists,
     buildPointeeList,
-    medallionChainStartToString,
     buildChainTracker,
     toStorageKey,
     bundleKeyToInfo,
@@ -63,7 +62,7 @@ export class MemoryStore implements Store {
     private clearances: TreeMap<string, Clearance> = new TreeMap(); // ContainerId,ClearanceId => Clearance
     private containers: TreeMap<string, Uint8Array> = new TreeMap(); // ContainerId => bytes
     private removals: TreeMap<string, string> = new TreeMap(); // placementId,removalId => ""
-    private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
+    private placements: IndexableTreeMap<string, Entry> = new IndexableTreeMap(["containerId", "storageKey", "placementId"]); // ContainerID,Key,PlacementId => Entry
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
     private locations: TreeMap<string, string> = new TreeMap();
     private bySource: TreeMap<string, Entry> = new TreeMap();
@@ -309,7 +308,7 @@ export class MemoryStore implements Store {
         const semanticKey = toStorageKey(key);
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
         const prefix = `${srcAsStr},${storageKeyToString(semanticKey)},`;
-        const iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix, asOfTsStr);
+        const iterator = this.placements.toLastWithPrefixBeforeSuffix(prefix, asOfTsStr);
         if (!iterator) return undefined;
         const entry: Entry = iterator.value;
         if (!entry) throw new Error(`missing entry for: ${iterator.value}`);
@@ -465,7 +464,7 @@ export class MemoryStore implements Store {
         } else {
             const containerIdStr = muidTupleToString(entry.containerId);
             const prefix = `${containerIdStr},${storageKeyToString(entry.storageKey)}`;
-            for (let iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix);
+            for (let iterator = this.placements.toLastWithPrefixBeforeSuffix(prefix);
                 iterator && iterator.key && iterator.key.startsWith(prefix); iterator.prev()) {
                 if (entry.purging || !this.keepingHistory) {
                     this.placements.erase(iterator);
@@ -475,7 +474,7 @@ export class MemoryStore implements Store {
                 }
             }
         }
-        this.placements.set(placementKey, entry);
+        this.placements.put(entry);
         if (entry.sourceList.length) {
             // TODO: remove these on deletion/purge
             const middle = behavior == Behavior.EDGE_TYPE ? storageKeyToString(entry.storageKey) : "";

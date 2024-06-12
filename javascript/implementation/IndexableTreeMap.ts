@@ -1,5 +1,6 @@
 import { Entry, MapIterator, TreeMap } from "jstreemap";
 import { ensure, muidToString, muidTupleToString } from "./utils";
+import { storageKeyToString } from "./store_utils";
 
 
 /**
@@ -76,13 +77,19 @@ export class Index<K, V> {
         this.treeMap.set(newKey, value);
     }
 
-    private valueToKey(value: V): string {
+    valueToKey(value: V): string {
         let newKey = '';
         for (const key of this.keyPath) {
             const prop = value[key];
             let part = prop;
-            if (Array.isArray(prop) && prop.length == 3) {
-                part = muidTupleToString(<any>prop);
+            if (prop instanceof Uint8Array ||
+                (Array.isArray(prop)) ||
+                typeof (prop) == "number" ||
+                typeof (prop) == "string"
+            ) {
+                part = storageKeyToString(<any>prop);
+            } else {
+                part = part.toString();
             }
 
             newKey = newKey + `${part},`;
@@ -91,8 +98,16 @@ export class Index<K, V> {
         return newKey;
     }
 
+    erase(it: MapIterator<string, V>) {
+        this.treeMap.erase(it);
+    }
+
     delete(key: K) {
         this.treeMap.delete(key.toString());
+    }
+
+    deleteByValue(value: V) {
+        this.treeMap.delete(this.valueToKey(value));
     }
 
     upperBound(key: K) {
@@ -131,7 +146,7 @@ export class Index<K, V> {
      * @returns a MapIterator starting at the entry if an entry matching the prefix/suffix exists,
      * otherwise returns undefined.
      */
-    toLastWithPrefixBeforeSuffix(prefix: string, suffix: string = '~'): MapIterator<string, Object> | undefined {
+    toLastWithPrefixBeforeSuffix(prefix: string, suffix: string = '~'): MapIterator<string, V> {
         const iterator = this.upperBound(<K>(prefix + suffix));
         iterator.prev();
         if (!iterator.key) return undefined;
@@ -208,6 +223,14 @@ export class IndexableTreeMap<K, V> {
         }
     }
 
+    erase(it: MapIterator<string, V>) {
+        this.primary.erase(it);
+        for (const index of this.indexes.values()) {
+            index.deleteByValue(it.value);
+        }
+
+    }
+
     /**
      * Get the value associated with a particular key on the PRIMARY INDEX.
      * @param key
@@ -231,16 +254,16 @@ export class IndexableTreeMap<K, V> {
      * @param key string key to search.
      * @returns a MapIterator
      */
-    upperBound(key: K) {
+    upperBound(key: K): MapIterator<string, V> {
         return this.primary.upperBound(key);
     }
 
     /**
-     * Returns a map iterator at the first found entry matching the key.
+     * Returns an array of map iterators at the first found entry matching the key for each index.
      * @param key string key to search.
-     * @returns a MapIterator
+     * @returns an array of MapIterator
      */
-    lowerBound(key: K) {
+    lowerBound(key: K): MapIterator<string, V> {
         return this.primary.lowerBound(key);
     }
 
@@ -253,7 +276,7 @@ export class IndexableTreeMap<K, V> {
      * @returns a MapIterator starting at the entry if an entry matching the prefix/suffix exists,
      * otherwise returns undefined.
      */
-    toLastWithPrefixBeforeSuffix(prefix: string, suffix?: string) {
+    toLastWithPrefixBeforeSuffix(prefix: string, suffix?: string): MapIterator<string, V> {
         return this.primary.toLastWithPrefixBeforeSuffix(prefix, suffix);
     }
 

@@ -74,7 +74,7 @@ it('test basic functionality', async function () {
         placementId: [654321000, 111111111, 1],
         deletion: false
     });
-    let found3 = byCKPIndex.toLastWithPrefixBeforeSuffix(`${muidTupleToString([123456789, 111111111, 4])},test1`);
+    let found3 = byCKPIndex.toLastWithPrefixBeforeSuffix(`${muidTupleToString([123456789, 111111111, 4])},"test1"`);
     ensure(found3.value["value"] == "value1");
 
     let found4 = [];
