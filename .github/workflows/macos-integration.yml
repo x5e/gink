@@ -19,7 +19,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: browser-actions/setup-chrome@v1
     - name: Install protobuf-compiler
-      run: brew install protobuf && npm install -g protoc-gen-js
+      run: npm install -g protoc-gen-js
     - name: install npm packages
       run: npm ci && npm rebuild
     - name: Compile protos and install packages for both implementations.
