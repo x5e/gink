@@ -38,7 +38,6 @@ class Connection(ABC):
             if cabundle_path:
                 context = ssl.create_default_context()
                 context.load_verify_locations(cabundle_path)
-                context.check_hostname = False
                 socket = context.wrap_socket(socket, server_hostname = host or "localhost")
             socket.connect((host, port))
 
