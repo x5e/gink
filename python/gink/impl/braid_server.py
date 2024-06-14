@@ -12,6 +12,7 @@ from .server import Server
 from .looping import Selectable
 from .braid import Braid
 from .directory import Directory
+from .box import Box
 from .looping import Finished
 from .bundle_wrapper import BundleWrapper
 from .chain_tracker import ChainTracker
@@ -52,7 +53,14 @@ class BraidServer(Server):
         directory_keys = list(parts[:-1])
         directory_keys.insert(0, 'braids')
         braid_key = parts[-1]
-        current = Directory(arche=True, database=self._control_db)
+        box = Box(arche=True, database=self._control_db)
+        if box.is_empty():
+            if create_if_missing:
+                box.set(Directory(database=self._control_db))
+            else:
+                raise ValueError("app directory not configured!")
+        current = box.get()
+        assert isinstance(current, Directory)
         for key in directory_keys:
             if create_if_missing and key not in current:
                 self._logger.debug("creating intermediate directory for %s", key)
