@@ -4,6 +4,8 @@
 from typing import Set, Union, Iterable, List, Callable, Optional, cast
 from logging import getLogger
 from re import fullmatch, IGNORECASE
+from os import environ
+import ssl
 
 
 # gink modules
@@ -60,8 +62,8 @@ class Relay(Server):
         match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()
-        if prefix and prefix != "ws://":
-            raise NotImplementedError("only vanilla websockets currently supported")
+        if prefix and (prefix != "ws://" and prefix != "wss://"):
+            raise NotImplementedError("only vanilla and secure websockets currently supported")
         port = port or "8080"
         path = path or "/"
         sync_func = cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message())
@@ -123,12 +125,17 @@ class Relay(Server):
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         (socket, addr) = listener.accept()
+        context = None
+        if listener.certfile and listener.keyfile:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(listener.certfile, listener.keyfile)
+            socket = context.wrap_socket(socket, server_side=True)
         connection: Connection = WebsocketConnection(
             socket=socket,
             host=addr[0],
             port=addr[1],
             sync_func=cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message()),
-            auth_func=listener.get_auth(),
+            auth_func=listener.get_auth()
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)

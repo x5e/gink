@@ -2,6 +2,8 @@ from typing import Union, Set, Iterable, Optional
 from logging import getLogger
 from socket import socketpair
 from abc import ABC, abstractmethod
+from os import environ
+import ssl
 
 from .listener import Listener
 from .looping import Selectable
@@ -45,8 +47,8 @@ class Server(ABC):
         """ Listen for incoming connections on the given port.
         """
         port = int(port)
-        self._logger.info("starting to listen on %r:%r", addr, port)
         listener = Listener(addr=addr, port=port, auth=auth)
+        self._logger.info(f"starting server listening on %r:%r", addr, port)
         listener.on_ready = lambda: self._on_listener_ready(listener)
         self._listeners.add(listener)
         self._add_selectable(listener)

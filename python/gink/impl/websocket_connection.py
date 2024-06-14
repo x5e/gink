@@ -5,9 +5,8 @@ from typing import Iterable, Optional, Callable
 from pathlib import Path
 from socket import (
     socket as Socket,
-    SHUT_WR, SHUT_RDWR
+    SHUT_WR
 )
-
 from .utilities import decode_from_hex, encode_to_hex
 
 # modules from requirements.txt
@@ -21,7 +20,6 @@ from wsproto.events import (
     Ping,
     Pong,
     RejectConnection,
-    RejectData,
 )
 
 # builders

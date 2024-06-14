@@ -7,6 +7,8 @@ from socket import (
 )
 from logging import getLogger
 from abc import ABC, abstractmethod
+import ssl
+from os import environ
 
 from .builders import SyncMessage
 from .chain_tracker import ChainTracker
@@ -27,12 +29,20 @@ class Connection(ABC):
             host: Optional[str] = None,
             port: Optional[int] = None,
             name: Optional[str] = None,
-            socket: Optional[Socket] = None,
-    ):
+            socket: Optional[Socket] = None
+            ):
         if socket is None:
             assert host is not None and port is not None
             socket = Socket(AF_INET, SOCK_STREAM)
+            cabundle_path = environ.get("GINK_CABUNDLE")
+            if cabundle_path:
+                context = ssl.create_default_context()
+                context.load_verify_locations(cabundle_path)
+                context.check_hostname = False
+                socket = context.wrap_socket(socket, server_hostname = host or "localhost")
             socket.connect((host, port))
+
+
         self._socket = socket
         self._host = host
         self._port = port
