@@ -64,6 +64,8 @@ class Relay(Server):
         prefix, host, port, path = match.groups()
         if prefix and (prefix != "ws://" and prefix != "wss://"):
             raise NotImplementedError("only vanilla and secure websockets currently supported")
+        if prefix and prefix == "ws://" and environ.get("GINK_CABUNDLE"):
+            self._logger.warn("CA bundle found - Using a secure connection. To use an insecure connection, unset GINK_CABUNDLE")
         port = port or "8080"
         path = path or "/"
         sync_func = cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message())
@@ -129,16 +131,23 @@ class Relay(Server):
         if listener.certfile and listener.keyfile:
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.load_cert_chain(listener.certfile, listener.keyfile)
-            socket = context.wrap_socket(socket, server_side=True)
-        connection: Connection = WebsocketConnection(
-            socket=socket,
-            host=addr[0],
-            port=addr[1],
-            sync_func=cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message()),
-            auth_func=listener.get_auth()
-        )
-        connection.on_ready = lambda: self._on_connection_ready(connection)
-        self._connections.add(connection)
-        self._add_selectable(connection)
-        self._logger.info("accepted incoming connection from %s", addr)
-        return [connection]
+            try:
+                socket = context.wrap_socket(socket, server_side=True)
+                connection: Connection = WebsocketConnection(
+                socket=socket,
+                host=addr[0],
+                port=addr[1],
+                sync_func=cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message()),
+                auth_func=listener.get_auth()
+                )
+                connection.on_ready = lambda: self._on_connection_ready(connection)
+                self._connections.add(connection)
+                self._add_selectable(connection)
+                self._logger.info("accepted incoming connection from %s", addr)
+                return [connection]
+            except ssl.SSLError as e:
+                if e.reason == "HTTP_REQUEST":
+                    self._logger.warn("Rejected incoming HTTP request.")
+                else:
+                    raise e
+
