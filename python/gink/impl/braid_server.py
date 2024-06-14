@@ -65,7 +65,7 @@ class BraidServer(Server):
             if create_if_missing and key not in current:
                 self._logger.debug("creating intermediate directory for %s", key)
                 current[key] = Directory(database=self._control_db)
-            current = current[key]
+            current = current.get(key)
             if not isinstance(current, Directory):
                 raise ValueError(f"could not traverse: {key}")
         if create_if_missing and braid_key not in current:
