@@ -25,7 +25,7 @@ setup(
         "wsproto",
         "sortedcontainers",
         "lmdb",
-        "protobuf<=3.20.3",
+        "protobuf",
         "psutil"
     ],
     extras_require={
