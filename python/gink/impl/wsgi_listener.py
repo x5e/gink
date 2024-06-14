@@ -5,7 +5,7 @@ The point of this class is to integrate within the Database select loop.
 
 from socket import socket as Socket, SOL_SOCKET, SO_REUSEADDR, getfqdn, AF_INET, SOCK_STREAM
 from logging import getLogger
-from typing import Iterable
+from typing import Iterable, List
 
 from .wsgi_connection import WsgiConnection
 from .looping import Selectable
@@ -29,7 +29,7 @@ class WsgiListener(Selectable):
         host, port = self._socket.getsockname()[:2]
         self._server_name = getfqdn(host)
         self._server_port = port
-        self._headers_set: list[str] = []
+        self._headers_set: List[str] = []
 
     def fileno(self) -> int:
         return self._fd
