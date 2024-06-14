@@ -13,3 +13,4 @@ make
 chromium
 unzip
 curl
+python3-typeshed
