@@ -148,7 +148,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
         self._release_lock(lock)
         return count
 
-    def get_bundle_infos(self, limit_to: Mapping[Chain, Limit] | None = None) -> List[BundleInfo]:
+    def get_bundle_infos(self, limit_to: Optional[Mapping[Chain, Limit]] = None) -> List[BundleInfo]:
         """ Gets a list of bundle infos; mostly for testing. """
         result = []
 
