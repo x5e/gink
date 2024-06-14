@@ -96,7 +96,7 @@ class Connection(ABC):
         self.send(sync_message)
         self._tracker.mark_as_having(info)
 
-    def receive_objects(self) -> Iterable[Union[BundleInfo|BundleWrapper|ChainTracker]]:
+    def receive_objects(self) -> Iterable[Union[BundleInfo, BundleWrapper, ChainTracker]]:
         for sync_message in self.receive():
             if sync_message.HasField("bundle"):
                 bundle_bytes = sync_message.bundle
