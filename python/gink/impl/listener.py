@@ -23,13 +23,13 @@ class Listener(Socket):
             certfile: Optional[str] = None,
             keyfile: Optional[str] = None
             ):
+        assert (certfile and keyfile) or (not certfile and not keyfile), "Need both cert and key files for SSL."
         Socket.__init__(self, AF_INET, SOCK_STREAM)
         self.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.bind((addr, int(port)))
         self.listen(128)
         self.certfile = certfile
         self.keyfile = keyfile
-        assert (self.certfile and self.keyfile) or (not self.certfile and not self.keyfile), "Need both cert and key files for SSL."
         self._auth_func = auth
 
     def get_auth(self) -> Optional[AuthFunc]:

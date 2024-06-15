@@ -62,7 +62,7 @@ class Relay(Server):
         match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()
-        if prefix and (prefix != "ws://" and prefix != "wss://"):
+        if prefix and not prefix in ["ws://", "wss://"]:
             raise NotImplementedError("only vanilla and secure websockets currently supported")
         if prefix and prefix == "ws://" and environ.get("GINK_CABUNDLE"):
             self._logger.warn("CA bundle found - Using a secure connection. To use an insecure connection, unset GINK_CABUNDLE")
