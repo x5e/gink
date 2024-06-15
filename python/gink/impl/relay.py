@@ -65,6 +65,7 @@ class Relay(Server):
         match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()
+        secure_connection = False
         if prefix == "wss://":
             secure_connection = True
         elif prefix:
