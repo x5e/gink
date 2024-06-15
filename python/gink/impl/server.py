@@ -3,7 +3,6 @@ from logging import getLogger
 from socket import socketpair
 from abc import ABC, abstractmethod
 from os import environ
-import ssl
 
 from .listener import Listener
 from .looping import Selectable
@@ -47,8 +46,14 @@ class Server(ABC):
         """ Listen for incoming connections on the given port.
         """
         port = int(port)
-        listener = Listener(addr=addr, port=port, auth=auth)
-        self._logger.info(f"starting server listening on %r:%r", addr, port)
+        certfile = environ.get("GINK_CERTFILE")
+        keyfile = environ.get("GINK_KEYFILE")
+        listener = Listener(addr=addr, port=port, auth=auth, certfile=certfile, keyfile=keyfile)
+        if certfile and keyfile:
+            self._logger.info(f"starting secure server listening on %r:%r", addr, port)
+        else:
+            self._logger.info(f"starting insecure server listening on %r:%r", addr, port)
+
         listener.on_ready = lambda: self._on_listener_ready(listener)
         self._listeners.add(listener)
         self._add_selectable(listener)
