@@ -132,28 +132,20 @@ class Relay(Server):
             context.load_cert_chain(listener.certfile, listener.keyfile)
             try:
                 socket = context.wrap_socket(socket, server_side=True)
-                connection = WebsocketConnection(
-                socket=socket,
-                host=addr[0],
-                port=addr[1],
-                sync_func=cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message()),
-                auth_func=listener.get_auth()
-                )
             except ssl.SSLError as e:
                 if e.reason == "HTTP_REQUEST":
                     self._logger.warn("Rejected incoming HTTP request.")
                     return []
                 else:
                     raise e
-        else:
-            connection = WebsocketConnection(
-                socket=socket,
-                host=addr[0],
-                port=addr[1],
-                sync_func=cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message()),
-                auth_func=listener.get_auth()
-                )
 
+        connection = WebsocketConnection(
+        socket=socket,
+        host=addr[0],
+        port=addr[1],
+        sync_func=cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message()),
+        auth_func=listener.get_auth()
+        )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
         self._add_selectable(connection)
