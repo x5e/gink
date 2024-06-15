@@ -4,7 +4,6 @@
 from typing import Set, Union, Iterable, List, Callable, Optional, cast
 from logging import getLogger
 from re import fullmatch, IGNORECASE
-from os import environ
 from ssl import SSLError
 
 
@@ -68,7 +67,7 @@ class Relay(Server):
         secure_connection = False
         if prefix == "wss://":
             secure_connection = True
-        elif prefix:
+        elif prefix and not prefix == "ws://":
             raise NotImplementedError("only vanilla and secure websockets currently supported")
 
         port = port or "8080"
