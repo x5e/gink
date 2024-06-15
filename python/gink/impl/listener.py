@@ -7,6 +7,7 @@ from socket import (
     SOL_SOCKET,
     SO_REUSEADDR,
 )
+from ssl import SSLContext, PROTOCOL_TLS_SERVER
 from .typedefs import AuthFunc
 
 
@@ -24,13 +25,18 @@ class Listener(Socket):
             keyfile: Optional[str] = None
             ):
         assert (certfile and keyfile) or (not certfile and not keyfile), "Need both cert and key files for SSL."
+        self._context = None
+        if certfile and keyfile:
+            self._context = SSLContext(PROTOCOL_TLS_SERVER)
+            self._context.load_cert_chain(certfile, keyfile)
         Socket.__init__(self, AF_INET, SOCK_STREAM)
         self.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.bind((addr, int(port)))
         self.listen(128)
-        self.certfile = certfile
-        self.keyfile = keyfile
         self._auth_func = auth
 
     def get_auth(self) -> Optional[AuthFunc]:
         return self._auth_func
+
+    def get_context(self) -> Optional[SSLContext]:
+        return self._context

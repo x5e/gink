@@ -5,7 +5,7 @@ from typing import Set, Union, Iterable, List, Callable, Optional, cast
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 from os import environ
-import ssl
+from ssl import SSLError
 
 
 # gink modules
@@ -56,16 +56,22 @@ class Relay(Server):
         for connection in self._connections:
             yield connection
 
-    def connect_to(self, target: str, auth_data: Optional[str] = None, name: Optional[str] = None):
+    def connect_to(self, target: str,
+                   auth_data: Optional[str] = None,
+                   name: Optional[str] = None,
+                   cabundle: Optional[str] = None):
         """ initiate a connection to another gink instance """
         self._logger.info("initating connection to %s", target)
         match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()
-        if prefix and not prefix in ["ws://", "wss://"]:
+        if prefix == "wss://":
+            assert cabundle, "Need CA bundle to connect to a secure server."
+        elif not prefix or prefix == "ws://":
+            cabundle = None
+        elif prefix:
             raise NotImplementedError("only vanilla and secure websockets currently supported")
-        if prefix and prefix == "ws://" and environ.get("GINK_CABUNDLE"):
-            self._logger.warn("CA bundle found - Using a secure connection. To use an insecure connection, unset GINK_CABUNDLE")
+
         port = port or "8080"
         path = path or "/"
         sync_func = cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message())
@@ -76,6 +82,7 @@ class Relay(Server):
             name=name,
             sync_func=sync_func,
             auth_data=auth_data,
+            cabundle=cabundle,
             )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
@@ -127,24 +134,23 @@ class Relay(Server):
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Optional[Selectable]]:
         (socket, addr) = listener.accept()
-        if listener.certfile and listener.keyfile:
-            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            context.load_cert_chain(listener.certfile, listener.keyfile)
+        context = listener.get_context()
+        if context:
             try:
                 socket = context.wrap_socket(socket, server_side=True)
-            except ssl.SSLError as e:
+            except SSLError as e:
                 if e.reason == "HTTP_REQUEST":
-                    self._logger.warn("Rejected incoming HTTP request.")
+                    self._logger.warning("Received and rejected insecure HTTP request. Try again with a valid CA.")
                     return []
                 else:
                     raise e
 
         connection = WebsocketConnection(
-        socket=socket,
-        host=addr[0],
-        port=addr[1],
-        sync_func=cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message()),
-        auth_func=listener.get_auth()
+            socket=socket,
+            host=addr[0],
+            port=addr[1],
+            sync_func=cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message()),
+            auth_func=listener.get_auth(),
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)

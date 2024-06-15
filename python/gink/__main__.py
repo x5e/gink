@@ -166,12 +166,15 @@ if args.wsgi:
 auth_func = make_auth_func(args.auth_token) if args.auth_token else None
 
 if args.listen_on:
+    certfile = environ.get("GINK_CERTFILE")
+    keyfile = environ.get("GINK_KEYFILE")
     ip_addr, port = parse_listen_on(args.listen_on, "*", "8080")
-    database.start_listening(addr=ip_addr, port=port, auth=auth_func)
+    database.start_listening(addr=ip_addr, port=port, auth=auth_func, certfile=certfile, keyfile=keyfile)
 
+cabundle = environ.get("GINK_CABUNDLE")
 for target in (args.connect_to or []):
     auth_data = f"Token {args.auth_token}" if args.auth_token else None
-    database.connect_to(target, auth_data=auth_data)
+    database.connect_to(target, auth_data=auth_data, cabundle=cabundle)
 
 if args.interactive:
     interactive = True
