@@ -41,7 +41,6 @@ class Connection(ABC):
                 socket = context.wrap_socket(socket, server_hostname = host or "localhost")
             socket.connect((host, port))
 
-
         self._socket = socket
         self._host = host
         self._port = port
