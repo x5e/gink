@@ -66,9 +66,7 @@ class Relay(Server):
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()
         if prefix == "wss://":
-            assert cabundle, "Need CA bundle to connect to a secure server."
-        elif not prefix or prefix == "ws://":
-            cabundle = None
+            secure_connection = True
         elif prefix:
             raise NotImplementedError("only vanilla and secure websockets currently supported")
 
@@ -82,8 +80,9 @@ class Relay(Server):
             name=name,
             sync_func=sync_func,
             auth_data=auth_data,
+            secure_connection=secure_connection,
             cabundle=cabundle,
-            )
+        )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
         self._logger.debug("connection added")

@@ -54,9 +54,17 @@ class WebsocketConnection(Connection):
             auth_func: Optional[AuthFunc] = None,
             auth_data: Optional[str] = None,
             permissions: int = AUTH_FULL,
+            secure_connection: bool = False,
             cabundle: Optional[str] = None,
     ):
-        Connection.__init__(self, socket=socket, host=host, port=port, name=name, cabundle=cabundle)
+        Connection.__init__(self,
+                            socket=socket,
+                            host=host,
+                            port=port,
+                            name=name,
+                            secure_connection=secure_connection,
+                            cabundle=cabundle,
+                            )
         if socket is None:
             force_to_be_client = True
         connection_type = ConnectionType.CLIENT if force_to_be_client else ConnectionType.SERVER

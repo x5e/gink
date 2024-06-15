@@ -2,7 +2,6 @@ from typing import Union, Set, Iterable, Optional
 from logging import getLogger
 from socket import socketpair
 from abc import ABC, abstractmethod
-from os import environ
 
 from .listener import Listener
 from .looping import Selectable
