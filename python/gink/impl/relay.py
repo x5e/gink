@@ -140,6 +140,9 @@ class Relay(Server):
                 if e.reason == "HTTP_REQUEST":
                     self._logger.warning("Secure server received and rejected insecure HTTP request.")
                     return []
+                elif e.reason ==  "TLSV1_ALERT_UNKNOWN_CA":
+                    self._logger.warning("Connection failed due to client with unknown CA.")
+                    return []
                 else:
                     raise e
 
