@@ -4,3 +4,8 @@ RUN apt-get update --fix-missing && apt-get upgrade -y
 COPY packages.txt ./
 RUN apt-get install -y `cat packages.txt | tr '\n' ' '`
 RUN npm install -g protoc-gen-js
+RUN apt install libnss3-tools
+RUN apt-get install wget
+RUN curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64" && chmod +x mkcert-v*-linux-amd64 && cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+RUN mkcert -install
+RUN mkcert localhost

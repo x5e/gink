@@ -8,6 +8,7 @@ from socket import (
 from logging import getLogger
 from abc import ABC, abstractmethod
 from ssl import create_default_context
+import ssl
 
 from .builders import SyncMessage
 from .chain_tracker import ChainTracker
@@ -30,13 +31,16 @@ class Connection(ABC):
             name: Optional[str] = None,
             socket: Optional[Socket] = None,
             secure_connection: bool = False,
-            cabundle: Optional[str] = None,
+            verified_public_key: Optional[str] = None
             ):
         if socket is None:
             assert host is not None and port is not None
             socket = Socket(AF_INET, SOCK_STREAM)
             if secure_connection:
-                context = create_default_context(cafile=cabundle)
+                context = create_default_context()
+                if verified_public_key:
+                    context.load_verify_locations(verified_public_key)
+                    print(verified_public_key)
                 socket = context.wrap_socket(socket, server_hostname = host)
             socket.connect((host, port))
 

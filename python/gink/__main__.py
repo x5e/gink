@@ -44,6 +44,10 @@ parser.add_argument("--starts", help="include starting bundles when showing log"
 parser.add_argument("--wsgi", help="serve module.function via wsgi")
 parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defaults to *:8081)")
 parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help="auth token for connections")
+parser.add_argument("--ssl-cert", default=environ.get("GINK_SSL_CERT"), help="path to ssl certificate file")
+parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path to ssl key file")
+parser.add_argument("--ssl-verified", default=environ.get("GINK_SSL_VERIFIED"),
+                    help="path to verified public key. primarily used for testing client connections using self-signed certs.")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -166,15 +170,12 @@ if args.wsgi:
 auth_func = make_auth_func(args.auth_token) if args.auth_token else None
 
 if args.listen_on:
-    certfile = environ.get("GINK_CERTFILE")
-    keyfile = environ.get("GINK_KEYFILE")
     ip_addr, port = parse_listen_on(args.listen_on, "*", "8080")
-    database.start_listening(addr=ip_addr, port=port, auth=auth_func, certfile=certfile, keyfile=keyfile)
+    database.start_listening(addr=ip_addr, port=port, auth=auth_func, certfile=args.ssl_cert, keyfile=args.ssl_key)
 
-cabundle = environ.get("GINK_CABUNDLE")
 for target in (args.connect_to or []):
     auth_data = f"Token {args.auth_token}" if args.auth_token else None
-    database.connect_to(target, auth_data=auth_data, cabundle=cabundle)
+    database.connect_to(target, auth_data=auth_data, verified_public_key=args.ssl_verified)
 
 if args.interactive:
     interactive = True

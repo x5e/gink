@@ -55,7 +55,7 @@ class WebsocketConnection(Connection):
             auth_data: Optional[str] = None,
             permissions: int = AUTH_FULL,
             secure_connection: bool = False,
-            cabundle: Optional[str] = None,
+            verified_public_key: Optional[str] = None,
     ):
         Connection.__init__(self,
                             socket=socket,
@@ -63,7 +63,7 @@ class WebsocketConnection(Connection):
                             port=port,
                             name=name,
                             secure_connection=secure_connection,
-                            cabundle=cabundle,
+                            verified_public_key=verified_public_key,
                             )
         if socket is None:
             force_to_be_client = True

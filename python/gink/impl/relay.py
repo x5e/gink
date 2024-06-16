@@ -58,7 +58,8 @@ class Relay(Server):
     def connect_to(self, target: str,
                    auth_data: Optional[str] = None,
                    name: Optional[str] = None,
-                   cabundle: Optional[str] = None):
+                   verified_public_key: Optional[str] = None
+                   ):
         """ initiate a connection to another gink instance """
         self._logger.info("initating connection to %s", target)
         match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
@@ -67,7 +68,7 @@ class Relay(Server):
         secure_connection = False
         if prefix == "wss://":
             secure_connection = True
-        elif prefix and not prefix == "ws://":
+        elif prefix and prefix != "ws://":
             raise NotImplementedError("only vanilla and secure websockets currently supported")
 
         port = port or "8080"
@@ -81,7 +82,7 @@ class Relay(Server):
             sync_func=sync_func,
             auth_data=auth_data,
             secure_connection=secure_connection,
-            cabundle=cabundle,
+            verified_public_key=verified_public_key
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
@@ -131,7 +132,7 @@ class Relay(Server):
                 self._remove_selectable(connection)
                 raise
 
-    def _on_listener_ready(self, listener: Listener) -> Iterable[Optional[Selectable]]:
+    def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         (socket, addr) = listener.accept()
         context = listener.get_context()
         if context:
@@ -139,7 +140,7 @@ class Relay(Server):
                 socket = context.wrap_socket(socket, server_side=True)
             except SSLError as e:
                 if e.reason == "HTTP_REQUEST":
-                    self._logger.warning("Received and rejected insecure HTTP request. Try again with a valid CA.")
+                    self._logger.warning("Secure server received and rejected insecure HTTP request.")
                     return []
                 else:
                     raise e

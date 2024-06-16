@@ -61,5 +61,5 @@ class Server(ABC):
         self._add_selectable(listener)
 
     @abstractmethod
-    def _on_listener_ready(self, listener: Listener) -> Iterable[Optional[Selectable]]:
+    def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         """ Abstract method called whenever someone attempts to connect to server. """
