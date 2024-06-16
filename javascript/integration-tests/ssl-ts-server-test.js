@@ -1,5 +1,4 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
-
 const Expector = require('./Expector');
 const { sleep } = require('./browser_test_utilities');
 process.chdir(__dirname + "/..");
