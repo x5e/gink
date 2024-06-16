@@ -5,11 +5,6 @@ ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 
 ENV CHROME_BIN=/usr/bin/chromium
 
-RUN openssl req -x509 -sha256 -nodes -newkey rsa:2048 -days 365 -keyout /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.crt --subj "/CN=localhost"
-RUN apt-get install -y ca-certificates
-RUN cp /etc/ssl/certs/localhost.crt /usr/local/share/ca-certificates/
-RUN update-ca-certificates
-
 ENV GINK=/opt/gink
 RUN mkdir -p $GINK
 WORKDIR $GINK

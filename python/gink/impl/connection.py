@@ -8,7 +8,6 @@ from socket import (
 from logging import getLogger
 from abc import ABC, abstractmethod
 from ssl import create_default_context
-import ssl
 
 from .builders import SyncMessage
 from .chain_tracker import ChainTracker
