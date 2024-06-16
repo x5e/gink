@@ -23,7 +23,7 @@ jobs:
     - name: Install mkcert for ssl tests
       run: brew install mkcert
     - name: Create and trust certificate authority and create cert/key
-      run: mkcert -install && mkcert localhost
+      run: cd / && mkcert -install && mkcert localhost
     - name: install npm packages
       run: npm ci && npm rebuild
     - name: Compile protos and install packages for both implementations.
