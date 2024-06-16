@@ -9,8 +9,8 @@ process.chdir(__dirname + "/..");
     const server = new Expector("./tsc.out/implementation/main.js", [], {
         env: {
             GINK_PORT: port,
-            GINK_SSL_CERT: "/etc/ssl/certs/localhost.pem",
-            GINK_SSL_KEY: "/etc/ssl/certs/localhost-key.pem",
+            GINK_SSL_CERT: "/etc/ssl/certs/localhost.crt",
+            GINK_SSL_KEY: "/etc/ssl/certs/localhost.key",
             ...process.env
         }
     });

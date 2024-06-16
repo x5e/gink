@@ -5,12 +5,10 @@ ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 
 ENV CHROME_BIN=/usr/bin/chromium
 
-RUN curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
-RUN chmod +x mkcert-v*-linux-amd64
-RUN cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
-WORKDIR /etc/ssl/certs
-RUN mkcert -install
-RUN mkcert localhost
+RUN openssl req -x509 -sha256 -nodes -newkey rsa:2048 -days 365 -keyout /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.crt --subj "/CN=localhost"
+RUN apt-get install -y ca-certificates
+RUN cp /etc/ssl/certs/localhost.crt /usr/local/share/ca-certificates/
+RUN update-ca-certificates
 
 ENV GINK=/opt/gink
 RUN mkdir -p $GINK
