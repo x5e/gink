@@ -7,7 +7,7 @@ process.chdir(__dirname + "/..");
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
     const server = new Expector("python3",
-        ["-u", "-m", "gink", "-l", `*:${port}`, "--ssl-cert", "/localhost.pem", "--ssl-key", "/localhost-key.pem"]);
+        ["-u", "-m", "gink", "-l", `*:${port}`, "--ssl-cert", "/etc/ssl/certs/localhost.pem", "--ssl-key", "/etc/ssl/certs/localhost-key.pem"]);
     await server.expect("secure", 2000);
 
     const client = new Expector("python3",
