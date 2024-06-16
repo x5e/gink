@@ -1,4 +1,4 @@
-FROM base:latest
+FROM darinmcgill/base
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
 ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
