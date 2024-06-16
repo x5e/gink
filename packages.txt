@@ -13,5 +13,4 @@ make
 chromium
 unzip
 curl
-wget
-libnss3-tools
+python3-typeshed
