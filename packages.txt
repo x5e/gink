@@ -14,3 +14,4 @@ chromium
 unzip
 curl
 python3-typeshed
+ca-certificates

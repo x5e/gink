@@ -41,12 +41,21 @@ class Server(ABC):
         for listener in self._listeners:
             listener.close()
 
-    def start_listening(self, addr="", port: Union[str, int] = "8080", auth: Optional[AuthFunc] = None):
+    def start_listening(self, addr="",
+                        port: Union[str, int] = "8080",
+                        auth: Optional[AuthFunc] = None,
+                        certfile: Optional[str] = None,
+                        keyfile: Optional[str] = None,
+                        ):
         """ Listen for incoming connections on the given port.
         """
         port = int(port)
-        self._logger.info("starting to listen on %r:%r", addr, port)
-        listener = Listener(addr=addr, port=port, auth=auth)
+        listener = Listener(addr=addr, port=port, auth=auth, certfile=certfile, keyfile=keyfile)
+        security = "insecure"
+        if listener.get_context():
+            security = "secure"
+        self._logger.info(f"starting {security} server listening on %r:%r", addr, port)
+
         listener.on_ready = lambda: self._on_listener_ready(listener)
         self._listeners.add(listener)
         self._add_selectable(listener)

@@ -4,6 +4,7 @@
 from typing import Set, Union, Iterable, List, Callable, Optional, cast
 from logging import getLogger
 from re import fullmatch, IGNORECASE
+from ssl import SSLError
 
 
 # gink modules
@@ -54,14 +55,21 @@ class Relay(Server):
         for connection in self._connections:
             yield connection
 
-    def connect_to(self, target: str, auth_data: Optional[str] = None, name: Optional[str] = None):
+    def connect_to(self, target: str,
+                   auth_data: Optional[str] = None,
+                   name: Optional[str] = None,
+                   ):
         """ initiate a connection to another gink instance """
         self._logger.info("initating connection to %s", target)
         match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()
-        if prefix and prefix != "ws://":
-            raise NotImplementedError("only vanilla websockets currently supported")
+        secure_connection = False
+        if prefix == "wss://":
+            secure_connection = True
+        elif prefix and prefix != "ws://":
+            raise NotImplementedError("only vanilla and secure websockets currently supported")
+
         port = port or "8080"
         path = path or "/"
         sync_func = cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message())
@@ -72,7 +80,8 @@ class Relay(Server):
             name=name,
             sync_func=sync_func,
             auth_data=auth_data,
-            )
+            secure_connection=secure_connection,
+        )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
         self._logger.debug("connection added")
@@ -123,7 +132,21 @@ class Relay(Server):
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         (socket, addr) = listener.accept()
-        connection: Connection = WebsocketConnection(
+        context = listener.get_context()
+        if context:
+            try:
+                socket = context.wrap_socket(socket, server_side=True)
+            except SSLError as e:
+                if e.reason == "HTTP_REQUEST":
+                    self._logger.warning("Secure server received and rejected insecure HTTP request.")
+                    return []
+                elif e.reason ==  "TLSV1_ALERT_UNKNOWN_CA":
+                    self._logger.warning("Connection failed due to client with unknown CA.")
+                    return []
+                else:
+                    raise e
+
+        connection = WebsocketConnection(
             socket=socket,
             host=addr[0],
             port=addr[1],

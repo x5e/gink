@@ -44,6 +44,8 @@ parser.add_argument("--starts", help="include starting bundles when showing log"
 parser.add_argument("--wsgi", help="serve module.function via wsgi")
 parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defaults to *:8081)")
 parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help="auth token for connections")
+parser.add_argument("--ssl-cert", default=environ.get("GINK_SSL_CERT"), help="path to ssl certificate file")
+parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path to ssl key file")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -167,7 +169,7 @@ auth_func = make_auth_func(args.auth_token) if args.auth_token else None
 
 if args.listen_on:
     ip_addr, port = parse_listen_on(args.listen_on, "*", "8080")
-    database.start_listening(addr=ip_addr, port=port, auth=auth_func)
+    database.start_listening(addr=ip_addr, port=port, auth=auth_func, certfile=args.ssl_cert, keyfile=args.ssl_key)
 
 for target in (args.connect_to or []):
     auth_data = f"Token {args.auth_token}" if args.auth_token else None

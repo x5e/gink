@@ -5,9 +5,8 @@ from typing import Iterable, Optional, Callable
 from pathlib import Path
 from socket import (
     socket as Socket,
-    SHUT_WR, SHUT_RDWR
+    SHUT_WR
 )
-
 from .utilities import decode_from_hex, encode_to_hex
 
 # modules from requirements.txt
@@ -21,7 +20,6 @@ from wsproto.events import (
     Ping,
     Pong,
     RejectConnection,
-    RejectData,
 )
 
 # builders
@@ -56,8 +54,15 @@ class WebsocketConnection(Connection):
             auth_func: Optional[AuthFunc] = None,
             auth_data: Optional[str] = None,
             permissions: int = AUTH_FULL,
+            secure_connection: bool = False,
     ):
-        Connection.__init__(self, socket=socket, host=host, port=port, name=name)
+        Connection.__init__(self,
+                            socket=socket,
+                            host=host,
+                            port=port,
+                            name=name,
+                            secure_connection=secure_connection,
+                            )
         if socket is None:
             force_to_be_client = True
         connection_type = ConnectionType.CLIENT if force_to_be_client else ConnectionType.SERVER
