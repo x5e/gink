@@ -5,6 +5,13 @@ ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 
 ENV CHROME_BIN=/usr/bin/chromium
 
+RUN curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+RUN chmod +x mkcert-v*-linux-amd64
+RUN cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+WORKDIR /etc/ssl/certs
+RUN mkcert -install
+RUN mkcert localhost
+
 ENV GINK=/opt/gink
 RUN mkdir -p $GINK
 WORKDIR $GINK

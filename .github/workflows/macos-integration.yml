@@ -20,10 +20,6 @@ jobs:
     - uses: browser-actions/setup-chrome@v1
     - name: Install protobuf-compiler
       run: brew install protobuf && npm install -g protoc-gen-js
-    - name: Install mkcert for ssl tests
-      run: brew install mkcert
-    - name: Create and trust certificate authority and create cert/key
-      run: cd /etc/ssl/certs && mkcert -install && mkcert localhost
     - name: install npm packages
       run: npm ci && npm rebuild
     - name: Compile protos and install packages for both implementations.
