@@ -58,7 +58,6 @@ class Relay(Server):
     def connect_to(self, target: str,
                    auth_data: Optional[str] = None,
                    name: Optional[str] = None,
-                   verified_public_key: Optional[str] = None
                    ):
         """ initiate a connection to another gink instance """
         self._logger.info("initating connection to %s", target)
@@ -82,7 +81,6 @@ class Relay(Server):
             sync_func=sync_func,
             auth_data=auth_data,
             secure_connection=secure_connection,
-            verified_public_key=verified_public_key
         )
         connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)

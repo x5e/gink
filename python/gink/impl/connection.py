@@ -31,16 +31,12 @@ class Connection(ABC):
             name: Optional[str] = None,
             socket: Optional[Socket] = None,
             secure_connection: bool = False,
-            verified_public_key: Optional[str] = None
             ):
         if socket is None:
             assert host is not None and port is not None
             socket = Socket(AF_INET, SOCK_STREAM)
             if secure_connection:
                 context = create_default_context()
-                if verified_public_key:
-                    context.load_verify_locations(verified_public_key)
-                    print(verified_public_key)
                 socket = context.wrap_socket(socket, server_hostname = host)
             socket.connect((host, port))
 

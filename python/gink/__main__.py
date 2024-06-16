@@ -46,8 +46,6 @@ parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defa
 parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help="auth token for connections")
 parser.add_argument("--ssl-cert", default=environ.get("GINK_SSL_CERT"), help="path to ssl certificate file")
 parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path to ssl key file")
-parser.add_argument("--ssl-verified", default=environ.get("GINK_SSL_VERIFIED"),
-                    help="path to verified public key. primarily used for testing client connections using self-signed certs.")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -175,7 +173,7 @@ if args.listen_on:
 
 for target in (args.connect_to or []):
     auth_data = f"Token {args.auth_token}" if args.auth_token else None
-    database.connect_to(target, auth_data=auth_data, verified_public_key=args.ssl_verified)
+    database.connect_to(target, auth_data=auth_data)
 
 if args.interactive:
     interactive = True
