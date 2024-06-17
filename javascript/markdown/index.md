@@ -11,7 +11,7 @@ npm install @x5e/gink
 ```
 Now you can import or require Gink like this:
 ```js
-const { IndexedDbStore, Database } = require("@x5e/gink");
+const { MemoryStore, Database } = require("@x5e/gink");
 ```
 If you'd prefer to import from a CDN:
 ```html
@@ -24,7 +24,7 @@ If you'd prefer to import from a CDN:
 
 <script>
     // Make sure to access the modules using gink.module if you go through the CDN.
-    const store = new gink.IndexedDbStore('example');
+    const store = new gink.MemoryStore();
 </script>
 ```
 
@@ -34,15 +34,15 @@ Example - create a `Directory`\
 Take a look at other examples below for a more in depth look at all of the available data structures.
 
 ```js
-const { IndexedDbStore, Database } = require("@x5e/gink");
+const { MemoryStore, Database } = require("@x5e/gink");
 
 // Initialize document store and database
-const store = new IndexedDbStore('directory-example');
-const instance = new Database(store);
+const store = new MemoryStore();
+const database = new Database(store);
 
 // Create a directory object (more info about this and other
 // data structures can be found on their respective pages)
-const directory = await instance.createDirectory();
+const directory = await database.createDirectory();
 
 await directory.set("key1", "value1")
 
@@ -54,10 +54,10 @@ const result = await directory.get("key1");
 # Examples
 All examples will need a `Store` and `Database`:
 ```js
-const { IndexedDbStore, Database } = require("@x5e/gink");
+const { MemoryStore, Database } = require("@x5e/gink");
 
-const store = new IndexedDbStore('examples');
-const instance = new Database(store);
+const store = new MemoryStore();
+const database = new Database(store);
 ```
 
 ## Data Structures
@@ -66,28 +66,28 @@ const instance = new Database(store);
 A `Box` is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.
 ```ts
 // Create a Box
-const aBox = await instance.createBox();
+const box = await database.createBox();
 
 // Set the value in the box
-await aBox.set("example value");
+await box.set("example value");
 
 // Get the value - this will return "example value"
-const result = await aBox.get();
+const result = await box.get();
 
 // Will always have a size of 0 or 1 (in this case, 1)
-const size = await aBox.size();
+const size = await box.size();
 
 // Removes the value in the box
-await aBox.clear();
+await box.clear();
 
 // This will now return undefined
-const no_result = await aBox.get();
+const noResult = await box.get();
 ```
 
 ### Directory
 The `Directory` aims to mimic the functionality and API of a JavaScript Map.
 ```js
-const directory = await instance.createDirectory();
+const directory = await database.createDirectory();
 
 // As seen in the quick start, some of the basic
 // directory operations:
@@ -99,7 +99,7 @@ const result = await directory.get("key1");
 const asMap = await directory.toMap();
 
 // Storing sub-Directories
-const subdir = await instance.createDirectory();
+const subdir = await database.createDirectory();
 await directory.set("new dir", subdir);
 ```
 
@@ -107,20 +107,20 @@ await directory.set("new dir", subdir);
 A `Sequence` is the Gink version of a JavaScript Array. Sequences are specifically ordered by time of insertion, so they end up representing a queue quite well. Due to the fact they are ordered by insertion, Sequences do not support `unshift`.
 
 ```ts
-const seq = await instance.createSequence();
+const seq = await database.createSequence();
 
 await seq.push("A");
 await seq.push("B");
 await seq.push("C");
 
 // Returns JavaScript Array ["A", "B", "C"]
-const as_array = await seq.toArray();
+const asArray = await seq.toArray();
 
 // Deletes and returns "C"
 const popped = await seq.pop();
 
 // Deletes and returns "A"
-const index_popped = await seq.pop(0);
+const indexPopped = await seq.pop(0);
 
 // Saving the muid of this transaction to use later
 const cMuid = await seq.push("C");
@@ -139,7 +139,7 @@ const beginning = await seq.at(0);
 // A Muid is basically the ID of that change in the db.
 // Just as you saw numbers used as the index to retrieve values,
 // the muid of the entry can also be used to retrieve the value.
-const entries = seq.entries();
+const entries = await seq.entries();
 // Iterate through entries like this:
 for await (const entry of entries) {
     console.log(entry);
@@ -159,7 +159,7 @@ await seq.move(cMuid, 1);
 A Gink `KeySet` behaves similarly to a JavaScript Set. A `KeySet` may only contain unique values. These values may not include other Gink Containers (check out `Group` if you are looking for a collection of Containers).
 
 ```ts
-const ks = await instance.createKeySet();
+const ks = await database.createKeySet();
 
 await ks.add("key1");
 
@@ -185,7 +185,7 @@ await ks.update(["key2", 3, "key4"]);
 // since there are no values in the key set, ks.entries()
 // returns an async generator of [Key, Key]
 // in this case: AsyncGenerator(["key1", "key1"], ["key2", "key2"]...)
-const entries = ks.entries();
+const entries = await ks.entries();
 
 // returns this key set as a JavaScript Set
 const asSet = await ks.toSet();
@@ -195,36 +195,36 @@ const asSet = await ks.toSet();
 A `PairSet` is a data structure that resembles a Set, but has very specific items that can be added. The items in a `PairSet` consist of (`Container`, `Container`) pairs. The operations of a PairSet are pretty simple - the pair is either included or excluded.
 
 ```ts
-const ps = await instance.createPairSet();
+const ps = await database.createPairSet();
 
 // create a few other containers to add as pairs
-const box1 = await instance.createBox();
-const box2 = await instance.createBox();
-const box3 = await instance.createBox();
+const box1 = await database.createBox();
+const box2 = await database.createBox();
+const box3 = await database.createBox();
 
 // Include box1 and box2 in the PairSet
 await ps.include([box1, box2]);
 
 // You can mix and match passing Muids and
-// container instances when including, excluding, etc.
+// containers when including, excluding, etc.
 await ps.include([box2.address, box3]);
 
 // returns true
-const is_contained = ps.contains([box1, box2])
+const isContained = await ps.contains([box1, box2])
 
 // returns a JavaScript Set of {[Muid, Muid],[Muid, Muid]...}
 const toSet = await ps.getPairs();
 ```
 
 ### PairMap
-A `PairMap` is quite similar to a `PairSet`, in that its keys may only contain pairs of Containers (or their addresses). A `PairMap` goes a step further and allows a value to be associated to the pair of containers. Think of a `PairMap` as a JavaScript `Map` with keys of [Container, Container] that map to some value. Many of the methods here are the same as those of the JS Map.
+A `PairMap` is similar to a `PairSet`, in that its keys may only contain pairs of Containers (or their addresses). A `PairMap` goes a step further and allows a value to be associated to the pair of containers. Think of a `PairMap` as a JavaScript `Map` with keys of [Container, Container] that map to some value. Many of the methods here are the same as those of the JS Map.
 
 ```ts
-const pm = await instance.createPairMap();
+const pm = await database.createPairMap();
 
-const box1 = await instance.createBox();
-const box2 = await instance.createBox();
-const box3 = await instance.createBox();
+const box1 = await database.createBox();
+const box2 = await database.createBox();
+const box3 = await database.createBox();
 
 // now looks like {[Box, Box]: "box1 -> box2"}
 await pm.set([box1, box2], "box1 -> box2");
@@ -232,13 +232,13 @@ await pm.set([box1, box2], "box1 -> box2");
 await pm.set([box2.address, box3.address], "using muids");
 
 // returns "box1 -> box2"
-const first_val = await pm.get([box1, box2]);
+const firstVal = await pm.get([box1, box2]);
 
 // returns true
-const has_first = await pm.has([box1.address, box2.address]);
+const hasFirst = await pm.has([box1.address, box2.address]);
 
 // returns undefined
-const doesnt_exist = await pm.get([box1, box3]);
+const doesntExist = await pm.get([box1, box3]);
 
 // returns 2
 const size = await pm.size();
@@ -252,12 +252,12 @@ const items = await pm.items();
 A `Group` acts as a collection of containers that all have something in common. Similar to the `PairSet`, the most common operations are pretty simple - include or exclude.
 
 ```ts
-const group = await instance.createGroup();
+const group = await database.createGroup();
 
 // create some containers to include
-const box1 = await instance.createBox();
-const box2 = await instance.createBox();
-const directory1 = await instance.createDirectory();
+const box1 = await database.createBox();
+const box2 = await database.createBox();
+const directory1 = await database.createDirectory();
 
 // include by Container instance
 await group.include(box1);
@@ -282,7 +282,7 @@ const members = group.getMembers();
 // iterating through the group members
 for await (const member of members) {
     const address = member.address;
-    const instance = member.database;
+    const database = member.database;
 
     const asJson = member.toJson();
 }
@@ -291,9 +291,9 @@ for await (const member of members) {
 ### Property
 The Gink `Property` is a container specifically used to map a `Container` to a value. As the name suggests, this can be used for storing properties of a container. For this, the value would likely be a JavaScript `Object`.
 ```ts
-const property = await instance.createProperty();
+const property = await database.createProperty();
 
-const directory = await instance.createDirectory();
+const directory = await database.createDirectory();
 
 await property.set(directory, new Map([["property", "example"], ["last_changed", "now"]]));
 
@@ -317,7 +317,7 @@ A parameter you may come across in many different functions of Gink is `asOf`. a
 ```ts
 // using a directory for this example,
 // but all containers can make use of timestamps.
-const directory = await instance.createDirectory();
+const directory = await database.createDirectory();
 
 // saving a timestamp before anything is added
 const time0 = generateTimestamp();
@@ -348,9 +348,9 @@ const asMap = await directory.toMap(-1);
 ```
 
 #### Clear
-All containers may be completely cleared out by using `Container.clear()`. By default, clearing out a container does not mean the data is gone, just that the container will now be empty. If the purge parameter is set to true, the data will be completely purged from the instance.
+All containers may be completely cleared out by using `Container.clear()`. By default, clearing out a container does not mean the data is gone, just that the container will now be empty. If the purge parameter is set to true, the data will be completely purged from the database.
 ```ts
-const directory = await instance.createDirectory();
+const directory = await database.createDirectory();
 
 await directory.set('A', 'B');
 
@@ -370,12 +370,12 @@ const hasABeforeClear = await directory.has("A", clearMuid.timestamp);
 #### toJson
 All containers and their contents can be represented as JSON
 ```ts
-const directory = await instance.createDirectory();
+const directory = await database.createDirectory();
 
 await directory.set("A", "B");
 
 // nesting Gink Directories
-const other = await instance.createDirectory();
+const other = await database.createDirectory();
 await other.set("xxx", "yyy");
 
 await directory.set("C", other);
@@ -393,7 +393,7 @@ is comitted to the database, here is an example:
 ```ts
 const{ Bundler } = require("@x5e/gink");
 
-const directory = await instance.createDirectory();
+const directory = await database.createDirectory();
 
 const bundler = new Bundler();
 
@@ -406,21 +406,26 @@ await directory.set("key2", 2, bundler);
 bundler.comment = "Testing bundles";
 
 // bundle this bundle to the database
-await instance.addBundler(bundler);
+await database.addBundler(bundler);
 ```
 
-### Connecting to other instances
-Start a Gink server that listens for websocket connections:
+### Connecting to other databases
+Start a Gink server that listens for websocket connections: \
+Optionally export a path to a certificate and keyfile to start a secure server.
+```sh
+export GINK_SSL_CERT=/path/to/cert
+export GINK_SSL_KEY=/path/to/key
+```
 ```sh
 export GINK_PORT=8080 # or a different port you want to listen on
 npx gink
 ```
-Once you have a server running, create a new instance and connect it to the server:
+Once you have a server running, create a new database and connect it to the server:
 ```ts
-const store = new IndexedDbStore('example');
-const instance = new Database(store);
+const store = new MemoryStore();
+const database = new Database(store);
 
-await instance.connectTo("ws://localhost:8080"); // or wherever your server is hosted
+await database.connectTo("ws://localhost:8080"); // or wherever your server is hosted
 ```
 The server and client should now sync bundles. <br>
 <br>
@@ -428,20 +433,20 @@ Clients can also connect to multiple Gink servers, which can ensure a very high 
 availability if they are hosted using different providers.<br>
 
 ```ts
-await instance.connectTo("ws://host1");
-await instance.connectTo("ws://host2");
+await database.connectTo("ws://host1:port");
+await database.connectTo("wss://host2:port"); // wss for secure servers
 ```
 
 ### Token Authentication
 Start the Gink server with the environment variable GINK_TOKEN set to the token that will be required for a connection to be accepted.
 For example, `export GINK_TOKEN=1451jknr1jnak14jn`. <br>
-Now, when your server gets a connection attempt (presumably from another Gink instance), they will need to have the token. <br>
+Now, when your server gets a connection attempt (presumably from another Gink database), they will need to have the token. <br>
 <br>
 For the client, there are two ways to supply a token:<br>
-If starting an instance from the CLI - you will need to have the token as an env variable `GINK_AUTH_TOKEN`. This will automatically include the token in all connection requests to the targets supplied in the command (`npx gink ws://localhost:8080`).
+If starting an database from the CLI - you will need to have the token as an env variable `GINK_AUTH_TOKEN`. This will automatically include the token in all connection requests to the targets supplied in the command (`npx gink ws://localhost:8080`).
 <br>
 If you are connecting from a client through the Gink API, pass the auth token to `Database.connectTo()` like so:
 ```js
-const instance = new gink.Database()
-await instance.connectTo("ws://localhost:8080", {authToken: "1451jknr1jnak14jn"});
+const database = new gink.Database()
+await database.connectTo("ws://localhost:8080", {authToken: "1451jknr1jnak14jn"});
 ```
