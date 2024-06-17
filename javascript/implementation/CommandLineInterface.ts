@@ -32,7 +32,6 @@ export class CommandLineInterface {
 
         const dataRoot = process.env["GINK_DATA_ROOT"];
         const dataFile = process.env["GINK_DATA_FILE"];
-        const reset = !!process.env["GINK_RESET"];
         const identity = process.env["GINK_IDENTITY"] ?? getIdentity();
         ensure(identity);
 
@@ -64,8 +63,8 @@ export class CommandLineInterface {
             logToStdErr(`using data root ${dataRoot}`);
             ensure(process.env["GINK_PORT"]);
         } else if (dataFile) {
-            logToStdErr(`using data file=${dataFile}, reset=${reset}`);
-            this.store = new LogBackedStore(dataFile, reset);
+            logToStdErr(`using data file=${dataFile}`);
+            this.store = new LogBackedStore(dataFile);
         } else {
             logToStdErr(`using in-memory database`);
             this.store = new IndexedDbStore(generateTimestamp().toString());

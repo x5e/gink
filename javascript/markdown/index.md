@@ -95,9 +95,6 @@ The path to a `LogBackedStore` data file. Setting this will cause the CLI to loa
 ### GINK_STATIC_PATH
 The path to serve static files from. If you change this, you won't be able to access the Gink dashboard.
 
-### GINK_RESET
-Reset the store?
-
 ### GINK_IDENTITY
 Explicitly set your identity. \
 The default identity is user@hostname.
