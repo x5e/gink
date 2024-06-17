@@ -9,7 +9,7 @@ that can share data. Additionally, some of the data structures available in Gink
 - [Installation](#installation)
 - [Quickstart](#quickstart)
 - [CLI](#cli)
-    - [Environment Variables](#environment-variables)
+    - [Arguments](#arguments)
 - [Examples](#examples)
     - [Data Structures](#data-structures)
         - [Box](#box)
@@ -81,36 +81,42 @@ const result = await directory.get("key1");
 ```
 npx gink [targets] // ex: wss://localhost:8080
 ```
-## Environment Variables
+## Arguments
 
-### GINK_PORT
-If this is set, gink will listen for incoming connections on the specified port.
+### -c, --connect-to [targets]*
+gink databases to connect to (e.g: wss://localhost:8080 wss://localhost:8081)
 
-### GINK_DATA_ROOT
-The path to a directory storing Gink database files. Passing this will cause Gink to behave as a `RoutingServer`, meaning you will be able to connect to different databases by changing the path in the URL. (e.g wss://localhost:8080/abc accesses the abc database)
+### -l, --listen-on [port | None]
+Port to listen on. If flag is not included, gink does not listen for incoming connections. \
+Defaults to 8080. This may also be set using env GINK_PORT.
 
-### GINK_DATA_FILE
-The path to a `LogBackedStore` data file. Setting this will cause the CLI to load the database from the provided file.
+### --data-root [path]
+The path to a directory storing Gink database files. Passing this will cause Gink to behave as a `RoutingServer`, meaning you will be able to connect to different databases by changing the path in the URL. (e.g wss://localhost:8080/abc accesses the abc database) \
+Defaults to env GINK_DATA_ROOT.
 
-### GINK_STATIC_PATH
-The path to serve static files from. If you change this, you won't be able to access the Gink dashboard.
+### --data-file [path]
+The path to a `LogBackedStore` data file. Setting this will cause the CLI to load the database from the provided file into a `LogBackedStore`. \
+Defaults to env GINK_DATA_FILE.
 
-### GINK_IDENTITY
+### -i, --identity [name]
 Explicitly set your identity. \
-The default identity is user@hostname.
+Defaults to `user@hostname`.
 
-### GINK_TOKEN
-All clients will be required to provide this auth key to connect. The key is provided either to the `Database.connectTo()` method, or by setting the following environment variable and running Gink through the CLI.\
-Note: this is the server side auth key, different from the connecting client's GINK_AUTH_TOKEN.
+### --static-path [path]
+The path to serve static files from. If you change this, you won't be able to access the Gink dashboard. \
+Defaults to env GINK_STATIC_PATH.
 
-### GINK_AUTH_TOKEN
-If your server is setup using an auth token, this will need to be set to the same token as your server for the connection to succeed.
+### --auth-token [token]
+If gink is listening for connections, this is the token required for clients to connect. If gink is connecting to other databases, this token will be passed. \
+Defaults to env GINK_AUTH_TOKEN.
 
-### GINK_SSL_CERT
-The path to a certificate file. If this and GINK_SSL_KEY are set and valid, the server will listen for secure connections using SSL.
+### --ssl-cert [path]
+The path to a certificate file. If this and --ssl-key are set and valid, the server will listen for secure connections using SSL. \
+Defaults to env GINK_SSL_CERT.
 
-### GINK_SSL_KEY
-The path to a key file. If this and GINK_SSL_CERT are set and valid, the server will listen for secure connections using SSL.
+### --ssl-key [path]
+The path to a key file. If this and --ssl-cert are set and valid, the server will listen for secure connections using SSL.
+Defaults to env GINK_SSL_KEY.
 
 # Examples
 All examples will need a `Store` and `Database`:

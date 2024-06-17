@@ -19,6 +19,7 @@ if (require.main === module) {
     parser.add_argument('-l', '--listen-on', {
         help: `port to listen on (default 8080). if flag is not included, gink does not listen for incoming connections.`,
         default: process.env["GINK_PORT"],
+        action: "store_true",
         type: Number
     });
     parser.add_argument('--data-root', {
