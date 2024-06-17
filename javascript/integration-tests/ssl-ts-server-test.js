@@ -6,13 +6,9 @@ process.chdir(__dirname + "/..");
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", [], {
-        env: {
-            GINK_PORT: port,
-            GINK_SSL_CERT: "/etc/ssl/certs/localhost.crt",
-            GINK_SSL_KEY: "/etc/ssl/certs/localhost.key",
-            ...process.env
-        }
+    const server = new Expector("./tsc.out/implementation/main.js",
+        ["-l", port, "--ssl-cert", "/etc/ssl/certs/localhost.crt", "--ssl-key", "/etc/ssl/certs/localhost.key"], {
+        env: { ...process.env }
     });
     await server.expect("Secure", 2000);
     await server.expect("ready", 2000);

@@ -5,8 +5,8 @@ const { getLaunchOptions, sleep } = require("./browser_test_utilities");
 process.chdir(__dirname + "/..");
 it('connect to server and display dashboard', async () => {
     const port = 9998;
-    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: port, ...process.env } },
+    const server = new Expector("node", ["./tsc.out/implementation/main.js", "-l", port],
+        { env: { ...process.env } },
         false);
     let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
 
@@ -49,8 +49,8 @@ it('share bundles between two pages', async () => {
      * page.
      */
     const port = 9999;
-    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: port, ...process.env } }, false);
+    const server = new Expector("node", ["./tsc.out/implementation/main.js", "-l", port],
+        { env: { ...process.env } }, false);
     let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
     try {
         await sleep(1000);

@@ -10,12 +10,9 @@ process.chdir(__dirname + "/..");
         unlinkSync(TEST_DB_PATH);
     }
 
-    const instance = new Expector("./tsc.out/implementation/main.js", [], {
-        env: {
-            GINK_DATA_FILE: TEST_DB_PATH,
-            GINK_IDENTITY: "chain-test@test",
-            ...process.env
-        }
+    const instance = new Expector("./tsc.out/implementation/main.js",
+        ["--data-file", TEST_DB_PATH, "-i", "chain-test@test"], {
+        env: { ...process.env }
     });
     await instance.expect("using", 10000);
     console.log("instance started");
@@ -25,12 +22,9 @@ process.chdir(__dirname + "/..");
     await sleep(100);
     await instance.close();
 
-    const instance2 = new Expector("./tsc.out/implementation/main.js", [], {
-        env: {
-            GINK_DATA_FILE: TEST_DB_PATH,
-            GINK_IDENTITY: "chain-test@test",
-            ...process.env
-        }
+    const instance2 = new Expector("./tsc.out/implementation/main.js",
+        ["--data-file", TEST_DB_PATH, "-i", "chain-test@test"], {
+        env: { ...process.env }
     });
     await instance2.expect("using", 10000);
     console.log("instance started");

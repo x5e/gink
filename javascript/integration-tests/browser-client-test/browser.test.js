@@ -5,8 +5,9 @@ const { getLaunchOptions, sleep } = require("../browser_test_utilities");
 
 it('connect to server and display bundles', async () => {
     const port = 9997;
-    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: port, GINK_STATIC_PATH: ".", ...process.env } },
+    const server = new Expector("node",
+        ["./tsc.out/implementation/main.js", "-l", port, "--static-path", "."],
+        { env: { ...process.env } },
         false);
     let browser = await puppeteer.launch(getLaunchOptions());
     try {
