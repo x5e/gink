@@ -49,13 +49,13 @@
     "google-protobuf": "^3.21.2",
     "idb": "^7.1.1",
     "jstreemap": "^1.28.2",
-    "websocket": "^1.0.34"
+    "websocket": "^1.0.34",
+    "argparse": "^2.0.1"
   },
   "devDependencies": {
     "@types/google-protobuf": "^3.15.6",
     "@types/jest": "^29.5.0",
     "@types/websocket": "^1.0.10",
-    "argparse": "^2.0.1",
     "expect": "^29.7.0",
     "jest-puppeteer": "^9.0.1",
     "karma": "^6.4.2",
