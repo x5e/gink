@@ -4,6 +4,32 @@ Gink is a versioned, eventually consistent, multi-paradigm database management s
 It takes a "protocol-first" approach, which facilitates multiple implementations
 that can share data. Additionally, some of the data structures available in Gink are designed to operate similarly to native JavaScript data structures, which removes the steep learning curve found in other backend solutions. For example, Gink has Directory, Sequence, and KeySet data structures, which behave similarly to Objects, Arrays, and Sets, respectively.
 
+# Jump Around
+- [Overview](#overview)
+- [Installation](#installation)
+- [Quickstart](#quickstart)
+- [CLI](#cli)
+    - [Environment Variables](#environment-variables)
+- [Examples](#examples)
+    - [Data Structures](#data-structures)
+        - [Box](#box)
+        - [Directory](#directory)
+        - [Sequence](#sequence)
+        - [KeySet](#keyset)
+        - [PairSet](#pairset)
+        - [PairMap](#pairmap)
+        - [Group](#group)
+        - [Property](#property)
+        - [All Containers](#all-containers)
+            - [As-Of Queries](#as-of-queries)
+            - [Clear](#clear)
+            - [toJson](#tojson)
+    - [Database Operations](#database-operations)
+        - [Bundling and Bundles](#bundling-and-bundles)
+        - [Connecting to databases](#connecting-to-other-databases)
+        - [Token Authentication](#token-authentication)
+
+
 # Installation
 Assuming you have node.js and npm installed already:
 ```sh
@@ -28,7 +54,7 @@ If you'd prefer to import from a CDN:
 </script>
 ```
 
-## Quickstart
+# Quickstart
 
 Example - create a `Directory`\
 Take a look at other examples below for a more in depth look at all of the available data structures.
@@ -50,6 +76,44 @@ await directory.set("key1", "value1")
 // so this returns "value1"
 const result = await directory.get("key1");
 ```
+
+# CLI
+```
+npx gink [targets] // ex: wss://localhost:8080
+```
+## Environment Variables
+
+### GINK_PORT
+If this is set, gink will listen for incoming connections on the specified port.
+
+### GINK_DATA_ROOT
+The path to a directory storing Gink database files. Passing this will cause Gink to behave as a `RoutingServer`, meaning you will be able to connect to different databases by changing the path in the URL. (e.g wss://localhost:8080/abc accesses the abc database)
+
+### GINK_DATA_FILE
+The path to a `LogBackedStore` data file. Setting this will cause the CLI to load the database from the provided file.
+
+### GINK_STATIC_PATH
+The path to serve static files from. If you change this, you won't be able to access the Gink dashboard.
+
+### GINK_RESET
+Reset the store?
+
+### GINK_IDENTITY
+Explicitly set your identity. \
+The default identity is user@hostname.
+
+### GINK_TOKEN
+All clients will be required to provide this auth key to connect. The key is provided either to the `Database.connectTo()` method, or by setting the following environment variable and running Gink through the CLI.\
+Note: this is the server side auth key, different from the connecting client's GINK_AUTH_TOKEN.
+
+### GINK_AUTH_TOKEN
+If your server is setup using an auth token, this will need to be set to the same token as your server for the connection to succeed.
+
+### GINK_SSL_CERT
+The path to a certificate file. If this and GINK_SSL_KEY are set and valid, the server will listen for secure connections using SSL.
+
+### GINK_SSL_KEY
+The path to a key file. If this and GINK_SSL_CERT are set and valid, the server will listen for secure connections using SSL.
 
 # Examples
 All examples will need a `Store` and `Database`:
