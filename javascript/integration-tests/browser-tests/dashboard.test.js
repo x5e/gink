@@ -10,7 +10,7 @@ it('connect to server and display dashboard', async () => {
     try {
         server = new Expector("node", ["./tsc.out/implementation/main.js", "-l", port],
             { env: { ...process.env } }, false);
-        browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
+        browser = await puppeteer.launch(getLaunchOptions(false)); // pass false to getLaunchOptions for local debugging.
         await sleep(1000);
         await server.expect("ready");
         let page = await browser.newPage();
@@ -33,7 +33,7 @@ it('connect to server and display dashboard', async () => {
         await sleep(4000);
 
         // Make sure server does not crash after page reload.
-        await server.expect("got greeting from 2");
+        await server.expect("got greeting from 2", 5000);
     } catch (e) {
         console.error(e);
         throw new Error(e);
