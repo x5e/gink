@@ -42,6 +42,7 @@
   },
   "homepage": "https://github.com/x5e/gink#readme",
   "dependencies": {
+    "argparse": "^2.0.1",
     "chrome-remote-interface": "^0.32.2",
     "fake-indexeddb": "^4.0.1",
     "find-process": "^1.4.7",
@@ -64,7 +65,7 @@
     "karma-mocha-reporter": "^2.2.5",
     "karma-webpack": "^5.0.0",
     "node-loader": "^2.0.0",
-    "puppeteer": "^21.5.2",
+    "puppeteer": "^22.11.2",
     "ts-jest": "^29.0.5",
     "ts-loader": "^9.5.0",
     "webpack": "^5.89.0",
