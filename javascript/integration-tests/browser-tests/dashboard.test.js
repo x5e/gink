@@ -123,10 +123,10 @@ it('share bundles between two pages', async () => {
         const table1 = await page1.$eval("#container-table", e => e.innerHTML);
         const table2 = await page2.$eval("#container-table", e => e.innerHTML);
         for (const table of [table1, table2]) {
-            expect(table).toMatch(/.*<tr class="entry-row" data-position="0"><td>key0<\/td><td>changed value<\/td><\/tr>/);
+            expect(table).toMatch(/.*<tr class="entry-row" data-position="0"><td>"key0"<\/td><td>"changed value"<\/td><\/tr>/);
             expect(table).not.toMatch(/.*key1/);
             expect(table).not.toMatch(/.*key2/);
-            expect(table).toMatch(/.*<tr class="entry-row" data-position="1"><td>key3<\/td><td>a value<\/td><\/tr>/);
+            expect(table).toMatch(/.*<tr class="entry-row" data-position="1"><td>"key3"<\/td><td>"a value"<\/td><\/tr>/);
         }
     } catch (e) {
         console.error(e);
