@@ -33,7 +33,7 @@
   ],
   "bin": "./tsc.out/implementation/main.js",
   "scripts": {
-    "serve": "GINK_PORT=8080 ./tsc.out/implementation/main.js",
+    "serve": "./tsc.out/implementation/main.js -l",
     "build": "tsc",
     "test": "jest --testPathPattern=javascript/unit-tests",
     "browser-unit": "karma start",
@@ -50,8 +50,7 @@
     "google-protobuf": "^3.21.2",
     "idb": "^7.1.1",
     "jstreemap": "^1.28.2",
-    "websocket": "^1.0.34",
-    "argparse": "^2.0.1"
+    "websocket": "^1.0.34"
   },
   "devDependencies": {
     "@types/google-protobuf": "^3.15.6",
