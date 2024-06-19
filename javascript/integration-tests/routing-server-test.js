@@ -8,8 +8,8 @@ process.chdir(__dirname + "/..");
     await new Promise((resolve) => setTimeout(resolve, 10));
     let server;
     if (!process.env["GINK_DEBUG"]) {
-        server = new Expector("./tsc.out/implementation/main.js", [],
-            { env: { GINK_PORT: port, GINK_DATA_ROOT: "/tmp/routing-server-test", ...process.env } });
+        server = new Expector("./tsc.out/implementation/main.js", ["-l", port, "--data-root", "/tmp/routing-server-test"],
+            { env: { ...process.env } });
 
         await server.expect("RoutingServer ready", 2000);
     }

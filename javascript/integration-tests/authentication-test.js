@@ -5,7 +5,7 @@ process.chdir(__dirname + "/..");
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: port, GINK_TOKEN: "abc", ...process.env } });
+    const server = new Expector(`./tsc.out/implementation/main.js`, ["-l", port, "--auth-token", "abc"], { ...process.env });
     await server.expect("ready", 2000);
     const client = new Expector("./tsc.out/implementation/main.js");
     await client.expect("node.gink", 2000);

@@ -25,7 +25,7 @@ parser.add_argument("--get", help="get a value in the database (default root) an
 parser.add_argument("--dump", nargs="?", const=True,
                     help="dump contents to stdout and exit (path or muid, or everything if blank)")
 parser.add_argument("--blame", action="store_true", help="show blame information")
-parser.add_argument("--as_of", help="as-of time to use for dump or get opperation")
+parser.add_argument("--as_of", help="as-of time to use for dump or get operation")
 parser.add_argument("--mkdir", help="create a directory using path notation")
 parser.add_argument("--comment", help="comment to add to modifications (set or mkdir)")
 parser.add_argument("--log", nargs="?", const="-10", type=int,
