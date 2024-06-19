@@ -128,6 +128,7 @@ class Relay(Server):
             except Finished:
                 self._connections.remove(connection)
                 self._remove_selectable(connection)
+                self._logger.info(f"Connection (fileno {connection.fileno()}) disconnected.")
                 raise
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
