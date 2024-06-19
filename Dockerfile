@@ -9,8 +9,8 @@ ENV GINK=/opt/gink
 RUN mkdir -p $GINK
 WORKDIR $GINK
 
-COPY javascript/package*.json ./
-RUN npm ci && npm rebuild
+COPY javascript/*.json ./javascript/
+RUN cd ./javascript && npm ci && npm rebuild
 COPY Makefile ./
 COPY proto ./proto
 
@@ -25,7 +25,7 @@ RUN mypy gink/impl gink/tests
 RUN python3 -m nose2
 
 WORKDIR $GINK
-COPY javascript/*.js javascript/*.json ./javascript/
+COPY javascript/*.js ./javascript/
 COPY javascript/implementation ./javascript/implementation
 RUN make javascript
 WORKDIR $GINK/javascript
