@@ -12,10 +12,9 @@ import { start, REPLServer } from "node:repl";
 /**
     Intended to manage server side running of Gink.
     Basically it takes some settings in the form of
-    environment variables plus a list of peers to
+    arguments plus a list of peers to
     connect to then starts up the Gink Instance,
     or Gink Server if port listening is specified.
-    TODO(https://github.com/google/gink/issues/43): implement --help
 */
 export class CommandLineInterface {
     targets: string[];
@@ -23,77 +22,76 @@ export class CommandLineInterface {
     instance?: Database;
     routingServer?: RoutingServer;
     replServer?: REPLServer;
+    authToken?: string;
 
-    constructor(process: NodeJS.Process) {
+    constructor(args: {
+        connect_to?: string[],
+        listen_on?: string,
+        data_root?: string,
+        data_file?: string,
+        identity?: string,
+        static_path?: string,
+        auth_token?: string,
+        ssl_cert?: string,
+        ssl_key?: string;
+    }) {
         logToStdErr("starting...");
 
         // This makes debugging through integration tests way easier.
         globalThis.ensure = ensure;
 
-        const dataRoot = process.env["GINK_DATA_ROOT"];
-        const dataFile = process.env["GINK_DATA_FILE"];
-        const reset = !!process.env["GINK_RESET"];
-        const identity = process.env["GINK_IDENTITY"] ?? getIdentity();
+        this.authToken = args.auth_token;
+        this.targets = args.connect_to ?? [];
+        const identity = args.identity ?? getIdentity();
         ensure(identity);
 
-        /*
-        If an auth key is found in the server's environment variable
-        GINK_TOKEN, then all clients will be required to have
-        'token {token}' in their websocket subprotocol list.
-        Otherwise, just accept all connections with the gink subprotocol.
-        */
-        let authKey = process.env["GINK_TOKEN"];
-        // This is different than GINK_AUTH_TOKEN, which is what
-        // the client looks for when connecting via the CLI.run().
-
         let authFunc: AuthFunction | null = null;
-        if (authKey) {
+        if (this.authToken) {
             authFunc = (token: string) => {
                 // Expecting token to have already been decoded from hex.
                 if (!token) return false;
                 // Purposely using includes here since the token will have been
                 // decoded and may contain '\x00' as a prefix.
                 ensure(token.includes("token "));
-                let key = authKey.toLowerCase();
+                let key = this.authToken.toLowerCase();
                 token = token.toLowerCase().split("token ")[1].trimStart();
                 return token == key;
             };
         }
 
-        if (dataRoot) {
-            logToStdErr(`using data root ${dataRoot}`);
-            ensure(process.env["GINK_PORT"]);
-        } else if (dataFile) {
-            logToStdErr(`using data file=${dataFile}, reset=${reset}`);
-            this.store = new LogBackedStore(dataFile, reset);
+        if (args.data_root) {
+            logToStdErr(`using data root ${args.data_root}`);
+            ensure(args.listen_on, "must provide port for routing server to listen on hint: -l [port]");
+        } else if (args.data_file) {
+            logToStdErr(`using data file=${args.data_file}`);
+            this.store = new LogBackedStore(args.data_file);
         } else {
             logToStdErr(`using in-memory database`);
             this.store = new IndexedDbStore(generateTimestamp().toString());
         }
 
-        if (process.env["GINK_PORT"]) {
+        if (args.listen_on) {
             const common = {
-                port: process.env["GINK_PORT"],
-                sslKeyFilePath: process.env["GINK_SSL_KEY"],
-                sslCertFilePath: process.env["GINK_SSL_CERT"],
-                staticContentRoot: process.env["GINK_STATIC_PATH"],
+                port: args.listen_on,
+                sslKeyFilePath: args.ssl_key,
+                sslCertFilePath: args.ssl_cert,
+                staticContentRoot: args.static_path,
                 logger: logToStdErr,
                 authFunc: authFunc
             };
-            if (dataRoot) {
+            if (args.data_root) {
                 this.routingServer = new RoutingServer({
                     identity: identity,
-                    dataFilesRoot: dataRoot,
+                    dataFilesRoot: args.data_root,
                     ...common
                 });
             } else {
                 this.instance = new SimpleServer(this.store, { identity: identity, ...common });
             }
         } else {
-            // GINK_PORT not set, so don't listen for incoming connections
+            // port not set so don't listen for incoming connections
             this.instance = new Database(this.store, identity);
         }
-        this.targets = process.argv.slice(2);
     }
 
     async run() {
@@ -106,7 +104,7 @@ export class CommandLineInterface {
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
                 try {
-                    await this.instance.connectTo(target, { onClose: logToStdErr, authToken: process.env["GINK_AUTH_TOKEN"] });
+                    await this.instance.connectTo(target, { onClose: logToStdErr, authToken: this.authToken });
                     logToStdErr(`connected!`);
                 } catch (e) {
                     logToStdErr(`Failed connection to ${target}. Bad Auth token?\n` + e);

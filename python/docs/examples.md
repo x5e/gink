@@ -52,7 +52,7 @@ value = directory.pop("key1")
 ```
 
 ### Sequence
-The Sequence is equivalent to a Python list. Again, these operations should look pretty familiar! In a Gink Sequence, the contents are ordered by timestamps.
+The Sequence is equivalent to a Python list. Again, these operations should look pretty familiar. In a Gink Sequence, the contents are ordered by timestamps.
 ```python
 sequence = Sequence()
 
@@ -245,14 +245,22 @@ For each Container type there's a pre-existing global instance with address `Mui
 global_directory = Directory.get_global_instance(database=database)
 
 global_box = Box.get_global_instance(database=database)
-
-global_key_set = KeySet.get_global_instance(database=database)
 ```
+##### Recommendations
+Below are our recommendations for how to use a few of the global containers: \
+The global property is a special container that is used to set the names of containers. While you can still use it for other purposes, Gink assumes it will store container names. \
+The global directory does not necessarily have a set use, but we recommend you use this to
+store references to other containers you create that you may want to access from other databases, reaccess if your page refreshes, etc. \
+The global box can be used in a similar manner as the global directory, but it will only hold one container.
 #### From Contents
 To make it easier to insert data into an object upon initialization, Gink allows you to specify a `contents` argument to the constructor of the object. Different data structures may take different types as contents, but the idea remains the same for all Gink objects.
 ```python
-directory = Directory(database=database, contents={
-    "key1": "value1", "key2": 42, "key3": [1, 2, 3, 4]})
+directory = Directory(database=database,
+                      contents={
+                                "key1": "value1",
+                                "key2": 42,
+                                "key3": [1, 2, 3, 4]
+                                })
 
 key_set = KeySet(database=database, contents=["key1", "key2", 3])
 
@@ -264,7 +272,7 @@ vertex2 = Vertex()
 # accepted data types for other data structures.
 pair_map = PairMap(contents={(vertex1, vertex2): "value"})
 ```
-#### Back in time
+#### Back in time (as_of)
 You will frequently see `as_of` in the Gink documentation. `as_of` refers to the time to look back to. There are multiple ways of interacting with `as_of`. If you are curious about how certain timestamps are resolved, take a look at `Database.resolve_timestamp()`\
 One easy way is to pass a negative integer indicating how many changes back you want to look.
 ```python
@@ -331,7 +339,10 @@ vertex1 = Vertex(database=database)
 vertex2 = Vertex(database=database)
 vertex3 = Vertex(database=database)
 pairset1 = PairSet(contents=[
-    (vertex1, vertex2), (vertex1, vertex3), (vertex2, vertex3)], database=database)
+                                (vertex1, vertex2),
+                                (vertex1, vertex3),
+                                (vertex2, vertex3)
+                            ], database=database)
 
 dump = pairset1.dumps()
 
