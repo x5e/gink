@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const instance = new gink.Database(store);
     await store.ready;
     await instance.ready;
-    test(instance);
 
     // Initialize interface for interacting with database
     const database = new Database(store, instance);
