@@ -171,6 +171,13 @@ class Page {
                 const datalist2 = this.createElement("datalist", keyInput2, "datalist-2");
                 await this.enableContainersAutofill(datalist2);
             }
+            keyContainer.appendChild(document.createElement('br'));
+            const sel = keyContainer.appendChild(document.createElement('select'));
+            sel.setAttribute("id", "key-type-select");
+            const strOption = sel.appendChild(document.createElement('option'));
+            strOption.value = strOption.innerText = "string";
+            const intOption = sel.appendChild(document.createElement('option'));
+            intOption.value = intOption.innerText = "int";
         }
 
         // Value inputs - if container uses values.
@@ -181,6 +188,17 @@ class Page {
             valueInput = this.createElement("input", valueContainer, "value-input", "bundle-input");
             valueInput.setAttribute("type", "text");
             valueInput.setAttribute("placeholder", "Value");
+            valueContainer.appendChild(document.createElement('br'));
+            const sel = valueContainer.appendChild(document.createElement('select'));
+            sel.setAttribute("id", "value-type-select");
+            const strOption = sel.appendChild(document.createElement('option'));
+            strOption.value = strOption.innerText = "string";
+            const intOption = sel.appendChild(document.createElement('option'));
+            intOption.value = intOption.innerText = "int";
+            const boolOption = sel.appendChild(document.createElement('option'));
+            boolOption.value = boolOption.innerText = "bool";
+            const nullOption = sel.appendChild(document.createElement('option'));
+            nullOption.value = nullOption.innerText = "null";
         }
 
         // Comment inputs
@@ -207,10 +225,24 @@ class Page {
                 }
                 else {
                     newKey = keyInput1.value;
+                    const kt = document.getElementById("key-type-select").value;
+                    if (kt == "int") newKey = Number(newKey);
                 }
             }
-            else if (keyInput1 && keyInput2) newKey = [gink.strToMuid(keyInput1.value), gink.strToMuid(keyInput2.value)];
-            if (valueInput) newValue = valueInput.value;
+            else if (keyInput1 && keyInput2) {
+                newKey = [gink.strToMuid(keyInput1.value), gink.strToMuid(keyInput2.value)];
+            }
+            if (valueInput) {
+                newValue = valueInput.value;
+                const vt = document.getElementById("value-type-select").value;
+                if (vt == "int") newValue = Number(newValue);
+                else if (vt == "bool") {
+                    if (newValue.toLowerCase() == "true") newValue = true;
+                    else if (newValue.toLowerCase() == "false") newValue = false;
+                    else throw new Error("invalid boolean");
+                }
+                else if (vt == "null") newValue = null;
+            }
             newComment = commentInput.value;
 
             if (confirm("Bundle entry?")) {

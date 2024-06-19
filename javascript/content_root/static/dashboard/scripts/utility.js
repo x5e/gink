@@ -92,25 +92,8 @@ function interpretKey(key, container) {
  * @param {*} element
  */
 function unwrapToString(element) {
-    let returning;
-    if (typeof element == "string" || typeof element == "number") {
-        returning = String(element);
-    }
-    else if (typeof element == "object" && !Array.isArray(element)) {
-        const entries = element instanceof Map ? element.entries() : Object.entries(element);
-        returning = '{';
-        for (const [k, v] of entries) {
-            returning += `"${k}": "${v}",\n`;
-        }
-        returning += '}';
-    }
-    else if (Array.isArray(element)) {
-        returning = JSON.stringify(element);
-    }
-    else {
-        throw new Error(`not sure how to unwrap ${element}`);
-    }
-    return returning;
+    // May want to use this for other types of elements in the future.
+    return JSON.stringify(element);
 }
 
 /**

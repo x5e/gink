@@ -131,33 +131,35 @@ class Database {
                     arr.push([undefined, value]);
                 }
                 break;
-            case 3: // KeySet
+            case 3: // PairMap
+                arr = Array.from((await container.items()).entries());
+                break;
+            case 4: // Directory and Property
+            case 10:
+                arr = Array.from((await container.toMap()).entries());
+                break;
+            case 5: // KeySet
                 tmp = await container.toSet();
                 arr = [];
                 for (const key of tmp) {
                     arr.push([key, undefined]);
                 }
                 break;
-            case 4:
-                arr = Array.from((await container.toMap()).entries());
-                break;
-            case 5: // PairSet
-                tmp = await container.getPairs();
-                arr = [];
-                for (const key of tmp) {
-                    arr.push([key, undefined]);
-                }
-                break;
-            case 6: // PairMap
-                arr = Array.from((await container.items()).entries());
-                break;
-            case 10: // Group
+            case 6: // Group
                 tmp = await container.includedAsArray();
                 arr = [];
                 for (const key of tmp) {
                     arr.push([key, undefined]);
                 }
                 break;
+            case 8: // PairSet
+                tmp = await container.getPairs();
+                arr = [];
+                for (const key of tmp) {
+                    arr.push([key, undefined]);
+                }
+                break;
+            // TODO: Support graph data types
             default:
                 throw new Error(`not sure how to get entries for ${container.constructor.name}`);
         }
