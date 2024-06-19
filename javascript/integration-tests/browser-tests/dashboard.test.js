@@ -33,7 +33,7 @@ it('connect to server and display dashboard', async () => {
         await sleep(4000);
 
         // Make sure server does not crash after page reload.
-        await server.expect("got greeting from 2", 5000);
+        await server.expect("got ack from 2", 5000);
     } catch (e) {
         console.error(e);
         throw new Error(e);
