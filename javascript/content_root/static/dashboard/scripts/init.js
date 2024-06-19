@@ -6,14 +6,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     await instance.ready;
     test(instance);
 
-    // Connect to server
-    await instance.connectTo(`${window.location.protocol == "https:" ? "wss" : "ws"}://${window.location.host}`);
     // Initialize interface for interacting with database
     const database = new Database(store, instance);
 
     // Initialize and display page
     const page = new Page(database);
     await page.displayPage(...page.unwrapHash(window.location.hash));
+
+    // Connect to server
+    await instance.connectTo(`${window.location.protocol == "https:" ? "wss" : "ws"}://${window.location.host}`);
 
     const refreshContainer = async () => {
         if (page.pageType == "container") {

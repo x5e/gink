@@ -8,7 +8,8 @@ import {
     sameData,
     getActorId,
     toLastWithPrefixBeforeSuffix,
-    strToMuid
+    strToMuid,
+    muidToTuple
 } from "./utils";
 import {
     AsOf,
@@ -558,6 +559,15 @@ export class MemoryStore implements Store {
     // for debugging, not part of the api/interface
     getAllRemovals(): TreeMap<string, string> {
         return this.removals;
+    }
+
+    // for debugging, not part of the api/interface
+    getAllContainerTuples(): Array<MuidTuple> {
+        const arr = [];
+        for (const containerIdStr of this.containers.keys()) {
+            arr.push(muidToTuple(strToMuid(containerIdStr)));
+        }
+        return arr;
     }
 
     addFoundBundleCallBack(callback: BroadcastFunc): void {

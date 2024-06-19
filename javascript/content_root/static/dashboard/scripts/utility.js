@@ -21,27 +21,28 @@ function determineContainerStorage(container) {
         case 2: // Sequence
             valueType = "any";
             break;
-        case 3: // KeySet
-            keyType = "any";
+        case 3: // PairMap
+            keyType = "pair";
+            valueType = "any";
             break;
         case 4: // Directory
             keyType = "any";
             valueType = "any";
             break;
-        case 5: // PairSet
+        case 5: // KeySet
+            keyType = "any";
+            break;
+        case 6: // Group
+            keyType = "muid";
+            break;
+        case 8: // PairSet
             keyType = "pair";
             break;
-        case 6: // PairMap
-            keyType = "pair";
-            valueType = "any";
-            break;
-        case 9: // Property
+        case 10: // Property
             keyType = "muid";
             valueType = "any";
             break;
-        case 10: // Group
-            keyType = "muid";
-            break;
+
         default:
             throw new Error(`Either invalid behavior or container is verb, or vertex, which don't have entries.`);
     }
