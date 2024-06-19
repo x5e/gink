@@ -1,7 +1,0 @@
-node_modules
-.git
-Dockerfile
-**/*.out
-**/scratch.*
-**/__pycache__
-package-lock.json
