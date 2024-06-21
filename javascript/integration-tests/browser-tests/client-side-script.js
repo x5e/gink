@@ -13,11 +13,12 @@ function getWebsocketTarget() {
     return target;
 }
 
-async function onBundle(changeSetInfo) {
+async function onBundle(changeSet) {
     if (document == null) { throw new Error("unexpected"); }
     document.getElementById('messages').innerHTML +=
-        `${changeSetInfo.medallion}, ${changeSetInfo.timestamp}, ` +
-        `"${changeSetInfo.comment}"\n`;
+        `${changeSet.info.medallion}, ${changeSet.info.timestamp}, ` +
+        `"${changeSet.info.comment}"\n`;
+
 }
 
 (async () => {
