@@ -3,14 +3,15 @@ const Expector = require("./Expector.js");
 const { sleep } = require("./browser_test_utilities.js");
 process.chdir(__dirname + "/..");
 (async () => {
+    const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
     const python = new Expector(
         "python3",
-        ["-u", "-m", "gink", "-l", "*:8089"]);
+        ["-u", "-m", "gink", "-l", `*:${port}`]);
     await python.expect("listen", 2000);
     await sleep(500);
 
-    const client = new Expector("node", ["./tsc.out/implementation/main.js", "ws://0.0.0.0:8089"],
+    const client = new Expector("node", ["./tsc.out/implementation/main.js", "-c", `ws://0.0.0.0:${port}`],
         { env: { ...process.env } });
     await python.expect("connection established!", 2000);
     await client.expect("connected!", 2000);

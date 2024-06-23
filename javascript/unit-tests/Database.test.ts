@@ -1,4 +1,5 @@
 import { Database, IndexedDbStore, Bundler, MemoryStore } from "../implementation";
+import { SimpleServer } from "../implementation/SimpleServer";
 import { ensure } from "../implementation/utils";
 
 it('test bundle', async () => {
@@ -21,32 +22,35 @@ it('test listeners', async () => {
         new MemoryStore(true),
     ]) {
         await store.ready;
-        const instance = new Database(store);
-        await instance.ready;
+        const db = new Database(store);
+        await db.ready;
 
-        const globalDir = instance.getGlobalDirectory();
-        const sequence = await instance.createSequence();
-        const box = await instance.createBox();
+        const root = db.getGlobalDirectory();
+        const sequence = await db.createSequence();
+        const box = await db.createBox();
 
-        const globalDirListener = async () => {
-            globalDirListener.calledTimes++;
+        const rootListener = async () => {
+            rootListener.calledTimes++;
         };
-        globalDirListener.calledTimes = 0;
+        rootListener.calledTimes = 0;
 
         const allContainersListener = async () => {
             allContainersListener.calledTimes++;
         };
         allContainersListener.calledTimes = 0;
 
-        instance.addListener(globalDirListener, globalDir.address);
-        instance.addListener(allContainersListener);
+        db.addListener(rootListener, root.address);
+        db.addListener(allContainersListener);
 
-        await globalDir.set("foo", "bar");
+        await root.set("foo", "bar");
         await sequence.push("foo");
         await box.set("test");
 
-        ensure(globalDirListener.calledTimes == 1);
+        ensure(rootListener.calledTimes == 1);
         ensure(allContainersListener.calledTimes == 3);
+
+        await root.clear();
+        ensure(rootListener.calledTimes == 2);
     }
 });
 

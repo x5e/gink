@@ -7,6 +7,7 @@ from socket import (
 )
 from logging import getLogger
 from abc import ABC, abstractmethod
+from ssl import create_default_context
 
 from .builders import SyncMessage
 from .chain_tracker import ChainTracker
@@ -28,11 +29,16 @@ class Connection(ABC):
             port: Optional[int] = None,
             name: Optional[str] = None,
             socket: Optional[Socket] = None,
-    ):
+            secure_connection: bool = False,
+            ):
         if socket is None:
             assert host is not None and port is not None
             socket = Socket(AF_INET, SOCK_STREAM)
+            if secure_connection:
+                context = create_default_context()
+                socket = context.wrap_socket(socket, server_hostname = host)
             socket.connect((host, port))
+
         self._socket = socket
         self._host = host
         self._port = port
@@ -86,7 +92,7 @@ class Connection(ABC):
         self.send(sync_message)
         self._tracker.mark_as_having(info)
 
-    def receive_objects(self) -> Iterable[Union[BundleInfo|BundleWrapper|ChainTracker]]:
+    def receive_objects(self) -> Iterable[Union[BundleInfo, BundleWrapper, ChainTracker]]:
         for sync_message in self.receive():
             if sync_message.HasField("bundle"):
                 bundle_bytes = sync_message.bundle

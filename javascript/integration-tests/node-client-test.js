@@ -2,10 +2,11 @@
 const Expector = require("./Expector");
 process.chdir(__dirname + "/..");
 (async () => {
+    const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: "8085", ...process.env } });
+    const server = new Expector("./tsc.out/implementation/main.js", ["-l", port], { env: { ...process.env } });
     await server.expect("listening", 10000);
-    const client = new Expector("./tsc.out/implementation/main.js", ["ws://127.0.0.1:8085/"]);
+    const client = new Expector("./tsc.out/implementation/main.js", ["-c", `ws://127.0.0.1:${port}/`]);
     await client.expect("using", 10000);
     console.log("all ready");
 

@@ -1,43 +1,45 @@
 const puppeteer = require('puppeteer');
-const Expector = require("./Expector");
+const Expector = require("../Expector");
 const { expect } = require('@jest/globals');
-const { getLaunchOptions, sleep } = require("./browser_test_utilities");
-process.chdir(__dirname + "/..");
+const { getLaunchOptions, sleep } = require("../browser_test_utilities");
+process.chdir(__dirname + "/../..");
 it('connect to server and display dashboard', async () => {
-    let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
-    let page = await browser.newPage();
+    const port = 9998;
+    let browser, server;
 
-    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: "8083", ...process.env } },
-        false);
-    await sleep(1000);
-    await server.expect("ready");
-
-    page.on('console', async e => {
-        const args = await Promise.all(e.args().map(a => a.jsonValue()));
-    });
-
-    await page.goto(`http://localhost:8083/`);
-    await page.waitForSelector('#root');
-
-    await sleep(4000);
-
-    const title = await page.$eval("#title-bar", e => e.innerHTML);
-    expect(title).toMatch("Root Directory");
-
-    await page.reload();
-    await server.expect("disconnected.");
-
-    await sleep(4000);
-
-    // Make sure server does not crash after page reload.
     try {
+        server = new Expector("node", ["./tsc.out/implementation/main.js", "-l", port],
+            { env: { ...process.env } }, false);
+        browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
+        await sleep(1000);
+        await server.expect("ready");
+        let page = await browser.newPage();
+
+        page.on('console', async e => {
+            const args = await Promise.all(e.args().map(a => a.jsonValue()));
+        });
+
+        await page.goto(`http://localhost:${port}/`);
+        await page.waitForSelector('#root', { timeout: 5000 });
+
+        await sleep(4000);
+
+        const title = await page.$eval("#title-bar", e => e.innerHTML);
+        expect(title).toMatch("Root Directory");
+
+        await page.reload();
+        await server.expect("disconnected.");
+
+        await sleep(4000);
+
+        // Make sure server does not crash after page reload.
         await server.expect("got greeting from 2");
     } catch (e) {
+        console.error(e);
         throw new Error(e);
     } finally {
-        await server.close();
-        await browser.close();
+        if (server) await server.close();
+        if (browser) await browser.close();
     }
 }, 40000);
 
@@ -47,20 +49,22 @@ it('share bundles between two pages', async () => {
      * that can both send bundles and have them reflected in the other
      * page.
      */
-    let browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
-    let page1 = await browser.newPage();
-    let page2 = await browser.newPage();
-    const pages = [page1, page2];
-
-    const server = new Expector("node", ["./tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: "8084", ...process.env } });
-    await sleep(1000);
-    await server.expect("ready");
-
+    const port = 9999;
+    let browser, server;
     try {
+        server = new Expector("node", ["./tsc.out/implementation/main.js", "-l", port],
+            { env: { ...process.env } }, false);
+        browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
+        await sleep(1000);
+        await server.expect("ready");
+
+        let page1 = await browser.newPage();
+        let page2 = await browser.newPage();
+        const pages = [page1, page2];
+
         for (const page of pages) {
-            await page.goto(`http://localhost:8084/`);
-            await page.waitForSelector('#root');
+            await page.goto(`http://localhost:${port}/`);
+            await page.waitForSelector('#root', { timeout: 5000 });
 
             page.on('dialog', async dialog => {
                 await dialog.accept();
@@ -86,10 +90,9 @@ it('share bundles between two pages', async () => {
         for (let i = 0; i < 4; i++) {
             const page = pages[i % 2 == 0 ? 1 : 0];
             await page.bringToFront();
-            page
-                .on('console', message =>
-                    console.log(`${message.type().substring(0, 3).toUpperCase()} ${message.text()}`))
-                .on('pageerror', ({ message }) => { throw new Error(message); });
+            page.on('console', async e => {
+                const args = await Promise.all(e.args().map(a => a.jsonValue()));
+            });
 
             await page.click("#add-entry-button");
             await page.type("#key-input-1", `key${i}`);
@@ -99,8 +102,8 @@ it('share bundles between two pages', async () => {
 
             if (i > 1) {
                 // Delete keys through dashboard UI
-                await page.waitForXPath(`//td[contains(., 'key${i - 1}')]`);
-                const [element] = await page.$x(`//td[contains(., 'key${i - 1}')]`);
+                const xp = `::-p-xpath(//td[contains(., 'key${i - 1}')])`;
+                const element = await page.waitForSelector(xp);
                 await element.click();
                 await page.click("#delete-button");
             }
@@ -108,8 +111,7 @@ it('share bundles between two pages', async () => {
         }
         await page1.bringToFront();
         // Use the update button to update key0's value
-        await page1.waitForXPath(`//td[contains(., 'key0')]`);
-        const [element] = await page1.$x(`//td[contains(., 'key0')]`);
+        const element = await page1.waitForSelector(`::-p-xpath(//td[contains(., 'key0')])`);
         await element.click();
         await page1.click("#update-button");
         await page1.type("#value-input", `changed value`);
@@ -127,9 +129,10 @@ it('share bundles between two pages', async () => {
             expect(table).toMatch(/.*<tr class="entry-row" data-position="1"><td>key3<\/td><td>a value<\/td><\/tr>/);
         }
     } catch (e) {
+        console.error(e);
         throw new Error(e);
     } finally {
-        await server.close();
-        await browser.close();
+        if (server) await server.close();
+        if (browser) await browser.close();
     }
 }, 40000);

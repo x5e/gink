@@ -25,7 +25,7 @@ parser.add_argument("--get", help="get a value in the database (default root) an
 parser.add_argument("--dump", nargs="?", const=True,
                     help="dump contents to stdout and exit (path or muid, or everything if blank)")
 parser.add_argument("--blame", action="store_true", help="show blame information")
-parser.add_argument("--as_of", help="as-of time to use for dump or get opperation")
+parser.add_argument("--as_of", help="as-of time to use for dump or get operation")
 parser.add_argument("--mkdir", help="create a directory using path notation")
 parser.add_argument("--comment", help="comment to add to modifications (set or mkdir)")
 parser.add_argument("--log", nargs="?", const="-10", type=int,
@@ -44,6 +44,8 @@ parser.add_argument("--starts", help="include starting bundles when showing log"
 parser.add_argument("--wsgi", help="serve module.function via wsgi")
 parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defaults to *:8081)")
 parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help="auth token for connections")
+parser.add_argument("--ssl-cert", default=environ.get("GINK_SSL_CERT"), help="path to ssl certificate file")
+parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path to ssl key file")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -167,7 +169,7 @@ auth_func = make_auth_func(args.auth_token) if args.auth_token else None
 
 if args.listen_on:
     ip_addr, port = parse_listen_on(args.listen_on, "*", "8080")
-    database.start_listening(addr=ip_addr, port=port, auth=auth_func)
+    database.start_listening(addr=ip_addr, port=port, auth=auth_func, certfile=args.ssl_cert, keyfile=args.ssl_key)
 
 for target in (args.connect_to or []):
     auth_data = f"Token {args.auth_token}" if args.auth_token else None

@@ -5,15 +5,16 @@ const { LogBackedStore } = require("../tsc.out/implementation/LogBackedStore.js"
 /*
 Logbacked1 <- Share File -> Logbacked2
                                 v
-                        In-Memory Listener PORT 8082
+                        In-Memory Listener
 
 Ensures if logbacked1 changes the file, logbacked2 will
 automatically pull the changes and broadcast them.
 */
 process.chdir(__dirname + "/..");
 (async () => {
+    const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", [], { env: { GINK_PORT: "8082", ...process.env } });
+    const server = new Expector("./tsc.out/implementation/main.js", ["-l", port], { env: { ...process.env } });
     await server.expect("listening", 10000);
     console.log("server started");
 
@@ -24,7 +25,7 @@ process.chdir(__dirname + "/..");
     const lbstore2 = new LogBackedStore("/tmp/test_peer.store");
     const instance2 = new Database(lbstore2);
     await instance2.ready;
-    await instance2.connectTo("ws://localhost:8082");
+    await instance2.connectTo(`ws://localhost:${port}`);
     console.log("second store connected to server");
 
     await instance1.getGlobalDirectory().set("foo", "bar", "testing peer callback");

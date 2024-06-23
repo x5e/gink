@@ -17,24 +17,23 @@ class Server(ABC):
         self._indication_sent = False
         self._selectables: Set[Selectable] = set()
 
+    def get_selectables(self)-> Iterable[Selectable]:
+        for selectable in self._selectables:
+            yield selectable
+
     def fileno(self) -> int:
         return self._socket_rite.fileno()
 
     def _add_selectable(self, selectable: Selectable):
         self._selectables.add(selectable)
-        if not self._indication_sent:
-            self._socket_left.send(b'0x01')
-            self._indication_sent = True
+        self._socket_left.send(b'1')
 
     def _remove_selectable(self, selectable: Selectable):
         self._selectables.discard(selectable)
 
     def on_ready(self) -> Iterable[Selectable]:
-        if self._indication_sent:
-            self._socket_rite.recv(1)
-            self._indication_sent = False
-        for selectable in list(self._selectables):
-            yield selectable
+        self._socket_rite.recv(1)
+        return self.get_selectables()
 
     def close(self):
         self._socket_left.close()
@@ -42,12 +41,22 @@ class Server(ABC):
         for listener in self._listeners:
             listener.close()
 
-    def start_listening(self, addr="", port: Union[str, int] = "8080", auth: Optional[AuthFunc] = None):
+    def start_listening(self, addr="",
+                        port: Union[str, int] = "8080",
+                        auth: Optional[AuthFunc] = None,
+                        certfile: Optional[str] = None,
+                        keyfile: Optional[str] = None,
+                        ):
+
         """ Listen for incoming connections on the given port.
         """
         port = int(port)
-        self._logger.info("starting to listen on %r:%r", addr, port)
-        listener = Listener(addr=addr, port=port, auth=auth)
+        listener = Listener(addr=addr, port=port, auth=auth, certfile=certfile, keyfile=keyfile)
+        security = "insecure"
+        if listener.get_context():
+            security = "secure"
+        self._logger.info(f"starting {security} server listening on %r:%r", addr, port)
+
         listener.on_ready = lambda: self._on_listener_ready(listener)
         self._listeners.add(listener)
         self._add_selectable(listener)

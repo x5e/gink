@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await instance.ready;
 
     // Connect to server
-    await instance.connectTo(`ws://${window.location.host}`);
+    await instance.connectTo(`${window.location.protocol == "https:" ? "wss" : "ws"}://${window.location.host}`);
     // Initialize interface for interacting with database
     const database = new Database(store, instance);
 
