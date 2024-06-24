@@ -83,7 +83,7 @@ class WebsocketConnection(Connection):
         self._socket.settimeout(0.2)
         self._auth_func = auth_func
         self._sync_func = sync_func
-        self._permissions: int = 0 if auth_func else permissions
+        self._perms: int = 0 if auth_func else permissions
 
     def is_alive(self) -> bool:
         return not (self._ws_closed or self._closed)
@@ -111,8 +111,8 @@ class WebsocketConnection(Connection):
                         if protocol.lower().startswith("0x"):
                             decoded = decode_from_hex(protocol)
                             assert self._path is not None
-                            self._permissions |= self._auth_func(decoded, self._path)
-                if not self._permissions:
+                            self._perms |= self._auth_func(decoded, self._path)
+                if not self._perms:
                     self._logger.warning("rejected a connection due to insufficient permissions")
                     self._socket.send(self._ws.send(RejectConnection()))
                     raise Finished()
@@ -123,7 +123,7 @@ class WebsocketConnection(Connection):
                 greeting = None
                 try:
                     if self._sync_func is not None:
-                        greeting = self._sync_func(path=self._path, permissions=self._permissions, misc=self)
+                        greeting = self._sync_func(path=self._path, perms=self._perms, misc=self)
                 except Exception as exception:
                     self._logger.warning(f"could not generate greeting", exc_info=exception)
                     self._socket.send(self._ws.send(RejectConnection()))
@@ -133,7 +133,7 @@ class WebsocketConnection(Connection):
                 self._socket.send(self._ws.send(AcceptConnection("gink")))
                 self._logger.info("Server connection established!")
                 self._ready = True
-                if greeting and self._permissions & AUTH_RITE:
+                if greeting and self._perms & AUTH_RITE:
                     sent = self.send(greeting)
                     self._logger.debug("sent greeting of %d bytes (%s)", sent, self._name)
             elif isinstance(event, CloseConnection):
@@ -167,8 +167,8 @@ class WebsocketConnection(Connection):
             elif isinstance(event, AcceptConnection):
                 self._logger.info("Client connection established!")
                 self._ready = True
-                if self._sync_func and self._permissions & AUTH_RITE:
-                    greeting = self._sync_func(path=self._path, permissions=self._permissions, misc=self)
+                if self._sync_func and self._perms & AUTH_RITE:
+                    greeting = self._sync_func(path=self._path, perms=self._perms, misc=self)
                     sent = self.send(greeting)
                     self._logger.debug("sent greeting of %d bytes (%s)", sent, self._name)
             elif isinstance(event, RejectConnection):
