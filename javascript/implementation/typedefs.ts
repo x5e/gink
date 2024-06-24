@@ -24,7 +24,7 @@ export type ActorId = number;  // process ID on the server side, something more 
 export type StorageKey = ScalarKey | MuidTuple | [MuidTuple, MuidTuple] | [];
 
 export interface BundleListener {
-    (bundleInfo: BundleInfo): Promise<void>;
+    (bundle: BundleView): Promise<void>;
 }
 
 export interface ClaimedChain {
