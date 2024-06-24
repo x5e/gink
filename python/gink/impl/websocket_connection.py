@@ -12,6 +12,7 @@ from .utilities import decode_from_hex, encode_to_hex
 
 # modules from requirements.txt
 from wsproto import WSConnection, ConnectionType
+from wsproto.utilities import RemoteProtocolError
 from wsproto.events import (
     Request,
     AcceptConnection,
@@ -51,6 +52,7 @@ class WebsocketConnection(Connection):
             force_to_be_client: bool = False,
             path: Optional[str] = None,
             name: Optional[str] = None,
+            wsgi: Optional[Callable] = None,
             sync_func: Optional[SyncFunc] = None,
             auth_func: Optional[AuthFunc] = None,
             auth_data: Optional[str] = None,
@@ -71,6 +73,7 @@ class WebsocketConnection(Connection):
         self._ws_closed = False
         self._buffered: bytes = b""
         self._ready = False
+        self._wsgi = wsgi
         if force_to_be_client:
             subprotocols = [self.PROTOCOL]
             if auth_data:
@@ -84,6 +87,7 @@ class WebsocketConnection(Connection):
         self._auth_func = auth_func
         self._sync_func = sync_func
         self._perms: int = 0 if auth_func else permissions
+        self._buff: Optional[bytes] = b""
 
     def is_alive(self) -> bool:
         return not (self._ws_closed or self._closed)
@@ -98,8 +102,19 @@ class WebsocketConnection(Connection):
         if not data:
             self._ws_closed = True
             raise Finished()
-        self._ws.receive_data(data)
+        if isinstance(self._buff, bytes):
+            self._buff += data
+        try:
+            self._ws.receive_data(data)
+        except RemoteProtocolError as rpe:
+            if rpe.args and rpe.args[0] == "Missing header, 'Connection: Upgrade'":
+                print(rpe)
+            else:
+                self._logger.warning("rejected a malformed connection attempt")
+                self._socket.send(self._ws.send(rpe.event_hint))
+                raise Finished()
         for event in self._ws.events():
+            self._buff = None
             if isinstance(event, Request):
                 if "?" in event.target:
                     (path, _) = event.target.split("?", 2)

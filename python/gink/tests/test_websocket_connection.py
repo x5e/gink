@@ -60,6 +60,21 @@ def test_chit_chat():
 
     assert client.is_closed() and server.is_closed()
 
+
+def test_request():
+    """ tests non-websocket request """
+
+    server_socket, client_socket = socketpair()
+    # creating a client connection implicitly sends a request
+    server = WebsocketConnection(socket=server_socket)
+    server.on_ready = lambda: server.receive() and None
+    client_socket.send(b"GET /foo/bar HTTP/1.0\r\nAccept: */*\r\n\r\n")
+    #loop(server, until=.010)
+    for _ in server.receive():
+        print("there")
+    raise Exception("wtf")
+
+
 def test_auth():
     """ tests authentication """
     for correct in [True, False]:
@@ -75,7 +90,8 @@ def test_auth():
         else:
             auth_data = "Token bad"
 
-        client = WebsocketConnection(socket=client_socket, force_to_be_client=True, auth_data=auth_data)
+        client = WebsocketConnection(
+            socket=client_socket, force_to_be_client=True, auth_data=auth_data)
         client.on_ready = lambda: client.receive() and None
         getattr(client, "_logger").setLevel(logging.ERROR)
 
