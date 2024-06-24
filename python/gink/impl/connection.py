@@ -45,14 +45,14 @@ class Connection(ABC):
         self._logger = getLogger(self.__class__.__name__)
         self._closed = False
         self._tracker: Optional[ChainTracker] = None
-        self._permissions = 0
+        self._perms = 0
         self._name = name
 
     def get_name(self) -> Optional[str]:
         return self._name
 
     def get_permissions(self) -> int:
-        return self._permissions
+        return self._perms
 
     def fileno(self):
         """ Return the file descriptor of the underlying socket.
