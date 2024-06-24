@@ -47,6 +47,7 @@ class Server(ABC):
                         certfile: Optional[str] = None,
                         keyfile: Optional[str] = None,
                         ):
+
         """ Listen for incoming connections on the given port.
         """
         port = int(port)

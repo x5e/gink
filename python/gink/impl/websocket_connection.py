@@ -7,6 +7,7 @@ from socket import (
     socket as Socket,
     SHUT_WR
 )
+
 from .utilities import decode_from_hex, encode_to_hex
 
 # modules from requirements.txt
