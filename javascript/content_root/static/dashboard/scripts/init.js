@@ -1,17 +1,19 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize and connect database store and instance
-    const store = new gink.IndexedDbStore("dashboard-test");
+    const store = new gink.MemoryStore();
     const instance = new gink.Database(store);
+    await store.ready;
     await instance.ready;
 
-    // Connect to server
-    await instance.connectTo(`${window.location.protocol == "https:" ? "wss" : "ws"}://${window.location.host}`);
     // Initialize interface for interacting with database
     const database = new Database(store, instance);
 
     // Initialize and display page
     const page = new Page(database);
     await page.displayPage(...page.unwrapHash(window.location.hash));
+
+    // Connect to server
+    await instance.connectTo(`${window.location.protocol == "https:" ? "wss" : "ws"}://${window.location.host}`);
 
     const refreshContainer = async () => {
         if (page.pageType == "container") {

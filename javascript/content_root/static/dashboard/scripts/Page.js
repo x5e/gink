@@ -163,6 +163,15 @@ class Page {
                 const datalist1 = this.createElement("datalist", keyInput1, "datalist-1");
                 await this.enableContainersAutofill(datalist1);
             }
+            else {
+                keyContainer.appendChild(document.createElement('br'));
+                const sel = keyContainer.appendChild(document.createElement('select'));
+                sel.setAttribute("id", "key-type-select");
+                const strOption = sel.appendChild(document.createElement('option'));
+                strOption.value = strOption.innerText = "string";
+                const intOption = sel.appendChild(document.createElement('option'));
+                intOption.value = intOption.innerText = "int";
+            }
             if (keyType == "pair") {
                 keyInput2 = this.createElement("input", keyContainer, "key-input-2", "bundle-input");
                 keyInput2.setAttribute("type", "text");
@@ -181,6 +190,17 @@ class Page {
             valueInput = this.createElement("input", valueContainer, "value-input", "bundle-input");
             valueInput.setAttribute("type", "text");
             valueInput.setAttribute("placeholder", "Value");
+            valueContainer.appendChild(document.createElement('br'));
+            const sel = valueContainer.appendChild(document.createElement('select'));
+            sel.setAttribute("id", "value-type-select");
+            const strOption = sel.appendChild(document.createElement('option'));
+            strOption.value = strOption.innerText = "string";
+            const intOption = sel.appendChild(document.createElement('option'));
+            intOption.value = intOption.innerText = "int";
+            const boolOption = sel.appendChild(document.createElement('option'));
+            boolOption.value = boolOption.innerText = "bool";
+            const nullOption = sel.appendChild(document.createElement('option'));
+            nullOption.value = nullOption.innerText = "null";
         }
 
         // Comment inputs
@@ -205,12 +225,18 @@ class Page {
                 if (keyType == "muid") {
                     newKey = gink.strToMuid(keyInput1.value);
                 }
-                else {
-                    newKey = keyInput1.value;
+                else if (keyType != "pair") {
+                    const kt = document.getElementById("key-type-select").value;
+                    newKey = this.convertToStringType(kt, keyInput1.value);
                 }
             }
-            else if (keyInput1 && keyInput2) newKey = [gink.strToMuid(keyInput1.value), gink.strToMuid(keyInput2.value)];
-            if (valueInput) newValue = valueInput.value;
+            else if (keyInput1 && keyInput2) {
+                newKey = [gink.strToMuid(keyInput1.value), gink.strToMuid(keyInput2.value)];
+            }
+            if (valueInput) {
+                const vt = document.getElementById("value-type-select").value;
+                newValue = this.convertToStringType(vt, valueInput.value);
+            }
             newComment = commentInput.value;
 
             if (confirm("Bundle entry?")) {
@@ -312,6 +338,12 @@ class Page {
                 await this.enableContainersAutofill(datalist1);
             } else {
                 keyInput1.setAttribute("placeholder", oldKey);
+                const sel = entryContainer.appendChild(document.createElement('select'));
+                sel.setAttribute("id", "key-type-select");
+                const strOption = sel.appendChild(document.createElement('option'));
+                strOption.value = strOption.innerText = "string";
+                const intOption = sel.appendChild(document.createElement('option'));
+                intOption.value = intOption.innerText = "int";
             }
         }
         // Value  - 1 input if container uses values
@@ -320,6 +352,17 @@ class Page {
             valueH2.innerText = "Value";
             valueInput = this.createElement("input", entryContainer, "value-input", "bundle-input");
             valueInput.setAttribute("placeholder", oldValue);
+
+            const sel = entryContainer.appendChild(document.createElement('select'));
+            sel.setAttribute("id", "value-type-select");
+            const strOption = sel.appendChild(document.createElement('option'));
+            strOption.value = strOption.innerText = "string";
+            const intOption = sel.appendChild(document.createElement('option'));
+            intOption.value = intOption.innerText = "int";
+            const boolOption = sel.appendChild(document.createElement('option'));
+            boolOption.value = boolOption.innerText = "bool";
+            const nullOption = sel.appendChild(document.createElement('option'));
+            nullOption.value = nullOption.innerText = "null";
         }
         // Comment - optional for user
         const commentH2 = this.createElement("h2", entryContainer);
@@ -348,7 +391,8 @@ class Page {
             } else if (keyType != "none") {
                 gink.ensure(keyInput1 && !keyInput2);
                 if (keyInput1.value) {
-                    newKey = keyInput1.value;
+                    const kt = document.getElementById("key-type-select").value;
+                    newKey = this.convertToStringType(kt, keyInput1.value);
                 }
 
             }
@@ -356,7 +400,8 @@ class Page {
             if (valueType != "none") {
                 gink.ensure(valueInput);
                 if (valueInput.value) {
-                    newValue = valueInput.value;
+                    const vt = document.getElementById("value-type-select").value;
+                    newValue = this.convertToStringType(vt, valueInput.value);
                 }
             }
             // Its ok if comment has no value, the database will handle that.
@@ -391,6 +436,21 @@ class Page {
      */
     isLastPage(currentPage, itemsPerPage, totalEntries) {
         return (currentPage - 1) * itemsPerPage + itemsPerPage >= totalEntries;
+    }
+
+    convertToStringType(typeStr, value) {
+        switch (typeStr) {
+            case "string":
+                return String(value);
+            case "int":
+                return Number(value);
+            case "bool":
+                return value.toLowerCase() == "true" ? true : false;
+            case "null":
+                return null;
+            default:
+                throw new Error("not sure how to deal with that type.");
+        }
     }
 
     /**
