@@ -3,9 +3,8 @@ from typing import *
 from logging import getLogger
 
 from .database import Database
-from .connection import Connection
 from .listener import Listener
-from .websocket_connection import WebsocketConnection, SyncMessage
+from .connection import Connection, SyncMessage
 from .relay import Relay
 from .typedefs import AuthFunc, AUTH_MAKE, AUTH_RITE, AUTH_READ, inf
 from .server import Server
@@ -85,7 +84,7 @@ class BraidServer(Server):
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         (socket, addr) = listener.accept()
-        connection: Connection = WebsocketConnection(
+        connection: Connection = Connection(
             socket=socket,
             host=addr[0],
             port=addr[1],

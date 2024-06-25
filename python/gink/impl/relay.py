@@ -11,7 +11,6 @@ from ssl import SSLError
 from .abstract_store import AbstractStore
 from .bundle_info import BundleInfo
 from .connection import Connection
-from .websocket_connection import WebsocketConnection
 from .listener import Listener
 from .chain_tracker import ChainTracker
 from .lmdb_store import LmdbStore
@@ -73,7 +72,7 @@ class Relay(Server):
         port = port or "8080"
         path = path or "/"
         sync_func = cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message())
-        connection = WebsocketConnection(
+        connection = Connection(
             host=host,
             port=int(port),
             path=path,
@@ -147,7 +146,7 @@ class Relay(Server):
                 else:
                     raise e
 
-        connection = WebsocketConnection(
+        connection = Connection(
             socket=socket,
             host=addr[0],
             port=addr[1],
