@@ -3,9 +3,8 @@ from typing import *
 from logging import getLogger
 
 from .database import Database
-from .connection import Connection
 from .listener import Listener
-from .websocket_connection import WebsocketConnection, SyncMessage
+from .connection import Connection, SyncMessage
 from .relay import Relay
 from .typedefs import AuthFunc, AUTH_MAKE, AUTH_RITE, AUTH_READ, inf
 from .server import Server
@@ -76,8 +75,8 @@ class BraidServer(Server):
             raise ValueError("not a braid")
         return braid
 
-    def get_greeting(self, path: Path, permissions: int, misc: Any) -> SyncMessage:
-        braid = self._get_braid(path=path, create_if_missing=bool(permissions & AUTH_MAKE))
+    def get_greeting(self, path: Path, perms: int, misc: Any) -> SyncMessage:
+        braid = self._get_braid(path=path, create_if_missing=bool(perms & AUTH_MAKE))
         assert isinstance(misc, Connection)
         self._braids[misc] = braid
         ct = self._data_relay.get_store().get_chain_tracker(limit_to=dict(braid.items()))
@@ -85,7 +84,7 @@ class BraidServer(Server):
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         (socket, addr) = listener.accept()
-        connection: Connection = WebsocketConnection(
+        connection: Connection = Connection(
             socket=socket,
             host=addr[0],
             port=addr[1],

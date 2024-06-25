@@ -6,7 +6,7 @@ from socket import socketpair
 from ..impl.builders import SyncMessage
 from google.protobuf.text_format import Parse  # type: ignore
 
-from ..impl.websocket_connection import WebsocketConnection, Finished
+from ..impl.connection import Connection, Finished
 from ..impl.utilities import make_auth_func
 from ..impl.looping import loop
 
@@ -18,8 +18,8 @@ def test_chit_chat():
     server_socket, client_socket = socketpair()
 
     # creating a client connection implicitly sends a request
-    server = WebsocketConnection(socket=server_socket)
-    client = WebsocketConnection(socket=client_socket, force_to_be_client=True)
+    server = Connection(socket=server_socket)
+    client = Connection(socket=client_socket, is_client=True)
     getattr(client, "_logger").setLevel(logging.ERROR)
 
     # force the server to receive the initial request and send a response
@@ -60,6 +60,22 @@ def test_chit_chat():
 
     assert client.is_closed() and server.is_closed()
 
+
+def test_request():
+    """ tests non-websocket request """
+
+    server_socket, client_socket = socketpair()
+    # creating a client connection implicitly sends a request
+    server = Connection(socket=server_socket)
+    server.on_ready = lambda: server.receive() and None
+    client_socket.send(b"GET /foo/bar HTTP/1.0\r\nAccept: */*\r\n\r\n")
+    #loop(server, until=.010)
+    return
+    for _ in server.receive():
+        print("there")
+    raise Exception("wtf")
+
+
 def test_auth():
     """ tests authentication """
     for correct in [True, False]:
@@ -67,7 +83,7 @@ def test_auth():
         token = "ABCXYZ123"
         auth_func = make_auth_func(token)
         # creating a client connection implicitly sends a request
-        server = WebsocketConnection(socket=server_socket, auth_func=auth_func)
+        server = Connection(socket=server_socket, auth_func=auth_func)
         server.on_ready = lambda: server.receive() and None
 
         if correct:
@@ -75,7 +91,8 @@ def test_auth():
         else:
             auth_data = "Token bad"
 
-        client = WebsocketConnection(socket=client_socket, force_to_be_client=True, auth_data=auth_data)
+        client = Connection(
+            socket=client_socket, is_client=True, auth_data=auth_data)
         client.on_ready = lambda: client.receive() and None
         getattr(client, "_logger").setLevel(logging.ERROR)
 
