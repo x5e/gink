@@ -38,6 +38,14 @@ export class Group extends Container {
     }
 
     /**
+     * This returns the number of inclusions only, NOT exclusions.
+     * @returns how many containers are included in the group
+     */
+    async size(): Promise<number> {
+        return (await this.includedAsArray()).length;
+    }
+
+    /**
      * Whether or not the given key is explicitly included in the group.
      * @param key either a Muid or container to check if it is included
      * @param asOf optional timestamp to look back to

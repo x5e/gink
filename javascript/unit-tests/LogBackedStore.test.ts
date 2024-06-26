@@ -1,6 +1,6 @@
 import { Database, LogBackedStore, ensure } from "../implementation/main";
 import { testStore } from "./Store.test";
-import { truncateSync, existsSync, unlinkSync, readFileSync } from "fs";
+import { existsSync, unlinkSync, readFileSync } from "fs";
 
 function createMaker(reset: boolean, testFile = "/tmp/test.store") {
     return async function () {

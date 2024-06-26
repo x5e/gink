@@ -66,7 +66,7 @@ export class Database {
             }
             // Send to listeners subscribed to all containers.
             for (const listener of this.getListeners()) {
-                listener(bundle.info);
+                listener(bundle);
             }
         };
         this.store.addFoundBundleCallBack(callback);
@@ -351,7 +351,7 @@ export class Database {
             }
             // Send to listeners subscribed to all containers.
             for (const listener of this.getListeners()) {
-                listener(bundle.info);
+                listener(bundle);
             }
 
             if (this.listeners.size > 1) {
@@ -385,11 +385,11 @@ export class Database {
                     const containerListeners = this.getListeners(false, muid);
                     const remoteOnlyListeners = this.getListeners(true, muid);
                     for (const listener of containerListeners) {
-                        listener(bundle.info);
+                        listener(bundle);
                     }
                     if (fromConnectionId) {
                         for (const remoteListener of remoteOnlyListeners) {
-                            remoteListener(bundle.info);
+                            remoteListener(bundle);
                         }
                     }
                 }

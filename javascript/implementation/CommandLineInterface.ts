@@ -2,7 +2,7 @@ import { RoutingServer } from "./RoutingServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { Store } from "./Store";
 import { Database } from "./Database";
-import { AuthFunction, BundleInfo } from "./typedefs";
+import { AuthFunction, BundleInfo, BundleView } from "./typedefs";
 import { SimpleServer } from "./SimpleServer";
 import { ensure, generateTimestamp, getIdentity, logToStdErr } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
@@ -100,7 +100,7 @@ export class CommandLineInterface {
             globalThis.database = this.instance;
             globalThis.root = this.instance.getGlobalDirectory();
             this.instance.addListener(
-                async (bundleInfo: BundleInfo) => logToStdErr(`received bundle: ${JSON.stringify(bundleInfo)}`));
+                async (bundle: BundleView) => logToStdErr(`received bundle: ${JSON.stringify(bundle.info)}`));
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
                 try {

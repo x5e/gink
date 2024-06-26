@@ -61,6 +61,10 @@ export class Container extends Addressable {
         return address;
     }
 
+    public async size(): Promise<number> {
+        throw new Error("Child class should have implemented this method.");
+    }
+
     /**
      *
      * @param key If absent, create a boxed entry, if KeyType, set a key in entry, if true, create a list entry
