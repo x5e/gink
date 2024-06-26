@@ -111,7 +111,7 @@ class Connection:
         """ receive a (possibly empty) series of encoded SyncMessages from a peer. """
         if self._closed:
             raise Finished()
-        data = self._socket.recv(4096 * 4096)
+        data = self._socket.recv(4096 * 16)
         if not data:
             self._ws_closed = True
             raise Finished()
