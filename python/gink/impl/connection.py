@@ -5,6 +5,7 @@ from typing import Iterable, Optional, Callable, Union
 from pathlib import Path
 from ssl import create_default_context
 from logging import getLogger
+from re import fullmatch, IGNORECASE, DOTALL
 from socket import (
     socket as Socket,
     SHUT_WR
@@ -41,13 +42,13 @@ from .utilities import decode_from_hex, encode_to_hex
 
 
 class Connection:
-    """ Manages the connection to one peer via a websocket.
+    """ Manages a selectable connection.
 
-        Set is_client to indicate that the provided socket is a client connection.
-        If there's no socket provided then one will be established, and is_client is implied.
+        The connection could end up either being an incoming http(s) request, or a bidirectional
+        websocket, and we don't know which it'll be at the time the connection is made.
+
     """
     PROTOCOL = "gink"
-    on_ready: Callable
     _path: Path
 
     def __init__(
@@ -58,7 +59,8 @@ class Connection:
             is_client: Optional[bool] = None,
             path: Optional[str] = None,
             name: Optional[str] = None,
-            wsgi: Optional[Callable] = None,
+            on_ws_act: Optional[Callable] = None,
+            wsgi_func: Optional[Callable] = None,
             sync_func: Optional[SyncFunc] = None,
             auth_func: Optional[AuthFunc] = None,
             auth_data: Optional[str] = None,
@@ -73,6 +75,7 @@ class Connection:
                 context = create_default_context()
                 socket = context.wrap_socket(socket, server_hostname = host)
             socket.connect((host, port))
+        socket.settimeout(1)
         self._socket = socket
         self._host = host
         self._port = port
@@ -83,9 +86,9 @@ class Connection:
         connection_type = ConnectionType.CLIENT if is_client else ConnectionType.SERVER
         self._ws = WSConnection(connection_type=connection_type)
         self._ws_closed = False
-        self._buffered: bytes = b""
         self._ready = False
-        self._wsgi = wsgi
+        self._wsgi = wsgi_func
+        self._on_ws_act = on_ws_act
         if is_client:
             subprotocols = [self.PROTOCOL]
             if auth_data:
@@ -99,7 +102,40 @@ class Connection:
         self._auth_func = auth_func
         self._sync_func = sync_func
         self._perms: int = 0 if auth_func else permissions
-        self._buff: Optional[bytes] = b""
+        self._buffer: bytes = b""
+        self._need_header = not is_client
+        self._pending = False
+        self._is_websocket = is_client
+
+    def on_ready(self) -> None:
+        if self._is_websocket:
+            assert self._on_ws_act
+            self._on_ws_act(self)
+            return
+        if self._need_header:
+            data = self._socket.recv(4096)
+            if not data:
+                raise Finished()
+            self._buffer += data
+            match = fullmatch(rb"(.+)\r?\n\r?\n(.*)", self._buffer, DOTALL)
+            if not match:
+                return  # wait until we get more data
+            self._need_header = False
+            header = match.group(1)
+            lines = header.decode('utf-8').splitlines()
+            for line in lines:
+                if fullmatch("connection:\s*upgrade\s*", line, IGNORECASE):
+                    if not self._on_ws_act:
+                        self._logger.warning("websocket connection without handler set")
+                        raise Finished()
+                    self._is_websocket = True
+                    self._pending = True
+                    self._on_ws_act(self)
+                    break
+            else:
+                raise NotImplementedError("haven't finished WSGI side")
+        else:
+            raise NotImplementedError("haven't finished WSGI side")
 
     def is_alive(self) -> bool:
         return not (self._ws_closed or self._closed)
@@ -111,23 +147,26 @@ class Connection:
         """ receive a (possibly empty) series of encoded SyncMessages from a peer. """
         if self._closed:
             raise Finished()
-        data = self._socket.recv(4096 * 16)
-        if not data:
-            self._ws_closed = True
-            raise Finished()
-        if isinstance(self._buff, bytes):
-            self._buff += data
-        try:
-            self._ws.receive_data(data)
-        except RemoteProtocolError as rpe:
-            if rpe.args and rpe.args[0] == "Missing header, 'Connection: Upgrade'":
-                print(rpe)
-            else:
-                self._logger.warning("rejected a malformed connection attempt")
-                self._socket.send(self._ws.send(rpe.event_hint))
+        if self._pending:
+            self._pending = False  # previously called self._socket.recv
+        else:
+            try:
+                data = self._socket.recv(4096)
+            except TimeoutError:
+                print("wtf")
+                raise
+            if not data:
+                self._ws_closed = True
                 raise Finished()
+            self._buffer += data
+        try:
+            self._ws.receive_data(self._buffer)
+            self._buffer = b""
+        except RemoteProtocolError as rpe:
+            self._logger.warning("rejected a malformed connection attempt")
+            self._socket.send(self._ws.send(rpe.event_hint))
+            raise Finished()
         for event in self._ws.events():
-            self._buff = None
             if isinstance(event, Request):
                 if "?" in event.target:
                     (path, _) = event.target.split("?", 2)
@@ -178,15 +217,15 @@ class Connection:
                 received = bytes(event.data) if isinstance(event.data, bytearray) else event.data
                 assert isinstance(received, bytes)
                 if event.message_finished:
-                    if self._buffered:
-                        received = self._buffered + received
-                        self._buffered = b""
+                    if self._buffer:
+                        received = self._buffer + received
+                        self._buffer = b""
                     self._logger.debug('We got %d bytes! (%s)', len(received), self._name)
                     sync_message = SyncMessage()
                     sync_message.ParseFromString(received)
                     yield sync_message
                 else:
-                    self._buffered += bytes(event.data)
+                    self._buffer += bytes(event.data)
             elif isinstance(event, Ping):
                 self._logger.debug("received ping")
                 self._socket.send(self._ws.send(event.response()))

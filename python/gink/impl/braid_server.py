@@ -90,9 +90,9 @@ class BraidServer(Server):
             port=addr[1],
             sync_func=self.get_greeting,
             auth_func=listener.get_auth(),
-            name="accepted #%s" % (len(self._connections) + 1,)
+            name="accepted #%s" % (len(self._connections) + 1,),
+            on_ws_act=self._on_connection_ready,
         )
-        connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
         self._add_selectable(connection)
         self._logger.info("accepted incoming connection from %s", addr)
