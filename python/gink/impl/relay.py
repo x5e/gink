@@ -80,8 +80,8 @@ class Relay(Server):
             sync_func=sync_func,
             auth_data=auth_data,
             secure_connection=secure_connection,
+            on_ws_act=self._on_connection_ready,
         )
-        connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
         self._logger.debug("connection added")
         self._add_selectable(connection)
@@ -152,8 +152,8 @@ class Relay(Server):
             port=addr[1],
             sync_func=cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message()),
             auth_func=listener.get_auth(),
+            on_ws_act=self._on_connection_ready,
         )
-        connection.on_ready = lambda: self._on_connection_ready(connection)
         self._connections.add(connection)
         self._add_selectable(connection)
         self._logger.info("accepted incoming connection from %s", addr)

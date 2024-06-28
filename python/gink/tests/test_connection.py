@@ -66,14 +66,14 @@ def test_request():
 
     server_socket, client_socket = socketpair()
     # creating a client connection implicitly sends a request
-    server = Connection(socket=server_socket)
-    server.on_ready = lambda: server.receive() and None
+    def app(_, start_response):
+        start_response('200 OK', [('Content-type', 'text/plain')])
+        return [b'Hello world!\n']
+    server = Connection(socket=server_socket, wsgi_func=app)
     client_socket.send(b"GET /foo/bar HTTP/1.0\r\nAccept: */*\r\n\r\n")
-    #loop(server, until=.010)
-    return
-    for _ in server.receive():
-        print("there")
-    raise Exception("wtf")
+    loop(server, until=.010)
+    received = client_socket.recv(4096)
+    assert b"Hello" in received
 
 
 def test_auth():
