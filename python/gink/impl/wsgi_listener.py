@@ -7,7 +7,7 @@ from socket import socket as Socket, SOL_SOCKET, SO_REUSEADDR, getfqdn, AF_INET,
 from logging import getLogger
 from typing import Iterable, List
 
-from .wsgi_connection import WsgiConnection
+from .connection import Connection
 from .looping import Selectable
 
 
@@ -26,21 +26,18 @@ class WsgiListener(Selectable):
         self._socket.bind((ip_addr, port))
         self._socket.listen(self.request_queue_size)
         self._logger.info(f"Web server listening on interface: '{ip_addr}' port {port}")
-        host, port = self._socket.getsockname()[:2]
-        self._server_name = getfqdn(host)
         self._server_port = port
         self._headers_set: List[str] = []
 
     def fileno(self) -> int:
         return self._fd
 
-    def on_ready(self) -> Iterable[WsgiConnection]:
+    def on_ready(self) -> Iterable[Connection]:
         socket, _ = self._socket.accept()
-        yield WsgiConnection(
-            self._app,
+        yield Connection(
+            wsgi_func=self._app,
             socket=socket,
-            server_name=self._server_name,
-            server_port=self._server_port)
+            port=self._server_port)
 
     def close(self):
         self._socket.close()
