@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import *
 from logging import getLogger
 from io import BytesIO
+from ssl import SSLError
 
 from .database import Database
 from .listener import Listener
@@ -121,6 +122,15 @@ class BraidServer(Server):
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         (socket, addr) = listener.accept()
+
+        context = listener.get_context()
+        if context:
+            try:
+                socket = context.wrap_socket(socket, server_side=True)
+            except SSLError as ssl_error:
+                self._logger.warning("failed to secure connection", exc_info=ssl_error)
+                return []
+
         self._count_connections += 1
         connection: Connection = Connection(
             socket=socket,

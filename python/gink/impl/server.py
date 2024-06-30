@@ -59,13 +59,10 @@ class Server(ABC):
         """ Listen for incoming connections on the given port.
         """
         port = int(port)
-        listener = Listener(addr=addr, port=port, auth=auth, certfile=certfile, keyfile=keyfile)
-        security = "insecure"
-        if listener.get_context():
-            security = "secure"
+        listener = Listener(addr=addr, port=port, auth=auth, certfile=certfile, keyfile=keyfile,
+                            on_ready=self._on_listener_ready)
+        security = "secure" if listener.get_context() else "insecure"
         self._logger.info(f"starting {security} server listening on %r:%r", addr, port)
-
-        listener.on_ready = lambda: self._on_listener_ready(listener)
         self._listeners.add(listener)
         self._add_selectable(listener)
 
