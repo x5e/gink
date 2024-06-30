@@ -180,12 +180,19 @@ class Connection:
                     'SERVER_NAME': self._server_name,
                     'SERVER_PORT': str(self._port),
                 }
-                result: Iterable[bytes] = self._wsgi(env, self._start_response)
-                for data in result:
-                    if data:
-                        self._write(data)
-                if not self._response_started:
-                    self._write(b"")
+                try:
+                    result: Iterable[bytes] = self._wsgi(env, self._start_response)
+                    for data in result:
+                        if data:
+                            self._write(data)
+                    if not self._response_started:
+                        self._write(b"")
+                except Exception as exception:
+                    if not self._response_started:
+                        self._start_response(
+                            "500 Internal Server Error", [("Content-type", "text/plain")])
+                        self._write(str(exception).encode("utf-8"))
+                    raise Finished(exception)
                 raise Finished()  # will cause the loop to call close after deregistering
         raise AssertionError("did not expect to get here")
 

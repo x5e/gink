@@ -41,3 +41,6 @@ class Listener(Socket):
 
     def get_context(self) -> Optional[SSLContext]:
         return self._context
+
+    def is_closed(self) -> bool:
+        return self.fileno() == -1

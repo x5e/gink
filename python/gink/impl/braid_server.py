@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import *
 from logging import getLogger
+from io import BytesIO
 
 from .database import Database
 from .listener import Listener
@@ -25,15 +26,48 @@ class BraidServer(Server):
             data_relay: Relay,
             control_db: Database,
             auth_func: Optional[AuthFunc] = None,
+            static_root: Optional[Path] = None,
+            app_id: Optional[str] = None,
     ):
         super().__init__()
-        self._connections: Set[Connection] = set()
         self._braids: Dict[Connection, Braid] = dict()
         data_relay.add_callback(self._after_relay_recieves_bundle)
         self._data_relay = data_relay
         self._control_db = control_db
         self._auth_func = auth_func
         self._logger = getLogger(self.__class__.__name__)
+        self._count_connections = 0
+        self._static_path = static_root
+        self._app_id = app_id
+
+    def _get_app_directory(self) -> Directory:
+        box = Box(arche=True, database=self._control_db)
+        box_contents = box.get()
+        if self._app_id is not None:
+            control_root = Directory(arche=True, database=self._control_db)
+            if self._app_id in control_root:
+                directory = control_root[self._app_id]
+                assert isinstance(directory, Directory)
+                return directory
+            else:
+                if isinstance(box_contents, Directory):
+                    control_root[self._app_id] = box_contents
+                    return box_contents
+                else:
+                    directory = Directory(database=self._control_db)
+                    control_root[self._app_id] = directory
+                    return directory
+        else:
+            if isinstance(box_contents, Directory):
+                return box_contents
+            directory = Directory(database=self._control_db)
+            box.set(directory)
+            return directory
+
+    def _get_connections(self) -> Iterable[Connection]:
+        for selectable in self.get_selectables():
+            if isinstance(selectable, Connection):
+                yield selectable
 
     def _after_relay_recieves_bundle(self, bundle_wrapper: BundleWrapper) -> None:
         info = bundle_wrapper.get_info()
@@ -75,8 +109,11 @@ class BraidServer(Server):
             raise ValueError("not a braid")
         return braid
 
-    def get_greeting(self, path: Path, perms: int, misc: Any) -> SyncMessage:
-        braid = self._get_braid(path=path, create_if_missing=bool(perms & AUTH_MAKE))
+    def _get_greeting(self, path: Path, perms: int, misc: Any) -> SyncMessage:
+        try:
+            braid = self._get_braid(path=path, create_if_missing=bool(perms & AUTH_MAKE))
+        except ValueError as value_error:
+            raise Finished(value_error)
         assert isinstance(misc, Connection)
         self._braids[misc] = braid
         ct = self._data_relay.get_store().get_chain_tracker(limit_to=dict(braid.items()))
@@ -84,21 +121,47 @@ class BraidServer(Server):
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         (socket, addr) = listener.accept()
+        self._count_connections += 1
         connection: Connection = Connection(
             socket=socket,
             host=addr[0],
             port=addr[1],
-            sync_func=self.get_greeting,
+            sync_func=self._get_greeting,
             auth_func=listener.get_auth(),
-            name="accepted #%s" % (len(self._connections) + 1,),
-            on_ws_act=self._on_connection_ready,
+            name="connection #%s from %s" % (self._count_connections, addr),
+            on_ws_act=self._on_websocket_ready,
         )
-        self._connections.add(connection)
         self._add_selectable(connection)
         self._logger.info("accepted incoming connection from %s", addr)
         return [connection]
 
-    def _on_connection_ready(self, connection: Connection):
+    def _on_http_request(self, environ, start_response) -> Iterable[bytes]:
+        request_method = environ["REQUEST_METHOD"]
+        if request_method == "GET":
+            if not self._static_path:
+                start_response("200 OK", [("Content-type", "text/plain")])
+                return [b"OK"]
+            else:
+                relative_path = environ.get("PATH_INFO", "/")
+                assert ".." not in relative_path
+                absolute_path = self._static_path.joinpath(relative_path)
+                if absolute_path.exists() and absolute_path.is_file():
+                    content_type = "text/html" if absolute_path.suffix == "html" else "text/plain"
+                    start_response("200 OK", [("Content-type", content_type)])
+                    return [absolute_path.read_bytes()]
+                else:
+                    start_response("404 Not Found", [("Content-type", "text/plain")])
+                    return [b"not found"]
+        elif request_method != "POST":
+            start_response("400 Bad Request", [("Content-type", "text/plain")])
+            return [b"bad request method"]
+        directory = self._get_app_directory()
+        stream = cast(BytesIO, environ["wsgi.input"])
+        directory["data"] = stream.read()
+        start_response("200 OK", [("Content-type", "text/plain")])
+        return [b"received"]
+
+    def _on_websocket_ready(self, connection: Connection):
         braid = None
         try:
             for thing in connection.receive_objects():
@@ -108,7 +171,7 @@ class BraidServer(Server):
                         self._logger.debug("ignoring bundle from connection without write perms")
                         continue
                     if braid is None:
-                        raise ValueError("don't have braid for this connection")
+                        raise Finished("don't have braid for this connection")
                     info = thing.get_info()
                     chain = info.get_chain()
                     if chain not in braid:
@@ -123,14 +186,14 @@ class BraidServer(Server):
                         self._logger.debug("ignoring greeting from connection without read perms")
                         continue
                     if braid is None:
-                        raise ValueError("don't have braid for this connection")
+                        raise Finished("don't have braid for this connection")
                     self._data_relay.get_store().get_bundles(
                         connection.send_bundle, peer_has=thing, limit_to=dict(braid.items()))
                 elif isinstance(thing, BundleInfo):  # an ack:
                     pass
                 else:
-                    raise AssertionError(f"unexpected object {thing}")
+                    raise Finished(f"unexpected object {thing}")
         except Finished:
-            self._connections.remove(connection)
+            self._braids.pop(connection, None)
             self._remove_selectable(connection)
             raise
