@@ -2,12 +2,13 @@
 
 # batteries included python imports
 from typing import Iterable, Optional, Callable, Union, List
+from wsgiref.handlers import format_date_time
 from pathlib import Path
 from ssl import create_default_context, SSLSocket
 from logging import getLogger
 from io import BytesIO
 from re import fullmatch, DOTALL
-from datetime import datetime as DateTime
+from time import time as get_time
 from sys import stderr
 from socket import (
     socket as Socket,
@@ -198,8 +199,8 @@ class Connection:
 
     def _start_response(self, status: str, response_headers: List[tuple], exc_info = None):
         server_headers: List[tuple] = [
-            ('Date', str(DateTime.now())),
-            ('Server', 'WSGIServer 0.2'),
+            ("Date", format_date_time(get_time())),
+            ('Server', 'gink'),
         ]
         if exc_info and self._response_started:
             raise exc_info[1].with_traceback(exc_info[2])

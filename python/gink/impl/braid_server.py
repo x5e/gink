@@ -138,11 +138,12 @@ class BraidServer(Server):
             port=addr[1],
             sync_func=self._get_greeting,
             auth_func=listener.get_auth(),
-            name="connection #%s from %s" % (self._count_connections, addr),
+            name="connection #%s from %s" % (self._count_connections, addr[0]),
             on_ws_act=self._on_websocket_ready,
+            wsgi_func=self._on_http_request,
         )
         self._add_selectable(connection)
-        self._logger.info("accepted incoming connection from %s", addr)
+        self._logger.info("accepted incoming connection from %s", addr[0])
         return [connection]
 
     def _on_http_request(self, environ, start_response) -> Iterable[bytes]:
@@ -154,14 +155,15 @@ class BraidServer(Server):
             else:
                 relative_path = environ.get("PATH_INFO", "/")
                 assert ".." not in relative_path
-                absolute_path = self._static_path.joinpath(relative_path)
+                absolute_path = self._static_path.joinpath("." + relative_path)
                 if absolute_path.exists() and absolute_path.is_file():
-                    content_type = "text/html" if absolute_path.suffix == "html" else "text/plain"
+                    content_type = "text/html" if absolute_path.suffix == ".html" else "text/plain"
                     start_response("200 OK", [("Content-type", content_type)])
                     return [absolute_path.read_bytes()]
                 else:
+                    self._logger.warning(f"could not find: {absolute_path}")
                     start_response("404 Not Found", [("Content-type", "text/plain")])
-                    return [b"not found"]
+                    return [b"not found\n"]
         elif request_method != "POST":
             start_response("400 Bad Request", [("Content-type", "text/plain")])
             return [b"bad request method"]
