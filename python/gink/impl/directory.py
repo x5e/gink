@@ -52,7 +52,7 @@ class Directory(Container):
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
-    def dumps(self, as_of: GenericTimestamp = None) -> str:
+    def dumps(self, *, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this directory to a string.
         """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
@@ -73,7 +73,7 @@ class Directory(Container):
         return self.has(key)
 
     def __getitem__(self, key):
-        result = self.get(key, default=self._missing)
+        result = self.get(key, self._missing)
         if result == self._missing:
             raise KeyError(key)
         return result
@@ -84,39 +84,83 @@ class Directory(Container):
     def __delitem__(self, key):
         self.delete(key)
 
-    def has(self, key: UserKey, *, as_of=None):
+    def has(self, key, *, as_of=None):
         """ returns true if the given key exists in the mapping, optionally at specific time """
-        as_of = self._database.resolve_timestamp(as_of)
-        found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
-        return found is not None and not found.builder.deletion  # type: ignore
+        # there's probably a more efficient way of doing this
+        obj = object()
+        result = self.get(key, obj, as_of=as_of)
+        return result is not obj
 
-    def get(self, key, default=None, *, as_of: GenericTimestamp = None):
-        """ gets the value associate with a key, default if missing, optionally as_of a time """
-        as_of = self._database.resolve_timestamp(as_of)
-        found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
-        if found is None or found.builder.deletion:  # type: ignore
-            return default
-        return self._get_occupant(found.builder, found.address)
+    def get(self, key_or_keys, default=None, /, *, as_of: GenericTimestamp = None):
+        """ gets the value associate with a key, default if missing, optionally as_of a time
 
-    def set(self, key: Union[str, int], value, *, bundler=None, comment=None) -> Muid:
+            If `key` is a list or tuple, the get will interpret that as instructions
+            to walk into subdirectories and grab the value associated with the final
+            element, ignoring empty strings.  The purpose is to support uses like
+            directory.get("/abc/xyz".split("/"))
+        """
+        resolved = self._database.resolve_timestamp(as_of)
+        keys = key_or_keys if isinstance(key_or_keys, (tuple, list)) else (key_or_keys,)
+        current: Directory = self
+        store = self._database.get_store()
+        for key in keys:
+            if key == "" or key == b"":
+                continue
+            if not isinstance(current, Directory):
+                raise KeyError(f"cannot traverse item of type: {type(current)}")
+            found = store.get_entry_by_key(current._muid, key=key, as_of=resolved)
+            if found is None or found.builder.deletion:  # type: ignore
+                return default
+            current = current._get_occupant(found.builder, found.address)
+        return current
+
+    def set(self, key_or_keys, value, /, *, bundler=None, comment=None) -> Muid:
         """ Sets a value in the mapping, returns the muid address of the entry.
 
             If bundler is specified, then simply adds an entry to that bundler.
             If no bundler is specified, then creates one just for this entry,
             sets it's comment to the comment arg (if set) then adds it to the database.
-        """
-        return self._add_entry(key=key, value=value, bundler=bundler, comment=comment)
 
-    def delete(self, key, *, bundler=None, comment=None):
+            If the first argument is a list or tuple, then it will walk into the relevant
+            sub-directory(ies) and set the value there.
+        """
+        timestamp = generate_timestamp()
+        raw_seq = key_or_keys if isinstance(key_or_keys, (tuple, list)) else [key_or_keys]
+        keys = [key for key in raw_seq if key not in ('', b'')]
+        if len(keys) < 1:
+            raise ValueError(f"invalid argument to set: {key_or_keys}")
+        final_key = keys.pop()
+        current = self
+        store = self._database.get_store()
+        immediate = bundler is None
+        bundler = Bundler(comment=comment) if bundler is None else bundler
+        for key in keys:
+            found = store.get_entry_by_key(current._muid, key=key, as_of=timestamp)
+            if found is None or found.builder.deletion:  # type: ignore
+                new_directory = Directory(bundler=bundler, database=self._database)
+                current._add_entry(key=key, value=new_directory, bundler=bundler)
+                current = new_directory
+            else:
+                current = current._get_occupant(found.builder, found.address)
+            if not isinstance(current, Directory):
+                raise ValueError(f"cannot set in a non directory: {type(current)}")
+        muid = current._add_entry(key=final_key, value=value, bundler=bundler)
+        if immediate:
+            self._database.bundle(bundler)
+        return muid
+
+    def delete(self, key, /, *, bundler=None, comment=None):
         """ Removes a value from the mapping, returning the muid address of the change.
 
             If bundler is specified, then simply adds an entry to that bundler.
             If no bundler is specified, then creates one just for this entry,
             sets it's comment to the comment arg (if set) then adds it to the database.
         """
+        if isinstance(key, (tuple, list)):
+            raise NotImplementedError("haven't implemented directory walking here yet")
         return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
-    def setdefault(self, key, default=None, *, bundler=None, respect_deletion=False):
+    def setdefault(self, key, default=None, /, *, bundler=None, respect_deletion=False):
         """ Insert key with a value of default if key is not in the directory.
 
             Return the value for key if key is in the directory, else default.
@@ -125,6 +169,8 @@ class Directory(Container):
             if the most recent entry in the directory for the key is a delete entry. In this
             case it will return whatever has been passed into respect_deletion.
         """
+        if isinstance(key, (tuple, list)):
+            raise NotImplementedError("haven't implemented directory walking here yet")
         as_of = generate_timestamp()
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         if found and found.builder.deletion and respect_deletion:  # type: ignore
@@ -134,13 +180,15 @@ class Directory(Container):
         self._add_entry(key=key, value=default, bundler=bundler)
         return default
 
-    def pop(self, key, default=None, *, bundler=None, comment=None):
+    def pop(self, key, default=None, /, *, bundler=None, comment=None):
         """ If key exists in the mapping, returns the corresponding value and removes it.
 
             Otherwise returns default.  In the case that the key is found and removed,
             then the change is added to the bundler (or comitted immedately with comment
             if no bundler is specified.)
         """
+        if isinstance(key, (tuple, list)):
+            raise NotImplementedError("haven't implemented directory walking here yet")
         as_of = generate_timestamp()
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore
@@ -151,7 +199,8 @@ class Directory(Container):
     def items(self, *, as_of=None):
         """ returns an iterable of key,value pairs, as of the effective time (or now) """
         as_of = self._database.resolve_timestamp(as_of)
-        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=DIRECTORY)
+        iterable = self._database.get_store().get_keyed_entries(
+            container=self._muid, as_of=as_of, behavior=DIRECTORY)
         for entry_pair in iterable:
             if entry_pair.builder.deletion:  # type: ignore
                 continue
@@ -161,7 +210,8 @@ class Directory(Container):
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)
-        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=DIRECTORY)
+        iterable = self._database.get_store().get_keyed_entries(
+            container=self._muid, as_of=as_of, behavior=DIRECTORY)
         count = 0
         for entry_pair in iterable:
             if entry_pair.builder.deletion:  # type: ignore
@@ -195,7 +245,7 @@ class Directory(Container):
             return (key, val)
         raise KeyError("directory is empty")
 
-    def update(self, from_what, *, bundler=None, comment=None):
+    def update(self, from_what, /, *, bundler=None, comment=None):
         """ Performs a shallow copy of key/value pairs from the argument.
 
         When from_what hasattr "keys", then will try: for k in E: D[k] = E[k]
@@ -237,7 +287,7 @@ class Directory(Container):
             print(repr(key), str(val), file=file)
 
 
-    def log(self, key: UserKey) -> Iterable[Attribution]:
+    def log(self, key: UserKey, /) -> Iterable[Attribution]:
         """ Get the history of modifications for a particular key. """
         as_of = generate_timestamp()
         while as_of:
@@ -247,7 +297,7 @@ class Directory(Container):
             yield self._database.get_attribution(*found.address)
             as_of = found.address.timestamp
 
-    def show_log(self, key: UserKey, file=stdout, limit=10):
+    def show_log(self, key: UserKey, /, *, file=stdout, limit=10):
         """ writes the history of modifications to <file> in a human-readable format """
         for att in self.log(key):
             if limit is not None and limit <= 0:

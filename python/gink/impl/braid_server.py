@@ -41,7 +41,7 @@ class BraidServer(Server):
         # TODO: do something more efficient than looping over connections
         for connection, braid in self._braids.items():
             self._logger.debug("considering connection: %s", connection.get_name())
-            if braid.get(chain, default=0) > info.timestamp:
+            if braid.get(chain, 0) > info.timestamp:
                 # Note: connection internally keeps track of what peer has and will prevent echo
                 connection.send_bundle(bundle_wrapper)
 
