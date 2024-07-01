@@ -18,6 +18,7 @@ from .looping import Finished
 from .bundle_wrapper import BundleWrapper
 from .chain_tracker import ChainTracker
 from .bundle_info import BundleInfo
+from .utilities import decode_and_verify_jwt, generate_random_token
 
 
 class BraidServer(Server):
@@ -95,13 +96,7 @@ class BraidServer(Server):
         directory_keys = list(parts[:-1])
         directory_keys.insert(0, 'braids')
         braid_key = parts[-1]
-        box = Box(arche=True, database=self._control_db)
-        if box.is_empty():
-            if create_if_missing:
-                box.set(Directory(database=self._control_db))
-            else:
-                raise ValueError("app directory not configured!")
-        current = box.get()
+        current = self._get_app_directory()
         assert isinstance(current, Directory)
         for key in directory_keys:
             if create_if_missing and key not in current:
@@ -175,11 +170,24 @@ class BraidServer(Server):
         elif request_method != "POST":
             start_response("400 Bad Request", [("Content-type", "text/plain")])
             return [b"bad request method"]
-        directory = self._get_app_directory()
+        app_directory = self._get_app_directory()
+        tokens_directory = app_directory.get("tokens")
+        if tokens_directory is None:
+            tokens_directory = Directory(database=self._control_db)
+            app_directory["tokens"] = tokens_directory
+        assert isinstance(tokens_directory, Directory)
         stream = cast(BytesIO, environ["wsgi.input"])
-        directory["jwt"] = stream.read()
+        jwt_token = stream.read()
+        try:
+            claims = decode_and_verify_jwt(jwt_token, self._app_id)
+        except ValueError as value_error:
+            self._logger.warning("problem with jwt token", exc_info=value_error)
+            start_response("400 Bad Request", [("Content-type", "text/plain")])
+            return [b"problem with jwt token"]
+        gink_token = generate_random_token()
+        tokens_directory.set(gink_token, claims)
         start_response("200 OK", [("Content-type", "text/plain")])
-        return [b"received"]
+        return [gink_token.encode()]
 
     def _on_websocket_ready(self, connection: Connection):
         braid = None
