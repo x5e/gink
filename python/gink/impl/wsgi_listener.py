@@ -28,6 +28,7 @@ class WsgiListener(Selectable):
         self._logger.info(f"Web server listening on interface: '{ip_addr}' port {port}")
         self._server_port = port
         self._headers_set: List[str] = []
+        self._closed = False
 
     def fileno(self) -> int:
         return self._fd
@@ -41,3 +42,7 @@ class WsgiListener(Selectable):
 
     def close(self):
         self._socket.close()
+        self._closed = True
+
+    def is_closed(self) -> bool:
+        return self._closed
