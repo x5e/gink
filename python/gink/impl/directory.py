@@ -10,7 +10,7 @@ from .database import Database
 from .container import Container
 from .coding import decode_key, DIRECTORY, deletion
 from .bundler import Bundler
-from .typedefs import UserKey, GenericTimestamp
+from .typedefs import UserKey, GenericTimestamp, UserValue
 from .attribution import Attribution
 from .utilities import generate_timestamp
 
@@ -52,7 +52,7 @@ class Directory(Container):
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
-    def dumps(self, *, as_of: GenericTimestamp = None) -> str:
+    def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this directory to a string.
         """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
@@ -101,7 +101,7 @@ class Directory(Container):
         """
         resolved = self._database.resolve_timestamp(as_of)
         keys = key_or_keys if isinstance(key_or_keys, (tuple, list)) else (key_or_keys,)
-        current: Directory = self
+        current: Union[UserValue, Container] = self
         store = self._database.get_store()
         for key in keys:
             if key == "" or key == b"":
@@ -141,9 +141,11 @@ class Directory(Container):
                 current._add_entry(key=key, value=new_directory, bundler=bundler)
                 current = new_directory
             else:
-                current = current._get_occupant(found.builder, found.address)
-            if not isinstance(current, Directory):
-                raise ValueError(f"cannot set in a non directory: {type(current)}")
+                occupant = current._get_occupant(found.builder, found.address)
+                if isinstance(occupant, Directory):
+                    current = occupant
+                else:
+                    raise ValueError(f"cannot set in a non directory: {type(current)}")
         muid = current._add_entry(key=final_key, value=value, bundler=bundler)
         if immediate:
             self._database.bundle(bundler)
