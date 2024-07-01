@@ -42,22 +42,30 @@ class BraidServer(Server):
         self._app_id = app_id
 
     def _get_app_directory(self) -> Directory:
+        """ Get's the base directory for this particular applicaiton.
+
+            We want each app to be based in a user-created directory, with appropriate
+            sub-directories for auth, braids, etc., so that if this db ever gets merged with
+            another database from a different app, those two apps don't merge their data.
+
+            If an app_id is specified, then we use a directory linked to from the root
+            directory using app_id as the key (creating it if it doesn't exist).  If no
+            app_id is given, then we have the application root directory linked to from
+            the archetype box (creating if a directory isn't there).
+          """
         box = Box(arche=True, database=self._control_db)
         box_contents = box.get()
         if self._app_id is not None:
             control_root = Directory(arche=True, database=self._control_db)
             if self._app_id in control_root:
                 directory = control_root[self._app_id]
-                assert isinstance(directory, Directory)
+                if not isinstance(directory, Directory):
+                    raise ValueError(f"/{self._app_id} points to a {type(directory)}")
                 return directory
             else:
-                if isinstance(box_contents, Directory):
-                    control_root[self._app_id] = box_contents
-                    return box_contents
-                else:
-                    directory = Directory(database=self._control_db)
-                    control_root[self._app_id] = directory
-                    return directory
+                directory = Directory(database=self._control_db)
+                control_root[self._app_id] = directory
+                return directory
         else:
             if isinstance(box_contents, Directory):
                 return box_contents
@@ -169,7 +177,7 @@ class BraidServer(Server):
             return [b"bad request method"]
         directory = self._get_app_directory()
         stream = cast(BytesIO, environ["wsgi.input"])
-        directory["data"] = stream.read()
+        directory["jwt"] = stream.read()
         start_response("200 OK", [("Content-type", "text/plain")])
         return [b"received"]
 

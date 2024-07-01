@@ -3,7 +3,7 @@ WSGIServer is a wrapper around an unknown WSGI application (flask, django, etc).
 The point of this class is to integrate within the Database select loop.
 """
 
-from socket import socket as Socket, SOL_SOCKET, SO_REUSEADDR, getfqdn, AF_INET, SOCK_STREAM
+from socket import socket as Socket, SOL_SOCKET, SO_REUSEADDR, AF_INET, SOCK_STREAM
 from logging import getLogger
 from typing import Iterable, List
 
