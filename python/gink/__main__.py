@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ command line interface for Gink """
 from logging import basicConfig, getLogger
-from sys import exit, stdin
+from sys import exit, stdin, stderr, stdout
 from re import fullmatch
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -95,17 +95,25 @@ if args.show_bundles:
     exit(0)
 
 if args.set:
-    value = stdin.read().rstrip()
+    value = stdin.buffer.read()
     container = root
-    key = args.set
-    container.set(key, value, comment=args.comment)
+    container.set(args.set.split("/"), value, comment=args.comment)
     database.close()
     exit(0)
 
 if args.get:
     container = root
-    result = container.get(args.get, as_of=args.as_of)
-    print(result)
+    default = object()
+    result = container.get(args.get.split("/"), default, as_of=args.as_of)
+    if result is default:
+        print("nothing found", file=stderr)
+        exit(1)
+    if not isinstance(result, (bytes, str)):
+        result = str(result)
+    if isinstance(result, str):
+        result = result.encode()
+    stdout.buffer.write(result)
+    stdout.buffer.flush()
     database.close()
     exit(0)
 
