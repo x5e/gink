@@ -2,12 +2,16 @@ from __future__ import annotations
 from typing import *
 from selectors import DefaultSelector, BaseSelector, EVENT_READ
 from contextlib import nullcontext
+from logging import getLogger
 
 from .utilities import GenericTimestamp, resolve_timestamp, generate_timestamp
 
-
 class Finished(BaseException):
-    """ Thrown when FileObj is done receiving data and should be removed from selectable set and closed. """
+    """ Thrown when FileObj should be removed from selectable set and closed.
+
+        The interface in selectors requires removal before the file/connection is closed,
+        so I'm using throwing this exception to indicate that that should happen.
+    """
     pass
 
 
@@ -22,12 +26,16 @@ class Selectable(Protocol):
     def on_ready(self) -> Optional[Iterable[Selectable]]:
         """ what to call when selected """
 
+    def is_closed(self) -> bool:
+        """ return true if this object has been closed """
+
 
 def loop(
         *selectables: Optional[Selectable],
         context_manager: ContextManager = nullcontext(),
         selector: Optional[BaseSelector] = None,
         until: GenericTimestamp = None,
+        _logger = getLogger(__name__),
         ) -> None:
     selector = selector or DefaultSelector()
     assert isinstance(selector, BaseSelector)
@@ -56,7 +64,8 @@ def loop(
                     results = selectable.on_ready()
                     if results:
                         add(results)
-                except Finished:
+                except Finished as finished:
+                    _logger.debug("removing connection", finished)
                     selector.unregister(selectable)
                     selectable.close()
                     registered.remove(selectable)

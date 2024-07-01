@@ -71,13 +71,12 @@ class Relay(Server):
 
         port = port or "8080"
         path = path or "/"
-        sync_func = cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message())
         connection = Connection(
             host=host,
             port=int(port),
             path=path,
             name=name,
-            sync_func=sync_func,
+            sync_func=cast(SyncFunc, self._sync_func),
             auth_data=auth_data,
             secure_connection=secure_connection,
             on_ws_act=self._on_connection_ready,
@@ -130,6 +129,9 @@ class Relay(Server):
                 self._logger.info(f"Connection (fileno {connection.fileno()}) disconnected.")
                 raise
 
+    def _sync_func(self, **_):
+        return self._store.get_chain_tracker().to_greeting_message()
+
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         (socket, addr) = listener.accept()
         context = listener.get_context()
@@ -138,7 +140,7 @@ class Relay(Server):
                 socket = context.wrap_socket(socket, server_side=True)
             except SSLError as e:
                 if e.reason == "HTTP_REQUEST":
-                    self._logger.warning("Secure server received and rejected insecure HTTP request.")
+                    self._logger.warning("Secure server rejecting insecure HTTP request.")
                     return []
                 elif e.reason ==  "TLSV1_ALERT_UNKNOWN_CA":
                     self._logger.warning("Connection failed due to client with unknown CA.")
@@ -150,7 +152,7 @@ class Relay(Server):
             socket=socket,
             host=addr[0],
             port=addr[1],
-            sync_func=cast(SyncFunc, lambda **_: self._store.get_chain_tracker().to_greeting_message()),
+            sync_func=cast(SyncFunc, self._sync_func),
             auth_func=listener.get_auth(),
             on_ws_act=self._on_connection_ready,
         )

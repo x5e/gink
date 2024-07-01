@@ -26,7 +26,8 @@ setup(
         "sortedcontainers",
         "lmdb",
         "protobuf",
-        "psutil"
+        "psutil",
+        "authlib"
     ],
     extras_require={
         "test": ["nose2", "flask", "requests"],
