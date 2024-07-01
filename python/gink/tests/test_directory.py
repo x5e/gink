@@ -37,7 +37,7 @@ def test_set_get():
             infos = store.get_bundle_infos()
             assert len(infos) == 2, infos
             result = global_directory["foo"]
-            assert result == "bar"
+            assert result == "bar", f"result={result}"
 
             global_directory["cheese"] = 99
             result = global_directory["cheese"]
@@ -83,7 +83,6 @@ def test_setdefault():
             assert "foo" in gdi
             assert gdi["foo"] == "moo"
 
-
 def test_pop():
     """ tests the pop method """
     for store in [MemoryStore(), LmdbStore()]:
@@ -91,10 +90,10 @@ def test_pop():
             database = Database(store=store)
             gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
-            val = gdi.pop("foo", default=3)
+            val = gdi.pop("foo", 3)
             assert val == "bar", val
             assert "foo" not in gdi
-            val = gdi.pop("foo", default=7)
+            val = gdi.pop("foo", 7)
             assert val == 7
 
 def test_items_and_keys():
@@ -177,7 +176,6 @@ def test_reset():
             bundle = gdi.reset(middle, recursive=True)
             assert not bundle
 
-
 def test_clearance():
     """ tests the directory.clear method works as expected """
     for store in [MemoryStore(), LmdbStore()]:
@@ -252,3 +250,12 @@ def test_float_int():
                 directory[0] = 1.0
                 assert isinstance(directory["foo"], int)
                 assert isinstance(directory[0], float)
+
+def test_walk():
+    for store in [MemoryStore(), LmdbStore()]:
+        with closing(store):
+            database = Database(store=store)
+            for directory in [Directory(arche=True, database=database), Directory()]:
+                directory.set(["foo", "bar"], 32)
+                result = directory["/foo/bar/".split("/")]
+                assert result == 32, result
