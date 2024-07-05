@@ -15,6 +15,7 @@ from .impl.selectable_console import SelectableConsole
 from .impl.utilities import get_identity, make_auth_func
 from .impl.looping import loop
 from .impl.wsgi_listener import WsgiListener
+from .impl.api_app import ApiApp
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
@@ -43,6 +44,7 @@ parser.add_argument("--identity", help="explicitly set identity to be associated
 parser.add_argument("--starts", help="include starting bundles when showing log", action="store_true")
 parser.add_argument("--wsgi", help="serve module.function via wsgi")
 parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defaults to *:8081)")
+parser.add_argument("--api_listen_on", help="ip:port or port to listen on (defaults to *:8081)")
 parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help="auth token for connections")
 parser.add_argument("--ssl-cert", default=environ.get("GINK_SSL_CERT"), help="path to ssl certificate file")
 parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path to ssl key file")
@@ -190,6 +192,9 @@ elif args.line_mode:
 else:
     interactive = stdin.isatty()
 
+api_app: ApiApp = ApiApp(database)
+api_listener: WsgiListener = WsgiListener(api_app, ip_addr="", port=8099)
+
 console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
 
-loop(console, database, wsgi_listener, context_manager=console)
+loop(console, database, wsgi_listener, api_listener, context_manager=console)
