@@ -3,7 +3,7 @@ WSGIServer is a wrapper around an unknown WSGI application (flask, django, etc).
 The point of this class is to integrate within the Database select loop.
 """
 
-from socket import socket as Socket, SOL_SOCKET, SO_REUSEADDR, getfqdn, AF_INET, SOCK_STREAM
+from socket import socket as Socket, SOL_SOCKET, SO_REUSEADDR, AF_INET, SOCK_STREAM
 from logging import getLogger
 from typing import Iterable, List
 
@@ -28,6 +28,7 @@ class WsgiListener(Selectable):
         self._logger.info(f"Web server listening on interface: '{ip_addr}' port {port}")
         self._server_port = port
         self._headers_set: List[str] = []
+        self._closed = False
 
     def fileno(self) -> int:
         return self._fd
@@ -41,3 +42,7 @@ class WsgiListener(Selectable):
 
     def close(self):
         self._socket.close()
+        self._closed = True
+
+    def is_closed(self) -> bool:
+        return self._closed
