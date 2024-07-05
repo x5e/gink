@@ -193,7 +193,8 @@ else:
     interactive = stdin.isatty()
 
 api_app: ApiApp = ApiApp(database)
-api_listener: WsgiListener = WsgiListener(api_app, ip_addr="", port=8099)
+api_ip_addr, api_port = parse_listen_on(args.api_listen_on, "*", "8082")
+api_listener: WsgiListener = WsgiListener(api_app, ip_addr=api_ip_addr, port=int(api_port))
 
 console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
 
