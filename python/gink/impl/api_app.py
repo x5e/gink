@@ -103,7 +103,7 @@ class ApiApp():
         status = '201 Created'
         headers = [('Content-type', 'text/plain')]
         start_response(status, headers)
-        return [b'Entry created.']
+        return [b'Entry updated or created.']
 
     # def _delete_handler(self, start_response):
     #     status = '200 OK'

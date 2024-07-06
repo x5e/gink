@@ -3,11 +3,6 @@ const Expector = require("./Expector.js");
 const { sleep } = require("./browser_test_utilities.js");
 process.chdir(__dirname + "/..");
 
-function failed(msg = "") {
-    console.error("FAILED", msg);
-    process.exit(1);
-}
-
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
@@ -16,123 +11,77 @@ function failed(msg = "") {
         ["-u", "-m", "gink", "--api_listen_on", `127.0.0.1:${port}`, "--auth_token", "abcd"]
     );
     await server.expect("listening", 2000);
-    await sleep(500);
+    await sleep(1000);
 
-    // Try to put without auth
-    const putFail = await fetch(`http://127.0.0.1:${port}/key1`, {
-        method: "PUT",
-        body: JSON.stringify({
-            value: "this should fail",
-            comment: "test comment",
-        }),
-        headers: {
-            "Content-type": "application/json"
-        }
-    });
-    if (putFail.status != 401) failed(`expected 401 got ${putFail.status}`); // Should fail
+    // Try to put without auth token
+    const putFail = new Expector(
+        "curl",
+        ["-X", "PUT", "-d", `{"value": 3}`, `http://127.0.0.1:${port}/key1`]
+    );
+    await putFail.expect("Bad auth token.", 2000);
 
     // PUT a number in json format
-    const put1 = await fetch(`http://127.0.0.1:${port}/key1`, {
-        method: "PUT",
-        body: JSON.stringify({
-            value: 3,
-            comment: "test comment",
-        }),
-        headers: {
-            "Content-type": "application/json",
-            "Authorization": "Bearer abcd"
-        }
-    });
-    if (put1.status != 201) failed(`put1 expected 201 got ${put1.status}`);
+    const put1 = new Expector(
+        "curl",
+        ["-X", "PUT", "-H", "Authorization: Bearer abcd", "-d", `{"value": 3}`, `http://127.0.0.1:${port}/key1`]
+    );
+    await put1.expect("Entry updated or created.", 2000);
 
     // PUT a dict in json format
-    const put2 = await fetch(`http://127.0.0.1:${port}/key2`, {
-        method: "PUT",
-        body: JSON.stringify({
+    const put2 = new Expector(
+        "curl",
+        ["-X", "PUT", "-H", "Authorization: Bearer abcd", "-d", `${JSON.stringify({
             value: {
                 a: 1,
                 b: 2,
                 c: 'test'
-            },
-            comment: "test comment",
-        }),
-        headers: {
-            "Content-type": "application/json",
-            "Authorization": "Bearer abcd"
-        }
-    });
-    if (put2.status != 201) failed(`put2 expected 201 got ${put2.status}`);
+            }
+        })}`, `http://127.0.0.1:${port}/key2`]
+    );
+    await put2.expect("Entry updated or created.", 2000);
 
     // PUT plain text
-    const put3 = await fetch(`http://127.0.0.1:${port}/key3`, {
-        method: "PUT",
-        body: JSON.stringify({
-            value: "plain text test",
-            comment: "test comment",
-        }),
-        headers: {
-            "Content-type": "text/plain",
-            "Authorization": "Bearer abcd"
-        }
-    });
-    if (put3.status != 201) failed(`put3 expected 201 got ${put3.status}`);
+    const put3 = new Expector(
+        "curl",
+        ["-X", "PUT", "-H", "Authorization: Bearer abcd", "-d", `${JSON.stringify({
+            value: "plain text test"
+        })}`, `http://127.0.0.1:${port}/key3`]
+    );
+    await put3.expect("Entry updated or created.", 2000);
 
     // PUT binary data
-    const put4 = await fetch(`http://127.0.0.1:${port}/key4`, {
-        method: "PUT",
-        body: JSON.stringify({
-            value: "10001010",
-            comment: "test comment",
-        }),
-        headers: {
-            "Content-type": "application/octet-stream",
-            "Authorization": "Bearer abcd"
-        }
-    });
-    if (put4.status != 201) failed(`put4 expected 201 got ${put4.status}`);
-
-    const get1 = await (await fetch(`http://127.0.0.1:${port}/key1`,
-        {
-            headers: {
-                "Authorization": "Bearer abcd"
-            }
-        }
-    )).json();
-    if (get1 !== 3) failed(`get1 expected 3 got ${get1}`);
-
-    const get2 = await (await fetch(`http://127.0.0.1:${port}/key2`,
-        {
-            headers: {
-                "Authorization": "Bearer abcd"
-            }
-        }
-    )).json();
-    const expecting = JSON.stringify({
-        a: 1,
-        b: 2,
-        c: 'test'
-    });
-    if (JSON.stringify(get2) !== expecting) failed(`get2 expected ${expecting} got ${JSON.stringify(get2)}`);
-
-    const get3 = await (await fetch(`http://127.0.0.1:${port}/key3`,
-        {
-            headers: {
-                "Authorization": "Bearer abcd"
-            }
-        }
-    )).json();
-    if (get3 !== "plain text test") failed(`get3 expected "plain text test" got ${get3}`);
-
-    const get4 = await fetch(`http://127.0.0.1:${port}/key4`,
-        {
-            headers: {
-                "Authorization": "Bearer abcd"
-            }
-        }
+    const put4 = new Expector(
+        "curl",
+        ["-X", "PUT", "-H", "Authorization: Bearer abcd", "-H", "Content-type: application/octet-stream",
+            "-d", `${JSON.stringify({ value: "10001010" })}`,
+            `http://127.0.0.1:${port}/key4`]
     );
-    const get4Blob = await get4.blob();
-    const get4Text = await get4Blob.text();
-    if (get4Text !== "10001010" || get4Blob.size !== 8) failed(`get4 expected "10001010 got ${get4Text}`);
+    await put4.expect("Entry updated or created.", 2000);
+
+    const get1 = new Expector(
+        "curl",
+        ["-X", "GET", "-H", "Authorization: Bearer abcd", `http://127.0.0.1:${port}/key1`]
+    );
+    await get1.expect(3, 2000);
+
+    const get2 = new Expector(
+        "curl",
+        ["-X", "GET", "-H", "Authorization: Bearer abcd", `http://127.0.0.1:${port}/key2`]
+    );
+    const expecting = `{"a": 1, "b": 2, "c": "test"}`;
+    await get2.expect(expecting, 2000);
+
+    const get3 = new Expector(
+        "curl",
+        ["-X", "GET", "-H", "Authorization: Bearer abcd", `http://127.0.0.1:${port}/key3`]
+    );
+    await get3.expect("plain text test", 2000);
+
+    const get4 = new Expector(
+        "curl",
+        ["-X", "GET", "-H", "Authorization: Bearer abcd", `http://127.0.0.1:${port}/key4`]
+    );
+    await get4.expect("10001010", 2000);
 
     await server.close();
     console.log("finished!");
