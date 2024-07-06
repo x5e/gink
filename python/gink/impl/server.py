@@ -16,10 +16,14 @@ class Server(ABC):
         self._listeners: Set[Listener] = set()
         self._indication_sent = False
         self._selectables: Set[Selectable] = set()
+        self._closed = False
 
     def get_selectables(self)-> Iterable[Selectable]:
-        for selectable in self._selectables:
-            yield selectable
+        for selectable in list(self._selectables):
+            if selectable.is_closed():
+                self._selectables.discard(selectable)
+            else:
+                yield selectable
 
     def fileno(self) -> int:
         return self._socket_rite.fileno()
@@ -40,6 +44,10 @@ class Server(ABC):
         self._socket_rite.close()
         for listener in self._listeners:
             listener.close()
+        self._closed = True
+
+    def is_closed(self) -> bool:
+        return self._closed
 
     def start_listening(self, addr="",
                         port: Union[str, int] = "8080",
@@ -51,13 +59,10 @@ class Server(ABC):
         """ Listen for incoming connections on the given port.
         """
         port = int(port)
-        listener = Listener(addr=addr, port=port, auth=auth, certfile=certfile, keyfile=keyfile)
-        security = "insecure"
-        if listener.get_context():
-            security = "secure"
+        listener = Listener(addr=addr, port=port, auth=auth, certfile=certfile, keyfile=keyfile,
+                            on_ready=self._on_listener_ready)
+        security = "secure" if listener.get_context() else "insecure"
         self._logger.info(f"starting {security} server listening on %r:%r", addr, port)
-
-        listener.on_ready = lambda: self._on_listener_ready(listener)
         self._listeners.add(listener)
         self._add_selectable(listener)
 

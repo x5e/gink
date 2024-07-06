@@ -2,12 +2,13 @@
 
 # batteries included python imports
 from typing import Iterable, Optional, Callable, Union, List
+from wsgiref.handlers import format_date_time
 from pathlib import Path
 from ssl import create_default_context, SSLSocket
 from logging import getLogger
 from io import BytesIO
 from re import fullmatch, DOTALL
-from datetime import datetime as DateTime
+from time import time as get_time
 from sys import stderr
 from socket import (
     socket as Socket,
@@ -180,26 +181,31 @@ class Connection:
                     'SERVER_NAME': self._server_name,
                     'SERVER_PORT': str(self._port),
                 }
-
                 if "content-type" in self._request_headers:
                     env['HTTP_CONTENT_TYPE'] = self._request_headers["content-type"]
 
                 if "authorization" in self._request_headers:
                     env['HTTP_AUTHORIZATION'] = self._request_headers["authorization"]
-
-                result: Iterable[bytes] = self._wsgi(env, self._start_response)
-                for data in result:
-                    if data:
-                        self._write(data)
-                if not self._response_started:
-                    self._write(b"")
+                try:
+                    result: Iterable[bytes] = self._wsgi(env, self._start_response)
+                    for data in result:
+                        if data:
+                            self._write(data)
+                    if not self._response_started:
+                        self._write(b"")
+                except Exception as exception:
+                    if not self._response_started:
+                        self._start_response(
+                            "500 Internal Server Error", [("Content-type", "text/plain")])
+                        self._write(str(exception).encode("utf-8"))
+                    raise Finished(exception)
                 raise Finished()  # will cause the loop to call close after deregistering
         raise AssertionError("did not expect to get here")
 
     def _start_response(self, status: str, response_headers: List[tuple], exc_info = None):
         server_headers: List[tuple] = [
-            ('Date', str(DateTime.now())),
-            ('Server', 'WSGIServer 0.2'),
+            ("Date", format_date_time(get_time())),
+            ('Server', 'gink'),
         ]
         if exc_info and self._response_started:
             raise exc_info[1].with_traceback(exc_info[2])

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional, Tuple, Union
 from importlib import import_module
 from os import environ
+from json import dumps
 
 from . import *
 from .impl.builders import BundleBuilder
@@ -110,8 +111,8 @@ if args.get:
     if result is default:
         print("nothing found", file=stderr)
         exit(1)
-    if not isinstance(result, (bytes, str)):
-        result = str(result)
+    if isinstance(result, (dict, list, tuple)):
+        result = dumps(result)
     if isinstance(result, str):
         result = result.encode()
     stdout.buffer.write(result)
