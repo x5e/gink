@@ -49,6 +49,8 @@ class ApiApp():
         if environ.get("REQUEST_METHOD") == "GET":
             default = object()
             result = self.root.get(raw_path.split("/"), default)
+            if type(result) != bytes:
+                data = dumps(data).encode()
             if result is default:
                 return self._data_not_found_handler(start_response)
             return self._get_handler(result, start_response)
@@ -58,6 +60,17 @@ class ApiApp():
                 value = d["value"] # Expecting a body of { "value": "some value" } and an optional comment.
             except AttributeError:
                 return self._bad_body_handler(start_response)
+
+            content_type = environ.get("HTTP_CONTENT_TYPE")
+            # application/json is handled by default
+            if content_type == "text/plain":
+                value = str(value)
+            elif content_type == "application/octet-stream": # For binary data
+                try:
+                    value = bytes(value, "utf-8")
+                except TypeError:
+                    return self._bad_body_handler(start_response)
+
             comment = d.get("comment")
             self.root.set(raw_path.split("/"), value, comment=comment)
             return self._set_handler(start_response)
@@ -69,7 +82,6 @@ class ApiApp():
         """
         Default response handler to return gink data in JSON format.
         """
-        data = dumps(data).encode()
         status = '200 OK'
         headers = [('Content-type', 'application/json')]
         start_response(status, headers)
@@ -97,7 +109,7 @@ class ApiApp():
         status = '400 Bad Request'
         headers = [('Content-type', 'text/plain')]
         start_response(status, headers)
-        return [b'Ensure body is valid JSON and content type is set to application/json. If posting, please specify value in the body to post to the directory.']
+        return [b'Ensure body matches the content-type. If posting, please specify value in the body.']
 
     def _bad_method_handler(self, start_response):
         status = '405 Method Not Allowed'

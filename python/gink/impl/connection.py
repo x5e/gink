@@ -182,7 +182,7 @@ class Connection:
                 }
 
                 if "content-type" in self._request_headers:
-                    env['CONTENT_TYPE'] = self._request_headers["content-type"]
+                    env['HTTP_CONTENT_TYPE'] = self._request_headers["content-type"]
 
                 if "authorization" in self._request_headers:
                     env['HTTP_AUTHORIZATION'] = self._request_headers["authorization"]
