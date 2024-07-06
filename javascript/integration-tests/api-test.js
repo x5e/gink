@@ -13,7 +13,7 @@ function failed(msg = "") {
     console.log("starting");
     const server = new Expector(
         "python3",
-        ["-u", "-m", "gink", "--api_listen_on", `*:${port}`, "--auth_token", "abcd"]
+        ["-u", "-m", "gink", "--api_listen_on", `127.0.0.1:${port}`, "--auth_token", "abcd"]
     );
     await server.expect("listening", 2000);
     await sleep(500);
@@ -98,7 +98,7 @@ function failed(msg = "") {
             }
         }
     )).json();
-    if (get1 != 3) failed(`get1 expected 3 got ${get1}`);
+    if (get1 !== 3) failed(`get1 expected 3 got ${get1}`);
 
     const get2 = await (await fetch(`http://127.0.0.1:${port}/key2`,
         {
@@ -112,7 +112,7 @@ function failed(msg = "") {
         b: 2,
         c: 'test'
     });
-    if (JSON.stringify(get2) != expecting) failed(`get2 expected ${expecting} got ${JSON.stringify(get2)}`);
+    if (JSON.stringify(get2) !== expecting) failed(`get2 expected ${expecting} got ${JSON.stringify(get2)}`);
 
     const get3 = await (await fetch(`http://127.0.0.1:${port}/key3`,
         {
@@ -121,7 +121,7 @@ function failed(msg = "") {
             }
         }
     )).json();
-    if (get3 != "plain text test") failed(`get3 expected "plain text test" got ${get3}`);
+    if (get3 !== "plain text test") failed(`get3 expected "plain text test" got ${get3}`);
 
     const get4 = await fetch(`http://127.0.0.1:${port}/key4`,
         {
@@ -132,7 +132,7 @@ function failed(msg = "") {
     );
     const get4Blob = await get4.blob();
     const get4Text = await get4Blob.text();
-    if (get4Text != "10001010" || get4Blob.size != 8) failed(`get4 expected "10001010 got ${get4Text}`);
+    if (get4Text !== "10001010" || get4Blob.size !== 8) failed(`get4 expected "10001010 got ${get4Text}`);
 
     await server.close();
     console.log("finished!");
