@@ -22,15 +22,22 @@ class ApiApp():
     # Returns 3
 
     """
-    def __init__(self, database: Database):
+    def __init__(self, database: Database, auth_token: str):
         self.database = database
         self.root = Directory(database=database, arche=True)
+        self.auth_token = auth_token
 
     def __call__(self, environ, start_response):
         raw_path = environ.get('PATH_INFO')
 
         if not raw_path or raw_path == '/':
             return self._bad_path_handler(start_response)
+
+        # If auth token is present, expect 'Bearer <token>' in the Authorization header.
+        if self.auth_token:
+            auth_header = environ.get('HTTP_AUTHORIZATION')
+            if not auth_header or auth_header != f"Bearer {self.auth_token}":
+                return self._bad_auth_handler(start_response)
 
         request_body = environ.get("wsgi.input").read().decode("utf-8")
         if request_body:
@@ -97,5 +104,11 @@ class ApiApp():
         headers = [('Content-type', 'text/plain')]
         start_response(status, headers)
         return [b'The Gink API only supports GET and POST.']
+
+    def _bad_auth_handler(self, start_response):
+        status = '401 Unauthorized'
+        headers = [('Content-type', 'text/plain')]
+        start_response(status, headers)
+        return [b'Bad auth token.']
 
 

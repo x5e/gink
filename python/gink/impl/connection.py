@@ -180,6 +180,13 @@ class Connection:
                     'SERVER_NAME': self._server_name,
                     'SERVER_PORT': str(self._port),
                 }
+
+                if "content-type" in self._request_headers:
+                    env['CONTENT_TYPE'] = self._request_headers["content-type"]
+
+                if "authorization" in self._request_headers:
+                    env['HTTP_AUTHORIZATION'] = self._request_headers["authorization"]
+
                 result: Iterable[bytes] = self._wsgi(env, self._start_response)
                 for data in result:
                     if data:
