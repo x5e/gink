@@ -44,7 +44,7 @@ parser.add_argument("--identity", help="explicitly set identity to be associated
 parser.add_argument("--starts", help="include starting bundles when showing log", action="store_true")
 parser.add_argument("--wsgi", help="serve module.function via wsgi")
 parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defaults to *:8081)")
-parser.add_argument("--api_listen_on", help="ip:port or port to listen on (defaults to *:8082)")
+parser.add_argument("--api_listen_on", nargs="?", const=True, help="ip:port or port to listen on (defaults to *:8082)")
 parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help="auth token for connections")
 parser.add_argument("--ssl-cert", default=environ.get("GINK_SSL_CERT"), help="path to ssl certificate file")
 parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path to ssl key file")
@@ -192,12 +192,14 @@ elif args.line_mode:
 else:
     interactive = stdin.isatty()
 
-if not args.auth_token:
-    logger.warning("No auth token set; API is not secured. Restart server and pass '--auth_token YOUR_TOKEN' to secure.")
+api_listener: Optional[WsgiListener] = None
+if args.api_listen_on:
+    api_app: ApiApp = ApiApp(database, args.auth_token)
+    api_ip_addr, api_port = parse_listen_on(args.api_listen_on, "*", "8082")
+    api_listener: WsgiListener = WsgiListener(api_app, ip_addr=api_ip_addr, port=int(api_port))
 
-api_app: ApiApp = ApiApp(database, args.auth_token)
-api_ip_addr, api_port = parse_listen_on(args.api_listen_on, "*", "8082")
-api_listener: WsgiListener = WsgiListener(api_app, ip_addr=api_ip_addr, port=int(api_port))
+    if not args.auth_token:
+        logger.warning("No auth token set; API is not secured. Restart server and pass '--auth_token YOUR_TOKEN' to secure.")
 
 console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
 

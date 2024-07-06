@@ -7,7 +7,7 @@ from .directory import Directory
 
 class ApiApp():
     """
-    WSGI application to GET and POST data to a Gink database.
+    WSGI application to GET and PUT data from/in a Gink database.
 
     Example for post:
 
@@ -42,22 +42,20 @@ class ApiApp():
         request_body = environ.get("wsgi.input").read().decode("utf-8")
         if request_body:
             try:
-                d = loads(request_body)
+                body = loads(request_body)
             except JSONDecodeError: # Not valid JSON
                 return self._bad_body_handler(start_response)
 
         if environ.get("REQUEST_METHOD") == "GET":
             default = object()
             result = self.root.get(raw_path.split("/"), default)
-            if type(result) != bytes:
-                data = dumps(data).encode()
             if result is default:
                 return self._data_not_found_handler(start_response)
             return self._get_handler(result, start_response)
 
-        elif environ.get("REQUEST_METHOD") == "POST":
+        elif environ.get("REQUEST_METHOD") == "PUT":
             try:
-                value = d["value"] # Expecting a body of { "value": "some value" } and an optional comment.
+                value = body["value"] # Expecting a body of { "value": "some value" } and an optional comment.
             except AttributeError:
                 return self._bad_body_handler(start_response)
 
@@ -71,9 +69,16 @@ class ApiApp():
                 except TypeError:
                     return self._bad_body_handler(start_response)
 
-            comment = d.get("comment")
+            comment = body.get("comment")
             self.root.set(raw_path.split("/"), value, comment=comment)
             return self._set_handler(start_response)
+
+        # elif environ.get("REQUEST_METHOD") == "DELETE":
+            # deleted = bool(self.root.delete(raw_path.split("/")))
+            # if deleted:
+            #     return self._delete_handler(start_response)
+            # else:
+            #     return self._data_not_found_handler(start_response)
 
         else:
             return self._bad_method_handler(start_response)
@@ -83,15 +88,28 @@ class ApiApp():
         Default response handler to return gink data in JSON format.
         """
         status = '200 OK'
-        headers = [('Content-type', 'application/json')]
+        content_type = 'application/json'
+        if type(data) != bytes:
+            data = dumps(data).encode()
+        else:
+            content_type = 'application/octet-stream'
+
+        headers = [('Content-type', content_type)]
         start_response(status, headers)
-        return [bytes(data)]
+        assert type(data) == bytes, "data isn't bytes?"
+        return [data]
 
     def _set_handler(self, start_response):
         status = '201 Created'
         headers = [('Content-type', 'text/plain')]
         start_response(status, headers)
         return [b'Entry created.']
+
+    # def _delete_handler(self, start_response):
+    #     status = '200 OK'
+    #     headers = [('Content-type', 'text/plain')]
+    #     start_response(status, headers)
+    #     return [b'Entry deleted.']
 
     def _data_not_found_handler(self, start_response):
         status = '404 Not Found'
@@ -115,7 +133,7 @@ class ApiApp():
         status = '405 Method Not Allowed'
         headers = [('Content-type', 'text/plain')]
         start_response(status, headers)
-        return [b'The Gink API only supports GET and POST.']
+        return [b'The Gink API supports GET and PUT.']
 
     def _bad_auth_handler(self, start_response):
         status = '401 Unauthorized'
