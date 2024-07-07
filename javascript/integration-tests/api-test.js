@@ -97,6 +97,18 @@ process.chdir(__dirname + "/..");
     );
     await get4.expect("10001010", 2000);
 
+    const delete4 = new Expector(
+        "curl",
+        ["-X", "DELETE", "-H", "Authorization: Bearer abcd", `http://127.0.0.1:${port}/key4`]
+    );
+    await delete4.expect("Entry deleted.", 2000);
+
+    const get4Again = new Expector(
+        "curl",
+        ["-X", "GET", "-H", "Authorization: Bearer abcd", `http://127.0.0.1:${port}/key4`]
+    );
+    await get4Again.expect("Entry not found.", 2000);
+
     await server.close();
     console.log("finished!");
     process.exit(0);

@@ -15,7 +15,7 @@ from .impl.directory import Directory
 
 class Crud():
     """
-    WSGI application to GET and PUT data from/in a Gink database.
+    WSGI application to GET, PUT, and DELETE data in a Gink database.
 
     Example for PUT:
 
@@ -70,11 +70,11 @@ class Crud():
             self.root.set(raw_path.split("/"), value)
             return self._set_handler(start_response)
 
-        # elif environ.get("REQUEST_METHOD") == "DELETE":
-            # deleted = bool(self.root.delete(raw_path.split("/")))
-            # if not deleted:
-            #     return self._data_not_found_handler(start_response)
-            # return self._delete_handler(start_response)
+        elif environ.get("REQUEST_METHOD") == "DELETE":
+            deleted = bool(self.root.delete(raw_path.split("/")))
+            if not deleted:
+                return self._data_not_found_handler(start_response)
+            return self._delete_handler(start_response)
 
         else:
             return self._bad_method_handler(start_response)
@@ -104,11 +104,11 @@ class Crud():
         start_response(status, headers)
         return [b'Entry updated or created.']
 
-    # def _delete_handler(self, start_response):
-    #     status = '200 OK'
-    #     headers = [('Content-type', 'text/plain')]
-    #     start_response(status, headers)
-    #     return [b'Entry deleted.']
+    def _delete_handler(self, start_response):
+        status = '200 OK'
+        headers = [('Content-type', 'text/plain')]
+        start_response(status, headers)
+        return [b'Entry deleted.']
 
     def _data_not_found_handler(self, start_response):
         status = '404 Not Found'
@@ -138,7 +138,7 @@ class Crud():
         status = '405 Method Not Allowed'
         headers = [('Content-type', 'text/plain')]
         start_response(status, headers)
-        return [b'The Gink API supports GET and PUT.']
+        return [b'The Gink API supports GET, PUT, and DELETE.']
 
     def _bad_auth_handler(self, start_response):
         status = '401 Unauthorized'
