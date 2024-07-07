@@ -44,7 +44,6 @@ parser.add_argument("--identity", help="explicitly set identity to be associated
 parser.add_argument("--starts", help="include starting bundles when showing log", action="store_true")
 parser.add_argument("--wsgi", help="serve module.function via wsgi")
 parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defaults to *:8081)")
-parser.add_argument("--api_listen_on", nargs="?", const=True, help="ip:port or port to listen on (defaults to *:8082)")
 parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help="auth token for connections")
 parser.add_argument("--ssl-cert", default=environ.get("GINK_SSL_CERT"), help="path to ssl certificate file")
 parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path to ssl key file")
@@ -173,6 +172,8 @@ if args.wsgi:
     if not app:
         raise ValueError(f"{function} not found in {module}")
     ip_addr, port = parse_listen_on(args.wsgi_listen_on, "*", "8081")
+    # Note: this should always be called after a database is initialized
+    # to prevent Database.get_last() from breaking.
     wsgi_listener = WsgiListener(app, ip_addr=ip_addr, port=int(port))
 
 auth_func = make_auth_func(args.auth_token) if args.auth_token else None

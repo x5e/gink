@@ -17,13 +17,13 @@ class Crud():
     """
     WSGI application to GET and PUT data from/in a Gink database.
 
-    Example for post:
+    Example for PUT:
 
-    curl http://localhost:8099/key -d '{"value":3, "comment": "sent from curl"}' -H "Content-Type: application/json"
+    curl -X PUT http://localhost:8099/key -d 3 -H "Content-Type: application/json"
 
-    # Sets key to 3 with a comment of "sent from curl"
+    # Sets "key" in root directory to 3
 
-    Example for get:
+    Example for GET:
 
     curl -X GET http://localhost:8099/key
 
@@ -35,16 +35,15 @@ class Crud():
         self.auth_token = environ.get("AUTH_TOKEN")
 
     def __call__(self, environ, start_response):
-        raw_path = environ.get('PATH_INFO')
-
-        if not raw_path or raw_path == '/':
-            return self._bad_path_handler(start_response)
-
         # If auth token is present, expect token in the Authorization header.
         if self.auth_token:
             auth_header = environ.get('HTTP_AUTHORIZATION')
             if not auth_header or self.auth_token not in auth_header:
                 return self._bad_auth_handler(start_response)
+
+        raw_path = environ.get('PATH_INFO')
+        if not raw_path or raw_path == '/':
+            return self._bad_path_handler(start_response)
 
         if environ.get("REQUEST_METHOD") == "GET":
             default = object()
@@ -55,7 +54,6 @@ class Crud():
 
         elif environ.get("REQUEST_METHOD") == "PUT":
             request_body: bytes = environ.get("wsgi.input").read()
-            print(request_body)
             if not request_body:
                 return self._bad_body_handler(start_response)
 
@@ -74,10 +72,9 @@ class Crud():
 
         # elif environ.get("REQUEST_METHOD") == "DELETE":
             # deleted = bool(self.root.delete(raw_path.split("/")))
-            # if deleted:
-            #     return self._delete_handler(start_response)
-            # else:
+            # if not deleted:
             #     return self._data_not_found_handler(start_response)
+            # return self._delete_handler(start_response)
 
         else:
             return self._bad_method_handler(start_response)
@@ -129,13 +126,13 @@ class Crud():
         status = '400 Bad Request'
         headers = [('Content-type', 'text/plain')]
         start_response(status, headers)
-        return [b'Content type must be plain/text, application/json, application/octet-stream, or application/x-www-form-urlencoded']
+        return [b'Content type must be text/plain, application/json, application/octet-stream, or application/x-www-form-urlencoded']
 
     def _bad_body_handler(self, start_response):
         status = '400 Bad Request'
         headers = [('Content-type', 'text/plain')]
         start_response(status, headers)
-        return [b'Ensure body matches the content-type. If posting, please specify value in the body.']
+        return [b'Ensure body matches the content-type. If posting, the value is the request body.']
 
     def _bad_method_handler(self, start_response):
         status = '405 Method Not Allowed'
