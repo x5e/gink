@@ -5,6 +5,7 @@
 from typing import Optional, Union, Iterable, List
 from sys import stdout
 from logging import getLogger
+from re import fullmatch
 
 # builders
 from .builders import ContainerBuilder
@@ -85,6 +86,11 @@ class Database(Relay):
         """
         if timestamp is None:
             return generate_timestamp()
+        if isinstance(timestamp, str):
+            if fullmatch(r"-?\d+", timestamp):
+                timestamp = int(timestamp)
+            else:
+                timestamp = float(timestamp)
         if isinstance(timestamp, int) and -1e6 < timestamp < 1e6:
             bundle_info = self._store.get_one(BundleInfo, int(timestamp))
             if bundle_info is None:

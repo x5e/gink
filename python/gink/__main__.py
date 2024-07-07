@@ -21,8 +21,9 @@ parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
 parser.add_argument("--verbosity", "-v", default="INFO", help="the log level to use, e.g. INFO or DEBUG")
 parser.add_argument("--format", default="lmdb", help="storage file format", choices=["lmdb", "binlog"])
-parser.add_argument("--set", help="set key/value in directory (default root) reading value from stdin")
-parser.add_argument("--get", help="get a value in the database (default root) and print to stdout")
+parser.add_argument("--set", help="set key/value in path from root, reading value from stdin")
+parser.add_argument("--get", help="get a value from specified path and write to stdout")
+parser.add_argument("--delete", help="delete the value at the specified key or path")
 parser.add_argument("--dump", nargs="?", const=True,
                     help="dump contents to stdout and exit (path or muid, or everything if blank)")
 parser.add_argument("--blame", action="store_true", help="show blame information")
@@ -118,6 +119,11 @@ if args.get:
     database.close()
     exit(0)
 
+if args.delete:
+    root.delete(args.delete.split("/"), comment=args.comment)
+    database.close()
+    exit(0)
+
 if args.blame:
     if args.blame is True:
         root.show_blame(as_of=args.as_of)
@@ -148,7 +154,10 @@ if args.log:
     database.close()
     exit(0)
 
-def parse_listen_on(listen_on: Union[str, None, bool], ip_addr = "*", port = "8080") -> Tuple[str, str]:
+def parse_listen_on(
+        listen_on: Union[str, None, bool],
+        ip_addr = "*",
+        port = "8080") -> Tuple[str, str]:
     if listen_on is True or listen_on is None:
         pass
     elif ":" in listen_on:
@@ -180,7 +189,12 @@ auth_func = make_auth_func(args.auth_token) if args.auth_token else None
 
 if args.listen_on:
     ip_addr, port = parse_listen_on(args.listen_on, "*", "8080")
-    database.start_listening(addr=ip_addr, port=port, auth=auth_func, certfile=args.ssl_cert, keyfile=args.ssl_key)
+    database.start_listening(
+        addr=ip_addr,
+        port=port,
+        auth=auth_func,
+        certfile=args.ssl_cert,
+        keyfile=args.ssl_key)
 
 for target in (args.connect_to or []):
     auth_data = f"Token {args.auth_token}" if args.auth_token else None
