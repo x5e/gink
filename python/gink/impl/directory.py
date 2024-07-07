@@ -21,8 +21,14 @@ class Directory(Container):
     _missing = object()
     BEHAVIOR = DIRECTORY
 
-    def __init__(self, *ordered, arche: Optional[bool] = None, bundler: Optional[Bundler] = None,
-                 contents=None, muid: Optional[Muid] = None, database=None, comment: Optional[str] = None):
+    def __init__(self, *ordered,
+                 arche: Optional[bool] = None,
+                 bundler: Optional[Bundler] = None,
+                 contents: Optional[dict]=None,
+                 muid: Optional[Muid] = None,
+                 database: Optional[Database]=None,
+                 comment: Optional[str] = None,
+                 ):
         """
         Constructor for a directory proxy.
 
@@ -158,7 +164,7 @@ class Directory(Container):
         for key in path:
             result = current.get(key, default, as_of=as_of)
             if result is default or not isinstance(result, Directory):
-                raise KeyError(f"could not walk through {key}")
+                raise KeyError(f"could not walk through {key!r}")
             current = result
         return current
 
