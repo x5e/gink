@@ -23,21 +23,21 @@ To run this application, pass --wsgi gink.crud.app when starting gink.
 Set auth key with env AUTH_TOKEN.
 
 """
-def app(environ, start_response):
+def app(env, start_response):
     root = Directory(arche=True)
     auth_token = environ.get("AUTH_TOKEN")
 
     # If auth token is present, expect token in the Authorization header.
     if auth_token:
-        auth_header = environ.get('HTTP_AUTHORIZATION')
+        auth_header = env.get('HTTP_AUTHORIZATION')
         if not auth_header or auth_token not in auth_header:
             return _bad_auth_handler(start_response)
 
-    raw_path = environ.get('PATH_INFO')
+    raw_path = env.get('PATH_INFO')
     if not raw_path or raw_path == '/':
         return _bad_path_handler(start_response)
 
-    if environ.get("REQUEST_METHOD") == "GET":
+    if env.get("REQUEST_METHOD") == "GET":
         default = object()
         try:
             result = root.get(raw_path.split("/"), default)
@@ -47,10 +47,10 @@ def app(environ, start_response):
             return _data_not_found_handler(start_response)
         return _get_handler(result, start_response)
 
-    elif environ.get("REQUEST_METHOD") == "PUT":
-        request_body: bytes = environ.get("wsgi.input").read()
+    elif env.get("REQUEST_METHOD") == "PUT":
+        request_body: bytes = env.get("wsgi.input").read()
 
-        content_type = environ.get("HTTP_CONTENT_TYPE")
+        content_type = env.get("HTTP_CONTENT_TYPE")
         if content_type == "text/plain":
             value = request_body.decode()
         elif content_type == "application/json":
@@ -65,7 +65,7 @@ def app(environ, start_response):
 
         return _set_handler(start_response)
 
-    elif environ.get("REQUEST_METHOD") == "DELETE":
+    elif env.get("REQUEST_METHOD") == "DELETE":
         try:
             root.delete(raw_path.split("/"))
         except KeyError:
@@ -89,7 +89,6 @@ def _get_handler(data, start_response):
     else:
         content_type = 'application/json'
         data = dumps(data).encode()
-
     headers = [('Content-type', content_type)]
     start_response(status, headers)
     assert type(data) == bytes, "data isn't bytes?"
@@ -111,7 +110,7 @@ def _data_not_found_handler(start_response, msg='Entry not found.'):
     status = '404 Not Found'
     headers = [('Content-type', 'text/plain')]
     start_response(status, headers)
-    return [bytes(msg)]
+    return [msg.encode()]
 
 def _bad_path_handler(start_response):
     status = '400 Bad Request'
