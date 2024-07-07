@@ -72,6 +72,15 @@ process.chdir(__dirname + "/..");
     );
     await put4.expect("Entry updated or created.", 2000);
 
+    // PUT None
+    const put5 = new Expector(
+        "curl",
+        ["-X", "PUT",
+            "-H", "Authorization: Bearer abcd",
+            `http://127.0.0.1:${port}/key5`]
+    );
+    await put5.expect("Entry updated or created.", 2000);
+
     const get1 = new Expector(
         "curl",
         ["-X", "GET", "-H", "Authorization: Bearer abcd", `http://127.0.0.1:${port}/key1`]
@@ -96,6 +105,12 @@ process.chdir(__dirname + "/..");
         ["-X", "GET", "-H", "Authorization: Bearer abcd", `http://127.0.0.1:${port}/key4`]
     );
     await get4.expect("10001010", 2000);
+
+    const get5 = new Expector(
+        "curl",
+        ["-X", "GET", "-H", "Authorization: Bearer abcd", `http://127.0.0.1:${port}/key5`]
+    );
+    await get5.expect("null", 2000);
 
     const delete4 = new Expector(
         "curl",

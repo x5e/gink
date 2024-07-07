@@ -51,7 +51,9 @@ def app(env, start_response):
         request_body: bytes = env.get("wsgi.input").read()
 
         content_type = env.get("HTTP_CONTENT_TYPE")
-        if content_type == "text/plain":
+        if not request_body:
+            value = None
+        elif content_type == "text/plain":
             value = request_body.decode()
         elif content_type == "application/json":
             value = loads(request_body.decode())
