@@ -259,3 +259,5 @@ def test_walk():
                 directory.set(["foo", "bar"], 32)
                 result = directory["/foo/bar/".split("/")]
                 assert result == 32, result
+                directory.delete(["foo", "bar"])
+                assert not directory.has(["foo", "bar"])
