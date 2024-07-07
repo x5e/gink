@@ -31,9 +31,12 @@ class Box(Container):
         if bundler is None:
             immediate = True
             bundler = Bundler(comment)
-        if muid is None:
+        if isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
             muid = Container._create(
                 BOX, database=database, bundler=bundler)
+
         Container.__init__(self, muid=muid, database=database)
         self._muid = muid
         self._database = database
