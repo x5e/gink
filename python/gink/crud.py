@@ -8,7 +8,6 @@ Set auth key with env AUTH_TOKEN.
 """
 
 from json import loads, dumps
-from json.decoder import JSONDecodeError
 from os import environ
 
 from .impl.directory import Directory
@@ -47,14 +46,6 @@ class Crud():
             if not auth_header or self.auth_token not in auth_header:
                 return self._bad_auth_handler(start_response)
 
-        request_body = environ.get("wsgi.input").read().decode('utf-8')
-
-        if request_body:
-            try:
-                body = loads(request_body)
-            except JSONDecodeError: # Not valid JSON
-                return self._bad_body_handler(start_response)
-
         if environ.get("REQUEST_METHOD") == "GET":
             default = object()
             result = self.root.get(raw_path.split("/"), default)
@@ -63,20 +54,20 @@ class Crud():
             return self._get_handler(result, start_response)
 
         elif environ.get("REQUEST_METHOD") == "PUT":
-            try:
-                value = body["value"] # Expecting a body of { "value": "some value" } and an optional comment.
-            except AttributeError:
+            request_body: bytes = environ.get("wsgi.input").read()
+            print(request_body)
+            if not request_body:
                 return self._bad_body_handler(start_response)
 
             content_type = environ.get("HTTP_CONTENT_TYPE")
-            # application/json is handled by default
-            if content_type == "text/plain":
-                value = str(value)
-            elif content_type == "application/octet-stream": # For binary data
-                try:
-                    value = bytes(value, "utf-8")
-                except TypeError:
-                    return self._bad_body_handler(start_response)
+            if content_type == "application/octet-stream" or content_type == "application/x-www-form-urlencoded":
+                value = request_body # Default to binary
+            elif content_type == "text/plain":
+                value = request_body.decode()
+            elif content_type == "application/json":
+                value = loads(request_body.decode())
+            else:
+                return self._bad_type_handler(start_response)
 
             self.root.set(raw_path.split("/"), value)
             return self._set_handler(start_response)
@@ -96,11 +87,14 @@ class Crud():
         Default response handler to return gink data in JSON format.
         """
         status = '200 OK'
-        content_type = 'application/json'
-        if type(data) != bytes:
-            data = dumps(data).encode()
+        if type(data) == str:
+            content_type = "text/plain"
+            data = data.encode()
+        if type(data) == bytes:
+            content_type = "application/octet-stream"
         else:
-            content_type = 'application/octet-stream'
+            content_type = 'application/json'
+            data = dumps(data).encode()
 
         headers = [('Content-type', content_type)]
         start_response(status, headers)
@@ -130,6 +124,12 @@ class Crud():
         headers = [('Content-type', 'text/plain')]
         start_response(status, headers)
         return [b'Please specify a directory/key path.']
+
+    def _bad_type_handler(self, start_response):
+        status = '400 Bad Request'
+        headers = [('Content-type', 'text/plain')]
+        start_response(status, headers)
+        return [b'Content type must be plain/text, application/json, application/octet-stream, or application/x-www-form-urlencoded']
 
     def _bad_body_handler(self, start_response):
         status = '400 Bad Request'

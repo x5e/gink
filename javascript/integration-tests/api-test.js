@@ -22,14 +22,14 @@ process.chdir(__dirname + "/..");
     // Try to put without auth token
     const putFail = new Expector(
         "curl",
-        ["-X", "PUT", "-d", `{"value": 3}`, `http://127.0.0.1:${port}/key1`]
+        ["-X", "PUT", "-d", 3, `http://127.0.0.1:${port}/key1`]
     );
     await putFail.expect("Bad auth token.", 2000);
 
     // PUT a number in json format
     const put1 = new Expector(
         "curl",
-        ["-X", "PUT", "-H", "Authorization: abcd", "-d", `{"value": 3}`, `http://127.0.0.1:${port}/key1`]
+        ["-X", "PUT", "-H", "Authorization: abcd", "-d", 3, `http://127.0.0.1:${port}/key1`]
     );
     await put1.expect("Entry updated or created.", 2000);
 
@@ -37,11 +37,9 @@ process.chdir(__dirname + "/..");
     const put2 = new Expector(
         "curl",
         ["-X", "PUT", "-H", "Authorization: Bearer abcd", "-d", `${JSON.stringify({
-            value: {
-                a: 1,
-                b: 2,
-                c: 'test'
-            }
+            a: 1,
+            b: 2,
+            c: 'test'
         })}`, `http://127.0.0.1:${port}/key2`]
     );
     await put2.expect("Entry updated or created.", 2000);
@@ -49,9 +47,7 @@ process.chdir(__dirname + "/..");
     // PUT plain text
     const put3 = new Expector(
         "curl",
-        ["-X", "PUT", "-H", "Authorization: abcd", "-d", `${JSON.stringify({
-            value: "plain text test"
-        })}`, `http://127.0.0.1:${port}/key3`]
+        ["-X", "PUT", "-H", "Authorization: abcd", "-d", `plain text test`, `http://127.0.0.1:${port}/key3`]
     );
     await put3.expect("Entry updated or created.", 2000);
 
@@ -59,7 +55,7 @@ process.chdir(__dirname + "/..");
     const put4 = new Expector(
         "curl",
         ["-X", "PUT", "-H", "Authorization: Bearer abcd", "-H", "Content-type: application/octet-stream",
-            "-d", `${JSON.stringify({ value: "10001010" })}`,
+            "-d", "10001010",
             `http://127.0.0.1:${port}/key4`]
     );
     await put4.expect("Entry updated or created.", 2000);
@@ -74,7 +70,7 @@ process.chdir(__dirname + "/..");
         "curl",
         ["-X", "GET", "-H", "Authorization: Bearer abcd", `http://127.0.0.1:${port}/key2`]
     );
-    const expecting = `{"a": 1, "b": 2, "c": "test"}`;
+    const expecting = `{"a":1,"b":2,"c":"test"}`;
     await get2.expect(expecting, 2000);
 
     const get3 = new Expector(
