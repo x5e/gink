@@ -16,7 +16,6 @@ from .impl.selectable_console import SelectableConsole
 from .impl.utilities import get_identity, make_auth_func
 from .impl.looping import loop
 from .impl.wsgi_listener import WsgiListener
-from .impl.api_app import ApiApp
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
@@ -193,15 +192,6 @@ elif args.line_mode:
 else:
     interactive = stdin.isatty()
 
-api_listener: Optional[WsgiListener] = None
-if args.api_listen_on:
-    api_app: ApiApp = ApiApp(database, args.auth_token)
-    api_ip_addr, api_port = parse_listen_on(args.api_listen_on, "*", "8082")
-    api_listener: WsgiListener = WsgiListener(api_app, ip_addr=api_ip_addr, port=int(api_port))
-
-    if not args.auth_token:
-        logger.warning("No auth token set; API is not secured. Restart server and pass '--auth_token YOUR_TOKEN' to secure.")
-
 console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
 
-loop(console, database, wsgi_listener, api_listener, context_manager=console)
+loop(console, database, wsgi_listener, context_manager=console)

@@ -8,7 +8,13 @@ process.chdir(__dirname + "/..");
     console.log("starting");
     const server = new Expector(
         "python3",
-        ["-u", "-m", "gink", "--api_listen_on", `127.0.0.1:${port}`, "--auth_token", "abcd"]
+        ["-u", "-m", "gink", "--wsgi", "gink.crud.app", "--wsgi_listen_on", `127.0.0.1:${port}`],
+        {
+            env: {
+                AUTH_TOKEN: "abcd",
+                ...process.env
+            }
+        }
     );
     await server.expect("listening", 2000);
     await sleep(1000);
@@ -23,7 +29,7 @@ process.chdir(__dirname + "/..");
     // PUT a number in json format
     const put1 = new Expector(
         "curl",
-        ["-X", "PUT", "-H", "Authorization: Bearer abcd", "-d", `{"value": 3}`, `http://127.0.0.1:${port}/key1`]
+        ["-X", "PUT", "-H", "Authorization: abcd", "-d", `{"value": 3}`, `http://127.0.0.1:${port}/key1`]
     );
     await put1.expect("Entry updated or created.", 2000);
 
@@ -43,7 +49,7 @@ process.chdir(__dirname + "/..");
     // PUT plain text
     const put3 = new Expector(
         "curl",
-        ["-X", "PUT", "-H", "Authorization: Bearer abcd", "-d", `${JSON.stringify({
+        ["-X", "PUT", "-H", "Authorization: abcd", "-d", `${JSON.stringify({
             value: "plain text test"
         })}`, `http://127.0.0.1:${port}/key3`]
     );

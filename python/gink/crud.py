@@ -1,11 +1,20 @@
+"""
+The WSGI API application for gink operations.
+
+To run this application, pass --wsgi gink.crud.app when starting gink.
+
+Set auth key with env AUTH_TOKEN.
+
+"""
+
 from json import loads, dumps
 from json.decoder import JSONDecodeError
+from os import environ
 
-from .database import Database
-from .directory import Directory
+from .impl.directory import Directory
 
 
-class ApiApp():
+class Crud():
     """
     WSGI application to GET and PUT data from/in a Gink database.
 
@@ -22,10 +31,9 @@ class ApiApp():
     # Returns 3
 
     """
-    def __init__(self, database: Database, auth_token: str):
-        self.database = database
-        self.root = Directory(database=database, arche=True)
-        self.auth_token = auth_token
+    def __init__(self):
+        self.root = Directory(arche=True)
+        self.auth_token = environ.get("AUTH_TOKEN")
 
     def __call__(self, environ, start_response):
         raw_path = environ.get('PATH_INFO')
@@ -33,13 +41,14 @@ class ApiApp():
         if not raw_path or raw_path == '/':
             return self._bad_path_handler(start_response)
 
-        # If auth token is present, expect 'Bearer <token>' in the Authorization header.
+        # If auth token is present, expect token in the Authorization header.
         if self.auth_token:
             auth_header = environ.get('HTTP_AUTHORIZATION')
-            if not auth_header or auth_header != f"Bearer {self.auth_token}":
+            if not auth_header or self.auth_token not in auth_header:
                 return self._bad_auth_handler(start_response)
 
-        request_body = environ.get("wsgi.input").read().decode("utf-8")
+        request_body = environ.get("wsgi.input").read().decode('utf-8')
+
         if request_body:
             try:
                 body = loads(request_body)
@@ -69,8 +78,7 @@ class ApiApp():
                 except TypeError:
                     return self._bad_body_handler(start_response)
 
-            comment = body.get("comment")
-            self.root.set(raw_path.split("/"), value, comment=comment)
+            self.root.set(raw_path.split("/"), value)
             return self._set_handler(start_response)
 
         # elif environ.get("REQUEST_METHOD") == "DELETE":
@@ -141,4 +149,4 @@ class ApiApp():
         start_response(status, headers)
         return [b'Bad auth token.']
 
-
+app = Crud()
