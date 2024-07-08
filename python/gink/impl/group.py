@@ -19,15 +19,18 @@ class Group(Container):
                 muid: Optional[Union[Muid, str]] = None,
                 *,
                 contents: Optional[Set[Union[Muid, Container]]] = None,
-                database: Optional[Database]=None,
+                database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
             ):
         """
         Constructor for a group definition.
 
-        muid: the global id of this directory, created on the fly if None
-        db: database send bundles through, or last db instance created if None
+        muid: the global id of this container, created on the fly if None
+        contents: prefill the group with a set of muids or containers upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
         """
         immediate = False
         if bundler is None:
