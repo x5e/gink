@@ -16,6 +16,12 @@ from ..impl.key_set import KeySet
 from ..impl.log_backed_store import LogBackedStore
 from ..impl.looping import loop
 from ..impl.utilities import generate_timestamp
+from ..impl.box import Box
+from ..impl.pair_set import PairSet
+from ..impl.pair_map import PairMap
+from ..impl.property import Property
+# from ..impl.group import Group
+from ..impl.muid import Muid # needed for the exec() call in test_dump
 
 
 def test_database():
@@ -41,7 +47,10 @@ def test_add_bundle() -> None:
 
 
 def test_negative_as_of():
-    for store in [MemoryStore(), LmdbStore()]:
+    for store in [
+        LmdbStore(),
+        MemoryStore(),
+    ]:
         with closing(store):
             database = Database(store=store)
             bundler = Bundler("hello world")
@@ -133,28 +142,52 @@ def test_react_to_store_changes():
 
 
 def test_dump():
-    """
-        currently only tests that dump doesn't crash, in the future
-        this should test if the data output by dump can be re-read in
-        to reconsitute the database (thought might be done in an integraion test)
-    """
-    for store_type in [
-        LmdbStore,
-        MemoryStore,
+    for store in [
+        LmdbStore(),
+        MemoryStore(),
     ]:
-        store = store_type()
         with closing(store):
             database = Database(store=store)
             root = Directory(arche=True, database=database)
             root["foo"] = Directory()
             root["foo"]["bar"] = 91
+            seq_muid = Sequence(contents=[1, 2, "3"], database=database).get_muid()
+            ks_muid = KeySet(contents=[1, 2, "3"], database=database).get_muid()
+            box_muid = Box(contents="box contents", database=database).get_muid()
+            ps_muid = PairSet(contents=[(box_muid, ks_muid)], database=database).get_muid()
+            pm_muid = PairMap(contents={(box_muid, ks_muid): "value"}, database=database).get_muid()
+            prop_muid = Property(contents={root: "value"}, database=database).get_muid()
+            # TODO: group, vertex, verb, edge
+
             string_io = StringIO()
             database.dump(file=string_io)
-            """
-            db2 = Database(store=store_type())
+
+            db2 = Database(store=store)
             dumped = string_io.getvalue()
-            print(dumped)
-            eval(dumped.replace("\n", ";"))
+            # Note: the directories being loaded back in are automatically using db2
+            exec(dumped.replace("})\n", "})"))
+
             root2 = Directory(arche=True, database=db2)
             assert root2["foo"]["bar"] == 91
-            """
+
+            seq = Sequence(muid=seq_muid, database=db2)
+            assert seq.at(1)[1] == 2
+
+            ks = KeySet(muid=ks_muid, database=db2)
+            assert ks.contains("3")
+
+            box = Box(muid=box_muid, database=db2)
+            assert box.get() == "box contents"
+
+            ps = PairSet(muid=ps_muid, database=db2)
+            assert ps.contains((box_muid, ks_muid))
+
+            pm = PairMap(muid=pm_muid, database=db2)
+            assert pm.get((box_muid, ks_muid)) == "value"
+
+            prop = Property(muid=prop_muid, database=db2)
+            assert prop.get(root) == "value"
+
+            # TODO: fix group contents in constructor
+            # group = Group(muid=group_muid, database=db2)
+            # assert group.contains(box_muid)
