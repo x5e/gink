@@ -57,10 +57,8 @@ def app(env, start_response):
             value = request_body.decode()
         elif content_type == "application/json":
             value = loads(request_body.decode())
-        elif content_type == "application/octet-stream" or content_type == "application/x-www-form-urlencoded":
-            value = request_body # Default to binary
         else:
-            return _bad_type_handler(start_response)
+            value = request_body # Default to binary
 
         try:
             root.set(raw_path.split("/"), value)
@@ -121,12 +119,6 @@ def _bad_path_handler(start_response):
     headers = [('Content-type', 'text/plain')]
     start_response(status, headers)
     return [b'Please specify a directory/key path.']
-
-def _bad_type_handler(start_response):
-    status = '400 Bad Request'
-    headers = [('Content-type', 'text/plain')]
-    start_response(status, headers)
-    return [b'Content-Type must be application/json, text/plain, application/octet-stream, or application/x-www-form-urlencoded.']
 
 def _bad_method_handler(start_response):
     status = '405 Method Not Allowed'
