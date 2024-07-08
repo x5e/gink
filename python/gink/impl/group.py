@@ -18,7 +18,7 @@ class Group(Container):
                 self,
                 muid: Optional[Union[Muid, str]] = None,
                 *,
-                contents: Optional[Dict[Set[Union[Muid, Container]]]] = None,
+                contents: Optional[Dict[str, Set[Union[Muid, Container]]]] = None,
                 database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
