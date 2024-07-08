@@ -17,11 +17,15 @@ from .utilities import experimental
 class Vertex(Container):
     BEHAVIOR = VERTEX
 
-    def __init__(self, *,
-                 arche: bool = False,
-                 muid: Optional[Muid] = None,
-                 bundler: Optional[Bundler] = None,
-                 database: Optional[Database] = None):
+    def __init__(
+                self,
+                muid: Optional[Union[Muid, str]] = None,
+                *,
+                arche: Optional[bool] = None,
+                database: Optional[Database]=None,
+                bundler: Optional[Bundler] = None,
+                comment: Optional[str] = None,
+            ):
         """
         Creates a placeholder node to contain the idea of something.
 
@@ -32,12 +36,16 @@ class Vertex(Container):
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = Bundler()
-        if arche:
-            muid = Muid(-1, -1, VERTEX)
-        if muid is None:
-            muid = Container._create(VERTEX, database=database, bundler=bundler)
-        Container.__init__(self, muid=muid, database=database)
+            bundler = Bundler(comment)
+
+        Container.__init__(self,
+                behavior=VERTEX,
+                muid=muid,
+                arche=arche,
+                database=database,
+                bundler=bundler,
+            )
+
         if len(bundler) and immediate:
             self._database.bundle(bundler)
 
@@ -97,21 +105,34 @@ Database.register_container_type(Vertex)
 class Verb(Container):
     BEHAVIOR = EDGE_TYPE
 
-    def __init__(self, *,
-                 arche=False,
-                 muid: Optional[Muid] = None,
-                 database: Optional[Database] = None,
-                 contents: Optional[Iterable[Edge]] = None):
-        database = database or Database.get_last()
-        bundler = Bundler()
-        if arche:
-            muid = Muid(-1, -1, EDGE_TYPE)
-        if muid is None:
-            muid = Container._create(EDGE_TYPE, database=database, bundler=bundler)
-        Container.__init__(self, muid=muid, database=database)
+    def __init__(
+                self,
+                *,
+                muid: Optional[Union[Muid, str]] = None,
+                arche: Optional[bool] = None,
+                contents: Optional[Iterable[Edge]] = None,
+                database: Optional[Database]=None,
+                bundler: Optional[Bundler] = None,
+                comment: Optional[str] = None,
+            ):
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
+
+        Container.__init__(
+                self,
+                behavior=EDGE_TYPE,
+                muid=muid,
+                arche=arche,
+                database=database,
+                bundler=bundler,
+            )
+
         if contents:
             pass  # This is intentional! The edge constructors will restore them!
-        if len(bundler):
+
+        if immediate and len(bundler):
             self._database.bundle(bundler)
 
     def create_edge(

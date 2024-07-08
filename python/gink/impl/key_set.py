@@ -1,6 +1,6 @@
 """ Contains the key set class definition """
 
-from typing import Optional, Iterable, Container as StandardContainer, Set
+from typing import Optional, Iterable, Container as StandardContainer, Set, Union
 
 from .database import Database
 from .muid import Muid
@@ -15,27 +15,38 @@ class KeySet(Container):
     _missing = object()
     BEHAVIOR = KEY_SET
 
-    def __init__(self, arche: Optional[bool] = None, bundler: Optional[Bundler] = None, contents = None,
-                 muid: Optional[Muid] = None, database = None, comment: Optional[str] = None):
+    def __init__(
+                self,
+                muid: Optional[Union[Muid, str]] = None,
+                *,
+                contents = None,
+                database: Optional[Database]=None,
+                bundler: Optional[Bundler] = None,
+                comment: Optional[str] = None,
+            ):
         """
         Constructor for a set proxy.
 
         muid: the global id of this set, created on the fly if None
         db: database to send bundles through, or last db instance created if None
         """
-        if arche:
-            muid = Muid(-1, -1, KEY_SET)
-        database = database or Database.get_last()
+        # if muid and muid.timestamp > 0 and contents:
+        # TODO [P3] check the store to make sure that the container is defined and compatible (possibly for set as well?)
+
         immediate = False
         if bundler is None:
             immediate = True
             bundler = Bundler(comment)
-        if muid is None:
-            muid = Container._create(KEY_SET, database=database, bundler=bundler)
-        elif muid.timestamp > 0 and contents:
-            # TODO [P3] check the store to make sure that the container is defined and compatible (possibly for set as well?)
-            pass
-        Container.__init__(self, muid=muid, database=database)
+
+        Container.__init__(
+                self,
+                behavior=KEY_SET,
+                muid=muid,
+                arche=False,
+                database=database,
+                bundler=bundler,
+            )
+
         if contents:
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)

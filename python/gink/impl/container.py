@@ -17,6 +17,26 @@ from .utilities import generate_timestamp
 
 class Container(Addressable, ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
+    def __init__(self,
+                 behavior: int,
+                 *,
+                 bundler: Bundler,
+                 muid: Optional[Union[Muid, str]] = None,
+                 arche: Optional[bool] = None,
+                 database: Optional[Database]=None,
+                 ):
+        assert isinstance(bundler, Bundler), "must pass a bundler to Container.__init__"
+        if isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        if arche:
+            muid = Muid(-1, -1, behavior)
+        database = database or Database.get_last()
+        if muid is None:
+            muid = Container._create(behavior, database=database, bundler=bundler)
+
+        # self._muid and self._database are set by Addressable.__init__
+        Addressable.__init__(self, database=database, muid=muid)
+
 
     def __repr__(self):
         if self._muid.timestamp == -1 and self._muid.medallion == -1:

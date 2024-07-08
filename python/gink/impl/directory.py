@@ -21,14 +21,16 @@ class Directory(Container):
     _missing = object()
     BEHAVIOR = DIRECTORY
 
-    def __init__(self, *ordered,
-                 arche: Optional[bool] = None,
-                 bundler: Optional[Bundler] = None,
-                 contents: Optional[dict]=None,
-                 muid: Optional[Muid] = None,
-                 database: Optional[Database]=None,
-                 comment: Optional[str] = None,
-                 ):
+    def __init__(
+                self,
+                muid: Optional[Union[Muid, str]] = None,
+                *,
+                arche: Optional[bool] = None,
+                contents: Optional[dict]=None,
+                database: Optional[Database]=None,
+                bundler: Optional[Bundler] = None,
+                comment: Optional[str] = None,
+            ):
         """
         Constructor for a directory proxy.
 
@@ -37,25 +39,27 @@ class Directory(Container):
         """
         self._logger = getLogger(self.__class__.__name__)
 
-        if ordered:
-            if isinstance(ordered[0], str):
-                muid = Muid.from_str(ordered[0])
-        if arche:
-            muid = Muid(-1, -1, DIRECTORY)
-        database = database or Database.get_last()
+        # if muid and muid.timestamp > 0 and contents:
+        # TODO [P3] check the store to make sure that the container is defined and compatible
+
         immediate = False
         if bundler is None:
             immediate = True
             bundler = Bundler(comment)
-        if muid is None:
-            muid = Container._create(DIRECTORY, database=database, bundler=bundler)
-        elif muid.timestamp > 0 and contents:
-            # TODO [P3] check the store to make sure that the container is defined and compatible
-            pass
-        Container.__init__(self, muid=muid, database=database)
+
+        Container.__init__(
+                self,
+                behavior=DIRECTORY,
+                muid=muid,
+                arche=arche,
+                database=database,
+                bundler=bundler,
+            )
+
         if contents:
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
+
         if immediate and len(bundler):
             self._database.bundle(bundler)
 

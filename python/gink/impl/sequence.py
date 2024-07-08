@@ -16,35 +16,29 @@ from .utilities import generate_timestamp
 class Sequence(Container):
     BEHAVIOR = SEQUENCE
 
-    def __init__(self,
-                 *ordered,
-                 contents: Optional[Iterable] = None,
-                 muid: Optional[Muid] = None,
-                 database: Optional[Database] = None,
-                 arche: bool = False,
-                 bundler: Optional[Bundler] = None,
-                 comment: Optional[str] = None,
-                 ):
-        """
-        muid: the global id of this sequence, created on the fly if None
-        database: where to send bundles through, or last db instance created if None
-        """
-        if ordered:
-            if isinstance(ordered[0], str):
-                muid = Muid.from_str(ordered[0])
-        if arche:
-            muid = Muid(-1, -1, SEQUENCE)
-        database = database or Database.get_last()
+    def __init__(
+                self,
+                muid: Optional[Union[Muid, str]] = None,
+                *,
+                arche: Optional[bool] = None,
+                contents: Optional[Iterable] = None,
+                database: Optional[Database]=None,
+                bundler: Optional[Bundler] = None,
+                comment: Optional[str] = None,
+            ):
         immediate = False
         if bundler is None:
             immediate = True
             bundler = Bundler(comment)
-        if muid is None:
-            muid = Container._create(
-                SEQUENCE, database=database, bundler=bundler)
-        Container.__init__(self, muid=muid, database=database)
-        self._muid = muid
-        self._database = database
+
+        Container.__init__(
+                self,
+                behavior=SEQUENCE,
+                muid=muid,
+                arche=arche,
+                database=database,
+                bundler=bundler,
+        )
         if contents is not None:
             self.clear(bundler=bundler)
             self.extend(contents, bundler=bundler)

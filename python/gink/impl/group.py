@@ -4,7 +4,7 @@ from typing import Optional, Union, Set, Iterable
 
 from .typedefs import GenericTimestamp
 from .container import Container
-from .coding import deletion, inclusion
+from .coding import deletion, inclusion, GROUP
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
@@ -14,22 +14,38 @@ from .builders import Behavior
 class Group(Container):
     BEHAVIOR = Behavior.GROUP
 
-    def __init__(self, *, contents: Optional[Set[Union[Muid, Container]]] = None,
-                 muid: Optional[Muid] = None, database=None):
+    def __init__(
+                self,
+                muid: Optional[Union[Muid, str]] = None,
+                *,
+                contents: Optional[Set[Union[Muid, Container]]] = None,
+                database: Optional[Database]=None,
+                bundler: Optional[Bundler] = None,
+                comment: Optional[str] = None,
+            ):
         """
         Constructor for a group definition.
 
         muid: the global id of this directory, created on the fly if None
         db: database send bundles through, or last db instance created if None
         """
-        database = database or Database.get_last()
-        bundler = Bundler()
-        if muid is None:
-            muid = Container._create(Behavior.GROUP, database=database, bundler=bundler)
-        Container.__init__(self, muid=muid, database=database)
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
+
+        Container.__init__(
+                self,
+                behavior=GROUP,
+                muid=muid,
+                arche=False,
+                database=database,
+                bundler=bundler,
+            )
+
         if contents:
             raise NotImplementedError()
-        if len(bundler):
+        if immediate and len(bundler):
             self._database.bundle(bundler)
 
     def include(self, what: Union[Muid, Container], *,
