@@ -22,20 +22,24 @@ class Directory(Container):
     BEHAVIOR = DIRECTORY
 
     def __init__(
-                self,
-                muid: Optional[Union[Muid, str]] = None,
-                *,
-                arche: Optional[bool] = None,
-                contents: Optional[dict]=None,
-                database: Optional[Database]=None,
-                bundler: Optional[Bundler] = None,
-                comment: Optional[str] = None,
-            ):
+            self,
+            muid: Optional[Union[Muid, str]] = None,
+            *,
+            arche: Optional[bool] = None,
+            contents: Optional[dict] = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
         """
         Constructor for a directory proxy.
 
-        muid: the global id of this directory, created on the fly if None
-        db: database send bundles through, or last db instance created if None
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        contents: prefill the directory with a dict of key: value pairs upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
         """
         self._logger = getLogger(self.__class__.__name__)
 
@@ -54,7 +58,7 @@ class Directory(Container):
                 arche=arche,
                 database=database,
                 bundler=bundler,
-            )
+        )
 
         if contents:
             self.clear(bundler=bundler)

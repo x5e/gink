@@ -16,19 +16,22 @@ class KeySet(Container):
     BEHAVIOR = KEY_SET
 
     def __init__(
-                self,
-                muid: Optional[Union[Muid, str]] = None,
-                *,
-                contents = None,
-                database: Optional[Database]=None,
-                bundler: Optional[Bundler] = None,
-                comment: Optional[str] = None,
-            ):
+            self,
+            muid: Optional[Union[Muid, str]] = None,
+            *,
+            contents: Optional[Iterable[UserKey]] = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
         """
         Constructor for a set proxy.
 
-        muid: the global id of this set, created on the fly if None
-        db: database to send bundles through, or last db instance created if None
+        muid: the global id of this container, created on the fly if None
+        contents: prefill the key set with an iterable of keys upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
         """
         # if muid and muid.timestamp > 0 and contents:
         # TODO [P3] check the store to make sure that the container is defined and compatible (possibly for set as well?)
@@ -45,7 +48,7 @@ class KeySet(Container):
                 arche=False,
                 database=database,
                 bundler=bundler,
-            )
+        )
 
         if contents:
             self.clear(bundler=bundler)

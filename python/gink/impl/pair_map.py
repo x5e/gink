@@ -14,21 +14,24 @@ class PairMap(Container):
     BEHAVIOR = PAIR_MAP
 
     def __init__(
-                self,
-                muid: Optional[Union[Muid, str]] = None,
-                *,
-                arche: Optional[bool] = None,
-                contents: Optional[dict]=None,
-                database: Optional[Database]=None,
-                bundler: Optional[Bundler] = None,
-                comment: Optional[str] = None,
-            ):
+            self,
+            muid: Optional[Union[Muid, str]] = None,
+            *,
+            arche: Optional[bool] = None,
+            contents: Optional[dict] = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
         """
-        Constructor for a pair set proxy.
+        Constructor for a pair map proxy.
 
-        contents: dictionary of (Vertex, Vertex): Value to populate the pair map
-        muid: the global id of this pair set, created on the fly if None
-        db: database to send bundles through, or last db instance created if None
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        contents: prefill the pair map with a dict of (Vertex, Vertex): Value pairs upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
         """
         # if muid and muid.timestamp > 0 and contents:
         # TODO [P3] check the store to make sure that the container is defined and compatible

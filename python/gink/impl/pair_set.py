@@ -18,16 +18,19 @@ class PairSet(Container):
                 muid: Optional[Union[Muid, str]] = None,
                 *,
                 contents: Union[Iterable[Tuple[Vertex, Vertex]], None] = None,
-                database: Optional[Database]=None,
+                database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
             ):
         """
         Constructor for a pair set proxy.
 
-        muid: the global id of this pair set, created on the fly if None
-        contents: an iterable of pairs (an iterable of tuples) to populate the pair set at initialization
-        db: database to send bundles through, or last db instance created if None
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        contents: prefill the pair set with an iterable of (Vertex, Vertex) upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
         """
         # if muid and muid.timestamp > 0 and contents:
         # TODO [P3] check the store to make sure that the container is defined and compatible

@@ -17,15 +17,25 @@ class Sequence(Container):
     BEHAVIOR = SEQUENCE
 
     def __init__(
-                self,
-                muid: Optional[Union[Muid, str]] = None,
-                *,
-                arche: Optional[bool] = None,
-                contents: Optional[Iterable] = None,
-                database: Optional[Database]=None,
-                bundler: Optional[Bundler] = None,
-                comment: Optional[str] = None,
-            ):
+            self,
+            muid: Optional[Union[Muid, str]] = None,
+            *,
+            arche: Optional[bool] = None,
+            contents: Optional[Iterable] = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
+        """
+        Constructor for a sequence proxy.
+
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        contents: prefill the sequence with an iterable of values upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
+        """
         immediate = False
         if bundler is None:
             immediate = True

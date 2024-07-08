@@ -15,20 +15,24 @@ class Property(Container):
     BEHAVIOR = PROPERTY
 
     def __init__(
-                self,
-                muid: Optional[Union[Muid, str]] = None,
-                *,
-                arche: Optional[bool] = None,
-                contents: Optional[Dict[Union[Container, Edge], Union[UserValue, Container]]] = None,
-                database: Optional[Database] = None,
-                bundler: Optional[Bundler] = None,
-                comment: Optional[str] = None,
-            ):
+            self,
+            muid: Optional[Union[Muid, str]] = None,
+            *,
+            arche: Optional[bool] = None,
+            contents: Optional[Dict[Union[Container, Edge], Union[UserValue, Container]]] = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
         """
-        Constructor for a property definition.
+        Constructor for a property.
 
-        muid: the global id of this directory, created on the fly if None
-        db: database send bundles through, or last db instance created if None
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        contents: prefill the property with a dictionary upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
         """
         immediate = False
         if bundler is None:
@@ -42,7 +46,7 @@ class Property(Container):
                 arche=arche,
                 database=database,
                 bundler=bundler,
-            )
+        )
         if contents:
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)

@@ -18,19 +18,22 @@ class Vertex(Container):
     BEHAVIOR = VERTEX
 
     def __init__(
-                self,
-                muid: Optional[Union[Muid, str]] = None,
-                *,
-                arche: Optional[bool] = None,
-                database: Optional[Database]=None,
-                bundler: Optional[Bundler] = None,
-                comment: Optional[str] = None,
-            ):
+            self,
+            muid: Optional[Union[Muid, str]] = None,
+            *,
+            arche: Optional[bool] = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
         """
         Creates a placeholder node to contain the idea of something.
 
-        muid: the global id of this vertex, created on the fly if None
-        db: database send bundles through, or last db instance created if None
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
         """
         database = database or Database.get_last()
         immediate = False
@@ -38,13 +41,14 @@ class Vertex(Container):
             immediate = True
             bundler = Bundler(comment)
 
-        Container.__init__(self,
+        Container.__init__(
+                self,
                 behavior=VERTEX,
                 muid=muid,
                 arche=arche,
                 database=database,
                 bundler=bundler,
-            )
+        )
 
         if len(bundler) and immediate:
             self._database.bundle(bundler)
@@ -106,15 +110,25 @@ class Verb(Container):
     BEHAVIOR = EDGE_TYPE
 
     def __init__(
-                self,
-                *,
-                muid: Optional[Union[Muid, str]] = None,
-                arche: Optional[bool] = None,
-                contents: Optional[Iterable[Edge]] = None,
-                database: Optional[Database]=None,
-                bundler: Optional[Bundler] = None,
-                comment: Optional[str] = None,
-            ):
+            self,
+            *,
+            muid: Optional[Union[Muid, str]] = None,
+            arche: Optional[bool] = None,
+            contents: Optional[Iterable[Edge]] = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
+        """
+        Constructor for a Verb (otherwise known as Edge Type).
+
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        contents: prefill the Verb with an iterable of edges upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
+        """
         immediate = False
         if bundler is None:
             immediate = True
@@ -127,7 +141,7 @@ class Verb(Container):
                 arche=arche,
                 database=database,
                 bundler=bundler,
-            )
+        )
 
         if contents:
             pass  # This is intentional! The edge constructors will restore them!
