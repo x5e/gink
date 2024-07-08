@@ -17,7 +17,6 @@ class PairSet(Container):
                 self,
                 muid: Optional[Union[Muid, str]] = None,
                 *,
-                arche: Optional[bool] = None,
                 contents: Union[Iterable[Tuple[Vertex, Vertex]], None] = None,
                 database: Optional[Database]=None,
                 bundler: Optional[Bundler] = None,
@@ -42,7 +41,7 @@ class PairSet(Container):
                 self,
                 behavior=PAIR_SET,
                 muid=muid,
-                arche=arche,
+                arche=False,
                 database=database,
                 bundler=bundler,
             )
@@ -106,7 +105,7 @@ class PairSet(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ return the contents of this container as a string """
         as_of = self._database.resolve_timestamp(as_of)
-        identifier = repr(str(self._muid))
+        identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "["
         stuffing = ""

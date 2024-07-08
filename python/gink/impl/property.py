@@ -55,7 +55,7 @@ class Property(Container):
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "arche=True"
         else:
-            identifier = repr(str(self._muid))
+            identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         stuffing = [f"{k!r}:{v!r}" for k, v in self.items(as_of=as_of)]

@@ -220,11 +220,11 @@ class KeySet(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ return the contents of this container as a string """
         as_of = self._database.resolve_timestamp(as_of)
-        identifier = repr(str(self._muid))
+        identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         src = self._database.get_store().get_keyed_entries(container=self._muid, behavior=self.BEHAVIOR, as_of=as_of)
-        stuffing = [str(decode_key(entry_pair.builder)) for entry_pair in src]
+        stuffing = [repr(decode_key(entry_pair.builder)) for entry_pair in src]
         as_one_line = result + ",".join(stuffing) + "})"
         if len(as_one_line) < 80:
             return as_one_line

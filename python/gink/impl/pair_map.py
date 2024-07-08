@@ -123,7 +123,7 @@ class PairMap(Container):
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "arche=True"
         else:
-            identifier = repr(str(self._muid))
+            identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         stuffing = ""
@@ -136,7 +136,7 @@ class PairMap(Container):
                 value = decode_entry_occupant(self._muid, entry_pair.builder)
                 stuffing += f"""\n\t(Muid{(left.timestamp, left.medallion, left.offset)},
                 Muid{(rite.timestamp, rite.medallion, rite.offset)}):
-                "{value if not isinstance(value, bytes) else value!r}","""
+                {value if not isinstance(value, bytes) else value!r},"""
 
         as_one_line = result + ", ".join(stuffing) + "})"
         if len(as_one_line) < 80:

@@ -63,7 +63,7 @@ class Group(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this group to a string.
         """
-        identifier = repr(str(self._muid))
+        identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         stuffing = [repr(_) for _ in self.get_member_ids(as_of=as_of)]

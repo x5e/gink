@@ -53,7 +53,7 @@ class Sequence(Container):
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "arche=True"
         else:
-            identifier = repr(str(self._muid))
+            identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents=["""
         stuffing = [repr(val) for val in self.values(as_of=as_of)]
         as_one_line = result + ", ".join(stuffing) + "])"

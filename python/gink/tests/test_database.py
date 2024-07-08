@@ -155,7 +155,7 @@ def test_dump():
             ks_muid = KeySet(contents=[1, 2, "3"], database=database).get_muid()
             box_muid = Box(contents="box contents", database=database).get_muid()
             ps_muid = PairSet(contents=[(box_muid, ks_muid)], database=database).get_muid()
-            pm_muid = PairMap(contents={(box_muid, ks_muid): "value"}, database=database).get_muid()
+            pm_muid = PairMap(contents={(box_muid, ks_muid): "value", (box_muid, ps_muid): 3}, database=database).get_muid()
             prop_muid = Property(contents={root: "value"}, database=database).get_muid()
             # TODO: group, vertex, verb, edge
 
@@ -172,6 +172,7 @@ def test_dump():
 
             seq = Sequence(muid=seq_muid, database=db2)
             assert seq.at(1)[1] == 2
+            assert seq.at(2)[1] == "3"
 
             ks = KeySet(muid=ks_muid, database=db2)
             assert ks.contains("3")
@@ -184,6 +185,7 @@ def test_dump():
 
             pm = PairMap(muid=pm_muid, database=db2)
             assert pm.get((box_muid, ks_muid)) == "value"
+            assert pm.get((box_muid, ps_muid)) == 3, pm.get((box_muid, ps_muid))
 
             prop = Property(muid=prop_muid, database=db2)
             assert prop.get(root) == "value"
