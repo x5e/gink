@@ -181,6 +181,8 @@ if args.wsgi:
     if not app:
         raise ValueError(f"{function} not found in {module}")
     ip_addr, port = parse_listen_on(args.wsgi_listen_on, "*", "8081")
+    # Note: this should always be called after a database is initialized
+    # to prevent Database.get_last() from breaking.
     wsgi_listener = WsgiListener(app, ip_addr=ip_addr, port=int(port))
 
 auth_func = make_auth_func(args.auth_token) if args.auth_token else None
