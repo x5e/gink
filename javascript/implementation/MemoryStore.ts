@@ -3,13 +3,13 @@ import {
     ensure,
     generateTimestamp,
     muidToString,
-    muidToTuple,
     muidTupleToString,
     unwrapValue,
     sameData,
     getActorId,
     toLastWithPrefixBeforeSuffix,
-    timestampToString,
+    strToMuid,
+    muidToTuple
 } from "./utils";
 import {
     AsOf,
@@ -31,10 +31,11 @@ import {
     ActorId,
     BroadcastFunc,
     Movement,
+    BundleView,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
+import { Behavior, ChangeBuilder, EntryBuilder } from "./builders";
 import { MapIterator, TreeMap } from 'jstreemap';
 import {
     getStorageKey as getStorageKey,
@@ -43,12 +44,12 @@ import {
     buildPairLists,
     buildPointeeList,
     medallionChainStartToString,
-    extractBundleInfo,
     buildChainTracker,
     toStorageKey,
     bundleKeyToInfo,
     storageKeyToString,
 } from "./store_utils";
+import { Retrieval } from "./Retrieval";
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
@@ -64,7 +65,7 @@ export class MemoryStore implements Store {
     private removals: TreeMap<string, string> = new TreeMap(); // placementId,removalId => ""
     private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
-    private locations: TreeMap<string,string> = new TreeMap();
+    private locations: TreeMap<string, string> = new TreeMap();
     private bySource: TreeMap<string, Entry> = new TreeMap();
     private byTarget: TreeMap<string, Entry> = new TreeMap();
     constructor(private keepingHistory = true) {
@@ -121,10 +122,10 @@ export class MemoryStore implements Store {
         return this.chainInfos.values();
     }
 
-    async addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
+    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo> {
         await this.ready;
-        const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = extractBundleInfo(bundleBuilder);
+        const bundleBuilder = bundle.builder;
+        const bundleInfo = bundle.info;
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const oldChainInfo = this.chainInfos.get(medallionChainStartToString([medallion, chainStart]));
         if (oldChainInfo || priorTime) {
@@ -147,12 +148,12 @@ export class MemoryStore implements Store {
 
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const bundleKey: BundleInfoTuple = MemoryStore.bundleInfoToKey(bundleInfo);
-        this.trxns.set(bundleKey, bundleBytes);
+        this.trxns.set(bundleKey, bundle.bytes);
         const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
-            const changeAddress = {timestamp, medallion, offset};
+            const changeAddress = { timestamp, medallion, offset };
             if (changeBuilder.hasContainer()) {
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
                 this.containers.set(muidTupleToString(changeAddressTuple), containerBytes);
@@ -200,11 +201,11 @@ export class MemoryStore implements Store {
                     while (true) {
                         const it = this.placements.lowerBound(containerIdStr);
                         const to = this.placements.upperBound(`${containerIdStr},~,~`);
-                        if (it.equals(to) || ! it.key)
+                        if (it.equals(to) || !it.key)
                             break;
                         this.placements.erase(it);
                         // TODO: also delete removals, locations
-                        }
+                    }
                     // When doing a purging clear, remove previous clearances for the container.
                     const lowerClearances = this.clearances.lowerBound(`${containerIdStr}`);
                     const upperClearances = this.clearances.upperBound(`${containerIdStr},~`);
@@ -244,7 +245,7 @@ export class MemoryStore implements Store {
             while (true) {
                 if (iterator.equals(this.locations.end())) break;
                 if (!iterator.key.startsWith(entryIdStr)) break;
-                entry = {...this.placements.get(iterator.value), placementId: movementId, storageKey: dest};
+                entry = { ...this.placements.get(iterator.value), placementId: movementId, storageKey: dest };
                 this.placements.delete(iterator.value);
                 this.locations.erase(iterator);
                 iterator.next();
@@ -256,7 +257,7 @@ export class MemoryStore implements Store {
                 return;
             }
             ensure(iterator.key && iterator.key.startsWith(entryIdStr));
-            entry = {...this.placements.get(iterator.value), placementId: movementId, storageKey: dest};
+            entry = { ...this.placements.get(iterator.value), placementId: movementId, storageKey: dest };
             const removingIdStr = iterator.value.slice(-34);
             this.removals.set(`${removingIdStr},${movementIdStr}`, "");
         }
@@ -319,16 +320,16 @@ export class MemoryStore implements Store {
         return entry;
     }
 
-    async getBundles(callBack: (bundleBytes: BundleBytes, bundleInfo: BundleInfo) => void) {
+    async getBundles(callBack: (bundle: BundleView) => void) {
         for (const [key, val] of this.trxns) {
             const bundleKey: BundleInfoTuple = key;
             const bundleInfo = bundleKeyToInfo(bundleKey);
             const bundleBytes: BundleBytes = val;
-            callBack(bundleBytes, bundleInfo);
+            callBack(new Retrieval({ bundleBytes, bundleInfo }));
         }
     }
 
-    getEntryById(entryMuid: Muid): Promise<Entry | undefined> {
+    getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined> {
         return Promise.resolve(this.getEntryByIdSync(entryMuid));
     }
 
@@ -336,7 +337,7 @@ export class MemoryStore implements Store {
     getEntryByIdSync(entryMuid: Muid): Entry | undefined {
         const entryIdStr = muidToString(entryMuid);
         const it = toLastWithPrefixBeforeSuffix(this.locations, entryIdStr);
-        if (! it)
+        if (!it)
             return undefined;
         return this.placements.get(it.value);
     }
@@ -352,15 +353,15 @@ export class MemoryStore implements Store {
         const iterator = this.placements.lowerBound(srcAsStr);
 
         const result = new Map();
-        for (;iterator && iterator.key && !iterator.equals(this.placements.end()); iterator.next()) {
+        for (; iterator && iterator.key && !iterator.equals(this.placements.end()); iterator.next()) {
             const parts = iterator.key.split(",");
             if (parts[0] != srcAsStr) break;
-            const placementIdStr = parts[parts.length-1];
+            const placementIdStr = parts[parts.length - 1];
             if (placementIdStr < clearTimeStr || placementIdStr > asOfTsStr)
                 continue;
             const entry: Entry = iterator.value;
             ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET ||
-                entry.behavior == Behavior.GROUP ||entry.behavior == Behavior.PAIR_SET ||
+                entry.behavior == Behavior.GROUP || entry.behavior == Behavior.PAIR_SET ||
                 entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
 
             const key = storageKeyToString(entry.storageKey);
@@ -369,6 +370,32 @@ export class MemoryStore implements Store {
         }
         return result;
     };
+
+    async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
+        const asOfTs = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
+        const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
+        const desiredSrc: [number, number, number] = [-1, -1, Behavior.PROPERTY];
+        const srcAsStr = muidTupleToString(desiredSrc);
+        const clearanceTime: Timestamp = this.getLastClearanceTime(srcAsStr, asOfTs);
+        const clearTimeStr = muidTupleToString([clearanceTime, 0, 0]);
+        const iterator = this.placements.lowerBound(srcAsStr);
+
+        // TODO: This is a full scan and should definitely be replaced by an index
+        const result = [];
+        for (; iterator && iterator.key && !iterator.equals(this.placements.end()); iterator.next()) {
+            const parts = iterator.key.split(",");
+            if (parts[0] != srcAsStr) break;
+            const placementIdStr = muidTupleToString(iterator.value.placementId);
+            if (placementIdStr < clearTimeStr || placementIdStr > asOfTsStr)
+                continue;
+            const entry: Entry = iterator.value;
+            ensure(entry.behavior == Behavior.PROPERTY);
+            if (entry.value != name) continue;
+            const key = storageKeyToString(entry.storageKey);
+            if (!entry.deletion) result.push(strToMuid(key));
+        }
+        return result;
+    }
 
     /**
      * Returns entry data for a List.
@@ -405,7 +432,7 @@ export class MemoryStore implements Store {
             it = lower;
         }
         const needed = through < 0 ? -through : through + 1;
-        for (;returning.size < needed; through < 0 ? it.prev() : it.next()) {
+        for (; returning.size < needed; through < 0 ? it.prev() : it.next()) {
             // '0616C86BB4D7B4-1A86FC813F72F-00001,1713899916549000,0616C86BB4DB88-1A86FC813F72F-00001'
             const placementKey = it.key;
             if (!placementKey)
@@ -440,7 +467,7 @@ export class MemoryStore implements Store {
             const prefix = `${containerIdStr},${storageKeyToString(entry.storageKey)}`;
             for (let iterator = toLastWithPrefixBeforeSuffix(this.placements, prefix);
                 iterator && iterator.key && iterator.key.startsWith(prefix); iterator.prev()) {
-                if (entry.purging || ! this.keepingHistory) {
+                if (entry.purging || !this.keepingHistory) {
                     this.placements.erase(iterator);
                 } else {
                     const placementIdStr = iterator.key.slice(-34);
@@ -532,6 +559,16 @@ export class MemoryStore implements Store {
     // for debugging, not part of the api/interface
     getAllRemovals(): TreeMap<string, string> {
         return this.removals;
+    }
+
+    // for debugging, not part of the api/interface
+    getAllContainerTuples(): Array<MuidTuple> {
+        const arr = [];
+        arr.push([-1, -1, 4], [-1, -1, 10]);
+        for (const containerIdStr of this.containers.keys()) {
+            arr.push(muidToTuple(strToMuid(containerIdStr)));
+        }
+        return arr;
     }
 
     addFoundBundleCallBack(callback: BroadcastFunc): void {

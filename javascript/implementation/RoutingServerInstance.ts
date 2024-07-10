@@ -9,7 +9,6 @@ import { Buffer } from "buffer";
 import { ensure } from "./utils";
 
 
-
 export class RoutingServerInstance extends Database {
 
     constructor(readonly filePath: FilePath, identity: string, readonly logger: CallBack = console.log) {

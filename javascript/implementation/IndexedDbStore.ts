@@ -7,7 +7,8 @@ import {
     sameData,
     unwrapValue,
     getActorId,
-    muidTupleToString
+    muidTupleToString,
+    muidTupleToMuid
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {
@@ -30,9 +31,9 @@ import {
     Offset,
     Removal,
     Timestamp,
+    BundleView,
 } from "./typedefs";
 import {
-    extractBundleInfo,
     extractContainerMuid,
     getStorageKey,
     extractMovement,
@@ -48,6 +49,7 @@ import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { PromiseChainLock } from "./PromiseChainLock";
+import { Retrieval } from "./Retrieval";
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
     "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries" | "identities")[],
@@ -118,10 +120,10 @@ export class IndexedDbStore implements Store {
                 db.createObjectStore('activeChains', { keyPath: ["claimTime"] });
 
                 /*
-                Keep track of the identities of who started each chain.
-                key: [medallion, chainStart]
-                value: identity (string)
-                Not setting keyPath since [medallion, chainStart] can't be pulled from the value
+                    Keep track of the identities of who started each chain.
+                    key: [medallion, chainStart]
+                    value: identity (string)
+                    Not setting keyPath since [medallion, chainStart] can't be pulled from the value
                 */
                 db.createObjectStore('identities');
 
@@ -137,6 +139,7 @@ export class IndexedDbStore implements Store {
                 // The "entries" store has objects of type Entry (from typedefs)
                 const entries = db.createObjectStore('entries', { keyPath: "placementId" });
                 entries.createIndex("by-container-key-placement", ["containerId", "storageKey", "placementId"]);
+                entries.createIndex("by-container-name", ["containerId", "value"]); // Useful for quickly looking up a container by its name
 
                 // ideally the next three indexes would be partial indexes, covering only sequences and edges
                 // it might be worth pulling them out into separate lookup tables.
@@ -280,14 +283,14 @@ export class IndexedDbStore implements Store {
         return await this.getTransaction().objectStore('chainInfos').getAll();
     }
 
-    addBundle(bundleBytes: BundleBytes, claimChain?: boolean): Promise<BundleInfo> {
+    addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo> {
         if (!this.initialized) throw new Error("not initialized! need to await on .ready");
-        const bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(bundleBytes);
-        const bundleInfo = extractBundleInfo(bundleBuilder);
+        const bundleBuilder = bundle.builder;
+        const bundleInfo = bundle.info;
         //console.log(`got ${JSON.stringify(bundleInfo)}`);
 
         return this.processingLock.acquireLock().then((unlock) => {
-            return this.addBundleHelper(bundleBytes, bundleInfo, bundleBuilder, claimChain).then((trxn) => {
+            return this.addBundleHelper(bundle.bytes, bundleInfo, bundleBuilder, claimChain).then((trxn) => {
                 unlock();
                 return trxn.done.then(() => bundleInfo);
             }).finally(unlock);
@@ -327,7 +330,7 @@ export class IndexedDbStore implements Store {
         for (const [offset, changeBuilder] of changesMap.entries()) {
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
-            const changeAddress: Muid = {timestamp, medallion, offset};
+            const changeAddress: Muid = { timestamp, medallion, offset };
             if (changeBuilder.hasContainer()) {
                 const containerBytes = changeBuilder.getContainer().serializeBinary();
                 await wrappedTransaction.objectStore("containers").add(containerBytes, changeAddressTuple);
@@ -510,7 +513,7 @@ export class IndexedDbStore implements Store {
         const clearancesSearch = IDBKeyRange.bound([muidTuple], [muidTuple, [asOfTs]]);
         const clearancesCursor = await trxn.objectStore("clearances").openCursor(clearancesSearch, "prev");
         if (clearancesCursor) {
-            return <Timestamp> clearancesCursor.value.clearanceId[0];
+            return <Timestamp>clearancesCursor.value.clearanceId[0];
         }
         return <Timestamp>0;
     }
@@ -555,7 +558,7 @@ export class IndexedDbStore implements Store {
             source ? "sources" : "targets").openCursor(searchRange);
         const returning: Entry[] = [];
         const removals = trxn.objectStore("removals");
-        for (;entriesCursor; entriesCursor = await entriesCursor.continue()) {
+        for (; entriesCursor; entriesCursor = await entriesCursor.continue()) {
             const entry: Entry = entriesCursor.value;
             if (entry.placementId[0] >= asOfTs || entry.placementId[0] < clearanceTime)
                 continue;
@@ -578,7 +581,7 @@ export class IndexedDbStore implements Store {
      * @returns a promise of a list of ChangePairs
      */
     async getOrderedEntries(container: Muid, through = Infinity, asOf?: AsOf):
-            Promise<Map<string, Entry>> {
+        Promise<Map<string, Entry>> {
         const asOfTs: Timestamp = asOf ? (await this.asOfToTimestamp(asOf)) : generateTimestamp() + 1;
         const containerId = [container?.timestamp ?? 0, container?.medallion ?? 0, container?.offset ?? 0];
         const lower = [containerId, 0];
@@ -633,6 +636,33 @@ export class IndexedDbStore implements Store {
         return entry;
     }
 
+    async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
+        const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
+        const desiredSrc: MuidTuple = [-1, -1, Behavior.PROPERTY];
+        const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
+        const clearanceTime = await this.getClearanceTime(<Transaction><unknown>trxn, desiredSrc, asOfTs);
+        const lower = [desiredSrc, name];
+        const searchRange = IDBKeyRange.lowerBound(lower);
+        let cursor = await trxn.objectStore("entries").index("by-container-name")
+            .openCursor(searchRange, "next");
+        const result = [];
+
+        for (; cursor && matches(cursor.key[0], desiredSrc) && cursor.key[1] == name; cursor = await cursor.continue()) {
+            const entry = <Entry>cursor.value;
+            ensure(entry.behavior == Behavior.PROPERTY);
+            let key: [number, number, number];
+            if (Array.isArray(entry.storageKey) && entry.storageKey.length == 3) {
+                key = entry.storageKey;
+            }
+            ensure(key, "Unexpected storageKey for property: " + entry.storageKey);
+
+            if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime && !entry.deletion) {
+                result.push(muidTupleToMuid(key));
+            }
+        }
+        return result;
+    }
+
     // for debugging, not part of the api/interface
     async getAllEntryKeys() {
         return await this.wrapped.transaction("entries", "readonly").objectStore("entries").getAllKeys();
@@ -655,7 +685,7 @@ export class IndexedDbStore implements Store {
 
     // Note the IndexedDB has problems when await is called on anything unrelated
     // to the current bundle, so its best if `callBack` doesn't await.
-    async getBundles(callBack: (bundleBytes: BundleBytes, bundleInfo: BundleInfo) => void) {
+    async getBundles(callBack: (bundle: BundleView) => void) {
         await this.ready;
 
         // We loop through all bundles and send those the peer doesn't have.
@@ -664,7 +694,7 @@ export class IndexedDbStore implements Store {
             const bundleKey = <BundleInfoTuple>cursor.key;
             const bundleInfo = bundleKeyToInfo(bundleKey);
             const bundleBytes: BundleBytes = cursor.value;
-            callBack(bundleBytes, bundleInfo);
+            callBack(new Retrieval({ bundleBytes, bundleInfo }));
         }
     }
 

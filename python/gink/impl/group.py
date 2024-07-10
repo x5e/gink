@@ -14,7 +14,7 @@ from .builders import Behavior
 class Group(Container):
     BEHAVIOR = Behavior.GROUP
 
-    def __init__(self, *, contents: Optional[Set[Union[Muid, Container]]]=None,
+    def __init__(self, *, contents: Optional[Set[Union[Muid, Container]]] = None,
                  muid: Optional[Muid] = None, database=None):
         """
         Constructor for a group definition.
@@ -33,13 +33,13 @@ class Group(Container):
             self._database.bundle(bundler)
 
     def include(self, what: Union[Muid, Container], *,
-                bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+                bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         if isinstance(what, Container):
             what = what._muid
         return self._add_entry(key=what, value=inclusion, bundler=bundler, comment=comment)
 
     def exclude(self, what: Union[Muid, Container], *,
-                bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+                bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         if isinstance(what, Container):
             what = what._muid
         return self._add_entry(key=what, value=deletion, bundler=bundler, comment=comment)
@@ -98,5 +98,6 @@ class Group(Container):
             what = what._muid
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=what, as_of=ts)
         return bool(found and not found.builder.deletion)
+
 
 Database.register_container_type(Group)

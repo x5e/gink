@@ -1,4 +1,4 @@
-import { Behavior } from "./builders";
+import { Behavior, BundleBuilder } from "./builders";
 import { DBSchema } from "idb";
 
 export type Bytes = Uint8Array;
@@ -24,7 +24,7 @@ export type ActorId = number;  // process ID on the server side, something more 
 export type StorageKey = ScalarKey | MuidTuple | [MuidTuple, MuidTuple] | [];
 
 export interface BundleListener {
-    (bundleInfo: BundleInfo): Promise<void>;
+    (bundle: BundleView): Promise<void>;
 }
 
 export interface ClaimedChain {
@@ -47,7 +47,7 @@ export interface AuthFunction {
 }
 
 export interface BroadcastFunc {
-    (bundleBytes: BundleBytes, bundleInfo: BundleInfo): Promise<void>;
+    (bundle: BundleView): Promise<void>;
 }
 
 export interface Muid {
@@ -62,6 +62,12 @@ export interface BundleInfo {
     chainStart: ChainStart;
     priorTime?: PriorTime;
     comment?: string;
+}
+
+export interface BundleView {
+    bytes: BundleBytes;
+    info: BundleInfo;
+    builder: BundleBuilder;
 }
 
 // data structure to represent an Entry; some fields are tuples of 0 or 1 entries because
@@ -150,6 +156,7 @@ export interface IndexedDbStoreSchema extends DBSchema {
         key: MuidTuple;
         indexes: {
             "by-container-key-placement": [MuidTuple, ScalarKey | Timestamp | MuidTuple | [], MuidTuple];
+            "by-container-name": [MuidTuple, string]; // for use with global property and container names
             'pointees': Indexable;
             'locations': [MuidTuple, MuidTuple];
             'sources': Indexable;

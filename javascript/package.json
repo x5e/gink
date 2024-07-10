@@ -2,7 +2,7 @@
   "name": "@x5e/gink",
   "version": "${VERSION}",
   "description": "an eventually consistent database",
-  "main": "tsc.out/implementation/main.js",
+  "main": "tsc.out/implementation/index.js",
   "browser": {
     "@x5e/gink": "content_root/generated/packed.js",
     "fs": false,
@@ -33,7 +33,7 @@
   ],
   "bin": "./tsc.out/implementation/main.js",
   "scripts": {
-    "serve": "GINK_PORT=8080 ./tsc.out/implementation/main.js",
+    "serve": "./tsc.out/implementation/main.js -l",
     "build": "tsc",
     "test": "jest --testPathPattern=javascript/unit-tests",
     "browser-unit": "karma start",
@@ -42,6 +42,7 @@
   },
   "homepage": "https://github.com/x5e/gink#readme",
   "dependencies": {
+    "argparse": "^2.0.1",
     "chrome-remote-interface": "^0.32.2",
     "fake-indexeddb": "^4.0.1",
     "find-process": "^1.4.7",
@@ -55,7 +56,6 @@
     "@types/google-protobuf": "^3.15.6",
     "@types/jest": "^29.5.0",
     "@types/websocket": "^1.0.10",
-    "argparse": "^2.0.1",
     "expect": "^29.7.0",
     "jest-puppeteer": "^9.0.1",
     "karma": "^6.4.2",
@@ -64,7 +64,7 @@
     "karma-mocha-reporter": "^2.2.5",
     "karma-webpack": "^5.0.0",
     "node-loader": "^2.0.0",
-    "puppeteer": "^21.5.2",
+    "puppeteer": "^22.11.2",
     "ts-jest": "^29.0.5",
     "ts-loader": "^9.5.0",
     "webpack": "^5.89.0",

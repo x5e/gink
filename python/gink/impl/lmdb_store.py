@@ -5,7 +5,7 @@ from os import unlink
 from os.path import exists
 from logging import getLogger
 import uuid
-from typing import Tuple, Iterable, Optional, Set, Union, Mapping
+from typing import Tuple, Iterable, Optional, Set, Union, Mapping, Callable
 from struct import pack
 from pathlib import Path
 from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
@@ -13,11 +13,11 @@ from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
 # Gink Implementation
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
                        ContainerBuilder, ClearanceBuilder, Message, Behavior, ClaimBuilder)
-from .typedefs import MuTimestamp, UserKey, Medallion
+from .typedefs import MuTimestamp, UserKey, Medallion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper, BundleCallback
+from .abstract_store import AbstractStore, BundleWrapper
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .utilities import generate_timestamp, create_claim
@@ -25,7 +25,7 @@ from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, de
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
                      LocationKey, PROPERTY, BOX, GROUP, decode_value, EDGE_TYPE, PAIR_MAP, PAIR_SET, KEY_SET,
-                     normalize_entry_builder, VERTEX)
+                     normalize_entry_builder, VERTEX, new_entries_replace)
 
 
 class LmdbStore(AbstractStore):
@@ -38,6 +38,7 @@ class LmdbStore(AbstractStore):
             reset=False,
             retain_bundles=True,
             retain_entries=True,
+            apply_changes=True,
             map_size: int=2**30) -> None:
         """ Opens a gink.mdb file for use as a Store.
 
@@ -50,6 +51,7 @@ class LmdbStore(AbstractStore):
         """
         self._logger = getLogger(self.__class__.__name__)
         self._temporary = False
+        self._apply_changes = apply_changes
         if file_path is None:
             prefix = "/tmp/temp."
             if exists("/dev/shm"):
@@ -116,7 +118,7 @@ class LmdbStore(AbstractStore):
         return self._file_path
 
     def get_edge_entries(
-            self,
+            self, *,
             as_of: MuTimestamp,
             verb: Optional[Muid] = None,
             source: Optional[Muid] = None,
@@ -725,21 +727,21 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=placement_key.placer, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def refresh(self, callback: Optional[BundleCallback] = None) -> int:
+    def refresh(self, callback: Optional[Callable[[BundleWrapper], None]]=None) -> int:
         with self._handle.begin(write=False) as trxn:
             count = self._refresh_helper(trxn=trxn, callback=callback)
         if count:
             self._clear_notifications()
         return count
 
-    def _refresh_helper(self, trxn: Trxn, callback: Optional[BundleCallback] = None) -> int:
+    def _refresh_helper(self, trxn: Trxn, callback: Optional[Callable[[BundleWrapper], None]]=None) -> int:
         cursor = trxn.cursor(self._bundles)
         count = 0
         while cursor.set_range(encode_muts(self._seen_through + 1)):
             byte_key = cursor.key()
             wrapper = BundleWrapper(cursor.value())
             if callback is not None:
-                callback(wrapper.get_bytes(), wrapper.get_info())
+                callback(wrapper)
                 count += 1
             self._seen_through = decode_muts(byte_key) or 0
         return count
@@ -747,7 +749,7 @@ class LmdbStore(AbstractStore):
     def apply_bundle(
             self,
             bundle: Union[BundleWrapper, bytes],
-            callback: Optional[BundleCallback]=None,
+            callback: Optional[Callable[[BundleWrapper], None]]=None,
             claim_chain: bool=False
             ) -> bool:
         wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
@@ -767,32 +769,39 @@ class LmdbStore(AbstractStore):
                 if new_info.timestamp == new_info.chain_start:
                     trxn.put(bytes(new_info.get_chain()), new_info.comment.encode(), db=self._identities)
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
-                    bundle_location = encode_muts(generate_timestamp())
+                    bundle_receive_time = generate_timestamp()
+                    bundle_location = encode_muts(bundle_receive_time)
                     trxn.put(bundle_location, wrapper.get_bytes(), db=self._bundles)
+                    self._seen_through = bundle_receive_time
                     trxn.put(bytes(new_info), bundle_location, db=self._bundle_infos)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
-                change_items = list(builder.changes.items())  # type: ignore
+                change_items: List[int, ChangeBuilder] = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
                 if new_info.chain_start == new_info.timestamp:
                     trxn.put(bytes(chain_key), new_info.comment.encode())
-                for offset, change in change_items:  # type: ignore
-                    if change.HasField("container"):
-                        trxn.put(bytes(Muid(new_info.timestamp, new_info.medallion, offset)),
-                                 change.container.SerializeToString(), db=self._containers)
-                        continue
-                    if change.HasField("entry"):
-                        self._add_entry(new_info, trxn, offset, change.entry)
-                        continue
-                    if change.HasField("movement"):
-                        self._apply_movement(new_info, trxn, offset, change.movement)
-                        continue
-                    if change.HasField("clearance"):
-                        self._apply_clearance(new_info, trxn, offset, change.clearance)
-                        continue
-                    raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
+                for offset, change in change_items:
+                    if not self._apply_changes:
+                        break
+                    try:
+                        if change.HasField("container"):
+                            trxn.put(bytes(Muid(new_info.timestamp, new_info.medallion, offset)),
+                                    change.container.SerializeToString(), db=self._containers)
+                            continue
+                        if change.HasField("entry"):
+                            self._add_entry(new_info, trxn, offset, change.entry)
+                            continue
+                        if change.HasField("movement"):
+                            self._apply_movement(new_info, trxn, offset, change.movement)
+                            continue
+                        if change.HasField("clearance"):
+                            self._apply_clearance(new_info, trxn, offset, change.clearance)
+                            continue
+                        raise ValueError(f"Can't process change: {new_info} {offset} {change}")
+                    except ValueError as value_error:
+                        self._logger.error("could not process change %s, %s", value_error, change)
         self._clear_notifications()
         if needed and callback is not None:
-            callback(wrapper.get_bytes(), wrapper.get_info())
+            callback(wrapper)
         return needed
 
     def get_identity(self, chain: Chain, trxn: Optional[Trxn]=None, /) -> str:
@@ -909,7 +918,7 @@ class LmdbStore(AbstractStore):
         entry_muid = placement_key.placer
         container_muid = placement_key.container
         serialized_placement_key = bytes(placement_key)
-        if builder.behavior in (Behavior.DIRECTORY, Behavior.BOX, Behavior.PROPERTY, Behavior.GROUP):
+        if new_entries_replace(builder.behavior):
             found_entry = self.get_entry_by_key(container_muid, placement_key.middle)
             if found_entry:
                 if retaining:
@@ -982,22 +991,30 @@ class LmdbStore(AbstractStore):
                     by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
                     trxn.delete(by_name_key, db=self._by_name)
 
-    def get_bundles(self, callback: BundleCallback, since: MuTimestamp = 0):
+    def get_bundles(
+        self,
+        callback: Callable[[BundleWrapper], None], *,
+        limit_to: Optional[Mapping[Chain, Limit]] = None,
+        **_
+    ):
         with self._handle.begin() as txn:
             retention = decode_muts(txn.get(b"bundles", db=self._retentions))
-            if retention is None or (retention != 1 and retention > since):
-                raise ValueError("haven't been retaining bundles that long")
-            bundles_cursor = txn.cursor(self._bundles)
-            data_remaining = bundles_cursor.set_range(encode_muts(since))
+            if retention is None or retention != 1:
+                # TODO: handle the case of partial bundle retention, which would require computing the
+                # minimum lookback time necessary to service the request.
+                raise ValueError("don't have full bundle retention")
+            bundle_infos_cursor = txn.cursor(self._bundle_infos)
+            start_scan_at_time: MuTimestamp = 0  # would need to put the minimum lookback time here
+            data_remaining = bundle_infos_cursor.set_range(encode_muts(start_scan_at_time))
             while data_remaining:
-                bundle_bytes = bundles_cursor.value()
-                bundle_builder = BundleBuilder()
-                bundle_builder.ParseFromString(bundle_bytes)
-                bundle_info = BundleInfo(builder=bundle_builder)
-                callback(bundle_bytes, bundle_info)
-                data_remaining = bundles_cursor.next()
+                bundle_info = BundleInfo(encoded=bundle_infos_cursor.key())
+                if limit_to is None or bundle_info.timestamp <= limit_to.get(bundle_info.get_chain(), 0):
+                    bundle_bytes = txn.get(bundle_infos_cursor.value(), db=self._bundles)
+                    bundle_wrapper = BundleWrapper(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
+                    callback(bundle_wrapper)
+                data_remaining = bundle_infos_cursor.next()
 
-    def get_chain_tracker(self) -> ChainTracker:
+    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
         chain_tracker = ChainTracker()
         with self._handle.begin() as txn:
             infos_cursor = txn.cursor(self._chains)
@@ -1007,6 +1024,8 @@ class LmdbStore(AbstractStore):
                 bundle_info = BundleInfo(encoded=info_bytes)
                 chain_tracker.mark_as_having(bundle_info)
                 data_remaining = infos_cursor.next()
+        if limit_to is not None:
+            chain_tracker = chain_tracker.get_subset(limit_to.keys())
         return chain_tracker
 
     def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:

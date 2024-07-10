@@ -1,6 +1,7 @@
-import { Medallion, ChainStart, BundleBytes, Timestamp } from "../implementation/typedefs";
+import { Medallion, ChainStart, Timestamp, BundleView } from "../implementation/typedefs";
 import { Store } from "../implementation/Store";
-import { BundleBuilder } from "../implementation/builders";
+import { BundleBuilder, HeaderBuilder } from "../implementation/builders";
+import { Decomposition } from "../implementation/Decomposition";
 
 export const MEDALLION1 = 425579549941797;
 export const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;
@@ -10,24 +11,28 @@ export const MEDALLION2 = 458510670893748;
 export const START_MICROS2 = Date.parse("2022-02-20 00:38:21") * 1000;
 export const NEXT_TS2 = Date.parse("2022-02-20 00:40:12") * 1000;
 
-export function makeChainStart(comment: string, medallion: Medallion, chainStart: ChainStart): BundleBytes {
-    const bundle = new BundleBuilder();
-    bundle.setChainStart(chainStart);
-    bundle.setTimestamp(chainStart);
-    bundle.setMedallion(medallion);
-    bundle.setComment(comment);
-    return bundle.serializeBinary();
+export function makeChainStart(comment: string, medallion: Medallion, chainStart: ChainStart): BundleView {
+    const bundleBuilder = new BundleBuilder();
+    const headerBuilder = new HeaderBuilder();
+    headerBuilder.setChainStart(chainStart);
+    headerBuilder.setTimestamp(chainStart);
+    headerBuilder.setMedallion(medallion);
+    headerBuilder.setComment(comment);
+    bundleBuilder.setHeader(headerBuilder);
+    return new Decomposition(bundleBuilder.serializeBinary());
 }
 
-export function extendChain(comment: string, previous: BundleBytes, timestamp: Timestamp): BundleBytes {
-    const parsedPrevious = <BundleBuilder>BundleBuilder.deserializeBinary(previous);
-    const subsequent = new BundleBuilder();
+export function extendChain(comment: string, previous: BundleView, timestamp: Timestamp): BundleView {
+    const parsedPrevious = previous.builder.getHeader();
+    const subsequent = new HeaderBuilder();
     subsequent.setMedallion(parsedPrevious.getMedallion());
     subsequent.setPrevious(parsedPrevious.getTimestamp());
     subsequent.setChainStart(parsedPrevious.getChainStart());
     subsequent.setTimestamp(timestamp); // one millisecond later
     subsequent.setComment(comment);
-    return subsequent.serializeBinary();
+    const bundleBuilder = new BundleBuilder();
+    bundleBuilder.setHeader(subsequent);
+    return new Decomposition(bundleBuilder.serializeBinary());
 }
 
 export async function addTrxns(store: Store) {

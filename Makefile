@@ -1,10 +1,10 @@
 PROTOS=$(wildcard proto/*.proto)
-export PATH := ./javascript/node_modules/.bin/:$(PATH)
+export PATH := ./javascript/node_modules/.bin/:./node_modules/.bin/:$(PATH)
 PYTHON_CODE=$(wildcard python/*.py python/gink/impl/*.py python/gink/tests/*.py python/gink/*.py)
 
 all: python/gink/builders javascript/proto javascript/tsc.out javascript/content_root/generated
 
-.PHONY: clean running-as-root install-dependencies install-debian-packages
+.PHONY: clean running-as-root install-dependencies install-debian-packages javascript
 
 clean:
 	rm -rf javascript/proto javascript/content_root/generated javascript/tsc.out python/gink/builders
@@ -49,5 +49,5 @@ javascript/proto: $(PROTOS)
 javascript/content_root/generated: javascript/tsc.out
 	env npx webpack-cli build --config ./javascript/webpack.config.js
 
-javascript/tsc.out: javascript/node_modules $(wildcard javascript/implementation/*.ts)
+javascript/tsc.out: $(wildcard javascript/implementation/*.ts)
 	env tsc -p javascript && chmod a+x javascript/tsc.out/implementation/main.js

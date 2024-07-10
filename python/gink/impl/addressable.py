@@ -100,4 +100,4 @@ class Addressable:
 
     @abstractmethod
     def _get_container(self) -> Muid:
-        """ Get's the container associated with this addressable thing, either itself or the Verb. """
+        """ Gets the container associated with this addressable thing, either itself or the Verb. """

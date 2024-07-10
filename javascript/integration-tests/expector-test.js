@@ -1,4 +1,4 @@
-#!/usr/bin/node --unhandled-rejections=strict
+#!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
 (async () => {
     const expector = new Expector("echo one two three", [], { shell: true });

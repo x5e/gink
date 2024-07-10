@@ -52,7 +52,7 @@ export class RoutingServer {
 
     /**
      *
-     * @param path absolute path to the datafile
+     * @param path absolute path to the args.data_file
      * @returns a promise of an instance that will manage that file
      */
     private getInstance(path?: string): RoutingServerInstance {

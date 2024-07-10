@@ -6,7 +6,7 @@
     revision number.
 """
 from __future__ import annotations
-from typing import Optional, Union, NamedTuple, List, Any, Tuple, Container
+from typing import Optional, Union, NamedTuple, List, Any, Tuple
 from struct import Struct
 
 from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
@@ -14,23 +14,30 @@ from .typedefs import UserKey, MuTimestamp, UserValue, Deletion, Inclusion
 from .muid import Muid
 from .bundle_info import BundleInfo
 
-UNSPECIFIED: int = Behavior.UNSPECIFIED  # type: ignore
-SEQUENCE: int = Behavior.SEQUENCE  # type: ignore
-DIRECTORY: int = Behavior.DIRECTORY  # type: ignore
-PROPERTY: int = Behavior.PROPERTY  # type: ignore
-BOX: int = Behavior.BOX  # type: ignore
-VERTEX: int = Behavior.VERTEX  # type: ignore
-GROUP: int = Behavior.GROUP # type: ignore
-EDGE_TYPE: int = Behavior.EDGE_TYPE # type: ignore
-KEY_SET: int = Behavior.KEY_SET # type: ignore
-PAIR_SET: int = Behavior.PAIR_SET # type: ignore
-PAIR_MAP: int = Behavior.PAIR_MAP # type: ignore
+UNSPECIFIED: int = Behavior.UNSPECIFIED
+SEQUENCE: int = Behavior.SEQUENCE
+DIRECTORY: int = Behavior.DIRECTORY
+PROPERTY: int = Behavior.PROPERTY
+BOX: int = Behavior.BOX
+VERTEX: int = Behavior.VERTEX
+GROUP: int = Behavior.GROUP
+EDGE_TYPE: int = Behavior.EDGE_TYPE
+KEY_SET: int = Behavior.KEY_SET
+PAIR_SET: int = Behavior.PAIR_SET
+PAIR_MAP: int = Behavior.PAIR_MAP
+TABLE: int = Behavior.TABLE
+BRAID: int = Behavior.BRAID
 FLOAT_INF = float("inf")
 INT_INF = 0xffffffffffffffff
 ZERO_64: bytes = b"\x00" * 8
 KEY_MAX: int = 2**53 - 1
 deletion = Deletion()
 inclusion = Inclusion()
+
+
+def new_entries_replace(behavior: int) -> bool:
+    return behavior in (BOX, PAIR_MAP, DIRECTORY, KEY_SET, GROUP, PAIR_SET, PROPERTY, TABLE, BRAID)
+
 
 def normalize_entry_builder(entry_builder: EntryBuilder, entry_muid: Muid):
     """ Make all relative muid references absolute muid refereces within an entry.
@@ -51,7 +58,6 @@ def normalize_entry_builder(entry_builder: EntryBuilder, entry_muid: Muid):
         left_muid.put_into(entry_builder.pair.left)
         rite_muid = Muid.create(context=entry_muid, builder=entry_builder.pair.rite)
         rite_muid.put_into(entry_builder.pair.rite)
-
 
 
 def ensure_entry_is_valid(builder: EntryBuilder, context: Any = object(), offset: Optional[int]=None):
@@ -161,14 +167,14 @@ class Placement(NamedTuple):
             middle_key = None
         elif behavior in (SEQUENCE, EDGE_TYPE):
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
-        elif behavior in (PROPERTY, GROUP):
-            middle_key = Muid.create(context=entry_muid, builder=builder.describing)  # type: ignore
+        elif behavior in (PROPERTY, GROUP, BRAID):
+            middle_key = Muid.create(context=entry_muid, builder=builder.describing)
         elif behavior in (PAIR_SET, PAIR_MAP):
             left = Muid.create(context=entry_muid, builder=builder.pair.left)
             rite = Muid.create(context=entry_muid, builder=builder.pair.rite)
             middle_key = (left, rite)
         else:
-            raise AssertionError(f"unexpected behavior: {behavior}")
+            raise ValueError(f"unexpected behavior: {behavior}")
         expiry = getattr(builder, "expiry") or None
         return Placement(container, middle_key, entry_muid, expiry)
 
@@ -178,9 +184,9 @@ class Placement(NamedTuple):
         """
         # pylint: disable=maybe-no-member
         if isinstance(using, bytes):
-            using = EntryBuilder.FromString(using)  # type: ignore
+            using = EntryBuilder.FromString(using)
         if isinstance(using, EntryBuilder):
-            using = using.behavior  # type: ignore
+            using = using.behavior
         if not isinstance(using, int):
             raise ValueError(f"can't determine behavior from {str(using)}")
         container_bytes = data[0:16]
@@ -188,12 +194,12 @@ class Placement(NamedTuple):
         entry_muid_bytes = data[-24:-8]
         expiry_bytes = data[-8:]
         entry_muid = Muid.from_bytes(entry_muid_bytes)
-        middle_key: Union[MuTimestamp, UserKey, Muid, None, Tuple[Muid, Muid]]
+        middle_key: Union[QueueMiddleKey, MuTimestamp,  UserKey, Muid, None, Tuple[Muid, Muid]]
         if using in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(middle_key_bytes)
         elif using in (SEQUENCE, EDGE_TYPE):
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
-        elif using in (PROPERTY, GROUP):
+        elif using in (PROPERTY, GROUP, BRAID):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using in (PAIR_SET, PAIR_MAP):
             middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
@@ -264,11 +270,11 @@ def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid
     # pylint: disable=maybe-no-member
     entry_builder = EntryBuilder()
     entry_builder.behavior = behavior
-    muid.put_into(entry_builder.container)  # type: ignore
-    entry_builder.deletion = True  # type: ignore
+    muid.put_into(entry_builder.container)
+    entry_builder.deletion = True
     if behavior in (DIRECTORY, KEY_SET):
         assert isinstance(key, (int, str, bytes))
-        encode_key(key, entry_builder.key)  # type: ignore
+        encode_key(key, entry_builder.key)
     elif behavior == BOX:
         assert key is None
     elif behavior in (PROPERTY, GROUP):
@@ -290,11 +296,11 @@ def decode_entry_occupant(entry_muid: Muid, builder: EntryBuilder) -> Union[User
         The full entry storage pair is required because if it points to something that pointer
         might be relative to the entry address.
     """
-    if builder.deletion:  # type: ignore
+    if builder.deletion:
         return deletion
-    if builder.HasField("pointee"):  # type: ignore
+    if builder.HasField("pointee"):
         return Muid.create(builder=builder.pointee, context=entry_muid)
-    if builder.HasField("value"):  # type: ignore
+    if builder.HasField("value"):
         return decode_value(builder.value)
     if builder.behavior in (GROUP, KEY_SET):
         return inclusion
@@ -310,16 +316,16 @@ def entries_equiv(pair1: PlacementBuilderPair, pair2: PlacementBuilderPair) -> b
     assert pair1.placement != pair2.placement, "comparing an entry to itself"
     assert pair1.placement.middle == pair2.placement.middle
     assert pair1.placement.container == pair2.placement.container
-    if pair1.builder.HasField("pointee"):  # type: ignore
-        if pair2.builder.HasField("pointee"):  # type: ignore
-            pointee1 = Muid.create(builder=pair1.builder.pointee, context=pair1.placement)  # type: ignore
-            pointee2 = Muid.create(builder=pair2.builder.pointee, context=pair2.placement)  # type: ignore
+    if pair1.builder.HasField("pointee"):
+        if pair2.builder.HasField("pointee"):
+            pointee1 = Muid.create(builder=pair1.builder.pointee, context=pair1.placement)
+            pointee2 = Muid.create(builder=pair2.builder.pointee, context=pair2.placement)
             return pointee1 == pointee2
         return False
-    if pair1.builder.HasField("value"):  # type: ignore
-        if pair2.builder.HasField("value"):  # type: ignore
-            value1 = decode_value(pair1.builder.value)  # type: ignore
-            value2 = decode_value(pair2.builder.value)  # type: ignore
+    if pair1.builder.HasField("value"):
+        if pair2.builder.HasField("value"):
+            value1 = decode_value(pair1.builder.value)
+            value2 = decode_value(pair2.builder.value)
             return value1 == value2
         return False
     raise AssertionError("entry doesn't have pointee or immedate?")
@@ -331,29 +337,29 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
     assert isinstance(value_builder, ValueBuilder), f"value_builder is type {type(value_builder)}"
     # pylint: disable=too-many-return-statements
     # pylint: disable=maybe-no-member
-    if value_builder.HasField("special"):  # type: ignore
-        if value_builder.special == ValueBuilder.Special.NULL:  # type: ignore
+    if value_builder.HasField("special"):
+        if value_builder.special == ValueBuilder.Special.NULL:
             return None
-        if value_builder.special == ValueBuilder.Special.TRUE:  # type: ignore
+        if value_builder.special == ValueBuilder.Special.TRUE:
             return True
-        if value_builder.special == ValueBuilder.Special.FALSE:  # type: ignore # pylint: disable=maybe-no-member
+        if value_builder.special == ValueBuilder.Special.FALSE:
             return False
-    if value_builder.HasField("characters"):  # type: ignore
-        return value_builder.characters  # type: ignore
-    if value_builder.HasField("octets"):  # type: ignore
-        return value_builder.octets  # type: ignore
-    if value_builder.HasField("doubled"):  # type: ignore
-        return value_builder.doubled  # type: ignore
+    if value_builder.HasField("characters"):
+        return value_builder.characters
+    if value_builder.HasField("octets"):
+        return value_builder.octets
+    if value_builder.HasField("doubled"):
+        return value_builder.doubled
     if value_builder.HasField("integer"):
-        return value_builder.integer # type: ignore
+        return value_builder.integer
     if value_builder.HasField("bigint"):
-        return value_builder.bigint # type: ignore
-    if value_builder.HasField("tuple"):  # type: ignore
-        return tuple([decode_value(x) for x in value_builder.tuple.values])  # type: ignore
-    if value_builder.HasField("document"):  # type: ignore # pylint: disable=maybe-no-member
+        return value_builder.bigint
+    if value_builder.HasField("tuple"):
+        return tuple([decode_value(x) for x in value_builder.tuple.values])
+    if value_builder.HasField("document"):
         result = {}
-        for i, key in enumerate(value_builder.document.keys):  # type: ignore # pylint: disable=maybe-no-member
-            value: ValueBuilder = value_builder.document.values[i] # type: ignore # pylint: disable=maybe-no-member
+        for i, key in enumerate(value_builder.document.keys):
+            value: ValueBuilder = value_builder.document.values[i]
             result[decode_key(key)] = decode_value(value)
         return result
     raise ValueError(
@@ -389,13 +395,13 @@ def encode_key(key: UserKey, builder: Optional[KeyBuilder] = None) -> KeyBuilder
     if builder is None:
         builder = KeyBuilder()
     if isinstance(key, str):
-        builder.characters = key  # type: ignore # pylint: disable=maybe-no-member
+        builder.characters = key
     elif isinstance(key, int):
         if abs(key) > KEY_MAX:
             raise ValueError("integer key outside of allowed range")
-        builder.number = key  # type: ignore # pylint: disable=maybe-no-member
+        builder.number = key
     elif isinstance(key, bytes):
-        builder.octets = key  # type: ignore
+        builder.octets = key
     else:
         raise ValueError(f"can't use as key: {key}")
     return builder
@@ -406,19 +412,19 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Us
     if isinstance(from_what, KeyBuilder):
         key_builder = from_what
     elif isinstance(from_what, EntryBuilder):
-        key_builder = from_what.key  # type: ignore
+        key_builder = from_what.key
     elif isinstance(from_what, bytes):
-        key_builder = KeyBuilder.FromString(from_what)  # type: ignore # pylint: disable=maybe-no-member
+        key_builder = KeyBuilder.FromString(from_what)
     else:
         raise ValueError("not an argument of an expected type")
     assert isinstance(key_builder, KeyBuilder)
 
-    if key_builder.HasField("number"):  # type: ignore
-        return key_builder.number  # type: ignore
-    if key_builder.HasField("characters"):  # type: ignore
-        return key_builder.characters  # type: ignore
-    if key_builder.HasField("octets"):  # type: ignore
-        return key_builder.octets  # type: ignore
+    if key_builder.HasField("number"):
+        return key_builder.number
+    if key_builder.HasField("characters"):
+        return key_builder.characters
+    if key_builder.HasField("octets"):
+        return key_builder.octets
     return None
 
 
@@ -427,19 +433,19 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
     """
     value_builder = value_builder or ValueBuilder()
     if isinstance(value, bytes):
-        value_builder.octets = value  # type: ignore # pylint: disable=maybe-no-member
+        value_builder.octets = value
         return value_builder
     if isinstance(value, str):
-        value_builder.characters = value  # type: ignore # pylint: disable=maybe-no-member
+        value_builder.characters = value
         return value_builder
     if isinstance(value, bool):
         if value:
-            value_builder.special = ValueBuilder.Special.TRUE  # type: ignore # pylint: disable=maybe-no-member
+            value_builder.special = ValueBuilder.Special.TRUE
         else:
-            value_builder.special = ValueBuilder.Special.FALSE  # type: ignore # pylint: disable=maybe-no-member
+            value_builder.special = ValueBuilder.Special.FALSE
         return value_builder
     if isinstance(value, float):
-        value_builder.doubled = value  # type: ignore # pylint: disable=maybe-no-member
+        value_builder.doubled = value
         return value_builder
     if isinstance(value, int):
         if value >  2_147_483_647 or value < -2_147_483_648:
@@ -448,22 +454,23 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
             value_builder.integer = value
         return value_builder
     if value is None:
-        value_builder.special = ValueBuilder.Special.NULL  # type: ignore # pylint: disable=maybe-no-member
+        value_builder.special = ValueBuilder.Special.NULL
         return value_builder
     if isinstance(value, (tuple, list)):
-        value_builder.tuple  # type: ignore # pylint: disable=maybe-no-member disable=pointless-statement
+        the_tuple = value_builder.tuple
+        assert the_tuple is not None
         if len(value) == 0:
-            value_builder.tuple.values.append(ValueBuilder())  # type: ignore # pylint: disable=maybe-no-member
-            value_builder.tuple.values.pop()  # type: ignore # pylint: disable=maybe-no-member
+            value_builder.tuple.values.append(ValueBuilder())
+            value_builder.tuple.values.pop()
         for val in value:
-            value_builder.tuple.values.append(encode_value(val))  # type: ignore # pylint: disable=maybe-no-member
+            value_builder.tuple.values.append(encode_value(val))
         return value_builder
     if isinstance(value, dict):
-        value_builder.document.keys.append(KeyBuilder())  # type: ignore # pylint: disable=maybe-no-member
-        value_builder.document.keys.pop()  # type: ignore # pylint: disable=maybe-no-member
+        value_builder.document.keys.append(KeyBuilder())
+        value_builder.document.keys.pop()
         for key, val in value.items():
-            value_builder.document.keys.append(encode_key(key))  # type: ignore # pylint: disable=maybe-no-member
-            value_builder.document.values.append(encode_value(val))  # type: ignore # pylint: disable=maybe-no-member
+            value_builder.document.keys.append(encode_key(key))
+            value_builder.document.values.append(encode_value(val))
         return value_builder
     raise ValueError("don't know how to encode: %r" % value)  # pylint: disable=consider-using-f-string
 
@@ -471,5 +478,5 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
 def wrap_change(builder: EntryBuilder) -> ChangeBuilder:
     """ A simple utility function to create a change and then copy the provided entry into it. """
     change_builder = ChangeBuilder()
-    change_builder.entry.CopyFrom(builder)  # type: ignore # pylint: disable=maybe-no-member
+    change_builder.entry.CopyFrom(builder)
     return change_builder

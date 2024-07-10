@@ -10,6 +10,7 @@ from .database import Database
 from .bundler import Bundler
 from .coding import SEQUENCE
 from .tuples import PositionedEntry, SequenceKey
+from .utilities import generate_timestamp
 
 
 class Sequence(Container):
@@ -81,7 +82,7 @@ class Sequence(Container):
             The resulting entry expires at expiry time if specified, which must be in the future.
 
             If no bundler is passed, applies the changes immediately, with comment.
-            Otherwise just appends the necessary changes to the passed bundler.
+            Otherwise, just appends the necessary changes to the passed bundler.
 
             returns the muid of the entry
         """
@@ -142,7 +143,7 @@ class Sequence(Container):
         self._muid.put_into(movement_builder.container)
         muid.put_into(movement_builder.entry)
         if dest == -1:
-            dest = self._database.get_now()
+            dest = generate_timestamp()
         elif isinstance(dest, int) and dest < 1e15:
             dest = self._position(before=dest) if dest >= 0 else self._position(after=dest)
         elif dest is None:
@@ -299,5 +300,6 @@ class Sequence(Container):
         if p2 - p1 < 2:
             raise ValueError("not enough space between them")
         return randint(p1 + 1, p2 - 1)
+
 
 Database.register_container_type(Sequence)

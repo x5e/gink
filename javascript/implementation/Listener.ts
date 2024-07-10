@@ -1,7 +1,7 @@
 import { createServer as createHttpServer, Server as HttpServer, ServerResponse, IncomingMessage } from 'http';
 import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
 import { readFileSync } from 'fs';
-import {server as WebSocketServer, request as WebSocketRequest,} from 'websocket';
+import { server as WebSocketServer, request as WebSocketRequest, } from 'websocket';
 import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
 import { createReadStream, existsSync } from 'fs';
 import { getType } from './utils';
@@ -20,7 +20,7 @@ export class Listener {
 
     constructor(args: {
         requestHandler: (request: WebSocketRequest) => void,
-        requestListener?:  (request: IncomingMessage, response: ServerResponse) => void,
+        requestListener?: (request: IncomingMessage, response: ServerResponse) => void,
         staticContentRoot?: DirPath,
         port?: NumberStr,
         logger?: CallBack,

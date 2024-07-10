@@ -15,20 +15,20 @@ jobs:
         working-directory: ./javascript
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Install Protobuf Compiler
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: protobuf-compiler
       - name: Setup Node
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           registry-url: 'https://registry.npmjs.org'
+      - name: Install dependencies
+        run: npm ci && npm rebuild
       - name: Build Protos
         run: cd .. && make javascript
-      - name: Rebuild
-        run: npm rebuild
       - name: Update Version
         run: export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" package.json
       - name: Publish package on NPM

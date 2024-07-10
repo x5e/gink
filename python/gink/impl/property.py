@@ -14,8 +14,13 @@ from .graph import Edge
 class Property(Container):
     BEHAVIOR = PROPERTY
 
-    def __init__(self, *, arche: bool=False, muid: Optional[Muid] = None, database: Optional[Database]=None,
-                 contents: Optional[Dict[Union[Container, Edge], Union[UserValue, Container]]]=None):
+    def __init__(self, *ordered,
+                 arche: bool=False,
+                 bundler: Optional[Bundler] = None,
+                 contents: Optional[Dict[Union[Container, Edge], Union[UserValue, Container]]]=None,
+                 muid: Optional[Muid] = None,
+                 database: Optional[Database]=None,
+                 comment: Optional[str] = None):
         """
         Constructor for a property definition.
 
@@ -23,17 +28,26 @@ class Property(Container):
         db: database send bundles through, or last db instance created if None
         """
         database = database or Database.get_last()
-        bundler = Bundler()
+
+        if ordered:
+            if isinstance(ordered[0], str):
+                muid = Muid.from_str(ordered[0])
+
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
         if arche:
             muid = Muid(-1, -1, PROPERTY)
-        if muid is None:
+        elif muid is None:
             muid = Container._create(PROPERTY, database=database, bundler=bundler)
+
         Container.__init__(self, muid=muid, database=database)
         if contents:
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
 
-        if len(bundler):
+        if immediate and len(bundler):
             self._database.bundle(bundler)
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
@@ -62,7 +76,7 @@ class Property(Container):
                 continue
             muid = Muid.create(builder=entry_pair.builder.describing, context=entry_pair.address)
             value = self._get_occupant(entry_pair.builder, address=entry_pair.address)
-            yield (self._database.get_container(muid), value)
+            yield self._database.get_container(muid), value
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)

@@ -13,7 +13,7 @@ def test_basics():
             assert gd not in group
             group.include(gd)
             assert gd in group
-            mark = database.get_now()
+            mark = generate_timestamp()
             assert not group.contains(gd, as_of=-1)
             group.include(ad)
             assert len(group) == 2

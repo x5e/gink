@@ -2,8 +2,17 @@ npm
 protobuf-compiler
 python3-nose2
 mypy
+python3-requests
+python3-flask
 python3-wsproto
 python3-sortedcontainers
 python3-lmdb
 python3-protobuf
+python3-psutil
 make
+chromium
+unzip
+curl
+python3-typeshed
+ca-certificates
+python3-authlib

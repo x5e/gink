@@ -1,9 +1,18 @@
-import { ensure, muidTupleToString, muidToString, unwrapValue, wrapValue, matches,
-    valueToJson, isPathDangerous, strToMuid, encodeToken, decodeToken,
-    getActorId, isAlive,
+import {
+    ensure,
+    muidTupleToString,
+    muidToString,
+    unwrapValue,
+    wrapValue,
+    matches,
+    valueToJson,
+    isPathDangerous,
+    strToMuid,
+    encodeToken,
+    decodeToken,
     toLastWithPrefixBeforeSuffix,
 } from "../implementation/utils";
-import { TreeMap, MapIterator, Tree } from 'jstreemap';
+import { TreeMap } from 'jstreemap';
 
 it('document', async function () {
     for (const wrapped of [
@@ -123,4 +132,4 @@ it('toLastWithPrefixBeforeSuffix', function() {
     ensure ( (!! result7) && result7.value == "bat");
     const result8 = toLastWithPrefixBeforeSuffix(map, "goo", "f");
     ensure( (!! result8) && result8.key == "goo");
-})
+});

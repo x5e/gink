@@ -1,7 +1,7 @@
 class Database {
     constructor(store, instance) {
         if (!store) {
-            store = new gink.IndexedDbStore("dashboard-test");
+            store = new gink.MemoryStore();
         }
         if (!instance) {
             instance = new gink.Database(store);
@@ -131,28 +131,27 @@ class Database {
                     arr.push([undefined, value]);
                 }
                 break;
-            case 3: // KeySet
+            case 3: // PairMap
+            case 4: // Directory
+            case 10: // Property
+                arr = Array.from((await container.toMap()).entries());
+                break;
+            case 5: // KeySet
                 tmp = await container.toSet();
                 arr = [];
                 for (const key of tmp) {
                     arr.push([key, undefined]);
                 }
                 break;
-            case 4:
-                arr = Array.from((await container.toMap()).entries());
-                break;
-            case 5: // PairSet
-                tmp = await container.getPairs();
+            case 6: // Group
+                tmp = await container.includedAsArray();
                 arr = [];
                 for (const key of tmp) {
                     arr.push([key, undefined]);
                 }
                 break;
-            case 6: // PairMap
-                arr = Array.from((await container.items()).entries());
-                break;
-            case 10: // Group
-                tmp = await container.includedAsArray();
+            case 8: // PairSet
+                tmp = await container.getPairs();
                 arr = [];
                 for (const key of tmp) {
                     arr.push([key, undefined]);
@@ -185,28 +184,30 @@ class Database {
             case 2: // Sequence
                 await container.push(val, comment);
                 break;
-            case 3: // KeySet
-                await container.add(key, comment);
+            case 3: // PairMap
+                console.log(key);
+                gink.ensure(Array.isArray(key) && key.length == 2);
+                gink.ensure("timestamp" in key[0] && "timestamp" in key[1], 'Expecting array of 2 muids for key.');
+                await container.set([await gink.construct(this.instance, key[0]), await gink.construct(this.instance, key[1])], val, comment);
                 break;
             case 4: // Directory
                 await container.set(key, val, comment);
                 break;
-            case 5: // PairSet
-                gink.ensure(Array.isArray(key) && key.length == 2);
-                gink.ensure("timestamp" in key[0] && "timestamp" in key[1], 'Expecting array of 2 muids for key.');
-                await container.include([key[0], key[1]], comment);
+            case 5: // KeySet
+                await container.add(key, comment);
                 break;
-            case 6: // PairMap
-                gink.ensure(Array.isArray(key) && key.length == 2);
-                gink.ensure("timestamp" in key[0] && "timestamp" in key[1], 'Expecting array of 2 muids for key.');
-                await container.set([key[0], key[1]], val, comment);
-                break;
-            case 9:
-                // REMEMBER TO ADD PROPERTY HERE!!
-                break;
-            case 10: // Group
+            case 6: // Group
                 gink.ensure("timestamp" in key, 'Expecting muid for key.');
                 await container.include(key, comment);
+                break;
+            case 8: // PairSet
+                gink.ensure(Array.isArray(key) && key.length == 2);
+                gink.ensure("timestamp" in key[0] && "timestamp" in key[1], 'Expecting array of 2 muids for key.');
+                await container.include([await gink.construct(this.instance, key[0]), await gink.construct(this.instance, key[1])], comment);
+                break;
+            case 10: // Property
+                gink.ensure("timestamp" in val, 'Expecting muid for value.');
+                await container.set(key, val, comment);
                 break;
             default:
                 throw new Error(`not sure how to add entry to ${container.constructor.name}`);
@@ -231,31 +232,30 @@ class Database {
                 gink.ensure(typeof position == "number", "invalid position arg");
                 await container.pop(position, false, comment);
                 break;
-            case 3: // KeySet
-                await container.delete(key, comment);
-                break;
-            case 4: // Directory
-                await container.delete(key, comment);
-                break;
-            case 5: // PairSet
-                try {
-                    await container.exclude([key[0], key[1]], comment);
-                } catch {
-                    console.error(`Expecting array of 2 muids.`);
-                }
-                break;
-            case 6: // PairMap
+            case 3: // PairMap
                 try {
                     await container.delete([key[0], key[1]], comment);
                 } catch {
                     console.error(`Key is expecting array of 2 muids.`);
                 }
                 break;
-            case 10: // Group
+            case 4: // Directory
+            case 5: // KeySet
+            case 10: // Property
+                await container.delete(key, comment);
+                break;
+            case 6: // Group
                 try {
                     await container.exclude(key, comment);
                 } catch {
                     console.error('Expecting muid key.');
+                }
+                break;
+            case 8: // PairSet
+                try {
+                    await container.exclude([key[0], key[1]], comment);
+                } catch {
+                    console.error(`Expecting array of 2 muids.`);
                 }
                 break;
             default:

@@ -9,6 +9,7 @@ from ..impl.sequence import Sequence
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
+from ..impl.utilities import generate_timestamp
 
 
 def test_creation():
@@ -34,7 +35,7 @@ def test_repr():
             assert list(sequence) == ["Hello, World!"]
             assert repr(sequence) == "Sequence(arche=True)"
             sequence = Sequence(muid=Muid(1673009484969039, 362514588210531, 1))
-            assert repr(sequence) == "Sequence('05F197E00EB44F-149B481419563-00001')"
+            assert repr(sequence) == "Sequence(muid=Muid(1673009484969039, 362514588210531, 1))"
 
 
 def test_basics():
@@ -99,11 +100,11 @@ def test_expiry():
         with closing(store):
             database = Database(store=store)
             for seq in [Sequence.get_global_instance(database)]:
-                start = database.get_now()
+                start = generate_timestamp()
                 seq.append("first", expiry=0.1)
                 assert list(seq) == ["first"], list(seq)
                 seq.insert(0, "second", expiry=0.3)
-                mark = database.get_now()
+                mark = generate_timestamp()
                 seq_as_list = list(seq)
                 if seq_as_list != ["second", "first"]:
                     elapsed = str(timedelta(microseconds=mark - start))
@@ -112,14 +113,14 @@ def test_expiry():
                 time.sleep(.11)
                 expect_two_three_four = list(seq)
                 if expect_two_three_four != ["second", "three", "four"]:
-                    assertion_time = database.get_now()
+                    assertion_time = generate_timestamp()
                     raise AssertionError(str(expect_two_three_four) + " " + str(assertion_time))
                 found = list(seq.values(as_of=mark))
                 assert found == ["second", "first"], found
                 seq.remove("three", dest=0.1)
                 after_hiding_three = list(seq)
                 if after_hiding_three != ["second", "four"]:
-                    assertion_time = database.get_now()
+                    assertion_time = generate_timestamp()
                     raise AssertionError(str(after_hiding_three) + " " + str(assertion_time))
                 time.sleep(.3)
                 assert list(seq) == ["four", "three"], list(seq)
@@ -143,14 +144,14 @@ def test_as_of():
                 seq.append("zoo")
                 seq_as_list = list(seq.values())
                 if seq_as_list != ["bar", "foo", "zoo"]:
-                    assertion_time = database.get_now()
+                    assertion_time = generate_timestamp()
                     raise AssertionError(f"{seq_as_list} at {assertion_time}")
                 assert list(seq.values(as_of=-1)) == ["bar", "foo"]
                 assert list(seq.values(as_of=-2)) == ["foo", "bar"]
                 seq.remove("foo", dest=-1)
                 seq_as_list = list(seq.values())
                 if seq_as_list != ["bar", "zoo", "foo", ]:
-                    assertion_time = database.get_now()
+                    assertion_time = generate_timestamp()
                     raise AssertionError(f"{seq_as_list} at {assertion_time}")
                 seq.remove("foo")
                 xxx = list(seq.values())
@@ -187,7 +188,7 @@ def test_clear():
                 seq.append(3.7)
                 seq.append(9)
                 assert list(seq) == [3.7, 9], f"{list(seq)}, {store}"
-                mark = database.get_now()
+                mark = generate_timestamp()
                 seq.clear()
                 assert len(seq) == 0, store
                 seq.append(True)
@@ -209,7 +210,7 @@ def test_reset():
             seq2.append("bar")
             seq1.insert(0, 7)
             seq2.append(seq1)
-            mark = database.get_now()
+            mark = generate_timestamp()
             seq1.remove("foo")
             seq1.clear()
             seq2.pop(0, dest=-1)

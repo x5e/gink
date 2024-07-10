@@ -1,0 +1,9 @@
+FROM debian:latest
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update --fix-missing && apt-get upgrade -y
+COPY packages.txt ./
+RUN apt-get install -y `cat packages.txt | tr '\n' ' '`
+RUN npm install -g protoc-gen-js
+RUN openssl req -x509 -sha256 -nodes -newkey rsa:2048 -days 3650 -keyout /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.crt --subj "/CN=localhost"
+RUN cp /etc/ssl/certs/localhost.crt /usr/local/share/ca-certificates/
+RUN update-ca-certificates

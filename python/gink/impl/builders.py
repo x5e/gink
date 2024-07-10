@@ -1,19 +1,19 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, List
 
-from google.protobuf.message import Message # type: ignore
+from google.protobuf.message import Message  # type: ignore
 from enum import IntEnum
 
 from .typedefs import Medallion, MuTimestamp
 
 if TYPE_CHECKING:
 
-    class BundleBuilder(Message):
-        pass
-
-
-    class SyncMessage(Message):
-        pass
+    class HeaderBuilder(Message):
+        timestamp: int
+        medallion: int
+        previous: int
+        comment: str
+        chain_start: int
 
 
     class ChangeBuilder(Message):
@@ -21,9 +21,20 @@ if TYPE_CHECKING:
         container: ContainerBuilder
         movement: MovementBuilder
 
+
+    class BundleBuilder(Message):
+        header: HeaderBuilder
+        changes: List[ChangeBuilder]
+
+
+    class SyncMessage(Message):
+        bundle: bytes
+
+
     class Pair:
         left: MuidBuilder
         rite: MuidBuilder
+
 
     class EntryBuilder(Message):
         describing: MuidBuilder
@@ -38,25 +49,20 @@ if TYPE_CHECKING:
         key: KeyBuilder
         effective: int
 
-
     class ValueBuilder(Message):
         pass
-
 
     class KeyBuilder(Message):
         pass
 
-
     class ContainerBuilder(Message):
         behavior: int
-
 
     class MovementBuilder(Message):
         container: MuidBuilder
         entry: MuidBuilder
         dest: int
         purge: bool
-
 
     class ClearanceBuilder(Message):
         pass
@@ -76,19 +82,21 @@ if TYPE_CHECKING:
         bundles: List[bytes]
         claims: List[ClaimBuilder]
 
-
     class Behavior(IntEnum):
         UNSPECIFIED = 0
         BOX = 1
         SEQUENCE = 2
-        KEY_SET = 3
+        PAIR_MAP = 3
         DIRECTORY = 4
-        PAIR_SET = 5
-        PAIR_MAP = 6
+        KEY_SET = 5
+        GROUP = 6
         VERTEX = 7
-        EDGE_TYPE = 8
-        PROPERTY = 9
-        GROUP = 10
+        PAIR_SET = 8
+        EVENT_TYPE = 9
+        PROPERTY = 10
+        EDGE_TYPE = 11
+        TABLE = 12
+        BRAID = 13
 else:
     from ..builders.bundle_pb2 import Bundle as BundleBuilder
     from ..builders.sync_message_pb2 import SyncMessage
@@ -105,3 +113,4 @@ else:
     from ..builders.behavior_pb2 import Behavior
     from ..builders.log_file_pb2 import LogFile as LogFileBuilder
     from ..builders.claim_pb2 import Claim as ClaimBuilder
+    from ..builders.header_pb2 import Header as HeaderBuilder

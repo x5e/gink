@@ -25,10 +25,12 @@ setup(
         "wsproto",
         "sortedcontainers",
         "lmdb",
-        "protobuf<=3.20.3",
+        "protobuf",
+        "psutil",
+        "authlib"
     ],
     extras_require={
-        "test": ["nose2"],
+        "test": ["nose2", "flask", "requests"],
         "lint": ["mypy==0.812"],
         "performance": ["matplotlib"],
         "docs": [

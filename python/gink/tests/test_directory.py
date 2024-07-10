@@ -9,6 +9,7 @@ from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
+from ..impl.utilities import generate_timestamp
 
 def test_creation():
     """ test that I can create new directories as well as proxies for existing ones """
@@ -36,7 +37,7 @@ def test_set_get():
             infos = store.get_bundle_infos()
             assert len(infos) == 2, infos
             result = global_directory["foo"]
-            assert result == "bar"
+            assert result == "bar", f"result={result}"
 
             global_directory["cheese"] = 99
             result = global_directory["cheese"]
@@ -58,7 +59,7 @@ def test_delete():
             gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
             assert gdi.has("foo") and gdi["foo"] == "bar"
-            a_time = database.get_now()
+            a_time = generate_timestamp()
             del gdi["foo"]
             assert not gdi.has("foo"), store
             assert gdi.get("foo", as_of=a_time) == "bar"
@@ -82,7 +83,6 @@ def test_setdefault():
             assert "foo" in gdi
             assert gdi["foo"] == "moo"
 
-
 def test_pop():
     """ tests the pop method """
     for store in [MemoryStore(), LmdbStore()]:
@@ -90,10 +90,10 @@ def test_pop():
             database = Database(store=store)
             gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
-            val = gdi.pop("foo", default=3)
+            val = gdi.pop("foo", 3)
             assert val == "bar", val
             assert "foo" not in gdi
-            val = gdi.pop("foo", default=7)
+            val = gdi.pop("foo", 7)
             assert val == 7
 
 def test_items_and_keys():
@@ -105,7 +105,7 @@ def test_items_and_keys():
             gdi["foo"] = "bar"
             gdi["bar"] = "zoo"
             gdi["zoo"] = 3
-            a_time = database.get_now()
+            a_time = generate_timestamp()
             gdi["foo"] = "baz"
             del gdi["bar"]
             sorted_items = sorted(gdi.items())
@@ -160,7 +160,7 @@ def test_reset():
             gdi[7] = {"cheese": "wiz", "foo": [True, False, None]}
             gdi["nope"] = Directory()
             gdi["nope"][33] = [1, 2]  # type: ignore
-            middle = database.get_now()
+            middle = generate_timestamp()
             gdi["bar"] = "moo"
             gdi["foo"] = "zoo"
             gdi[99] = 30
@@ -175,7 +175,6 @@ def test_reset():
             assert bundle is not None and len(bundle) > 0
             bundle = gdi.reset(middle, recursive=True)
             assert not bundle
-
 
 def test_clearance():
     """ tests the directory.clear method works as expected """
@@ -202,7 +201,7 @@ def test_reset_over_clear():
             gdi = Directory.get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi["bar"] = "baz"
-            set_timestamp = database.get_now()
+            set_timestamp = generate_timestamp()
             gdi.clear()
             assert "foo" not in gdi
             assert "bar" not in gdi
@@ -251,3 +250,14 @@ def test_float_int():
                 directory[0] = 1.0
                 assert isinstance(directory["foo"], int)
                 assert isinstance(directory[0], float)
+
+def test_walk():
+    for store in [MemoryStore(), LmdbStore()]:
+        with closing(store):
+            database = Database(store=store)
+            for directory in [Directory(arche=True, database=database), Directory()]:
+                directory.set(["foo", "bar"], 32)
+                result = directory["/foo/bar/".split("/")]
+                assert result == 32, result
+                directory.delete(["foo", "bar"])
+                assert not directory.has(["foo", "bar"])

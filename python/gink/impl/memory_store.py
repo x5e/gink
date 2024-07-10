@@ -10,10 +10,10 @@ from pathlib import Path
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder,
                        ContainerBuilder, Message, ChangeBuilder, ClaimBuilder)
-from .typedefs import UserKey, MuTimestamp, Medallion, Deletion
+from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper, BundleCallback, Lock
+from .abstract_store import AbstractStore, BundleWrapper, Lock
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
@@ -80,15 +80,31 @@ class MemoryStore(AbstractStore):
         return claim_builder
 
     def get_edge_entries(
-            self,
+            self, *,
             as_of: MuTimestamp,
             verb: Optional[Muid] = None,
             source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:
-        raise NotImplementedError()
+        if verb is None:
+            raise NotImplementedError("edge scans without an edge type aren't currently supported in memory store")
+        verb_bytes = bytes(verb)
+        for placement_bytes in self._placements.irange(minimum=verb_bytes):
+            if not placement_bytes.startswith(verb_bytes):
+                break
+            placement = Placement.from_bytes(placement_bytes)
+            if placement.placer.timestamp > as_of:
+                continue
+            entry_muid = self._placements[placement_bytes]
+            entry_builder: EntryBuilder = self._entries[entry_muid]
+            # TODO: check for removals
+            if source and source != Muid.create(builder=entry_builder.pair.left, context=entry_muid):
+                continue
+            if target and target != Muid.create(builder=entry_builder.pair.rite, context=entry_muid):
+                continue
+            yield FoundEntry(entry_muid, entry_builder)
 
     def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:
-        raise NotImplementedError()
+        return self._entries.get(muid)
 
     def get_some(self, cls, last_index: Optional[int] = None):
         sorted_dict = {
@@ -178,7 +194,7 @@ class MemoryStore(AbstractStore):
     def _get_claims(self, _: Lock, /) -> Mapping[Medallion, ClaimBuilder]:
         return self._claims
 
-    def _refresh_helper(self, lock: Lock, callback: Optional[BundleCallback] = None, /) -> int:
+    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[BundleWrapper], None]]=None, /) -> int:
         return 0
 
     def get_ordered_entries(
@@ -232,8 +248,8 @@ class MemoryStore(AbstractStore):
     def apply_bundle(
             self,
             bundle: Union[BundleWrapper, bytes],
-            callback: Optional[Callable]=None,
-            claim_chain: bool=False
+            callback: Optional[Callable[[BundleWrapper], None]]=None,
+            claim_chain: bool=False,
             ) -> bool:
         if isinstance(bundle, bytes):
             bundle = BundleWrapper(bundle)
@@ -247,26 +263,29 @@ class MemoryStore(AbstractStore):
                 self._identities[new_info.get_chain()] = new_info.comment
             self._bundles[bytes(new_info)] = bundle.get_bytes()
             self._chain_infos[chain_key] = new_info
-            change_items = list(bundle_builder.changes.items())  # type: ignore
+            change_items: List[int, ChangeBuilder] = list(bundle_builder.changes.items())  # type: ignore
             change_items.sort()  # the protobuf library doesn't maintain order of maps
-            for offset, change in change_items:  # type: ignore
-                if change.HasField("container"):
-                    container_muid = Muid.create(
-                        context=new_info, offset=offset)
-                    self._containers[container_muid] = change.container
-                    continue
-                if change.HasField("entry"):
-                    self._add_entry(new_info=new_info, offset=offset, entry_builder=change.entry)
-                    continue
-                if change.HasField("movement"):
-                    self._add_movement(new_info=new_info, offset=offset, builder=change.movement)
-                    continue
-                if change.HasField("clearance"):
-                    self._add_clearance(new_info=new_info, offset=offset, builder=change.clearance)
-                    continue
-                raise AssertionError(f"Can't process change: {new_info} {offset} {change}")
+            for offset, change in change_items:
+                try:
+                    if change.HasField("container"):
+                        container_muid = Muid.create(
+                            context=new_info, offset=offset)
+                        self._containers[container_muid] = change.container
+                        continue
+                    if change.HasField("entry"):
+                        self._add_entry(new_info=new_info, offset=offset, entry_builder=change.entry)
+                        continue
+                    if change.HasField("movement"):
+                        self._add_movement(new_info=new_info, offset=offset, builder=change.movement)
+                        continue
+                    if change.HasField("clearance"):
+                        self._add_clearance(new_info=new_info, offset=offset, builder=change.clearance)
+                        continue
+                    raise ValueError(f"didn't recognize change: {new_info} {offset} {change}")
+                except ValueError as value_error:
+                    self._logger.error("problem processing change: %s", value_error)
         if needed and callback is not None:
-            callback(bundle.get_bytes(), bundle.get_info())
+            callback(bundle)
         return needed
 
     def _acquire_lock(self) -> bool:
@@ -335,19 +354,28 @@ class MemoryStore(AbstractStore):
         entries_location_key = LocationKey(placement.placer, placement.placer)
         self._locations[entries_location_key] = encoded_placement_key
 
-    def get_bundles(self, callback: Callable[[bytes, BundleInfo], None], since: MuTimestamp = 0):
-        for bundle_info_key in self._bundles.irange(minimum=encode_muts(since)):
+    def get_bundles(
+        self,
+        callback: Callable[[BundleWrapper], None], *,
+        limit_to: Optional[Mapping[Chain, Limit]] = None,
+        **_
+    ):
+        start_scan_at: MuTimestamp = 0
+        for bundle_info_key in self._bundles.irange(minimum=encode_muts(start_scan_at)):
             bundle_info = BundleInfo.from_bytes(bundle_info_key)
-            assert isinstance(bundle_info, BundleInfo)
-            data = self._bundles[bundle_info]
-            assert isinstance(data, bytes)
-            callback(data, bundle_info)
+            if limit_to is None or bundle_info.timestamp <= limit_to.get(bundle_info.get_chain(), 0):
+                bundle_bytes = self._bundles[bundle_info]
+                assert isinstance(bundle_bytes, bytes)
+                bundle_wrapper = BundleWrapper(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
+                callback(bundle_wrapper)
 
-    def get_chain_tracker(self) -> ChainTracker:
+    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
         chain_tracker = ChainTracker()
         for bundle_info in self._chain_infos.values():
             assert isinstance(bundle_info, BundleInfo)
             chain_tracker.mark_as_having(bundle_info)
+        if limit_to is not None:
+            chain_tracker = chain_tracker.get_subset(limit_to.keys())
         return chain_tracker
 
     def get_last(self, chain: Chain) -> BundleInfo:

@@ -9,14 +9,17 @@ export declare enum Behavior {
     UNSPECIFIED,
     BOX = 1,
     SEQUENCE = 2,
-    KEY_SET = 3,
+    PAIR_MAP = 3,
     DIRECTORY = 4,
-    PAIR_SET = 5,
-    PAIR_MAP = 6,
+    KEY_SET = 5,
+    GROUP = 6,
     VERTEX = 7,
-    EDGE_TYPE = 8,
-    PROPERTY = 9,
-    GROUP = 10
+    PAIR_SET = 8,
+    EVENT_TYPE = 9,
+    PROPERTY = 10,
+    EDGE_TYPE = 11,
+    TABLE = 12,
+    BRAID = 13
 }
 export declare enum Special {
     MISSING = 0,
@@ -49,18 +52,23 @@ export class ChangeBuilder extends ImplementedMessage {
     setClearance(ClearanceBuilder);
 }
 
-export class BundleBuilder extends ImplementedMessage {
+export class HeaderBuilder extends ImplementedMessage {
     setTimestamp(number);
     setPrevious(number);
     setChainStart(number);
     setMedallion(number);
     setComment(string);
-    getChangesMap(): Map<number, ChangeBuilder>;
     getTimestamp(): number;
     getMedallion(): number;
     getChainStart(): number;
     getPrevious(): number;
     getComment(): string;
+}
+
+export class BundleBuilder extends ImplementedMessage {
+    getHeader(): HeaderBuilder;
+    setHeader(HeaderBuilder);
+    getChangesMap(): Map<number, ChangeBuilder>;
 }
 
 export class PairBuilder extends ImplementedMessage {
@@ -223,6 +231,8 @@ export class LogFileBuilder extends ImplementedMessage {
     getBundlesList(): Array<Uint8Array>;
     getClaimsList(): Array<ClaimBuilder>;
     setClaimsList(entries: Array<ClaimBuilder>);
+    setMagicNumber(number);
+    getMagicNumber(): number;
 }
 
 export class MovementBuilder extends ImplementedMessage {

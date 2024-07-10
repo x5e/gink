@@ -45,6 +45,8 @@ it('contains, toArray, and getMembers work properly', async function () {
         ensure(await group1.isIncluded(box1));
         ensure(!(await group1.isIncluded(box3)));
 
+        ensure(await group1.size() == 2);
+
         ensure((await group1.includedAsArray()).length == 2);
         ensure((await group1.includedAsArray())[0].behavior);
 

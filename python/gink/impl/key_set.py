@@ -9,6 +9,7 @@ from .coding import KEY_SET, deletion, decode_key, inclusion
 from .bundler import Bundler
 from .typedefs import UserKey, GenericTimestamp
 from .builders import Behavior
+from .utilities import generate_timestamp
 
 class KeySet(Container):
     _missing = object()
@@ -69,7 +70,7 @@ class KeySet(Container):
 
     def remove(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Deletes a specified entry from the key set, but returns KeyError if not found """
-        as_of = self._database.get_now()
+        as_of = generate_timestamp()
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         if found is None or found.builder.deletion:
             raise KeyError("Key does not exist")
@@ -83,7 +84,7 @@ class KeySet(Container):
             then the change is added to the bundler (or committed immedately with comment
             if no bundler is specified.)
         """
-        as_of = self._database.get_now()
+        as_of = generate_timestamp()
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=key, as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore
             raise KeyError("Key not found")
@@ -159,7 +160,7 @@ class KeySet(Container):
             bundler = Bundler()
         intersection = self.intersection(s)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self.get_muid(), behavior=self.BEHAVIOR, as_of=self._database.get_now())
+            container=self.get_muid(), behavior=self.BEHAVIOR, as_of=generate_timestamp())
 
         for entry_pair in iterable:
             if entry_pair.builder.deletion:
@@ -173,7 +174,7 @@ class KeySet(Container):
         """ Updates the key set, keeping only elements found in either the key set or the specified set, not both. """
         sym_diff = self.symmetric_difference(s)
         iterator = self._database.get_store().get_keyed_entries(
-            container=self.get_muid(), behavior=self.BEHAVIOR, as_of=self._database.get_now())
+            container=self.get_muid(), behavior=self.BEHAVIOR, as_of=generate_timestamp())
         for entry_pair in iterator:
             if entry_pair.builder.deletion:
                 continue
@@ -211,7 +212,8 @@ class KeySet(Container):
         identifier = repr(str(self._muid))
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
-        stuffing = [str(decode_key(entry_pair.builder)) for entry_pair in self._database.get_store().get_keyed_entries(container=self._muid, behavior=self.BEHAVIOR, as_of=as_of)]
+        src = self._database.get_store().get_keyed_entries(container=self._muid, behavior=self.BEHAVIOR, as_of=as_of)
+        stuffing = [str(decode_key(entry_pair.builder)) for entry_pair in src]
         as_one_line = result + ",".join(stuffing) + "})"
         if len(as_one_line) < 80:
             return as_one_line
@@ -228,5 +230,6 @@ class KeySet(Container):
 
     def __contains__(self, key: UserKey) -> bool:
         return self.contains(key)
+
 
 Database.register_container_type(KeySet)

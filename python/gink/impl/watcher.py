@@ -24,6 +24,7 @@ except RuntimeError:
 
 _libc = CDLL(libc_so or 'libc.so.6', use_errno=True)
 
+
 def _libc_call(function, *args):
     while True:
         rc = function(*args)
@@ -33,9 +34,11 @@ def _libc_call(function, *args):
         if errno != EINTR:
             raise OSError(errno, strerror(errno))
 
+
 def libc_rand():
     _libc.srand(int(get_time()*1e6))
     print(_libc.rand())
+
 
 class Watcher(FileIO):
     def __init__(self, path: Union[Path, str]):

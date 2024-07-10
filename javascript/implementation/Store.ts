@@ -9,7 +9,7 @@ import {
     ClaimedChain,
     Entry,
     AsOf,
-    ActorId,
+    BundleView,
     BroadcastFunc,
 } from "./typedefs";
 
@@ -62,7 +62,7 @@ export interface Store {
      *
      * Implicitly awaits on this.ready;
      */
-    addBundle(bundleBytes: Bytes, claimChain?: boolean): Promise<BundleInfo>;
+    addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo>;
 
     /**
      * Get all bundles from a store ordered by [timestamp, medallion].
@@ -74,7 +74,7 @@ export interface Store {
      *
      * Implicitly awaits on this.ready;
      */
-    getBundles: (callback: (bundleBytes: Bytes, bundleInfo: BundleInfo) => void) => Promise<void>;
+    getBundles: (callback: (bundle: BundleView) => void) => Promise<void>;
 
     /**
      * Gets the protobuf bytes corresponding to a particular container's address.
@@ -83,7 +83,7 @@ export interface Store {
     getContainerBytes: (address: Muid) => Promise<Bytes | undefined>;
 
     getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined>;
-    getEntryByKey(container: Muid, key?: ScalarKey | Muid | [Muid , Muid], asOf?: AsOf): Promise<Entry | undefined>;
+    getEntryByKey(container: Muid, key?: ScalarKey | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined>;
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<string, Entry>>;
 
     /**
@@ -92,6 +92,14 @@ export interface Store {
      */
     getOrderedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Map<string, Entry>>;
     getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]>;
+
+    /**
+     * Returns an Array of all containers matching the provided name.
+     * Names are set using the global property.
+     * @param name
+     * @param asOf optional timestamp to look back to
+     */
+    getContainersByName(name: string, asOf?: AsOf): Promise<Array<Muid>>;
 
     /**
      * Adds a callback to be called when a bundle was added by a

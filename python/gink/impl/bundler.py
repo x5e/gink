@@ -71,12 +71,12 @@ class Bundler:
             assert timestamp == chain.chain_start
         else:
             assert chain.chain_start <= previous < timestamp
-            self._bundle_builder.previous = previous  # type: ignore
-        self._bundle_builder.chain_start = chain.chain_start  # type: ignore
-        self._medallion = self._bundle_builder.medallion = chain.medallion  # type: ignore
-        self._timestamp = self._bundle_builder.timestamp = timestamp  # type: ignore
+            self._bundle_builder.header.previous = previous  # type: ignore
+        self._bundle_builder.header.chain_start = chain.chain_start  # type: ignore
+        self._medallion = self._bundle_builder.header.medallion = chain.medallion  # type: ignore
+        self._timestamp = self._bundle_builder.header.timestamp = timestamp  # type: ignore
         if self._comment:
-            self._bundle_builder.comment = self.comment  # type: ignore
+            self._bundle_builder.header.comment = self.comment  # type: ignore
         sealed = self._bundle_builder.SerializeToString()
         self._sealed = sealed
         return sealed

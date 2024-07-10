@@ -12,6 +12,8 @@ from .database import Database
 from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, Deletion, Inclusion
 from .coding import encode_key, encode_value, decode_value, deletion, inclusion
 from .addressable import Addressable
+from .tuples import Chain
+from .utilities import generate_timestamp
 
 class Container(Addressable, ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
@@ -19,7 +21,7 @@ class Container(Addressable, ABC):
     def __repr__(self):
         if self._muid.timestamp == -1 and self._muid.medallion == -1:
             return f"{self.__class__.__name__}(arche=True)"
-        return f"{self.__class__.__name__}('{self._muid}')"
+        return f"{self.__class__.__name__}(muid={self._muid!r})"
 
     def _get_container(self) -> Muid:
         return self._muid
@@ -158,16 +160,16 @@ class Container(Addressable, ABC):
             self._database.bundle(bundler)
         return change_muid
 
-    def  _add_entry(self, *,
+    def _add_entry(self, *,
                    value: Union[UserValue, Deletion, Inclusion, Container],
-                   key: Union[Muid, str, int, bytes, None,
+                   key: Union[Muid, str, int, bytes, None, Chain,
                               Tuple[Container, Container], Tuple[Muid, Muid]] = None,
                    effective: Optional[MuTimestamp] = None,
                    bundler: Optional[Bundler] = None,
                    comment: Optional[str] = None,
                    expiry: GenericTimestamp = None,
-                   behavior: Optional[int] = None, # defaults to behavior of current container
-                   on_muid: Optional[Muid] = None, # defaults to current container
+                   behavior: Optional[int] = None,  # defaults to behavior of current container
+                   on_muid: Optional[Muid] = None,  # defaults to current container
                    ) -> Muid:
         immediate = False
         if not isinstance(bundler, Bundler):
@@ -178,7 +180,7 @@ class Container(Addressable, ABC):
         entry_builder: EntryBuilder = change_builder.entry  # type: ignore
         entry_builder.behavior = behavior or self.get_behavior()  # type: ignore
         if expiry is not None:
-            now = self._database.get_now()
+            now = generate_timestamp()
             expiry = self._database.resolve_timestamp(expiry)
             if expiry < now:
                 raise ValueError("can't set an expiry to be in the past")
@@ -190,6 +192,8 @@ class Container(Addressable, ABC):
         on_muid.put_into(entry_builder.container)  # type: ignore
         if isinstance(key, (str, int, bytes)):
             encode_key(key, entry_builder.key)  # type: ignore
+        elif isinstance(key, Chain):
+            Muid(key.chain_start, key.medallion, 0).put_into(entry_builder.describing)
         elif isinstance(key, Muid):
             key.put_into(entry_builder.describing)  # type: ignore
         elif isinstance(key, Container):

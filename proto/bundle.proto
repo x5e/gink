@@ -1,15 +1,14 @@
 syntax = "proto3";
 import "proto/change.proto";
+import "proto/header.proto";
 package gink;
 
 message Bundle {
-    uint64 timestamp = 1;
-    uint64 medallion = 2;
-    uint64 previous = 3;
-    string comment = 4;
-    uint64 chain_start = 5;
+
+    Header header = 1;
+
     // key in changes map is the offset number: > 0 and < 2**20
-    map<uint32, Change> changes = 6;
+    map<uint32, Change> changes = 2;
 
     // I'm using a map rather than a simple repeated field of Changes for a couple of reasons:
     // * The offset of 0 is reserved to denote the transaction, and I don't want to confuse things by

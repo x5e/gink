@@ -29,6 +29,14 @@ export class Container extends Addressable {
         return Promise.resolve(`"${this.toString()}"`);
     }
 
+    public async setName(name: string, bundlerOrComment?: Bundler | string): Promise<Muid> {
+        return await this.database.getGlobalProperty().set(this, name, bundlerOrComment);
+    }
+
+    public async getName(asOf?: AsOf) {
+        return await this.database.getGlobalProperty().get(this, asOf);
+    }
+
     public async clear(purge?: boolean, bundlerOrComment?: Bundler | string): Promise<Muid> {
         if (!(purge === undefined || purge === true || purge === false)) {
             throw new Error("first parameter to clear must be boolean (true => purge)");
@@ -51,6 +59,10 @@ export class Container extends Addressable {
             await this.database.addBundler(bundler);
         }
         return address;
+    }
+
+    public async size(): Promise<number> {
+        throw new Error("Child class should have implemented this method.");
     }
 
     /**

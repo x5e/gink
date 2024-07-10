@@ -1,5 +1,5 @@
 import { ChainTracker } from './ChainTracker';
-import { Behavior, ChangeBuilder, BundleBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
+import { Behavior, ChangeBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
 import { ScalarKey, StorageKey, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple, Movement } from "./typedefs";
 import {
     ensure,
@@ -35,8 +35,8 @@ export function getStorageKey(entryBuilder: EntryBuilder, entryMuid: Muid): Stor
     } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
         ensure(entryBuilder.hasPair());
         const pair = entryBuilder.getPair();
-        const left = builderToMuid(pair.getLeft());
-        const rite = builderToMuid(pair.getRite());
+        const left = builderToMuid(pair.getLeft(), entryMuid);
+        const rite = builderToMuid(pair.getRite(), entryMuid);
         return [muidToTuple(left), muidToTuple(rite)];
     } else {
         throw new Error(`unexpected behavior: ${behavior}`);
@@ -52,7 +52,7 @@ export function storageKeyToString(storageKey: StorageKey): string {
         }
         return storageKey.toString();
     }
-    if (typeof(storageKey) == "number" || typeof(storageKey) == "string")
+    if (typeof (storageKey) == "number" || typeof (storageKey) == "string")
         return JSON.stringify(storageKey);
 }
 
@@ -126,18 +126,6 @@ export function medallionChainStartToString(tuple: [number, number]): string {
     return `${intToHex(tuple[0])}-${intToHex(tuple[1])}`;
 }
 
-export function extractBundleInfo(bundleData: Uint8Array | BundleBuilder): BundleInfo {
-    if (bundleData instanceof Uint8Array) {
-        bundleData = <BundleBuilder>BundleBuilder.deserializeBinary(bundleData);
-    }
-    return {
-        timestamp: bundleData.getTimestamp(),
-        medallion: bundleData.getMedallion(),
-        chainStart: bundleData.getChainStart(),
-        priorTime: bundleData.getPrevious() || undefined,
-        comment: bundleData.getComment() || undefined,
-    };
-}
 
 export function buildChainTracker(chainInfos: Iterable<BundleInfo>): ChainTracker {
     const hasMap: ChainTracker = new ChainTracker({});
@@ -151,9 +139,9 @@ export function toStorageKey(key: ScalarKey | Muid | [Muid | Container, Muid | C
     if (key instanceof Uint8Array)
         return key;
     if (typeof (key) == "number" || typeof (key) == "string") {
-        return key
+        return key;
     } else if (Array.isArray(key)) {
-        return [muidToTuple(<Muid>key[0]), muidToTuple(<Muid>key[1])]
+        return [muidToTuple(<Muid>key[0]), muidToTuple(<Muid>key[1])];
     } else if (key) {
         const muidKey = <Muid>key;
         return [muidKey.timestamp, muidKey.medallion, muidKey.offset];
