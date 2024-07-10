@@ -26,7 +26,7 @@ class Directory(Container):
             muid: Optional[Union[Muid, str]] = None,
             *,
             arche: Optional[bool] = None,
-            contents: Optional[dict] = None,
+            contents: Optional[Dict[UserKey, Union[UserValue, Container]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -84,22 +84,22 @@ class Directory(Container):
         result += ",\n\t".join(stuffing) + "})"
         return result
 
-    def __contains__(self, key):
+    def __contains__(self, key: UserKey):
         return self.has(key)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: UserKey):
         result = self.get(key, self._missing)
         if result == self._missing:
             raise KeyError(key)
         return result
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: UserKey, value: Union[UserValue, Container]):
         self.set(key, value)
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: UserKey):
         self.delete(key)
 
-    def has(self, key, *, as_of=None):
+    def has(self, key: UserKey, *, as_of=None) -> bool:
         """ returns true if the given key exists in the mapping, optionally at specific time """
         # there's probably a more efficient way of doing this
         obj = object()
@@ -176,17 +176,17 @@ class Directory(Container):
             current = result
         return current
 
-    def delete(self, key, /, *, bundler=None, comment=None):
+    def delete(self, key_or_keys, /, *, bundler=None, comment=None):
         """ Removes a value from the mapping, returning the muid address of the change.
 
             If bundler is specified, then simply adds an entry to that bundler.
             If no bundler is specified, then creates one just for this entry,
             sets it's comment to the comment arg (if set) then adds it to the database.
         """
-        dir, key = (self.walk(key[:-1]), key[-1]) if isinstance(key, (tuple, list)) else (self, key)
+        dir, key = (self.walk(key_or_keys[:-1]), key_or_keys[-1]) if isinstance(key_or_keys, (tuple, list)) else (self, key_or_keys)
         return dir._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
-    def setdefault(self, key, default=None, /, *, bundler=None, respect_deletion=False):
+    def setdefault(self, key: UserKey, default=None, /, *, bundler=None, respect_deletion=False):
         """ Insert key with a value of default if key is not in the directory.
 
             Return the value for key if key is in the directory, else default.
@@ -195,7 +195,7 @@ class Directory(Container):
             if the most recent entry in the directory for the key is a delete entry. In this
             case it will return whatever has been passed into respect_deletion.
         """
-        dir, key = (self.walk(key[:-1]), key[-1]) if isinstance(key, (tuple, list)) else (self, key)
+        dir, key = (self.walk(key[:-1]), key[-1]) if isinstance(key, (tuple, list)) else (self, key) # type: ignore
         as_of = generate_timestamp()
         store = self._database.get_store()
         found = store.get_entry_by_key(dir.get_muid(), key=key, as_of=as_of)
@@ -206,21 +206,21 @@ class Directory(Container):
         dir._add_entry(key=key, value=default, bundler=bundler)
         return default
 
-    def pop(self, key, *default, bundler=None, comment=None):
+    def pop(self, key: UserKey, *default, bundler=None, comment=None):
         """ If key exists in the mapping, returns the corresponding value and removes it.
 
             Otherwise returns default.  In the case that the key is found and removed,
             then the change is added to the bundler (or comitted immedately with comment
             if no bundler is specified.)
         """
-        dir, key = (self.walk(key[:-1]), key[-1]) if isinstance(key, (tuple, list)) else (self, key)
+        dir, key = (self.walk(key[:-1]), key[-1]) if isinstance(key, (tuple, list)) else (self, key) # type: ignore
         as_of = generate_timestamp()
         found = self._database.get_store().get_entry_by_key(dir.get_muid(), key=key, as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore
             if len(default) >= 1:
                 return default[0]
             else:
-                raise KeyError(f"could not pop {key}")
+                raise KeyError(f"could not pop {key}") # type: ignore
         dir._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
         return dir._get_occupant(found.builder, found.address)
 
