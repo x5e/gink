@@ -144,7 +144,7 @@ if args.mkdir:
         if not component: continue
         old_directory = old_directory.get(component, as_of=args.as_of)
         assert isinstance(old_directory, Directory)
-    new_directory = Directory.create(database=database)
+    new_directory = Directory(database=database)
     old_directory.set(path_components[-1], new_directory, comment=args.comment)
     database.close()
     exit(0)

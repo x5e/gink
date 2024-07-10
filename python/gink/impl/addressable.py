@@ -1,6 +1,5 @@
 from __future__ import annotations
-from typing import Optional
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 from .database import Database
 from .muid import Muid
@@ -12,7 +11,7 @@ from typing import Dict
 
 class Addressable:
     def __init__(self, database: Database, muid: Muid):
-        self._database: Database = database
+        self._database: Database = database or Database.get_last()
         self._muid: Muid = muid
 
     def get_muid(self):

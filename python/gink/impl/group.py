@@ -1,10 +1,10 @@
 """ Contains the `Group` Container class. """
 from __future__ import annotations
-from typing import Optional, Union, Set, Iterable
+from typing import Optional, Union, Set, Iterable, Dict
 
 from .typedefs import GenericTimestamp
 from .container import Container
-from .coding import deletion, inclusion
+from .coding import deletion, inclusion, GROUP
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
@@ -14,22 +14,47 @@ from .builders import Behavior
 class Group(Container):
     BEHAVIOR = Behavior.GROUP
 
-    def __init__(self, *, contents: Optional[Set[Union[Muid, Container]]] = None,
-                 muid: Optional[Muid] = None, database=None):
+    def __init__(
+                self,
+                muid: Optional[Union[Muid, str]] = None,
+                *,
+                contents: Optional[Dict[str, Set[Union[Muid, Container]]]] = None,
+                database: Optional[Database] = None,
+                bundler: Optional[Bundler] = None,
+                comment: Optional[str] = None,
+            ):
         """
         Constructor for a group definition.
 
-        muid: the global id of this directory, created on the fly if None
-        db: database send bundles through, or last db instance created if None
+        muid: the global id of this container, created on the fly if None
+        contents: optionally expecting a dictionary of {"included": Set, "excluded": Set}
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
         """
-        database = database or Database.get_last()
-        bundler = Bundler()
-        if muid is None:
-            muid = Container._create(Behavior.GROUP, database=database, bundler=bundler)
-        Container.__init__(self, muid=muid, database=database)
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
+
+        Container.__init__(
+                self,
+                behavior=GROUP,
+                muid=muid,
+                arche=False,
+                database=database,
+                bundler=bundler,
+            )
+
         if contents:
-            raise NotImplementedError()
-        if len(bundler):
+            self.clear(bundler=bundler)
+            for container in contents.get("included", set()):
+                self.include(container, bundler=bundler)
+
+            for container in contents.get("excluded", set()):
+                self.exclude(container, bundler=bundler)
+
+        if immediate and len(bundler):
             self._database.bundle(bundler)
 
     def include(self, what: Union[Muid, Container], *,
@@ -47,15 +72,22 @@ class Group(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this group to a string.
         """
-        identifier = repr(str(self._muid))
+        identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
-        stuffing = [repr(_) for _ in self.get_member_ids(as_of=as_of)]
-        as_one_line = result + ",".join(stuffing) + "})"
-        if len(as_one_line) < 80:
-            return as_one_line
-        result += "\n\t"
-        result += ",\n\t".join(stuffing) + "})"
+        stuffing_included = [repr(_) for _ in self.get_member_ids(as_of=as_of)]
+        if stuffing_included:
+            result += "\n\t'included': {"
+            result += "\n\t"
+            result += ",\n\t".join(stuffing_included) + "},"
+
+        stuffing_excluded = [repr(_) for _ in self.get_member_ids(excluded=True, as_of=as_of)]
+        if stuffing_excluded:
+            result += "\n\t'excluded': {"
+            result += "\n\t"
+        else:
+            result += "})"
+        result += ",\n\t".join(stuffing_excluded) + "}})"
         return result
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
@@ -78,19 +110,17 @@ class Group(Container):
     def __contains__(self, thing: Union[Muid, Container]) -> bool:
         return self.contains(thing)
 
-    def get_member_ids(self, *, as_of: GenericTimestamp = None) -> Iterable[Muid]:
+    def get_member_ids(self, *, excluded: bool = False, as_of: GenericTimestamp = None) -> Iterable[Muid]:
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
             container=self._muid, as_of=as_of, behavior=Behavior.GROUP)
         for entry_pair in iterable:
-            if entry_pair.builder.deletion:  # type: ignore
-                continue
-            yield Muid.create(builder=entry_pair.builder.describing, context=entry_pair.address)
+            if excluded == entry_pair.builder.deletion:  # type: ignore
+                yield Muid.create(builder=entry_pair.builder.describing, context=entry_pair.address)
 
-    def get_members(self, *, as_of: GenericTimestamp = None) -> Set[Container]:
-        """ Returns pairs of (muid, contents) for the sequence at the given time.
-        """
-        return {self._database.get_container(muid) for muid in self.get_member_ids(as_of=as_of)}
+    def get_members(self, *, excluded: bool = False, as_of: GenericTimestamp = None) -> Set[Container]:
+        """ Returns a set of containers included/excluded in the group at the given time. """
+        return {self._database.get_container(muid) for muid in self.get_member_ids(excluded=excluded, as_of=as_of)}
 
     def contains(self, what: Union[Muid, Container], *, as_of: GenericTimestamp = None) -> bool:
         ts = self._database.resolve_timestamp(as_of)

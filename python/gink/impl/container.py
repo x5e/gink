@@ -17,6 +17,31 @@ from .utilities import generate_timestamp
 
 class Container(Addressable, ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
+    def __init__(self,
+                 *,
+                 behavior: Optional[int] = None, # only optional if a muid is passed
+                 bundler: Optional[Bundler] = None, # only optional if a muid is passed
+                 muid: Optional[Union[Muid, str]] = None,
+                 arche: Optional[bool] = None,
+                 database: Optional[Database]=None,
+                 ):
+        if arche and muid:
+            raise ValueError("Can't pass both arche and a muid")
+
+        database = database or Database.get_last()
+        if isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        if not muid:
+            assert isinstance(behavior, int), "Must pass the desired behavior if not supplying a muid"
+            if arche:
+                muid = Muid(-1, -1, behavior)
+            elif muid is None:
+                assert isinstance(bundler, Bundler), "Must pass a bundler" # This should be handled in each subclass
+                muid = Container._create(behavior, database=database, bundler=bundler)
+        assert isinstance(muid, Muid)
+        # self._muid and self._database are set by Addressable.__init__
+        Addressable.__init__(self, database=database, muid=muid)
+
 
     def __repr__(self):
         if self._muid.timestamp == -1 and self._muid.medallion == -1:
@@ -79,15 +104,6 @@ class Container(Addressable, ABC):
         """ Gets the behavior tag/enum for the particular class. """
         assert hasattr(cls, "BEHAVIOR")
         return getattr(cls, "BEHAVIOR")
-
-    @classmethod
-    def create(cls, bundler: Optional[Bundler] = None, database: Optional[Database] = None):
-        """ Creates an instance of the given class, adding immediately if no bundler is provided.
-        """
-        if database is None:
-            database = Database.get_last()
-        muid = Container._create(cls.get_behavior(), bundler=bundler, database=database)
-        return cls(muid=muid, database=database)
 
     @classmethod
     def get_global_instance(cls, database: Optional[Database] = None):

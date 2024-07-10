@@ -14,20 +14,44 @@ from .bundler import Bundler
 class Braid(Container):
     BEHAVIOR = BRAID
 
-    def __init__(self, muid: Optional[Muid] = None, *, arche: bool=False, database: Optional[Database]=None,
-                 contents: Optional[Dict[Chain, Limit]]=None):
-        database = database or Database.get_last()
-        bundler = Bundler()
-        if arche:
-            muid = Muid(-1, -1, self.__class__.BEHAVIOR)
-        if muid is None:
-            muid = Container._create(self.__class__.BEHAVIOR, database=database, bundler=bundler)
-        Container.__init__(self, muid=muid, database=database)
+    def __init__(
+            self,
+            muid: Optional[Union[Muid, str]] = None,
+            *,
+            arche: Optional[bool] = None,
+            contents: Optional[Dict[Chain, Limit]] = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
+        """
+        Constructor for a braid proxy.
+
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        contents: prefill the braid with a dict of Chain: Limit upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
+        """
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
+
+        Container.__init__(
+                self,
+                behavior=BRAID,
+                muid=muid,
+                arche=arche,
+                database=database,
+                bundler=bundler,
+        )
         if contents:
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
 
-        if len(bundler):
+        if immediate and len(bundler):
             self._database.bundle(bundler)
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:

@@ -14,39 +14,42 @@ from .graph import Edge
 class Property(Container):
     BEHAVIOR = PROPERTY
 
-    def __init__(self, *ordered,
-                 arche: bool=False,
-                 bundler: Optional[Bundler] = None,
-                 contents: Optional[Dict[Union[Container, Edge], Union[UserValue, Container]]]=None,
-                 muid: Optional[Muid] = None,
-                 database: Optional[Database]=None,
-                 comment: Optional[str] = None):
+    def __init__(
+            self,
+            muid: Optional[Union[Muid, str]] = None,
+            *,
+            arche: Optional[bool] = None,
+            contents: Optional[Dict[Union[Container, Edge], Union[UserValue, Container]]] = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
         """
-        Constructor for a property definition.
+        Constructor for a property.
 
-        muid: the global id of this directory, created on the fly if None
-        db: database send bundles through, or last db instance created if None
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        contents: prefill the property with a dictionary upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
         """
-        database = database or Database.get_last()
-
-        if ordered:
-            if isinstance(ordered[0], str):
-                muid = Muid.from_str(ordered[0])
-
         immediate = False
         if bundler is None:
             immediate = True
             bundler = Bundler(comment)
-        if arche:
-            muid = Muid(-1, -1, PROPERTY)
-        elif muid is None:
-            muid = Container._create(PROPERTY, database=database, bundler=bundler)
 
-        Container.__init__(self, muid=muid, database=database)
+        Container.__init__(
+                self,
+                behavior=PROPERTY,
+                muid=muid,
+                arche=arche,
+                database=database,
+                bundler=bundler,
+        )
         if contents:
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
-
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
@@ -56,7 +59,7 @@ class Property(Container):
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "arche=True"
         else:
-            identifier = repr(str(self._muid))
+            identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         stuffing = [f"{k!r}:{v!r}" for k, v in self.items(as_of=as_of)]

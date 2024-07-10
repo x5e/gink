@@ -20,6 +20,7 @@ from ..impl.box import Box
 from ..impl.pair_set import PairSet
 from ..impl.pair_map import PairMap
 from ..impl.property import Property
+from ..impl.group import Group
 # from ..impl.group import Group
 from ..impl.muid import Muid # needed for the exec() call in test_dump
 
@@ -155,9 +156,12 @@ def test_dump():
             ks_muid = KeySet(contents=[1, 2, "3"], database=database).get_muid()
             box_muid = Box(contents="box contents", database=database).get_muid()
             ps_muid = PairSet(contents=[(box_muid, ks_muid)], database=database).get_muid()
-            pm_muid = PairMap(contents={(box_muid, ks_muid): "value"}, database=database).get_muid()
+            pm_muid = PairMap(contents={(box_muid, ks_muid): "value", (box_muid, ps_muid): 3}, database=database).get_muid()
             prop_muid = Property(contents={root: "value"}, database=database).get_muid()
-            # TODO: group, vertex, verb, edge
+            g = Group(contents={"included": {box_muid, ps_muid}, "excluded": {pm_muid}}, database=database)
+            group_dump = g.dumps()
+            group_muid = g.get_muid()
+            # TODO: vertex, verb, edge
 
             string_io = StringIO()
             database.dump(file=string_io)
@@ -172,6 +176,7 @@ def test_dump():
 
             seq = Sequence(muid=seq_muid, database=db2)
             assert seq.at(1)[1] == 2
+            assert seq.at(2)[1] == "3"
 
             ks = KeySet(muid=ks_muid, database=db2)
             assert ks.contains("3")
@@ -184,10 +189,12 @@ def test_dump():
 
             pm = PairMap(muid=pm_muid, database=db2)
             assert pm.get((box_muid, ks_muid)) == "value"
+            assert pm.get((box_muid, ps_muid)) == 3, pm.get((box_muid, ps_muid))
 
             prop = Property(muid=prop_muid, database=db2)
             assert prop.get(root) == "value"
 
-            # TODO: fix group contents in constructor
-            # group = Group(muid=group_muid, database=db2)
-            # assert group.contains(box_muid)
+            group = Group(muid=group_muid, database=db2)
+            assert group.contains(box_muid)
+            assert group.contains(ps_muid)
+            assert group.dumps() == group_dump

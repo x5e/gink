@@ -17,27 +17,39 @@ from .utilities import experimental
 class Vertex(Container):
     BEHAVIOR = VERTEX
 
-    def __init__(self, *,
-                 arche: bool = False,
-                 muid: Optional[Muid] = None,
-                 bundler: Optional[Bundler] = None,
-                 database: Optional[Database] = None):
+    def __init__(
+            self,
+            muid: Optional[Union[Muid, str]] = None,
+            *,
+            arche: Optional[bool] = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
         """
         Creates a placeholder node to contain the idea of something.
 
-        muid: the global id of this vertex, created on the fly if None
-        db: database send bundles through, or last db instance created if None
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
         """
         database = database or Database.get_last()
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = Bundler()
-        if arche:
-            muid = Muid(-1, -1, VERTEX)
-        if muid is None:
-            muid = Container._create(VERTEX, database=database, bundler=bundler)
-        Container.__init__(self, muid=muid, database=database)
+            bundler = Bundler(comment)
+
+        Container.__init__(
+                self,
+                behavior=VERTEX,
+                muid=muid,
+                arche=arche,
+                database=database,
+                bundler=bundler,
+        )
+
         if len(bundler) and immediate:
             self._database.bundle(bundler)
 
@@ -97,21 +109,44 @@ Database.register_container_type(Vertex)
 class Verb(Container):
     BEHAVIOR = EDGE_TYPE
 
-    def __init__(self, *,
-                 arche=False,
-                 muid: Optional[Muid] = None,
-                 database: Optional[Database] = None,
-                 contents: Optional[Iterable[Edge]] = None):
-        database = database or Database.get_last()
-        bundler = Bundler()
-        if arche:
-            muid = Muid(-1, -1, EDGE_TYPE)
-        if muid is None:
-            muid = Container._create(EDGE_TYPE, database=database, bundler=bundler)
-        Container.__init__(self, muid=muid, database=database)
+    def __init__(
+            self,
+            *,
+            muid: Optional[Union[Muid, str]] = None,
+            arche: Optional[bool] = None,
+            contents: Optional[Iterable[Edge]] = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
+        """
+        Constructor for a Verb (otherwise known as Edge Type).
+
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        contents: prefill the Verb with an iterable of edges upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
+        """
+        immediate = False
+        if bundler is None:
+            immediate = True
+            bundler = Bundler(comment)
+
+        Container.__init__(
+                self,
+                behavior=EDGE_TYPE,
+                muid=muid,
+                arche=arche,
+                database=database,
+                bundler=bundler,
+        )
+
         if contents:
             pass  # This is intentional! The edge constructors will restore them!
-        if len(bundler):
+
+        if immediate and len(bundler):
             self._database.bundle(bundler)
 
     def create_edge(

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 #gink implementation
 from .typedefs import GenericTimestamp
@@ -12,37 +12,44 @@ from .coding import BOX
 class Box(Container):
     BEHAVIOR = BOX
 
-    def __init__(self, *ordered,
-                 arche: Optional[bool] = None,
-                 bundler: Optional[Bundler] = None,
-                 contents = None,
-                 muid: Optional[Muid] = None,
-                 database: Optional[Database]=None,
-                 comment: Optional[str] = None,
-                 ):
+    def __init__(
+            self,
+            muid: Optional[Union[Muid, str]] = None,
+            *,
+            arche: Optional[bool] = None,
+            contents = None,
+            database: Optional[Database] = None,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None,
+    ):
         """
-        muid: the global id of this sequence, created on the fly if None
-        database: where to send bundles through, or last db instance created if None
+        Constructor for a box proxy.
+
+        muid: the global id of this container, created on the fly if None
+        arche: whether this will be the global version of this container (accessible by all databases)
+        contents: prefill the box with a value upon initialization
+        database: database send bundles through, or last db instance created if None
+        bundler: the bundler to add changes to, or a new one if None and immediately commits
+        comment: optional comment to add to the bundler
         """
-        if ordered:
-            if isinstance(ordered[0], str):
-                muid = Muid.from_str(ordered[0])
-        if arche:
-            muid = Muid(-1, -1, BOX)
-        database = database or Database.get_last()
         immediate = False
         if bundler is None:
             immediate = True
             bundler = Bundler(comment)
-        if muid is None:
-            muid = Container._create(BOX, database=database, bundler=bundler)
 
-        Container.__init__(self, muid=muid, database=database)
-        self._muid = muid
-        self._database = database
+        Container.__init__(
+                self,
+                behavior=BOX,
+                muid=muid,
+                arche=arche,
+                database=database,
+                bundler=bundler,
+        )
+
         if contents is not None:
             self.clear(bundler=bundler)
             self.set(contents, bundler=bundler)
+
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
@@ -73,7 +80,7 @@ class Box(Container):
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "arche=True"
         else:
-            identifier = repr(str(self._muid))
+            identifier = f"muid={self._muid!r}"
 
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(container=self._muid, key=None, as_of=as_of)
