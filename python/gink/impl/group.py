@@ -18,7 +18,7 @@ class Group(Container):
                 self,
                 muid: Optional[Union[Muid, str]] = None,
                 *,
-                contents: Optional[Dict[str, Set[Union[Muid, Container]]]] = None,
+                contents: Optional[Dict[str, Iterable[Union[Muid, Container]]]] = None,
                 database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
@@ -47,11 +47,16 @@ class Group(Container):
             )
 
         if contents:
+            assert isinstance(contents, dict), "expecting contents to be of the form {'included': Iterable[(Muid, Muid)], 'excluded': Iterable[(Muid, Muid)]}"
             self.clear(bundler=bundler)
-            for container in contents.get("included", set()):
+            included = contents.get("included", set())
+            assert isinstance(included, Iterable)
+            for container in included:
                 self.include(container, bundler=bundler)
 
-            for container in contents.get("excluded", set()):
+            excluded = contents.get("excluded", set())
+            assert isinstance(excluded, Iterable)
+            for container in excluded:
                 self.exclude(container, bundler=bundler)
 
         if immediate and len(bundler):
@@ -85,9 +90,10 @@ class Group(Container):
         if stuffing_excluded:
             result += "\n\t'excluded': {"
             result += "\n\t"
-        else:
-            result += "})"
-        result += ",\n\t".join(stuffing_excluded) + "}})"
+            result += ",\n\t".join(stuffing_excluded) + "}"
+
+        result += "})"
+
         return result
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
