@@ -77,23 +77,29 @@ class Group(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this group to a string.
         """
+        ts = self._database.resolve_timestamp(as_of)
         identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
-        stuffing_included = [repr(_) for _ in self.get_member_ids(as_of=as_of)]
-        if stuffing_included:
-            result += "\n\t'included': {"
-            result += "\n\t"
-            result += ",\n\t".join(stuffing_included) + "},"
+        included_stuffing = "'included': [\n\t"
+        excluded_stuffing = "'excluded': [\n\t"
 
-        stuffing_excluded = [repr(_) for _ in self.get_member_ids(excluded=True, as_of=as_of)]
-        if stuffing_excluded:
-            result += "\n\t'excluded': {"
-            result += "\n\t"
-            result += ",\n\t".join(stuffing_excluded) + "}"
+        iterable = self._database.get_store().get_keyed_entries(
+            container=self._muid, as_of=ts, behavior=Behavior.GROUP)
+        for entry_pair in iterable:
+            mb = entry_pair.builder.describing
+            if not entry_pair.builder.deletion:
+                included_stuffing += f"Muid({mb.timestamp}, {mb.medallion}, {mb.offset})" + ",\n\t"
+            else:
+                excluded_stuffing += f"Muid({mb.timestamp}, {mb.medallion}, {mb.offset})" + ",\n\t"
+
+        result += "\n\t"
+        if included_stuffing != "'included': [\n\t":
+            result += "".join(included_stuffing) + "],"
+        if excluded_stuffing != "'excluded': [\n\t":
+            result += "".join(excluded_stuffing) + "],"
 
         result += "})"
-
         return result
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
