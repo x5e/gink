@@ -291,7 +291,7 @@ class LmdbStore(AbstractStore):
                 yield change
             return
         if behavior in (SEQUENCE, EDGE_TYPE):
-            for change in self._get_changes_to_reset_sequence_or_verb(container, to_time, trxn, seen):
+            for change in self._get_changes_to_reset_sequence_or_edge_type(container, to_time, trxn, seen):
                 yield change
             return
         else:
@@ -335,7 +335,7 @@ class LmdbStore(AbstractStore):
         entry_builder.ParseFromString(trxn.get(value_as_bytes, db=self._entries))  # type: ignore
         return PlacementBuilderPair(parsed_key, entry_builder)
 
-    def _get_changes_to_reset_sequence_or_verb(
+    def _get_changes_to_reset_sequence_or_edge_type(
             self,
             container: Muid,
             to_time: MuTimestamp,
@@ -373,7 +373,7 @@ class LmdbStore(AbstractStore):
             previous = self._get_location(trxn, entry_muid=entry_muid, as_of=to_time)
             placed_time = parsed_key.get_placed_time()
             if placed_time >= to_time and last_clear_time < placed_time and location == parsed_key:
-                # this entry was put there recently, and it's still there, so it needs to be (re)moved
+                # this entry was put there recently, and it's still there, so it needs to be removed
                 change_builder = ChangeBuilder()
                 container.put_into(change_builder.movement.container)  # type: ignore
                 entry_muid.put_into(change_builder.movement.entry)  # type: ignore
