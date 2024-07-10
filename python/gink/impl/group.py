@@ -81,8 +81,8 @@ class Group(Container):
         identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
-        included_stuffing = "'included': [\n\t"
-        excluded_stuffing = "'excluded': [\n\t"
+        included_stuffing = "\n\t'included': [\n\t"
+        excluded_stuffing = "\n\t'excluded': [\n\t"
 
         iterable = self._database.get_store().get_keyed_entries(
             container=self._muid, as_of=ts, behavior=Behavior.GROUP)
@@ -93,10 +93,9 @@ class Group(Container):
             else:
                 excluded_stuffing += f"Muid({mb.timestamp}, {mb.medallion}, {mb.offset})" + ",\n\t"
 
-        result += "\n\t"
-        if included_stuffing != "'included': [\n\t":
+        if included_stuffing != "\n\t'included': [\n\t":
             result += "".join(included_stuffing) + "],"
-        if excluded_stuffing != "'excluded': [\n\t":
+        if excluded_stuffing != "\n\t'excluded': [\n\t":
             result += "".join(excluded_stuffing) + "],"
 
         result += "})"
