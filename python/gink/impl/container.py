@@ -1,6 +1,7 @@
 """ Defines the Container base class. """
 from __future__ import annotations
 from typing import Optional, Union, Iterable, Tuple
+from types import UnionType
 from abc import ABC, abstractmethod
 from sys import stdout
 
@@ -9,8 +10,8 @@ from .builders import ChangeBuilder, EntryBuilder, Behavior
 from .muid import Muid
 from .bundler import Bundler
 from .database import Database
-from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, Deletion, Inclusion
-from .coding import encode_key, encode_value, decode_value, deletion, inclusion
+from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, Deletion, Inclusion, Limit
+from .coding import encode_key, encode_value, decode_value, deletion, inclusion, BOX, SEQUENCE, PAIR_MAP, DIRECTORY, KEY_SET, GROUP, PAIR_SET, PROPERTY, BRAID
 from .addressable import Addressable
 from .tuples import Chain
 from .utilities import generate_timestamp
@@ -158,6 +159,71 @@ class Container(Addressable, ABC):
             database.bundle(bundler)  # type: ignore
         return muid
 
+    @staticmethod
+    def check_valid_entry(key: any, value: any, behavior: int) -> None:
+        """ Checks that the key and value are valid for the given behavior. Throws a detailed ValueError if not."""
+        assert behavior > 0
+        if behavior == BOX:
+            if key is not None:
+                raise ValueError(f"Key for box must be None, had {key}")
+            if not isinstance(value, (Container, UserValue, Deletion)):
+                raise ValueError(f"Value for box must be of type (Container, UserValue, Deletion), had {value}")
+
+        elif behavior == SEQUENCE:
+            if key is not None:
+                raise ValueError(f"Key for sequence must be None, had {key}")
+            if not isinstance(value, (Container, UserValue, Deletion)):
+                raise ValueError(f"Value for sequence must be of type (Container, UserValue, Deletion), had {value}")
+
+        elif behavior == PAIR_MAP:
+            if not isinstance(key, tuple) and len(key) == 2:
+                raise ValueError("Key for pair map must be a tuple of length 2")
+            if not isinstance(key[0], (Container, Muid)) and isinstance(key[1], (Container, Muid)):
+                raise ValueError(f"Key for pair map must be a tuple of (Container|Muid, Container|Muid), had {key}")
+            if not isinstance(value, (Container, UserValue, Deletion)):
+                raise ValueError(f"Value for pair map must be of type (Container, UserValue, Deletion), had {value}")
+
+        elif behavior == DIRECTORY:
+            if not isinstance(key, UserKey):
+                raise ValueError(f"Key for directory must be a UserKey, had {key}")
+            if not isinstance(value, (Container, UserValue, Deletion)):
+                raise ValueError(f"Value for directory must be of type (Container, UserValue, Deletion), had {value}")
+
+        elif behavior == KEY_SET:
+            if not isinstance(key, UserKey):
+                raise ValueError(f"Key for key set must be a UserKey, had {key}")
+            if not isinstance(value, (Inclusion, Deletion)):
+                raise ValueError(f"Value for key set must be of type (Inclusion, Deletion), had {value}")
+
+        elif behavior == GROUP:
+            if not isinstance(key, (Container, Muid)):
+                raise ValueError(f"Key for group must be a Container or Muid, had {key}")
+            if not isinstance(value, (Inclusion, Deletion)):
+                raise ValueError(f"Value for group must be of type (Inclusion, Deletion), had {value}")
+
+        elif behavior == PAIR_SET:
+            if not isinstance(key, tuple) and len(key) == 2:
+                raise ValueError("Key for pair set must be a tuple of length 2")
+            if not isinstance(key[0], (Container, Muid)) and isinstance(key[1], (Container, Muid)):
+                raise ValueError(f"Key for pair set must be a tuple of (Container|Muid, Container|Muid), had {key}")
+            if not isinstance(value, (Inclusion, Deletion)):
+                raise ValueError(f"Value for pair set must be of type (Inclusion, Deletion), had {value}")
+
+        elif behavior == PROPERTY:
+            if not isinstance(key, (Addressable, Muid)):
+                raise ValueError(f"Key for property must be an Addressable, had {key}")
+            if not isinstance(value, (Container, UserValue, Deletion)):
+                raise ValueError(f"Value for property must be of type (Container, UserValue, Deletion), had {value}")
+
+        elif behavior == BRAID:
+            if not isinstance(key, Chain):
+                raise ValueError(f"Key for braid must be a Chain, had {key}")
+            if not isinstance(value, (Limit, Deletion)):
+                raise ValueError(f"Value for braid must be a Limit, had {value}")
+
+        else:
+            raise ValueError(f"Invalid behavior: {behavior}")
+
     def clear(self, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
         """ Removes all entries from this container, returning the muid of the clearance.
 
@@ -187,6 +253,8 @@ class Container(Addressable, ABC):
                    behavior: Optional[int] = None,  # defaults to behavior of current container
                    on_muid: Optional[Muid] = None,  # defaults to current container
                    ) -> Muid:
+        behavior = behavior or self.get_behavior()
+        self.check_valid_entry(key=key, value=value, behavior=behavior)
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
@@ -194,7 +262,7 @@ class Container(Addressable, ABC):
         change_builder = ChangeBuilder()
         # pylint: disable=maybe-no-member
         entry_builder: EntryBuilder = change_builder.entry  # type: ignore
-        entry_builder.behavior = behavior or self.get_behavior()  # type: ignore
+        entry_builder.behavior = behavior # type: ignore
         if expiry is not None:
             now = generate_timestamp()
             expiry = self._database.resolve_timestamp(expiry)
