@@ -1,5 +1,6 @@
 """ Defines the Container base class. """
 from __future__ import annotations
+from datetime import datetime
 from typing import Optional, Union, Iterable, Tuple
 from abc import ABC, abstractmethod
 from sys import stdout
@@ -297,7 +298,7 @@ class Container(Addressable, ABC):
             if pointee_muid.timestamp:
                 entry_builder.pointee.timestamp = pointee_muid.timestamp  # type: ignore
             entry_builder.pointee.offset = pointee_muid.offset  # type: ignore
-        elif isinstance(value, (str, int, float, dict, tuple, list, bool, bytes, type(None))):
+        elif isinstance(value, (str, int, float, dict, tuple, list, bool, bytes, type(None), datetime)):
             encode_value(value, entry_builder.value)  # type: ignore # pylint: disable=maybe-no-member
         elif value == deletion:
             entry_builder.deletion = True  # type: ignore # pylint: disable=maybe-no-member

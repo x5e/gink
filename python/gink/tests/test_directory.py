@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """ test the directory class """
 from contextlib import closing
+from datetime import datetime
 
 from ..impl.muid import Muid
 from ..impl.directory import Directory
@@ -50,6 +51,10 @@ def test_set_get():
             global_directory["foo"] = {"test": "document"}
             result = global_directory["foo"]
             assert repr(result) == "{'test': 'document'}"
+
+            now = datetime.now()
+            global_directory["now"] = now
+            assert global_directory["now"] == now
 
 def test_delete():
     """ tests that delete works as expected """

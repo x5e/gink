@@ -8,6 +8,7 @@
 from __future__ import annotations
 from typing import Optional, Union, NamedTuple, List, Any, Tuple
 from struct import Struct
+from datetime import datetime
 
 from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion, Inclusion
@@ -331,43 +332,6 @@ def entries_equiv(pair1: PlacementBuilderPair, pair2: PlacementBuilderPair) -> b
     raise AssertionError("entry doesn't have pointee or immedate?")
 
 
-def decode_value(value_builder: ValueBuilder) -> UserValue:
-    """ decodes a protobuf value into a python value.
-    """
-    assert isinstance(value_builder, ValueBuilder), f"value_builder is type {type(value_builder)}"
-    # pylint: disable=too-many-return-statements
-    # pylint: disable=maybe-no-member
-    if value_builder.HasField("special"):
-        if value_builder.special == ValueBuilder.Special.NULL:
-            return None
-        if value_builder.special == ValueBuilder.Special.TRUE:
-            return True
-        if value_builder.special == ValueBuilder.Special.FALSE:
-            return False
-    if value_builder.HasField("characters"):
-        return value_builder.characters
-    if value_builder.HasField("octets"):
-        return value_builder.octets
-    if value_builder.HasField("doubled"):
-        return value_builder.doubled
-    if value_builder.HasField("integer"):
-        return value_builder.integer
-    if value_builder.HasField("bigint"):
-        return value_builder.bigint
-    if value_builder.HasField("tuple"):
-        return tuple([decode_value(x) for x in value_builder.tuple.values])
-    if value_builder.HasField("document"):
-        result = {}
-        for i, key in enumerate(value_builder.document.keys):
-            value: ValueBuilder = value_builder.document.values[i]
-            result[decode_key(key)] = decode_value(value)
-        return result
-    raise ValueError(
-        "don't know how to decode: %r,%s" % (
-            value_builder,
-            type(value_builder)))  # pylint: disable=consider-using-f-string
-
-
 def encode_muts(number: Union[int, float, None], _q_struct=Struct(">q")) -> bytes:
     """ packs a microsecond timestamp into a big-endian integer, with None=>0 and Inf=>-1 """
     if not number:
@@ -429,8 +393,7 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Us
 
 
 def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None) -> ValueBuilder:
-    """ encodes a python value (number, string, etc.) into a protobuf builder
-    """
+    """ encodes a python value (number, string, etc.) into a protobuf builder """
     value_builder = value_builder or ValueBuilder()
     if isinstance(value, bytes):
         value_builder.octets = value
@@ -472,7 +435,48 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
             value_builder.document.keys.append(encode_key(key))
             value_builder.document.values.append(encode_value(val))
         return value_builder
+    if isinstance(value, datetime):
+        value_builder.timestamp.FromJsonString(value.strftime('%Y-%m-%dT%H:%M:%S.%fZ'))
+        return value_builder
     raise ValueError("don't know how to encode: %r" % value)  # pylint: disable=consider-using-f-string
+
+
+def decode_value(value_builder: ValueBuilder) -> UserValue:
+    """ decodes a protobuf value into a python value. """
+    assert isinstance(value_builder, ValueBuilder), f"value_builder is type {type(value_builder)}"
+    # pylint: disable=too-many-return-statements
+    # pylint: disable=maybe-no-member
+    if value_builder.HasField("special"):
+        if value_builder.special == ValueBuilder.Special.NULL:
+            return None
+        if value_builder.special == ValueBuilder.Special.TRUE:
+            return True
+        if value_builder.special == ValueBuilder.Special.FALSE:
+            return False
+    if value_builder.HasField("characters"):
+        return value_builder.characters
+    if value_builder.HasField("octets"):
+        return value_builder.octets
+    if value_builder.HasField("doubled"):
+        return value_builder.doubled
+    if value_builder.HasField("integer"):
+        return value_builder.integer
+    if value_builder.HasField("bigint"):
+        return value_builder.bigint
+    if value_builder.HasField("tuple"):
+        return tuple([decode_value(x) for x in value_builder.tuple.values])
+    if value_builder.HasField("document"):
+        result = {}
+        for i, key in enumerate(value_builder.document.keys):
+            value: ValueBuilder = value_builder.document.values[i]
+            result[decode_key(key)] = decode_value(value)
+        return result
+    if value_builder.HasField("timestamp"):
+        return datetime.strptime(value_builder.timestamp.ToJsonString(), "%Y-%m-%dT%H:%M:%S.%fZ")
+    raise ValueError(
+        "don't know how to decode: %r,%s" % (
+            value_builder,
+            type(value_builder)))  # pylint: disable=consider-using-f-string
 
 
 def wrap_change(builder: EntryBuilder) -> ChangeBuilder:

@@ -1,5 +1,6 @@
 syntax = "proto3";
 import "proto/key.proto";
+import "google/protobuf/timestamp.proto";
 package gink;
 
 
@@ -9,7 +10,7 @@ message Value {
         bytes octets = 2;
         string characters = 3;
         sint64 bigint = 4;
-        Timestamp timestamp = 5;
+        google.protobuf.Timestamp timestamp = 5;
         Date date = 6;
         Time time = 7;
         double doubled = 8;
@@ -19,8 +20,6 @@ message Value {
         Document document = 12;
         bytes uuid = 16;
         Zone timezone = 19;
-        DateTime datetime = 20;
-        ZonedDateTime zoned = 21;
         Interval interval = 22;
     }
 
@@ -29,14 +28,6 @@ message Value {
         TRUE = 1;
         FALSE = 2;
         NULL = 3;
-    }
-
-    message Timestamp {
-        bool negative = 1;
-        uint64 seconds = 2;
-        uint64 millis = 3;
-        uint64 micros = 4;
-        uint64 nanos = 5;
     }
 
     message Tuple {
@@ -89,17 +80,6 @@ message Value {
         uint64 days = 8;
         uint64 months = 9;
         uint64 years = 10;
-    }
-
-    message DateTime {
-        Date date = 1;
-        Time time = 2;
-    }
-
-    message ZonedDateTime {
-        Date date = 1;
-        Time time = 2;
-        Zone zone = 3;
     }
 
 }

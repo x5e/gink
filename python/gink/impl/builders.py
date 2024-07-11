@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List
-
+from typing import TYPE_CHECKING, List, Union, Tuple
+from datetime import date, time, timezone
 from google.protobuf.message import Message  # type: ignore
+from google.protobuf.timestamp_pb2 import Timestamp
 from enum import IntEnum
 
 from .typedefs import Medallion, MuTimestamp
@@ -50,10 +51,26 @@ if TYPE_CHECKING:
         effective: int
 
     class ValueBuilder(Message):
-        pass
+        integer: int
+        octets: bytes
+        characters: str
+        bigint: int
+        timestamp: Timestamp
+        date: date
+        time: time
+        doubled: float
+        symbol: str
+        special: Union[None, bool]
+        tuple: Tuple
+        uuid: bytes
+        timezone: timezone
+        # document
+        # interval
 
     class KeyBuilder(Message):
-        pass
+        number: int
+        octets: bytes
+        characters: str
 
     class ContainerBuilder(Message):
         behavior: int
@@ -65,7 +82,8 @@ if TYPE_CHECKING:
         purge: bool
 
     class ClearanceBuilder(Message):
-        pass
+        container: MuidBuilder
+        purge: bool
 
     class MuidBuilder(Message):
         timestamp: MuTimestamp
