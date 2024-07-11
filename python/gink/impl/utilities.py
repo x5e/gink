@@ -33,6 +33,19 @@ def encode_to_hex(string: str) -> str:
     # Adding 0x so we can easily determine if a subprotocol is a hex string
     return "0x" + string.encode("utf-8").hex()
 
+def is_type(obj, type_or_tuple) -> bool:
+    """
+    Returns True if the object is an instance of the type or any type in the tuple of types.
+    This is the default behavior of isinstance in newer versions of Python.
+    """
+    if isinstance(type_or_tuple, tuple):
+        for t in type_or_tuple:
+            if isinstance(obj, t):
+                return True
+    else:
+        return isinstance(obj, type_or_tuple)
+    return False
+
 def decode_from_hex(hex_str: str) -> str:
     """
     Decodes a hex string into a string using utf-8.
