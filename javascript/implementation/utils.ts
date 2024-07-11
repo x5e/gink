@@ -19,10 +19,10 @@ import {
     ValueBuilder,
     KeyBuilder,
     Special,
-    TimestampBuilder,
     TupleBuilder,
     DocumentBuilder,
 } from "./builders";
+import { Timestamp as TimestampProto } from "google-protobuf/google/protobuf/timestamp_pb";
 
 import { hostname, userInfo } from 'os';
 
@@ -195,9 +195,7 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
         return tuple.getValuesList().map(unwrapValue);
     }
     if (valueBuilder.hasTimestamp()) {
-        //TODO: check the other fields in the Timestamp proto
-        // (not critical while typescript is the only implementation)
-        return new Date(valueBuilder.getTimestamp().getMillis());
+        return valueBuilder.getTimestamp().toDate();
     }
     throw new Error("haven't implemented unwrap for this Value");
 }
@@ -248,8 +246,8 @@ export function wrapValue(arg: Value): ValueBuilder {
         return valueBuilder.setOctets(arg);
     }
     if (arg instanceof Date) {
-        const timestamp = new TimestampBuilder();
-        timestamp.setMillis(arg.valueOf());
+        const timestamp = new TimestampProto();
+        timestamp.fromDate(arg);
         return valueBuilder.setTimestamp(timestamp);
     }
     if (arg === null) {

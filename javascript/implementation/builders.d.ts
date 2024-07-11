@@ -1,4 +1,5 @@
 import { Message } from "google-protobuf";
+import { Timestamp } from "google-protobuf/google/protobuf/timestamp_pb";
 
 declare class ImplementedMessage extends Message {
     serializeBinary(): Uint8Array;
@@ -23,7 +24,9 @@ export declare enum Behavior {
 }
 export declare enum Special {
     MISSING = 0,
-    NULL = 3, TRUE = 1, FALSE = 2,
+    TRUE = 1,
+    FALSE = 2,
+    NULL = 3,
 }
 export class ContainerBuilder extends ImplementedMessage {
     getBehavior(): Behavior;
@@ -166,11 +169,6 @@ export class TupleBuilder extends ImplementedMessage {
     setValuesList(values: Array<ValueBuilder>);
 }
 
-export class TimestampBuilder extends ImplementedMessage {
-    getMillis(): number;
-    setMillis(number);
-}
-
 export class ValueBuilder extends ImplementedMessage {
     hasCharacters(): boolean;
     getCharacters(): string;
@@ -190,9 +188,9 @@ export class ValueBuilder extends ImplementedMessage {
     hasTuple(): boolean;
     getTuple(): TupleBuilder;
     hasTimestamp(): boolean;
-    getTimestamp(): TimestampBuilder;
+    getTimestamp(): Timestamp;
+    setTimestamp(Timestamp);
     setOctets(Uint8Array);
-    setTimestamp(TimestampBuilder);
     setSpecial(Special);
     setCharacters(string);
     setInteger(NumberBuilder);
