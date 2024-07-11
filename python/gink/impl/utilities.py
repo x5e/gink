@@ -36,7 +36,8 @@ def encode_to_hex(string: str) -> str:
 def is_type(obj, type_or_tuple) -> bool:
     """
     Returns True if the object is an instance of the type or any type in the tuple of types.
-    This is the default behavior of isinstance in newer versions of Python.
+    This function allows comparisions to user defined type generics, which is the default behavior
+    of isinstance in newer versions of Python.
     """
     if isinstance(type_or_tuple, tuple):
         for t in type_or_tuple:
