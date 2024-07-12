@@ -12,7 +12,7 @@ it('push to a queue and peek', async function () {
         const muid: Muid = await queue.push("Hello, World!");
         ensure(muid.timestamp! > 0);
         const val = await queue.at(-1);
-        ensure(val == "Hello, World!");
+        ensure(val === "Hello, World!");
         await store.close();
     }
 });
@@ -30,7 +30,7 @@ it('push and pop', async function () {
 
         ensure(matches(await list.toArray(), ["A", "B", "C"]));
         const popped = await list.pop();
-        ensure(popped == "C");
+        ensure(popped === "C");
         /*
         for (const entry of await store.getAllEntries()) {
             console.log(entry);
@@ -42,21 +42,21 @@ it('push and pop', async function () {
         const have = JSON.stringify(await list.toArray());
         ensure(matches(await list.toArray(), ["A", "B"]), have);
         const shifted = await list.shift();
-        ensure(shifted == "A");
+        ensure(shifted === "A");
         ensure(matches(await list.toArray(), ["B"]));
 
         const dMuid = await list.push("D");
         await list.push("E");
 
         const poppedByMuid = await list.pop(dMuid);
-        ensure(poppedByMuid == "D");
+        ensure(poppedByMuid === "D");
 
         await list.push("F");
         await list.push("G");
         ensure(matches(await list.toArray(), ["B", "E", "F", "G"]));
 
         const poppedByIndex = await list.pop(2);
-        ensure(poppedByIndex == "F");
+        ensure(poppedByIndex === "F");
         ensure(matches(await list.toArray(), ["B", "E", "G"]));
     }
 });
@@ -73,29 +73,29 @@ it('size and at', async function () {
         await list.push("C");
 
         const size = await list.size();
-        ensure(size == 3);
+        ensure(size === 3);
 
         const atEnd = await list.at(-1);
-        ensure(atEnd == "C");
+        ensure(atEnd === "C");
         const beginning = await list.at(0);
-        ensure(beginning == "A");
+        ensure(beginning === "A");
 
         const offEnd = await list.at(-4);
         ensure(offEnd === undefined);
 
         const nearEnd = await list.at(-3);
-        ensure(nearEnd == "A");
+        ensure(nearEnd === "A");
 
         await list.pop();
 
         const size2 = await list.size();
-        ensure(size2 == 2);
+        ensure(size2 === 2);
 
         const second = await list.at(1);
-        ensure(second == "B");
+        ensure(second === "B");
 
         const third = await list.at(3);
-        ensure(third == undefined);
+        ensure(third === undefined);
     }
 });
 
@@ -113,7 +113,7 @@ it('entries', async function () {
         const buffer = <Value[]>[];
         for await (const [muid, contents] of list.entries()) {
             const val = await list.pop(muid);
-            ensure(val == contents, `val=${val}, contents=${contents}`);
+            ensure(val === contents, `val=${val}, contents=${contents}`);
             buffer.push(<Value>contents);
         }
         ensure(matches(buffer, ["A", "B", "C"]));
@@ -132,10 +132,10 @@ it('list-changeset', async function () {
         await list.push("C", bundler);
         await instance.addBundler(bundler);
 
-        ensure(bundler.timestamp != undefined && bundler.timestamp > 0);
-        ensure(list.address.timestamp == bundler.timestamp);
+        ensure(bundler.timestamp !== undefined && bundler.timestamp > 0);
+        ensure(list.address.timestamp === bundler.timestamp);
         for await (const [muid, _] of list.entries()) {
-            ensure(muid.timestamp == bundler.timestamp);
+            ensure(muid.timestamp === bundler.timestamp);
         }
 
         const bundler2 = new Bundler();
@@ -175,7 +175,7 @@ it('List.toJSON', async function () {
 
         const asJson = await list.toJson();
 
-        ensure(asJson == `["A",true,false,[33],{"cheese":"fries"},"FF5E20"]`, asJson);
+        ensure(asJson === `["A",true,false,[33],{"cheese":"fries"},"FF5E20"]`, asJson);
     }
 });
 
@@ -218,18 +218,18 @@ it('List.clear', async function () {
         await list.push("hello");
         await list.push("world");
         let size = await list.size();
-        ensure(size == 2);
+        ensure(size === 2);
         const clearMuid = await list.clear();
         size = await list.size();
-        ensure(size == 0);
+        ensure(size === 0);
         await list.push("goodbye");
         size = await list.size();
-        ensure(size == 1);
+        ensure(size === 1);
         size = await list.size(clearMuid.timestamp);
-        ensure(size == 2);
+        ensure(size === 2);
         await list.clear(true);
         size = await list.size(clearMuid.timestamp);
-        ensure(size == 0, `size=${size}`);
+        ensure(size === 0, `size=${size}`);
     }
 });
 
@@ -242,13 +242,13 @@ it('List.purge_pop', async function () {
         await seq.push("bar");
         const beforeFirstPop = generateTimestamp();
         const popped = await seq.pop();
-        ensure(popped == "bar", `popped=${popped}`);
+        ensure(popped === "bar", `popped=${popped}`);
         ensure(matches(["foo"], await seq.toArray()), (await seq.toArray()).toString());
         const previous = await seq.toArray(Infinity, beforeFirstPop);
 
         ensure(matches(["foo", "bar"], previous), "previous=" + previous.toString());
         const shifted = await seq.shift(true);
-        ensure(shifted == "foo");
+        ensure(shifted === "foo");
         ensure(matches(["bar"], await seq.toArray(Infinity, beforeFirstPop)));
     }
 });
@@ -268,16 +268,16 @@ it('List.move', async function () {
         await seq.push("D");
         await sleep(100);
 
-        ensure((await seq.toArray()).toString() == "A,B,C,D");
+        ensure((await seq.toArray()).toString() === "A,B,C,D");
 
         await seq.move(0, -1);
-        ensure((await seq.toArray()).toString() == "B,C,D,A", (await seq.toArray()).toString());
+        ensure((await seq.toArray()).toString() === "B,C,D,A", (await seq.toArray()).toString());
 
         await seq.move(2, 0);
-        ensure((await seq.toArray()).toString() == "D,B,C,A", (await seq.toArray()).toString());
+        ensure((await seq.toArray()).toString() === "D,B,C,A", (await seq.toArray()).toString());
 
         await seq.move(cMuid, 1);
-        ensure((await seq.toArray()).toString() == "D,C,B,A", (await seq.toArray()).toString());
+        ensure((await seq.toArray()).toString() === "D,C,B,A", (await seq.toArray()).toString());
     }
 });
 
@@ -289,14 +289,14 @@ it('extend', async function () {
         const seq = await instance.createSequence();
         const array = [0, 1, 2, 3, 4, 5, 6];
         await seq.extend(array);
-        ensure(await seq.at(0) == 0);
-        ensure(await seq.at(6) == 6);
+        ensure(await seq.at(0) === 0);
+        ensure(await seq.at(6) === 6);
 
         const bundler = new Bundler();
         const array2 = [7, 8, 9, 10];
         await seq.extend(array2, bundler);
         await instance.addBundler(bundler);
-        ensure(await seq.at(7) == 7);
-        ensure(await seq.at(10) == 10);
+        ensure(await seq.at(7) === 7);
+        ensure(await seq.at(10) === 10);
     }
 });

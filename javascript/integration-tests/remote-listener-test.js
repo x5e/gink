@@ -30,12 +30,12 @@ process.chdir(__dirname + "/..");
     client1.addListener(remoteListener, client1Root.address, true);
 
     await client1Root.set("1", "2");
-    ensure(remoteListener.calledTimes == 0);
+    ensure(remoteListener.calledTimes === 0);
     // Should not have been called, since client1 is only subscribed to remote changes
 
     await client2Root.set("2", "3");
     await sleep(200);
-    ensure(remoteListener.calledTimes == 1);
+    ensure(remoteListener.calledTimes === 1);
     // Only subscribed to remote changes, so a remote bundle should call the listener
     console.log("correctly called listener only on remote bundle. finished!");
 

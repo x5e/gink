@@ -16,7 +16,7 @@ it('set and get Basic data', async function () {
 
         // check that the desired result exists in the database
         const result = await schema.get("a key");
-        ensure(result == "a value");
+        ensure(result === "a value");
 
         const myKey = new Uint8Array(3);
         myKey[0] = 94;
@@ -25,7 +25,7 @@ it('set and get Basic data', async function () {
         await schema.set(myKey, "another value");
         const another_result = await schema.get(myKey);
 
-        if (another_result != "another value") {
+        if (another_result !== "another value") {
             const allEntries = await store.getAllEntries();
             throw new Error("didnt' get what i expected");
         }
@@ -51,13 +51,13 @@ it('set and get data in two directories', async function () {
 
         // check that the desired result exists in the database;
         const result1 = await dir1.get("key-a");
-        ensure(result1 == "value1");
+        ensure(result1 === "value1");
 
         const result2 = await dir2.get("key-a");
-        ensure(result2 == "value2", String(result2));
+        ensure(result2 === "value2", String(result2));
 
         const result3 = await dir1.size();
-        ensure(result3 == 2, String(result3));
+        ensure(result3 === 2, String(result3));
 
         const result4 = await dir2.has("key-b");
         ensure(!result4);
@@ -83,9 +83,9 @@ it('set multiple key/value pairs in one change-set', async function () {
 
         // verify the result
         const result = await schema.get("cheese");
-        ensure(result == "fries", `result is ${result}`);
+        ensure(result === "fries", `result is ${result}`);
         const result2 = await schema.get("foo");
-        ensure(result2 == "bar", `result2 is ${result2}`);
+        ensure(result2 === "bar", `result2 is ${result2}`);
         await store.close();
     }
 });
@@ -104,7 +104,7 @@ it('use a sub-schema', async function () {
 
         const anotherProxy = await schema.get("abc");
         if (!(anotherProxy instanceof Directory)) throw new Error("not a schema?");
-        ensure("123" == await anotherProxy.get("xyz"));
+        ensure("123" === await anotherProxy.get("xyz"));
         await store.close();
     }
 });
@@ -124,9 +124,9 @@ it('purge one directory leaving other untouched', async function () {
 
         await d1.clear(true);
 
-        ensure(0 == await d1.size());
+        ensure(0 === await d1.size());
         const size = await d2.size();
-        ensure(0 != size, "directory 2 has been purged!");
+        ensure(0 !== size, "directory 2 has been purged!");
     }
 });
 
@@ -143,18 +143,18 @@ it('convert to standard Map', async function () {
         await directory.set("cheese", "fries");
 
         const asMap = await directory.toMap();
-        ensure(asMap.size == 2, `expected to be 2: ${asMap.size} ${JSON.stringify(asMap)}`);
+        ensure(asMap.size === 2, `expected to be 2: ${asMap.size} ${JSON.stringify(asMap)}`);
         ensure(!asMap.has("foo"));
-        ensure(asMap.get("bar") == "iron");
-        ensure(asMap.get("cheese") == "fries");
+        ensure(asMap.get("bar") === "iron");
+        ensure(asMap.get("cheese") === "fries");
 
         const another = await instance.createDirectory();
         await another.set(new Uint8Array([94, 10]), "foo");
         const anotherAsMap = await another.toMap();
-        ensure(anotherAsMap.size == 1);
+        ensure(anotherAsMap.size === 1);
         const keys = Array.from(anotherAsMap.keys());
         ensure(keys[0] instanceof Uint8Array);
-        ensure(keys[0][0] == 94 && keys[0][1] == 10);
+        ensure(keys[0][0] === 94 && keys[0][1] === 10);
     }
 });
 
@@ -170,14 +170,14 @@ it('Directory.toJSON', async function () {
         const other = await instance.createDirectory();
         await other.set("xxx", "yyy");
         await directory.set("blue", other);
-        await directory.set(new Uint8Array([94,10]), "^\n");
+        await directory.set(new Uint8Array([94, 10]), "^\n");
         const asJson = await directory.toJson();
         // MemoryStore returns entries in the order they were set,
         // so comparing an exact string won't work
         const fromJson = JSON.parse(asJson);
-        ensure(fromJson.bar == 3 && fromJson.foo == "bar", fromJson);
-        ensure(fromJson.blue.xxx == "yyy" && fromJson.zoom == null, fromJson);
-        ensure(fromJson["94,10"] == "^\n", asJson);
+        ensure(fromJson.bar === 3 && fromJson.foo === "bar", fromJson);
+        ensure(fromJson.blue.xxx === "yyy" && fromJson.zoom === null, fromJson);
+        ensure(fromJson["94,10"] === "^\n", asJson);
         await store.close();
     }
 });
@@ -199,22 +199,22 @@ it('Directory.asOf', async function () {
         const time2 = generateTimestamp();
 
         const asJsonNow = await directory.toJson();
-        ensure(asJsonNow == `{"A":"B","cheese":4}`);
+        ensure(asJsonNow === `{"A":"B","cheese":4}`);
         ensure((await directory.get('cheese')) === 4);
 
         const asJson2 = await directory.toJson(false, time2);
-        ensure(asJson2 == `{"A":"B","cheese":4}`);
+        ensure(asJson2 === `{"A":"B","cheese":4}`);
         ensure((await directory.get('cheese', time2)) === 4);
 
         const asJson1 = await directory.toJson(false, time1);
-        ensure(asJson1 == `{"A":"B"}`);
+        ensure(asJson1 === `{"A":"B"}`);
         ensure((await directory.get('cheese', time1)) === undefined);
 
         const asMap0 = await directory.toMap(time0);
-        ensure(asMap0.size == 0);
+        ensure(asMap0.size === 0);
 
         const asJsonBack = await directory.toJson(false, -1);
-        ensure(asJsonBack == `{"A":"B"}`);
+        ensure(asJsonBack === `{"A":"B"}`);
         ensure((await directory.get('cheese', -1)) === undefined);
         ensure((await directory.get('A', -1)) === 'B');
         await store.close();

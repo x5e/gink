@@ -2,7 +2,7 @@ import { Database, IndexedDbStore, } from "../implementation";
 import { ensure } from "../implementation/utils";
 
 it('bundle.combining', async function () {
-    const store = new IndexedDbStore('bundle combining test', true)
+    const store = new IndexedDbStore('bundle combining test', true);
     const instance = new Database(store);
     await instance.ready;
     const schema = await instance.createDirectory();
@@ -19,6 +19,6 @@ it('bundle.combining', async function () {
     const promise2 = schema.set("second2", "v2");
     await promise2;
     const changesAfterCombo = store.getTransactionCount();
-    ensure(changesAfterCombo - changeBeforeCombo == 1, `combo ${changeBeforeCombo} => ${changesAfterCombo}`);
+    ensure(changesAfterCombo - changeBeforeCombo === 1, `combo ${changeBeforeCombo} => ${changesAfterCombo}`);
 
 });

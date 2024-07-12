@@ -12,9 +12,9 @@ export class Box extends Container {
         super(database, address, Behavior.BOX);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
-            ensure(address.offset == Behavior.BOX);
+            ensure(address.offset === Behavior.BOX);
         } else {
-            ensure(containerBuilder.getBehavior() == Behavior.BOX);
+            ensure(containerBuilder.getBehavior() === Behavior.BOX);
         }
     }
 

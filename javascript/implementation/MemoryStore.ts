@@ -132,14 +132,14 @@ export class MemoryStore implements Store {
             if (oldChainInfo?.timestamp >= timestamp) {
                 return bundleInfo;
             }
-            if (oldChainInfo?.timestamp != priorTime) {
+            if (oldChainInfo?.timestamp !== priorTime) {
                 throw new Error(`missing prior chain entry for ${JSON.stringify(bundleInfo)}, ` +
                     `have ${JSON.stringify(oldChainInfo)}`);
             }
         }
         // If this is a new chain, save the identity & claim this chain
         if (claimChain) {
-            ensure(bundleInfo.timestamp == bundleInfo.chainStart);
+            ensure(bundleInfo.timestamp === bundleInfo.chainStart);
             const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
             this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
 
@@ -211,7 +211,7 @@ export class MemoryStore implements Store {
                     const upperClearances = this.clearances.upperBound(`${containerIdStr},~`);
                     while (lowerClearances) {
                         if (lowerClearances.equals(upperClearances)) break;
-                        if (muidTupleToString(lowerClearances.value.containerId) != containerIdStr) break;
+                        if (muidTupleToString(lowerClearances.value.containerId) !== containerIdStr) break;
                         this.clearances.delete(lowerClearances.key);
                         lowerClearances.next();
                     }
@@ -261,7 +261,7 @@ export class MemoryStore implements Store {
             const removingIdStr = iterator.value.slice(-34);
             this.removals.set(`${removingIdStr},${movementIdStr}`, "");
         }
-        if (dest != 0) {
+        if (dest !== 0) {
             this.addEntry(entry);
         }
     }
@@ -355,14 +355,14 @@ export class MemoryStore implements Store {
         const result = new Map();
         for (; iterator && iterator.key && !iterator.equals(this.placements.end()); iterator.next()) {
             const parts = iterator.key.split(",");
-            if (parts[0] != srcAsStr) break;
+            if (parts[0] !== srcAsStr) break;
             const placementIdStr = parts[parts.length - 1];
             if (placementIdStr < clearTimeStr || placementIdStr > asOfTsStr)
                 continue;
             const entry: Entry = iterator.value;
-            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET ||
-                entry.behavior == Behavior.GROUP || entry.behavior == Behavior.PAIR_SET ||
-                entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
+            ensure(entry.behavior === Behavior.DIRECTORY || entry.behavior === Behavior.KEY_SET ||
+                entry.behavior === Behavior.GROUP || entry.behavior === Behavior.PAIR_SET ||
+                entry.behavior === Behavior.PAIR_MAP || entry.behavior === Behavior.PROPERTY);
 
             const key = storageKeyToString(entry.storageKey);
             if (entry.deletion) result.delete(key);
@@ -384,13 +384,13 @@ export class MemoryStore implements Store {
         const result = [];
         for (; iterator && iterator.key && !iterator.equals(this.placements.end()); iterator.next()) {
             const parts = iterator.key.split(",");
-            if (parts[0] != srcAsStr) break;
+            if (parts[0] !== srcAsStr) break;
             const placementIdStr = muidTupleToString(iterator.value.placementId);
             if (placementIdStr < clearTimeStr || placementIdStr > asOfTsStr)
                 continue;
             const entry: Entry = iterator.value;
-            ensure(entry.behavior == Behavior.PROPERTY);
-            if (entry.value != name) continue;
+            ensure(entry.behavior === Behavior.PROPERTY);
+            if (entry.value !== name) continue;
             const key = storageKeyToString(entry.storageKey);
             if (!entry.deletion) result.push(strToMuid(key));
         }
@@ -438,7 +438,7 @@ export class MemoryStore implements Store {
             if (!placementKey)
                 break;
             const foundContainerStr = placementKey.substring(0, 34);
-            if (foundContainerStr != containerIdStr)
+            if (foundContainerStr !== containerIdStr)
                 break;
             const placementIdStr = placementKey.slice(-34);
             if (placementIdStr < clearanceTimeStr || placementIdStr > asOfTsStr)
@@ -447,7 +447,7 @@ export class MemoryStore implements Store {
                 continue;
             const returningKey = placementKey.substring(35);
             const entry: Entry = it.value;
-            ensure(muidTupleToString(entry.containerId) == containerIdStr);
+            ensure(muidTupleToString(entry.containerId) === containerIdStr);
             returning.set(returningKey, entry);
         }
         return returning;
@@ -460,7 +460,7 @@ export class MemoryStore implements Store {
         const placementKey = `${containerIdStr},${storageKeyToString(entry.storageKey)},${placementIdStr}`;
         const behavior = entry.behavior;
 
-        if (behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE) {
+        if (behavior === Behavior.SEQUENCE || behavior === Behavior.EDGE_TYPE) {
             this.locations.set(`${entryIdStr},${placementIdStr}`, placementKey);
         } else {
             const containerIdStr = muidTupleToString(entry.containerId);
@@ -478,7 +478,7 @@ export class MemoryStore implements Store {
         this.placements.set(placementKey, entry);
         if (entry.sourceList.length) {
             // TODO: remove these on deletion/purge
-            const middle = behavior == Behavior.EDGE_TYPE ? storageKeyToString(entry.storageKey) : "";
+            const middle = behavior === Behavior.EDGE_TYPE ? storageKeyToString(entry.storageKey) : "";
             const sourceIdStr = muidTupleToString(entry.sourceList[0]);
             this.bySource.set(`${sourceIdStr},${middle},${placementIdStr}`, entry);
             ensure(entry.targetList.length);

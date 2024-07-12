@@ -4,7 +4,7 @@ const os = require("os");
 const { spawnSync } = require("child_process");
 
 // Mac's bash is located in /bin/bash
-const shell = os.platform() == "linux" ? "/usr/bin/bash" : "/bin/bash";
+const shell = os.platform() === "linux" ? "/usr/bin/bash" : "/bin/bash";
 const TEST_DB_PATH = "/tmp/chain-reuse-py-test.db";
 process.chdir(__dirname + "/..");
 (async () => {
@@ -23,7 +23,7 @@ process.chdir(__dirname + "/..");
             { shell: shell }
         );
 
-        if (result1.status != 0) {
+        if (result1.status !== 0) {
             throw Error(`invocation 1 failed ${result1.stderr}`);
         }
 
@@ -34,7 +34,7 @@ process.chdir(__dirname + "/..");
             { shell: shell }
         );
 
-        if (result2.status != 0) {
+        if (result2.status !== 0) {
             throw Error(`invocation 2 failed ${result2.stderr}`);
         }
 
@@ -45,7 +45,7 @@ process.chdir(__dirname + "/..");
             { shell: shell }
         );
 
-        if (result3.status != 0) {
+        if (result3.status !== 0) {
             throw Error(`invocation 3 failed ${result3.stderr}`);
         }
 
@@ -55,12 +55,12 @@ process.chdir(__dirname + "/..");
             { shell: shell }
         );
 
-        if (result4.status != 0) {
+        if (result4.status !== 0) {
             throw Error(`invocation 4 failed ${result4.stderr}`);
         }
 
         const found = result4.stdout.toString().trim();
-        if (found == "2") {
+        if (found === "2") {
             console.log("success!");
         } else {
             console.error(`failure. found =>${found}<= chains.`);

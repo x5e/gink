@@ -11,9 +11,9 @@ export class Group extends Container {
     constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(database, address, Behavior.GROUP);
         if (this.address.timestamp < 0) {
-            ensure(address.offset == Behavior.GROUP);
+            ensure(address.offset === Behavior.GROUP);
         } else {
-            ensure(containerBuilder.getBehavior() == Behavior.GROUP);
+            ensure(containerBuilder.getBehavior() === Behavior.GROUP);
         }
     }
 

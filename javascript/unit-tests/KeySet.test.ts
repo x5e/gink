@@ -94,7 +94,7 @@ it('KeySet.toJson', async function () {
         await ks.update(["key2", "key3"]);
 
         const asJSON = await ks.toJson();
-        ensure(asJSON == `["key1","key2","key3"]`, asJSON);
+        ensure(asJSON === `["key1","key2","key3"]`, asJSON);
     }
 });
 
@@ -121,13 +121,13 @@ it('KeySet.asOf', async function () {
         ensure(!await ks.has("key2", time1));
 
         // testing asOf for toJson
-        ensure(await ks.toJson(false, time1) == `["key1"]`);
-        ensure(await ks.toJson(false, time2) == `["key1","key2"]`);
+        ensure(await ks.toJson(false, time1) === `["key1"]`);
+        ensure(await ks.toJson(false, time2) === `["key1","key2"]`);
 
         // testing asOf for size
-        ensure(await ks.size(time0) == 0);
-        ensure(await ks.size(time1) == 1);
-        ensure(await ks.size(time2) == 2);
+        ensure(await ks.size(time0) === 0);
+        ensure(await ks.size(time1) === 1);
+        ensure(await ks.size(time2) === 2);
 
         // testing asOf toSet
         const values = await ks.toSet(time0);
@@ -135,7 +135,7 @@ it('KeySet.asOf', async function () {
 
         ensure(!values.size);
         ensure(!values.has("key2"));
-        ensure(values1.size == 1);
+        ensure(values1.size === 1);
         ensure(values1.has("key1"));
     }
 });

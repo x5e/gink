@@ -18,14 +18,14 @@ it('track two bundles', async () => {
 
     const bundleInfo3 = chainTracker.getBundleInfo([medallion, chainStart]);
     if (!bundleInfo3) throw new Error("missing");
-    ensure(bundleInfo3.medallion == medallion);
-    ensure(bundleInfo3.chainStart == chainStart);
-    ensure(bundleInfo3.timestamp == secondTime);
-    ensure(bundleInfo3.priorTime == chainStart);
-    ensure(bundleInfo3.comment == "hello");
+    ensure(bundleInfo3.medallion === medallion);
+    ensure(bundleInfo3.chainStart === chainStart);
+    ensure(bundleInfo3.timestamp === secondTime);
+    ensure(bundleInfo3.priorTime === chainStart);
+    ensure(bundleInfo3.comment === "hello");
 
     const chains = chainTracker.getChains();
-    ensure(chains.length == 1);
-    ensure(chains[0][0] == medallion);
-    ensure(chains[0][1] == chainStart);
+    ensure(chains.length === 1);
+    ensure(chains[0][0] === medallion);
+    ensure(chains[0][1] === chainStart);
 });

@@ -26,7 +26,7 @@ def test_creation():
             vertex1 = Vertex()
             vertex2 = Vertex()
             vertex3 = Vertex()
-            pairset3 = PairSet(contents=[(vertex1, vertex2), (vertex2, vertex3), (vertex1, vertex3)])
+            pairset3 = PairSet(contents={"include": [(vertex1, vertex2), (vertex2, vertex3), (vertex1, vertex3)]})
             assert pairset3.size() == 3
 
 def test_include_exclude():
@@ -47,13 +47,13 @@ def test_include_exclude():
             pairset1.include(pair=(vertex1, vertex3))
             assert pairset1.size() == 2
 
-            pairset1.exclude(pair=(vertex1, vertex2))
+            pairset1.exclude(pair=(vertex1._muid, vertex2._muid))
             assert pairset1.size() == 1
 
-            pairset1.include(pair=(vertex2, vertex3))
+            pairset1.include(pair=(vertex2._muid, vertex3))
             assert pairset1.size() == 2
 
-            pairset1.exclude(pair=(vertex2, vertex3))
+            pairset1.exclude(pair=(vertex2, vertex3._muid))
             assert pairset1.size() == 1
 
 def test_reset_asof():
@@ -85,7 +85,7 @@ def test_dumps():
             vertex1 = Vertex(database=database)
             vertex2 = Vertex(database=database)
             vertex3 = Vertex(database=database)
-            pairset1 = PairSet(contents=[(vertex1, vertex2), (vertex1, vertex3), (vertex2, vertex3)], database=database)
+            pairset1 = PairSet(contents={"include": [(vertex1, vertex2), (vertex1, vertex3), (vertex2, vertex3)]}, database=database)
             assert pairset1.size() == 3
             dump = pairset1.dumps()
 
@@ -100,12 +100,14 @@ def test_contains_getpairs():
             vertex1 = Vertex(database=database)
             vertex2 = Vertex(database=database)
             vertex3 = Vertex(database=database)
-            pairset1 = PairSet(contents=[(vertex1, vertex2), (vertex1, vertex3), (vertex2, vertex3)], database=database)
+            pairset1 = PairSet(contents={"include": [(vertex1, vertex2), (vertex1, vertex3), (vertex2, vertex3)]}, database=database)
             assert pairset1.size() == 3
 
             assert pairset1.contains(pair=(vertex1, vertex2))
             assert pairset1.__contains__(pair=(vertex1, vertex2))
             assert pairset1.contains(pair=(vertex1._muid, vertex2._muid))
+            assert pairset1.contains(pair=(vertex1, vertex2._muid))
+            assert pairset1.contains(pair=(vertex1._muid, vertex2))
 
             assert pairset1.get_pairs() == {(vertex1._muid, vertex2._muid),
                                             (vertex1._muid, vertex3._muid), (vertex2._muid, vertex3._muid)}

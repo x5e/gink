@@ -67,14 +67,14 @@ export class ChainTracker {
         const seenThrough = innerMap.get(bundleInfo.chainStart)?.timestamp || 0;
         if (bundleInfo.timestamp > seenThrough) {
             if (checkValidExtension) {
-                if (bundleInfo.timestamp != bundleInfo.chainStart && !bundleInfo.priorTime)
+                if (bundleInfo.timestamp !== bundleInfo.chainStart && !bundleInfo.priorTime)
                     throw new Error(`bundleInfo appears to be invalid: ${JSON.stringify(bundleInfo)}`);
-                if ((bundleInfo.priorTime ?? 0) != seenThrough)
+                if ((bundleInfo.priorTime ?? 0) !== seenThrough)
                     throw new Error(`proposed bundle would be an invalid extension ${JSON.stringify(bundleInfo)}`);
             }
             innerMap.set(bundleInfo.chainStart, bundleInfo);
             for (const [cb, pair] of this.waiters) {
-                if (pair[0] == bundleInfo.medallion && pair[1] >= bundleInfo.chainStart && pair[1] <= bundleInfo.timestamp) {
+                if (pair[0] === bundleInfo.medallion && pair[1] >= bundleInfo.chainStart && pair[1] <= bundleInfo.timestamp) {
                     this.waiters.delete(cb);
                     cb();
                 }
@@ -132,7 +132,7 @@ export class ChainTracker {
     getChains(singleMedallion?: Medallion): Array<[Medallion, ChainStart]> {
         const result = [];
         for (const [medallion, map] of this.data.entries()) {
-            if (singleMedallion && medallion != singleMedallion) continue;
+            if (singleMedallion && medallion !== singleMedallion) continue;
             for (const chainStart of map.keys()) {
                 result.push([medallion, chainStart]);
             }

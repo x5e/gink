@@ -13,7 +13,7 @@ from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, 
 from .coding import encode_key, encode_value, decode_value, deletion, inclusion, BOX, SEQUENCE, PAIR_MAP, DIRECTORY, KEY_SET, GROUP, PAIR_SET, PROPERTY, BRAID
 from .addressable import Addressable
 from .tuples import Chain
-from .utilities import generate_timestamp, is_type
+from .utilities import generate_timestamp, is_type, normalize_pair
 
 class Container(Addressable, ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
@@ -244,7 +244,7 @@ class Container(Addressable, ABC):
     def _add_entry(self, *,
                    value: Union[UserValue, Deletion, Inclusion, Container],
                    key: Union[Muid, str, int, bytes, None, Chain,
-                              Tuple[Container, Container], Tuple[Muid, Muid]] = None,
+                              Tuple[Union[Container, Muid], Union[Container, Muid]]] = None,
                    effective: Optional[MuTimestamp] = None,
                    bundler: Optional[Bundler] = None,
                    comment: Optional[str] = None,
@@ -282,14 +282,13 @@ class Container(Addressable, ABC):
         elif isinstance(key, Container):
             key._muid.put_into(entry_builder.describing)
         elif isinstance(key, tuple):
-            if isinstance(key[0], Container) and isinstance(key[1], Container):
-                key[0]._muid.put_into(entry_builder.pair.left)
-                key[1]._muid.put_into(entry_builder.pair.rite)
-            elif isinstance(key[0], Muid) and isinstance(key[1], Muid):
-                key[0].put_into(entry_builder.pair.left)
-                key[1].put_into(entry_builder.pair.rite)
-            else:
-                raise ValueError("Tuple can only contain 2 containers or muids")
+            left, rite = normalize_pair(key)
+            left.put_into(entry_builder.pair.left)
+            rite.put_into(entry_builder.pair.rite)
+
+        elif key is not None:
+            raise ValueError(f"Don't know how to add this key to gink: {key}")
+
         if isinstance(value, Container):
             pointee_muid = value.get_muid()
             if pointee_muid.medallion:
@@ -304,7 +303,7 @@ class Container(Addressable, ABC):
         elif value == inclusion:
             pass
         else:
-            raise ValueError(f"don't know how to add this to gink: {value}")
+            raise ValueError(f"don't know how to add this value to gink: {value}")
         muid = bundler.add_change(change_builder)
         if immediate:
             self._database.bundle(bundler)

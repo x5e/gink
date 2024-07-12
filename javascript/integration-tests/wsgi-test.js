@@ -13,7 +13,7 @@ process.chdir(__dirname + "/..");
     await sleep(500);
 
     const result = (await (await fetch(`http://0.0.0.0:${port}`)).text()).trim();
-    if (!(result == "Hello, World!")) {
+    if (!(result === "Hello, World!")) {
         console.error("FAILED");
         process.exit(1);
     }

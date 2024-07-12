@@ -35,7 +35,7 @@ it('test locks', async () => {
         result = "barfed";
         lbs2.close();
     });
-    if (result != "barfed") {
+    if (result !== "barfed") {
         throw new Error("locking broken");
     }
     await lbs1.close();
@@ -87,9 +87,9 @@ it('test magic', async () => {
     await store1.close();
 
     const contents = readFileSync(fn);
-    ensure(contents[1] == 71); // G
-    ensure(contents[2] == 73); // I
-    ensure(contents[3] == 78); // N
-    ensure(contents[4] == 75); // K
+    ensure(contents[1] === 71); // G
+    ensure(contents[2] === 73); // I
+    ensure(contents[3] === 78); // N
+    ensure(contents[4] === 75); // K
 
 });

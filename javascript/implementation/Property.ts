@@ -10,9 +10,9 @@ export class Property extends Keyed<Addressable> {
     constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(database, address, Behavior.PROPERTY);
         if (this.address.timestamp < 0) {
-            ensure(address.offset == Behavior.PROPERTY);
+            ensure(address.offset === Behavior.PROPERTY);
         } else {
-            ensure(containerBuilder.getBehavior() == Behavior.PROPERTY);
+            ensure(containerBuilder.getBehavior() === Behavior.PROPERTY);
         }
     }
 }

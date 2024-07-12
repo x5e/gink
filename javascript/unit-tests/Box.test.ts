@@ -4,9 +4,9 @@ import { ensure } from "../implementation/utils";
 it('create a box; set and get data in it', async function () {
     // set up the objects
     for (const store of [
-            new IndexedDbStore('Box.test1', true),
-            new MemoryStore(true),
-        ]) {
+        new IndexedDbStore('Box.test1', true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const aBox: Box = await instance.createBox();
@@ -16,16 +16,16 @@ it('create a box; set and get data in it', async function () {
 
         // check that the desired result exists in the database
         const result = await aBox.get();
-        ensure(result == "a value", `result is ${result}`);
+        ensure(result === "a value", `result is ${result}`);
 
         // check the appropriate size
         const size1 = await aBox.size();
-        ensure(size1 == 1);
+        ensure(size1 === 1);
 
         // set another value
         await aBox.set("another value");
         const result2 = await aBox.get();
-        ensure(result2 == "another value");
+        ensure(result2 === "another value");
 
         // Make sure the "clear" operation works as intended
         await aBox.clear();
@@ -33,7 +33,7 @@ it('create a box; set and get data in it', async function () {
         ensure(result3 === undefined);
 
         const size3 = await aBox.size();
-        ensure(size3 == 0, size3.toString());
+        ensure(size3 === 0, size3.toString());
     }
 });
 
@@ -51,12 +51,12 @@ it('set a box in a bundler', async function () {
 
         // confirm that change isn't visible yet
         const size0 = await aBox.size();
-        ensure(size0 == 0);
+        ensure(size0 === 0);
 
         await instance.addBundler(bundler);
 
         const size1 = await aBox.size();
-        ensure(size1 == 1);
+        ensure(size1 === 1);
     }
 });
 
@@ -77,7 +77,7 @@ it('create a box and set in same CS', async function () {
         ensure(box.address?.timestamp === change.timestamp);
 
         const val = await box.get();
-        ensure(val == "a value");
+        ensure(val === "a value");
     }
 });
 
@@ -91,7 +91,7 @@ it('set a value in a box then clear it', async function () {
 
         // make sure it's there
         const current = await box.get();
-        ensure(current == 'foo');
+        ensure(current === 'foo');
 
         // clear the box
         await box.clear();
@@ -120,6 +120,6 @@ it('Box.toJson', async function () {
 
         const asJson = await box.toJson();
 
-        ensure(asJson == `{"cheese":"fries"}`);
+        ensure(asJson === `{"cheese":"fries"}`);
     }
 });

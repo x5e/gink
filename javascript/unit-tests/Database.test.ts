@@ -7,12 +7,12 @@ it('test bundle', async () => {
         const instance = new Database(store);
         await instance.ready;
         const bundleInfo = await instance.addBundler(new Bundler("hello world"));
-        ensure(bundleInfo.comment == "hello world");
+        ensure(bundleInfo.comment === "hello world");
         const chainTracker = await store.getChainTracker();
         const allChains = chainTracker.getChains();
-        ensure(allChains.length == 1);
-        ensure(allChains[0][0] == bundleInfo.medallion);
-        ensure(allChains[0][1] == bundleInfo.chainStart);
+        ensure(allChains.length === 1);
+        ensure(allChains[0][0] === bundleInfo.medallion);
+        ensure(allChains[0][1] === bundleInfo.chainStart);
     }
 });
 
@@ -46,11 +46,11 @@ it('test listeners', async () => {
         await sequence.push("foo");
         await box.set("test");
 
-        ensure(rootListener.calledTimes == 1);
-        ensure(allContainersListener.calledTimes == 3);
+        ensure(rootListener.calledTimes === 1);
+        ensure(allContainersListener.calledTimes === 3);
 
         await root.clear();
-        ensure(rootListener.calledTimes == 2);
+        ensure(rootListener.calledTimes === 2);
     }
 });
 
@@ -73,24 +73,24 @@ it('test container naming', async function () {
         await seq2.setName("seq");
         await seq3.setName("seq");
 
-        ensure(await root.getName() == "root");
-        ensure(await seq1.getName() == "seq");
+        ensure(await root.getName() === "root");
+        ensure(await seq1.getName() === "seq");
 
         const rootContainers = await db.getContainersWithName("root");
-        ensure(rootContainers.length == 1);
-        ensure(root.address.timestamp == rootContainers[0].timestamp);
-        ensure(root.address.medallion == rootContainers[0].medallion);
-        ensure(root.address.offset == rootContainers[0].offset);
+        ensure(rootContainers.length === 1);
+        ensure(root.address.timestamp === rootContainers[0].timestamp);
+        ensure(root.address.medallion === rootContainers[0].medallion);
+        ensure(root.address.offset === rootContainers[0].offset);
 
         const seqContainers = await db.getContainersWithName("seq");
-        ensure(seqContainers.length == 3);
-        ensure(seq1.address.timestamp == seqContainers[0].timestamp);
-        ensure(seq1.address.medallion == seqContainers[0].medallion);
-        ensure(seq1.address.offset == seqContainers[0].offset);
+        ensure(seqContainers.length === 3);
+        ensure(seq1.address.timestamp === seqContainers[0].timestamp);
+        ensure(seq1.address.medallion === seqContainers[0].medallion);
+        ensure(seq1.address.offset === seqContainers[0].offset);
 
-        ensure(seq3.address.timestamp == seqContainers[2].timestamp);
-        ensure(seq3.address.medallion == seqContainers[2].medallion);
-        ensure(seq3.address.offset == seqContainers[2].offset);
+        ensure(seq3.address.timestamp === seqContainers[2].timestamp);
+        ensure(seq3.address.medallion === seqContainers[2].medallion);
+        ensure(seq3.address.offset === seqContainers[2].offset);
     }
 });
 

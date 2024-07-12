@@ -20,19 +20,19 @@ import { Container } from "./Container";
  */
 export function getStorageKey(entryBuilder: EntryBuilder, entryMuid: Muid): StorageKey {
     const behavior: Behavior = entryBuilder.getBehavior();
-    if (behavior == Behavior.DIRECTORY || behavior == Behavior.KEY_SET) {
+    if (behavior === Behavior.DIRECTORY || behavior === Behavior.KEY_SET) {
         ensure(entryBuilder.hasKey());
         const key = unwrapKey(entryBuilder.getKey());
         // if (key instanceof Uint8Array) return [key.toString()];
         return key;
-    } else if (behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE) {
+    } else if (behavior === Behavior.SEQUENCE || behavior === Behavior.EDGE_TYPE) {
         return (entryBuilder.getEffective() || entryMuid.timestamp);
-    } else if (behavior == Behavior.BOX || behavior == Behavior.VERTEX) {
+    } else if (behavior === Behavior.BOX || behavior === Behavior.VERTEX) {
         return [];
-    } else if (behavior == Behavior.PROPERTY || behavior == Behavior.GROUP) {
+    } else if (behavior === Behavior.PROPERTY || behavior === Behavior.GROUP) {
         ensure(entryBuilder.hasDescribing());
         return muidToTuple(builderToMuid(entryBuilder.getDescribing(), entryMuid));
-    } else if (behavior == Behavior.PAIR_SET || behavior == Behavior.PAIR_MAP) {
+    } else if (behavior === Behavior.PAIR_SET || behavior === Behavior.PAIR_MAP) {
         ensure(entryBuilder.hasPair());
         const pair = entryBuilder.getPair();
         const left = builderToMuid(pair.getLeft(), entryMuid);
@@ -47,12 +47,12 @@ export function storageKeyToString(storageKey: StorageKey): string {
     if (storageKey instanceof Uint8Array)
         return `(${storageKey})`;
     if (Array.isArray(storageKey)) {
-        if (storageKey.length == 3) {
+        if (storageKey.length === 3) {
             return muidTupleToString(<MuidTuple>storageKey);
         }
         return storageKey.toString();
     }
-    if (typeof (storageKey) == "number" || typeof (storageKey) == "string")
+    if (typeof (storageKey) === "number" || typeof (storageKey) === "string")
         return JSON.stringify(storageKey);
 }
 
@@ -138,7 +138,7 @@ export function buildChainTracker(chainInfos: Iterable<BundleInfo>): ChainTracke
 export function toStorageKey(key: ScalarKey | Muid | [Muid | Container, Muid | Container]): StorageKey {
     if (key instanceof Uint8Array)
         return key;
-    if (typeof (key) == "number" || typeof (key) == "string") {
+    if (typeof (key) === "number" || typeof (key) === "string") {
         return key;
     } else if (Array.isArray(key)) {
         return [muidToTuple(<Muid>key[0]), muidToTuple(<Muid>key[1])];
@@ -146,7 +146,7 @@ export function toStorageKey(key: ScalarKey | Muid | [Muid | Container, Muid | C
         const muidKey = <Muid>key;
         return [muidKey.timestamp, muidKey.medallion, muidKey.offset];
     }
-    if (key == undefined || key == null) {
+    if (key === undefined || key === null) {
         return [];
     }
 }

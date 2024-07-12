@@ -13,11 +13,12 @@ from requests import get
 from authlib.jose import jwt, JsonWebKey
 from authlib.jose.errors import JoseError
 from time import time as get_time
-from typing import Optional
+from typing import Optional, Tuple
 from random import choice
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
+from .muid import Muid
 from .builders import ClaimBuilder
 from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE
 
@@ -142,6 +143,21 @@ def resolve_timestamp(timestamp: GenericTimestamp) -> MuTimestamp:
     if isinstance(timestamp, float) and 1e6 > timestamp > -1e6:
         return generate_timestamp() + int(1e6 * timestamp)
     raise ValueError(f"don't know how to resolve {timestamp} into a timestamp")
+
+def normalize_pair(pair: Tuple) -> Tuple[Muid, Muid]:
+    assert len(pair) == 2, "pair must be a tuple of 2 elements"
+    # Avoiding circular imports by using hasattr here
+    if hasattr(pair[0], "_add_entry"):
+        left = pair[0]._muid
+    elif isinstance(pair[0], Muid):
+        left = pair[0]
+    if hasattr(pair[1], "_add_entry"):
+        rite = pair[1]._muid
+    elif isinstance(pair[1], Muid):
+        rite = pair[1]
+    if not left or not rite:
+        raise ValueError("pair tuple can only contain 2 containers or muids")
+    return left, rite
 
 # URL to get Google's public keys
 GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs'

@@ -1,14 +1,15 @@
 """ Contains the pair set class definition """
 
-from typing import Optional, Tuple, Iterable, Union, Set
+from typing import Optional, Tuple, Iterable, Union, Set, Dict
 from .database import Database
 from .muid import Muid
 from .container import Container
 from .coding import PAIR_SET, deletion, inclusion
 from .bundler import Bundler
 from .typedefs import GenericTimestamp
+from .utilities import normalize_pair
 
-Pair = Union[Tuple[Container, Container], Tuple[Muid, Muid]]
+Pair = Tuple[Union[Container, Muid], Union[Container, Muid]]
 
 class PairSet(Container):
     _missing = object()
@@ -28,7 +29,7 @@ class PairSet(Container):
 
         muid: the global id of this container, created on the fly if None
         arche: whether this will be the global version of this container (accessible by all databases)
-        contents: prefill the pair set with an iterable of (Vertex, Vertex) upon initialization
+        contents: optionally expecting a dictionary of {"include": Set, "exclude": Set} to prefill the pair set
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
@@ -50,10 +51,20 @@ class PairSet(Container):
                 bundler=bundler,
             )
         if contents:
+            assert isinstance(contents, dict), "expecting contents to be of the form {'include': Iterable[(Muid, Muid)], 'exclude': Iterable[(Muid, Muid)]}"
+            assert contents.keys() <= {"include", "exclude"}, "expecting only 'include' and 'exclude' keys in contents"
             self.clear(bundler=bundler)
-            for item in contents:
-                assert isinstance(item, tuple) and len(item) == 2
-                self.include(item, bundler=bundler)
+            included = contents.get("include", set())
+            assert isinstance(included, Iterable)
+            for pair in included:
+                assert isinstance(pair, tuple) and len(pair) == 2
+                self.include(pair, bundler=bundler) # type: ignore
+
+            excluded = contents.get("exclude", set())
+            assert isinstance(excluded, Iterable)
+            for pair in excluded:
+                assert isinstance(pair, tuple) and len(pair) == 2
+                self.exclude(pair, bundler=bundler) # type: ignore
 
         if immediate and len(bundler):
             self._database.bundle(bundler)
@@ -68,10 +79,7 @@ class PairSet(Container):
 
     def contains(self, pair: Pair, *, as_of: GenericTimestamp = None) -> bool:
         ts = self._database.resolve_timestamp(as_of)
-        assert len(pair) == 2
-        if isinstance(pair[0], Container):
-            pair = (pair[0]._muid, pair[1]._muid)
-
+        pair = normalize_pair(pair)
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=pair, as_of=ts)
         return bool(found and not found.builder.deletion)
 
@@ -108,18 +116,25 @@ class PairSet(Container):
         as_of = self._database.resolve_timestamp(as_of)
         identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
-        result += "["
-        stuffing = ""
+        result += "{"
+
+        included_stuffing = "'include': [\n\t"
+        excluded_stuffing = "'exclude': [\n\t"
         for entry_pair in self._database.get_store().get_keyed_entries(container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of):
+            left = entry_pair.builder.pair.left
+            rite = entry_pair.builder.pair.rite
             if not entry_pair.builder.deletion:
-                left = entry_pair.builder.pair.left
-                rite = entry_pair.builder.pair.rite
-                stuffing += f"(Muid{(left.timestamp, left.medallion, left.offset)}, Muid{(rite.timestamp, rite.medallion, rite.offset)}),\n\t"
-        as_one_line = result + ",".join(stuffing) + "])"
-        if len(as_one_line) < 80:
-            return as_one_line
+                included_stuffing += f"(Muid{(left.timestamp, left.medallion, left.offset)}, Muid{(rite.timestamp, rite.medallion, rite.offset)}),\n\t"
+            else:
+                excluded_stuffing += f"(Muid{(left.timestamp, left.medallion, left.offset)}, Muid{(rite.timestamp, rite.medallion, rite.offset)}),\n\t"
+
         result += "\n\t"
-        result += "".join(stuffing) + "])"
+        if included_stuffing != "'include': [\n\t":
+            result += "".join(included_stuffing) + "],"
+        if excluded_stuffing != "'exclude': [\n\t":
+            result += "".join(excluded_stuffing) + "],"
+
+        result += "})"
         return result
 
 Database.register_container_type(PairSet)

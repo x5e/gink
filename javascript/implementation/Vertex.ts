@@ -11,9 +11,9 @@ export class Vertex extends Container {
     constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(database, address, Behavior.VERTEX);
         if (this.address.timestamp < 0) {
-            ensure(address.offset == Behavior.VERTEX);
+            ensure(address.offset === Behavior.VERTEX);
         } else if (containerBuilder) {
-            ensure(containerBuilder.getBehavior() == Behavior.VERTEX);
+            ensure(containerBuilder.getBehavior() === Behavior.VERTEX);
         }
     }
 
@@ -51,7 +51,7 @@ export class Vertex extends Container {
         const edges: Edge[] = [];
         for (let i = 0; i < entries.length; i++) {
             const entry = entries[i];
-            if (entry.behavior != Behavior.EDGE_TYPE)
+            if (entry.behavior !== Behavior.EDGE_TYPE)
                 continue;
             const edge = new Edge(
                 this.database,

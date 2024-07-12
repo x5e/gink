@@ -1,5 +1,5 @@
 function getLaunchOptions(headless = true) {
-    if (headless == true) {
+    if (headless === true) {
         headless = "new";
     } else {
         headless = false;

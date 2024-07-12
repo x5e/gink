@@ -155,10 +155,10 @@ def test_dump():
             seq_muid = Sequence(contents=[1, 2, "3"], database=database).get_muid()
             ks_muid = KeySet(contents=[1, 2, "3"], database=database).get_muid()
             box_muid = Box(contents="box contents", database=database).get_muid()
-            ps_muid = PairSet(contents=[(box_muid, ks_muid)], database=database).get_muid()
+            ps_muid = PairSet(contents={"include": [(box_muid, ks_muid)], "exclude": [(seq_muid, ks_muid)]}, database=database).get_muid()
             pm_muid = PairMap(contents={(box_muid, ks_muid): "value", (box_muid, ps_muid): 3}, database=database).get_muid()
             prop_muid = Property(contents={root: "value"}, database=database).get_muid()
-            g = Group(contents={"included": {box_muid, ps_muid}, "excluded": {pm_muid}}, database=database)
+            g = Group(contents={"include": {box_muid, ps_muid}, "exclude": {pm_muid}}, database=database)
             group_dump = g.dumps()
             group_muid = g.get_muid()
             # TODO: vertex, verb, edge
@@ -186,6 +186,7 @@ def test_dump():
 
             ps = PairSet(muid=ps_muid, database=db2)
             assert ps.contains((box_muid, ks_muid))
+            assert not ps.contains((seq_muid, ks_muid))
 
             pm = PairMap(muid=pm_muid, database=db2)
             assert pm.get((box_muid, ks_muid)) == "value"

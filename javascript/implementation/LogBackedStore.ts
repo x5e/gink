@@ -81,7 +81,7 @@ export class LogBackedStore extends LockableLog implements Store {
                 if (thisLogBackedStore.closed || !thisLogBackedStore.opened)
                     return;
                 let size: number = await thisLogBackedStore.getFileLength();
-                if (eventType == "change" && size > this.redTo) {
+                if (eventType === "change" && size > this.redTo) {
                     const unlockingFunction = await this.memoryLock.acquireLock();
                     if (!this.exclusive)
                         await this.lockFile(true);
@@ -114,8 +114,8 @@ export class LogBackedStore extends LockableLog implements Store {
         const totalSize = await this.getFileLength();
         if (this.redTo < totalSize) {
             const logFileBuilder = await this.getLogContents(this.redTo, totalSize);
-            if (this.redTo == 0) {
-                ensure(logFileBuilder.getMagicNumber() == 1263421767, "log file doesn't have magic number");
+            if (this.redTo === 0) {
+                ensure(logFileBuilder.getMagicNumber() === 1263421767, "log file doesn't have magic number");
             }
             const bundles = logFileBuilder.getBundlesList();
             for (const bundleBytes of bundles) {
@@ -123,7 +123,7 @@ export class LogBackedStore extends LockableLog implements Store {
                 const info = await this.internalStore.addBundle(bundle);
                 this.chainTracker.markAsHaving(info);
                 // This is the start of a chain, and we need to keep track of the identity.
-                if (info.timestamp == info.chainStart && !info.priorTime) {
+                if (info.timestamp === info.chainStart && !info.priorTime) {
                     this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
                 }
                 for (const callback of this.foundBundleCallBacks) {
@@ -167,13 +167,13 @@ export class LogBackedStore extends LockableLog implements Store {
         if (!this.exclusive)
             await this.lockFile(true);
         await this.pullDataFromFile();
-        if (this.redTo == 0)
+        if (this.redTo === 0)
             await this.writeMagicNumber();
         const info: BundleInfo = await this.internalStore.addBundle(bundle);
 
         if (claimChain) {
             await this.claimChain(info.medallion, info.chainStart, getActorId());
-            if (info.timestamp == info.chainStart && !info.priorTime) {
+            if (info.timestamp === info.chainStart && !info.priorTime) {
                 this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
             }
         }
