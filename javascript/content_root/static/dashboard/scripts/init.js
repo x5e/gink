@@ -13,10 +13,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     await page.displayPage(...page.unwrapHash(window.location.hash));
 
     // Connect to server
-    await instance.connectTo(`${window.location.protocol == "https:" ? "wss" : "ws"}://${window.location.host}`);
+    await instance.connectTo(`${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`);
 
     const refreshContainer = async () => {
-        if (page.pageType == "container") {
+        if (page.pageType === "container") {
             await page.displayPage(...page.unwrapHash(window.location.hash));
         }
     };

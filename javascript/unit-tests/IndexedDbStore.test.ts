@@ -13,11 +13,11 @@ it('use methods', async () => {
     const beforeSecondSet = generateTimestamp();
     await dir.set("foo", "baz");
     const entries = await indexedDbStore.getAllEntries();
-    ensure(entries.length == 2);
+    ensure(entries.length === 2);
     const removals = await indexedDbStore.getAllRemovals();
-    ensure(removals.length == 1);
+    ensure(removals.length === 1);
     await indexedDbStore.dropHistory();
     const entriesAfterDrop = await indexedDbStore.getAllEntryKeys();
-    ensure(entriesAfterDrop.length == 1);
+    ensure(entriesAfterDrop.length === 1);
     ensure(!await dir.has("foo", beforeSecondSet));
 });

@@ -32,7 +32,7 @@ process.chdir(__dirname + "/..");
     await sleep(100);
     instance2.send(`console.log(database.myChain.chainStart, JSON.parse((await root.get("chainStart"))).chainStart);\n`);
     await sleep(100);
-    instance2.send(`ensure(database.myChain.chainStart == JSON.parse((await root.get("chainStart"))).chainStart);\n`);
+    instance2.send(`ensure(database.myChain.chainStart === JSON.parse((await root.get("chainStart"))).chainStart);\n`);
     await sleep(100);
     await instance2.close();
 

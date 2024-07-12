@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 let gink = require('../tsc.out/implementation/index');
 
-if (typeof window == 'undefined') {
+if (typeof window === 'undefined') {
     let gink = require('../tsc.out/implementation/index');
 }
 
@@ -282,7 +282,7 @@ async function testAll(count, num_inc_tests, keepHistory) {
 }
 
 async function main(tests, count, increasing, keepHistory) {
-    if (tests == "all") {
+    if (tests === "all") {
         results = await testAll(count, increasing, keepHistory);
     }
     else {

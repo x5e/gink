@@ -42,43 +42,43 @@ it('from_to', async function () {
         new MemoryStore(true),
         new IndexedDbStore('from_to', true),
     ]) {
-    const instance = new Database(store);
-    await instance.ready;
-    const vertex1 = await instance.createVertex();
-    const vertex2 = await instance.createVertex();
-    const vertex3 = await instance.createVertex();
-    const verb = await instance.createEdgeType();
-    const edge12 = await verb.createEdge(vertex1, vertex2);
-    const edge13 = await verb.createEdge(vertex1, vertex3);
-    const edge11 = await verb.createEdge(vertex1, vertex1);
-    const edge21 = await verb.createEdge(vertex2, vertex1);
-    const edge22 = await verb.createEdge(vertex2, vertex2);
-    const edge23 = await verb.createEdge(vertex2, vertex3);
+        const instance = new Database(store);
+        await instance.ready;
+        const vertex1 = await instance.createVertex();
+        const vertex2 = await instance.createVertex();
+        const vertex3 = await instance.createVertex();
+        const verb = await instance.createEdgeType();
+        const edge12 = await verb.createEdge(vertex1, vertex2);
+        const edge13 = await verb.createEdge(vertex1, vertex3);
+        const edge11 = await verb.createEdge(vertex1, vertex1);
+        const edge21 = await verb.createEdge(vertex2, vertex1);
+        const edge22 = await verb.createEdge(vertex2, vertex2);
+        const edge23 = await verb.createEdge(vertex2, vertex3);
 
-    /*
-    const entries = await store.getAllEntries();
-    for (let i = 0; i< entries.length; i++) {
-        console.log(JSON.stringify(entries[i]));
+        /*
+        const entries = await store.getAllEntries();
+        for (let i = 0; i< entries.length; i++) {
+            console.log(JSON.stringify(entries[i]));
+        }
+         */
+        const edgesTo2 = await vertex2.getEdgesTo();
+        ensure(edgesTo2.length === 2, `wtf: ${edgesTo2.length}`);
+        ensure(edgesTo2[0].equals(edge12) || edgesTo2[0].equals(edge22));
+        ensure(edgesTo2[1].equals(edge12) || edgesTo2[1].equals(edge22));
+        ensure(!edgesTo2[0].equals(edgesTo2[1]));
+
+        const edgesFrom2 = await vertex2.getEdgesFrom();
+        ensure(edgesFrom2.length === 3);
+        ensure(edgesFrom2[0].equals(edge21));
+        ensure(edgesFrom2[1].equals(edge22));
+        ensure(edgesFrom2[2].equals(edge23));
+
+        await edge11.remove();
+        const edgesFrom1 = await vertex1.getEdgesFrom();
+        ensure(edgesFrom1.length === 2);
+        ensure(edgesFrom1[0].equals(edge12));
+        ensure(edgesFrom1[1].equals(edge13));
     }
-     */
-    const edgesTo2 = await vertex2.getEdgesTo();
-    ensure(edgesTo2.length == 2, `wtf: ${edgesTo2.length}`);
-    ensure(edgesTo2[0].equals(edge12) || edgesTo2[0].equals(edge22));
-    ensure(edgesTo2[1].equals(edge12) || edgesTo2[1].equals(edge22));
-    ensure(!edgesTo2[0].equals(edgesTo2[1]));
-
-    const edgesFrom2 = await vertex2.getEdgesFrom();
-    ensure(edgesFrom2.length == 3);
-    ensure(edgesFrom2[0].equals(edge21));
-    ensure(edgesFrom2[1].equals(edge22));
-    ensure(edgesFrom2[2].equals(edge23));
-
-    await edge11.remove();
-    const edgesFrom1 = await vertex1.getEdgesFrom();
-    ensure(edgesFrom1.length == 2);
-    ensure(edgesFrom1[0].equals(edge12));
-    ensure(edgesFrom1[1].equals(edge13));
-}
 });
 
 it('edge_reorder', async function () {
@@ -99,20 +99,20 @@ it('edge_reorder', async function () {
         const y = await p.createEdge(a, b);
         const afterX = generateTimestamp();
         const entries = await store.getAllEntries();
-        ensure(entries.length == 2);
+        ensure(entries.length === 2);
         const edges1 = await a.getEdgesFrom();
-        ensure(edges1.length == 2 && edges1[0].equals(x) && edges1[1].equals(y), edges1.toString());
+        ensure(edges1.length === 2 && edges1[0].equals(x) && edges1[1].equals(y), edges1.toString());
 
         await y.remove(beforeX);
 
         const edges2 = await a.getEdgesFrom();
-        ensure(edges2.length == 2 && edges2[0].equals(y) && edges2[1].equals(x), edges2.toString());
+        ensure(edges2.length === 2 && edges2[0].equals(y) && edges2[1].equals(x), edges2.toString());
 
         const edges3 = await b.getEdgesTo(afterX);
-        ensure(edges3.length == 2 && edges3[0].equals(x) && edges3[1].equals(y), edges3.toString());
+        ensure(edges3.length === 2 && edges3[0].equals(x) && edges3[1].equals(y), edges3.toString());
 
         const edges4 = await b.getEdgesTo();
-        ensure(edges4.length == 2 && edges4[0].equals(y) && edges4[1].equals(x), edges4.toString());
+        ensure(edges4.length === 2 && edges4[0].equals(y) && edges4[1].equals(x), edges4.toString());
 
     }
 });

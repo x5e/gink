@@ -41,7 +41,7 @@ export class Database {
     protected iHave: ChainTracker;
 
     //TODO: centralize platform dependent code
-    private static W3cWebSocket = typeof WebSocket == 'function' ? WebSocket :
+    private static W3cWebSocket = typeof WebSocket === 'function' ? WebSocket :
         eval("require('websocket').w3cwebsocket");
 
     constructor(readonly store: Store = new MemoryStore(true),
@@ -80,10 +80,10 @@ export class Database {
         const claimedChains = await this.store.getClaimedChains();
         let reused;
         for (let value of claimedChains.values()) {
-            if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity([value.medallion, value.chainStart]) == this.identity) {
+            if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity([value.medallion, value.chainStart]) === this.identity) {
                 // TODO: check to see if meta-data matches, and overwrite if not
                 reused = value;
-                if (typeof window != "undefined") {
+                if (typeof window !== "undefined") {
                     // If we are running in a browser and take over a chain,
                     // start a new heartbeat.
                     setInterval(() => {
@@ -103,7 +103,7 @@ export class Database {
             bundler.seal({
                 medallion, timestamp: chainStart, chainStart
             });
-            ensure(bundler.info.comment == this.identity);
+            ensure(bundler.info.comment === this.identity);
             await this.store.addBundle(bundler, true);
             this.myChain = (await this.store.getClaimedChains()).get(medallion);
             this.iHave.markAsHaving(bundler.info);
@@ -346,7 +346,7 @@ export class Database {
                 peer._sendAck(bundle.info);
             }
             for (const [peerId, peer] of this.peers) {
-                if (peerId != fromConnectionId)
+                if (peerId !== fromConnectionId)
                     peer._sendIfNeeded(bundle);
             }
             // Send to listeners subscribed to all containers.

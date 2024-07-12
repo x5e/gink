@@ -55,7 +55,7 @@ export class Keyed<GenericType extends ScalarKey | Addressable | [Addressable, A
 
     async has(key: GenericType, asOf?: AsOf): Promise<boolean> {
         const result = await this.database.store.getEntryByKey(this.address, key, asOf);
-        if (result != undefined && result.deletion) {
+        if (result !== undefined && result.deletion) {
             return false;
         }
         return result !== undefined;
@@ -103,7 +103,7 @@ export class Keyed<GenericType extends ScalarKey | Addressable | [Addressable, A
                 returning += ",";
             }
             const storageKey: StorageKey = entry.storageKey;
-            if (typeof storageKey == "string") {
+            if (typeof storageKey === "string") {
                 returning += JSON.stringify(storageKey);
             } else if (storageKey instanceof Uint8Array) {
                 returning += '"' + storageKey.toString() + '"';

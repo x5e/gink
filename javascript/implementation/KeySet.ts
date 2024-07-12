@@ -11,9 +11,9 @@ export class KeySet extends Container {
     constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(database, address, Behavior.KEY_SET);
         if (this.address.timestamp < 0) {
-            ensure(address.offset == Behavior.KEY_SET);
+            ensure(address.offset === Behavior.KEY_SET);
         } else {
-            ensure(containerBuilder.getBehavior() == Behavior.KEY_SET);
+            ensure(containerBuilder.getBehavior() === Behavior.KEY_SET);
         }
     }
 
@@ -88,10 +88,10 @@ export class KeySet extends Container {
      */
     async has(key: ScalarKey, asOf?: AsOf): Promise<boolean> {
         const result = await this.database.store.getEntryByKey(this.address, key, asOf);
-        if (result != undefined && result.deletion) {
+        if (result !== undefined && result.deletion) {
             return false;
         }
-        return result != undefined;
+        return result !== undefined;
     }
 
     /**

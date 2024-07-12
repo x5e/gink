@@ -58,7 +58,7 @@ export class Listener {
 
     public requestListener(request: IncomingMessage, response: ServerResponse) {
         const url = new URL(request.url, `http://${request.headers.host}`);
-        const requestedPath = url.pathname == "/" ? this.index : url.pathname;
+        const requestedPath = url.pathname === "/" ? this.index : url.pathname;
         const localPath = join(this.staticContentRoot, requestedPath);
         if (existsSync(localPath)) {
             const readStream = createReadStream(localPath);

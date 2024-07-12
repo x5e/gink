@@ -11,9 +11,9 @@ export class PairSet extends Container {
     constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(database, address, Behavior.PAIR_SET);
         if (this.address.timestamp < 0) {
-            ensure(address.offset == Behavior.PAIR_SET);
+            ensure(address.offset === Behavior.PAIR_SET);
         } else {
-            ensure(containerBuilder.getBehavior() == Behavior.PAIR_SET);
+            ensure(containerBuilder.getBehavior() === Behavior.PAIR_SET);
         }
     }
 

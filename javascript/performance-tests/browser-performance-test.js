@@ -65,7 +65,7 @@ async function test_idb_browser_performance() {
     return all_results;
 }
 
-if (require.main == module) {
+if (require.main === module) {
     const { ArgumentParser } = require('argparse');
     const fs = require('fs');
 

@@ -11,22 +11,22 @@ it('set, get, delete, and size work as intended', async function () {
         const box2 = await instance.createBox();
         const box3 = await instance.createBox();
 
-        ensure(await pm1.size() == 0);
+        ensure(await pm1.size() === 0);
 
         await pm1.set([box1, box2], "box1 -> box2");
-        ensure(await pm1.get([box1, box2]) == "box1 -> box2");
-        ensure(await pm1.size() == 1);
+        ensure(await pm1.get([box1, box2]) === "box1 -> box2");
+        ensure(await pm1.size() === 1);
 
         await pm1.delete([box1, box2]);
-        ensure(await pm1.size() == 0);
+        ensure(await pm1.size() === 0);
         ensure(!await pm1.get([box1, box2]));
 
         await pm1.set([box2, box3], "box2 -> box3");
         await pm1.set([box1, box3], "box1 -> box3");
-        ensure(await pm1.size() == 2);
+        ensure(await pm1.size() === 2);
 
         await pm1.set([box1, box2], "box1 -> box2");
-        ensure(await pm1.get([box1, box2]) == "box1 -> box2");
+        ensure(await pm1.get([box1, box2]) === "box1 -> box2");
     }
 });
 
@@ -46,8 +46,8 @@ it('asOf and items work as intended', async function () {
         await pm1.set([box2, box3], "box2 -> box3");
         await pm1.set([box1, box3], "box1 -> box3");
 
-        ensure(await pm1.size() == 3);
-        ensure(await pm1.size(time0) == 1);
+        ensure(await pm1.size() === 3);
+        ensure(await pm1.size(time0) === 1);
         ensure(await pm1.has([box1, box2], time0));
         ensure(!await pm1.has([box1, box3], time0));
         ensure(await pm1.get([box1, box2], time0));

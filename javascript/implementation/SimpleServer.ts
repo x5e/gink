@@ -96,11 +96,11 @@ export class SimpleServer extends Database {
     private requestListener(request: IncomingMessage, response: ServerResponse) {
         const connectTo = this.connectTo.bind(this);
         if (request.url.startsWith("/api/connections")) {
-            if (request.method == "GET") {
+            if (request.method === "GET") {
                 let connections = Object.fromEntries(this.connections);
                 response.end(JSON.stringify(connections));
             }
-            if (request.method == 'POST') {
+            if (request.method === 'POST') {
                 request.addListener('data', async function (chunk) {
                     await connectTo(chunk);
                 });

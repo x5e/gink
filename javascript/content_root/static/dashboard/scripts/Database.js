@@ -53,7 +53,7 @@ class Database {
      * @param {string || Container} muid
      */
     async getContainer(muid) {
-        if (typeof muid == "string") {
+        if (typeof muid === "string") {
             muid = gink.strToMuid(muid);
         }
         return await gink.construct(this.instance, muid);
@@ -85,7 +85,7 @@ class Database {
         // IMPORTANT: A page, in this context, starts at 1, not 0.
         // Need to subtract 1 from the page to avoid errors.
         gink.ensure(container instanceof gink.Container);
-        gink.ensure(typeof page == "number" && typeof itemsPerPage == "number");
+        gink.ensure(typeof page === "number" && typeof itemsPerPage === "number");
         const entries = await this.containerAsArray(container);
 
         let lowerBound = (page - 1) * itemsPerPage;
@@ -175,8 +175,8 @@ class Database {
         gink.ensure(key || val, 'Need to specify key or value');
         gink.ensure(container, 'Need to specify container.');
         const [keyType, valueType] = determineContainerStorage(container);
-        if (key) gink.ensure(keyType != "none", 'container doesnt use keys');
-        if (val) gink.ensure(valueType != "none", 'container doesnt use values');
+        if (key) gink.ensure(keyType !== "none", 'container doesnt use keys');
+        if (val) gink.ensure(valueType !== "none", 'container doesnt use values');
         switch (container.behavior) {
             case 1: // Box
                 await container.set(val, comment);
@@ -186,7 +186,7 @@ class Database {
                 break;
             case 3: // PairMap
                 console.log(key);
-                gink.ensure(Array.isArray(key) && key.length == 2);
+                gink.ensure(Array.isArray(key) && key.length === 2);
                 gink.ensure("timestamp" in key[0] && "timestamp" in key[1], 'Expecting array of 2 muids for key.');
                 await container.set([await gink.construct(this.instance, key[0]), await gink.construct(this.instance, key[1])], val, comment);
                 break;
@@ -201,7 +201,7 @@ class Database {
                 await container.include(key, comment);
                 break;
             case 8: // PairSet
-                gink.ensure(Array.isArray(key) && key.length == 2);
+                gink.ensure(Array.isArray(key) && key.length === 2);
                 gink.ensure("timestamp" in key[0] && "timestamp" in key[1], 'Expecting array of 2 muids for key.');
                 await container.include([await gink.construct(this.instance, key[0]), await gink.construct(this.instance, key[1])], comment);
                 break;
@@ -229,7 +229,7 @@ class Database {
                 await container.clear(false, comment);
                 break;
             case 2: // Sequence
-                gink.ensure(typeof position == "number", "invalid position arg");
+                gink.ensure(typeof position === "number", "invalid position arg");
                 await container.pop(position, false, comment);
                 break;
             case 3: // PairMap

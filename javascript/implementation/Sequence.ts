@@ -16,9 +16,9 @@ export class Sequence extends Container {
         super(database, address, Behavior.SEQUENCE);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
-            ensure(address.offset == Behavior.SEQUENCE, "magic tag not SEQUENCE");
+            ensure(address.offset === Behavior.SEQUENCE, "magic tag not SEQUENCE");
         } else {
-            ensure(containerBuilder.getBehavior() == Behavior.SEQUENCE, "container not sequence");
+            ensure(containerBuilder.getBehavior() === Behavior.SEQUENCE, "container not sequence");
         }
     }
 
@@ -39,7 +39,7 @@ export class Sequence extends Container {
         bundlerOrComment?: Bundler | string) {
         const store = this.database.store;
         // TODO: clarify what's going on here
-        const muid = (typeof (muidOrPosition) == "object") ? muidOrPosition :
+        const muid = (typeof (muidOrPosition) === "object") ? muidOrPosition :
             muidTupleToMuid(Array.from(
                 (await store.getOrderedEntries(this.address, muidOrPosition)).values()).pop().entryId);
         ensure(muid.timestamp && muid.medallion && muid.offset);
@@ -47,7 +47,7 @@ export class Sequence extends Container {
     }
 
     private async findDest(dest: number): Promise<number> {
-        if (dest == 0 || dest == -1) {
+        if (dest === 0 || dest === -1) {
             const currentFrontOrBack = <number>(await this.getEntryAt(dest)).storageKey;
             return currentFrontOrBack - Math.sign(dest + .5) * Math.floor(1e3 * Math.random());
         }
@@ -76,18 +76,18 @@ export class Sequence extends Container {
         Promise<Container | Value | undefined> {
         let returning: Container | Value;
         let muid: Muid;
-        if (what && typeof (what) == "object") {
+        if (what && typeof (what) === "object") {
             muid = what;
             const entry = await this.database.store.getEntryById(muid);
             if (!entry)
                 return undefined;
-            ensure(entry.entryId[0] == muid.timestamp && entry.entryId[2] == muid.offset);
+            ensure(entry.entryId[0] === muid.timestamp && entry.entryId[2] === muid.offset);
             returning = await interpret(entry, this.database);
         } else {
-            what = (typeof (what) == "number") ? what : -1;
+            what = (typeof (what) === "number") ? what : -1;
             // Should probably change the implementation to not copy all intermediate entries into memory.
             const entries = Array.from((await this.database.store.getOrderedEntries(this.address, what)).values());
-            if (entries.length == 0) return undefined;
+            if (entries.length === 0) return undefined;
             const entry = entries[entries.length - 1];
             returning = await interpret(entry, this.database);
             muid = muidTupleToMuid(entry.entryId);
@@ -145,7 +145,7 @@ export class Sequence extends Container {
     private async getEntryAt(position: number, asOf?: AsOf): Promise<Entry | undefined> {
         //TODO add a store method to only return the entry at a given location
         const entries = await this.database.store.getOrderedEntries(this.address, position, asOf);
-        if (entries.size == 0)
+        if (entries.size === 0)
             return undefined;
         if (position >= 0 && position >= entries.size)
             return undefined;
@@ -165,7 +165,7 @@ export class Sequence extends Container {
      * @returns value at the position of the list, or undefined if list is too small
      */
     async at(position: number, asOf?: AsOf): Promise<Container | Value | undefined> {
-        if (typeof (position) == "number") {
+        if (typeof (position) === "number") {
             const entry = await this.getEntryAt(position, asOf);
             return await interpret(entry, this.database);
         }

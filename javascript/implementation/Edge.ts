@@ -54,7 +54,7 @@ export class Edge extends Addressable {
     }
 
     async isAlive(asOf?: AsOf): Promise<boolean> {
-        return 0 != await this.getEffective(asOf);
+        return 0 !== await this.getEffective(asOf);
     }
 
     async getEffective(asOf?: AsOf): Promise<Timestamp> {

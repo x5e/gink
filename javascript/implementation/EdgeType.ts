@@ -12,9 +12,9 @@ export class EdgeType extends Container {
     constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(database, address, Behavior.EDGE_TYPE);
         if (this.address.timestamp < 0) {
-            ensure(address.offset == Behavior.EDGE_TYPE);
+            ensure(address.offset === Behavior.EDGE_TYPE);
         } else if (containerBuilder) {
-            ensure(containerBuilder.getBehavior() == Behavior.EDGE_TYPE);
+            ensure(containerBuilder.getBehavior() === Behavior.EDGE_TYPE);
         }
     }
 

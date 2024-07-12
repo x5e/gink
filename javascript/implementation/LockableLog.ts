@@ -7,7 +7,7 @@ export class LockableLog extends LockableFile {
     protected async writeMagicNumber(): Promise<void> {
         ensure(this.fileLocked);
         const size = await this.getFileLength();
-        if (size != 0)
+        if (size !== 0)
             throw new Error("file not empty!");
         const logFragment = new LogFileBuilder();
         logFragment.setMagicNumber(1263421767);
