@@ -58,13 +58,13 @@ class PairSet(Container):
             assert isinstance(included, Iterable)
             for pair in included:
                 assert isinstance(pair, tuple) and len(pair) == 2
-                self.include(pair, bundler=bundler)
+                self.include(pair, bundler=bundler) # type: ignore
 
             excluded = contents.get("exclude", set())
             assert isinstance(excluded, Iterable)
             for pair in excluded:
                 assert isinstance(pair, tuple) and len(pair) == 2
-                self.exclude(pair, bundler=bundler)
+                self.exclude(pair, bundler=bundler) # type: ignore
 
         if immediate and len(bundler):
             self._database.bundle(bundler)
