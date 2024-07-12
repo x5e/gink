@@ -80,6 +80,7 @@ class Property(Container):
             if entry_pair.builder.deletion:  # type: ignore
                 continue
             muid = Muid.create(builder=entry_pair.builder.describing, context=entry_pair.address)
+            # print(muid)
             value = self._get_occupant(entry_pair.builder, address=entry_pair.address)
             yield self._database.get_container(muid), value
 

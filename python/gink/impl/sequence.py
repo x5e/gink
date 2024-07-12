@@ -215,7 +215,7 @@ class Sequence(Container):
     def at(self, index: int, *, as_of: GenericTimestamp = None):
         """ Returns the ((position-ts, entry-muid), value) at the specified index.
 
-            Index my be negative, in which case starts looking at the end.
+            Index may be negative, in which case starts looking at the end.
             Raises IndexError if not present.
         """
         as_of = self._database.resolve_timestamp(as_of)
