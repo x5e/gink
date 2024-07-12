@@ -18,7 +18,7 @@ class Group(Container):
                 self,
                 muid: Optional[Union[Muid, str]] = None,
                 *,
-                contents: Optional[Dict[str, Set[Union[Muid, Container]]]] = None,
+                contents: Optional[Dict[str, Iterable[Union[Muid, Container]]]] = None,
                 database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
@@ -27,7 +27,7 @@ class Group(Container):
         Constructor for a group definition.
 
         muid: the global id of this container, created on the fly if None
-        contents: optionally expecting a dictionary of {"included": Set, "excluded": Set}
+        contents: optionally expecting a dictionary of {"include": Set, "exclude": Set} to prefill the group
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
@@ -47,11 +47,17 @@ class Group(Container):
             )
 
         if contents:
+            assert isinstance(contents, dict), "expecting contents to be of the form {'include': Iterable[(Muid, Muid)], 'exclude': Iterable[(Muid, Muid)]}"
+            assert contents.keys() <= {"include", "exclude"}, "expecting only 'include' and 'exclude' keys in contents"
             self.clear(bundler=bundler)
-            for container in contents.get("included", set()):
+            included = contents.get("include", set())
+            assert isinstance(included, Iterable)
+            for container in included:
                 self.include(container, bundler=bundler)
 
-            for container in contents.get("excluded", set()):
+            excluded = contents.get("exclude", set())
+            assert isinstance(excluded, Iterable)
+            for container in excluded:
                 self.exclude(container, bundler=bundler)
 
         if immediate and len(bundler):
@@ -72,22 +78,28 @@ class Group(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this group to a string.
         """
+        ts = self._database.resolve_timestamp(as_of)
         identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
-        stuffing_included = [repr(_) for _ in self.get_member_ids(as_of=as_of)]
-        if stuffing_included:
-            result += "\n\t'included': {"
-            result += "\n\t"
-            result += ",\n\t".join(stuffing_included) + "},"
+        included_stuffing = "\n\t'include': [\n\t"
+        excluded_stuffing = "\n\t'exclude': [\n\t"
 
-        stuffing_excluded = [repr(_) for _ in self.get_member_ids(excluded=True, as_of=as_of)]
-        if stuffing_excluded:
-            result += "\n\t'excluded': {"
-            result += "\n\t"
-        else:
-            result += "})"
-        result += ",\n\t".join(stuffing_excluded) + "}})"
+        iterable = self._database.get_store().get_keyed_entries(
+            container=self._muid, as_of=ts, behavior=Behavior.GROUP)
+        for entry_pair in iterable:
+            mb = entry_pair.builder.describing
+            if not entry_pair.builder.deletion:
+                included_stuffing += f"Muid({mb.timestamp}, {mb.medallion}, {mb.offset})" + ",\n\t"
+            else:
+                excluded_stuffing += f"Muid({mb.timestamp}, {mb.medallion}, {mb.offset})" + ",\n\t"
+
+        if included_stuffing != "\n\t'include': [\n\t":
+            result += "".join(included_stuffing) + "],"
+        if excluded_stuffing != "\n\t'exclude': [\n\t":
+            result += "".join(excluded_stuffing) + "],"
+
+        result += "})"
         return result
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:

@@ -286,6 +286,9 @@ class Container(Addressable, ABC):
             left.put_into(entry_builder.pair.left)
             rite.put_into(entry_builder.pair.rite)
 
+        elif key is not None:
+            raise ValueError(f"Don't know how to add this key to gink: {key}")
+
         if isinstance(value, Container):
             pointee_muid = value.get_muid()
             if pointee_muid.medallion:
@@ -300,7 +303,7 @@ class Container(Addressable, ABC):
         elif value == inclusion:
             pass
         else:
-            raise ValueError(f"don't know how to add this to gink: {value}")
+            raise ValueError(f"don't know how to add this value to gink: {value}")
         muid = bundler.add_change(change_builder)
         if immediate:
             self._database.bundle(bundler)
