@@ -21,7 +21,7 @@ class Sequence(Container):
             muid: Optional[Union[Muid, str]] = None,
             *,
             arche: Optional[bool] = None,
-            contents: Optional[Iterable] = None,
+            contents: Optional[Iterable[Union[UserValue, Container]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
