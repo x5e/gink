@@ -8,6 +8,7 @@
 from __future__ import annotations
 from typing import Optional, Union, NamedTuple, List, Any, Tuple
 from struct import Struct
+from datetime import datetime as DateTime
 
 from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion, Inclusion
@@ -352,6 +353,8 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
         return float(value_builder.floating)
     if value_builder.HasField("integer"):
         return int(value_builder.integer)
+    if value_builder.HasField("timestamp"):
+        return DateTime.fromtimestamp(value_builder.timestamp * 1e-6)
     if value_builder.HasField("tuple"):
         return tuple([decode_value(x) for x in value_builder.tuple.values])
     if value_builder.HasField("document"):
@@ -430,6 +433,11 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
     """ encodes a python value (number, string, etc.) into a protobuf builder
     """
     value_builder = value_builder or ValueBuilder()
+    if isinstance(value, DateTime):
+        if value.tzinfo is not None:
+            raise ValueError("zoned DateTimes aren't supported yet")
+        value_builder.timestamp = int(value.timestamp() * 1e6)
+        return value_builder
     if isinstance(value, bytes):
         value_builder.octets = value
         return value_builder
