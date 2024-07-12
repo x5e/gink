@@ -42,25 +42,25 @@ export async function construct(
         containerBuilder = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
     }
 
-    if (containerBuilder.getBehavior() == Behavior.BOX)
+    if (containerBuilder.getBehavior() === Behavior.BOX)
         return (new Box(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.SEQUENCE)
+    if (containerBuilder.getBehavior() === Behavior.SEQUENCE)
         return (new Sequence(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.KEY_SET)
+    if (containerBuilder.getBehavior() === Behavior.KEY_SET)
         return (new KeySet(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.DIRECTORY)
+    if (containerBuilder.getBehavior() === Behavior.DIRECTORY)
         return (new Directory(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.PAIR_SET)
+    if (containerBuilder.getBehavior() === Behavior.PAIR_SET)
         return (new PairSet(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.PAIR_MAP)
+    if (containerBuilder.getBehavior() === Behavior.PAIR_MAP)
         return (new PairMap(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.VERTEX)
+    if (containerBuilder.getBehavior() === Behavior.VERTEX)
         return (new Vertex(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.EDGE_TYPE)
+    if (containerBuilder.getBehavior() === Behavior.EDGE_TYPE)
         return (new EdgeType(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.PROPERTY)
+    if (containerBuilder.getBehavior() === Behavior.PROPERTY)
         return (new Property(database, address, containerBuilder));
-    if (containerBuilder.getBehavior() == Behavior.GROUP)
+    if (containerBuilder.getBehavior() === Behavior.GROUP)
         return (new Group(database, address, containerBuilder));
 
     throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
@@ -76,7 +76,7 @@ export async function interpret(entry: Entry, database: Database): Promise<Conta
         const muid: Muid = rehydrate(entry.pointeeList[0]);
         return construct(database, muid);
     }
-    if (Array.isArray(entry.storageKey) && entry.storageKey.length == 3) {
+    if (Array.isArray(entry.storageKey) && entry.storageKey.length === 3) {
         // For a MuidTuple effective key
         return await construct(database, muidTupleToMuid(entry.storageKey));
     }

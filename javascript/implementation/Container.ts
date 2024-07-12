@@ -94,7 +94,7 @@ export class Container extends Addressable {
 
         entryBuilder.setBehavior(this.behavior);
 
-        if (typeof (key) == "number" || typeof (key) == "string" || key instanceof Uint8Array) {
+        if (typeof (key) === "number" || typeof (key) === "string" || key instanceof Uint8Array) {
             entryBuilder.setKey(wrapKey(key));
         } else if (Array.isArray(key)) {
             const pair = new PairBuilder();

@@ -9,9 +9,9 @@ export class Directory extends Keyed<ScalarKey> {
     constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
         super(database, address, Behavior.DIRECTORY);
         if (this.address.timestamp < 0) {
-            ensure(address.offset == Behavior.DIRECTORY);
+            ensure(address.offset === Behavior.DIRECTORY);
         } else {
-            ensure(containerBuilder.getBehavior() == Behavior.DIRECTORY);
+            ensure(containerBuilder.getBehavior() === Behavior.DIRECTORY);
         }
     }
 }

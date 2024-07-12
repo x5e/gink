@@ -103,7 +103,7 @@ export class Keyed<GenericType extends ScalarKey | Addressable | [Addressable, A
                 returning += ",";
             }
             const storageKey: StorageKey = entry.storageKey;
-            if (typeof storageKey == "string") {
+            if (typeof storageKey === "string") {
                 returning += JSON.stringify(storageKey);
             } else if (storageKey instanceof Uint8Array) {
                 returning += '"' + storageKey.toString() + '"';

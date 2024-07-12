@@ -8,11 +8,11 @@ it('test lock/unlock ', async () => {
     const messages: string[] = [];
     async function doSomething(msg: string) {
         const unlocker = await promiseChainLock.acquireLock();
-        ensure(countLocks == 0);
+        ensure(countLocks === 0);
         countLocks += 1;
         messages.push(msg);
         await sleep(100);
-        ensure(countLocks == 1);
+        ensure(countLocks === 1);
         countLocks -= 1;
         unlocker(null);
     }
@@ -21,9 +21,9 @@ it('test lock/unlock ', async () => {
     doSomething("third");
     messages.push("zeroth");
     await promiseChainLock.acquireLock();
-    ensure(messages.length == 4);
-    ensure(messages[0] == "zeroth");
-    ensure(messages[1] == "first");
-    ensure(messages[2] == "second");
-    ensure(messages[3] == "third");
+    ensure(messages.length === 4);
+    ensure(messages[0] === "zeroth");
+    ensure(messages[1] === "first");
+    ensure(messages[2] === "second");
+    ensure(messages[3] === "third");
 });

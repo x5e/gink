@@ -74,7 +74,7 @@ export class ChainTracker {
             }
             innerMap.set(bundleInfo.chainStart, bundleInfo);
             for (const [cb, pair] of this.waiters) {
-                if (pair[0] == bundleInfo.medallion && pair[1] >= bundleInfo.chainStart && pair[1] <= bundleInfo.timestamp) {
+                if (pair[0] === bundleInfo.medallion && pair[1] >= bundleInfo.chainStart && pair[1] <= bundleInfo.timestamp) {
                     this.waiters.delete(cb);
                     cb();
                 }

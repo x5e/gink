@@ -21,8 +21,8 @@ it('include and exclude work as intended', async function () {
         let found = false;
         const box2MuidStr = muidToString(box2.address);
         for (const entry of await store.getAllEntries()) {
-            if (Array.isArray(entry.storageKey) && entry.storageKey.length == 3) {
-                if (box2MuidStr == muidToString(muidTupleToMuid(entry.storageKey))) {
+            if (Array.isArray(entry.storageKey) && entry.storageKey.length === 3) {
+                if (box2MuidStr === muidToString(muidTupleToMuid(entry.storageKey))) {
                     found = true;
                 }
             }
@@ -45,9 +45,9 @@ it('contains, toArray, and getMembers work properly', async function () {
         ensure(await group1.isIncluded(box1));
         ensure(!(await group1.isIncluded(box3)));
 
-        ensure(await group1.size() == 2);
+        ensure(await group1.size() === 2);
 
-        ensure((await group1.includedAsArray()).length == 2);
+        ensure((await group1.includedAsArray()).length === 2);
         ensure((await group1.includedAsArray())[0].behavior);
 
         for await (const member of group1.getMembers()) {

@@ -55,7 +55,7 @@ type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
     "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries" | "identities")[],
     "readwrite">;
 
-if (eval("typeof indexedDB") == 'undefined') {  // ts-node has problems with typeof
+if (eval("typeof indexedDB") === 'undefined') {  // ts-node has problems with typeof
     eval('require("fake-indexeddb/auto");');  // hide require from webpack
 }
 
@@ -225,7 +225,7 @@ export class IndexedDbStore implements Store {
             let cursor = await this.wrapped.transaction("trxns", "readonly").objectStore("trxns").openCursor(undefined, "prev");
             let bundlesToTraverse = -asOf;
             for (; cursor; cursor = await cursor.continue()) {
-                if (--bundlesToTraverse == 0) {
+                if (--bundlesToTraverse === 0) {
                     const tuple = <BundleInfoTuple>cursor.key;
                     return tuple[0];
                 }
@@ -315,7 +315,7 @@ export class IndexedDbStore implements Store {
         }
         // If this is a new chain, save the identity & claim this chain
         if (claimChain) {
-            ensure(bundleInfo.timestamp == bundleInfo.chainStart, "timestamp != chainstart");
+            ensure(bundleInfo.timestamp === bundleInfo.chainStart, "timestamp != chainstart");
             ensure(bundleInfo.comment, "comment (identity) required to start a chain");
             const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
             await wrappedTransaction.objectStore('identities').add(bundleInfo.comment, chainInfo);
@@ -371,7 +371,7 @@ export class IndexedDbStore implements Store {
                     sourceList,
                     targetList,
                 };
-                if (!(behavior == Behavior.SEQUENCE || behavior == Behavior.EDGE_TYPE)) {
+                if (!(behavior === Behavior.SEQUENCE || behavior === Behavior.EDGE_TYPE)) {
                     const range = IDBKeyRange.bound([containerId, storageKey], [containerId, storageKey, placementId]);
                     const search = await wrappedTransaction.objectStore("entries").index("by-container-key-placement"
                     ).openCursor(range, "prev");
@@ -531,8 +531,8 @@ export class IndexedDbStore implements Store {
         for (; cursor && matches(cursor.key[0], desiredSrc); cursor = await cursor.continue()) {
             const entry = <Entry>cursor.value;
 
-            ensure(entry.behavior == Behavior.DIRECTORY || entry.behavior == Behavior.KEY_SET || entry.behavior == Behavior.GROUP ||
-                entry.behavior == Behavior.PAIR_SET || entry.behavior == Behavior.PAIR_MAP || entry.behavior == Behavior.PROPERTY);
+            ensure(entry.behavior === Behavior.DIRECTORY || entry.behavior === Behavior.KEY_SET || entry.behavior === Behavior.GROUP ||
+                entry.behavior === Behavior.PAIR_SET || entry.behavior === Behavior.PAIR_MAP || entry.behavior === Behavior.PROPERTY);
             const key = storageKeyToString(entry.storageKey);
             if (entry.entryId[0] < asOfTs && entry.entryId[0] >= clearanceTime) {
                 if (entry.deletion) {
@@ -647,11 +647,11 @@ export class IndexedDbStore implements Store {
             .openCursor(searchRange, "next");
         const result = [];
 
-        for (; cursor && matches(cursor.key[0], desiredSrc) && cursor.key[1] == name; cursor = await cursor.continue()) {
+        for (; cursor && matches(cursor.key[0], desiredSrc) && cursor.key[1] === name; cursor = await cursor.continue()) {
             const entry = <Entry>cursor.value;
-            ensure(entry.behavior == Behavior.PROPERTY);
+            ensure(entry.behavior === Behavior.PROPERTY);
             let key: [number, number, number];
-            if (Array.isArray(entry.storageKey) && entry.storageKey.length == 3) {
+            if (Array.isArray(entry.storageKey) && entry.storageKey.length === 3) {
                 key = entry.storageKey;
             }
             ensure(key, "Unexpected storageKey for property: " + entry.storageKey);

@@ -55,7 +55,7 @@ export class CommandLineInterface {
                 ensure(token.includes("token "));
                 let key = this.authToken.toLowerCase();
                 token = token.toLowerCase().split("token ")[1].trimStart();
-                return token == key;
+                return token === key;
             };
         }
 

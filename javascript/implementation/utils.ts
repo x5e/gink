@@ -41,7 +41,7 @@ export function toLastWithPrefixBeforeSuffix<V>(
 // Since find-process uses child-process, we can't load this if gink
 // is running in a browser
 // TODO: only install this package when you will be using as a backend?
-const findProcess = (typeof window == "undefined") ? eval("require('find-process')") : undefined;
+const findProcess = (typeof window === "undefined") ? eval("require('find-process')") : undefined;
 
 export function ensure(x: any, msg?: string) {
     if (!x)
@@ -115,11 +115,11 @@ export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid
  */
 export function wrapKey(key: number | string | Uint8Array): KeyBuilder {
     const keyBuilder = new KeyBuilder();
-    if (typeof (key) == "string") {
+    if (typeof (key) === "string") {
         keyBuilder.setCharacters(key);
         return keyBuilder;
     }
-    if (typeof (key) == "number") {
+    if (typeof (key) === "number") {
         ensure(Number.isSafeInteger(key), `key=${key} not a safe integer`);
         keyBuilder.setNumber(key);
         return keyBuilder;
@@ -172,9 +172,9 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
     }
     if (valueBuilder.hasSpecial()) {
         const special = valueBuilder.getSpecial();
-        if (special == Special.NULL) return null;
-        if (special == Special.TRUE) return true;
-        if (special == Special.FALSE) return false;
+        if (special === Special.NULL) return null;
+        if (special === Special.TRUE) return true;
+        if (special === Special.FALSE) return false;
         throw new Error("bad special");
     }
     if (valueBuilder.hasOctets()) {
@@ -209,7 +209,7 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
  * @returns a string 'token {token}'
  */
 export function decodeToken(hex: string): string {
-    ensure(hex.substring(0, 2) == "0x", "Hex string should start with 0x");
+    ensure(hex.substring(0, 2) === "0x", "Hex string should start with 0x");
     let token: string = "";
     for (let i = 0; i < hex.length; i += 2) {
         let hexValue = hex.substring(i, i + 2);
@@ -261,16 +261,16 @@ export function wrapValue(arg: Value): ValueBuilder {
     if (arg === false) {
         return valueBuilder.setSpecial(Special.FALSE);
     }
-    if (typeof (arg) == "string") {
+    if (typeof (arg) === "string") {
         return valueBuilder.setCharacters(arg);
     }
-    if (typeof (arg) == "number") {
+    if (typeof (arg) === "number") {
         if (Number.isInteger(arg) && arg <= 2147483647 && arg >= -2147483648) {
             return valueBuilder.setInteger(arg);
         }
         return valueBuilder.setDoubled(arg);
     }
-    if (typeof (arg) == "bigint") {
+    if (typeof (arg) === "bigint") {
         throw new Error("encoding bigints not implemented right now");
     }
     if (Array.isArray(arg)) {
@@ -289,7 +289,7 @@ export function wrapValue(arg: Value): ValueBuilder {
         }
         return valueBuilder.setDocument(documentBuilder);
     }
-    if (typeof arg == "object") {
+    if (typeof arg === "object") {
         if (Object.getPrototypeOf(arg) !== Object.prototype) {
             throw new Error(`Don't know how to serialize: ${arg}`);
         }
@@ -313,7 +313,7 @@ export function matches(a: any[], b: any[]) {
 
 export function pairKeyToArray(storageKey: String): Array<Muid> {
     const split = storageKey.split(",");
-    ensure(split.length == 2);
+    ensure(split.length === 2);
     return [strToMuid(split[0]), strToMuid(split[1])];
 }
 
@@ -328,13 +328,13 @@ export function muidToString(muid: Muid): string {
     let medallion = intToHex(muid.medallion, 13);
     let offset = intToHex(muid.offset, 5);
     let result = `${timestamp}-${medallion}-${offset}`;
-    ensure(result.length == 34);
+    ensure(result.length === 34);
     return result;
 }
 
 export function muidTupleToString(muidTuple: MuidTuple): string {
     let timestamp: string;
-    if (muidTuple[0] == Infinity) {
+    if (muidTuple[0] === Infinity) {
         timestamp = 'FFFFFFFFFFFFFF';
     }
     else {
@@ -363,10 +363,10 @@ export function strToMuid(value: string): Muid {
 function muidHexToInt(hexString: string): number {
     ensure(hexString.length <= 14);
     let beginningAddition = BigInt(0);
-    if (hexString.length == 14) {
+    if (hexString.length === 14) {
         let beginning = hexString.substring(0, 1);
         hexString = hexString.substring(1);
-        if (beginning == '1') {
+        if (beginning === '1') {
             beginningAddition = BigInt(16) ** BigInt(14);
         }
     }
@@ -407,7 +407,7 @@ export function valueToJson(value: Value): string {
         value = Array.from(value).map(intToHex).join("");
     }
     const type = typeof value;
-    if (type == "string" || type == "number" || value === true || value === false || value === null) {
+    if (type === "string" || type === "number" || value === true || value === false || value === null) {
         return JSON.stringify(value);
     }
     if ("function" === typeof value["toISOString"]) {
@@ -446,7 +446,7 @@ export function muidTupleToMuid(tuple: MuidTuple): Muid {
  */
 export function isPathDangerous(path: string): boolean {
     const pathParts = path.split(/\/+/).filter((part) => part.length > 0);
-    return (pathParts.length == 0 || !pathParts.every((part) => /^\w[\w.@-]*$/.test(part)));
+    return (pathParts.length === 0 || !pathParts.every((part) => /^\w[\w.@-]*$/.test(part)));
 }
 
 /**
@@ -481,8 +481,8 @@ export function sameData(key1: any, key2: any): boolean {
         }
         return true;
     }
-    if (typeof key1 == "number" || typeof key1 == "string" || typeof key1 == "undefined") {
-        return key1 == key2;
+    if (typeof key1 === "number" || typeof key1 === "string" || typeof key1 === "undefined") {
+        return key1 === key2;
     }
     return false;
 }
@@ -501,7 +501,7 @@ export const dehydrate = muidToTuple;
 export const rehydrate = muidTupleToMuid;
 
 export function getActorId(): ActorId {
-    if (typeof window == "undefined")
+    if (typeof window === "undefined")
         return process.pid;
     else {
         // So we don't assign multiple gink instances in different windows the same actorId
@@ -533,7 +533,7 @@ export function getActorId(): ActorId {
  * or a generic 'browser-client' if gink is running in a browser.
  */
 export function getIdentity(): string {
-    if (typeof window == "undefined")
+    if (typeof window === "undefined")
         return `${userInfo().username}@${hostname()}`;
     else {
         return 'browser-client-' + ("10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
@@ -550,11 +550,11 @@ export function getIdentity(): string {
  * @returns
  */
 export async function isAlive(actorId: ActorId): Promise<boolean> {
-    if (typeof window == "undefined") {
+    if (typeof window === "undefined") {
         ensure(findProcess, "find-process library didn't load in browser");
         const found = await findProcess('pid', actorId);
-        ensure(found.length == 0 || found.length == 1);
-        return found.length == 1;
+        ensure(found.length === 0 || found.length === 1);
+        return found.length === 1;
     } else {
         const lastPinged = window.localStorage.getItem(`gink-${actorId}`);
         if (!lastPinged) return false;
