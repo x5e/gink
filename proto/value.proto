@@ -13,7 +13,6 @@ message Value {
         Document document = 6;
         Tuple tuple = 7;
         bytes octets = 8;
-        bytes uuid = 9;
     }
 
     enum Special {

@@ -12,11 +12,6 @@ from ..impl.database import Database
 
 def test_encode_decode():
     """ Tests a bunch of basic values. """
-    # Ensure ints and big ints are treated as they should
-    int_builder = encode_value(4)
-    assert int_builder.integer == 4
-    bigint_builder = encode_value(2_147_483_650)
-    assert bigint_builder.bigint == 2_147_483_650
 
     for original in ("foo", 1.5, 137, True, False, None, b"abc"):
         encoded = encode_value(original)

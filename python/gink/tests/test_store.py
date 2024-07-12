@@ -387,7 +387,7 @@ def generic_test_negative_offsets(store_maker: StoreMaker):
                 entry {
                     behavior: SEQUENCE
                     container { offset: -3 }
-                    value { integer: 32 }
+                    value { integer: "32" }
                 }
             }
         }

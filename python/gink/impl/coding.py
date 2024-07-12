@@ -348,12 +348,10 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
         return value_builder.characters
     if value_builder.HasField("octets"):
         return value_builder.octets
-    if value_builder.HasField("doubled"):
-        return value_builder.doubled
+    if value_builder.HasField("floating"):
+        return float(value_builder.floating)
     if value_builder.HasField("integer"):
-        return value_builder.integer
-    if value_builder.HasField("bigint"):
-        return value_builder.bigint
+        return int(value_builder.integer)
     if value_builder.HasField("tuple"):
         return tuple([decode_value(x) for x in value_builder.tuple.values])
     if value_builder.HasField("document"):
@@ -445,13 +443,10 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
             value_builder.special = ValueBuilder.Special.FALSE
         return value_builder
     if isinstance(value, float):
-        value_builder.doubled = value
+        value_builder.floating = value
         return value_builder
     if isinstance(value, int):
-        if value >  2_147_483_647 or value < -2_147_483_648:
-            value_builder.bigint = value
-        else:
-            value_builder.integer = value
+        value_builder.integer = str(value)
         return value_builder
     if value is None:
         value_builder.special = ValueBuilder.Special.NULL
