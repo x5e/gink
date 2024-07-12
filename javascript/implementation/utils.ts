@@ -19,7 +19,6 @@ import {
     ValueBuilder,
     KeyBuilder,
     Special,
-    TimestampBuilder,
     TupleBuilder,
     DocumentBuilder,
 } from "./builders";
@@ -161,14 +160,11 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
     if (valueBuilder.hasCharacters()) {
         return valueBuilder.getCharacters();
     }
-    if (valueBuilder.hasDoubled()) {
-        return valueBuilder.getDoubled();
+    if (valueBuilder.hasFloating()) {
+        return valueBuilder.getFloating();
     }
     if (valueBuilder.hasInteger()) {
-        return valueBuilder.getInteger();
-    }
-    if (valueBuilder.hasBigint()) {
-        return valueBuilder.getBigint();
+        return BigInt(valueBuilder.getInteger());
     }
     if (valueBuilder.hasSpecial()) {
         const special = valueBuilder.getSpecial();
@@ -195,9 +191,10 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
         return tuple.getValuesList().map(unwrapValue);
     }
     if (valueBuilder.hasTimestamp()) {
-        //TODO: check the other fields in the Timestamp proto
-        // (not critical while typescript is the only implementation)
-        return new Date(valueBuilder.getTimestamp().getMillis());
+        const epochMicros = valueBuilder.getTimestamp();
+        const epochMillis = epochMicros / 1000;
+        const date = new Date(epochMillis);
+        return date;
     }
     throw new Error("haven't implemented unwrap for this Value");
 }
@@ -248,9 +245,7 @@ export function wrapValue(arg: Value): ValueBuilder {
         return valueBuilder.setOctets(arg);
     }
     if (arg instanceof Date) {
-        const timestamp = new TimestampBuilder();
-        timestamp.setMillis(arg.valueOf());
-        return valueBuilder.setTimestamp(timestamp);
+        return valueBuilder.setTimestamp(arg.getTime()*1000);
     }
     if (arg === null) {
         return valueBuilder.setSpecial(Special.NULL);
@@ -265,13 +260,10 @@ export function wrapValue(arg: Value): ValueBuilder {
         return valueBuilder.setCharacters(arg);
     }
     if (typeof (arg) === "number") {
-        if (Number.isInteger(arg) && arg <= 2147483647 && arg >= -2147483648) {
-            return valueBuilder.setInteger(arg);
-        }
-        return valueBuilder.setDoubled(arg);
+        return valueBuilder.setFloating(arg);
     }
     if (typeof (arg) === "bigint") {
-        throw new Error("encoding bigints not implemented right now");
+        return valueBuilder.setInteger(arg.toString())
     }
     if (Array.isArray(arg)) {
         const tupleBuilder = new TupleBuilder();
@@ -301,6 +293,10 @@ export function wrapValue(arg: Value): ValueBuilder {
         return valueBuilder.setDocument(documentBuilder);
     }
     throw new Error(`don't know how to wrap: ${arg}`);
+}
+
+export function isDate(value: any): boolean {
+    return typeof value === "object" && Object.prototype.toString.call(value) === "[object Date]";
 }
 
 export function matches(a: any[], b: any[]) {

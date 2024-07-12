@@ -168,9 +168,6 @@ export class ValueBuilder extends ImplementedMessage {
     hasInteger(): boolean;
     getInteger(): string;
     setInteger(string);
-    hasBigint(): boolean;
-    getBigint(): number;
-    setBigint(NumberBuilder);
     hasSpecial(): boolean;
     getSpecial(): number;
     hasOctets(): boolean;
