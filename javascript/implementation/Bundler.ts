@@ -91,7 +91,7 @@ export class Bundler implements BundleView {
      */
     seal(bundleInfo: BundleInfo): void {
         this.requireNotSealed();
-        if (this.preAssignedMedallion && this.preAssignedMedallion != bundleInfo.medallion) {
+        if (this.preAssignedMedallion && this.preAssignedMedallion !== bundleInfo.medallion) {
             throw new Error("specified bundleInfo doesn't match pre-assigned medallion");
         }
         this.bundleInfo = { ...bundleInfo };

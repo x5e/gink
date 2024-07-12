@@ -88,7 +88,7 @@ it('share bundles between two pages', async () => {
         // This ensures the pages won't be missing any chain info after
         // the other sends a bundle.
         for (let i = 0; i < 4; i++) {
-            const page = pages[i % 2 == 0 ? 1 : 0];
+            const page = pages[i % 2 === 0 ? 1 : 0];
             await page.bringToFront();
             page.on('console', async e => {
                 const args = await Promise.all(e.args().map(a => a.jsonValue()));

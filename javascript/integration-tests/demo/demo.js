@@ -20,7 +20,7 @@ function getWebsocketTarget() {
     instance.addListener(
         async function (changeSetInfo) {
             console.log(changeSetInfo);
-            if (document == null) { throw new Error("unexpected"); }
+            if (document === null) { throw new Error("unexpected"); }
             document.getElementById('dump').innerHTML = await globalThis.root.toJson();
         }
     );

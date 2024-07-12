@@ -159,7 +159,7 @@ export class IndexedDbStore implements Store {
     private getTransaction() {
         const stackString = (new Error()).stack;
         const callerLine = stackString ? stackString.split("\n")[2] : "";
-        if (this.transaction === null || this.lastCaller != callerLine) {
+        if (this.transaction === null || this.lastCaller !== callerLine) {
             // console.log(`creating new transaction for ${callerLine}`)
             this.lastCaller = callerLine;
             this.countTrxns += 1;
@@ -308,14 +308,14 @@ export class IndexedDbStore implements Store {
             if (oldChainInfo?.timestamp >= timestamp) {
                 return wrappedTransaction;
             }
-            if (oldChainInfo?.timestamp != priorTime) {
+            if (oldChainInfo?.timestamp !== priorTime) {
                 //TODO(https://github.com/google/gink/issues/27): Need to explicitly close?
                 throw new Error(`missing ${JSON.stringify(bundleInfo)}, have ${JSON.stringify(oldChainInfo)}`);
             }
         }
         // If this is a new chain, save the identity & claim this chain
         if (claimChain) {
-            ensure(bundleInfo.timestamp === bundleInfo.chainStart, "timestamp != chainstart");
+            ensure(bundleInfo.timestamp === bundleInfo.chainStart, "timestamp !== chainstart");
             ensure(bundleInfo.comment, "comment (identity) required to start a chain");
             const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
             await wrappedTransaction.objectStore('identities').add(bundleInfo.comment, chainInfo);
@@ -402,7 +402,7 @@ export class IndexedDbStore implements Store {
                     continue; // Nothing found to remove.
                 }
                 const found: Entry = search.value;
-                if (dest != 0) {
+                if (dest !== 0) {
                     const destEntry: Entry = {
                         behavior: found.behavior,
                         containerId: found.containerId,

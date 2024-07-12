@@ -25,7 +25,7 @@ it('set and get Basic data', async function () {
         await schema.set(myKey, "another value");
         const another_result = await schema.get(myKey);
 
-        if (another_result != "another value") {
+        if (another_result !== "another value") {
             const allEntries = await store.getAllEntries();
             throw new Error("didnt' get what i expected");
         }
@@ -126,7 +126,7 @@ it('purge one directory leaving other untouched', async function () {
 
         ensure(0 === await d1.size());
         const size = await d2.size();
-        ensure(0 != size, "directory 2 has been purged!");
+        ensure(0 !== size, "directory 2 has been purged!");
     }
 });
 

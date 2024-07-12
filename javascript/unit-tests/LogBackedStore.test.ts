@@ -35,7 +35,7 @@ it('test locks', async () => {
         result = "barfed";
         lbs2.close();
     });
-    if (result != "barfed") {
+    if (result !== "barfed") {
         throw new Error("locking broken");
     }
     await lbs1.close();

@@ -83,7 +83,7 @@ export class Database {
             if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity([value.medallion, value.chainStart]) === this.identity) {
                 // TODO: check to see if meta-data matches, and overwrite if not
                 reused = value;
-                if (typeof window != "undefined") {
+                if (typeof window !== "undefined") {
                     // If we are running in a browser and take over a chain,
                     // start a new heartbeat.
                     setInterval(() => {
@@ -346,7 +346,7 @@ export class Database {
                 peer._sendAck(bundle.info);
             }
             for (const [peerId, peer] of this.peers) {
-                if (peerId != fromConnectionId)
+                if (peerId !== fromConnectionId)
                     peer._sendIfNeeded(bundle);
             }
             // Send to listeners subscribed to all containers.

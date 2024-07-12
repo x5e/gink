@@ -34,7 +34,7 @@ class Page {
         };
 
         // If there are no entries, stop here.
-        if (totalEntries == 0) {
+        if (totalEntries === 0) {
             const p = this.createElement("p", this.root);
             p.innerText = "No entries.";
             return;
@@ -62,7 +62,7 @@ class Page {
 
         // Range information
         const showing = this.createElement("p", this.root);
-        const lowerBound = (currentPage - 1) * itemsPerPage + (totalEntries == 0 ? 0 : 1);
+        const lowerBound = (currentPage - 1) * itemsPerPage + (totalEntries === 0 ? 0 : 1);
         const upperBound = (currentPage - 1) * itemsPerPage + itemsPerPage;
         const maxEntries = upperBound >= totalEntries ? totalEntries : upperBound;
         showing.innerText = `Showing entries ${lowerBound}-${maxEntries}`;
@@ -98,21 +98,21 @@ class Page {
         // Create table based on page of entries.
         const containerTable = this.createElement("table", this.root, "container-table");
         const headerRow = this.createElement("tr", containerTable);
-        if (keyType != "none") {
+        if (keyType !== "none") {
             const keyHeader = this.createElement("th", headerRow);
             keyHeader.innerText = "Key";
         }
-        if (valueType != "none") {
+        if (valueType !== "none") {
             const valueHeader = this.createElement("th", headerRow);
             valueHeader.innerText = "Value";
         }
 
         // Make sure nothing is broken
         if (pageOfEntries.length) {
-            if (keyType == "none") gink.ensure(pageOfEntries[0][0] == undefined);
-            else if (keyType != "none") gink.ensure(pageOfEntries[0][0] != undefined);
-            if (valueType == "none") gink.ensure(pageOfEntries[0][1] == undefined);
-            else if (valueType != "none") gink.ensure(pageOfEntries[0][1] != undefined);
+            if (keyType === "none") gink.ensure(pageOfEntries[0][0] === undefined);
+            else if (keyType !== "none") gink.ensure(pageOfEntries[0][0] !== undefined);
+            if (valueType === "none") gink.ensure(pageOfEntries[0][1] === undefined);
+            else if (valueType !== "none") gink.ensure(pageOfEntries[0][1] !== undefined);
         }
 
         // Loop through entries to create table rows
@@ -123,11 +123,11 @@ class Page {
             row.onclick = async () => {
                 await this.displayEntry(key, value, Number(row.dataset["position"]), container);
             };
-            if (key != undefined) {
+            if (key !== undefined) {
                 const keyCell = this.createElement("td", row);
                 keyCell.innerText = await this.getCellValue(key);
             }
-            if (value != undefined) {
+            if (value !== undefined) {
                 const valCell = this.createElement("td", row);
                 valCell.innerText = await this.getCellValue(value);
             }
@@ -150,14 +150,14 @@ class Page {
         const entryFields = this.createElement("div", this.root, "add-entry-container", "entry-container");
         let keyInput1, keyInput2, valueInput;
         // Key inputs - if container uses keys.
-        if (keyType != "none") {
+        if (keyType !== "none") {
             const keyContainer = this.createElement("div", entryFields, undefined, "input-container");
             const keyH2 = this.createElement("h2", keyContainer);
             keyH2.innerText = "Key";
             keyInput1 = this.createElement("input", keyContainer, "key-input-1", "bundle-input");
             keyInput1.setAttribute("type", "text");
             keyInput1.setAttribute("placeholder", "Key");
-            if (keyType == "muid" || keyType == "pair") {
+            if (keyType === "muid" || keyType === "pair") {
                 keyInput1.setAttribute("placeholder", "Muid");
                 keyInput1.setAttribute("list", "datalist-1");
                 const datalist1 = this.createElement("datalist", keyInput1, "datalist-1");
@@ -172,7 +172,7 @@ class Page {
                 const intOption = sel.appendChild(document.createElement('option'));
                 intOption.value = intOption.innerText = "int";
             }
-            if (keyType == "pair") {
+            if (keyType === "pair") {
                 keyInput2 = this.createElement("input", keyContainer, "key-input-2", "bundle-input");
                 keyInput2.setAttribute("type", "text");
                 keyInput2.setAttribute("placeholder", "Muid");
@@ -183,7 +183,7 @@ class Page {
         }
 
         // Value inputs - if container uses values.
-        if (valueType != "none") {
+        if (valueType !== "none") {
             const valueContainer = this.createElement("div", entryFields, undefined, "input-container");
             const valueH2 = this.createElement("h2", valueContainer);
             valueH2.innerText = "Value";
@@ -222,10 +222,10 @@ class Page {
 
             let newKey, newValue, newComment;
             if (keyInput1 && !keyInput2) {
-                if (keyType == "muid") {
+                if (keyType === "muid") {
                     newKey = gink.strToMuid(keyInput1.value);
                 }
-                else if (keyType != "pair") {
+                else if (keyType !== "pair") {
                     const kt = document.getElementById("key-type-select").value;
                     newKey = this.convertToStringType(kt, keyInput1.value);
                 }
@@ -261,7 +261,7 @@ class Page {
         this.writeCancelButton();
 
         const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
-        if (key != undefined) {
+        if (key !== undefined) {
             const keyContainer = this.createElement("div", entryContainer, undefined, "input-container");
             const keyH2 = this.createElement("h2", keyContainer);
             keyH2.innerText = "Key";
@@ -269,7 +269,7 @@ class Page {
             keyContainer.innerHTML += await this.entryValueAsHtml(key);
         }
 
-        if (value != undefined) {
+        if (value !== undefined) {
             const valueContainer = this.createElement("div", entryContainer, undefined, "input-container");
             const valueH2 = this.createElement("h2", valueContainer);
             valueH2.innerText = "Value";
@@ -314,11 +314,11 @@ class Page {
         const entryContainer = this.createElement("div", this.root, "view-entry", "entry-container");
         let keyInput1, keyInput2, valueInput;
         // Key - 2 inputs if container uses pairs, 1 input if container uses keys
-        if (oldKey != undefined) {
+        if (oldKey !== undefined) {
             const keyH2 = this.createElement("h2", entryContainer);
             keyH2.innerText = "Key";
             keyInput1 = this.createElement("input", entryContainer, "key-input-1", "bundle-input");
-            if (keyType == "pair") {
+            if (keyType === "pair") {
                 keyInput2 = this.createElement("input", entryContainer, "key-input-2", "bundle-input");
                 keyInput1.setAttribute("placeholder", gink.muidToString(oldKey[0]));
                 keyInput2.setAttribute("placeholder", gink.muidToString(oldKey[1]));
@@ -330,7 +330,7 @@ class Page {
                 keyInput2.setAttribute("list", "datalist-2");
                 const datalist2 = this.createElement("datalist", keyInput2, "datalist-2");
                 await this.enableContainersAutofill(datalist2);
-            } else if (keyType == "muid") {
+            } else if (keyType === "muid") {
                 keyInput1.setAttribute("placeholder", gink.muidToString(oldKey.address));
 
                 keyInput1.setAttribute("list", "datalist-1");
@@ -347,7 +347,7 @@ class Page {
             }
         }
         // Value  - 1 input if container uses values
-        if (oldValue != undefined) {
+        if (oldValue !== undefined) {
             const valueH2 = this.createElement("h2", entryContainer);
             valueH2.innerText = "Value";
             valueInput = this.createElement("input", entryContainer, "value-input", "bundle-input");
@@ -377,7 +377,7 @@ class Page {
         bundleButton.onclick = async () => {
             // Assume nothing has changed until we see what user has input.
             let newKey = oldKey;
-            if (keyType == "pair") {
+            if (keyType === "pair") {
                 gink.ensure(keyInput1 && keyInput2);
                 let muid1 = oldKey[0];
                 let muid2 = oldKey[1];
@@ -388,7 +388,7 @@ class Page {
                     muid2 = keyInput2.value;
                 }
                 newKey = [muid1, muid2];
-            } else if (keyType != "none") {
+            } else if (keyType !== "none") {
                 gink.ensure(keyInput1 && !keyInput2);
                 if (keyInput1.value) {
                     const kt = document.getElementById("key-type-select").value;
@@ -397,7 +397,7 @@ class Page {
 
             }
             let newValue = oldValue;
-            if (valueType != "none") {
+            if (valueType !== "none") {
                 gink.ensure(valueInput);
                 if (valueInput.value) {
                     const vt = document.getElementById("value-type-select").value;
@@ -408,7 +408,7 @@ class Page {
             let newComment = commentInput.value;
 
             // Nothing has changed. Should this go back to container screen?
-            if ((newKey == oldKey) && (newValue == oldValue)) return;
+            if ((newKey === oldKey) && (newValue === oldValue)) return;
 
             if (confirm("Bundle updated entry?")) {
                 await this.database.deleteEntry(interpretKey(oldKey, container), position, container, newComment);
@@ -428,7 +428,7 @@ class Page {
      * @returns true if there are no previous pages.
      */
     isFirstPage(currentPage) {
-        return currentPage == 1;
+        return currentPage === 1;
     }
 
     /**
@@ -445,7 +445,7 @@ class Page {
             case "int":
                 return Number(value);
             case "bool":
-                return value.toLowerCase() == "true" ? true : false;
+                return value.toLowerCase() === "true" ? true : false;
             case "null":
                 return null;
             default:
@@ -466,14 +466,14 @@ class Page {
         let stringMuid = "FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00004";
         let pageNumber = 1;
         let itemsPerPage = 10;
-        if (window.location.hash == '#self') {
+        if (window.location.hash === '#self') {
             stringMuid = gink.muidToString(this.database.getSelfContainer().address);
         }
         else if (hash) {
             hash = hash.substring(1);
             let splitHash = hash.split("+");
             stringMuid = splitHash[0];
-            if (!(splitHash.length == 1)) {
+            if (!(splitHash.length === 1)) {
                 pageNumber = splitHash[1];
                 itemsPerPage = splitHash[2];
             }
@@ -504,7 +504,7 @@ class Page {
      */
     async entryValueAsHtml(value) {
         let asHtml;
-        if (Array.isArray(value) && value.length == 2 && value[0].timestamp) {
+        if (Array.isArray(value) && value.length === 2 && value[0].timestamp) {
             let container1 = await this.database.getContainer(value[0]);
             let container2 = await this.database.getContainer(value[1]);
             asHtml = `
@@ -529,7 +529,7 @@ class Page {
      */
     async getCellValue(value) {
         let cellValue;
-        if (Array.isArray(value) && value.length == 2 && value[0].timestamp) {
+        if (Array.isArray(value) && value.length === 2 && value[0].timestamp) {
             let container1 = await this.database.getContainer(value[0]);
             let container2 = await this.database.getContainer(value[1]);
             cellValue = `${container1.constructor.name}-${container2.constructor.name}`;
@@ -553,7 +553,7 @@ class Page {
      */
     async writeTitle(container) {
         let titleContainer = this.getElement("#title-container");
-        if (titleContainer != undefined) {
+        if (titleContainer !== undefined) {
             this.clearChildren(titleContainer);
         } else {
             titleContainer = this.createElement("div", this.root, "title-container");
@@ -564,8 +564,8 @@ class Page {
 
         let containerName = await this.database.getContainerName(container);
 
-        if (containerName == undefined) {
-            if (muid.timestamp == -1 && muid.medallion == -1 && muid.offset == 4) {
+        if (containerName === undefined) {
+            if (muid.timestamp === -1 && muid.medallion === -1 && muid.offset === 4) {
                 containerName = "Root Directory";
             } else {
                 containerName = `${container.constructor.name} (${muid.timestamp},${muid.medallion},${muid.offset})`;

@@ -88,10 +88,10 @@ export class KeySet extends Container {
      */
     async has(key: ScalarKey, asOf?: AsOf): Promise<boolean> {
         const result = await this.database.store.getEntryByKey(this.address, key, asOf);
-        if (result != undefined && result.deletion) {
+        if (result !== undefined && result.deletion) {
             return false;
         }
-        return result != undefined;
+        return result !== undefined;
     }
 
     /**

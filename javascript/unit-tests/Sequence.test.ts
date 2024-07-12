@@ -132,7 +132,7 @@ it('list-changeset', async function () {
         await list.push("C", bundler);
         await instance.addBundler(bundler);
 
-        ensure(bundler.timestamp != undefined && bundler.timestamp > 0);
+        ensure(bundler.timestamp !== undefined && bundler.timestamp > 0);
         ensure(list.address.timestamp === bundler.timestamp);
         for await (const [muid, _] of list.entries()) {
             ensure(muid.timestamp === bundler.timestamp);

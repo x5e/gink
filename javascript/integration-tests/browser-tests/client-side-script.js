@@ -14,7 +14,7 @@ function getWebsocketTarget() {
 }
 
 async function onBundle(changeSet) {
-    if (document == null) { throw new Error("unexpected"); }
+    if (document === null) { throw new Error("unexpected"); }
     document.getElementById('messages').innerHTML +=
         `${changeSet.info.medallion}, ${changeSet.info.timestamp}, ` +
         `"${changeSet.info.comment}"\n`;

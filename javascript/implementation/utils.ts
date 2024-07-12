@@ -90,7 +90,7 @@ export function makeMedallion() {
 
 export function muidToBuilder(address: Muid, relativeTo?: Medallion): MuidBuilder {
     const muid = new MuidBuilder();
-    if (address.medallion && address.medallion != relativeTo)
+    if (address.medallion && address.medallion !== relativeTo)
         muid.setMedallion(address.medallion);
     if (address.timestamp) // not set if also pending
         muid.setTimestamp(address.timestamp);
@@ -281,7 +281,7 @@ export function wrapValue(arg: Value): ValueBuilder {
     if (arg instanceof Map) {
         const documentBuilder = new DocumentBuilder();
         for (const [key, val] of arg.entries()) {
-            if (typeof (key) != "number" && typeof (key) != "string") {
+            if (typeof (key) !== "number" && typeof (key) !== "string") {
                 throw new Error("keys in documents must be numbers or strings");
             }
             documentBuilder.addKeys(wrapKey(key));
@@ -304,7 +304,7 @@ export function wrapValue(arg: Value): ValueBuilder {
 }
 
 export function matches(a: any[], b: any[]) {
-    if (a.length != b.length) return false;
+    if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) {
         if (a[i] !== b[i]) return false;
     }
@@ -467,14 +467,14 @@ export function logToStdErr(msg: string) {
 
 export function sameData(key1: any, key2: any): boolean {
     if (key1 instanceof Uint8Array && key2 instanceof Uint8Array) {
-        if (key1.byteLength != key2.byteLength) return false;
+        if (key1.byteLength !== key2.byteLength) return false;
         for (let i = 0; i < key1.byteLength; i++) {
-            if (key1[i] != key2[i]) return false;
+            if (key1[i] !== key2[i]) return false;
         }
         return true;
     }
     if (Array.isArray(key1) && Array.isArray(key2)) {
-        if (key1.length != key2.length) return false;
+        if (key1.length !== key2.length) return false;
         for (let i = 0; i < key1.length; i++) {
             if (!sameData(key1[i], key2[i]))
                 return false;
