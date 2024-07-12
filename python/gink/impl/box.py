@@ -1,7 +1,7 @@
 from typing import Optional, Union
 
 #gink implementation
-from .typedefs import GenericTimestamp
+from .typedefs import GenericTimestamp, UserValue
 from .container import Container
 from .muid import Muid
 from .database import Database
@@ -17,7 +17,7 @@ class Box(Container):
             muid: Optional[Union[Muid, str]] = None,
             *,
             arche: Optional[bool] = None,
-            contents = None,
+            contents: Union[UserValue, Container] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -53,7 +53,7 @@ class Box(Container):
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
-    def set(self, value, *, bundler=None, comment=None):
+    def set(self, value: Union[UserValue, Container], *, bundler=None, comment=None):
         """ Sets a value in the box, returns the muid address of the entry.
 
             If bundler is specified, then simply adds an entry to that bundler.

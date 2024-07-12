@@ -57,7 +57,7 @@ class KeySet(Container):
             self._database.bundle(bundler)
 
     def add(self, key: UserKey, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
-        """ Adds a specified value to the key set """
+        """ Adds a specified key to the key set """
         return self._add_entry(key=key, value=inclusion, bundler=bundler, comment=comment)
 
     def update(self, keys: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
@@ -197,7 +197,7 @@ class KeySet(Container):
                 self.remove(key=key, bundler=bundler, comment=comment)
         self.update(sym_diff, bundler=bundler, comment=comment)
 
-    def items(self, *, as_of: GenericTimestamp=None):
+    def items(self, *, as_of: GenericTimestamp=None) -> Iterable[UserKey]:
         """ returns an iterable of all items in the key set """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
@@ -206,6 +206,7 @@ class KeySet(Container):
             if entry_pair.builder.deletion:
                 continue
             key = decode_key(entry_pair.builder)
+            assert key is not None, "Key is None?"
             yield key
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
@@ -235,10 +236,10 @@ class KeySet(Container):
         result += ",\n\t".join(stuffing) + "})"
         return result
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.size()
 
-    def __iter__(self) -> Iterable[Container]:
+    def __iter__(self) -> Iterable[UserKey]:
         for element in self.items():
             yield element
 

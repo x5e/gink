@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, Union
+from typing import Optional, Iterable, Union, Tuple
 from random import randint
 
 # gink implementation
@@ -73,15 +73,15 @@ class Sequence(Container):
         result += ",\n\t".join(stuffing) + "])"
         return result
 
-    def append(self, thing, expiry: GenericTimestamp = None, bundler=None, comment=None):
-        """ Append obect to the end of the queue.
+    def append(self, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None):
+        """ Append value to the end of the queue.
 
             If expiry is set, the added entry will be removed at the specified time.
         """
-        return self._add_entry(value=thing, bundler=bundler, comment=comment, expiry=expiry)
+        return self._add_entry(value=value, bundler=bundler, comment=comment, expiry=expiry)
 
-    def insert(self, index: int, thing, expiry: GenericTimestamp = None, bundler=None, comment=None):
-        """ Inserts thing before index.
+    def insert(self, index: int, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None):
+        """ Inserts value before index.
 
             The resulting entry expires at expiry time if specified, which must be in the future.
 
@@ -91,13 +91,13 @@ class Sequence(Container):
             returns the muid of the entry
         """
         return self._add_entry(
-            value=thing,
+            value=value,
             effective=self._position(before=index),
             bundler=bundler,
             comment=comment,
             expiry=expiry)
 
-    def extend(self, iterable, expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]] = None,
+    def extend(self, iterable: Iterable[Union[UserValue, Container]], expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]] = None,
                bundler=None, comment=None):
         """ Adds all of the items in iterable at once to this sequence.
 
@@ -175,7 +175,7 @@ class Sequence(Container):
         self.yank(sequence_key.entry_muid, dest=dest, bundler=bundler, comment=comment)
         return entry_value
 
-    def remove(self, value, *, dest: GenericTimestamp = None, bundler=None, comment=None):
+    def remove(self, value: Union[UserValue, Container], *, dest: GenericTimestamp = None, bundler=None, comment=None):
         """ Remove first occurance of value.
 
             Raises ValueError if the value is not present.
@@ -188,7 +188,7 @@ class Sequence(Container):
                                  bundler=bundler, comment=comment)
         raise ValueError("matching item not found")
 
-    def items(self, *, as_of: GenericTimestamp = None) -> Iterable:
+    def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[SequenceKey, Union[UserValue, Container]]]:
         """ Returns pairs of (muid, contents) for the sequence at the given time.
         """
         as_of = self._database.resolve_timestamp(as_of)
@@ -201,7 +201,7 @@ class Sequence(Container):
         for key, _ in self.items(as_of=as_of):
             yield key
 
-    def values(self, *, as_of: GenericTimestamp = None) -> Iterable:
+    def values(self, *, as_of: GenericTimestamp = None) -> Iterable[Union[UserValue, Container]]:
         for _, val in self.items(as_of=as_of):
             yield val
 
@@ -238,7 +238,7 @@ class Sequence(Container):
             count += 1
         return count
 
-    def index(self, value, start=0, stop=None, *, as_of: GenericTimestamp = None) -> int:
+    def index(self, value: Union[UserValue, Container], start=0, stop=None, *, as_of: GenericTimestamp = None) -> int:
         """ Return the first index of the value at the given time (or now).
 
             Raises a ValueError if the value isn't present and raise_if_missing is True,
@@ -256,9 +256,8 @@ class Sequence(Container):
             index += 1
         raise ValueError("matching item not found")
 
-    def __contains__(self, item: Union[UserValue, Container, Muid]) -> bool:
-        """ Returns true if something matching item is in queue.
-        """
+    def __contains__(self, item: Union[UserValue, Container]) -> bool:
+        """ Returns true if something matching item is in queue. """
         try:
             self.index(item)
             return True
