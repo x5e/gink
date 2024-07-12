@@ -7,8 +7,9 @@ from .container import Container
 from .coding import PAIR_SET, deletion, inclusion
 from .bundler import Bundler
 from .typedefs import GenericTimestamp
+from .utilities import normalize_pair
 
-Pair = Union[Tuple[Container, Container], Tuple[Muid, Muid]]
+Pair = Tuple[Union[Container, Muid], Union[Container, Muid]]
 
 class PairSet(Container):
     _missing = object()
@@ -68,10 +69,7 @@ class PairSet(Container):
 
     def contains(self, pair: Pair, *, as_of: GenericTimestamp = None) -> bool:
         ts = self._database.resolve_timestamp(as_of)
-        assert len(pair) == 2
-        if isinstance(pair[0], Container):
-            pair = (pair[0]._muid, pair[1]._muid)
-
+        pair = normalize_pair(pair)
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=pair, as_of=ts)
         return bool(found and not found.builder.deletion)
 
