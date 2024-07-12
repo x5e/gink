@@ -553,7 +553,7 @@ class Page {
      */
     async writeTitle(container) {
         let titleContainer = this.getElement("#title-container");
-        if (titleContainer !== undefined) {
+        if (titleContainer !== null) {
             this.clearChildren(titleContainer);
         } else {
             titleContainer = this.createElement("div", this.root, "title-container");
