@@ -57,7 +57,7 @@ class KeySet(Container):
             self._database.bundle(bundler)
 
     def add(self, key: UserKey, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
-        """ Adds a specified value to the key set """
+        """ Adds a specified key to the key set """
         return self._add_entry(key=key, value=inclusion, bundler=bundler, comment=comment)
 
     def update(self, keys: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
