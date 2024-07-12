@@ -45,14 +45,14 @@ def test_basic():
             assert pairmap1.size() == 2
             assert pairmap1.has(key=(vertex1._muid, vertex3._muid))
 
-            pairmap1.delete(key=(vertex1, vertex2))
+            pairmap1.delete(key=(vertex1._muid, vertex2))
             assert pairmap1.size() == 1
 
-            assert not pairmap1.get(key=(vertex1, vertex3), as_of=after_first)
-            assert pairmap1.get(key=(vertex1, vertex2), as_of=after_first)
-            assert pairmap1.get(key=(vertex1, vertex3)) == "test vertex1 -> vertex3"
+            assert not pairmap1.get(key=(vertex1._muid, vertex3._muid), as_of=after_first)
+            assert pairmap1.get(key=(vertex1, vertex2._muid), as_of=after_first)
+            assert pairmap1.get(key=(vertex1._muid, vertex3)) == "test vertex1 -> vertex3"
 
-            pairmap1.delete(key=(vertex1, vertex3))
+            pairmap1.delete(key=(vertex1, vertex3._muid))
             assert pairmap1.size() == 0
 
 def test_contents_dumps():
