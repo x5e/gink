@@ -28,9 +28,7 @@ it('connect to server and display dashboard', async () => {
         expect(title).toMatch("Root Directory");
 
         await page.reload();
-        await server.expect("disconnected.");
-
-        await sleep(4000);
+        await server.expect("disconnected.", 2000);
 
         // Make sure server does not crash after page reload.
         await server.expect("got ack from 2", 5000);

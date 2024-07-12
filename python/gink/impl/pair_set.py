@@ -6,8 +6,10 @@ from .muid import Muid
 from .container import Container
 from .coding import PAIR_SET, deletion, inclusion
 from .bundler import Bundler
-from .graph import Vertex
 from .typedefs import GenericTimestamp
+from .utilities import normalize_pair
+
+Pair = Tuple[Union[Container, Muid], Union[Container, Muid]]
 
 class PairSet(Container):
     _missing = object()
@@ -17,7 +19,7 @@ class PairSet(Container):
                 self,
                 muid: Optional[Union[Muid, str]] = None,
                 *,
-                contents: Optional[Dict[str, Iterable[Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]]]]] = None,
+                contents: Optional[Iterable[Pair]] = None,
                 database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
@@ -67,27 +69,21 @@ class PairSet(Container):
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
-    def include(self, pair: Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]], *,
-                bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+    def include(self, pair: Pair, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Includes a pair of Vertexs in the pair set """
         return self._add_entry(key=pair, value=inclusion, bundler=bundler, comment=comment)
 
-    def exclude(self, pair: Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]], *,
-                bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+    def exclude(self, pair: Pair, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Excludes a pair of Vertexs from the pair set """
         return self._add_entry(key=pair, value=deletion, bundler=bundler, comment=comment)
 
-    def contains(self, pair: Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]], *, as_of: GenericTimestamp = None) -> bool:
+    def contains(self, pair: Pair, *, as_of: GenericTimestamp = None) -> bool:
         ts = self._database.resolve_timestamp(as_of)
-        assert len(pair) == 2
-        if isinstance(pair[0], Vertex):
-            muid_pair = (pair[0]._muid, pair[1]._muid)
-            found = self._database.get_store().get_entry_by_key(self.get_muid(), key=muid_pair, as_of=ts)
-        else:
-            found = self._database.get_store().get_entry_by_key(self.get_muid(), key=pair, as_of=ts)
+        pair = normalize_pair(pair)
+        found = self._database.get_store().get_entry_by_key(self.get_muid(), key=pair, as_of=ts)
         return bool(found and not found.builder.deletion)
 
-    def __contains__(self, pair: Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]]) -> bool:
+    def __contains__(self, pair: Pair) -> bool:
         return self.contains(pair)
 
     def get_pairs(self, *, as_of: GenericTimestamp = None) -> Set[Tuple[Muid, Muid]]:

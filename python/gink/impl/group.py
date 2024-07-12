@@ -119,8 +119,8 @@ class Group(Container):
         for thing in self.get_members():
             yield thing
 
-    def __contains__(self, thing: Union[Muid, Container]) -> bool:
-        return self.contains(thing)
+    def __contains__(self, what: Union[Muid, Container]) -> bool:
+        return self.contains(what)
 
     def get_member_ids(self, *, excluded: bool = False, as_of: GenericTimestamp = None) -> Iterable[Muid]:
         as_of = self._database.resolve_timestamp(as_of)

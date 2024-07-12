@@ -47,13 +47,13 @@ def test_include_exclude():
             pairset1.include(pair=(vertex1, vertex3))
             assert pairset1.size() == 2
 
-            pairset1.exclude(pair=(vertex1, vertex2))
+            pairset1.exclude(pair=(vertex1._muid, vertex2._muid))
             assert pairset1.size() == 1
 
-            pairset1.include(pair=(vertex2, vertex3))
+            pairset1.include(pair=(vertex2._muid, vertex3))
             assert pairset1.size() == 2
 
-            pairset1.exclude(pair=(vertex2, vertex3))
+            pairset1.exclude(pair=(vertex2, vertex3._muid))
             assert pairset1.size() == 1
 
 def test_reset_asof():
@@ -106,6 +106,8 @@ def test_contains_getpairs():
             assert pairset1.contains(pair=(vertex1, vertex2))
             assert pairset1.__contains__(pair=(vertex1, vertex2))
             assert pairset1.contains(pair=(vertex1._muid, vertex2._muid))
+            assert pairset1.contains(pair=(vertex1, vertex2._muid))
+            assert pairset1.contains(pair=(vertex1._muid, vertex2))
 
             assert pairset1.get_pairs() == {(vertex1._muid, vertex2._muid),
                                             (vertex1._muid, vertex3._muid), (vertex2._muid, vertex3._muid)}

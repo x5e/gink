@@ -1,13 +1,15 @@
 """ Contains the pair map class definition """
 
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, Dict, Iterable
 from .database import Database
 from .muid import Muid
 from .container import Container
 from .coding import PAIR_MAP, deletion, decode_entry_occupant
 from .bundler import Bundler
-from .graph import Vertex
 from .typedefs import GenericTimestamp, UserValue
+from .utilities import normalize_pair
+
+Pair = Tuple[Union[Container, Muid], Union[Container, Muid]]
 
 class PairMap(Container):
     _missing = object()
@@ -18,7 +20,7 @@ class PairMap(Container):
             muid: Optional[Union[Muid, str]] = None,
             *,
             arche: Optional[bool] = None,
-            contents: Optional[dict] = None,
+            contents: Optional[Dict[Pair, Union[UserValue, Container]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -56,42 +58,33 @@ class PairMap(Container):
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
-    def set(self, key: Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]],
+    def set(self, key: Pair,
             value: Union[UserValue, Container],
             bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         return self._add_entry(key=key, value=value, bundler=bundler, comment=comment)
 
-    def get(self, key: Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]],
+    def get(self, key: Pair,
             default=None, *, as_of: GenericTimestamp = None):
         as_of = self._database.resolve_timestamp(as_of)
-        if isinstance(key[0], Vertex) and isinstance(key[1], Vertex):
-            muid_key = (key[0]._muid, key[1]._muid)
-            found = self._database.get_store().get_entry_by_key(self._muid, key=muid_key, as_of=as_of)
-        elif isinstance(key[0], Muid) and isinstance(key[1], Muid):
-            found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
-        else:
-            raise ValueError(f"Not sure what to do with {key}, not a tuple of muids or vertices.")
+        key = normalize_pair(key)
+        found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
 
         if found is None or found.builder.deletion:  # type: ignore
             return default
         return self._get_occupant(found.builder, found.address)
 
-    def delete(self, key: Tuple[Vertex, Vertex],
+    def delete(self, key: Pair,
                bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
-    def has(self, key: Union[Tuple[Vertex, Vertex], Tuple[Muid, Muid]], *, as_of=None):
+    def has(self, key: Pair, *, as_of=None):
         """ returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
-        assert isinstance(key, tuple)
-        if isinstance(key[0], Container) and isinstance(key[1], Container):
-            pair_muid = (key[0]._muid, key[1]._muid)
-        else:
-            pair_muid = key
-        found = self._database.get_store().get_entry_by_key(self._muid, key=pair_muid, as_of=as_of)
+        key = normalize_pair(key)
+        found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
         return found is not None and not found.builder.deletion  # type: ignore
 
-    def items(self, *, as_of=None):
+    def items(self, *, as_of=None) -> Iterable[Tuple[Tuple[Muid, Muid], Union[UserValue, Container]]]:
         """ returns an iterable of key,value pairs, as of the effective time (or now) """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=PAIR_MAP)
@@ -105,19 +98,19 @@ class PairMap(Container):
             contained = self._get_occupant(entry_pair.builder, entry_pair.address)
             yield key, contained
 
-    def __contains__(self, key):
+    def __contains__(self, key: Pair):
         return self.has(key)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Pair):
         result = self.get(key, default=self._missing)
         if result == self._missing:
             raise KeyError(key)
         return result
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: Pair, value: Union[UserValue, Container]):
         self.set(key, value)
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: Pair):
         self.delete(key)
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:

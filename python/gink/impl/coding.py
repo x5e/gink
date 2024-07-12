@@ -197,13 +197,13 @@ class Placement(NamedTuple):
         middle_key: Union[QueueMiddleKey, MuTimestamp,  UserKey, Muid, None, Tuple[Muid, Muid]]
         if using in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(middle_key_bytes)
-        elif using == SEQUENCE:
+        elif using in (SEQUENCE, EDGE_TYPE):
             middle_key = QueueMiddleKey.from_bytes(middle_key_bytes)
         elif using in (PROPERTY, GROUP, BRAID):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using in (PAIR_SET, PAIR_MAP):
             middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
-        elif using in (BOX, VERTEX, EDGE_TYPE):
+        elif using in (BOX, VERTEX):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")
