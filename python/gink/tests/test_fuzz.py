@@ -40,7 +40,7 @@ CONTAINER_KEY_TYPES = {
     KEY_SET: {str, int, bytes},
     GROUP: {Container, Muid},
     PAIR_SET: Pair,
-    PROPERTY: {Container, Edge},
+    PROPERTY: {Container},
     BRAID: {Chain},
 }
 CONTAINER_VALUE_TYPES = {
@@ -84,7 +84,7 @@ def test_random() -> Database:
     # try_random_bad_data(sequence)
 
     property = Property()
-    # try_random_good_data(property)
+    try_random_good_data(property)
     # try_random_bad_data(property)
 
     pair_map = PairMap()
@@ -110,9 +110,10 @@ def random_data(type):
     Pass include_iterables=False to exclude list, tuple, and dict.
     Pass key=True to generate a random UserKey.
     """
+    max_str = 468
 
     if type == str:
-        k = randint(1, 468) # lmdb key cant be more than 468 characters
+        k = randint(1, max_str) # lmdb key cant be more than 468 characters
         return "".join(choices(ascii_lowercase, k=k))
     elif type == int:
         return randint(0, 10000)
@@ -140,7 +141,9 @@ def random_data(type):
     elif type == Muid:
         return random_container().get_muid()
     elif type == Edge:
-        return Verb().create_edge(sub=Vertex(), obj=Vertex())
+        edge = Verb().create_edge(sub=Vertex(), obj=Vertex())
+        edge.dumps()
+        return edge
     elif type == Chain:
         chain = Chain(medallion=generate_medallion(), chain_start=generate_timestamp())
         return chain
@@ -161,14 +164,12 @@ def try_random_good_data(container: Container):
 def try_random_bad_data(container: Container):
     bad_key_types = ALL_GINK_TYPES - CONTAINER_KEY_TYPES[container.get_behavior()]
     bad_value_types = ALL_GINK_TYPES - CONTAINER_VALUE_TYPES[container.get_behavior()]
-    print(bad_value_types)
     for _ in range(randint(1, NUM_ENTRIES)):
         key = random_data(type=set_choice(bad_key_types))
         value = random_data(type=set_choice(bad_value_types))
         try:
             container_set_adapter(container, key, value)
-            print(container.get_behavior(), value)
-            raise AssertionError("Bad data was accepted??")
+            assert False, f"{container.get_behavior()}, {value}"
         except ValueError:
             pass
 

@@ -10,8 +10,6 @@ from .database import Database
 from .bundler import Bundler
 from .graph import Edge
 
-PropertyKey = Union[Container, Edge]
-
 
 class Property(Container):
     BEHAVIOR = PROPERTY
@@ -21,7 +19,7 @@ class Property(Container):
             muid: Optional[Union[Muid, str]] = None,
             *,
             arche: Optional[bool] = None,
-            contents: Optional[Dict[PropertyKey, Union[UserValue, Container]]] = None,
+            contents: Optional[Dict[Container, Union[UserValue, Container]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -72,7 +70,7 @@ class Property(Container):
         result += ",\n\t".join(stuffing) + "})"
         return result
 
-    def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[PropertyKey, Union[UserValue, Container]]]:
+    def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[Container, Union[UserValue, Container]]]:
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
             container=self._muid, as_of=as_of, behavior=PROPERTY)
@@ -80,7 +78,6 @@ class Property(Container):
             if entry_pair.builder.deletion:  # type: ignore
                 continue
             muid = Muid.create(builder=entry_pair.builder.describing, context=entry_pair.address)
-            # print(muid)
             value = self._get_occupant(entry_pair.builder, address=entry_pair.address)
             yield self._database.get_container(muid), value
 
@@ -94,7 +91,7 @@ class Property(Container):
                 count += 1
         return count
 
-    def set(self, describing: PropertyKey, value: Union[UserValue, Container], *,
+    def set(self, describing: Container, value: Union[UserValue, Container], *,
             bundler=None, comment=None) -> Muid:
         """ Sets the value of the property on the particular object addressed by describing.
 
@@ -123,11 +120,11 @@ class Property(Container):
         if immediate:
             self._database.bundle(bundler)
 
-    def delete(self, describing: PropertyKey, *, bundler=None, comment=None) -> Muid:
+    def delete(self, describing: Container, *, bundler=None, comment=None) -> Muid:
         """ Removes the value (if any) of this property on object pointed to by `describing`. """
         return self._add_entry(key=describing._muid, value=deletion, bundler=bundler, comment=comment)
 
-    def get(self, describing: PropertyKey, default: Union[UserValue, Container] = None, *,
+    def get(self, describing: Container, default: Union[UserValue, Container] = None, *,
             as_of: GenericTimestamp = None) -> Union[UserValue, Container]:
         """ Gets the value of the property on the object it's describing, optionally in the past.
 

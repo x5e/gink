@@ -209,7 +209,9 @@ class Container(Addressable, ABC):
                 raise ValueError(f"Value for pair set must be of type (Inclusion, Deletion), had {value}")
 
         elif behavior == PROPERTY:
-            if not is_type(key, (Addressable, Muid)):
+            if hasattr(key, "_action"):
+                raise NotImplementedError("Edges are not yet supported as keys for properties")
+            if not is_type(key, (Container, Muid)):
                 raise ValueError(f"Key for property must be an Addressable, had {key}")
             if not is_type(value, (Container, UserValue, Deletion)):
                 raise ValueError(f"Value for property must be of type (Container, UserValue, Deletion), had {value}")
