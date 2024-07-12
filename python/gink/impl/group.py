@@ -48,6 +48,7 @@ class Group(Container):
 
         if contents:
             assert isinstance(contents, dict), "expecting contents to be of the form {'include': Iterable[(Muid, Muid)], 'exclude': Iterable[(Muid, Muid)]}"
+            assert contents.keys() <= {"include", "exclude"}, "expecting only 'include' and 'exclude' keys in contents"
             self.clear(bundler=bundler)
             included = contents.get("include", set())
             assert isinstance(included, Iterable)
@@ -93,9 +94,9 @@ class Group(Container):
             else:
                 excluded_stuffing += f"Muid({mb.timestamp}, {mb.medallion}, {mb.offset})" + ",\n\t"
 
-        if included_stuffing != "\n\t'included': [\n\t":
+        if included_stuffing != "\n\t'include': [\n\t":
             result += "".join(included_stuffing) + "],"
-        if excluded_stuffing != "\n\t'excluded': [\n\t":
+        if excluded_stuffing != "\n\t'exclude': [\n\t":
             result += "".join(excluded_stuffing) + "],"
 
         result += "})"

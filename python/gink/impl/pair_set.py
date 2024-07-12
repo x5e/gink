@@ -50,6 +50,7 @@ class PairSet(Container):
             )
         if contents:
             assert isinstance(contents, dict), "expecting contents to be of the form {'include': Iterable[(Muid, Muid)], 'exclude': Iterable[(Muid, Muid)]}"
+            assert contents.keys() <= {"include", "exclude"}, "expecting only 'include' and 'exclude' keys in contents"
             self.clear(bundler=bundler)
             included = contents.get("include", set())
             assert isinstance(included, Iterable)
@@ -121,8 +122,8 @@ class PairSet(Container):
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
 
-        included_stuffing = "'included': [\n\t"
-        excluded_stuffing = "'excluded': [\n\t"
+        included_stuffing = "'include': [\n\t"
+        excluded_stuffing = "'exclude': [\n\t"
         for entry_pair in self._database.get_store().get_keyed_entries(container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of):
             left = entry_pair.builder.pair.left
             rite = entry_pair.builder.pair.rite
