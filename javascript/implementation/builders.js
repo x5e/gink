@@ -18,8 +18,6 @@ const ValueBuilder = require("../proto/value_pb")["Value"];
 const HeaderBuilder = require("../proto/header_pb")["Header"];
 const ClearanceBuilder = require("../proto/clearance_pb")["Clearance"];
 const Special = ValueBuilder.Special;
-const NumberBuilder = ValueBuilder.Number;
-const TimestampBuilder = ValueBuilder.Timestamp;
 const DocumentBuilder = ValueBuilder.Document;
 const TupleBuilder = ValueBuilder.Tuple;
 
@@ -40,9 +38,7 @@ module.exports = {
     PairBuilder,
     ValueBuilder,
     Special,
-    NumberBuilder,
     ClaimBuilder,
-    TimestampBuilder,
     DocumentBuilder,
     TupleBuilder,
     ClearanceBuilder,
