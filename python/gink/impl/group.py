@@ -27,7 +27,7 @@ class Group(Container):
         Constructor for a group definition.
 
         muid: the global id of this container, created on the fly if None
-        contents: optionally expecting a dictionary of {"included": Set, "excluded": Set}
+        contents: optionally expecting a dictionary of {"include": Set, "exclude": Set} to prefill the group
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
@@ -47,14 +47,14 @@ class Group(Container):
             )
 
         if contents:
-            assert isinstance(contents, dict), "expecting contents to be of the form {'included': Iterable[(Muid, Muid)], 'excluded': Iterable[(Muid, Muid)]}"
+            assert isinstance(contents, dict), "expecting contents to be of the form {'include': Iterable[(Muid, Muid)], 'exclude': Iterable[(Muid, Muid)]}"
             self.clear(bundler=bundler)
-            included = contents.get("included", set())
+            included = contents.get("include", set())
             assert isinstance(included, Iterable)
             for container in included:
                 self.include(container, bundler=bundler)
 
-            excluded = contents.get("excluded", set())
+            excluded = contents.get("exclude", set())
             assert isinstance(excluded, Iterable)
             for container in excluded:
                 self.exclude(container, bundler=bundler)
@@ -81,8 +81,8 @@ class Group(Container):
         identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
-        included_stuffing = "\n\t'included': [\n\t"
-        excluded_stuffing = "\n\t'excluded': [\n\t"
+        included_stuffing = "\n\t'include': [\n\t"
+        excluded_stuffing = "\n\t'exclude': [\n\t"
 
         iterable = self._database.get_store().get_keyed_entries(
             container=self._muid, as_of=ts, behavior=Behavior.GROUP)

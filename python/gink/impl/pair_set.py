@@ -27,7 +27,7 @@ class PairSet(Container):
 
         muid: the global id of this container, created on the fly if None
         arche: whether this will be the global version of this container (accessible by all databases)
-        contents: prefill the pair set with an iterable of (Vertex, Vertex) upon initialization
+        contents: optionally expecting a dictionary of {"include": Set, "exclude": Set} to prefill the pair set
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
@@ -49,15 +49,15 @@ class PairSet(Container):
                 bundler=bundler,
             )
         if contents:
-            assert isinstance(contents, dict), "expecting contents to be of the form {'included': Iterable[(Muid, Muid)], 'excluded': Iterable[(Muid, Muid)]}"
+            assert isinstance(contents, dict), "expecting contents to be of the form {'include': Iterable[(Muid, Muid)], 'exclude': Iterable[(Muid, Muid)]}"
             self.clear(bundler=bundler)
-            included = contents.get("included", set())
+            included = contents.get("include", set())
             assert isinstance(included, Iterable)
             for pair in included:
                 assert isinstance(pair, tuple) and len(pair) == 2
                 self.include(pair, bundler=bundler)
 
-            excluded = contents.get("excluded", set())
+            excluded = contents.get("exclude", set())
             assert isinstance(excluded, Iterable)
             for pair in excluded:
                 assert isinstance(pair, tuple) and len(pair) == 2
@@ -132,9 +132,9 @@ class PairSet(Container):
                 excluded_stuffing += f"(Muid{(left.timestamp, left.medallion, left.offset)}, Muid{(rite.timestamp, rite.medallion, rite.offset)}),\n\t"
 
         result += "\n\t"
-        if included_stuffing != "'included': [\n\t":
+        if included_stuffing != "'include': [\n\t":
             result += "".join(included_stuffing) + "],"
-        if excluded_stuffing != "'excluded': [\n\t":
+        if excluded_stuffing != "'exclude': [\n\t":
             result += "".join(excluded_stuffing) + "],"
 
         result += "})"
