@@ -98,7 +98,7 @@ class Property(Container):
             Returns the muid of the new entry.
         """
         if not hasattr(describing, "_muid"):
-            raise ValueError("key must be a container")
+            raise ValueError("describing must be a container")
         return self._add_entry(key=describing._muid, value=value, bundler=bundler, comment=comment)
 
     def update(self, from_what, *, bundler=None, comment=None):
@@ -123,6 +123,8 @@ class Property(Container):
 
     def delete(self, describing: Container, *, bundler=None, comment=None) -> Muid:
         """ Removes the value (if any) of this property on object pointed to by `describing`. """
+        if not hasattr(describing, "_muid"):
+            raise ValueError("describing must be a container")
         return self._add_entry(key=describing._muid, value=deletion, bundler=bundler, comment=comment)
 
     def get(self, describing: Container, default: Union[UserValue, Container] = None, *,
@@ -130,6 +132,8 @@ class Property(Container):
         """ Gets the value of the property on the object it's describing, optionally in the past.
 
         """
+        if not hasattr(describing, "_muid"):
+            raise ValueError("describing must be a container")
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(self._muid, key=describing._muid, as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore

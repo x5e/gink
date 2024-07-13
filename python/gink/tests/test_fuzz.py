@@ -2,7 +2,7 @@ from random import choice, choices, randint, random, randbytes
 from string import ascii_lowercase
 from typing import Tuple, Dict, Set
 from datetime import datetime
-from os import devnull
+from io import StringIO
 from contextlib import closing
 
 from ..impl.container import Container
@@ -106,8 +106,10 @@ def test_random():
 
             # TODO: graph
 
-            with open(devnull, "w") as f:
-                database.dump(file=f)
+            str_io = StringIO()
+            database.dump(file=str_io)
+
+            # TODO: reconstruct database
 
 def random_data(type):
     max_str = 468 # lmdb key cant be more than 468 characters
