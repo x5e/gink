@@ -8,7 +8,6 @@ from .coding import PROPERTY, deletion
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
-from .graph import Edge
 
 
 class Property(Container):
@@ -98,6 +97,8 @@ class Property(Container):
             Overwrites the value of this property on this object if previously set.
             Returns the muid of the new entry.
         """
+        if not hasattr(describing, "_muid"):
+            raise ValueError("key must be a container")
         return self._add_entry(key=describing._muid, value=value, bundler=bundler, comment=comment)
 
     def update(self, from_what, *, bundler=None, comment=None):

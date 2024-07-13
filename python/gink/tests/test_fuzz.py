@@ -3,10 +3,12 @@ from string import ascii_lowercase
 from typing import Tuple
 from datetime import datetime
 from os import devnull
+from contextlib import closing
 
 from ..impl.container import Container
 from ..impl.database import Database
 from ..impl.lmdb_store import LmdbStore
+from ..impl.memory_store import MemoryStore
 from ..impl.directory import Directory
 from ..impl.sequence import Sequence
 from ..impl.key_set import KeySet
@@ -17,7 +19,7 @@ from ..impl.property import Property
 from ..impl.group import Group
 from ..impl.muid import Muid
 from ..impl.chain_tracker import Chain
-from ..impl.utilities import generate_medallion, generate_timestamp
+from ..impl.utilities import generate_medallion, generate_timestamp, is_named_tuple
 from ..impl.graph import Edge, Verb, Vertex
 from ..impl.coding import BOX, DIRECTORY, KEY_SET, SEQUENCE, PAIR_SET, PAIR_MAP, PROPERTY, GROUP, BRAID
 
@@ -64,56 +66,53 @@ def set_choice(set):
         i += 1
 
 def test_random() -> Database:
-    store = LmdbStore()
-    database = Database(store=store)
+    # get_edge_entries currently not working in MemoryStore
+    for store in [LmdbStore(), ]:
+        with closing(store):
+            database = Database(store=store)
 
-    box = Box()
-    try_random_good_data(box)
-    # try_random_bad_data(box)
+            box = Box()
+            try_random_good_data(box)
+            try_random_bad_data(box)
 
-    directory = Directory()
-    try_random_good_data(directory)
-    # try_random_bad_data(directory)
+            directory = Directory()
+            try_random_good_data(directory)
+            try_random_bad_data(directory)
 
-    key_set = KeySet()
-    try_random_good_data(key_set)
-    # try_random_bad_data(key_set)
+            key_set = KeySet()
+            try_random_good_data(key_set)
+            try_random_bad_data(key_set)
 
-    sequence = Sequence()
-    try_random_good_data(sequence)
-    # try_random_bad_data(sequence)
+            sequence = Sequence()
+            try_random_good_data(sequence)
+            try_random_bad_data(sequence)
 
-    property = Property()
-    try_random_good_data(property)
-    # try_random_bad_data(property)
+            property = Property()
+            try_random_good_data(property)
+            try_random_bad_data(property)
 
-    pair_map = PairMap()
-    try_random_good_data(pair_map)
-    # try_random_bad_data(pair_map)
+            pair_map = PairMap()
+            try_random_good_data(pair_map)
+            try_random_bad_data(pair_map)
 
-    pair_set = PairSet()
-    try_random_good_data(pair_set)
-    # try_random_bad_data(pair_set)
+            pair_set = PairSet()
+            try_random_good_data(pair_set)
+            try_random_bad_data(pair_set)
 
-    group = Group()
-    try_random_good_data(group)
-    # try_random_bad_data(group)
+            group = Group()
+            try_random_good_data(group)
+            try_random_bad_data(group)
 
-    # TODO: graph
+            # TODO: graph
 
-    with open(devnull, "w") as f:
-        database.dump(file=f)
+            with open(devnull, "w") as f:
+                database.dump(file=f)
 
 def random_data(type):
-    """
-    By default includes all UserValue types.
-    Pass include_iterables=False to exclude list, tuple, and dict.
-    Pass key=True to generate a random UserKey.
-    """
-    max_str = 468
+    max_str = 468 # lmdb key cant be more than 468 characters
 
     if type == str:
-        k = randint(1, max_str) # lmdb key cant be more than 468 characters
+        k = randint(1, max_str)
         return "".join(choices(ascii_lowercase, k=k))
     elif type == int:
         return randint(0, 10000)
@@ -168,57 +167,64 @@ def try_random_bad_data(container: Container):
         key = random_data(type=set_choice(bad_key_types))
         value = random_data(type=set_choice(bad_value_types))
         try:
-            container_set_adapter(container, key, value)
-            assert False, f"{container.get_behavior()}, {value}"
+            container_set_adapter(container, key, value, check=False)
+            assert False, f"{container.get_behavior()}, {repr(key)} {repr(value)}"
         except ValueError:
-            pass
+            continue
 
-def container_set_adapter(container: Container, key, value):
+def container_set_adapter(container: Container, key, value, check=True):
+    """ if check is True, check to see if the value is set correctly """
     if container.get_behavior() == BOX:
         container.set(value)
-        if isinstance(value, list):
-            value = tuple(value)
-        gotten = container.get()
-        assert gotten == value, f"Expected {value}, \ngot {gotten}"
+        if check:
+            if isinstance(value, list):
+                value = tuple(value)
+            gotten = container.get()
+            assert gotten == value, f"Expected {value}, \ngot {gotten}"
     elif container.get_behavior() == DIRECTORY:
         container.set(key, value)
-        if isinstance(value, list):
-            value = tuple(value)
-        gotten = container.get(key)
-        assert gotten == value, f"Expected {value}, \ngot {gotten}"
+        if check:
+            if isinstance(value, list):
+                value = tuple(value)
+            gotten = container.get(key)
+            assert gotten == value, f"Expected {value}, \ngot {gotten}"
     elif container.get_behavior() == KEY_SET:
-        assert value is None
         container.add(key)
-        assert container.contains(key)
+        if check:
+            assert container.contains(key)
     elif container.get_behavior() == SEQUENCE:
         container.append(value)
-        if isinstance(value, list):
-            value = tuple(value)
-        gotten = container.at(-1)[1]
-        assert gotten == value, f"Expected {value}, \ngot {gotten}"
+        if check:
+            if isinstance(value, list):
+                value = tuple(value)
+            gotten = container.at(-1)[1]
+            assert gotten == value, f"Expected {value}, \ngot {gotten}"
     elif container.get_behavior() == PAIR_MAP:
         container.set(key, value)
-        if isinstance(value, list):
-            value = tuple(value)
-        gotten = container.get(key)
-        assert gotten == value, f"Expected {value}, \ngot {gotten}"
+        if check:
+            if isinstance(value, list):
+                value = tuple(value)
+            gotten = container.get(key)
+            assert gotten == value, f"Expected {value}, \ngot {gotten}"
     elif container.get_behavior() == PAIR_SET:
-        assert value is None
         container.include(key)
-        assert container.contains(key)
+        if check:
+            assert container.contains(key)
     elif container.get_behavior() == GROUP:
-        assert value is None
         container.include(key)
-        assert container.contains(key)
+        if check:
+            assert container.contains(key)
     elif container.get_behavior() == PROPERTY:
         if isinstance(value, list):
             value = tuple(value)
         container.set(key, value)
-        gotten = container.get(key)
-        assert gotten == value, f"Expected {value}, \ngot {gotten}"
+        if check:
+            gotten = container.get(key)
+            assert gotten == value, f"Expected {value}, \ngot {gotten}"
     elif container.get_behavior() == BRAID:
         container.set(key, value)
-        if isinstance(value, list):
-            value = tuple(value)
-        gotten = container.get(key)
-        assert gotten == value, f"Expected {value}, \ngot {gotten}"
+        if check:
+            if isinstance(value, list):
+                value = tuple(value)
+            gotten = container.get(key)
+            assert gotten == value, f"Expected {value}, \ngot {gotten}"
