@@ -1,5 +1,5 @@
 import { Box, IndexedDbStore, Database, MemoryStore, Bundler, Muid } from "../implementation/index";
-import { ensure } from "../implementation/utils";
+import { ensure, isDate } from "../implementation/utils";
 
 it('create a box; set and get data in it', async function () {
     // set up the objects
@@ -121,5 +121,30 @@ it('Box.toJson', async function () {
         const asJson = await box.toJson();
 
         ensure(asJson === `{"cheese":"fries"}`);
+    }
+});
+
+it('Box.Store', async function () {
+    for (const store of [new IndexedDbStore('box.Store', true), new MemoryStore(true)]) {
+        const instance = new Database(store);
+        await instance.ready;
+        // put a value into the box
+        const box = await instance.createBox();
+
+        var date = new Date();
+        await box.set(date);
+        var expectDate = <Date> await box.get();
+
+        ensure(isDate(expectDate) && expectDate.getTime() === date.getTime());
+
+        var int = BigInt("137");
+        await box.set(int);
+        var expectInt = await box.get();
+        ensure(expectInt === int);
+
+        var floating = 137;
+        await box.set(floating);
+        var expectFloating = await box.get();
+        ensure(expectFloating === floating);
     }
 });

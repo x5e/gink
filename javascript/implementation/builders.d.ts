@@ -148,12 +148,6 @@ export class MuidBuilder extends ImplementedMessage {
     getOffset(): number;
 }
 
-export class NumberBuilder extends ImplementedMessage {
-    hasDoubled(): boolean;
-    getDoubled(): number;
-    setDoubled(number);
-}
-
 export class DocumentBuilder extends ImplementedMessage {
     getKeysList(): Array<KeyBuilder>;
     getValuesList(): Array<ValueBuilder>;
@@ -166,21 +160,14 @@ export class TupleBuilder extends ImplementedMessage {
     setValuesList(values: Array<ValueBuilder>);
 }
 
-export class TimestampBuilder extends ImplementedMessage {
-    getMillis(): number;
-    setMillis(number);
-}
-
 export class ValueBuilder extends ImplementedMessage {
     hasCharacters(): boolean;
     getCharacters(): string;
     asOctets(): boolean;
     getOctets(): Uint8Array;
     hasInteger(): boolean;
-    hasBigint(): boolean;
-    getBigint(): number;
-    setBigint(NumberBuilder);
-    getInteger(): number;
+    getInteger(): string;
+    setInteger(string);
     hasSpecial(): boolean;
     getSpecial(): number;
     hasOctets(): boolean;
@@ -190,17 +177,16 @@ export class ValueBuilder extends ImplementedMessage {
     hasTuple(): boolean;
     getTuple(): TupleBuilder;
     hasTimestamp(): boolean;
-    getTimestamp(): TimestampBuilder;
+    getTimestamp(): number;
+    setTimestamp(number);
     setOctets(Uint8Array);
-    setTimestamp(TimestampBuilder);
     setSpecial(Special);
     setCharacters(string);
-    setInteger(NumberBuilder);
     setTuple(TupleBuilder);
     setDocument(DocumentBuilder);
-    hasDoubled(): boolean;
-    getDoubled(): number;
-    setDoubled(number);
+    hasFloating(): boolean;
+    getFloating(): number;
+    setFloating(number);
 }
 
 export class KeyBuilder extends ImplementedMessage {

@@ -5,23 +5,14 @@ package gink;
 
 message Value {
     oneof value {
-        sint32 integer = 1;
-        bytes octets = 2;
+        string integer = 1;  // must match -?\d+
+        double floating = 2;
         string characters = 3;
-        sint64 bigint = 4;
-        Timestamp timestamp = 5;
-        Date date = 6;
-        Time time = 7;
-        double doubled = 8;
-        string symbol = 9;
-        Special special = 10;
-        Tuple tuple = 11;
-        Document document = 12;
-        bytes uuid = 16;
-        Zone timezone = 19;
-        DateTime datetime = 20;
-        ZonedDateTime zoned = 21;
-        Interval interval = 22;
+        Special special = 4;
+        int64 timestamp = 5;  // epoch micros
+        Document document = 6;
+        Tuple tuple = 7;
+        bytes octets = 8;
     }
 
     enum Special {
@@ -29,14 +20,6 @@ message Value {
         TRUE = 1;
         FALSE = 2;
         NULL = 3;
-    }
-
-    message Timestamp {
-        bool negative = 1;
-        uint64 seconds = 2;
-        uint64 millis = 3;
-        uint64 micros = 4;
-        uint64 nanos = 5;
     }
 
     message Tuple {
@@ -48,58 +31,4 @@ message Value {
         repeated Key keys = 1;
         repeated Value values = 2;
     }
-
-    message Date {
-        uint32 year = 1;
-        uint32 month = 2;
-        uint32 day = 3;
-    }
-
-    message Time {
-        uint32 hour = 1;
-        uint32 minute = 2;
-        uint32 second = 3;
-        uint32 milli = 4;
-        uint32 micro = 5;
-        uint32 nano = 6;
-    }
-
-    message Zone {
-        oneof zone {
-            ZoneOffset offset = 1;
-            string full_name = 2; // e.g. "America/New_York"
-            string abbreviation = 3; // e.g. "PST"
-        }
-    }
-
-    message ZoneOffset {
-        bool minus = 1;
-        uint32 hours = 2;
-        uint32 minutes = 3;
-    }
-
-    message Interval {
-        bool minus = 1;
-        uint64 hours = 2;
-        uint64 minutes = 3;
-        uint64 seconds = 4;
-        uint64 millis = 5;
-        uint64 micros = 6;
-        uint64 nanos = 7;
-        uint64 days = 8;
-        uint64 months = 9;
-        uint64 years = 10;
-    }
-
-    message DateTime {
-        Date date = 1;
-        Time time = 2;
-    }
-
-    message ZonedDateTime {
-        Date date = 1;
-        Time time = 2;
-        Zone zone = 3;
-    }
-
 }

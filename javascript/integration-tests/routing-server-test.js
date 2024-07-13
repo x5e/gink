@@ -4,6 +4,7 @@ const { Database, IndexedDbStore } = require("../tsc.out/implementation");
 process.chdir(__dirname + "/..");
 (async function () {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
+    new Expector("rm", ["-rf", "/tmp/routing-server-test"]);
     new Expector("mkdir", ["-p", "/tmp/routing-server-test"]);
     await new Promise((resolve) => setTimeout(resolve, 10));
     let server;
