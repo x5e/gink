@@ -930,10 +930,8 @@ class LmdbStore(AbstractStore):
         txn.put(entry_bytes, serialize(builder), db=self._entries)
         try:
             txn.put(serialized_placement_key, entry_bytes, db=self._placements)
-        except BadValsizeError as e:
-            print("PLACEMENT KEY LENGTH: ", len(placement_key.middle))
-            print("SERIALIZED: ", serialized_placement_key)
-            raise e
+        except BadValsizeError:
+            raise BadValsizeError("Max key size for LMDB is 511 bytes.")
         entries_loc_key = bytes(LocationKey(entry_muid, entry_muid))
         if builder.behavior in (EDGE_TYPE, SEQUENCE):
             txn.put(entries_loc_key, serialized_placement_key, db=self._locations)
