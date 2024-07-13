@@ -1,6 +1,6 @@
 from random import choice, choices, randint, random, randbytes
 from string import ascii_lowercase
-from typing import Tuple
+from typing import Tuple, Dict, Set
 from datetime import datetime
 from os import devnull
 from contextlib import closing
@@ -17,9 +17,10 @@ from ..impl.pair_set import PairSet
 from ..impl.pair_map import PairMap
 from ..impl.property import Property
 from ..impl.group import Group
+from ..impl.braid import Braid
 from ..impl.muid import Muid
 from ..impl.chain_tracker import Chain
-from ..impl.utilities import generate_medallion, generate_timestamp, is_named_tuple
+from ..impl.utilities import generate_medallion, generate_timestamp
 from ..impl.graph import Edge, Verb, Vertex
 from ..impl.coding import BOX, DIRECTORY, KEY_SET, SEQUENCE, PAIR_SET, PAIR_MAP, PROPERTY, GROUP, BRAID
 
@@ -27,14 +28,14 @@ from ..impl.coding import BOX, DIRECTORY, KEY_SET, SEQUENCE, PAIR_SET, PAIR_MAP,
 
 NUM_ENTRIES = 50
 UserKey = {str, int, bytes}
-NoIterables = {str, int, float, bytes, bool, None} # datetime
+NoIterables = {str, int, float, bytes, bool, None, datetime}
 UserValue = NoIterables.union({list, tuple, dict})
 
 ValueContainer = UserValue.union({Container})
 Pair = {Tuple[Container, Container], Tuple[Muid, Muid]}
 CONTAINERS = [Box, Directory, KeySet, Sequence, PairSet, PairMap, Property, Group]
-ALL_GINK_TYPES = ValueContainer.union({Muid, Edge, Chain}).union(Pair)
-CONTAINER_KEY_TYPES = {
+ALL_GINK_TYPES: set = ValueContainer.union({Muid, Edge, Chain}).union(Pair)
+CONTAINER_KEY_TYPES: Dict[int, Set] = {
     BOX: {None},
     SEQUENCE: {None},
     PAIR_MAP: Pair,
@@ -45,7 +46,7 @@ CONTAINER_KEY_TYPES = {
     PROPERTY: {Container},
     BRAID: {Chain},
 }
-CONTAINER_VALUE_TYPES = {
+CONTAINER_VALUE_TYPES: Dict[int, Set] = {
     BOX: ValueContainer,
     SEQUENCE: ValueContainer,
     PAIR_MAP: ValueContainer,
@@ -65,7 +66,7 @@ def set_choice(set):
             return item
         i += 1
 
-def test_random() -> Database:
+def test_random():
     # get_edge_entries currently not working in MemoryStore
     for store in [LmdbStore(), ]:
         with closing(store):
@@ -136,7 +137,7 @@ def random_data(type):
         return {random_data(type=set_choice(UserKey)): random_data(type=set_choice(NoIterables))
                 for _ in range(randint(1, 50))}
     elif type == Container:
-        return random_container() # TODO: fill container with some amount of data
+        return random_container() # TODO: fill container with some amount of data?
     elif type == Muid:
         return random_container().get_muid()
     elif type == Edge:
@@ -175,6 +176,7 @@ def try_random_bad_data(container: Container):
 def container_set_adapter(container: Container, key, value, check=True):
     """ if check is True, check to see if the value is set correctly """
     if container.get_behavior() == BOX:
+        assert isinstance(container, Box)
         container.set(value)
         if check:
             if isinstance(value, list):
@@ -182,6 +184,7 @@ def container_set_adapter(container: Container, key, value, check=True):
             gotten = container.get()
             assert gotten == value, f"Expected {value}, \ngot {gotten}"
     elif container.get_behavior() == DIRECTORY:
+        assert isinstance(container, Directory)
         container.set(key, value)
         if check:
             if isinstance(value, list):
@@ -189,10 +192,12 @@ def container_set_adapter(container: Container, key, value, check=True):
             gotten = container.get(key)
             assert gotten == value, f"Expected {value}, \ngot {gotten}"
     elif container.get_behavior() == KEY_SET:
+        assert isinstance(container, KeySet)
         container.add(key)
         if check:
             assert container.contains(key)
     elif container.get_behavior() == SEQUENCE:
+        assert isinstance(container, Sequence)
         container.append(value)
         if check:
             if isinstance(value, list):
@@ -200,6 +205,7 @@ def container_set_adapter(container: Container, key, value, check=True):
             gotten = container.at(-1)[1]
             assert gotten == value, f"Expected {value}, \ngot {gotten}"
     elif container.get_behavior() == PAIR_MAP:
+        assert isinstance(container, PairMap)
         container.set(key, value)
         if check:
             if isinstance(value, list):
@@ -207,14 +213,17 @@ def container_set_adapter(container: Container, key, value, check=True):
             gotten = container.get(key)
             assert gotten == value, f"Expected {value}, \ngot {gotten}"
     elif container.get_behavior() == PAIR_SET:
+        assert isinstance(container, PairSet)
         container.include(key)
         if check:
             assert container.contains(key)
     elif container.get_behavior() == GROUP:
+        assert isinstance(container, Group)
         container.include(key)
         if check:
             assert container.contains(key)
     elif container.get_behavior() == PROPERTY:
+        assert isinstance(container, Property)
         if isinstance(value, list):
             value = tuple(value)
         container.set(key, value)
@@ -222,9 +231,10 @@ def container_set_adapter(container: Container, key, value, check=True):
             gotten = container.get(key)
             assert gotten == value, f"Expected {value}, \ngot {gotten}"
     elif container.get_behavior() == BRAID:
+        assert isinstance(container, Braid)
         container.set(key, value)
         if check:
             if isinstance(value, list):
                 value = tuple(value)
-            gotten = container.get(key)
+            gotten = container.get(key, None)
             assert gotten == value, f"Expected {value}, \ngot {gotten}"

@@ -7,7 +7,6 @@
 """
 from __future__ import annotations
 from typing import Optional, Union, NamedTuple, List, Any, Tuple
-from datetime import datetime
 from struct import Struct
 from datetime import datetime as DateTime
 
@@ -480,7 +479,6 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
             value_builder.document.keys.append(encode_key(key))
             value_builder.document.values.append(encode_value(val))
         return value_builder
-    # TODO: datetime?
     raise ValueError("don't know how to encode: %r" % value)  # pylint: disable=consider-using-f-string
 
 
