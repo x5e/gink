@@ -8,6 +8,7 @@ from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
 from ..impl.bundler import Bundler
+from ..impl.graph import Vertex, Verb
 from ..impl.abstract_store import AbstractStore
 from ..impl.utilities import generate_timestamp
 
@@ -86,3 +87,16 @@ def test_property_ref():
             property.set(directory, directory)
             val = property.get(directory)
             assert val == directory, val
+
+def test_edge_key():
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            database = Database(store=store)
+            v1 = Vertex(database=database)
+            v2 = Vertex(database=database)
+            edge = Verb(database=database).create_edge(sub=v1, obj=v2)
+            property = Property(database=database)
+            property.set(edge, "hello")
+            val = property.get(edge)
+            assert val == "hello", val
+            property.dumps()

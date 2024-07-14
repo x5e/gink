@@ -164,6 +164,7 @@ class Database(Relay):
             behavior = muid.offset
         elif behavior is None:
             container_builder = container_builder or self._store.get_container(muid)
+            assert container_builder is not None, f"no container found for muid: {muid}"
             behavior = getattr(container_builder, "behavior")
         cls = self._container_types.get(behavior)
         if not cls:
