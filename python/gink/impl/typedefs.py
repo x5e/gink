@@ -1,5 +1,5 @@
 """ Various types classes for use throughout the codebase. """
-from typing import NewType, Union, TypeVar, Callable, Protocol
+from typing import NewType, Union, TypeVar, Callable
 from datetime import datetime, timedelta, date
 from pathlib import Path
 

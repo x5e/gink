@@ -8,9 +8,6 @@ from .coding import PROPERTY, deletion
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
-from .graph import Edge
-
-PropertyKey = Union[Container, Edge]
 
 
 class Property(Container):
@@ -21,7 +18,7 @@ class Property(Container):
             muid: Optional[Union[Muid, str]] = None,
             *,
             arche: Optional[bool] = None,
-            contents: Optional[Dict[PropertyKey, Union[UserValue, Container]]] = None,
+            contents: Optional[Dict[Container, Union[UserValue, Container]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -72,7 +69,7 @@ class Property(Container):
         result += ",\n\t".join(stuffing) + "})"
         return result
 
-    def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[PropertyKey, Union[UserValue, Container]]]:
+    def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[Container, Union[UserValue, Container]]]:
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
             container=self._muid, as_of=as_of, behavior=PROPERTY)
@@ -93,13 +90,15 @@ class Property(Container):
                 count += 1
         return count
 
-    def set(self, describing: PropertyKey, value: Union[UserValue, Container], *,
+    def set(self, describing: Container, value: Union[UserValue, Container], *,
             bundler=None, comment=None) -> Muid:
         """ Sets the value of the property on the particular object addressed by describing.
 
             Overwrites the value of this property on this object if previously set.
             Returns the muid of the new entry.
         """
+        if not hasattr(describing, "_muid"):
+            raise ValueError("describing must be a container")
         return self._add_entry(key=describing._muid, value=value, bundler=bundler, comment=comment)
 
     def update(self, from_what, *, bundler=None, comment=None):
@@ -122,15 +121,19 @@ class Property(Container):
         if immediate:
             self._database.bundle(bundler)
 
-    def delete(self, describing: PropertyKey, *, bundler=None, comment=None) -> Muid:
+    def delete(self, describing: Container, *, bundler=None, comment=None) -> Muid:
         """ Removes the value (if any) of this property on object pointed to by `describing`. """
+        if not hasattr(describing, "_muid"):
+            raise ValueError("describing must be a container")
         return self._add_entry(key=describing._muid, value=deletion, bundler=bundler, comment=comment)
 
-    def get(self, describing: PropertyKey, default: Union[UserValue, Container] = None, *,
+    def get(self, describing: Container, default: Union[UserValue, Container] = None, *,
             as_of: GenericTimestamp = None) -> Union[UserValue, Container]:
         """ Gets the value of the property on the object it's describing, optionally in the past.
 
         """
+        if not hasattr(describing, "_muid"):
+            raise ValueError("describing must be a container")
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(self._muid, key=describing._muid, as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore

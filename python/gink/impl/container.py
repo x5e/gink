@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Optional, Union, Iterable, Tuple
 from abc import ABC, abstractmethod
 from sys import stdout
+from datetime import datetime
 
 from .builders import ChangeBuilder, EntryBuilder, Behavior
 
@@ -13,7 +14,7 @@ from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, 
 from .coding import encode_key, encode_value, decode_value, deletion, inclusion, BOX, SEQUENCE, PAIR_MAP, DIRECTORY, KEY_SET, GROUP, PAIR_SET, PROPERTY, BRAID
 from .addressable import Addressable
 from .tuples import Chain
-from .utilities import generate_timestamp, is_type, normalize_pair
+from .utilities import generate_timestamp, is_type, normalize_pair, is_named_tuple
 
 class Container(Addressable, ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
@@ -162,30 +163,33 @@ class Container(Addressable, ABC):
     def _check_valid_entry(key, value, behavior: int) -> None:
         """ Checks that the key and value are valid for the given behavior. Throws a detailed ValueError if not."""
         assert behavior > 0
+        if isinstance(key, bool): # bool is a subclass of int, so I am handling this case separately
+            raise ValueError(f"Key cannot be a boolean, had {key}")
+
         if behavior == BOX:
             if key is not None:
                 raise ValueError(f"Key for box must be None, had {key}")
-            if not is_type(value, (Container, UserValue, Deletion)):
+            if not is_type(value, (Container, UserValue, Deletion)) or is_named_tuple(value):
                 raise ValueError(f"Value for box must be of type (Container, UserValue, Deletion), had {value}")
 
         elif behavior == SEQUENCE:
             if key is not None:
                 raise ValueError(f"Key for sequence must be None, had {key}")
-            if not is_type(value, (Container, UserValue, Deletion)):
+            if not is_type(value, (Container, UserValue, Deletion)) or is_named_tuple(value):
                 raise ValueError(f"Value for sequence must be of type (Container, UserValue, Deletion), had {value}")
 
         elif behavior == PAIR_MAP:
-            if not is_type(key, tuple) and len(key) == 2:
+            if not is_type(key, tuple) or len(key) != 2 or is_named_tuple(key):
                 raise ValueError("Key for pair map must be a tuple of length 2")
             if not is_type(key[0], (Container, Muid)) and is_type(key[1], (Container, Muid)):
                 raise ValueError(f"Key for pair map must be a tuple of (Container|Muid, Container|Muid), had {key}")
-            if not is_type(value, (Container, UserValue, Deletion)):
+            if not is_type(value, (Container, UserValue, Deletion)) or is_named_tuple(value):
                 raise ValueError(f"Value for pair map must be of type (Container, UserValue, Deletion), had {value}")
 
         elif behavior == DIRECTORY:
             if not is_type(key, UserKey):
                 raise ValueError(f"Key for directory must be a UserKey, had {key}")
-            if not is_type(value, (Container, UserValue, Deletion)):
+            if not is_type(value, (Container, UserValue, Deletion)) or is_named_tuple(value):
                 raise ValueError(f"Value for directory must be of type (Container, UserValue, Deletion), had {value}")
 
         elif behavior == KEY_SET:
@@ -201,7 +205,7 @@ class Container(Addressable, ABC):
                 raise ValueError(f"Value for group must be of type (Inclusion, Deletion), had {value}")
 
         elif behavior == PAIR_SET:
-            if not is_type(key, tuple) and len(key) == 2:
+            if not is_type(key, tuple) or len(key) != 2 or is_named_tuple(key):
                 raise ValueError("Key for pair set must be a tuple of length 2")
             if not is_type(key[0], (Container, Muid)) and is_type(key[1], (Container, Muid)):
                 raise ValueError(f"Key for pair set must be a tuple of (Container|Muid, Container|Muid), had {key}")
@@ -209,9 +213,11 @@ class Container(Addressable, ABC):
                 raise ValueError(f"Value for pair set must be of type (Inclusion, Deletion), had {value}")
 
         elif behavior == PROPERTY:
-            if not is_type(key, (Addressable, Muid)):
+            if hasattr(key, "_action"):
+                raise NotImplementedError("Edges are not yet supported as keys for properties")
+            if not is_type(key, (Container, Muid)):
                 raise ValueError(f"Key for property must be an Addressable, had {key}")
-            if not is_type(value, (Container, UserValue, Deletion)):
+            if not is_type(value, (Container, UserValue, Deletion)) or is_named_tuple(value):
                 raise ValueError(f"Value for property must be of type (Container, UserValue, Deletion), had {value}")
 
         elif behavior == BRAID:
@@ -282,7 +288,7 @@ class Container(Addressable, ABC):
         elif isinstance(key, Container):
             key._muid.put_into(entry_builder.describing)
         elif isinstance(key, tuple):
-            left, rite = normalize_pair(key)
+            left, rite = normalize_pair(key) # throws value error if not a valid pair
             left.put_into(entry_builder.pair.left)
             rite.put_into(entry_builder.pair.rite)
 
@@ -296,7 +302,7 @@ class Container(Addressable, ABC):
             if pointee_muid.timestamp:
                 entry_builder.pointee.timestamp = pointee_muid.timestamp  # type: ignore
             entry_builder.pointee.offset = pointee_muid.offset  # type: ignore
-        elif isinstance(value, (str, int, float, dict, tuple, list, bool, bytes, type(None))):
+        elif isinstance(value, (str, int, float, dict, tuple, list, bool, bytes, type(None), datetime)):
             encode_value(value, entry_builder.value)  # type: ignore # pylint: disable=maybe-no-member
         elif value == deletion:
             entry_builder.deletion = True  # type: ignore # pylint: disable=maybe-no-member

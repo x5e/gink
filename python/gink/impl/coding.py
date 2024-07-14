@@ -14,6 +14,7 @@ from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Mes
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion, Inclusion
 from .muid import Muid
 from .bundle_info import BundleInfo
+from .utilities import is_named_tuple
 
 UNSPECIFIED: int = Behavior.UNSPECIFIED
 SEQUENCE: int = Behavior.SEQUENCE
@@ -432,6 +433,9 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Us
 def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None) -> ValueBuilder:
     """ encodes a python value (number, string, etc.) into a protobuf builder
     """
+    if is_named_tuple(value):
+        raise ValueError("named tuples cannot be values.")
+
     value_builder = value_builder or ValueBuilder()
     if isinstance(value, DateTime):
         if value.tzinfo is not None:

@@ -13,7 +13,7 @@ from requests import get
 from authlib.jose import jwt, JsonWebKey
 from authlib.jose.errors import JoseError
 from time import time as get_time
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Mapping
 from random import choice
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
@@ -47,6 +47,13 @@ def is_type(obj, type_or_tuple) -> bool:
     else:
         return isinstance(obj, type_or_tuple)
     return False
+
+def is_named_tuple(obj) -> bool:
+    return (
+            isinstance(obj, tuple) and
+            hasattr(obj, '_asdict') and
+            hasattr(obj, '_fields')
+    )
 
 def decode_from_hex(hex_str: str) -> str:
     """
@@ -146,6 +153,8 @@ def resolve_timestamp(timestamp: GenericTimestamp) -> MuTimestamp:
 
 def normalize_pair(pair: Tuple) -> Tuple[Muid, Muid]:
     assert len(pair) == 2, "pair must be a tuple of 2 elements"
+    left = None
+    rite = None
     # Avoiding circular imports by using hasattr here
     if hasattr(pair[0], "_add_entry"):
         left = pair[0]._muid
