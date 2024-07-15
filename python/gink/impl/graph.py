@@ -1,11 +1,12 @@
 """ Contains the Vertex, Verb, and Edge classes (all needed for graph database functionality). """
-from __future__ import annotations
 from typing import Optional, Union, Iterable
+from typeguard import typechecked
 
 from .typedefs import GenericTimestamp, UserValue, Inclusion, MuTimestamp
 from .container import Container
 from .coding import EDGE_TYPE, VERTEX, inclusion, encode_value, decode_value
 from .muid import Muid
+from .deferred import Deferred
 from .database import Database
 from .bundler import Bundler
 from .builders import EntryBuilder, ChangeBuilder
@@ -17,6 +18,7 @@ from .utilities import experimental
 class Vertex(Container):
     BEHAVIOR = VERTEX
 
+    @typechecked
     def __init__(
             self,
             muid: Optional[Union[Muid, str]] = None,
@@ -72,12 +74,12 @@ class Vertex(Container):
     def __bool__(self) -> bool:
         return self.is_alive()
 
-    def get_edges_from(self, as_of: GenericTimestamp = None) -> Iterable[Edge]:
+    def get_edges_from(self, as_of: GenericTimestamp = None) -> Iterable['Edge']:
         ts = self._database.resolve_timestamp(as_of)
         for found in self._database.get_store().get_edge_entries(source=self._muid, as_of=ts):
             yield Edge(muid=found.address, database=self._database, _builder=found.builder)
 
-    def get_edges_to(self, as_of: GenericTimestamp = None) -> Iterable[Edge]:
+    def get_edges_to(self, as_of: GenericTimestamp = None) -> Iterable['Edge']:
         ts = self._database.resolve_timestamp(as_of)
         for found in self._database.get_store().get_edge_entries(target=self._muid, as_of=ts):
             yield Edge(muid=found.address, database=self._database, _builder=found.builder)
@@ -109,12 +111,13 @@ Database.register_container_type(Vertex)
 class Verb(Container):
     BEHAVIOR = EDGE_TYPE
 
+    @typechecked
     def __init__(
             self,
             *,
             muid: Optional[Union[Muid, str]] = None,
             arche: Optional[bool] = None,
-            contents: Optional[Iterable[Edge]] = None,
+            contents: Optional[Iterable['Edge']] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -149,6 +152,7 @@ class Verb(Container):
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
+    @typechecked
     def create_edge(
         self,
         sub: Vertex,
@@ -157,7 +161,7 @@ class Verb(Container):
         eff: Optional[MuTimestamp] = None,
         *,
         comment: Optional[str] = None,
-        bundler: Optional[Bundler] = None) -> Edge:
+        bundler: Optional[Bundler] = None) -> 'Edge':
         immediate = False
         if bundler is None:
             bundler = Bundler(comment)
@@ -172,10 +176,11 @@ class Verb(Container):
             database=self._database,
             _immediate=immediate)
 
+    @typechecked
     def get_edges(self, *,
                   source: Union[Vertex, Muid, None] = None,
                   target: Union[Vertex, Muid, None] = None,
-                  as_of: GenericTimestamp = None) -> Iterable[Edge]:
+                  as_of: GenericTimestamp = None) -> Iterable['Edge']:
         ts = self._database.resolve_timestamp(as_of)
         source = source._muid if isinstance(source, Vertex) else source
         target = target._muid if isinstance(target, Vertex) else target
@@ -210,8 +215,9 @@ Database.register_container_type(Verb)
 @experimental
 class Edge(Addressable):
 
+    @typechecked
     def __init__(self,
-                 muid: Union[Muid, None] = None, *,
+                 muid: Union[Muid, Deferred, None] = None, *,
                  action: Union[Muid, Verb, None] = None,
                  source: Union[Muid, Vertex, None] = None,
                  target: Union[Muid, Vertex, None] = None,

@@ -5,7 +5,6 @@
     public API and can change at any time without a corresponding increase in the major
     revision number.
 """
-from __future__ import annotations
 from typing import Optional, Union, NamedTuple, List, Any, Tuple
 from struct import Struct
 from datetime import datetime as DateTime
@@ -357,7 +356,7 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
     if value_builder.HasField("timestamp"):
         return DateTime.fromtimestamp(value_builder.timestamp * 1e-6)
     if value_builder.HasField("tuple"):
-        return tuple([decode_value(x) for x in value_builder.tuple.values])
+        return tuple([decode_value(x) for x in value_builder.tuple.values]) # type: ignore
     if value_builder.HasField("document"):
         result = {}
         for i, key in enumerate(value_builder.document.keys):

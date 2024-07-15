@@ -1,6 +1,6 @@
 """ Contains the `Group` Container class. """
-from __future__ import annotations
 from typing import Optional, Union, Set, Iterable, Dict
+from typeguard import typechecked
 
 from .typedefs import GenericTimestamp
 from .container import Container
@@ -14,6 +14,7 @@ from .builders import Behavior
 class Group(Container):
     BEHAVIOR = Behavior.GROUP
 
+    @typechecked
     def __init__(
                 self,
                 muid: Optional[Union[Muid, str]] = None,
@@ -63,12 +64,14 @@ class Group(Container):
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
+    @typechecked
     def include(self, what: Union[Muid, Container], *,
                 bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         if isinstance(what, Container):
             what = what._muid
         return self._add_entry(key=what, value=inclusion, bundler=bundler, comment=comment)
 
+    @typechecked
     def exclude(self, what: Union[Muid, Container], *,
                 bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         if isinstance(what, Container):
@@ -112,13 +115,14 @@ class Group(Container):
                 count += 1
         return count
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.size()
 
     def __iter__(self) -> Iterable[Container]:
         for thing in self.get_members():
             yield thing
 
+    @typechecked
     def __contains__(self, what: Union[Muid, Container]) -> bool:
         return self.contains(what)
 
@@ -134,6 +138,7 @@ class Group(Container):
         """ Returns a set of containers included/excluded in the group at the given time. """
         return {self._database.get_container(muid) for muid in self.get_member_ids(excluded=excluded, as_of=as_of)}
 
+    @typechecked
     def contains(self, what: Union[Muid, Container], *, as_of: GenericTimestamp = None) -> bool:
         ts = self._database.resolve_timestamp(as_of)
         if isinstance(what, Container):

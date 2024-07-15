@@ -1,6 +1,7 @@
 from random import choice, choices, randint, random, randbytes
 from string import ascii_lowercase
 from typing import Tuple, Dict, Set
+from typeguard import TypeCheckError
 from datetime import datetime
 from io import StringIO
 from contextlib import closing
@@ -172,7 +173,9 @@ def try_random_bad_data(container: Container):
         try:
             container_set_adapter(container, key, value, check=False)
             assert False, f"{container.get_behavior()}, {repr(key)} {repr(value)}"
-        except ValueError:
+        except TypeCheckError:
+            continue
+        except ValueError: # Value error may be thrown in the case of a named tuple entered as a value
             continue
 
 def container_set_adapter(container: Container, key, value, check=True):

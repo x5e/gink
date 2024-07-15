@@ -1,6 +1,6 @@
 """ Defines the Container base class. """
-from __future__ import annotations
 from typing import Optional, Union, Iterable, Tuple
+from typeguard import typechecked
 from abc import ABC, abstractmethod
 from sys import stdout
 from datetime import datetime
@@ -8,6 +8,7 @@ from datetime import datetime
 from .builders import ChangeBuilder, EntryBuilder, Behavior
 
 from .muid import Muid
+from .deferred import Deferred
 from .bundler import Bundler
 from .database import Database
 from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, Deletion, Inclusion, Limit
@@ -18,11 +19,13 @@ from .utilities import generate_timestamp, is_type, normalize_pair, is_named_tup
 
 class Container(Addressable, ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
+
+    @typechecked
     def __init__(self,
                  *,
                  behavior: Optional[int] = None, # only optional if a muid is passed
                  bundler: Optional[Bundler] = None, # only optional if a muid is passed
-                 muid: Optional[Union[Muid, str]] = None,
+                 muid: Optional[Union[Muid, Deferred, str]] = None,
                  arche: Optional[bool] = None,
                  database: Optional[Database]=None,
                  ):
@@ -64,6 +67,7 @@ class Container(Addressable, ABC):
         file.write("\n\n")
         file.flush()
 
+    @typechecked
     def set_name(self, name: str, *,
             bundler=None, comment=None) -> Muid:
         """ Sets the name of the container, overwriting any previous name for this container.
@@ -86,7 +90,8 @@ class Container(Addressable, ABC):
         assert isinstance(name, str)
         return name
 
-    def _get_occupant(self, builder: EntryBuilder, address: Optional[Muid] = None) -> Union[UserValue, Container]:
+    @typechecked
+    def _get_occupant(self, builder: EntryBuilder, address: Optional[Muid] = None) -> Union[UserValue, 'Container']:
         """ Figures out what the container is containing.
 
             Returns either a Container or a UserValue
@@ -146,7 +151,7 @@ class Container(Addressable, ABC):
         return cls(database=database, muid=muid)
 
     @staticmethod
-    def _create(behavior: int, database: Database, bundler: Optional[Bundler] = None) -> Muid:
+    def _create(behavior: int, database: Database, bundler: Optional[Bundler] = None) -> Deferred:
         immediate = False
         if bundler is None:
             bundler = Bundler()
@@ -247,19 +252,21 @@ class Container(Addressable, ABC):
             self._database.bundle(bundler)
         return change_muid
 
+    @typechecked
     def _add_entry(self, *,
-                   value: Union[UserValue, Deletion, Inclusion, Container],
+                   value: Union[UserValue, Deletion, Inclusion, 'Container'],
                    key: Union[Muid, str, int, bytes, None, Chain,
-                              Tuple[Union[Container, Muid], Union[Container, Muid]]] = None,
+                                Tuple[Union['Container', Muid], Union['Container', Muid]],
+                                'Container'] = None,
                    effective: Optional[MuTimestamp] = None,
                    bundler: Optional[Bundler] = None,
                    comment: Optional[str] = None,
                    expiry: GenericTimestamp = None,
                    behavior: Optional[int] = None,  # defaults to behavior of current container
-                   on_muid: Optional[Muid] = None,  # defaults to current container
-                   ) -> Muid:
+                   on_muid: Optional[Union[Muid, Deferred]] = None,  # defaults to current container
+                   ) -> Union[Muid, Deferred]:
         behavior = behavior or self.get_behavior()
-        self._check_valid_entry(key=key, value=value, behavior=behavior)
+        # self._check_valid_entry(key=key, value=value, behavior=behavior)
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
@@ -279,6 +286,8 @@ class Container(Addressable, ABC):
         if on_muid is None:
             on_muid = self._muid
         on_muid.put_into(entry_builder.container)  # type: ignore
+        if isinstance(key, bool):
+            raise ValueError("Can't use a boolean as a key")
         if isinstance(key, (str, int, bytes)):
             encode_key(key, entry_builder.key)  # type: ignore
         elif isinstance(key, Chain):
@@ -358,7 +367,7 @@ class Container(Addressable, ABC):
     def __len__(self):
         return self.size()
 
-    def get_describing(self, as_of: GenericTimestamp=None) -> Iterable[Container]:
+    def get_describing(self, as_of: GenericTimestamp=None) -> Iterable['Container']:
         """ Returns the properties and groups associated with this thing. """
         as_of = self._database.resolve_timestamp(as_of)
         for found in self._database.get_store().get_by_describing(self._muid, as_of):

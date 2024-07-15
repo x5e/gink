@@ -1,5 +1,4 @@
 """ contains the Muid class (basically a way to represent global addresses) """
-from __future__ import annotations
 from typing import NamedTuple, Union, Optional
 from uuid import UUID
 

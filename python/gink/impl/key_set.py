@@ -1,6 +1,7 @@
 """ Contains the key set class definition """
 
 from typing import Optional, Iterable, Container as StandardContainer, Set, Union
+from typeguard import typechecked
 
 from .database import Database
 from .muid import Muid
@@ -15,6 +16,7 @@ class KeySet(Container):
     _missing = object()
     BEHAVIOR = KEY_SET
 
+    @typechecked
     def __init__(
             self,
             muid: Optional[Union[Muid, str]] = None,
@@ -56,10 +58,12 @@ class KeySet(Container):
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
+    @typechecked
     def add(self, key: UserKey, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Adds a specified key to the key set """
         return self._add_entry(key=key, value=inclusion, bundler=bundler, comment=comment)
 
+    @typechecked
     def update(self, keys: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Adds multiple specified values to the key set """
         immediate = False
@@ -71,6 +75,7 @@ class KeySet(Container):
         if immediate:
             self._database.bundle(bundler)
 
+    @typechecked
     def contains(self, key: UserKey, as_of: GenericTimestamp=None):
         """ Returns a boolean stating whether the specified key is in the key set """
         as_of = self._database.resolve_timestamp(as_of)
@@ -78,10 +83,12 @@ class KeySet(Container):
 
         return found is not None and not found.builder.deletion
 
+    @typechecked
     def discard(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Deletes a specified entry from the key set """
         return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
+    @typechecked
     def remove(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Deletes a specified entry from the key set, but returns KeyError if not found """
         as_of = generate_timestamp()
@@ -91,6 +98,7 @@ class KeySet(Container):
         else:
             return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
+    @typechecked
     def pop(self, key: UserKey, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ If key exists in the key set, returns it and removes it.
 
@@ -105,6 +113,7 @@ class KeySet(Container):
         self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
         return decode_key(found.builder)
 
+    @typechecked
     def issuperset(self, subset: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> bool:
         """ Returns a Boolean stating whether the key set contains the specified set or list of keys """
         for element in subset:
@@ -112,6 +121,7 @@ class KeySet(Container):
                 return False
         return True
 
+    @typechecked
     def issubset(self, superset: StandardContainer[UserKey], *, as_of: GenericTimestamp=None) -> bool:
         """ Returns a Boolean stating whether the key set is a subset of the specified set/list/tuple """
         as_of = self._database.resolve_timestamp(as_of)
@@ -124,12 +134,14 @@ class KeySet(Container):
                 return False
         return True
 
+    @typechecked
     def isdisjoint(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> bool:
         """ Returns a boolean stating whether the key set contents overlap with the specified set/list/tuple
             Sets are disjoint if and only if their intersection is an empty set.
         """
         return not set(self.intersection(s, as_of=as_of))
 
+    @typechecked
     def difference(self, s: StandardContainer[UserKey], *, as_of: GenericTimestamp=None) -> Iterable[UserKey]:
         """ Returns an iterable of keys in the key set that are not in the specified sets/lists/tuples  """
         as_of = self._database.resolve_timestamp(as_of)
@@ -141,12 +153,14 @@ class KeySet(Container):
             if decode_key(entry_pair.builder) not in s:
                 yield decode_key(entry_pair.builder) # type: ignore
 
+    @typechecked
     def intersection(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Iterable[UserKey]:
         """ Returns an iterable with elements common to the key set and the specified iterables """
         for element in s:
             if self.contains(element, as_of=as_of):
                 yield element
 
+    @typechecked
     def symmetric_difference(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Set[UserKey]:
         """ Returns a new set with elements in either the key set or the specified iterable, but not both. """
         elements = self.union(s, as_of=as_of)
@@ -155,10 +169,12 @@ class KeySet(Container):
                 elements.remove(element)
         return elements
 
+    @typechecked
     def union(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Set[UserKey]:
         """ Returns a new set with elements from both the key set and the specified set """
         return set(self.items(as_of=as_of)).union(s)
 
+    @typechecked
     def difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, removing elements found in the specified iterables. """
         if bundler is None:
@@ -168,6 +184,7 @@ class KeySet(Container):
                 self.remove(element, bundler=bundler, comment=comment)
         self._database.bundle(bundler)
 
+    @typechecked
     def intersection_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, keeping only elements found in the key set and the specified iterables. """
         if bundler is None:
@@ -184,6 +201,7 @@ class KeySet(Container):
                 self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
         self._database.bundle(bundler)
 
+    @typechecked
     def symmetric_difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, keeping only elements found in either the key set or the specified set, not both. """
         sym_diff = self.symmetric_difference(s)
@@ -243,6 +261,7 @@ class KeySet(Container):
         for element in self.items():
             yield element
 
+    @typechecked
     def __contains__(self, key: UserKey) -> bool:
         return self.contains(key)
 

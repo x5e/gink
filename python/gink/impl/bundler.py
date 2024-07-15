@@ -1,5 +1,4 @@
 """ the ChangeSet class """
-from __future__ import annotations
 from typing import Optional, Union, Any
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
@@ -45,7 +44,7 @@ class Bundler:
             return self._sealed
         return object.__getattribute__(self, name)
 
-    def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Muid:
+    def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Deferred:
         """ adds a single change (in the form of the proto builder) """
         if self._sealed:
             raise AssertionError("already sealed")

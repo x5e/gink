@@ -1,7 +1,6 @@
 """
 Defines the ChainTracker class.
 """
-from __future__ import annotations
 from typing import Union, Optional, Iterable
 
 from sortedcontainers import SortedDict  # type: ignore
@@ -31,7 +30,7 @@ class ChainTracker:
                     chain_start=greeting_entry.chain_start)
                 self._data[chain] = greeting_entry.seen_through
 
-    def get_subset(self, chains=Iterable[Chain]) -> ChainTracker:
+    def get_subset(self, chains=Iterable[Chain]) -> 'ChainTracker':
         result = ChainTracker()
         for chain in chains:
             i_have = self._data.get(chain)
