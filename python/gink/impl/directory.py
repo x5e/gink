@@ -13,7 +13,7 @@ from .coding import decode_key, DIRECTORY, deletion
 from .bundler import Bundler
 from .typedefs import UserKey, GenericTimestamp, UserValue
 from .attribution import Attribution
-from .utilities import generate_timestamp, is_type
+from .utilities import generate_timestamp
 
 
 class Directory(Container):
@@ -160,8 +160,6 @@ class Directory(Container):
         immediate = bundler is None
         bundler = Bundler(comment=comment) if bundler is None else bundler
         for key in keys:
-            if not is_type(key, UserKey) or isinstance(key, bool):
-                raise ValueError(f"invalid key type: {type(key)}")
             found = store.get_entry_by_key(current._muid, key=key, as_of=timestamp) if not just_created else None
             if found is None or found.builder.deletion:  # type: ignore
                 new_directory = Directory(database=self._database, bundler=bundler)

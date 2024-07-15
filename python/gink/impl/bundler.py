@@ -2,7 +2,6 @@
 from typing import Optional, Union, Any
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
-from .muid import Muid
 from .typedefs import MuTimestamp, Medallion
 from .tuples import Chain
 from .deferred import Deferred
