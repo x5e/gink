@@ -361,7 +361,9 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
         result = {}
         for i, key in enumerate(value_builder.document.keys):
             value: ValueBuilder = value_builder.document.values[i]
-            result[decode_key(key)] = decode_value(value)
+            decoded = decode_key(key)
+            assert decoded is not None
+            result[decoded] = decode_value(value)
         return result
     raise ValueError(
         "don't know how to decode: %r,%s" % (

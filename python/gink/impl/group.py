@@ -6,6 +6,7 @@ from .typedefs import GenericTimestamp
 from .container import Container
 from .coding import deletion, inclusion, GROUP
 from .muid import Muid
+from .deferred import Deferred
 from .database import Database
 from .bundler import Bundler
 from .builders import Behavior
@@ -143,7 +144,10 @@ class Group(Container):
         ts = self._database.resolve_timestamp(as_of)
         if isinstance(what, Container):
             what = what._muid
-        found = self._database.get_store().get_entry_by_key(self.get_muid(), key=what, as_of=ts)
+            assert what.timestamp, "this container has not been bundled" # type: ignore
+        muid = self.get_muid()
+        assert muid.timestamp, "this group has not been bundled"
+        found = self._database.get_store().get_entry_by_key(muid, key=what, as_of=ts) # type: ignore
         return bool(found and not found.builder.deletion)
 
 

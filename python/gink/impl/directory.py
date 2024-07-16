@@ -152,7 +152,7 @@ class Directory(Container):
         raw_seq = key_or_keys if isinstance(key_or_keys, (tuple, list)) else [key_or_keys]
         keys = [key for key in raw_seq if key not in ('', b'')]
         if len(keys) < 1:
-            raise ValueError(f"invalid argument to set: {key_or_keys}")
+            raise ValueError(f"invalid argument to set: {key_or_keys!r}")
         final_key = keys.pop()
         current = self
         just_created = False
@@ -252,6 +252,7 @@ class Directory(Container):
             if entry_pair.builder.deletion:  # type: ignore
                 continue
             key = decode_key(entry_pair.builder)
+            assert key is not None, "decoded key is None?"
             contained = self._get_occupant(entry_pair.builder, entry_pair.address)
             yield (key, contained)
 
@@ -289,6 +290,7 @@ class Directory(Container):
                 continue
             val = self._get_occupant(entry_pair.builder, entry_pair.address)
             key = decode_key(entry_pair.builder)
+            assert key is not None, "decoded key is None?"
             self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
             return (key, val)
         raise KeyError("directory is empty")
@@ -309,7 +311,7 @@ class Directory(Container):
             bundler = Bundler(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
-                self._add_entry(key=key, value=from_what[key], bundler=bundler)
+                self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore
         else:
             for key, val in from_what:
                 self._add_entry(key=key, value=val, bundler=bundler)

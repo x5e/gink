@@ -120,7 +120,7 @@ class Property(Container):
             bundler = Bundler(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
-                self._add_entry(key=key, value=from_what[key], bundler=bundler)
+                self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore
         else:
             for key, val in from_what:
                 self._add_entry(key=key, value=val, bundler=bundler)

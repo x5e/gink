@@ -1,4 +1,3 @@
-from types import NoneType
 from .muid import Muid
 
 
@@ -11,8 +10,8 @@ class Deferred(Muid):
         that will give "None" when asked for timestamp/medallion before the bundle
         has been sealed, and the appropriate values after sealing.
     """
-    timestamp: NoneType
-    medallion: NoneType
+    timestamp: None
+    medallion: None
     offset: int
 
     def __new__(cls, offset: int, bundler):
