@@ -10,9 +10,6 @@ class Deferred(Muid):
         that will give "None" when asked for timestamp/medallion before the bundle
         has been sealed, and the appropriate values after sealing.
     """
-    timestamp: None
-    medallion: None
-    offset: int
 
     def __new__(cls, offset: int, bundler):
         assert bundler is not None
