@@ -1,5 +1,5 @@
 """ contains the Directory class definition """
-from typing import Union, Optional, Iterable, Dict, Sequence, Tuple
+from typing import Union, Optional, Iterable, Dict, Iterable, Tuple
 from typeguard import typechecked
 from sys import stdout
 from logging import getLogger
@@ -90,7 +90,7 @@ class Directory(Container):
         return self.has(key)
 
     @typechecked
-    def __getitem__(self, key_or_keys: Union[UserKey, Sequence[UserKey]]) -> Union[UserValue, Container]:
+    def __getitem__(self, key_or_keys: Union[UserKey, Iterable[UserKey]]) -> Union[UserValue, Container]:
         result = self.get(key_or_keys, self._missing)
         if result == self._missing:
             raise KeyError(key_or_keys)
@@ -105,7 +105,7 @@ class Directory(Container):
         self.delete(key)
 
     @typechecked
-    def has(self, key_or_keys: Union[UserKey, Sequence[UserKey]], *, as_of=None) -> bool:
+    def has(self, key_or_keys: Union[UserKey, Iterable[UserKey]], *, as_of=None) -> bool:
         """ returns true if the given key exists in the mapping, optionally at specific time """
         # there's probably a more efficient way of doing this
         obj = object()
@@ -113,7 +113,7 @@ class Directory(Container):
         return result is not obj
 
     @typechecked
-    def get(self, key_or_keys: Union[UserKey, Sequence[UserKey]], default=None, /, *, as_of: GenericTimestamp = None):
+    def get(self, key_or_keys: Union[UserKey, Iterable[UserKey]], default=None, /, *, as_of: GenericTimestamp = None):
         """ gets the value associate with a key, default if missing, optionally as_of a time
 
             If `key` is a list or tuple, the get will interpret that as instructions
@@ -137,7 +137,7 @@ class Directory(Container):
         return current
 
     @typechecked
-    def set(self, key_or_keys: Union[UserKey, Sequence[UserKey]], value: Union[UserValue, Container],
+    def set(self, key_or_keys: Union[UserKey, Iterable[UserKey]], value: Union[UserValue, Container],
             /, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Union[Muid, Deferred]:
         """ Sets a value in the mapping, returns the muid address of the entry.
 
@@ -181,7 +181,7 @@ class Directory(Container):
         return muid
 
     @typechecked
-    def walk(self, path: Sequence[UserKey], /, *, as_of: GenericTimestamp = None) -> 'Directory':
+    def walk(self, path: Iterable[UserKey], /, *, as_of: GenericTimestamp = None) -> 'Directory':
         default = object()
         current: Directory = self
         for key in path:
@@ -192,7 +192,7 @@ class Directory(Container):
         return current
 
     @typechecked
-    def delete(self, key_or_keys: Union[UserKey, Sequence[UserKey]], /, *,
+    def delete(self, key_or_keys: Union[UserKey, Iterable[UserKey]], /, *,
                bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         """ Removes a value from the mapping, returning the muid address of the change.
 
