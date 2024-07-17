@@ -20,7 +20,7 @@ from ..impl.group import Group
 from ..impl.braid import Braid
 from ..impl.muid import Muid
 from ..impl.chain_tracker import Chain
-from ..impl.utilities import generate_medallion, generate_timestamp
+from ..impl.utilities import generate_medallion, generate_timestamp, is_named_tuple
 from ..impl.graph import Edge, Verb, Vertex
 from ..impl.coding import BOX, DIRECTORY, KEY_SET, SEQUENCE, PAIR_SET, PAIR_MAP, PROPERTY, GROUP, BRAID
 
@@ -171,10 +171,11 @@ def try_random_bad_data(container: Container):
         value = random_data(type=set_choice(bad_value_types))
         try:
             container_set_adapter(container, key, value, check=False)
-            assert False, f"{container.get_behavior()}, {repr(key)} {repr(value)}"
-        except TypeError:
-            continue
-        except ValueError: # Value error may be thrown in the case of a named tuple entered as a value
+            raise AssertionError(f"Bad Data Test: {container.__class__.__name__}: key:{repr(key)} value:{repr(value)}")
+        except Exception as e:
+            error_name = e.__class__.__name__
+            if error_name not in ("TypeCheckError", "TypeError"):
+                raise e
             continue
 
 def container_set_adapter(container: Container, key, value, check=True):
