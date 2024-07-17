@@ -1,5 +1,5 @@
 """ Various types classes for use throughout the codebase. """
-from typing import NewType, Union, TypeVar, Callable, List, Tuple, Dict
+from typing import NewType, Union, TypeVar, Callable
 from datetime import datetime, timedelta, date
 from pathlib import Path
 
@@ -10,7 +10,7 @@ Offset = NewType('Offset', int)
 GenericTimestamp = Union[datetime, timedelta, date, int, float, str, None]
 Destination = GenericTimestamp
 UserKey = Union[str, int, bytes]
-UserValue = Union[str, int, float, datetime, bytes, bool, None, Dict, Tuple, List]
+UserValue = Union[str, int, float, datetime, bytes, bool, None, dict, tuple, list]
 EPOCH = 0
 Limit = Union[int, float]
 T = TypeVar('T')

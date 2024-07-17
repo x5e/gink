@@ -434,7 +434,9 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Us
 def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None) -> ValueBuilder:
     """ encodes a python value (number, string, etc.) into a protobuf builder"""
     if is_named_tuple(value):
-        raise ValueError("named tuples aren't supported as values")
+        raise TypeError("named tuples aren't supported as values")
+    if hasattr(value, "_add_entry"):
+        raise TypeError("containers can't be encoded. Ensure you do not have a tuple of containers.")
     value_builder = value_builder or ValueBuilder()
     if isinstance(value, DateTime):
         if value.tzinfo is not None:

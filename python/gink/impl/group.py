@@ -70,6 +70,8 @@ class Group(Container):
                 bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         if isinstance(what, Container):
             what = what._muid
+        if not hasattr(what, "timestamp"):
+            raise TypeError("Can only include a container or muid into a group.")
         return self._add_entry(key=what, value=inclusion, bundler=bundler, comment=comment)
 
     @typechecked
@@ -77,6 +79,8 @@ class Group(Container):
                 bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         if isinstance(what, Container):
             what = what._muid
+        if not hasattr(what, "timestamp"):
+            raise TypeError("Can only exclude a container or muid from a group.")
         return self._add_entry(key=what, value=deletion, bundler=bundler, comment=comment)
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:

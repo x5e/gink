@@ -27,7 +27,8 @@ setup(
         "lmdb",
         "protobuf",
         "psutil",
-        "authlib"
+        "authlib",
+        "typeguard",
     ],
     extras_require={
         "test": ["nose2", "flask", "requests"],

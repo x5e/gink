@@ -161,7 +161,7 @@ class KeySet(Container):
                 yield element
 
     @typechecked
-    def symmetric_difference(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Set[UserKey]:
+    def symmetric_difference(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Iterable[UserKey]:
         """ Returns a new set with elements in either the key set or the specified iterable, but not both. """
         elements = self.union(s, as_of=as_of)
         for element in s:
@@ -170,7 +170,7 @@ class KeySet(Container):
         return elements
 
     @typechecked
-    def union(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Set[UserKey]:
+    def union(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Iterable[UserKey]:
         """ Returns a new set with elements from both the key set and the specified set """
         return set(self.items(as_of=as_of)).union(s)
 

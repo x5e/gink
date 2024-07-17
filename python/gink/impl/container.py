@@ -216,7 +216,7 @@ class Container(Addressable, ABC):
             on_muid = self._muid
         on_muid.put_into(entry_builder.container)  # type: ignore
         if isinstance(key, bool):
-            raise ValueError("Can't use a boolean as a key")
+            raise TypeError("Can't use a boolean as a key")
         if isinstance(key, (str, int, bytes)):
             encode_key(key, entry_builder.key)  # type: ignore
         elif isinstance(key, Chain):
