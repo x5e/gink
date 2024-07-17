@@ -1,5 +1,4 @@
 """ contains the Directory class definition """
-##################################################################################################0
 from __future__ import annotations
 from typing import Union, Optional, Iterable, Dict
 from sys import stdout
@@ -52,12 +51,12 @@ class Directory(Container):
             bundler = Bundler(comment)
 
         Container.__init__(
-                self,
-                behavior=DIRECTORY,
-                muid=muid,
-                arche=arche,
-                database=database,
-                bundler=bundler,
+            self,
+            behavior=DIRECTORY,
+            muid=muid,
+            arche=arche,
+            database=database,
+            bundler=bundler,
         )
 
         if contents:
@@ -183,7 +182,10 @@ class Directory(Container):
             If no bundler is specified, then creates one just for this entry,
             sets it's comment to the comment arg (if set) then adds it to the database.
         """
-        dir, key = (self.walk(key_or_keys[:-1]), key_or_keys[-1]) if isinstance(key_or_keys, (tuple, list)) else (self, key_or_keys)
+        if isinstance(key_or_keys, (tuple, list)):
+            dir, key = (self.walk(key_or_keys[:-1]), key_or_keys[-1])
+        else:
+            dir, key = (self, key_or_keys)
         return dir._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
     def setdefault(self, key: UserKey, default=None, /, *, bundler=None, respect_deletion=False):
@@ -195,7 +197,7 @@ class Directory(Container):
             if the most recent entry in the directory for the key is a delete entry. In this
             case it will return whatever has been passed into respect_deletion.
         """
-        dir, key = (self.walk(key[:-1]), key[-1]) if isinstance(key, (tuple, list)) else (self, key) # type: ignore
+        dir, key = (self.walk(key[:-1]), key[-1]) if isinstance(key, (tuple, list)) else (self, key)  # type: ignore
         as_of = generate_timestamp()
         store = self._database.get_store()
         found = store.get_entry_by_key(dir.get_muid(), key=key, as_of=as_of)
@@ -213,14 +215,14 @@ class Directory(Container):
             then the change is added to the bundler (or comitted immedately with comment
             if no bundler is specified.)
         """
-        dir, key = (self.walk(key[:-1]), key[-1]) if isinstance(key, (tuple, list)) else (self, key) # type: ignore
+        dir, key = (self.walk(key[:-1]), key[-1]) if isinstance(key, (tuple, list)) else (self, key)  # type: ignore
         as_of = generate_timestamp()
         found = self._database.get_store().get_entry_by_key(dir.get_muid(), key=key, as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore
             if len(default) >= 1:
                 return default[0]
             else:
-                raise KeyError(f"could not pop {key}") # type: ignore
+                raise KeyError(f"could not pop {key}")  # type: ignore
         dir._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
         return dir._get_occupant(found.builder, found.address)
 
@@ -333,5 +335,6 @@ class Directory(Container):
             print(str(att), file=file)
             if isinstance(limit, int):
                 limit -= 1
+
 
 Database.register_container_type(Directory)

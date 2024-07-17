@@ -33,8 +33,10 @@ class Deferred(Muid):
     def __eq__(self, other):
         if not isinstance(other, Muid):
             return False
-        return ((self.offset, self.medallion, self.timestamp)  # type: ignore
-                == (other.offset, other.medallion, other.timestamp))  # type: ignore
+        v1 = self.offset == other.offset
+        v2 = self.medallion == other.medallion
+        v3 = self.timestamp == other.timestamp
+        return (v1 and v2 and v3)
 
     def __ne__(self, other):
         return not self.__eq__(other)

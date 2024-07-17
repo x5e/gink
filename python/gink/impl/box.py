@@ -1,6 +1,6 @@
 from typing import Optional, Union
 
-#gink implementation
+# gink implementation
 from .typedefs import GenericTimestamp, UserValue
 from .container import Container
 from .muid import Muid
@@ -38,12 +38,12 @@ class Box(Container):
             bundler = Bundler(comment)
 
         Container.__init__(
-                self,
-                behavior=BOX,
-                muid=muid,
-                arche=arche,
-                database=database,
-                bundler=bundler,
+            self,
+            behavior=BOX,
+            muid=muid,
+            arche=arche,
+            database=database,
+            bundler=bundler,
         )
 
         if contents is not None:

@@ -9,18 +9,21 @@ from .builders import ChangeBuilder, EntryBuilder, Behavior
 from .muid import Muid
 from .bundler import Bundler
 from .database import Database
-from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, Deletion, Inclusion, Limit
-from .coding import encode_key, encode_value, decode_value, deletion, inclusion, BOX, SEQUENCE, PAIR_MAP, DIRECTORY, KEY_SET, GROUP, PAIR_SET, PROPERTY, BRAID
+from .typedefs import (GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, Deletion,
+                       Inclusion, Limit)
+from .coding import (encode_key, encode_value, decode_value, deletion, inclusion, BOX, SEQUENCE,
+                     PAIR_MAP, DIRECTORY, KEY_SET, GROUP, PAIR_SET, PROPERTY, BRAID)
 from .addressable import Addressable
 from .tuples import Chain
 from .utilities import generate_timestamp, is_type, normalize_pair
+
 
 class Container(Addressable, ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
     def __init__(self,
                  *,
-                 behavior: Optional[int] = None, # only optional if a muid is passed
-                 bundler: Optional[Bundler] = None, # only optional if a muid is passed
+                 behavior: Optional[int] = None,  # only optional if a muid is passed
+                 bundler: Optional[Bundler] = None,  # only optional if a muid is passed
                  muid: Optional[Union[Muid, str]] = None,
                  arche: Optional[bool] = None,
                  database: Optional[Database]=None,
@@ -36,12 +39,11 @@ class Container(Addressable, ABC):
             if arche:
                 muid = Muid(-1, -1, behavior)
             elif muid is None:
-                assert isinstance(bundler, Bundler), "Must pass a bundler" # This should be handled in each subclass
+                assert isinstance(bundler, Bundler), "Must pass a bundler"  # This should be handled in each subclass
                 muid = Container._create(behavior, database=database, bundler=bundler)
         assert isinstance(muid, Muid)
         # self._muid and self._database are set by Addressable.__init__
         Addressable.__init__(self, database=database, muid=muid)
-
 
     def __repr__(self):
         if self._muid.timestamp == -1 and self._muid.medallion == -1:
@@ -63,8 +65,7 @@ class Container(Addressable, ABC):
         file.write("\n\n")
         file.flush()
 
-    def set_name(self, name: str, *,
-            bundler=None, comment=None) -> Muid:
+    def set_name(self, name: str, *, bundler=None, comment=None) -> Muid:
         """ Sets the name of the container, overwriting any previous name for this container.
 
             Giving multiple things the same name is not recommended.
@@ -261,7 +262,7 @@ class Container(Addressable, ABC):
         change_builder = ChangeBuilder()
         # pylint: disable=maybe-no-member
         entry_builder: EntryBuilder = change_builder.entry  # type: ignore
-        entry_builder.behavior = behavior # type: ignore
+        entry_builder.behavior = behavior  # type: ignore
         if expiry is not None:
             now = generate_timestamp()
             expiry = self._database.resolve_timestamp(expiry)

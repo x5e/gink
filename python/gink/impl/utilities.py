@@ -7,7 +7,7 @@ from functools import wraps
 from warnings import warn
 from random import randint
 from datetime import datetime, date, timedelta
-from re import fullmatch, IGNORECASE
+from re import fullmatch, IGNORECASE, sub
 from psutil import pid_exists
 from requests import get
 from authlib.jose import jwt, JsonWebKey
@@ -195,3 +195,9 @@ def generate_random_token() -> str:
     digits = "23456789"
     choices = capitals + digits
     return "T" + "".join([choice(choices) for _ in range(39)])
+
+def dedent(val: bytes) -> bytes:
+    val = sub(b" +", b" ", val)
+    val = sub(rb"\r?\n", b"\r\n", val)
+    val = val.lstrip()
+    return val
