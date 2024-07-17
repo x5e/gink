@@ -218,7 +218,7 @@ class Edge(Addressable):
 
     @typechecked
     def __init__(self,
-                 muid: Union[Muid, Deferred, None] = None, *,
+                 muid: Union[Muid, None] = None, *,
                  action: Union[Muid, Verb, None] = None,
                  source: Union[Muid, Vertex, None] = None,
                  target: Union[Muid, Vertex, None] = None,

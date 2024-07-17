@@ -7,7 +7,6 @@ from .builders import ChangeBuilder
 from .typedefs import GenericTimestamp, MuTimestamp, UserValue
 from .container import Container
 from .muid import Muid
-from .deferred import Deferred
 from .database import Database
 from .bundler import Bundler
 from .coding import SEQUENCE
@@ -77,7 +76,7 @@ class Sequence(Container):
         return result
 
     @typechecked
-    def append(self, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None) -> Union[Muid, Deferred]:
+    def append(self, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
         """ Append value to the end of the queue.
 
             If expiry is set, the added entry will be removed at the specified time.
@@ -85,7 +84,7 @@ class Sequence(Container):
         return self._add_entry(value=value, bundler=bundler, comment=comment, expiry=expiry)
 
     @typechecked
-    def insert(self, index: int, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None) -> Union[Muid, Deferred]:
+    def insert(self, index: int, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
         """ Inserts value before index.
 
             The resulting entry expires at expiry time if specified, which must be in the future.
@@ -134,7 +133,7 @@ class Sequence(Container):
         return bundler
 
     @typechecked
-    def yank(self, muid: Muid, *, dest: GenericTimestamp = None, bundler=None, comment=None) -> Union[Muid, Deferred]:
+    def yank(self, muid: Muid, *, dest: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
         """ Removes or moves an entry by muid.
 
             muid: what to move
@@ -184,7 +183,7 @@ class Sequence(Container):
         return entry_value
 
     @typechecked
-    def remove(self, value: Union[UserValue, Container], *, dest: GenericTimestamp = None, bundler=None, comment=None) -> Union[Muid, Deferred]:
+    def remove(self, value: Union[UserValue, Container], *, dest: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
         """ Remove first occurance of value.
 
             Raises ValueError if the value is not present.

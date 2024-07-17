@@ -6,7 +6,6 @@ from logging import getLogger
 
 # gink implementation
 from .muid import Muid
-from .deferred import Deferred
 from .database import Database
 from .container import Container
 from .coding import decode_key, DIRECTORY, deletion
@@ -138,7 +137,7 @@ class Directory(Container):
 
     @typechecked
     def set(self, key_or_keys: Union[UserKey, Iterable[UserKey]], value: Union[UserValue, Container],
-            /, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Union[Muid, Deferred]:
+            /, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
         """ Sets a value in the mapping, returns the muid address of the entry.
 
             If bundler is specified, then simply adds an entry to that bundler.

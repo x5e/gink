@@ -2,19 +2,18 @@ from abc import abstractmethod
 
 from .database import Database
 from .muid import Muid
-from .deferred import Deferred
 from .bundler import Bundler
 from .typedefs import UserValue, GenericTimestamp
 from .builders import Behavior, ChangeBuilder
 from .coding import encode_value, decode_value
-from typing import Dict, Union
+from typing import Dict
 
 class Addressable:
-    def __init__(self, database: Database, muid: Union[Muid, Deferred]):
+    def __init__(self, database: Database, muid: Muid):
         self._database: Database = database or Database.get_last()
-        self._muid: Union[Muid, Deferred] = muid
+        self._muid: Muid = muid
 
-    def get_muid(self) -> Union[Muid, Deferred]:
+    def get_muid(self) -> Muid:
         return self._muid
 
     def __eq__(self, other):
@@ -98,5 +97,5 @@ class Addressable:
         return muid
 
     @abstractmethod
-    def _get_container(self) -> Union[Muid, Deferred]:
+    def _get_container(self) -> Muid:
         """ Gets the container associated with this addressable thing, either itself or the Verb. """

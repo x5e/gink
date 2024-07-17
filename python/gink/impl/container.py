@@ -25,7 +25,7 @@ class Container(Addressable, ABC):
                  *,
                  behavior: Optional[int] = None, # only optional if a muid is passed
                  bundler: Optional[Bundler] = None, # only optional if a muid is passed
-                 muid: Optional[Union[Muid, Deferred, str]] = None,
+                 muid: Optional[Union[Muid, str]] = None,
                  arche: Optional[bool] = None,
                  database: Optional[Database]=None,
                  ):
@@ -193,8 +193,8 @@ class Container(Addressable, ABC):
                    comment: Optional[str] = None,
                    expiry: GenericTimestamp = None,
                    behavior: Optional[int] = None,  # defaults to behavior of current container
-                   on_muid: Optional[Union[Muid, Deferred]] = None,  # defaults to current container
-                   ) -> Union[Muid, Deferred]:
+                   on_muid: Optional[Muid] = None,  # defaults to current container
+                   ) -> Muid:
         behavior = behavior or self.get_behavior()
         immediate = False
         if not isinstance(bundler, Bundler):
