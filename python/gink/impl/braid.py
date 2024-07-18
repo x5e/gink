@@ -1,6 +1,6 @@
 """ Contains the `Braid` Container class, which is primarily intended for internal use in the braid server. """
-from __future__ import annotations
 from typing import Optional, Dict, Tuple, Iterable, Union
+from typeguard import typechecked
 
 from .typedefs import GenericTimestamp, Limit, T
 from .tuples import Chain
@@ -14,6 +14,7 @@ from .bundler import Bundler
 class Braid(Container):
     BEHAVIOR = BRAID
 
+    @typechecked
     def __init__(
             self,
             muid: Optional[Union[Muid, str]] = None,
@@ -91,10 +92,11 @@ class Braid(Container):
                 count += 1
         return count
 
-    def set(self, describing: Chain, value: Limit, *,bundler=None, comment=None) -> Muid:
+    @typechecked
+    def set(self, describing: Chain, value: Limit, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
         return self._add_entry(key=describing, value=value, bundler=bundler, comment=comment)
 
-    def update(self, from_what, *, bundler=None, comment=None):
+    def update(self, from_what, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         immediate = False
         if bundler is None:
             immediate = True
@@ -108,17 +110,17 @@ class Braid(Container):
         if immediate:
             self._database.bundle(bundler)
 
-    def delete(self, describing: Chain, *, bundler=None, comment=None) -> Muid:
+    @typechecked
+    def delete(self, describing: Chain, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
         return self._add_entry(key=describing, value=deletion, bundler=bundler, comment=comment)
 
-    def __contains__(self, thing):
-        if not isinstance(thing, Chain):
-            return False
+    @typechecked
+    def __contains__(self, thing: Chain):
         got = self.get(thing, None)
         return got is not None
 
-    def get(self, chain: Chain, /, default: T, *,
-            as_of: GenericTimestamp = None) -> Union[T, Limit]:
+    @typechecked
+    def get(self, chain: Chain, /, default: T, *, as_of: GenericTimestamp = None) -> Union[T, Limit]:
         """ Gets the extent allowed for a given chain. """
         as_of = self._database.resolve_timestamp(as_of)
         key = Muid(timestamp=chain.chain_start, medallion=chain.medallion, offset=0)

@@ -1,4 +1,3 @@
-from __future__ import annotations
 from abc import abstractmethod
 
 from .database import Database
@@ -14,7 +13,7 @@ class Addressable:
         self._database: Database = database or Database.get_last()
         self._muid: Muid = muid
 
-    def get_muid(self):
+    def get_muid(self) -> Muid:
         return self._muid
 
     def __eq__(self, other):

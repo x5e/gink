@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import TYPE_CHECKING, List
 
 from google.protobuf.message import Message  # type: ignore
@@ -17,9 +16,9 @@ if TYPE_CHECKING:
 
 
     class ChangeBuilder(Message):
-        entry: EntryBuilder
-        container: ContainerBuilder
-        movement: MovementBuilder
+        entry: 'EntryBuilder'
+        container: 'ContainerBuilder'
+        movement: 'MovementBuilder'
 
 
     class BundleBuilder(Message):
@@ -32,21 +31,21 @@ if TYPE_CHECKING:
 
 
     class Pair:
-        left: MuidBuilder
-        rite: MuidBuilder
+        left: 'MuidBuilder'
+        rite: 'MuidBuilder'
 
 
     class EntryBuilder(Message):
-        describing: MuidBuilder
-        pointee: MuidBuilder
+        describing: 'MuidBuilder'
+        pointee: 'MuidBuilder'
         behavior: int
-        value: ValueBuilder
-        container: MuidBuilder
+        value: 'ValueBuilder'
+        container: 'MuidBuilder'
         deletion: bool
         purge: bool
         pair: Pair
         octets: bytes
-        key: KeyBuilder
+        key: 'KeyBuilder'
         effective: int
 
     class ValueBuilder(Message):
@@ -59,8 +58,8 @@ if TYPE_CHECKING:
         behavior: int
 
     class MovementBuilder(Message):
-        container: MuidBuilder
-        entry: MuidBuilder
+        container: 'MuidBuilder'
+        entry: 'MuidBuilder'
         dest: int
         purge: bool
 

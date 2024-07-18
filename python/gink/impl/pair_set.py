@@ -1,6 +1,7 @@
 """ Contains the pair set class definition """
 
-from typing import Optional, Tuple, Iterable, Union, Set, Dict
+from typing import Optional, Tuple, Iterable, Union, Set
+from typeguard import typechecked
 from .database import Database
 from .muid import Muid
 from .container import Container
@@ -15,6 +16,7 @@ class PairSet(Container):
     _missing = object()
     BEHAVIOR = PAIR_SET
 
+    @typechecked
     def __init__(
                 self,
                 muid: Optional[Union[Muid, str]] = None,
@@ -69,20 +71,24 @@ class PairSet(Container):
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
+    @typechecked
     def include(self, pair: Pair, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Includes a pair of Vertexs in the pair set """
         return self._add_entry(key=pair, value=inclusion, bundler=bundler, comment=comment)
 
+    @typechecked
     def exclude(self, pair: Pair, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Excludes a pair of Vertexs from the pair set """
         return self._add_entry(key=pair, value=deletion, bundler=bundler, comment=comment)
 
+    @typechecked
     def contains(self, pair: Pair, *, as_of: GenericTimestamp = None) -> bool:
         ts = self._database.resolve_timestamp(as_of)
         pair = normalize_pair(pair)
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=pair, as_of=ts)
         return bool(found and not found.builder.deletion)
 
+    @typechecked
     def __contains__(self, pair: Pair) -> bool:
         return self.contains(pair)
 

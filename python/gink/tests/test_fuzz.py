@@ -171,8 +171,11 @@ def try_random_bad_data(container: Container):
         value = random_data(type=set_choice(bad_value_types))
         try:
             container_set_adapter(container, key, value, check=False)
-            assert False, f"{container.get_behavior()}, {repr(key)} {repr(value)}"
-        except ValueError:
+            raise AssertionError(f"Bad Data Test: {container.__class__.__name__}: key:{repr(key)} value:{repr(value)}")
+        except Exception as e:
+            error_name = e.__class__.__name__
+            if error_name not in ("TypeCheckError", "TypeError"):
+                raise e
             continue
 
 def container_set_adapter(container: Container, key, value, check=True):

@@ -1,4 +1,5 @@
 from typing import Optional, Iterable, Union, Tuple
+from typeguard import typechecked
 from random import randint
 
 # gink implementation
@@ -16,6 +17,7 @@ from .utilities import generate_timestamp
 class Sequence(Container):
     BEHAVIOR = SEQUENCE
 
+    @typechecked
     def __init__(
             self,
             muid: Optional[Union[Muid, str]] = None,
@@ -73,14 +75,16 @@ class Sequence(Container):
         result += ",\n\t".join(stuffing) + "])"
         return result
 
-    def append(self, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None):
+    @typechecked
+    def append(self, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
         """ Append value to the end of the queue.
 
             If expiry is set, the added entry will be removed at the specified time.
         """
         return self._add_entry(value=value, bundler=bundler, comment=comment, expiry=expiry)
 
-    def insert(self, index: int, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None):
+    @typechecked
+    def insert(self, index: int, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
         """ Inserts value before index.
 
             The resulting entry expires at expiry time if specified, which must be in the future.
@@ -97,6 +101,7 @@ class Sequence(Container):
             comment=comment,
             expiry=expiry)
 
+    @typechecked
     def extend(self, iterable: Iterable[Union[UserValue, Container]], expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]] = None,
                bundler=None, comment=None):
         """ Adds all of the items in iterable at once to this sequence.
@@ -127,7 +132,8 @@ class Sequence(Container):
             self._database.bundle(bundler)
         return bundler
 
-    def yank(self, muid: Muid, *, dest: GenericTimestamp = None, bundler=None, comment=None):
+    @typechecked
+    def yank(self, muid: Muid, *, dest: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
         """ Removes or moves an entry by muid.
 
             muid: what to move
@@ -161,7 +167,8 @@ class Sequence(Container):
             self._database.bundle(bundler)
         return muid
 
-    def pop(self, index=-1, *, dest: GenericTimestamp = None, bundler=None, comment=None):
+    @typechecked
+    def pop(self, index: int = -1, *, dest: GenericTimestamp = None, bundler=None, comment=None):
         """ (Re)move and return an item at index (default last).
 
             If nothing exists at the specified index will raise an IndexError.
@@ -175,7 +182,8 @@ class Sequence(Container):
         self.yank(sequence_key.entry_muid, dest=dest, bundler=bundler, comment=comment)
         return entry_value
 
-    def remove(self, value: Union[UserValue, Container], *, dest: GenericTimestamp = None, bundler=None, comment=None):
+    @typechecked
+    def remove(self, value: Union[UserValue, Container], *, dest: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
         """ Remove first occurance of value.
 
             Raises ValueError if the value is not present.
@@ -212,6 +220,7 @@ class Sequence(Container):
         """
         return self.at(what)[1]
 
+    @typechecked
     def at(self, index: int, *, as_of: GenericTimestamp = None):
         """ Returns the ((position-ts, entry-muid), value) at the specified index.
 
@@ -238,6 +247,7 @@ class Sequence(Container):
             count += 1
         return count
 
+    @typechecked
     def index(self, value: Union[UserValue, Container], start=0, stop=None, *, as_of: GenericTimestamp = None) -> int:
         """ Return the first index of the value at the given time (or now).
 
@@ -256,6 +266,7 @@ class Sequence(Container):
             index += 1
         raise ValueError("matching item not found")
 
+    @typechecked
     def __contains__(self, item: Union[UserValue, Container]) -> bool:
         """ Returns true if something matching item is in queue. """
         try:

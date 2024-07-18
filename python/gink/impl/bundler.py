@@ -1,12 +1,10 @@
 """ the ChangeSet class """
-from __future__ import annotations
 from typing import Optional, Union, Any
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
-from .muid import Muid
 from .typedefs import MuTimestamp, Medallion
 from .tuples import Chain
-from .deferred import Deferred
+from .muid import Muid
 
 
 class Bundler:
@@ -50,7 +48,7 @@ class Bundler:
         if self._sealed:
             raise AssertionError("already sealed")
         self._count_items += 1
-        muid = Deferred(offset=self._count_items, bundler=self)
+        muid = Muid(offset=self._count_items, bundler=self)
         if isinstance(builder, EntryBuilder):
             entry_builder = builder
             builder = ChangeBuilder()
