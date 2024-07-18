@@ -6,7 +6,6 @@ from .typedefs import GenericTimestamp, UserValue, Inclusion, MuTimestamp
 from .container import Container
 from .coding import EDGE_TYPE, VERTEX, inclusion, encode_value, decode_value
 from .muid import Muid
-from .deferred import Deferred
 from .database import Database
 from .bundler import Bundler
 from .builders import EntryBuilder, ChangeBuilder
@@ -184,7 +183,6 @@ class Verb(Container):
         ts = self._database.resolve_timestamp(as_of)
         source = source._muid if isinstance(source, Vertex) else source
         target = target._muid if isinstance(target, Vertex) else target
-        assert not isinstance(source, Deferred) and not isinstance(target, Deferred), "source and target must be bundled"
         for found_entry in self._database.get_store().get_edge_entries(
                 as_of=ts, verb=self._muid, source=source, target=target): # type: ignore
             yield Edge(muid=found_entry.address, _builder=found_entry.builder)
@@ -305,7 +303,6 @@ class Edge(Addressable):
 
     def get_effective(self) -> MuTimestamp:
         effective = self._effective or self._muid.timestamp
-        assert effective is not None, 'Muid is still deferred'
         return effective
 
     def remove(self, *,

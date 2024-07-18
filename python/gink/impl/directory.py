@@ -347,7 +347,8 @@ class Directory(Container):
             found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
             if not found:
                 break
-            yield self._database.get_attribution(*found.address)
+            muid = found.address
+            yield self._database.get_attribution(muid.timestamp, muid.medallion)
             as_of = found.address.timestamp
 
     @typechecked

@@ -24,5 +24,4 @@ def test_is_named_tuple():
     chain = Chain(1, 2)
     muid = Muid(1, 2, 3)
     assert is_named_tuple(chain)
-    assert is_named_tuple(muid)
     assert not is_named_tuple((1, 2, 3))
