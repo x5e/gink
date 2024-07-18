@@ -5,10 +5,10 @@
     public API and can change at any time without a corresponding increase in the major
     revision number.
 """
-from __future__ import annotations
 from typing import Optional, Union, NamedTuple, List, Any, Tuple
 from struct import Struct
 from datetime import datetime as DateTime
+from typeguard import typechecked
 
 from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion, Inclusion
@@ -357,12 +357,14 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
     if value_builder.HasField("timestamp"):
         return DateTime.fromtimestamp(value_builder.timestamp * 1e-6)
     if value_builder.HasField("tuple"):
-        return tuple([decode_value(x) for x in value_builder.tuple.values])
+        return tuple([decode_value(x) for x in value_builder.tuple.values]) # type: ignore
     if value_builder.HasField("document"):
         result = {}
         for i, key in enumerate(value_builder.document.keys):
             value: ValueBuilder = value_builder.document.values[i]
-            result[decode_key(key)] = decode_value(value)
+            decoded = decode_key(key)
+            assert decoded is not None
+            result[decoded] = decode_value(value)
         return result
     raise ValueError(
         "don't know how to decode: %r,%s" % (
@@ -430,12 +432,13 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Us
     return None
 
 
+@typechecked
 def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None) -> ValueBuilder:
-    """ encodes a python value (number, string, etc.) into a protobuf builder
-    """
+    """ encodes a python value (number, string, etc.) into a protobuf builder"""
     if is_named_tuple(value):
-        raise ValueError("named tuples cannot be values.")
-
+        raise TypeError("named tuples aren't supported as values")
+    if hasattr(value, "_add_entry"):
+        raise TypeError("containers can't be encoded. Ensure you do not have a tuple of containers.")
     value_builder = value_builder or ValueBuilder()
     if isinstance(value, DateTime):
         if value.tzinfo is not None:
@@ -479,7 +482,7 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
             value_builder.document.keys.append(encode_key(key))
             value_builder.document.values.append(encode_value(val))
         return value_builder
-    raise ValueError("don't know how to encode: %r" % value)  # pylint: disable=consider-using-f-string
+    raise ValueError(f"don't know how to encode: {value!r}")
 
 
 def wrap_change(builder: EntryBuilder) -> ChangeBuilder:

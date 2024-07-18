@@ -1,6 +1,6 @@
 FROM darinmcgill/base
 
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 
 ENV CHROME_BIN=/usr/bin/chromium
@@ -16,7 +16,7 @@ COPY proto ./proto
 
 COPY python ./python
 RUN make python/gink/builders
-ENV PYTHONPATH $GINK/python
+ENV PYTHONPATH=$GINK/python
 WORKDIR $GINK/python
 # Python lint
 RUN mypy gink/impl gink/tests

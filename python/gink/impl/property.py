@@ -1,6 +1,6 @@
 """ Contains the `Property` Container class. """
-from __future__ import annotations
 from typing import Optional, Dict, Tuple, Iterable, Union
+from typeguard import typechecked
 
 from .typedefs import UserValue, GenericTimestamp
 from .container import Container
@@ -13,12 +13,14 @@ from .bundler import Bundler
 class Property(Container):
     BEHAVIOR = PROPERTY
 
+    @typechecked
     def __init__(
             self,
             muid: Optional[Union[Muid, str]] = None,
             *,
             arche: Optional[bool] = None,
-            contents: Optional[Dict[Container, Union[UserValue, Container]]] = None,
+            contents: Optional[Union[Dict[Container, Union[UserValue, Container]],
+                      Iterable[Tuple[Container, Union[UserValue, Container]]]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -90,6 +92,7 @@ class Property(Container):
                 count += 1
         return count
 
+    @typechecked
     def set(self, describing: Container, value: Union[UserValue, Container], *,
             bundler=None, comment=None) -> Muid:
         """ Sets the value of the property on the particular object addressed by describing.
@@ -101,7 +104,10 @@ class Property(Container):
             raise ValueError("describing must be a container")
         return self._add_entry(key=describing._muid, value=value, bundler=bundler, comment=comment)
 
-    def update(self, from_what, *, bundler=None, comment=None):
+    @typechecked
+    def update(self, from_what: Union[Dict[Container, Union[UserValue, Container]],
+                                Iterable[Tuple[Container, Union[UserValue, Container]]]],
+                                *, bundler=None, comment=None):
         """
         Performs a shallow copy of key/value pairs from the argument.
 
@@ -114,19 +120,21 @@ class Property(Container):
             bundler = Bundler(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
-                self._add_entry(key=key, value=from_what[key], bundler=bundler)
+                self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore
         else:
             for key, val in from_what:
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
             self._database.bundle(bundler)
 
+    @typechecked
     def delete(self, describing: Container, *, bundler=None, comment=None) -> Muid:
         """ Removes the value (if any) of this property on object pointed to by `describing`. """
         if not hasattr(describing, "_muid"):
             raise ValueError("describing must be a container")
         return self._add_entry(key=describing._muid, value=deletion, bundler=bundler, comment=comment)
 
+    @typechecked
     def get(self, describing: Container, default: Union[UserValue, Container] = None, *,
             as_of: GenericTimestamp = None) -> Union[UserValue, Container]:
         """ Gets the value of the property on the object it's describing, optionally in the past.

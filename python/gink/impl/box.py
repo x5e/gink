@@ -1,4 +1,6 @@
 from typing import Optional, Union
+from typeguard import typechecked
+
 
 #gink implementation
 from .typedefs import GenericTimestamp, UserValue
@@ -12,6 +14,7 @@ from .coding import BOX
 class Box(Container):
     BEHAVIOR = BOX
 
+    @typechecked
     def __init__(
             self,
             muid: Optional[Union[Muid, str]] = None,
@@ -53,6 +56,7 @@ class Box(Container):
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
+    @typechecked
     def set(self, value: Union[UserValue, Container], *, bundler=None, comment=None):
         """ Sets a value in the box, returns the muid address of the entry.
 

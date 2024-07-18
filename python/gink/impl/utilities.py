@@ -10,17 +10,18 @@ from datetime import datetime, date, timedelta
 from re import fullmatch, IGNORECASE
 from psutil import pid_exists
 from requests import get
-from authlib.jose import jwt, JsonWebKey
+from authlib.jose import jwt, JsonWebKey, KeySet
 from authlib.jose.errors import JoseError
 from time import time as get_time
-from typing import Optional, Tuple, Mapping
+from typing import Optional, Tuple
 from random import choice
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
 from .muid import Muid
-from .builders import ClaimBuilder
+from .builders import ClaimBuilder, BundleBuilder
 from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE
+from .builders import Behavior
 
 def make_auth_func(token: str) -> AuthFunc:
     def auth_func(data: str, *_) -> int:
@@ -33,20 +34,6 @@ def encode_to_hex(string: str) -> str:
     """
     # Adding 0x so we can easily determine if a subprotocol is a hex string
     return "0x" + string.encode("utf-8").hex()
-
-def is_type(obj, type_or_tuple) -> bool:
-    """
-    Returns True if the object is an instance of the type or any type in the tuple of types.
-    This function allows comparisions to user defined type generics, which is the default behavior
-    of isinstance in newer versions of Python.
-    """
-    if isinstance(type_or_tuple, tuple):
-        for t in type_or_tuple:
-            if isinstance(obj, t):
-                return True
-    else:
-        return isinstance(obj, type_or_tuple)
-    return False
 
 def is_named_tuple(obj) -> bool:
     return (
@@ -171,7 +158,7 @@ def normalize_pair(pair: Tuple) -> Tuple[Muid, Muid]:
 # URL to get Google's public keys
 GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs'
 
-_public_keys = None
+_public_keys: Optional[KeySet] = None
 
 def decode_and_verify_jwt(token: bytes, app_id: Optional[str] = None) -> dict:
     """ Get the useful claims from a jwt after deconstructing it. """
@@ -204,3 +191,30 @@ def generate_random_token() -> str:
     digits = "23456789"
     choices = capitals + digits
     return "T" + "".join([choice(choices) for _ in range(39)])
+
+def validate_bundle(bundle_builder: BundleBuilder) -> None:
+    """ Validates the entries in a bundle. Throws a ValueError if the bundle is invalid for a container type. """
+    # TODO: finish this
+    for change in bundle_builder.changes:
+        behavior = 1
+        assert behavior > 0
+        if behavior == Behavior.BOX:
+            pass
+        elif behavior == Behavior.SEQUENCE:
+            pass
+        elif behavior == Behavior.PAIR_MAP:
+            pass
+        elif behavior == Behavior.DIRECTORY:
+            pass
+        elif behavior == Behavior.KEY_SET:
+            pass
+        elif behavior == Behavior.GROUP:
+            pass
+        elif behavior == Behavior.PAIR_SET:
+            pass
+        elif behavior == Behavior.PROPERTY:
+            pass
+        elif behavior == Behavior.BRAID:
+            pass
+        else:
+            raise ValueError(f"Invalid behavior: {behavior}")

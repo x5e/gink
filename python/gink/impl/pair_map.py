@@ -1,6 +1,7 @@
 """ Contains the pair map class definition """
 
 from typing import Optional, Tuple, Union, Dict, Iterable
+from typeguard import typechecked
 from .database import Database
 from .muid import Muid
 from .container import Container
@@ -15,6 +16,7 @@ class PairMap(Container):
     _missing = object()
     BEHAVIOR = PAIR_MAP
 
+    @typechecked
     def __init__(
             self,
             muid: Optional[Union[Muid, str]] = None,
@@ -58,11 +60,13 @@ class PairMap(Container):
         if immediate and len(bundler):
             self._database.bundle(bundler)
 
+    @typechecked
     def set(self, key: Pair,
             value: Union[UserValue, Container],
             bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         return self._add_entry(key=key, value=value, bundler=bundler, comment=comment)
 
+    @typechecked
     def get(self, key: Pair,
             default=None, *, as_of: GenericTimestamp = None):
         as_of = self._database.resolve_timestamp(as_of)
@@ -73,10 +77,12 @@ class PairMap(Container):
             return default
         return self._get_occupant(found.builder, found.address)
 
+    @typechecked
     def delete(self, key: Pair,
                bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
+    @typechecked
     def has(self, key: Pair, *, as_of=None):
         """ returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
@@ -84,6 +90,7 @@ class PairMap(Container):
         found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
         return found is not None and not found.builder.deletion  # type: ignore
 
+    @typechecked
     def items(self, *, as_of=None) -> Iterable[Tuple[Tuple[Muid, Muid], Union[UserValue, Container]]]:
         """ returns an iterable of key,value pairs, as of the effective time (or now) """
         as_of = self._database.resolve_timestamp(as_of)
@@ -98,18 +105,22 @@ class PairMap(Container):
             contained = self._get_occupant(entry_pair.builder, entry_pair.address)
             yield key, contained
 
+    @typechecked
     def __contains__(self, key: Pair):
         return self.has(key)
 
+    @typechecked
     def __getitem__(self, key: Pair):
         result = self.get(key, default=self._missing)
         if result == self._missing:
             raise KeyError(key)
         return result
 
+    @typechecked
     def __setitem__(self, key: Pair, value: Union[UserValue, Container]):
         self.set(key, value)
 
+    @typechecked
     def __delitem__(self, key: Pair):
         self.delete(key)
 

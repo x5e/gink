@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """ Contains the BundleInfo class. """
-from __future__ import annotations
 from typing import Optional
 from struct import Struct
 
@@ -67,7 +66,7 @@ class BundleInfo:
         )
 
     @staticmethod
-    def from_bytes(data: bytes) -> BundleInfo:
+    def from_bytes(data: bytes) -> 'BundleInfo':
         """ the opposite of __bytes__ """
         if not (isinstance(data, bytes) and len(data) >= 32):
             raise ValueError("bad argument to BundleInfo.from_bytes: %r" % data)
