@@ -6,7 +6,6 @@ from .typedefs import GenericTimestamp
 from .container import Container
 from .coding import deletion, inclusion, GROUP
 from .muid import Muid
-from .deferred import Deferred
 from .database import Database
 from .bundler import Bundler
 from .builders import Behavior

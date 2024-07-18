@@ -8,6 +8,7 @@
 from typing import Optional, Union, NamedTuple, List, Any, Tuple
 from struct import Struct
 from datetime import datetime as DateTime
+from typeguard import typechecked
 
 from .builders import EntryBuilder, ChangeBuilder, ValueBuilder, KeyBuilder, Message, Behavior
 from .typedefs import UserKey, MuTimestamp, UserValue, Deletion, Inclusion
@@ -431,6 +432,7 @@ def decode_key(from_what: Union[EntryBuilder, KeyBuilder, bytes]) -> Optional[Us
     return None
 
 
+@typechecked
 def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None) -> ValueBuilder:
     """ encodes a python value (number, string, etc.) into a protobuf builder"""
     if is_named_tuple(value):
@@ -480,7 +482,7 @@ def encode_value(value: UserValue, value_builder: Optional[ValueBuilder] = None)
             value_builder.document.keys.append(encode_key(key))
             value_builder.document.values.append(encode_value(val))
         return value_builder
-    raise ValueError("don't know how to encode: %r" % value)  # pylint: disable=consider-using-f-string
+    raise ValueError(f"don't know how to encode: {value!r}")
 
 
 def wrap_change(builder: EntryBuilder) -> ChangeBuilder:

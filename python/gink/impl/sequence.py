@@ -162,10 +162,10 @@ class Sequence(Container):
             dest = self._database.resolve_timestamp(dest)
         assert isinstance(dest, int)
         movement_builder.dest = dest
-        muid_or_deferred = bundler.add_change(change_builder)
+        muid = bundler.add_change(change_builder)
         if immediate:
             self._database.bundle(bundler)
-        return muid_or_deferred
+        return muid
 
     @typechecked
     def pop(self, index: int = -1, *, dest: GenericTimestamp = None, bundler=None, comment=None):

@@ -4,7 +4,7 @@ from typing import Optional, Union, Any
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
 from .typedefs import MuTimestamp, Medallion
 from .tuples import Chain
-from .deferred import Deferred
+from .muid import Muid
 
 
 class Bundler:
@@ -43,12 +43,12 @@ class Bundler:
             return self._sealed
         return object.__getattribute__(self, name)
 
-    def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Deferred:
+    def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Muid:
         """ adds a single change (in the form of the proto builder) """
         if self._sealed:
             raise AssertionError("already sealed")
         self._count_items += 1
-        muid = Deferred(offset=self._count_items, bundler=self)
+        muid = Muid(offset=self._count_items, bundler=self)
         if isinstance(builder, EntryBuilder):
             entry_builder = builder
             builder = ChangeBuilder()

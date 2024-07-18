@@ -10,7 +10,7 @@ from datetime import datetime, date, timedelta
 from re import fullmatch, IGNORECASE
 from psutil import pid_exists
 from requests import get
-from authlib.jose import jwt, JsonWebKey
+from authlib.jose import jwt, JsonWebKey, KeySet
 from authlib.jose.errors import JoseError
 from time import time as get_time
 from typing import Optional, Tuple
@@ -158,7 +158,7 @@ def normalize_pair(pair: Tuple) -> Tuple[Muid, Muid]:
 # URL to get Google's public keys
 GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs'
 
-_public_keys = None
+_public_keys: Optional[KeySet] = None
 
 def decode_and_verify_jwt(token: bytes, app_id: Optional[str] = None) -> dict:
     """ Get the useful claims from a jwt after deconstructing it. """

@@ -8,7 +8,6 @@ from datetime import datetime
 from .builders import ChangeBuilder, EntryBuilder, Behavior
 
 from .muid import Muid
-from .deferred import Deferred
 from .bundler import Bundler
 from .database import Database
 from .typedefs import GenericTimestamp, EPOCH, UserKey, MuTimestamp, UserValue, Deletion, Inclusion
@@ -151,7 +150,7 @@ class Container(Addressable, ABC):
         return cls(database=database, muid=muid)
 
     @staticmethod
-    def _create(behavior: int, database: Database, bundler: Optional[Bundler] = None) -> Deferred:
+    def _create(behavior: int, database: Database, bundler: Optional[Bundler] = None) -> Muid:
         immediate = False
         if bundler is None:
             bundler = Bundler()
