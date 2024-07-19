@@ -18,3 +18,4 @@ ca-certificates
 python3-authlib
 python3-typeguard
 python3-pep8
+python3-nacl
