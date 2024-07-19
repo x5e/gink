@@ -24,7 +24,7 @@ from ..impl.group import Group
 # from ..impl.group import Group
 from ..impl.muid import Muid # needed for the exec() call in test_dump
 
-assert Muid
+_ = Muid(0, 0, 0)
 
 
 def test_database():
