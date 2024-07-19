@@ -50,9 +50,11 @@ import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { Retrieval } from "./Retrieval";
+import { sign } from 'tweetnacl';
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
-    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries" | "identities")[],
+    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" |
+    "entries" | "identities" | "verifyKeys")[],
     "readwrite">;
 
 if (eval("typeof indexedDB") === 'undefined') {  // ts-node has problems with typeof
@@ -126,6 +128,7 @@ export class IndexedDbStore implements Store {
                     Not setting keyPath since [medallion, chainStart] can't be pulled from the value
                 */
                 db.createObjectStore('identities');
+                db.createObjectStore('verifyKeys');
 
                 db.createObjectStore("clearances", { keyPath: ["containerId", "clearanceId"] });
 
@@ -151,6 +154,14 @@ export class IndexedDbStore implements Store {
         this.initialized = true;
     }
 
+    async getVerifyKey(chainInfo: [Medallion, ChainStart]): Promise<Bytes> {
+        await this.ready;
+        const wrappedTransaction = this.getTransaction();
+        const verifyKeys = await wrappedTransaction.objectStore('verifyKeys').get(chainInfo);
+        return verifyKeys;
+    }
+
+
     private clearTransaction() {
         // console.log("clearing transaction");
         this.transaction = null;
@@ -164,7 +175,8 @@ export class IndexedDbStore implements Store {
             this.lastCaller = callerLine;
             this.countTrxns += 1;
             this.transaction = this.wrapped.transaction(
-                ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains', 'containers', 'identities'],
+                ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains',
+                    'containers', 'identities', 'verifyKeys'],
                 'readwrite');
             this.transaction.done.finally(() => this.clearTransaction());
         } else {
@@ -317,9 +329,20 @@ export class IndexedDbStore implements Store {
         if (claimChain) {
             ensure(bundleInfo.timestamp === bundleInfo.chainStart, "timestamp !== chainstart");
             ensure(bundleInfo.comment, "comment (identity) required to start a chain");
-            const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
-            await wrappedTransaction.objectStore('identities').add(bundleInfo.comment, chainInfo);
             await this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId(), wrappedTransaction);
+        }
+        let verifyKey: Bytes;
+        const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
+        if (bundleInfo.chainStart === bundleInfo.timestamp) {
+            await wrappedTransaction.objectStore('identities').add(bundleInfo.comment, chainInfo);
+            verifyKey = bundleBuilder.getVerifyKey();
+            await wrappedTransaction.objectStore("verifyKeys").put(verifyKey, chainInfo);
+        } else {
+            verifyKey = await wrappedTransaction.objectStore('verifyKeys').get(chainInfo);
+        }
+        const verified = sign.open(bundleBytes, verifyKey);
+        if (verified === null) {
+            throw new Error("failed to verify signature");
         }
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make

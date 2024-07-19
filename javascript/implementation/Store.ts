@@ -45,12 +45,10 @@ export interface Store {
      */
     getChainIdentity: (chainInfo: [Medallion, ChainStart]) => Promise<string>;
 
-    /**
-     * Mark a chain as being closed and unavailable for new bundles.
-     * (Not really necessary when medallions are randomly generated).
-     * endChain: (medallion: Medallion) => Promise<void>;
-     * Needs to be added for version 2;
+    /** Attempt to get the verify key for a particular chain (stored with the first bundle).
+     *
      */
+    getVerifyKey: (chainInfo: [Medallion, ChainStart]) => Promise<Bytes>;
 
     /**
      * Tries to add a bundle to this store; returns truthy

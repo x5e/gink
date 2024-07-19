@@ -50,6 +50,7 @@
     "google-protobuf": "^3.21.2",
     "idb": "^7.1.1",
     "jstreemap": "^1.28.2",
+    "tweetnacl": "^1.0.3",
     "websocket": "^1.0.34"
   },
   "devDependencies": {

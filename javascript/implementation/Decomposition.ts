@@ -6,7 +6,8 @@ export class Decomposition implements BundleView {
     readonly builder: BundleBuilder;
     readonly info: BundleInfo;
     constructor(readonly bytes: Bytes) {
-        const bundleBuilder = this.builder = <BundleBuilder>BundleBuilder.deserializeBinary(bytes);
+        const body = bytes.subarray(64);
+        const bundleBuilder = this.builder = <BundleBuilder>BundleBuilder.deserializeBinary(body);
         const headerBuilder: HeaderBuilder = bundleBuilder.getHeader();
         this.info = {
             timestamp: headerBuilder.getTimestamp(),

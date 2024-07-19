@@ -1,4 +1,5 @@
 import { Message } from "google-protobuf";
+import { Bytes } from "./typedefs";
 
 declare class ImplementedMessage extends Message {
     serializeBinary(): Uint8Array;
@@ -69,6 +70,8 @@ export class BundleBuilder extends ImplementedMessage {
     getHeader(): HeaderBuilder;
     setHeader(HeaderBuilder);
     getChangesMap(): Map<number, ChangeBuilder>;
+    getVerifyKey(): Bytes;
+    setVerifyKey(Bytes);
 }
 
 export class PairBuilder extends ImplementedMessage {

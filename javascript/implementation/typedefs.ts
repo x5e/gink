@@ -167,4 +167,9 @@ export interface IndexedDbStoreSchema extends DBSchema {
         value: string;
         key: [Medallion, ChainStart];
     };
+
+    verifyKeys: {
+        value: Bytes;
+        key: [Medallion, ChainStart];
+    };
 }

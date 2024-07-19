@@ -50,6 +50,7 @@ import {
     storageKeyToString,
 } from "./store_utils";
 import { Retrieval } from "./Retrieval";
+import { sign } from 'tweetnacl';
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
@@ -68,12 +69,17 @@ export class MemoryStore implements Store {
     private locations: TreeMap<string, string> = new TreeMap();
     private bySource: TreeMap<string, Entry> = new TreeMap();
     private byTarget: TreeMap<string, Entry> = new TreeMap();
+    private verifyKeys: Map<string, Bytes> = new Map();
     constructor(private keepingHistory = true) {
         this.ready = Promise.resolve();
     }
 
     dropHistory(container?: Muid, before?: AsOf): void {
         throw new Error("not implemented");
+    }
+
+    getVerifyKey(chainInfo: [Medallion, ChainStart]): Promise<Bytes> {
+        return Promise.resolve(this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`));
     }
 
     stopHistory(): void {
@@ -108,8 +114,8 @@ export class MemoryStore implements Store {
         return Promise.resolve(claim);
     }
 
-    async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
-        return this.identities.get(`${chainInfo[0]},${chainInfo[1]}`);
+    getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
+        return Promise.resolve(this.identities.get(`${chainInfo[0]},${chainInfo[1]}`));
     }
 
     async getChainTracker(): Promise<ChainTracker> {
@@ -138,12 +144,24 @@ export class MemoryStore implements Store {
             }
         }
         // If this is a new chain, save the identity & claim this chain
+        const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
         if (claimChain) {
             ensure(bundleInfo.timestamp === bundleInfo.chainStart);
-            const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
-            this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
-
             this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId());
+        }
+
+        let verifyKey: Bytes;
+        if (bundleInfo.timestamp === bundleInfo.chainStart) {
+            this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
+            verifyKey = bundleBuilder.getVerifyKey();
+            ensure(verifyKey);
+            this.verifyKeys.set(`${chainInfo[0]},${chainInfo[1]}`, verifyKey);
+        } else {
+            verifyKey = this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`);
+        }
+        const verified = sign.open(bundle.bytes, verifyKey);
+        if (verified === null) {
+            throw new Error("failed to verify signature");
         }
 
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
