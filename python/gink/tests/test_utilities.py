@@ -1,7 +1,6 @@
 from ..impl.utilities import decode_from_hex, encode_to_hex, experimental, is_named_tuple
 from ..impl.muid import Muid
 from ..impl.tuples import Chain
-from ..impl.builders import ChangeBuilder
 
 def test_encode_decode_hex():
     """ Tests authentication tokens and hex encoding and decoding """
