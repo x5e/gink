@@ -15,7 +15,6 @@ from authlib.jose.errors import JoseError
 from time import time as get_time
 from typing import Optional, Tuple
 from random import choice
-from typeguard import check_type
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
@@ -203,97 +202,79 @@ def generate_random_token() -> str:
     choices = capitals + digits
     return "T" + "".join([choice(choices) for _ in range(39)])
 
-def validate_bundle(bundle_builder: BundleBuilder) -> None:
-    """ Validates the entries in a bundle. Throws an AssertionError if the bundle is invalid. """
+user_key_fields = ["number", "octets", "characters"]
+user_value_fields = ["integer", "floating", "characters", "special", "timestamp", "document", "tuple", "octets"]
+
+def validate_bundle_entries(bundle_builder: BundleBuilder) -> None:
+    """Asserts that the entries in the bundle are valid for the container behavior."""
     changes = bundle_builder.changes.values() # type: ignore
     for change in changes:
-        assert isinstance(change, ChangeBuilder), change
+        assert isinstance(change, ChangeBuilder)
 
-        if isinstance(change, ContainerBuilder):
-            assert isinstance(change.container, ContainerBuilder)
-            assert change.container.behavior in (
-                Behavior.BOX,
-                Behavior.SEQUENCE,
-                Behavior.PAIR_MAP,
-                Behavior.DIRECTORY,
-                Behavior.KEY_SET,
-                Behavior.GROUP,
-                Behavior.PAIR_SET,
-                Behavior.PROPERTY,
-                Behavior.BRAID,
-            ), change.container.behavior
-
-        if isinstance(change, MovementBuilder):
-            assert isinstance(change.movement, MovementBuilder)
-            if change.movement.container:
-                validate_muid_builder(change.movement.container)
-            if change.movement.entry:
-                validate_muid_builder(change.movement.entry)
-            if change.movement.dest:
-                assert isinstance(change.movement.dest, int)
-            if change.movement.purge:
-                assert isinstance(change.movement.purge, bool)
-
-        if isinstance(change, EntryBuilder):
+        if change.HasField("entry"):
             assert isinstance(change.entry, EntryBuilder)
-            if change.entry.describing:
-                validate_muid_builder(change.entry.describing)
-            if change.entry.pointee:
-                validate_muid_builder(change.entry.pointee)
-            if change.entry.behavior:
-                assert isinstance(change.entry.behavior, int)
-            if change.entry.value:
-                assert isinstance(change.entry.value, ValueBuilder)
-                # TODO:  check the value is valid for the container type?
-            if change.entry.container:
-                validate_muid_builder(change.entry.container)
-            if change.entry.deletion:
-                assert isinstance(change.entry.deletion, bool)
-            if change.entry.purge:
-                assert isinstance(change.entry.purge, bool)
-            if change.entry.pair:
-                pair = change.entry.pair
-                assert pair.left and pair.rite
-                validate_muid_builder(pair.left)
-                validate_muid_builder(pair.rite)
-            if change.entry.octets:
-                assert isinstance(change.entry.octets, bytes)
-            if change.entry.key:
-                assert isinstance(change.entry.key, KeyBuilder)
-                # validate key for behavior?
-            if change.entry.effective:
-                assert isinstance(change.entry.effective, int)
+            # Value is a oneof field, so the proto will have already ensured this is only one item.
+            value_field_name: str = ""
+            key_field_name: str = ""
+            try:
+                value_field_name = change.entry.value.ListFields()[0][0].name
+            except IndexError:
+                pass
+            try:
+                key_field_name = change.entry.key.ListFields()[0][0].name
+            except IndexError:
+                pass
 
+            if change.entry.behavior == Behavior.BOX:
+                assert not change.entry.HasField("key")
+                assert (value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee")
 
+            elif change.entry.behavior == Behavior.SEQUENCE:
+                assert not change.entry.HasField("key")
+                assert (value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee")
 
+            elif change.entry.behavior == Behavior.PAIR_MAP:
+                assert change.entry.HasField("pair")
+                assert (value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee") or \
+                change.entry.deletion
 
+            elif change.entry.behavior == Behavior.DIRECTORY:
+                assert key_field_name in user_key_fields
+                assert (value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee") or \
+                change.entry.deletion
 
-        behavior = 1
-        assert behavior > 0
-        if behavior == Behavior.BOX:
-            pass
-        elif behavior == Behavior.SEQUENCE:
-            pass
-        elif behavior == Behavior.PAIR_MAP:
-            pass
-        elif behavior == Behavior.DIRECTORY:
-            pass
-        elif behavior == Behavior.KEY_SET:
-            pass
-        elif behavior == Behavior.GROUP:
-            pass
-        elif behavior == Behavior.PAIR_SET:
-            pass
-        elif behavior == Behavior.PROPERTY:
-            pass
-        elif behavior == Behavior.BRAID:
-            pass
-        else:
-            raise ValueError(f"Invalid behavior: {behavior}")
+            elif change.entry.behavior == Behavior.KEY_SET:
+                assert key_field_name in user_key_fields
+                assert not change.entry.HasField("value")
 
-def validate_muid_builder(muid_builder: MuidBuilder) -> None:
-    """Asserts that a MuidBuilder is valid."""
-    assert isinstance(muid_builder, MuidBuilder)
-    assert isinstance(muid_builder.timestamp, int)
-    assert isinstance(muid_builder.medallion, int)
-    assert isinstance(muid_builder.offset, int)
+            elif change.entry.behavior == Behavior.GROUP:
+                assert change.entry.HasField("describing")
+                assert not change.entry.HasField("value")
+
+            elif change.entry.behavior == Behavior.PAIR_SET:
+                assert change.entry.HasField("pair")
+                assert not change.entry.HasField("value")
+
+            elif change.entry.behavior == Behavior.PROPERTY:
+                assert change.entry.HasField("describing")
+                assert (value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee") or \
+                change.entry.deletion
+
+            elif change.entry.behavior == Behavior.BRAID:
+                assert change.entry.HasField("describing")
+                assert value_field_name in ("integer", "floating") or \
+                change.entry.deletion
+
+            elif change.entry.behavior == Behavior.VERTEX:
+                assert change.entry.HasField("container")
+
+            elif change.entry.behavior == Behavior.EDGE_TYPE:
+                assert change.entry.HasField("pair")
+
+            else:
+                raise AssertionError(f"unknown behavior: {change.entry.behavior}")

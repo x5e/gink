@@ -26,6 +26,3 @@ def test_is_named_tuple():
     muid = Muid(1, 2, 3)
     assert is_named_tuple(chain)
     assert not is_named_tuple((1, 2, 3))
-
-def test_validate_bundle():
-    pass
