@@ -279,7 +279,11 @@ class Directory(Container):
         for _, val in self.items(as_of=as_of):
             yield val
 
-    def popitem(self, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Tuple[UserKey, Union[UserValue, Container]]:
+    def popitem(
+            self, *,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None
+    ) -> Tuple[UserKey, Union[UserValue, Container]]:
         """ Remove and return a (key, value) tuple, or raises KeyError if empty.
 
             Order is determined by implementation of the store.

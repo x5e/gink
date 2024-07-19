@@ -360,7 +360,7 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
     if value_builder.HasField("timestamp"):
         return DateTime.fromtimestamp(value_builder.timestamp * 1e-6)
     if value_builder.HasField("tuple"):
-        return tuple([decode_value(x) for x in value_builder.tuple.values]) # type: ignore
+        return tuple([decode_value(x) for x in value_builder.tuple.values])  # type: ignore
     if value_builder.HasField("document"):
         result = {}
         for i, key in enumerate(value_builder.document.keys):

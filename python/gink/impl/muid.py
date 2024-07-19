@@ -89,13 +89,13 @@ class Muid:
     @classmethod
     def create(
         cls,
-        context,
+        context = None,
         builder: Union[MuidBuilder, Dummy] = Dummy(),
         offset: Optional[int] = None,
     ):
         """Creates a muid.
 
-        The context argument should either be a BundleInfo
+        The context argument should be a BundleInfo
 
         """
         timestamp = builder.timestamp or context.timestamp  # type: ignore

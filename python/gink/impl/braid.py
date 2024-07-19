@@ -93,10 +93,21 @@ class Braid(Container):
         return count
 
     @typechecked
-    def set(self, describing: Chain, value: Limit, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
+    def set(
+            self,
+            describing: Chain,
+            value: Limit, *,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None
+    ) -> Muid:
         return self._add_entry(key=describing, value=value, bundler=bundler, comment=comment)
 
-    def update(self, from_what, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None):
+    def update(
+            self,
+            from_what, *,
+            bundler: Optional[Bundler] = None,
+            comment: Optional[str] = None
+    ):
         immediate = False
         if bundler is None:
             immediate = True
