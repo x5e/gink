@@ -15,11 +15,22 @@ from authlib.jose.errors import JoseError
 from time import time as get_time
 from typing import Optional, Tuple
 from random import choice
+from typeguard import check_type
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
 from .muid import Muid
-from .builders import ClaimBuilder, BundleBuilder
+from .builders import (
+    ClaimBuilder,
+    BundleBuilder,
+    ContainerBuilder,
+    ChangeBuilder,
+    EntryBuilder,
+    MovementBuilder,
+    MuidBuilder,
+    ValueBuilder,
+    KeyBuilder,
+)
 from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE
 from .builders import Behavior
 
@@ -193,9 +204,70 @@ def generate_random_token() -> str:
     return "T" + "".join([choice(choices) for _ in range(39)])
 
 def validate_bundle(bundle_builder: BundleBuilder) -> None:
-    """ Validates the entries in a bundle. Throws a ValueError if the bundle is invalid for a container type. """
-    # TODO: finish this
-    for change in bundle_builder.changes:
+    """ Validates the entries in a bundle. Throws an AssertionError if the bundle is invalid. """
+    changes = bundle_builder.changes.values() # type: ignore
+    for change in changes:
+        assert isinstance(change, ChangeBuilder), change
+
+        if isinstance(change, ContainerBuilder):
+            assert isinstance(change.container, ContainerBuilder)
+            assert change.container.behavior in (
+                Behavior.BOX,
+                Behavior.SEQUENCE,
+                Behavior.PAIR_MAP,
+                Behavior.DIRECTORY,
+                Behavior.KEY_SET,
+                Behavior.GROUP,
+                Behavior.PAIR_SET,
+                Behavior.PROPERTY,
+                Behavior.BRAID,
+            ), change.container.behavior
+
+        if isinstance(change, MovementBuilder):
+            assert isinstance(change.movement, MovementBuilder)
+            if change.movement.container:
+                validate_muid_builder(change.movement.container)
+            if change.movement.entry:
+                validate_muid_builder(change.movement.entry)
+            if change.movement.dest:
+                assert isinstance(change.movement.dest, int)
+            if change.movement.purge:
+                assert isinstance(change.movement.purge, bool)
+
+        if isinstance(change, EntryBuilder):
+            assert isinstance(change.entry, EntryBuilder)
+            if change.entry.describing:
+                validate_muid_builder(change.entry.describing)
+            if change.entry.pointee:
+                validate_muid_builder(change.entry.pointee)
+            if change.entry.behavior:
+                assert isinstance(change.entry.behavior, int)
+            if change.entry.value:
+                assert isinstance(change.entry.value, ValueBuilder)
+                # TODO:  check the value is valid for the container type?
+            if change.entry.container:
+                validate_muid_builder(change.entry.container)
+            if change.entry.deletion:
+                assert isinstance(change.entry.deletion, bool)
+            if change.entry.purge:
+                assert isinstance(change.entry.purge, bool)
+            if change.entry.pair:
+                pair = change.entry.pair
+                assert pair.left and pair.rite
+                validate_muid_builder(pair.left)
+                validate_muid_builder(pair.rite)
+            if change.entry.octets:
+                assert isinstance(change.entry.octets, bytes)
+            if change.entry.key:
+                assert isinstance(change.entry.key, KeyBuilder)
+                # validate key for behavior?
+            if change.entry.effective:
+                assert isinstance(change.entry.effective, int)
+
+
+
+
+
         behavior = 1
         assert behavior > 0
         if behavior == Behavior.BOX:
@@ -218,3 +290,10 @@ def validate_bundle(bundle_builder: BundleBuilder) -> None:
             pass
         else:
             raise ValueError(f"Invalid behavior: {behavior}")
+
+def validate_muid_builder(muid_builder: MuidBuilder) -> None:
+    """Asserts that a MuidBuilder is valid."""
+    assert isinstance(muid_builder, MuidBuilder)
+    assert isinstance(muid_builder.timestamp, int)
+    assert isinstance(muid_builder.medallion, int)
+    assert isinstance(muid_builder.offset, int)
