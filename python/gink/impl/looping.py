@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import *
 from selectors import DefaultSelector, BaseSelector, EVENT_READ
 from contextlib import nullcontext
@@ -23,7 +22,7 @@ class Selectable(Protocol):
     def close(self):
         """ close the file object """
 
-    def on_ready(self) -> Optional[Iterable[Selectable]]:
+    def on_ready(self) -> Optional[Iterable['Selectable']]:
         """ what to call when selected """
 
     def is_closed(self) -> bool:

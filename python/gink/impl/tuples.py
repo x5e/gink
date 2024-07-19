@@ -1,5 +1,4 @@
 """ a couple of NamedTuple definitions, primarily for internal usage """
-from __future__ import annotations
 from typing import NamedTuple
 
 from .builders import EntryBuilder, ContainerBuilder
@@ -17,7 +16,7 @@ class Chain(NamedTuple):
         return pack(">QQ", self.medallion, self.chain_start)
 
     @staticmethod
-    def from_bytes(data: bytes) -> Chain:
+    def from_bytes(data: bytes) -> 'Chain':
         return Chain(*unpack(">QQ", data))
 
 

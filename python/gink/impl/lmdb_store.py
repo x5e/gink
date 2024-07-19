@@ -8,7 +8,7 @@ import uuid
 from typing import Tuple, Iterable, Optional, Set, Union, Mapping, Callable
 from struct import pack
 from pathlib import Path
-from lmdb import open as ldmbopen, Transaction as Trxn, Cursor # type: ignore
+from lmdb import open as ldmbopen, Transaction as Trxn, Cursor, BadValsizeError # type: ignore
 
 # Gink Implementation
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
@@ -928,7 +928,10 @@ class LmdbStore(AbstractStore):
                     self._remove_entry(found_entry.address, txn)
         entry_bytes = bytes(entry_muid)
         txn.put(entry_bytes, serialize(builder), db=self._entries)
-        txn.put(serialized_placement_key, entry_bytes, db=self._placements)
+        try:
+            txn.put(serialized_placement_key, entry_bytes, db=self._placements)
+        except BadValsizeError:
+            raise BadValsizeError("Max key size for LMDB is 511 bytes.")
         entries_loc_key = bytes(LocationKey(entry_muid, entry_muid))
         if builder.behavior in (EDGE_TYPE, SEQUENCE):
             txn.put(entries_loc_key, serialized_placement_key, db=self._locations)
