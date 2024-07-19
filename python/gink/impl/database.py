@@ -6,6 +6,7 @@ from typing import Optional, Union, Iterable, List
 from sys import stdout
 from logging import getLogger
 from re import fullmatch
+from nacl.signing import SigningKey
 
 # builders
 from .builders import ContainerBuilder
@@ -37,6 +38,7 @@ class Database(Relay):
     _store: AbstractStore
     _last_link: Optional[BundleInfo]
     _container_types: dict = {}
+    _signing_key: Optional[SigningKey]
 
     def __init__(self, store: Union[AbstractStore, str, None] = None, identity=get_identity()):
         super().__init__(store=store)
@@ -46,6 +48,7 @@ class Database(Relay):
         self._identity = identity
         self._logger = getLogger(self.__class__.__name__)
         self._lock = Lock()
+        self._signing_key = None
 
     def get_store(self) -> AbstractStore:
         """ returns the store managed by this database """
@@ -102,14 +105,19 @@ class Database(Relay):
     def _acquire_appendable_chain(self) -> BundleInfo:
         """ Either starts a chain or finds one to reuse, then returns the last link in it.
         """
+        assert self._signing_key is None
         reused = self._store.maybe_reuse_chain(self._identity)
         if reused:
+            verify_key = self._store.get_verify_key(reused.get_chain())
+            self._signing_key = self._store.get_signing_key(verify_key)
             return reused
+        self._signing_key = SigningKey.generate()
+        self._store.save_signing_key(self._signing_key)
         medallion = generate_medallion()
         chain_start = generate_timestamp()
         chain = Chain(medallion=medallion, chain_start=chain_start)
         bundler = Bundler(self._identity)
-        bundle_bytes = bundler.seal(chain=chain, timestamp=chain_start)
+        bundle_bytes = bundler.seal(chain=chain, timestamp=chain_start, signing_key=self._signing_key)
         wrapper = BundleWrapper(bundle_bytes=bundle_bytes)
         self._store.apply_bundle(wrapper, self._on_bundle, claim_chain=True)
         return wrapper.get_info()
@@ -125,7 +133,13 @@ class Database(Relay):
             assert seen_to is not None
             timestamp = generate_timestamp()
             assert timestamp > seen_to
-            bundle_bytes = bundler.seal(chain=chain, timestamp=timestamp, previous=seen_to)
+            assert self._signing_key is not None
+            bundle_bytes = bundler.seal(
+                chain=chain,
+                timestamp=timestamp,
+                previous=seen_to,
+                signing_key=self._signing_key,
+            )
             wrap = BundleWrapper(bundle_bytes)
             added = self.receive(wrap)
             assert added

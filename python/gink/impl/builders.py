@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     class BundleBuilder(Message):
         header: HeaderBuilder
         changes: List[ChangeBuilder]
+        verify_key: bytes
 
     class SyncMessage(Message):
         bundle: bytes

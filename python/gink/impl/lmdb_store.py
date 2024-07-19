@@ -8,7 +8,8 @@ import uuid
 from typing import Tuple, Iterable, Optional, Set, Union, Mapping, Callable
 from struct import pack
 from pathlib import Path
-from lmdb import open as ldmbopen, Transaction as Trxn, Cursor, BadValsizeError # type: ignore
+from lmdb import open as ldmbopen, Transaction as Trxn, Cursor, BadValsizeError
+from nacl.signing import SigningKey, VerifyKey
 
 # Gink Implementation
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
@@ -79,6 +80,8 @@ class LmdbStore(AbstractStore):
         self._by_name = self._handle.open_db(b"by_name")
         self._by_side = self._handle.open_db(b"by_side")
         self._identities = self._handle.open_db(b"identities")
+        self._signing_keys = self._handle.open_db(b"signing_keys")
+        self._verify_keys = self._handle.open_db(b"verify_keys")
         if reset:
             with self._handle.begin(write=True) as txn:
                 # Setting delete=False signals to lmdb to truncate the tables rather than drop them
@@ -97,6 +100,8 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._by_name, delete=False)
                 txn.drop(self._by_side, delete=False)
                 txn.drop(self._identities, delete=False)
+                txn.drop(self._signing_keys, delete=False)
+                txn.drop(self._verify_keys, delete=False)
         with self._handle.begin() as txn:
             # I'm checking to see if retentions are set in a read-only transaction, because if
             # they are and another process has this file open I don't want to wait to get a lock.
@@ -113,6 +118,27 @@ class LmdbStore(AbstractStore):
             # TODO: add purge method to remove particular data even when retention is on
             # TODO: add expiries table to keep track of when things need to be removed
         self._seen_through: MuTimestamp = 0
+
+    def save_signing_key(self, signing_key: SigningKey):
+        with self._handle.begin(write=True) as trxn:
+            trxn.put(bytes(signing_key.verify_key), bytes(signing_key), db=self._signing_keys)
+
+    def get_signing_key(self, verify_key: VerifyKey) -> SigningKey:
+        with self._handle.begin(write=False) as trxn:
+            found = trxn.get(bytes(verify_key), db=self._signing_keys)
+            if found is None:
+                raise KeyError("could not find a signing key for that verify key")
+            return SigningKey(found)
+
+    def get_verify_key(self, chain: Chain, trxn: Optional[Trxn]=None, /) -> VerifyKey:
+        if trxn is None:
+            with self._handle.begin(write=False) as trxn:
+                self.get_verify_key(chain, trxn)
+        else:
+            found = trxn.get(bytes(chain), db=self._verify_keys)
+            if found is None:
+                raise KeyError("could not find a verify key for that chain")
+            return VerifyKey(found)
 
     def _get_file_path(self):
         return self._file_path
@@ -779,7 +805,13 @@ class LmdbStore(AbstractStore):
                 change_items: List[int, ChangeBuilder] = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
                 if new_info.chain_start == new_info.timestamp:
-                    trxn.put(bytes(chain_key), new_info.comment.encode())
+                    trxn.put(bytes(chain_key), new_info.comment.encode(), db=self._identities)
+                    assert builder.verify_key is not None
+                    verify_key = VerifyKey(builder.verify_key)
+                    trxn.put(bytes(chain_key), bytes(verify_key), db=self._verify_keys)
+                else:
+                    verify_key = self.get_verify_key(new_info.get_chain(), trxn)
+                verify_key.verify(wrapper.get_bytes())
                 for offset, change in change_items:
                     if not self._apply_changes:
                         break

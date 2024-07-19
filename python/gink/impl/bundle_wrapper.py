@@ -15,7 +15,7 @@ class BundleWrapper:
     def get_builder(self) -> BundleBuilder:
         if self._bundle_builder is None:
             self._bundle_builder = BundleBuilder()
-            self._bundle_builder.ParseFromString(self._bundle_bytes)
+            self._bundle_builder.ParseFromString(self._bundle_bytes[64:])
         return self._bundle_builder
 
     def get_info(self) -> BundleInfo:

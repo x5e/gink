@@ -6,6 +6,7 @@ from logging import getLogger
 from typing import Tuple, Callable, Optional, Iterable, Union, Dict, Mapping
 from sortedcontainers import SortedDict  # type: ignore
 from pathlib import Path
+from nacl.signing import SigningKey, VerifyKey
 
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder,
@@ -37,6 +38,8 @@ class MemoryStore(AbstractStore):
     _removals: SortedDict  # bytes(removal_key) => MovementBuilder
     _clearances: SortedDict
     _identities: SortedDict # Dict[Chain, str]
+    _verify_keys: Dict[Chain, VerifyKey]
+    _signing_keys: Dict[VerifyKey, SigningKey]
 
     def __init__(self):
         # TODO: add a "no retention" capability to allow the memory store to be configured to
@@ -51,7 +54,18 @@ class MemoryStore(AbstractStore):
         self._locations = SortedDict()
         self._removals = SortedDict()
         self._clearances = SortedDict()
+        self._signing_keys = dict()
+        self._verify_keys = dict()
         self._logger = getLogger(self.__class__.__name__)
+
+    def save_signing_key(self, signing_key: SigningKey):
+        self._signing_keys[signing_key.verify_key] = signing_key
+
+    def get_signing_key(self, verify_key: VerifyKey) -> SigningKey:
+        self._signing_keys[verify_key]
+
+    def get_verify_key(self, chain: Chain, *_) -> VerifyKey:
+        return self._verify_keys[chain]
 
     def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
         return self._containers.get(container)
@@ -260,7 +274,12 @@ class MemoryStore(AbstractStore):
         needed = AbstractStore._is_needed(new_info, old_info)
         if needed:
             if new_info.chain_start == new_info.timestamp:
-                self._identities[new_info.get_chain()] = new_info.comment
+                self._identities[chain_key] = new_info.comment
+                verify_key = VerifyKey(bundle_builder.verify_key)
+                self._verify_keys[chain_key] = verify_key
+            else:
+                verify_key = self._verify_keys[chain_key]
+            verify_key.verify(bundle.get_bytes())
             self._bundles[bytes(new_info)] = bundle.get_bytes()
             self._chain_infos[chain_key] = new_info
             change_items: List[int, ChangeBuilder] = list(bundle_builder.changes.items())  # type: ignore

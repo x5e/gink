@@ -3,6 +3,7 @@
 # standard python modules
 from typing import Tuple, Optional, Iterable, List, Union, Mapping, TypeVar, Generic, Callable
 from abc import abstractmethod
+from nacl.signing import SigningKey, VerifyKey
 
 
 # Gink specific modules
@@ -254,3 +255,15 @@ class AbstractStore(BundleStore, Generic[Lock]):
     def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:
         """ Returns all the containers (properties) that describe desc.
         """
+
+    @abstractmethod
+    def save_signing_key(self, signing_key: SigningKey):
+        """ Store a signing key for future use; can be retrieved using verify_key. """
+
+    @abstractmethod
+    def get_verify_key(self, chain: Chain, lock: Optional[Lock]=None, /) -> VerifyKey:
+        """ Get the verify key associated with a specific chain (stored in add-bundle). """
+
+    @abstractmethod
+    def get_signing_key(self, verify_key: VerifyKey) -> SigningKey:
+        """ Gets the key for use in continuing a chain (if previously stored). """
