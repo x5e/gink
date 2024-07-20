@@ -4,7 +4,7 @@ import {
     encodeToken, isAlive,
     getIdentity
 } from "./utils";
-import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, AsOf, } from "./typedefs";
+import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, AsOf, KeyPair, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
 
@@ -22,6 +22,7 @@ import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
+import { sign } from 'tweetnacl';
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -37,6 +38,7 @@ export class Database {
     private listeners: Map<string, Map<string, BundleListener[]>> = new Map();
     private countConnections = 0; // Includes disconnected clients.
     private myChain: ClaimedChain;
+    private keyPair: KeyPair;
     private identity: string;
     protected iHave: ChainTracker;
 
@@ -76,33 +78,43 @@ export class Database {
      * Starts a chain or finds one to reuse, then sets myChain.
      */
     public async getOrStartChain(): Promise<ClaimedChain> {
-        if (this.myChain) return this.myChain;
+        if (this.myChain)
+            return this.myChain;
         const claimedChains = await this.store.getClaimedChains();
-        let reused;
+        let reused: ClaimedChain;
         for (let value of claimedChains.values()) {
-            if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity([value.medallion, value.chainStart]) === this.identity) {
-                // TODO: check to see if meta-data matches, and overwrite if not
-                reused = value;
-                if (typeof window !== "undefined") {
-                    // If we are running in a browser and take over a chain,
-                    // start a new heartbeat.
-                    setInterval(() => {
-                        window.localStorage.setItem(`gink-${value.actorId}`, `${Date.now()}`);
-                    }, 1000);
-                }
-                break;
+            const chainId = await this.store.getChainIdentity([value.medallion, value.chainStart]);
+            if (chainId !== this.identity)
+                continue;
+            if (await isAlive(value.actorId))
+                continue;
+            // TODO: check to see if meta-data matches, and overwrite if not
+            reused = value;
+            if (typeof window !== "undefined") {
+                // If we are running in a browser and take over a chain,
+                // start a new heartbeat.
+                setInterval(() => {
+                    window.localStorage.setItem(`gink-${value.actorId}`, `${Date.now()}`);
+                }, 1000);
             }
+            break;
         }
         if (reused) {
             ensure(reused.medallion > 0);
+            const publicKey = await this.store.getVerifyKey([reused.medallion, reused.chainStart]);
+            ensure(publicKey);
+            this.keyPair = ensure(await this.store.pullKeyPair(publicKey));
             this.myChain = reused;
         } else {
             const medallion = makeMedallion();
             const chainStart = generateTimestamp();
+            const keyPair = sign.keyPair();
+            await this.store.saveKeyPair(keyPair);
+            this.keyPair = keyPair;
             const bundler = new Bundler(this.identity, medallion);
             bundler.seal({
                 medallion, timestamp: chainStart, chainStart
-            });
+            }, keyPair);
             ensure(bundler.info.comment === this.identity);
             await this.store.addBundle(bundler, true);
             this.myChain = (await this.store.getClaimedChains()).get(medallion);
@@ -297,7 +309,7 @@ export class Database {
                 timestamp: seenThrough && (seenThrough >= nowMicros) ? seenThrough + 10 : nowMicros,
                 priorTime: seenThrough ?? nowMicros,
             };
-            bundler.seal(bundleInfo);
+            bundler.seal(bundleInfo, this.keyPair);
             this.iHave.markAsHaving(bundleInfo);
             return this.receiveBundle(bundler.bytes);
         }));

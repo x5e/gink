@@ -122,6 +122,11 @@ export interface EdgeData {
     effective?: number;
 }
 
+export interface KeyPair {
+    publicKey: Bytes,
+    secretKey: Bytes,
+}
+
 export interface IndexedDbStoreSchema extends DBSchema {
     trxns: {
         key: BundleInfoTuple;
@@ -171,5 +176,10 @@ export interface IndexedDbStoreSchema extends DBSchema {
     verifyKeys: {
         value: Bytes;
         key: [Medallion, ChainStart];
+    };
+
+    secretKeys: {
+        value: Bytes;
+        key: Bytes;
     };
 }

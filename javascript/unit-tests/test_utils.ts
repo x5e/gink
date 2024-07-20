@@ -2,6 +2,7 @@ import { Medallion, ChainStart, Timestamp, BundleView } from "../implementation/
 import { Store } from "../implementation/Store";
 import { BundleBuilder, HeaderBuilder } from "../implementation/builders";
 import { Decomposition } from "../implementation/Decomposition";
+import { sign } from "tweetnacl";
 
 export const MEDALLION1 = 425579549941797;
 export const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;
@@ -11,6 +12,8 @@ export const MEDALLION2 = 458510670893748;
 export const START_MICROS2 = Date.parse("2022-02-20 00:38:21") * 1000;
 export const NEXT_TS2 = Date.parse("2022-02-20 00:40:12") * 1000;
 
+export const keyPair = sign.keyPair();
+
 export function makeChainStart(comment: string, medallion: Medallion, chainStart: ChainStart): BundleView {
     const bundleBuilder = new BundleBuilder();
     const headerBuilder = new HeaderBuilder();
@@ -19,7 +22,13 @@ export function makeChainStart(comment: string, medallion: Medallion, chainStart
     headerBuilder.setMedallion(medallion);
     headerBuilder.setComment(comment);
     bundleBuilder.setHeader(headerBuilder);
-    return new Decomposition(bundleBuilder.serializeBinary());
+    bundleBuilder.setVerifyKey(keyPair.publicKey);
+    return new Decomposition(sign(bundleBuilder.serializeBinary(), keyPair.secretKey));
+}
+
+export function unbundle(signed: Uint8Array): BundleBuilder {
+    const inside = sign.open(signed, keyPair.publicKey);
+    return <BundleBuilder>BundleBuilder.deserializeBinary(inside);
 }
 
 export function extendChain(comment: string, previous: BundleView, timestamp: Timestamp): BundleView {
@@ -32,7 +41,7 @@ export function extendChain(comment: string, previous: BundleView, timestamp: Ti
     subsequent.setComment(comment);
     const bundleBuilder = new BundleBuilder();
     bundleBuilder.setHeader(subsequent);
-    return new Decomposition(bundleBuilder.serializeBinary());
+    return new Decomposition(sign(bundleBuilder.serializeBinary(), keyPair.secretKey));
 }
 
 export async function addTrxns(store: Store) {

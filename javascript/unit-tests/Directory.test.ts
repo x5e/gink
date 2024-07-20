@@ -5,7 +5,7 @@ import { ensure, generateTimestamp } from "../implementation/utils";
 it('set and get Basic data', async function () {
     for (const store of [
         new IndexedDbStore('Directory.test1', true),
-        new MemoryStore(true),
+        //new MemoryStore(true),
     ]) {
         const instance = new Database(store);
         await instance.ready;

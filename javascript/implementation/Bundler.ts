@@ -1,6 +1,7 @@
-import { Muid, BundleInfo, Medallion, Timestamp, BundleView, BundleBytes } from "./typedefs";
+import { Muid, BundleInfo, Medallion, Timestamp, BundleView, BundleBytes, KeyPair } from "./typedefs";
 import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder, HeaderBuilder } from "./builders";
 import { ensure } from "./utils";
+import { sign } from 'tweetnacl';
 
 export class Bundler implements BundleView {
     // note: this class is unit tested as part of Store.test.ts
@@ -89,7 +90,7 @@ export class Bundler implements BundleView {
      * @param bundleInfo the bundle metadata to add when serializing
      * @returns serialized
      */
-    seal(bundleInfo: BundleInfo): void {
+    seal(bundleInfo: BundleInfo, keyPair: KeyPair): void {
         this.requireNotSealed();
         if (this.preAssignedMedallion && this.preAssignedMedallion !== bundleInfo.medallion) {
             throw new Error("specified bundleInfo doesn't match pre-assigned medallion");
@@ -104,6 +105,9 @@ export class Bundler implements BundleView {
         headerBuilder.setMedallion(bundleInfo.medallion);
         headerBuilder.setComment(this.bundleInfo.comment);
         this.bundleBuilder.setHeader(headerBuilder);
-        this.bundleBytes = this.bundleBuilder.serializeBinary();
+        if (bundleInfo.chainStart === bundleInfo.timestamp) {
+            this.bundleBuilder.setVerifyKey(keyPair.publicKey);
+        }
+        this.bundleBytes = sign(this.bundleBuilder.serializeBinary(), keyPair.secretKey);
     }
 }

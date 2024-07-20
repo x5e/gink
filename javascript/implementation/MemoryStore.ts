@@ -9,7 +9,8 @@ import {
     getActorId,
     toLastWithPrefixBeforeSuffix,
     strToMuid,
-    muidToTuple
+    muidToTuple,
+    bytesToHex,
 } from "./utils";
 import {
     AsOf,
@@ -32,6 +33,7 @@ import {
     BroadcastFunc,
     Movement,
     BundleView,
+    KeyPair,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
@@ -70,8 +72,17 @@ export class MemoryStore implements Store {
     private bySource: TreeMap<string, Entry> = new TreeMap();
     private byTarget: TreeMap<string, Entry> = new TreeMap();
     private verifyKeys: Map<string, Bytes> = new Map();
+    private secretKeys: Map<string, KeyPair> = new Map();
     constructor(private keepingHistory = true) {
         this.ready = Promise.resolve();
+    }
+    saveKeyPair(keyPair: KeyPair): Promise<void> {
+        this.secretKeys.set(bytesToHex(keyPair.publicKey), keyPair);
+        return Promise.resolve();
+    }
+
+    pullKeyPair(publicKey: Bytes): Promise<KeyPair> {
+        return Promise.resolve(this.secretKeys.get(bytesToHex(publicKey)));
     }
 
     dropHistory(container?: Muid, before?: AsOf): void {

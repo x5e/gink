@@ -32,6 +32,7 @@ import {
     Removal,
     Timestamp,
     BundleView,
+    KeyPair,
 } from "./typedefs";
 import {
     extractContainerMuid,
@@ -54,7 +55,7 @@ import { sign } from 'tweetnacl';
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
     "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" |
-    "entries" | "identities" | "verifyKeys")[],
+    "entries" | "identities" | "verifyKeys" | "secretKeys")[],
     "readwrite">;
 
 if (eval("typeof indexedDB") === 'undefined') {  // ts-node has problems with typeof
@@ -129,6 +130,7 @@ export class IndexedDbStore implements Store {
                 */
                 db.createObjectStore('identities');
                 db.createObjectStore('verifyKeys');
+                db.createObjectStore('secretKeys');
 
                 db.createObjectStore("clearances", { keyPath: ["containerId", "clearanceId"] });
 
@@ -157,10 +159,22 @@ export class IndexedDbStore implements Store {
     async getVerifyKey(chainInfo: [Medallion, ChainStart]): Promise<Bytes> {
         await this.ready;
         const wrappedTransaction = this.getTransaction();
-        const verifyKeys = await wrappedTransaction.objectStore('verifyKeys').get(chainInfo);
-        return verifyKeys;
+        const verifyKey = await wrappedTransaction.objectStore('verifyKeys').get(chainInfo);
+        return verifyKey;
     }
 
+    async saveKeyPair(keyPair: KeyPair): Promise<void> {
+        await this.ready;
+        const trxn = this.getTransaction();
+        await trxn.objectStore('secretKeys').put(keyPair.secretKey, keyPair.publicKey);
+    }
+
+    async pullKeyPair(publicKey: Bytes): Promise<KeyPair> {
+        await this.ready;
+        const trxn = this.getTransaction();
+        const secretKey = await trxn.objectStore('secretKeys').get(publicKey);
+        return {secretKey, publicKey};
+    }
 
     private clearTransaction() {
         // console.log("clearing transaction");
@@ -176,7 +190,7 @@ export class IndexedDbStore implements Store {
             this.countTrxns += 1;
             this.transaction = this.wrapped.transaction(
                 ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains',
-                    'containers', 'identities', 'verifyKeys'],
+                    'containers', 'identities', 'verifyKeys', "secretKeys"],
                 'readwrite');
             this.transaction.done.finally(() => this.clearTransaction());
         } else {

@@ -4,12 +4,14 @@ import { Store } from "../implementation/Store";
 import { Decomposition } from "../implementation/Decomposition";
 import { Behavior, EntryBuilder, ContainerBuilder, ChangeBuilder, BundleBuilder } from "../implementation/builders";
 import {
-    makeChainStart, extendChain, addTrxns,
-    MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
+    makeChainStart, extendChain, addTrxns, unbundle,
+    MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2, keyPair
 } from "./test_utils";
 import { muidToBuilder, ensure, wrapValue, matches, wrapKey } from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
 import { HeaderBuilder } from "../implementation/builders";
+import { sign } from "tweetnacl";
+
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 
@@ -96,10 +98,10 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sent: Array<BundleBytes> = [];
         await store.getBundles((x: BundleView) => { sent.push(x.bytes); });
         expect(sent.length).toBe(4);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[0])).getHeader().getTimestamp()).toBe(START_MICROS1);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[1])).getHeader().getTimestamp()).toBe(START_MICROS2);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[2])).getHeader().getTimestamp()).toBe(NEXT_TS1);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[3])).getHeader().getTimestamp()).toBe(NEXT_TS2);
+        expect((unbundle(sent[0])).getHeader().getTimestamp()).toBe(START_MICROS1);
+        expect((unbundle(sent[1])).getHeader().getTimestamp()).toBe(START_MICROS2);
+        expect((unbundle(sent[2])).getHeader().getTimestamp()).toBe(NEXT_TS1);
+        expect((unbundle(sent[3])).getHeader().getTimestamp()).toBe(NEXT_TS2);
     });
 
     it(`${implName} test save/fetch container`, async () => {
@@ -109,12 +111,13 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         headerBuilder.setTimestamp(START_MICROS1);
         headerBuilder.setMedallion(MEDALLION1);
         bundleBuilder.setHeader(headerBuilder);
+        bundleBuilder.setVerifyKey(keyPair.publicKey);
         const changeBuilder = new ChangeBuilder();
         const containerBuilder = new ContainerBuilder();
         containerBuilder.setBehavior(Behavior.DIRECTORY);
         changeBuilder.setContainer(containerBuilder);
         bundleBuilder.getChangesMap().set(7, changeBuilder);
-        const decomposition = new Decomposition(bundleBuilder.serializeBinary());
+        const decomposition = new Decomposition(sign(bundleBuilder.serializeBinary(), keyPair.secretKey));
         const bundleInfo = await store.addBundle(decomposition);
         ensure(bundleInfo.medallion === MEDALLION1);
         ensure(bundleInfo.timestamp === START_MICROS1);
@@ -134,7 +137,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
             .setKey(wrapKey("abc"))
             .setValue(wrapValue("xyz"));
         const address = bundler.addEntry(entryBuilder);
-        bundler.seal({ medallion: 4, chainStart: 5, timestamp: 5 });
+        bundler.seal({ medallion: 4, chainStart: 5, timestamp: 5 }, keyPair);
         await store.addBundle(bundler);
         ensure(address.medallion === 4);
         ensure(address.timestamp === 5);

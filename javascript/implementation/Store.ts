@@ -11,6 +11,7 @@ import {
     AsOf,
     BundleView,
     BroadcastFunc,
+    KeyPair,
 } from "./typedefs";
 
 export interface Store {
@@ -112,4 +113,8 @@ export interface Store {
      * Closes the underlying data store.  Implicitly awaits on the `this.ready` promise.
      */
     close: () => Promise<void>;
+
+    saveKeyPair(keyPair: KeyPair): Promise<void>;
+
+    pullKeyPair(publicKey: Bytes): Promise<KeyPair>;
 }
