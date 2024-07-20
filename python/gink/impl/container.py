@@ -183,7 +183,7 @@ class Container(Addressable, ABC):
 
     @typechecked
     def _add_entry(self, *,
-                   value: Union[UserValue, Deletion, Inclusion, 'Container'],
+                   value: Union[UserValue, Deletion, Inclusion, 'Container', Muid],
                    key: Union[Muid, str, int, bytes, None, Chain,
                                 Tuple[Union['Container', Muid], Union['Container', Muid]],
                                 'Container'] = None,
@@ -233,12 +233,13 @@ class Container(Addressable, ABC):
             raise ValueError(f"Don't know how to add this key to gink: {key}")
 
         if isinstance(value, Container):
-            pointee_muid = value.get_muid()
-            if pointee_muid.medallion:
-                entry_builder.pointee.medallion = pointee_muid.medallion  # type: ignore
-            if pointee_muid.timestamp:
-                entry_builder.pointee.timestamp = pointee_muid.timestamp  # type: ignore
-            entry_builder.pointee.offset = pointee_muid.offset  # type: ignore
+            value = value.get_muid()
+        if isinstance(value, Muid):
+            if value.medallion:
+                entry_builder.pointee.medallion = value.medallion  # type: ignore
+            if value.timestamp:
+                entry_builder.pointee.timestamp = value.timestamp  # type: ignore
+            entry_builder.pointee.offset = value.offset  # type: ignore
         elif isinstance(value, (str, int, float, dict, tuple, list, bool, bytes, type(None), datetime)):
             encode_value(value, entry_builder.value)  # type: ignore # pylint: disable=maybe-no-member
         elif value == deletion:

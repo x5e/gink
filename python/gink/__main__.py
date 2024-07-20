@@ -9,6 +9,8 @@ from typing import Optional, Tuple, Union
 from importlib import import_module
 from os import environ
 from json import dumps
+import datetime # allows setting of datetime objects from CLI
+# TODO: don't import all of datetime
 
 from . import *
 from .impl.builders import BundleBuilder
