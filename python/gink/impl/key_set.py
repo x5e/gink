@@ -36,7 +36,7 @@ class KeySet(Container):
         comment: optional comment to add to the bundler
         """
         # if muid and muid.timestamp > 0 and contents:
-        # TODO [P3] check the store to make sure that the container is defined and compatible (possibly for set as well?)
+        # TODO [P3] check the store to make sure that the container is defined and compatible, possibly for set as well?
 
         immediate = False
         if bundler is None:
@@ -202,7 +202,12 @@ class KeySet(Container):
         self._database.bundle(bundler)
 
     @typechecked
-    def symmetric_difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+    def symmetric_difference_update(
+        self,
+        s: Iterable[UserKey], *,
+        bundler: Optional[Bundler]=None,
+        comment: Optional[str]=None
+    ):
         """ Updates the key set, keeping only elements found in either the key set or the specified set, not both. """
         sym_diff = self.symmetric_difference(s)
         iterator = self._database.get_store().get_keyed_entries(

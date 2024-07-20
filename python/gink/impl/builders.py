@@ -14,26 +14,21 @@ if TYPE_CHECKING:
         comment: str
         chain_start: int
 
-
     class ChangeBuilder(Message):
         entry: 'EntryBuilder'
         container: 'ContainerBuilder'
         movement: 'MovementBuilder'
 
-
     class BundleBuilder(Message):
         header: HeaderBuilder
         changes: List[ChangeBuilder]
 
-
     class SyncMessage(Message):
         bundle: bytes
-
 
     class Pair:
         left: 'MuidBuilder'
         rite: 'MuidBuilder'
-
 
     class EntryBuilder(Message):
         describing: 'MuidBuilder'

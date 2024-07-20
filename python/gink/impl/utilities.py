@@ -7,7 +7,7 @@ from functools import wraps
 from warnings import warn
 from random import randint
 from datetime import datetime, date, timedelta
-from re import fullmatch, IGNORECASE
+from re import fullmatch, IGNORECASE, sub
 from psutil import pid_exists
 from requests import get
 from authlib.jose import jwt, JsonWebKey, KeySet
@@ -23,10 +23,12 @@ from .builders import ClaimBuilder, BundleBuilder
 from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE
 from .builders import Behavior
 
+
 def make_auth_func(token: str) -> AuthFunc:
     def auth_func(data: str, *_) -> int:
-        return AUTH_FULL if fullmatch(f"token\s+{token}\s*", data, IGNORECASE) else AUTH_NONE
+        return AUTH_FULL if fullmatch(fr"token\s+{token}\s*", data, IGNORECASE) else AUTH_NONE
     return auth_func
+
 
 def encode_to_hex(string: str) -> str:
     """
@@ -35,12 +37,11 @@ def encode_to_hex(string: str) -> str:
     # Adding 0x so we can easily determine if a subprotocol is a hex string
     return "0x" + string.encode("utf-8").hex()
 
+
 def is_named_tuple(obj) -> bool:
     return (
-            isinstance(obj, tuple) and
-            hasattr(obj, '_asdict') and
-            hasattr(obj, '_fields')
-    )
+        isinstance(obj, tuple) and hasattr(obj, '_asdict') and hasattr(obj, '_fields'))
+
 
 def decode_from_hex(hex_str: str) -> str:
     """
@@ -51,7 +52,9 @@ def decode_from_hex(hex_str: str) -> str:
     string = bytes_obj.decode('utf-8')
     return string
 
+
 _last_time = get_time()
+
 
 def generate_timestamp() -> MuTimestamp:
     """ returns the current time in microseconds since epoch
@@ -68,12 +71,15 @@ def generate_timestamp() -> MuTimestamp:
     _last_time = now
     return now
 
+
 def generate_medallion() -> Medallion:
     return randint((2 ** 48) + 1, (2 ** 49) - 1)
+
 
 def get_identity() -> str:
     user_data = getpwuid(getuid())
     return "%s@%s" % (user_data[0], gethostname())
+
 
 def experimental(thing):
     warned = [False]
@@ -97,10 +103,12 @@ def experimental(thing):
     else:
         return wrapped
 
+
 def is_certainly_gone(process_id: int) -> bool:
     if not pid_exists(process_id):
         return True
     return False
+
 
 def create_claim(chain: Chain) -> ClaimBuilder:
     claim_builder = ClaimBuilder()
@@ -109,6 +117,7 @@ def create_claim(chain: Chain) -> ClaimBuilder:
     claim_builder.chain_start = chain.chain_start
     claim_builder.process_id = getpid()
     return claim_builder
+
 
 def resolve_timestamp(timestamp: GenericTimestamp) -> MuTimestamp:
     if isinstance(timestamp, str):
@@ -138,6 +147,7 @@ def resolve_timestamp(timestamp: GenericTimestamp) -> MuTimestamp:
         return generate_timestamp() + int(1e6 * timestamp)
     raise ValueError(f"don't know how to resolve {timestamp} into a timestamp")
 
+
 def normalize_pair(pair: Tuple) -> Tuple[Muid, Muid]:
     assert len(pair) == 2, "pair must be a tuple of 2 elements"
     left = None
@@ -155,10 +165,12 @@ def normalize_pair(pair: Tuple) -> Tuple[Muid, Muid]:
         raise ValueError("pair tuple can only contain 2 containers or muids")
     return left, rite
 
+
 # URL to get Google's public keys
 GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs'
 
 _public_keys: Optional[KeySet] = None
+
 
 def decode_and_verify_jwt(token: bytes, app_id: Optional[str] = None) -> dict:
     """ Get the useful claims from a jwt after deconstructing it. """
@@ -186,11 +198,20 @@ def decode_and_verify_jwt(token: bytes, app_id: Optional[str] = None) -> dict:
         result[key] = decoded[key]
     return result
 
+
 def generate_random_token() -> str:
     capitals = "ABCDEFGHJKLMNPQRSTVWXYZ"
     digits = "23456789"
     choices = capitals + digits
     return "T" + "".join([choice(choices) for _ in range(39)])
+
+
+def dedent(val: bytes) -> bytes:
+    val = sub(b" +", b" ", val)
+    val = sub(rb"\r?\n", b"\r\n", val)
+    val = val.lstrip()
+    return val
+
 
 def validate_bundle(bundle_builder: BundleBuilder) -> None:
     """ Validates the entries in a bundle. Throws a ValueError if the bundle is invalid for a container type. """

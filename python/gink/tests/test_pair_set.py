@@ -85,12 +85,12 @@ def test_dumps():
             vertex1 = Vertex(database=database)
             vertex2 = Vertex(database=database)
             vertex3 = Vertex(database=database)
-            pairset1 = PairSet(contents={"include": [(vertex1, vertex2), (vertex1, vertex3), (vertex2, vertex3)]}, database=database)
+            pairset1 = PairSet(contents={"include": [(vertex1, vertex2), (vertex1, vertex3), (vertex2, vertex3)]})
             assert pairset1.size() == 3
             dump = pairset1.dumps()
 
             pairset2 = eval(dump)
-            assert pairset2.size() == 3
+            assert pairset2.size() == 3, dump
 
 def test_contains_getpairs():
     """ tests the contains and get_pairs methods for pair sets """
@@ -100,7 +100,7 @@ def test_contains_getpairs():
             vertex1 = Vertex(database=database)
             vertex2 = Vertex(database=database)
             vertex3 = Vertex(database=database)
-            pairset1 = PairSet(contents={"include": [(vertex1, vertex2), (vertex1, vertex3), (vertex2, vertex3)]}, database=database)
+            pairset1 = PairSet(contents={"include": [(vertex1, vertex2), (vertex1, vertex3), (vertex2, vertex3)]})
             assert pairset1.size() == 3
 
             assert pairset1.contains(pair=(vertex1, vertex2))
