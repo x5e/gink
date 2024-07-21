@@ -120,11 +120,11 @@ class LmdbStore(AbstractStore):
     def get_edge_entries(
             self, *,
             as_of: MuTimestamp,
-            verb: Optional[Muid] = None,
+            edge_type: Optional[Muid] = None,
             source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:
-        if verb is None and source is None and target is None:
-            raise ValueError("need to specify verb or source or target")
+        if edge_type is None and source is None and target is None:
+            raise ValueError("need to specify edge_type or source or target")
         # TODO: add support for clear operation on verbs.
         asof_bytes = bytes(Muid(as_of, -1, -1))
         side_bytes = None
@@ -149,7 +149,7 @@ class LmdbStore(AbstractStore):
                     entry_muid = Muid.from_bytes(entry_bytes)
                     found_verb_muid = Muid.create(context=entry_muid, builder=entry_builder.container)
                     include = True
-                    if verb and found_verb_muid != verb:
+                    if edge_type and found_verb_muid != edge_type:
                         include = False
                     if include:
                         found_verb_bytes = bytes(found_verb_muid)
@@ -168,8 +168,8 @@ class LmdbStore(AbstractStore):
                     placed = side_cursor.next()
             else:
                 placement_cursor = trxn.cursor(self._placements)
-                assert verb
-                verb_bytes = bytes(verb)
+                assert edge_type
+                verb_bytes = bytes(edge_type)
                 placed = placement_cursor.set_range(verb_bytes)
                 while placed:
                     key, val = placement_cursor.item()
