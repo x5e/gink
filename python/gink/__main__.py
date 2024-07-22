@@ -28,6 +28,8 @@ parser.add_argument("--get", help="get a value from specified path and write to 
 parser.add_argument("--delete", help="delete the value at the specified key or path")
 parser.add_argument("--dump", nargs="?", const=True,
                     help="dump contents to stdout and exit (path or muid, or everything if blank)")
+parser.add_argument("--dump_to", type=Path, help="dump all database contents to file path and exit")
+parser.add_argument("--load", type=Path, help="path to a gink dump file to restore a database.")
 parser.add_argument("--blame", action="store_true", help="show blame information")
 parser.add_argument("--as_of", help="as-of time to use for dump or get operation")
 parser.add_argument("--mkdir", help="create a directory using path notation")
@@ -86,6 +88,20 @@ if args.dump:
             muid = Muid.from_str(args.dump)
             container = database.get_container(muid=muid)
         container.dump(as_of=args.as_of)
+    exit(0)
+
+if args.dump_to:
+    with open(args.dump_to, "w") as file:
+        database.dump(as_of=args.as_of, file=file)
+    logger.info("Dumped database from %s to %s", args.db_path, args.dump_to)
+    exit(0)
+
+if args.load:
+    if not args.db_path:
+        raise ValueError("must specify a database path to load a database dump")
+    with open(args.load, "r") as file:
+        exec(file.read())
+    logger.info("Loaded database from %s into %s", args.load, args.db_path)
     exit(0)
 
 if args.show_bundles:
