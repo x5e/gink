@@ -7,10 +7,9 @@ import {
     makeChainStart, extendChain, addTrxns, unbundle,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2, keyPair
 } from "./test_utils";
-import { muidToBuilder, ensure, wrapValue, matches, wrapKey } from "../implementation/utils";
+import { muidToBuilder, ensure, wrapValue, matches, wrapKey, signBundle, sodium_ready } from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
 import { HeaderBuilder } from "../implementation/builders";
-import { sign } from "tweetnacl";
 
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
@@ -31,6 +30,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     let store: Store;
 
     beforeEach(async () => {
+        await sodium_ready;
         store = await storeMaker();
         await store.ready;
     });
@@ -50,8 +50,8 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     */
 
     it(`${implName} ensure that it rejects when doesn't have chain start`, async () => {
-        const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
+        const chainStart = await makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
+        const secondTrxn = await extendChain("Hello, again!", chainStart, NEXT_TS1);
         let added: boolean = false;
         let barfed = false;
         try {
@@ -65,9 +65,9 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     });
 
     it(`${implName} test rejects missing link`, async () => {
-        const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
-        const thirdTrxn = extendChain("Hello, a third!", secondTrxn, NEXT_TS1 + 1);
+        const chainStart = await makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
+        const secondTrxn = await extendChain("Hello, again!", chainStart, NEXT_TS1);
+        const thirdTrxn = await extendChain("Hello, a third!", secondTrxn, NEXT_TS1 + 1);
         await store.addBundle(chainStart);
         let added: boolean = false;
         let barfed = false;
@@ -111,17 +111,19 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         headerBuilder.setTimestamp(START_MICROS1);
         headerBuilder.setMedallion(MEDALLION1);
         bundleBuilder.setHeader(headerBuilder);
-        bundleBuilder.setVerifyKey(keyPair.publicKey);
+        bundleBuilder.setVerifyKey((await keyPair).publicKey);
         const changeBuilder = new ChangeBuilder();
         const containerBuilder = new ContainerBuilder();
         containerBuilder.setBehavior(Behavior.DIRECTORY);
         changeBuilder.setContainer(containerBuilder);
         bundleBuilder.getChangesMap().set(7, changeBuilder);
-        const decomposition = new Decomposition(sign(bundleBuilder.serializeBinary(), keyPair.secretKey));
+        const decomposition = new Decomposition(
+            signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey, ));
         const bundleInfo = await store.addBundle(decomposition);
         ensure(bundleInfo.medallion === MEDALLION1);
         ensure(bundleInfo.timestamp === START_MICROS1);
-        const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
+        const containerBytes = await store.getContainerBytes(
+            { medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
         ensure(containerBytes);
         const containerBuilder2 = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
         ensure(containerBuilder2.getBehavior() === Behavior.DIRECTORY);
@@ -137,7 +139,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
             .setKey(wrapKey("abc"))
             .setValue(wrapValue("xyz"));
         const address = bundler.addEntry(entryBuilder);
-        bundler.seal({ medallion: 4, chainStart: 5, timestamp: 5 }, keyPair);
+        bundler.seal({ medallion: 4, chainStart: 5, timestamp: 5 }, await keyPair);
         await store.addBundle(bundler);
         ensure(address.medallion === 4);
         ensure(address.timestamp === 5);

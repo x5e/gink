@@ -2,7 +2,8 @@ import { Peer } from "./Peer";
 import {
     makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
     encodeToken, isAlive,
-    getIdentity
+    getIdentity,
+    createKeyPair
 } from "./utils";
 import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, AsOf, KeyPair, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
@@ -22,7 +23,6 @@ import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
-import { sign } from 'tweetnacl';
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -108,7 +108,7 @@ export class Database {
         } else {
             const medallion = makeMedallion();
             const chainStart = generateTimestamp();
-            const keyPair = sign.keyPair();
+            const keyPair = createKeyPair();
             await this.store.saveKeyPair(keyPair);
             this.keyPair = keyPair;
             const bundler = new Bundler(this.identity, medallion);

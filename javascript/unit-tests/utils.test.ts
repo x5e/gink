@@ -18,7 +18,7 @@ import { sign } from 'tweetnacl';
 it('sign', async function() {
     const pair = sign.keyPair();
     const regen = sign.keyPair.fromSecretKey(pair.secretKey);
-    console.log(`pair: ${pair.publicKey}`);
+    // console.log(`pair: ${pair.publicKey}`);
 });
 
 it('document', async function () {

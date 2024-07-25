@@ -14,10 +14,6 @@ it('set and get Basic data', async function () {
         // set a value
         await schema.set("a key", "a value");
 
-        // check that the desired result exists in the database
-        const result = await schema.get("a key");
-        ensure(result === "a value");
-
         const myKey = new Uint8Array(3);
         myKey[0] = 94;
         myKey[2] = 255;
@@ -29,6 +25,12 @@ it('set and get Basic data', async function () {
             const allEntries = await store.getAllEntries();
             throw new Error("didnt' get what i expected");
         }
+
+        // check that the desired result exists in the database
+        const result = await schema.get("a key");
+        ensure(result === "a value");
+
+
         await store.close();
     }
 });

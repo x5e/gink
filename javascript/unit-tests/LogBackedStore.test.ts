@@ -1,4 +1,5 @@
 import { Database, LogBackedStore, ensure } from "../implementation/main";
+import { sodium_ready } from "../implementation/utils";
 import { testStore } from "./Store.test";
 import { existsSync, unlinkSync, readFileSync } from "fs";
 

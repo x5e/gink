@@ -8,7 +8,9 @@ import {
     unwrapValue,
     getActorId,
     muidTupleToString,
-    muidTupleToMuid
+    muidTupleToMuid,
+    verifyBundle,
+    sodium_ready
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {
@@ -51,7 +53,6 @@ import { Store } from "./Store";
 import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { Retrieval } from "./Retrieval";
-import { sign } from 'tweetnacl';
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
     "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" |
@@ -86,6 +87,7 @@ export class IndexedDbStore implements Store {
     }
 
     private async initialize(indexedDbName: string, reset: boolean): Promise<void> {
+        await sodium_ready;
         if (reset) {
             await deleteDB(indexedDbName, {
                 blocked() {
@@ -354,10 +356,7 @@ export class IndexedDbStore implements Store {
         } else {
             verifyKey = await wrappedTransaction.objectStore('verifyKeys').get(chainInfo);
         }
-        const verified = sign.open(bundleBytes, verifyKey);
-        if (verified === null) {
-            throw new Error("failed to verify signature");
-        }
+        verifyBundle(bundleBytes, verifyKey);
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring parsing again.

@@ -1,7 +1,6 @@
 import { Muid, BundleInfo, Medallion, Timestamp, BundleView, BundleBytes, KeyPair } from "./typedefs";
 import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder, HeaderBuilder } from "./builders";
-import { ensure } from "./utils";
-import { sign } from 'tweetnacl';
+import { ensure, signBundle } from "./utils";
 
 export class Bundler implements BundleView {
     // note: this class is unit tested as part of Store.test.ts
@@ -108,6 +107,6 @@ export class Bundler implements BundleView {
         if (bundleInfo.chainStart === bundleInfo.timestamp) {
             this.bundleBuilder.setVerifyKey(keyPair.publicKey);
         }
-        this.bundleBytes = sign(this.bundleBuilder.serializeBinary(), keyPair.secretKey);
+        this.bundleBytes = signBundle(this.bundleBuilder.serializeBinary(), keyPair.secretKey, );
     }
 }

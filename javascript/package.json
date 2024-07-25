@@ -42,15 +42,20 @@
   },
   "homepage": "https://github.com/x5e/gink#readme",
   "dependencies": {
+    "@types/libsodium-wrappers": "^0.7.14",
     "argparse": "^2.0.1",
     "chrome-remote-interface": "^0.32.2",
+    "crypto-browserify": "^3.12.0",
     "fake-indexeddb": "^4.0.1",
     "find-process": "^1.4.7",
     "fs-ext": "^2.0.0",
     "google-protobuf": "^3.21.2",
     "idb": "^7.1.1",
     "jstreemap": "^1.28.2",
+    "libsodium-wrappers": "^0.7.14",
+    "stream-browserify": "^3.0.0",
     "tweetnacl": "^1.0.3",
+    "vm-browserify": "^1.1.2",
     "websocket": "^1.0.34"
   },
   "devDependencies": {

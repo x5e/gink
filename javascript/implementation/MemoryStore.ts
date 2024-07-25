@@ -11,6 +11,8 @@ import {
     strToMuid,
     muidToTuple,
     bytesToHex,
+    verifyBundle,
+    sodium_ready,
 } from "./utils";
 import {
     AsOf,
@@ -52,7 +54,6 @@ import {
     storageKeyToString,
 } from "./store_utils";
 import { Retrieval } from "./Retrieval";
-import { sign } from 'tweetnacl';
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
@@ -74,7 +75,7 @@ export class MemoryStore implements Store {
     private verifyKeys: Map<string, Bytes> = new Map();
     private secretKeys: Map<string, KeyPair> = new Map();
     constructor(private keepingHistory = true) {
-        this.ready = Promise.resolve();
+        this.ready = sodium_ready;
     }
     saveKeyPair(keyPair: KeyPair): Promise<void> {
         this.secretKeys.set(bytesToHex(keyPair.publicKey), keyPair);
@@ -170,10 +171,7 @@ export class MemoryStore implements Store {
         } else {
             verifyKey = this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`);
         }
-        const verified = sign.open(bundle.bytes, verifyKey);
-        if (verified === null) {
-            throw new Error("failed to verify signature");
-        }
+        verifyBundle(bundle.bytes, verifyKey);
 
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const bundleKey: BundleInfoTuple = MemoryStore.bundleInfoToKey(bundleInfo);

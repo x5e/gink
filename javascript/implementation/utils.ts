@@ -13,6 +13,8 @@ import {
     Entry,
     ActorId,
     Timestamp,
+    Bytes,
+    KeyPair,
 } from "./typedefs";
 import {
     MuidBuilder,
@@ -24,8 +26,14 @@ import {
 } from "./builders";
 
 import { hostname, userInfo } from 'os';
-
 import { TreeMap, MapIterator } from 'jstreemap';
+//import { sign } from 'tweetnacl';
+
+import {ready as sodium_ready, crypto_sign_open,
+    crypto_sign_keypair,
+} from 'libsodium-wrappers';
+
+export { sodium_ready };
 
 export function toLastWithPrefixBeforeSuffix<V>(
     map: TreeMap<string, V>, prefix: string, suffix: string = '~'):
@@ -581,4 +589,27 @@ export function getType(extension: string) {
         throw new Error(`type not found for extension: ${extension}`);
     }
     return result;
+}
+
+export function mergeBytes(arrayOne: Bytes, arrayTwo: Bytes): Bytes {
+    const mergedArray = new Uint8Array(arrayOne.length + arrayTwo.length);
+    mergedArray.set(arrayOne);
+    mergedArray.set(arrayTwo, arrayOne.length);
+    return mergedArray;
+}
+
+export function signBundle(message: Bytes, secretKey: Bytes): Bytes {
+    if (secretKey.length != 64) throw new Error("secret key not appropriate length!");
+    return mergeBytes(secretKey, message);
+    //return sign(message, secretKey);
+}
+
+export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {
+    //crypto_sign_open(signedBundle, verifyKey);
+}
+
+export function createKeyPair() : KeyPair {
+    // return sign.keyPair();
+    const result = crypto_sign_keypair();
+    return {publicKey: result.publicKey, secretKey: result.privateKey}
 }
