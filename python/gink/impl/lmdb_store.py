@@ -674,7 +674,8 @@ class LmdbStore(AbstractStore):
                 if placement_key.expiry and (placement_key.expiry < as_of):
                     placed = placements_cursor.prev() if desc else placements_cursor.next()
                     continue  # this entry has expired by the as_of time
-                found_removal = to_last_with_prefix(removal_cursor, prefix=prefix + bytes(placement_key.get_positioner()))
+                found_removal = to_last_with_prefix(
+                    removal_cursor, prefix=prefix + bytes(placement_key.get_positioner()))
                 if found_removal and Muid.from_bytes(found_removal[32:]).timestamp < as_of:
                     placed = placements_cursor.prev() if desc else placements_cursor.next()
                     continue  # this entry at this position was (re)moved by this time

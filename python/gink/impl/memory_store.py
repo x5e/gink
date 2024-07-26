@@ -403,7 +403,8 @@ class MemoryStore(AbstractStore):
 
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
-        return self.get_directory_reset_changes(to_time=to_time, container=container, user_key=user_key, recursive=recursive)
+        return self.get_directory_reset_changes(
+            to_time=to_time, container=container, user_key=user_key, recursive=recursive)
 
     def get_directory_reset_changes(
             self,

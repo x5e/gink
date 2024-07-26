@@ -154,7 +154,6 @@ class Placement(NamedTuple):
         assert not isinstance(self.middle, QueueMiddleKey)
         return self.middle
 
-
     @staticmethod
     def from_builder(builder: EntryBuilder, new_info: BundleInfo, offset: int):
         """ Create an EntryStorageKey from an Entry itself, plus address information. """
@@ -196,7 +195,7 @@ class Placement(NamedTuple):
         entry_muid_bytes = data[-24:-8]
         expiry_bytes = data[-8:]
         entry_muid = Muid.from_bytes(entry_muid_bytes)
-        middle_key: Union[QueueMiddleKey, MuTimestamp,  UserKey, Muid, None, Tuple[Muid, Muid]]
+        middle_key: Union[QueueMiddleKey, MuTimestamp, UserKey, Muid, None, Tuple[Muid, Muid]]
         if using in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(middle_key_bytes)
         elif using in (SEQUENCE, EDGE_TYPE):
@@ -227,7 +226,7 @@ class Placement(NamedTuple):
             parts.append(encode_key(self.middle))
         elif isinstance(self.middle, tuple):
             assert len(self.middle) == 2
-            if not isinstance(self.middle[0], Muid) and not isinstance(self.middle[1], Muid): # type: ignore
+            if not isinstance(self.middle[0], Muid) and not isinstance(self.middle[1], Muid):  # type: ignore
                 # If self.middle is a container (a vertex)/not a muid
                 assert not isinstance(self.middle[0], int)
                 parts.append(self.middle[0]._muid)
@@ -263,7 +262,11 @@ class PlacementBuilderPair(NamedTuple):
     builder: EntryBuilder
 
 
-def create_deleting_entry(muid: Muid, key: Union[UserKey, None, Muid, Tuple[Muid, Muid]], behavior: int) -> EntryBuilder:
+def create_deleting_entry(
+        muid: Muid,
+        key: Union[UserKey, None, Muid, Tuple[Muid, Muid]],
+        behavior: int,
+) -> EntryBuilder:
     """ creates an entry that will delete the given key from the container
 
         I'm allowing a null key in the argument then barfing if it's null
@@ -357,7 +360,7 @@ def decode_value(value_builder: ValueBuilder) -> UserValue:
     if value_builder.HasField("timestamp"):
         return DateTime.fromtimestamp(value_builder.timestamp * 1e-6)
     if value_builder.HasField("tuple"):
-        return tuple([decode_value(x) for x in value_builder.tuple.values]) # type: ignore
+        return tuple([decode_value(x) for x in value_builder.tuple.values])  # type: ignore
     if value_builder.HasField("document"):
         result = {}
         for i, key in enumerate(value_builder.document.keys):
