@@ -19,7 +19,12 @@ from random import choice
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
 from .muid import Muid
-from .builders import ClaimBuilder, BundleBuilder
+from .builders import (
+    ClaimBuilder,
+    BundleBuilder,
+    ChangeBuilder,
+    EntryBuilder,
+)
 from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE
 from .builders import Behavior
 
@@ -213,29 +218,100 @@ def dedent(val: bytes) -> bytes:
     return val
 
 
-def validate_bundle(bundle_builder: BundleBuilder) -> None:
-    """ Validates the entries in a bundle. Throws a ValueError if the bundle is invalid for a container type. """
-    # TODO: finish this
-    for change in bundle_builder.changes:
-        behavior = 1
-        assert behavior > 0
-        if behavior == Behavior.BOX:
-            pass
-        elif behavior == Behavior.SEQUENCE:
-            pass
-        elif behavior == Behavior.PAIR_MAP:
-            pass
-        elif behavior == Behavior.DIRECTORY:
-            pass
-        elif behavior == Behavior.KEY_SET:
-            pass
-        elif behavior == Behavior.GROUP:
-            pass
-        elif behavior == Behavior.PAIR_SET:
-            pass
-        elif behavior == Behavior.PROPERTY:
-            pass
-        elif behavior == Behavior.BRAID:
-            pass
-        else:
-            raise ValueError(f"Invalid behavior: {behavior}")
+user_key_fields = ["number", "octets", "characters"]
+user_value_fields = ["integer", "floating", "characters", "special", "timestamp", "document", "tuple", "octets"]
+
+def validate_bundle_entries(bundle_builder: BundleBuilder) -> None:
+    """Ensures entries in the bundle are valid for the container behavior. Throws a ValueError if not."""
+    changes = bundle_builder.changes.values() # type: ignore
+    for change in changes:
+        assert isinstance(change, ChangeBuilder)
+
+        if change.HasField("entry"):
+            assert isinstance(change.entry, EntryBuilder)
+            # Value is a oneof field, so the proto will have already ensured this is only one item.
+            value_field_name: str = ""
+            key_field_name: str = ""
+            try:
+                value_field_name = change.entry.value.ListFields()[0][0].name
+            except IndexError:
+                pass
+            try:
+                key_field_name = change.entry.key.ListFields()[0][0].name
+            except IndexError:
+                pass
+
+            if change.entry.behavior == Behavior.BOX:
+                if change.entry.HasField("key"):
+                    raise ValueError("Bundle validation failed.")
+
+                if not ((value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee")):
+                    raise ValueError("Bundle validation failed.")
+
+            elif change.entry.behavior == Behavior.SEQUENCE:
+                if change.entry.HasField("key"):
+                    raise ValueError("Bundle validation failed.")
+                if not ((value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee")):
+                    raise ValueError("Bundle validation failed.")
+
+            elif change.entry.behavior == Behavior.PAIR_MAP:
+                if not change.entry.HasField("pair"):
+                    raise ValueError("Bundle validation failed.")
+                if not ((value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee") or \
+                change.entry.deletion):
+                    raise ValueError("Bundle validation failed.")
+
+            elif change.entry.behavior == Behavior.DIRECTORY:
+                if not key_field_name in user_key_fields:
+                    raise ValueError("Bundle validation failed.")
+                if not ((value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee") or \
+                change.entry.deletion):
+                    raise ValueError("Bundle validation failed.")
+
+            elif change.entry.behavior == Behavior.KEY_SET:
+                if not key_field_name in user_key_fields:
+                    raise ValueError("Bundle validation failed.")
+                if change.entry.HasField("value"):
+                    raise ValueError("Bundle validation failed.")
+
+            elif change.entry.behavior == Behavior.GROUP:
+                if not change.entry.HasField("describing"):
+                    raise ValueError("Bundle validation failed.")
+                if change.entry.HasField("value"):
+                    raise ValueError("Bundle validation failed.")
+
+            elif change.entry.behavior == Behavior.PAIR_SET:
+                if not change.entry.HasField("pair"):
+                    raise ValueError("Bundle validation failed.")
+                if change.entry.HasField("value"):
+                    raise ValueError("Bundle validation failed.")
+
+            elif change.entry.behavior == Behavior.PROPERTY:
+                if not change.entry.HasField("describing"):
+                    raise ValueError("Bundle validation failed.")
+                if not ((value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee") or \
+                change.entry.deletion):
+                    raise ValueError("Bundle validation failed.")
+
+            elif change.entry.behavior == Behavior.BRAID:
+                if not change.entry.HasField("describing"):
+                    raise ValueError("Bundle validation failed.")
+                if not (value_field_name in ("integer", "floating") or \
+                change.entry.deletion):
+                    raise ValueError("Bundle validation failed.")
+
+            elif change.entry.behavior == Behavior.VERTEX:
+                if not change.entry.HasField("container"):
+                    raise ValueError("Bundle validation failed.")
+
+            elif change.entry.behavior == Behavior.EDGE_TYPE:
+                if not change.entry.HasField("pair"):
+                    raise ValueError("Bundle validation failed.")
+
+            else:
+                raise ValueError(f"unknown behavior: {change.entry.behavior}")
