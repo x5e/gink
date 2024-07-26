@@ -408,6 +408,8 @@ export const parseByte = (twoHexDigits: string) => parseInt(twoHexDigits, 16);
 
 export const hexToBytes = (hex: string) => Uint8Array.from(hex.match(/.{1,2}/g).map(parseByte));
 
+export const emptyBytes = new Uint8Array(0);
+
 export function timestampToString(timestamp: Timestamp): string {
     return intToHex(timestamp, 14);
 }
@@ -612,7 +614,7 @@ export function signBundle(message: Bytes, secretKey: Bytes): Bytes {
         // return crypto_sign(message, secretKey);
     }
     else
-        return mergeBytes(secretKey, message);
+        return message; // mergeBytes(secretKey, message);
 }
 
 export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {

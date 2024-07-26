@@ -13,6 +13,7 @@ import {
     bytesToHex,
     verifyBundle,
     librariesReady,
+    emptyBytes,
 } from "./utils";
 import {
     AsOf,
@@ -162,14 +163,14 @@ export class MemoryStore implements Store {
             this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId());
         }
 
-        let verifyKey: Bytes;
+        let verifyKey: Bytes = emptyBytes;
         if (bundleInfo.timestamp === bundleInfo.chainStart) {
             this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
-            verifyKey = bundleBuilder.getVerifyKey();
+            //verifyKey = bundleBuilder.getVerifyKey();
             // ensure(verifyKey);
-            this.verifyKeys.set(`${chainInfo[0]},${chainInfo[1]}`, verifyKey);
+            //this.verifyKeys.set(`${chainInfo[0]},${chainInfo[1]}`, verifyKey);
         } else {
-            verifyKey = this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`);
+            //verifyKey = this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`);
         }
         verifyBundle(bundle.bytes, verifyKey);
 
