@@ -105,8 +105,9 @@ export class Bundler implements BundleView {
         headerBuilder.setComment(this.bundleInfo.comment);
         this.bundleBuilder.setHeader(headerBuilder);
         if (bundleInfo.chainStart === bundleInfo.timestamp) {
-            this.bundleBuilder.setVerifyKey(keyPair.publicKey);
+            // this.bundleBuilder.setVerifyKey(keyPair.publicKey);
         }
-        this.bundleBytes = signBundle(this.bundleBuilder.serializeBinary(), keyPair.secretKey, );
+        // this.bundleBytes = signBundle(this.bundleBuilder.serializeBinary(), keyPair.secretKey,);
+        this.bundleBytes = this.bundleBuilder.serializeBinary();
     }
 }
