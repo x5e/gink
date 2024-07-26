@@ -12,7 +12,7 @@ import {
     muidToTuple,
     bytesToHex,
     verifyBundle,
-    sodium_ready,
+    librariesReady,
 } from "./utils";
 import {
     AsOf,
@@ -75,7 +75,7 @@ export class MemoryStore implements Store {
     private verifyKeys: Map<string, Bytes> = new Map();
     private secretKeys: Map<string, KeyPair> = new Map();
     constructor(private keepingHistory = true) {
-        this.ready = sodium_ready;
+        this.ready = librariesReady;
     }
     saveKeyPair(keyPair: KeyPair): Promise<void> {
         this.secretKeys.set(bytesToHex(keyPair.publicKey), keyPair);

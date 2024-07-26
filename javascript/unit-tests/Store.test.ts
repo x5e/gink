@@ -7,7 +7,9 @@ import {
     makeChainStart, extendChain, addTrxns, unbundle,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2, keyPair
 } from "./test_utils";
-import { muidToBuilder, ensure, wrapValue, matches, wrapKey, signBundle, sodium_ready } from "../implementation/utils";
+import { muidToBuilder, ensure, wrapValue, matches, wrapKey, signBundle,
+
+} from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
 import { HeaderBuilder } from "../implementation/builders";
 
@@ -30,7 +32,6 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     let store: Store;
 
     beforeEach(async () => {
-        await sodium_ready;
         store = await storeMaker();
         await store.ready;
     });

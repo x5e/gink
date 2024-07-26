@@ -10,7 +10,7 @@ import {
     muidTupleToString,
     muidTupleToMuid,
     verifyBundle,
-    sodium_ready
+    librariesReady,
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {
@@ -87,7 +87,7 @@ export class IndexedDbStore implements Store {
     }
 
     private async initialize(indexedDbName: string, reset: boolean): Promise<void> {
-        await sodium_ready;
+        await librariesReady;
         if (reset) {
             await deleteDB(indexedDbName, {
                 blocked() {

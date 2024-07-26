@@ -27,13 +27,19 @@ import {
 
 import { hostname, userInfo } from 'os';
 import { TreeMap, MapIterator } from 'jstreemap';
-//import { sign } from 'tweetnacl';
 
+/*
 import {ready as sodium_ready, crypto_sign_open,
     crypto_sign_keypair,
+    crypto_sign,
 } from 'libsodium-wrappers';
+*/
 
-export { sodium_ready };
+export const librariesReady = Promise.resolve();
+
+const usingCrypto = false;
+
+export function noOp() { ensure(arguments.length > 0); }
 
 export function toLastWithPrefixBeforeSuffix<V>(
     map: TreeMap<string, V>, prefix: string, suffix: string = '~'):
@@ -66,8 +72,6 @@ export function generateTimestamp() {
     lastTime = current;
     return current;
 }
-
-export function noOp(_?) { ensure(true); }
 
 /**
  * Randomly selects a number that can be used as a medallion.
@@ -396,9 +400,13 @@ export function intToHex(value: number, padding?: number): string {
     return twosComplement.toString(16).padStart(digits, '0').toUpperCase();
 }
 
-export function bytesToHex(bytes: Uint8Array) {
-    return Array.from(bytes).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join("");
-}
+export const oneByteToHex = (byte: number) => byte.toString(16).padStart(2, '0').toUpperCase();
+
+export const bytesToHex = (bytes: Uint8Array) => Array.from(bytes).map(oneByteToHex).join("");
+
+export const parseByte = (twoHexDigits: string) => parseInt(twoHexDigits, 16);
+
+export const hexToBytes = (hex: string) => Uint8Array.from(hex.match(/.{1,2}/g).map(parseByte));
 
 export function timestampToString(timestamp: Timestamp): string {
     return intToHex(timestamp, 14);
@@ -600,16 +608,29 @@ export function mergeBytes(arrayOne: Bytes, arrayTwo: Bytes): Bytes {
 
 export function signBundle(message: Bytes, secretKey: Bytes): Bytes {
     if (secretKey.length != 64) throw new Error("secret key not appropriate length!");
-    return mergeBytes(secretKey, message);
-    //return sign(message, secretKey);
+    if (usingCrypto) {
+        // return crypto_sign(message, secretKey);
+    }
+    else
+        return mergeBytes(secretKey, message);
 }
 
 export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {
-    //crypto_sign_open(signedBundle, verifyKey);
+    if (usingCrypto) {
+        //crypto_sign_open(signedBundle, verifyKey);
+    }
 }
 
 export function createKeyPair() : KeyPair {
-    // return sign.keyPair();
-    const result = crypto_sign_keypair();
-    return {publicKey: result.publicKey, secretKey: result.privateKey}
+    if (usingCrypto) {
+        // const result = crypto_sign_keypair();
+        // return {publicKey: result.publicKey, secretKey: result.privateKey}
+    } else {
+        const x = '5FF46DD6A05CCA09822D96CA4AF957D4ED22E059B1D82AA8DD692FF092B5A15C';
+        const y = '26F20F23EB12D508DF46DB9EE51BCA3E005AD00845F8A92A1E0E3E2440FE35E0';
+        return {
+            secretKey: hexToBytes( x + y),
+            publicKey: hexToBytes(y),
+        }
+    }
 }

@@ -11,14 +11,22 @@ import {
     encodeToken,
     decodeToken,
     toLastWithPrefixBeforeSuffix,
+    createKeyPair,
+    librariesReady,
+    bytesToHex,
 } from "../implementation/utils";
 import { TreeMap } from 'jstreemap';
-import { sign } from 'tweetnacl';
 
-it('sign', async function() {
-    const pair = sign.keyPair();
-    const regen = sign.keyPair.fromSecretKey(pair.secretKey);
-    // console.log(`pair: ${pair.publicKey}`);
+it('generate', async function() {
+    await librariesReady;
+    const pair = createKeyPair();
+    ensure(pair.secretKey.length == 64);
+    ensure(pair.publicKey.length == 32);
+    const secretHex = bytesToHex(pair.secretKey);
+    const publicHex = bytesToHex(pair.publicKey);
+    if (false) {
+        console.log(`${secretHex}\n${publicHex}`);
+    }
 });
 
 it('document', async function () {

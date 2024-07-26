@@ -2,7 +2,7 @@ import { Medallion, ChainStart, Timestamp, BundleView } from "../implementation/
 import { Store } from "../implementation/Store";
 import { BundleBuilder, HeaderBuilder } from "../implementation/builders";
 import { Decomposition } from "../implementation/Decomposition";
-import { createKeyPair, signBundle, sodium_ready } from "../implementation/utils";
+import { createKeyPair, signBundle, librariesReady } from "../implementation/utils";
 
 export const MEDALLION1 = 425579549941797;
 export const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;
@@ -12,7 +12,7 @@ export const MEDALLION2 = 458510670893748;
 export const START_MICROS2 = Date.parse("2022-02-20 00:38:21") * 1000;
 export const NEXT_TS2 = Date.parse("2022-02-20 00:40:12") * 1000;
 
-export const keyPair = sodium_ready.then(() => createKeyPair());
+export const keyPair = librariesReady.then(() => createKeyPair());
 
 export async function makeChainStart(
         comment: string, medallion: Medallion, chainStart: ChainStart): Promise<BundleView> {
