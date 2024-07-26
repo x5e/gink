@@ -82,14 +82,14 @@ class MemoryStore(AbstractStore):
     def get_edge_entries(
             self, *,
             as_of: MuTimestamp,
-            verb: Optional[Muid] = None,
+            edge_type: Optional[Muid] = None,
             source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:
-        if verb is None:
+        if edge_type is None:
             raise NotImplementedError("edge scans without an edge type aren't currently supported in memory store")
-        verb_bytes = bytes(verb)
-        for placement_bytes in self._placements.irange(minimum=verb_bytes):
-            if not placement_bytes.startswith(verb_bytes):
+        edge_type_bytes = bytes(edge_type)
+        for placement_bytes in self._placements.irange(minimum=edge_type_bytes):
+            if not placement_bytes.startswith(edge_type_bytes):
                 break
             placement = Placement.from_bytes(placement_bytes)
             if placement.placer.timestamp > as_of:

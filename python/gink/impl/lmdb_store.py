@@ -120,12 +120,12 @@ class LmdbStore(AbstractStore):
     def get_edge_entries(
             self, *,
             as_of: MuTimestamp,
-            verb: Optional[Muid] = None,
+            edge_type: Optional[Muid] = None,
             source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:
-        if verb is None and source is None and target is None:
-            raise ValueError("need to specify verb or source or target")
-        # TODO: add support for clear operation on verbs.
+        if edge_type is None and source is None and target is None:
+            raise ValueError("need to specify edge_type or source or target")
+        # TODO: add support for clear operation on edge types.
         asof_bytes = bytes(Muid(as_of, -1, -1))
         side_bytes = None
         if source is not None:
@@ -147,13 +147,13 @@ class LmdbStore(AbstractStore):
                     entry_builder_bytes = trxn.get(entry_bytes, db=self._entries)
                     entry_builder = EntryBuilder.FromString(entry_builder_bytes)
                     entry_muid = Muid.from_bytes(entry_bytes)
-                    found_verb_muid = Muid.create(context=entry_muid, builder=entry_builder.container)
+                    found_edge_type_muid = Muid.create(context=entry_muid, builder=entry_builder.container)
                     include = True
-                    if verb and found_verb_muid != verb:
+                    if edge_type and found_edge_type_muid != edge_type:
                         include = False
                     if include:
-                        found_verb_bytes = bytes(found_verb_muid)
-                        found_removal = to_last_with_prefix(removal_cursor, found_verb_bytes + key[-16:])
+                        found_edge_type_bytes = bytes(found_edge_type_muid)
+                        found_removal = to_last_with_prefix(removal_cursor, found_edge_type_bytes + key[-16:])
                         if found_removal:
                             include = False
                     if include:
@@ -168,17 +168,17 @@ class LmdbStore(AbstractStore):
                     placed = side_cursor.next()
             else:
                 placement_cursor = trxn.cursor(self._placements)
-                assert verb
-                verb_bytes = bytes(verb)
-                placed = placement_cursor.set_range(verb_bytes)
+                assert edge_type
+                edge_type_bytes = bytes(edge_type)
+                placed = placement_cursor.set_range(edge_type_bytes)
                 while placed:
                     key, val = placement_cursor.item()
-                    if not key.startswith(verb_bytes):
+                    if not key.startswith(edge_type_bytes):
                         break
-                    if not key < verb_bytes + asof_bytes:
+                    if not key < edge_type_bytes + asof_bytes:
                         break
                     placement = Placement.from_bytes(key, using=EDGE_TYPE)
-                    removals_lookup = verb_bytes + bytes(placement.placer)
+                    removals_lookup = edge_type_bytes + bytes(placement.placer)
                     include = True
                     found_removal = to_last_with_prefix(removal_cursor, removals_lookup)
                     if found_removal:

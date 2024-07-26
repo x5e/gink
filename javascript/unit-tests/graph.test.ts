@@ -22,8 +22,8 @@ it('isAlive and remove', async function () {
     }
 });
 
-it('verb.createEdge', async function () {
-    for (const store of [new IndexedDbStore('verb.createEdge', true), new MemoryStore(true)]) {
+it('edge_type.createEdge', async function () {
+    for (const store of [new IndexedDbStore('edge_type.createEdge', true), new MemoryStore(true)]) {
         const instance = new Database(store);
         await instance.ready;
         const vertex1 = await instance.createVertex();
@@ -47,13 +47,13 @@ it('from_to', async function () {
         const vertex1 = await instance.createVertex();
         const vertex2 = await instance.createVertex();
         const vertex3 = await instance.createVertex();
-        const verb = await instance.createEdgeType();
-        const edge12 = await verb.createEdge(vertex1, vertex2);
-        const edge13 = await verb.createEdge(vertex1, vertex3);
-        const edge11 = await verb.createEdge(vertex1, vertex1);
-        const edge21 = await verb.createEdge(vertex2, vertex1);
-        const edge22 = await verb.createEdge(vertex2, vertex2);
-        const edge23 = await verb.createEdge(vertex2, vertex3);
+        const edge_type = await instance.createEdgeType();
+        const edge12 = await edge_type.createEdge(vertex1, vertex2);
+        const edge13 = await edge_type.createEdge(vertex1, vertex3);
+        const edge11 = await edge_type.createEdge(vertex1, vertex1);
+        const edge21 = await edge_type.createEdge(vertex2, vertex1);
+        const edge22 = await edge_type.createEdge(vertex2, vertex2);
+        const edge23 = await edge_type.createEdge(vertex2, vertex3);
 
         /*
         const entries = await store.getAllEntries();

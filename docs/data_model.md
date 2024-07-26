@@ -307,9 +307,9 @@ real-world object, which then can be described via properties or pointed to via 
 Entries for nouns can either soft delete them, effectively removing them from the graph,
 or to restore them (if deletion=false in an entry).
 
-### VERB
+### EDGE_TYPE
 
-A containers with the `VERB` behavior allow links (edges) between database objects to be
+A containers with the `EDGE_TYPE` behavior allow links (edges) between database objects to be
 created.  Multiple links can exist between two objects, and these links are ordered in time
 like sequence entries.  They can be reordered or removed with movement messages.  It's expected
 that this data type will be used to implement edges in for graph database type applications

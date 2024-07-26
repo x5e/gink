@@ -14,8 +14,8 @@ message Entry {
     oneof subject {
         // some of these only apply to certain container types:
         Key key = 3;            // KEY_SET, DIRECTORY
-        Pair pair = 4;          // PAIR_SET, PAIR_MAP, VERB
-        Muid describing = 6;    // PROPERTY, GROUP, VERB
+        Pair pair = 4;          // PAIR_SET, PAIR_MAP, EDGE_TYPE
+        Muid describing = 6;    // PROPERTY, GROUP, EDGE_TYPE
     }
 
     oneof contains {

@@ -71,10 +71,10 @@ class AbstractStore(BundleStore, Generic[Lock]):
     def get_edge_entries(
             self, *,
             as_of: MuTimestamp,
-            verb: Optional[Muid] = None,
+            edge_type: Optional[Muid] = None,
             source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:
-        """ Returns all the edge entries with specified verb and/or subject and/or object. """
+        """ Returns all the edge entries with specified edge_type and/or subject and/or object. """
 
     @abstractmethod
     def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:

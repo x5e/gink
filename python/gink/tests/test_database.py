@@ -165,7 +165,7 @@ def test_dump():
             g = Group(contents={"include": {box_muid, ps_muid}, "exclude": {pm_muid}}, database=database)
             group_dump = g.dumps()
             group_muid = g.get_muid()
-            # TODO: vertex, verb, edge
+            # TODO: vertex, edge_type, edge
 
             string_io = StringIO()
             database.dump(file=string_io)
