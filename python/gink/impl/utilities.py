@@ -201,7 +201,7 @@ user_key_fields = ["number", "octets", "characters"]
 user_value_fields = ["integer", "floating", "characters", "special", "timestamp", "document", "tuple", "octets"]
 
 def validate_bundle_entries(bundle_builder: BundleBuilder) -> None:
-    """Asserts that the entries in the bundle are valid for the container behavior."""
+    """Ensures entries in the bundle are valid for the container behavior. Throws a ValueError if not."""
     changes = bundle_builder.changes.values() # type: ignore
     for change in changes:
         assert isinstance(change, ChangeBuilder)
@@ -221,55 +221,76 @@ def validate_bundle_entries(bundle_builder: BundleBuilder) -> None:
                 pass
 
             if change.entry.behavior == Behavior.BOX:
-                assert not change.entry.HasField("key")
-                assert (value_field_name in user_value_fields) or \
-                change.entry.HasField("pointee")
+                if change.entry.HasField("key"):
+                    raise ValueError("Bundle validation failed.")
+
+                if not ((value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee")):
+                    raise ValueError("Bundle validation failed.")
 
             elif change.entry.behavior == Behavior.SEQUENCE:
-                assert not change.entry.HasField("key")
-                assert (value_field_name in user_value_fields) or \
-                change.entry.HasField("pointee")
+                if change.entry.HasField("key"):
+                    raise ValueError("Bundle validation failed.")
+                if not ((value_field_name in user_value_fields) or \
+                change.entry.HasField("pointee")):
+                    raise ValueError("Bundle validation failed.")
 
             elif change.entry.behavior == Behavior.PAIR_MAP:
-                assert change.entry.HasField("pair")
-                assert (value_field_name in user_value_fields) or \
+                if not change.entry.HasField("pair"):
+                    raise ValueError("Bundle validation failed.")
+                if not ((value_field_name in user_value_fields) or \
                 change.entry.HasField("pointee") or \
-                change.entry.deletion
+                change.entry.deletion):
+                    raise ValueError("Bundle validation failed.")
 
             elif change.entry.behavior == Behavior.DIRECTORY:
-                assert key_field_name in user_key_fields
-                assert (value_field_name in user_value_fields) or \
+                if not key_field_name in user_key_fields:
+                    raise ValueError("Bundle validation failed.")
+                if not ((value_field_name in user_value_fields) or \
                 change.entry.HasField("pointee") or \
-                change.entry.deletion
+                change.entry.deletion):
+                    raise ValueError("Bundle validation failed.")
 
             elif change.entry.behavior == Behavior.KEY_SET:
-                assert key_field_name in user_key_fields
-                assert not change.entry.HasField("value")
+                if not key_field_name in user_key_fields:
+                    raise ValueError("Bundle validation failed.")
+                if change.entry.HasField("value"):
+                    raise ValueError("Bundle validation failed.")
 
             elif change.entry.behavior == Behavior.GROUP:
-                assert change.entry.HasField("describing")
-                assert not change.entry.HasField("value")
+                if not change.entry.HasField("describing"):
+                    raise ValueError("Bundle validation failed.")
+                if change.entry.HasField("value"):
+                    raise ValueError("Bundle validation failed.")
 
             elif change.entry.behavior == Behavior.PAIR_SET:
-                assert change.entry.HasField("pair")
-                assert not change.entry.HasField("value")
+                if not change.entry.HasField("pair"):
+                    raise ValueError("Bundle validation failed.")
+                if change.entry.HasField("value"):
+                    raise ValueError("Bundle validation failed.")
 
             elif change.entry.behavior == Behavior.PROPERTY:
-                assert change.entry.HasField("describing")
-                assert (value_field_name in user_value_fields) or \
+                if not change.entry.HasField("describing"):
+                    raise ValueError("Bundle validation failed.")
+                if not ((value_field_name in user_value_fields) or \
                 change.entry.HasField("pointee") or \
-                change.entry.deletion
+                change.entry.deletion):
+                    raise ValueError("Bundle validation failed.")
 
             elif change.entry.behavior == Behavior.BRAID:
-                assert change.entry.HasField("describing")
-                assert value_field_name in ("integer", "floating") or \
-                change.entry.deletion
+                if not change.entry.HasField("describing"):
+                    raise ValueError("Bundle validation failed.")
+                if not (value_field_name in ("integer", "floating") or \
+                change.entry.deletion):
+                    raise ValueError("Bundle validation failed.")
 
             elif change.entry.behavior == Behavior.VERTEX:
-                assert change.entry.HasField("container")
+                if not change.entry.HasField("container"):
+                    raise ValueError("Bundle validation failed.")
 
             elif change.entry.behavior == Behavior.EDGE_TYPE:
-                assert change.entry.HasField("pair")
+                if not change.entry.HasField("pair"):
+                    raise ValueError("Bundle validation failed.")
 
             else:
-                raise AssertionError(f"unknown behavior: {change.entry.behavior}")
+                raise ValueError(f"unknown behavior: {change.entry.behavior}")
