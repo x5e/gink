@@ -28,14 +28,14 @@ import {
 import { hostname, userInfo } from 'os';
 import { TreeMap, MapIterator } from 'jstreemap';
 
-/*
+
 import {ready as sodium_ready, crypto_sign_open,
     crypto_sign_keypair,
     crypto_sign,
 } from 'libsodium-wrappers';
-*/
 
-export const librariesReady = Promise.resolve();
+
+export const librariesReady = sodium_ready;
 
 export const signingBundles = true;
 
@@ -611,8 +611,8 @@ export function mergeBytes(arrayOne: Bytes, arrayTwo: Bytes): Bytes {
 export function signBundle(message: Bytes, secretKey: Bytes): Bytes {
     if (secretKey.length != 64) throw new Error("secret key not appropriate length!");
     if (signingBundles) {
-        return mergeBytes(secretKey, message);
-        // return crypto_sign(message, secretKey);
+        //return mergeBytes(secretKey, message);
+        return crypto_sign(message, secretKey);
     }
     else
         return message;
@@ -621,20 +621,23 @@ export function signBundle(message: Bytes, secretKey: Bytes): Bytes {
 export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {
     ensure(verifyKey.length == 32);
     if (signingBundles) {
-        //crypto_sign_open(signedBundle, verifyKey);
+        crypto_sign_open(signedBundle, verifyKey);
     }
 }
 
 export function createKeyPair() : KeyPair {
-    // const result = crypto_sign_keypair();
-    // return {publicKey: result.publicKey, secretKey: result.privateKey}
+    const result = crypto_sign_keypair();
+    return {publicKey: result.publicKey, secretKey: result.privateKey}
 
+    /*
+    uncomment for deterministic debugging
     const x = '5FF46DD6A05CCA09822D96CA4AF957D4ED22E059B1D82AA8DD692FF092B5A15C';
     const y = '26F20F23EB12D508DF46DB9EE51BCA3E005AD00845F8A92A1E0E3E2440FE35E0';
     return {
         secretKey: hexToBytes( x + y),
         publicKey: hexToBytes(y),
     }
+        */
 }
 
 
