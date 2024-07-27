@@ -8,6 +8,7 @@ import {
     ActorId,
     BroadcastFunc,
     BundleView,
+    KeyPair,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
 import { MemoryStore } from "./MemoryStore";
@@ -66,6 +67,15 @@ export class LogBackedStore extends LockableLog implements Store {
     ) {
         super(filename, exclusive);
         this.logBackedStoreReady = super.ready.then(() => this.initializeLogBackedStore());
+    }
+    getVerifyKey: (chainInfo: [Medallion, ChainStart]) => Promise<Bytes>;
+
+    async saveKeyPair(keyPair: KeyPair): Promise<void> {
+        await this.internalStore.saveKeyPair(keyPair);
+    }
+
+    async pullKeyPair(publicKey: Bytes): Promise<KeyPair> {
+        return await this.internalStore.pullKeyPair(publicKey);
     }
 
     get ready() { return this.logBackedStoreReady; }

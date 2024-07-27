@@ -8,7 +8,10 @@ import {
     unwrapValue,
     getActorId,
     muidTupleToString,
-    muidTupleToMuid
+    muidTupleToMuid,
+    verifyBundle,
+    librariesReady,
+    emptyBytes,
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {
@@ -32,6 +35,7 @@ import {
     Removal,
     Timestamp,
     BundleView,
+    KeyPair,
 } from "./typedefs";
 import {
     extractContainerMuid,
@@ -52,7 +56,8 @@ import { PromiseChainLock } from "./PromiseChainLock";
 import { Retrieval } from "./Retrieval";
 
 type Transaction = IDBPTransaction<IndexedDbStoreSchema, (
-    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" | "entries" | "identities")[],
+    "trxns" | "chainInfos" | "activeChains" | "containers" | "removals" | "clearances" |
+    "entries" | "identities" | "verifyKeys" | "secretKeys")[],
     "readwrite">;
 
 if (eval("typeof indexedDB") === 'undefined') {  // ts-node has problems with typeof
@@ -83,6 +88,7 @@ export class IndexedDbStore implements Store {
     }
 
     private async initialize(indexedDbName: string, reset: boolean): Promise<void> {
+        await librariesReady;
         if (reset) {
             await deleteDB(indexedDbName, {
                 blocked() {
@@ -126,6 +132,8 @@ export class IndexedDbStore implements Store {
                     Not setting keyPath since [medallion, chainStart] can't be pulled from the value
                 */
                 db.createObjectStore('identities');
+                db.createObjectStore('verifyKeys');
+                db.createObjectStore('secretKeys');
 
                 db.createObjectStore("clearances", { keyPath: ["containerId", "clearanceId"] });
 
@@ -151,6 +159,26 @@ export class IndexedDbStore implements Store {
         this.initialized = true;
     }
 
+    async getVerifyKey(chainInfo: [Medallion, ChainStart]): Promise<Bytes> {
+        await this.ready;
+        const wrappedTransaction = this.getTransaction();
+        const verifyKey = await wrappedTransaction.objectStore('verifyKeys').get(chainInfo);
+        return verifyKey;
+    }
+
+    async saveKeyPair(keyPair: KeyPair): Promise<void> {
+        await this.ready;
+        const trxn = this.getTransaction();
+        await trxn.objectStore('secretKeys').put(keyPair.secretKey, keyPair.publicKey);
+    }
+
+    async pullKeyPair(publicKey: Bytes): Promise<KeyPair> {
+        await this.ready;
+        const trxn = this.getTransaction();
+        const secretKey = await trxn.objectStore('secretKeys').get(publicKey);
+        return {secretKey, publicKey};
+    }
+
     private clearTransaction() {
         // console.log("clearing transaction");
         this.transaction = null;
@@ -164,7 +192,8 @@ export class IndexedDbStore implements Store {
             this.lastCaller = callerLine;
             this.countTrxns += 1;
             this.transaction = this.wrapped.transaction(
-                ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains', 'containers', 'identities'],
+                ['entries', 'clearances', 'removals', 'trxns', 'chainInfos', 'activeChains',
+                    'containers', 'identities', 'verifyKeys', "secretKeys"],
                 'readwrite');
             this.transaction.done.finally(() => this.clearTransaction());
         } else {
@@ -317,10 +346,18 @@ export class IndexedDbStore implements Store {
         if (claimChain) {
             ensure(bundleInfo.timestamp === bundleInfo.chainStart, "timestamp !== chainstart");
             ensure(bundleInfo.comment, "comment (identity) required to start a chain");
-            const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
-            await wrappedTransaction.objectStore('identities').add(bundleInfo.comment, chainInfo);
             await this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId(), wrappedTransaction);
         }
+        let verifyKey: Bytes;
+        const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
+        if (bundleInfo.chainStart === bundleInfo.timestamp) {
+            await wrappedTransaction.objectStore('identities').add(bundleInfo.comment, chainInfo);
+            verifyKey = bundleBuilder.getVerifyKey();
+            await wrappedTransaction.objectStore("verifyKeys").put(verifyKey, chainInfo);
+        } else {
+            verifyKey = await wrappedTransaction.objectStore('verifyKeys').get(chainInfo);
+        }
+        verifyBundle(bundleBytes, verifyKey);
         await wrappedTransaction.objectStore("chainInfos").put(bundleInfo);
         // Only timestamp and medallion are required for uniqueness, the others just added to make
         // the getNeededTransactions faster by not requiring parsing again.

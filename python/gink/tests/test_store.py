@@ -3,6 +3,7 @@
 # batteries included python modules
 from typing import Callable
 from contextlib import closing
+from nacl.signing import SigningKey, VerifyKey
 
 # gink generated proto modules
 from ..impl.builders import BundleBuilder
@@ -16,6 +17,9 @@ from ..impl.muid import Muid
 from ..impl.tuples import Chain
 
 StoreMaker = Callable[[], AbstractStore]
+
+signing_key = SigningKey.generate()
+verify_key = signing_key.verify_key
 
 
 def curried(a_function, some_data) -> Callable[[], None]:
@@ -52,7 +56,9 @@ def make_empty_bundle(bundle_info: BundleInfo) -> bytes:
     builder.header.previous = bundle_info.previous  # type: ignore
     if bundle_info.comment:
         builder.header.comment = bundle_info.comment  # type: ignore
-    return builder.SerializeToString()  # type: ignore
+    if bundle_info.timestamp == bundle_info.chain_start:
+        builder.verify_key = bytes(verify_key)
+    return signing_key.sign(builder.SerializeToString())  # type: ignore
 
 
 def generic_test_accepts_only_once(store_maker: StoreMaker):
@@ -219,7 +225,8 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
     textproto1 = """
         header {
             medallion: 789
-            chain_start: 123
+            chain_start: 122
+            previous: 122
             timestamp: 123
         }
         changes {
@@ -264,7 +271,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
     textproto2 = """
         header {
             medallion: 789
-            chain_start: 123
+            chain_start: 122
             timestamp: 234
             previous: 123
         }
@@ -299,10 +306,12 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         }
     """
     with closing(store_maker()) as store:
+        first = make_empty_bundle(BundleInfo(medallion=789, chain_start=122, timestamp=122))
+        store.apply_bundle(first)
         bundle_builder = BundleBuilder()
         Parse(textproto1, bundle_builder)  # type: ignore
         serialized = bundle_builder.SerializeToString()  # type: ignore
-        store.apply_bundle(serialized)
+        store.apply_bundle(signing_key.sign(serialized))
         sequence = Muid(123, 789, 1)
         found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124)]
         assert found[0].entry_muid == Muid(123, 789, 2)
@@ -318,7 +327,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         bundle_builder2 = BundleBuilder()
         Parse(textproto2, bundle_builder2)  # type: ignore
         serialized2 = bundle_builder2.SerializeToString()  # type: ignore
-        store.apply_bundle(serialized2)
+        store.apply_bundle(signing_key.sign(serialized2))
         found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124)]
         assert len(found) == 3
         assert found[0].entry_muid == Muid(123, 789, 2)
@@ -347,8 +356,9 @@ def generic_test_negative_offsets(store_maker: StoreMaker):
     textproto1 = """
         header {
             medallion: 789
-            chain_start: 123
+            chain_start: 122
             timestamp: 123
+            previous: 122
         }
         changes {
             key: 1
@@ -393,10 +403,12 @@ def generic_test_negative_offsets(store_maker: StoreMaker):
         }
     """
     with closing(store_maker()) as store:
+        first = make_empty_bundle(BundleInfo(medallion=789, chain_start=122, timestamp=122))
+        store.apply_bundle(first)
         bundle_builder = BundleBuilder()
         Parse(textproto1, bundle_builder)  # type: ignore
         serialized = bundle_builder.SerializeToString()  # type: ignore
-        store.apply_bundle(serialized)
+        store.apply_bundle(signing_key.sign(serialized))
         sequence = Muid(123, 789, 1)
         found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124)]
         assert len(found) == 3, found

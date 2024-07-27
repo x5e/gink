@@ -13,6 +13,8 @@ import {
     Entry,
     ActorId,
     Timestamp,
+    Bytes,
+    KeyPair,
 } from "./typedefs";
 import {
     MuidBuilder,
@@ -24,8 +26,20 @@ import {
 } from "./builders";
 
 import { hostname, userInfo } from 'os';
-
 import { TreeMap, MapIterator } from 'jstreemap';
+
+
+import {ready as sodium_ready, crypto_sign_open,
+    crypto_sign_keypair,
+    crypto_sign,
+} from 'libsodium-wrappers';
+
+
+export const librariesReady = sodium_ready;
+
+export const signingBundles = true;
+
+export function noOp() { ensure(arguments.length > 0); }
 
 export function toLastWithPrefixBeforeSuffix<V>(
     map: TreeMap<string, V>, prefix: string, suffix: string = '~'):
@@ -58,8 +72,6 @@ export function generateTimestamp() {
     lastTime = current;
     return current;
 }
-
-export function noOp(_?) { ensure(true); }
 
 /**
  * Randomly selects a number that can be used as a medallion.
@@ -145,7 +157,7 @@ export function unwrapKey(keyBuilder: KeyBuilder): ScalarKey {
         return keyBuilder.getNumber();
     }
     if (keyBuilder.hasOctets()) {
-        return keyBuilder.getOctets();
+        return new Uint8Array(keyBuilder.getOctets_asU8());
     }
     throw new Error("value isn't a number or string!");
 }
@@ -174,7 +186,7 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
         throw new Error("bad special");
     }
     if (valueBuilder.hasOctets()) {
-        return valueBuilder.getOctets();
+        return new Uint8Array(valueBuilder.getOctets_asU8());
     }
     if (valueBuilder.hasDocument()) {
         const document = valueBuilder.getDocument();
@@ -388,9 +400,15 @@ export function intToHex(value: number, padding?: number): string {
     return twosComplement.toString(16).padStart(digits, '0').toUpperCase();
 }
 
-export function bytesToHex(bytes: Uint8Array) {
-    return Array.from(bytes).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join("");
-}
+export const oneByteToHex = (byte: number) => byte.toString(16).padStart(2, '0').toUpperCase();
+
+export const bytesToHex = (bytes: Uint8Array) => Array.from(bytes).map(oneByteToHex).join("");
+
+export const parseByte = (twoHexDigits: string) => parseInt(twoHexDigits, 16);
+
+export const hexToBytes = (hex: string) => Uint8Array.from(hex.match(/.{1,2}/g).map(parseByte));
+
+export const emptyBytes = new Uint8Array(0);
 
 export function timestampToString(timestamp: Timestamp): string {
     return intToHex(timestamp, 14);
@@ -579,6 +597,54 @@ export function getType(extension: string) {
     const result = types[extension];
     if (!result) {
         throw new Error(`type not found for extension: ${extension}`);
+    }
+    return result;
+}
+
+export function mergeBytes(arrayOne: Bytes, arrayTwo: Bytes): Bytes {
+    const mergedArray = new Uint8Array(arrayOne.length + arrayTwo.length);
+    mergedArray.set(arrayOne);
+    mergedArray.set(arrayTwo, arrayOne.length);
+    return mergedArray;
+}
+
+export function signBundle(message: Bytes, secretKey: Bytes): Bytes {
+    if (secretKey.length != 64) throw new Error("secret key not appropriate length!");
+    if (signingBundles) {
+        //return mergeBytes(secretKey, message);
+        return crypto_sign(message, secretKey);
+    }
+    else
+        return message;
+}
+
+export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {
+    ensure(verifyKey.length == 32);
+    if (signingBundles) {
+        crypto_sign_open(signedBundle, verifyKey);
+    }
+}
+
+export function createKeyPair() : KeyPair {
+    const result = crypto_sign_keypair();
+    return {publicKey: result.publicKey, secretKey: result.privateKey}
+
+    /*
+    uncomment for deterministic debugging
+    const x = '5FF46DD6A05CCA09822D96CA4AF957D4ED22E059B1D82AA8DD692FF092B5A15C';
+    const y = '26F20F23EB12D508DF46DB9EE51BCA3E005AD00845F8A92A1E0E3E2440FE35E0';
+    return {
+        secretKey: hexToBytes( x + y),
+        publicKey: hexToBytes(y),
+    }
+        */
+}
+
+
+export function getSig(bytes: Bytes): number {
+    let result = 0;
+    for (let i=0; i<bytes.byteLength;i++) {
+        result = result ^ bytes[i];
     }
     return result;
 }

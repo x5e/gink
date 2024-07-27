@@ -16,7 +16,10 @@ module.exports = {
             "path": false,
             "fs": false,
             "https": false,
-            "http": false
+            "http": false,
+            "crypto": require.resolve("crypto-browserify"),
+            "stream": require.resolve("stream-browserify"),
+            "vm": require.resolve("vm-browserify"),
         }
 
     },

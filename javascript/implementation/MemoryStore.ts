@@ -9,7 +9,11 @@ import {
     getActorId,
     toLastWithPrefixBeforeSuffix,
     strToMuid,
-    muidToTuple
+    muidToTuple,
+    bytesToHex,
+    verifyBundle,
+    librariesReady,
+    emptyBytes,
 } from "./utils";
 import {
     AsOf,
@@ -32,6 +36,7 @@ import {
     BroadcastFunc,
     Movement,
     BundleView,
+    KeyPair,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
@@ -68,12 +73,26 @@ export class MemoryStore implements Store {
     private locations: TreeMap<string, string> = new TreeMap();
     private bySource: TreeMap<string, Entry> = new TreeMap();
     private byTarget: TreeMap<string, Entry> = new TreeMap();
+    private verifyKeys: Map<string, Bytes> = new Map();
+    private secretKeys: Map<string, KeyPair> = new Map();
     constructor(private keepingHistory = true) {
-        this.ready = Promise.resolve();
+        this.ready = librariesReady;
+    }
+    saveKeyPair(keyPair: KeyPair): Promise<void> {
+        this.secretKeys.set(bytesToHex(keyPair.publicKey), keyPair);
+        return Promise.resolve();
+    }
+
+    pullKeyPair(publicKey: Bytes): Promise<KeyPair> {
+        return Promise.resolve(this.secretKeys.get(bytesToHex(publicKey)));
     }
 
     dropHistory(container?: Muid, before?: AsOf): void {
         throw new Error("not implemented");
+    }
+
+    getVerifyKey(chainInfo: [Medallion, ChainStart]): Promise<Bytes> {
+        return Promise.resolve(this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`));
     }
 
     stopHistory(): void {
@@ -108,8 +127,8 @@ export class MemoryStore implements Store {
         return Promise.resolve(claim);
     }
 
-    async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
-        return this.identities.get(`${chainInfo[0]},${chainInfo[1]}`);
+    getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
+        return Promise.resolve(this.identities.get(`${chainInfo[0]},${chainInfo[1]}`));
     }
 
     async getChainTracker(): Promise<ChainTracker> {
@@ -138,13 +157,22 @@ export class MemoryStore implements Store {
             }
         }
         // If this is a new chain, save the identity & claim this chain
+        const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
         if (claimChain) {
             ensure(bundleInfo.timestamp === bundleInfo.chainStart);
-            const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
-            this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
-
             this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId());
         }
+
+        let verifyKey: Bytes = emptyBytes;
+        if (bundleInfo.timestamp === bundleInfo.chainStart) {
+            this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
+            verifyKey = bundleBuilder.getVerifyKey();
+            ensure(verifyKey);
+            this.verifyKeys.set(`${chainInfo[0]},${chainInfo[1]}`, verifyKey);
+        } else {
+            verifyKey = this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`);
+        }
+        verifyBundle(bundle.bytes, verifyKey);
 
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const bundleKey: BundleInfoTuple = MemoryStore.bundleInfoToKey(bundleInfo);

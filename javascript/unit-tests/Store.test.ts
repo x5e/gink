@@ -4,12 +4,15 @@ import { Store } from "../implementation/Store";
 import { Decomposition } from "../implementation/Decomposition";
 import { Behavior, EntryBuilder, ContainerBuilder, ChangeBuilder, BundleBuilder } from "../implementation/builders";
 import {
-    makeChainStart, extendChain, addTrxns,
-    MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2
+    makeChainStart, extendChain, addTrxns, unbundle,
+    MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2, keyPair
 } from "./test_utils";
-import { muidToBuilder, ensure, wrapValue, matches, wrapKey } from "../implementation/utils";
+import { muidToBuilder, ensure, wrapValue, matches, wrapKey, signBundle,
+
+} from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
 import { HeaderBuilder } from "../implementation/builders";
+
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
 
@@ -48,8 +51,8 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     */
 
     it(`${implName} ensure that it rejects when doesn't have chain start`, async () => {
-        const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
+        const chainStart = await makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
+        const secondTrxn = await extendChain("Hello, again!", chainStart, NEXT_TS1);
         let added: boolean = false;
         let barfed = false;
         try {
@@ -63,9 +66,9 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     });
 
     it(`${implName} test rejects missing link`, async () => {
-        const chainStart = makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const secondTrxn = extendChain("Hello, again!", chainStart, NEXT_TS1);
-        const thirdTrxn = extendChain("Hello, a third!", secondTrxn, NEXT_TS1 + 1);
+        const chainStart = await makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
+        const secondTrxn = await extendChain("Hello, again!", chainStart, NEXT_TS1);
+        const thirdTrxn = await extendChain("Hello, a third!", secondTrxn, NEXT_TS1 + 1);
         await store.addBundle(chainStart);
         let added: boolean = false;
         let barfed = false;
@@ -96,10 +99,10 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sent: Array<BundleBytes> = [];
         await store.getBundles((x: BundleView) => { sent.push(x.bytes); });
         expect(sent.length).toBe(4);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[0])).getHeader().getTimestamp()).toBe(START_MICROS1);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[1])).getHeader().getTimestamp()).toBe(START_MICROS2);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[2])).getHeader().getTimestamp()).toBe(NEXT_TS1);
-        expect((<BundleBuilder>BundleBuilder.deserializeBinary(sent[3])).getHeader().getTimestamp()).toBe(NEXT_TS2);
+        expect((unbundle(sent[0])).getHeader().getTimestamp()).toBe(START_MICROS1);
+        expect((unbundle(sent[1])).getHeader().getTimestamp()).toBe(START_MICROS2);
+        expect((unbundle(sent[2])).getHeader().getTimestamp()).toBe(NEXT_TS1);
+        expect((unbundle(sent[3])).getHeader().getTimestamp()).toBe(NEXT_TS2);
     });
 
     it(`${implName} test save/fetch container`, async () => {
@@ -109,16 +112,19 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         headerBuilder.setTimestamp(START_MICROS1);
         headerBuilder.setMedallion(MEDALLION1);
         bundleBuilder.setHeader(headerBuilder);
+        bundleBuilder.setVerifyKey((await keyPair).publicKey);
         const changeBuilder = new ChangeBuilder();
         const containerBuilder = new ContainerBuilder();
         containerBuilder.setBehavior(Behavior.DIRECTORY);
         changeBuilder.setContainer(containerBuilder);
         bundleBuilder.getChangesMap().set(7, changeBuilder);
-        const decomposition = new Decomposition(bundleBuilder.serializeBinary());
+        const decomposition = new Decomposition(
+            signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey, ));
         const bundleInfo = await store.addBundle(decomposition);
         ensure(bundleInfo.medallion === MEDALLION1);
         ensure(bundleInfo.timestamp === START_MICROS1);
-        const containerBytes = await store.getContainerBytes({ medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
+        const containerBytes = await store.getContainerBytes(
+            { medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
         ensure(containerBytes);
         const containerBuilder2 = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
         ensure(containerBuilder2.getBehavior() === Behavior.DIRECTORY);
@@ -134,7 +140,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
             .setKey(wrapKey("abc"))
             .setValue(wrapValue("xyz"));
         const address = bundler.addEntry(entryBuilder);
-        bundler.seal({ medallion: 4, chainStart: 5, timestamp: 5 });
+        bundler.seal({ medallion: 4, chainStart: 5, timestamp: 5 }, await keyPair);
         await store.addBundle(bundler);
         ensure(address.medallion === 4);
         ensure(address.timestamp === 5);

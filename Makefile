@@ -54,3 +54,6 @@ javascript/tsc.out: $(wildcard javascript/implementation/*.ts)
 
 push-base:
 	docker buildx build --platform linux/amd64,linux/arm64 --push --tag darinmcgill/base:latest --no-cache -f Dockerfile.base .
+
+build-base:
+	docker build --tag darinmcgill/base:latest -f Dockerfile.base .
