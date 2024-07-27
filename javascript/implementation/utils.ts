@@ -37,7 +37,7 @@ import {ready as sodium_ready, crypto_sign_open,
 
 export const librariesReady = Promise.resolve();
 
-const usingCrypto = false;
+export const signingBundles = false;
 
 export function noOp() { ensure(arguments.length > 0); }
 
@@ -610,29 +610,38 @@ export function mergeBytes(arrayOne: Bytes, arrayTwo: Bytes): Bytes {
 
 export function signBundle(message: Bytes, secretKey: Bytes): Bytes {
     if (secretKey.length != 64) throw new Error("secret key not appropriate length!");
-    if (usingCrypto) {
+    if (signingBundles) {
+        return mergeBytes(secretKey, message);
         // return crypto_sign(message, secretKey);
     }
     else
-        return message; // mergeBytes(secretKey, message);
+        return message;
 }
 
 export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {
-    if (usingCrypto) {
+    ensure(verifyKey.length == 32);
+    if (signingBundles) {
         //crypto_sign_open(signedBundle, verifyKey);
     }
 }
 
 export function createKeyPair() : KeyPair {
-    if (usingCrypto) {
-        // const result = crypto_sign_keypair();
-        // return {publicKey: result.publicKey, secretKey: result.privateKey}
-    } else {
-        const x = '5FF46DD6A05CCA09822D96CA4AF957D4ED22E059B1D82AA8DD692FF092B5A15C';
-        const y = '26F20F23EB12D508DF46DB9EE51BCA3E005AD00845F8A92A1E0E3E2440FE35E0';
-        return {
-            secretKey: hexToBytes( x + y),
-            publicKey: hexToBytes(y),
-        }
+    // const result = crypto_sign_keypair();
+    // return {publicKey: result.publicKey, secretKey: result.privateKey}
+
+    const x = '5FF46DD6A05CCA09822D96CA4AF957D4ED22E059B1D82AA8DD692FF092B5A15C';
+    const y = '26F20F23EB12D508DF46DB9EE51BCA3E005AD00845F8A92A1E0E3E2440FE35E0';
+    return {
+        secretKey: hexToBytes( x + y),
+        publicKey: hexToBytes(y),
     }
+}
+
+
+export function getSig(bytes: Bytes): number {
+    let result = 0;
+    for (let i=0; i<bytes.byteLength;i++) {
+        result = result ^ bytes[i];
+    }
+    return result;
 }

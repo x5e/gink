@@ -14,6 +14,9 @@ import {
     createKeyPair,
     librariesReady,
     bytesToHex,
+    mergeBytes,
+    sameData,
+    getSig,
 } from "../implementation/utils";
 import { TreeMap } from 'jstreemap';
 
@@ -28,6 +31,22 @@ it('generate', async function() {
         console.log(`${secretHex}\n${publicHex}`);
     }
 });
+
+it('merge', async function() {
+    const a = new Uint8Array([94, 154]);
+    const b = new Uint8Array([10, 255]);
+    const c = mergeBytes(a, b);
+    const d = new Uint8Array([94, 154, 10, 255]);
+    ensure(sameData(c, d));
+});
+
+it('getSig', async function() {
+   const sig1 = getSig(new Uint8Array([3, 4]));
+   ensure(sig1 == 7);
+   const sig2 = getSig(new Uint8Array([7, 2]));
+   ensure(sig2 == 5);
+});
+
 
 it('document', async function () {
     for (const wrapped of [

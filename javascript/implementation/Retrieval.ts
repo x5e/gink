@@ -1,5 +1,6 @@
 import { BundleBuilder } from "./builders";
-import { BundleInfo, BundleView, BundleBytes } from "./typedefs";
+import { BundleInfo, BundleView, BundleBytes, Bytes } from "./typedefs";
+import { signingBundles } from "./utils";
 
 /**
  * Creates a bundle view from the encoded bytes and metadata info, only parsing
@@ -17,7 +18,10 @@ export class Retrieval implements BundleView {
     get bytes(): BundleBytes { return this.bundleBytes; }
     get builder(): BundleBuilder {
         if (!this.bundleBuilder) {
-            this.bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(this.bundleBytes);
+            let body: Bytes = this.bundleBytes;
+            if (signingBundles)
+                body = body.subarray(64);
+            this.bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(body);
         }
         return this.bundleBuilder;
     }

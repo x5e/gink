@@ -2,10 +2,10 @@ import { sleep } from "./test_utils";
 import { Database, Bundler, IndexedDbStore, Directory, MemoryStore } from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 
-it('set and get Basic data', async function () {
+it('set and get basic data', async function () {
     for (const store of [
         new IndexedDbStore('Directory.test1', true),
-        //new MemoryStore(true),
+        new MemoryStore(true),
     ]) {
         const instance = new Database(store);
         await instance.ready;
