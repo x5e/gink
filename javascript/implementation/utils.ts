@@ -37,7 +37,7 @@ import {ready as sodium_ready, crypto_sign_open,
 
 export const librariesReady = Promise.resolve();
 
-export const signingBundles = false;
+export const signingBundles = true;
 
 export function noOp() { ensure(arguments.length > 0); }
 
@@ -157,7 +157,7 @@ export function unwrapKey(keyBuilder: KeyBuilder): ScalarKey {
         return keyBuilder.getNumber();
     }
     if (keyBuilder.hasOctets()) {
-        return keyBuilder.getOctets();
+        return new Uint8Array(keyBuilder.getOctets_asU8());
     }
     throw new Error("value isn't a number or string!");
 }
@@ -186,7 +186,7 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
         throw new Error("bad special");
     }
     if (valueBuilder.hasOctets()) {
-        return valueBuilder.getOctets();
+        return new Uint8Array(valueBuilder.getOctets_asU8());
     }
     if (valueBuilder.hasDocument()) {
         const document = valueBuilder.getDocument();

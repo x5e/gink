@@ -1,6 +1,6 @@
 import { BundleBuilder, HeaderBuilder } from "./builders";
 import { BundleInfo, BundleView, Bytes } from "./typedefs";
-import { signingBundles, getSig } from "./utils";
+import { signingBundles, getSig, generateTimestamp } from "./utils";
 
 
 export class Decomposition implements BundleView {
@@ -11,7 +11,6 @@ export class Decomposition implements BundleView {
         if (signingBundles) {
             body = body.subarray(64);
         }
-        console.log(`length: ${body.length}, sig: ${getSig(body)}`);
         const bundleBuilder = this.builder = <BundleBuilder>BundleBuilder.deserializeBinary(body);
         const headerBuilder: HeaderBuilder = bundleBuilder.getHeader();
         this.info = {

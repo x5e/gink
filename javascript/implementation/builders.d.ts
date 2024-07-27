@@ -167,14 +167,13 @@ export class ValueBuilder extends ImplementedMessage {
     hasCharacters(): boolean;
     getCharacters(): string;
     asOctets(): boolean;
-    getOctets(): Uint8Array;
     hasInteger(): boolean;
     getInteger(): string;
     setInteger(string);
     hasSpecial(): boolean;
     getSpecial(): number;
     hasOctets(): boolean;
-    getOctets(): Uint8Array;
+    getOctets_asU8(): Uint8Array;
     hasDocument(): boolean;
     getDocument(): DocumentBuilder;
     hasTuple(): boolean;
@@ -201,7 +200,7 @@ export class KeyBuilder extends ImplementedMessage {
     hasNumber(): boolean;
     getNumber(): number;
     hasOctets(): boolean;
-    getOctets(): Uint8Array;
+    getOctets_asU8(): Uint8Array;
 }
 
 export class ClaimBuilder extends ImplementedMessage {

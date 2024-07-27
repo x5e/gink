@@ -11,6 +11,7 @@ import {
     muidTupleToMuid,
     verifyBundle,
     librariesReady,
+    emptyBytes,
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from 'idb';
 import {

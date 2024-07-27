@@ -1,6 +1,6 @@
 import { BundleBuilder } from "./builders";
 import { BundleInfo, BundleView, BundleBytes, Bytes } from "./typedefs";
-import { signingBundles } from "./utils";
+import { signingBundles, getSig, generateTimestamp } from "./utils";
 
 /**
  * Creates a bundle view from the encoded bytes and metadata info, only parsing
@@ -21,6 +21,7 @@ export class Retrieval implements BundleView {
             let body: Bytes = this.bundleBytes;
             if (signingBundles)
                 body = body.subarray(64);
+            console.log(`length: ${body.length}, sig: ${getSig(body)}, ${generateTimestamp()}`);
             this.bundleBuilder = <BundleBuilder>BundleBuilder.deserializeBinary(body);
         }
         return this.bundleBuilder;

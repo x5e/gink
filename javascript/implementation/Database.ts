@@ -311,7 +311,8 @@ export class Database {
             };
             bundler.seal(bundleInfo, this.keyPair);
             this.iHave.markAsHaving(bundleInfo);
-            return this.receiveBundle(bundler.bytes);
+            const decomposition = new Decomposition(bundler.bytes);
+            return this.receiveBundle(decomposition);
         }));
     }
 
@@ -347,8 +348,7 @@ export class Database {
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns
      */
-    private receiveBundle(bundleBytes: BundleBytes, fromConnectionId?: number): Promise<BundleInfo> {
-        const bundle = new Decomposition(bundleBytes);
+    private receiveBundle(bundle: BundleView, fromConnectionId?: number): Promise<BundleInfo> {
         return this.store.addBundle(bundle).then(() => {
             this.logger(`bundle from ${fromConnectionId}: ${JSON.stringify(bundle.info)}`);
             this.iHave.markAsHaving(bundle.info);
@@ -423,7 +423,8 @@ export class Database {
             const parsed = <SyncMessageBuilder>SyncMessageBuilder.deserializeBinary(messageBytes);
             if (parsed.hasBundle()) {
                 const bundleBytes: BundleBytes = parsed.getBundle_asU8();
-                await this.receiveBundle(bundleBytes, fromConnectionId);
+                const decomposition = new Decomposition(bundleBytes);
+                await this.receiveBundle(decomposition, fromConnectionId);
                 return;
             }
             if (parsed.hasGreeting()) {
