@@ -29,6 +29,7 @@ setup(
         "psutil",
         "authlib",
         "typeguard",
+        "pynacl",
     ],
     extras_require={
         "test": ["nose2", "flask", "requests"],
