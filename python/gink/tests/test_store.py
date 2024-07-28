@@ -50,12 +50,12 @@ def install_tests(into_where, from_place, store_maker):
 def make_empty_bundle(bundle_info: BundleInfo) -> bytes:
     """ Makes an empty change set that matches the given metadata. """
     builder = BundleBuilder()
-    builder.header.medallion = bundle_info.medallion  # type: ignore
-    builder.header.chain_start = bundle_info.chain_start  # type: ignore
-    builder.header.timestamp = bundle_info.timestamp  # type: ignore
-    builder.header.previous = bundle_info.previous  # type: ignore
+    builder.metadata.medallion = bundle_info.medallion  # type: ignore
+    builder.metadata.chain_start = bundle_info.chain_start  # type: ignore
+    builder.metadata.timestamp = bundle_info.timestamp  # type: ignore
+    builder.metadata.previous = bundle_info.previous  # type: ignore
     if bundle_info.comment:
-        builder.header.comment = bundle_info.comment  # type: ignore
+        builder.metadata.comment = bundle_info.comment  # type: ignore
     if bundle_info.timestamp == bundle_info.chain_start:
         builder.verify_key = bytes(verify_key)
     return signing_key.sign(builder.SerializeToString())  # type: ignore
@@ -223,7 +223,7 @@ def generic_test_tracks(store_maker: StoreMaker):
 def generic_test_get_ordered_entries(store_maker: StoreMaker):
     """ makes sure that the get_ordered_entries works """
     textproto1 = """
-        header {
+        metadata {
             medallion: 789
             chain_start: 122
             previous: 122
@@ -269,7 +269,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         }
     """
     textproto2 = """
-        header {
+        metadata {
             medallion: 789
             chain_start: 122
             timestamp: 234
@@ -354,7 +354,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
 def generic_test_negative_offsets(store_maker: StoreMaker):
     """ makes sure that the get_ordered_entries works """
     textproto1 = """
-        header {
+        metadata {
             medallion: 789
             chain_start: 122
             timestamp: 123

@@ -73,12 +73,12 @@ class Bundler:
             self._bundle_builder.verify_key = signing_key.verify_key.encode()
         else:
             assert chain.chain_start <= previous < timestamp
-            self._bundle_builder.header.previous = previous  # type: ignore
-        self._bundle_builder.header.chain_start = chain.chain_start  # type: ignore
-        self._medallion = self._bundle_builder.header.medallion = chain.medallion  # type: ignore
-        self._timestamp = self._bundle_builder.header.timestamp = timestamp  # type: ignore
+            self._bundle_builder.metadata.previous = previous  # type: ignore
+        self._bundle_builder.metadata.chain_start = chain.chain_start  # type: ignore
+        self._medallion = self._bundle_builder.metadata.medallion = chain.medallion  # type: ignore
+        self._timestamp = self._bundle_builder.metadata.timestamp = timestamp  # type: ignore
         if self._comment:
-            self._bundle_builder.header.comment = self.comment  # type: ignore
+            self._bundle_builder.metadata.comment = self.comment  # type: ignore
         serialized = self._bundle_builder.SerializeToString()
         signed = signing_key.sign(serialized)
         self._sealed = signed
