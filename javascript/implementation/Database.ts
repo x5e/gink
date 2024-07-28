@@ -112,6 +112,7 @@ export class Database {
             await this.store.saveKeyPair(keyPair);
             this.keyPair = keyPair;
             const bundler = new Bundler(this.identity, medallion);
+            // Starting a new chain, so don't have/need a prior_hash.
             bundler.seal({
                 medallion, timestamp: chainStart, chainStart
             }, keyPair);
@@ -309,9 +310,10 @@ export class Database {
                 timestamp: seenThrough && (seenThrough >= nowMicros) ? seenThrough + 10 : nowMicros,
                 priorTime: seenThrough ?? nowMicros,
             };
-            bundler.seal(bundleInfo, this.keyPair);
-            this.iHave.markAsHaving(bundleInfo);
+            bundler.seal(bundleInfo, this.keyPair, lastBundleInfo.hashCode);
+            // The bundle is seralized then deserialized to catch problems before broadcasting.
             const decomposition = new Decomposition(bundler.bytes);
+            this.iHave.markAsHaving(decomposition.info);
             return this.receiveBundle(decomposition);
         }));
     }

@@ -15,6 +15,8 @@ from authlib.jose.errors import JoseError
 from time import time as get_time
 from typing import Optional, Tuple
 from random import choice
+from nacl.hash import blake2b
+from nacl.encoding import RawEncoder
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
@@ -29,6 +31,8 @@ from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE
 from .builders import Behavior
 from .bundle_info import BundleInfo
 
+def digest(data: bytes) -> bytes:
+    return blake2b(data, digest_size=32, encoder=RawEncoder)
 
 def make_auth_func(token: str) -> AuthFunc:
     def auth_func(data: str, *_) -> int:

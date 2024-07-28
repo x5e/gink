@@ -61,6 +61,7 @@ export interface BundleInfo {
     medallion: Medallion;
     chainStart: ChainStart;
     priorTime?: PriorTime;
+    hashCode?: Bytes;
     comment?: string;
 }
 

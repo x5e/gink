@@ -81,6 +81,7 @@ export class IndexedDbStore implements Store {
     private processingLock = new PromiseChainLock();
     private lastCaller: string = "";
     private foundBundleCallBacks: BroadcastFunc[] = [];
+    private pending: BundleInfo[] = [];
     private static readonly YEAR_2020 = (new Date("2020-01-01")).getTime() * 1000;
 
     constructor(indexedDbName: string, reset?: boolean, private keepingHistory = true) {
@@ -316,12 +317,12 @@ export class IndexedDbStore implements Store {
         if (!this.initialized) throw new Error("not initialized! need to await on .ready");
         const bundleBuilder = bundle.builder;
         const bundleInfo = bundle.info;
-        //console.log(`got ${JSON.stringify(bundleInfo)}`);
+        // console.log(`got ${JSON.stringify(bundleInfo, ["timestamp", "medallion", "priorTime"])}`);
 
         return this.processingLock.acquireLock().then((unlock) => {
             return this.addBundleHelper(bundle.bytes, bundleInfo, bundleBuilder, claimChain).then((trxn) => {
                 unlock();
-                return trxn.done.then(() => bundleInfo);
+                return trxn.done.then(() => {this.pending = []; return bundleInfo});
             }).finally(unlock);
         });
     }
@@ -342,6 +343,7 @@ export class IndexedDbStore implements Store {
                 throw new Error(`missing ${JSON.stringify(bundleInfo)}, have ${JSON.stringify(oldChainInfo)}`);
             }
         }
+        this.pending.push(bundleInfo);
         // If this is a new chain, save the identity & claim this chain
         if (claimChain) {
             ensure(bundleInfo.timestamp === bundleInfo.chainStart, "timestamp !== chainstart");

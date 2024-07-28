@@ -1,6 +1,6 @@
 import { BundleBuilder, MetadataBuilder } from "./builders";
 import { BundleInfo, BundleView, Bytes } from "./typedefs";
-import { signingBundles, getSig, generateTimestamp } from "./utils";
+import { signingBundles, digest } from "./utils";
 
 
 export class Decomposition implements BundleView {
@@ -19,6 +19,7 @@ export class Decomposition implements BundleView {
             chainStart: metadataBuilder.getChainStart(),
             priorTime: metadataBuilder.getPrevious() || undefined,
             comment: metadataBuilder.getComment() || undefined,
+            hashCode: digest(bytes),
         };
     }
 }

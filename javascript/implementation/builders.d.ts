@@ -72,6 +72,8 @@ export class BundleBuilder extends ImplementedMessage {
     getChangesMap(): Map<number, ChangeBuilder>;
     getVerifyKey(): Bytes;
     setVerifyKey(Bytes);
+    setPriorHash(Bytes);
+    getPriorHash(): Bytes;
 }
 
 export class PairBuilder extends ImplementedMessage {

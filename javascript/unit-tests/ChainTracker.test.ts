@@ -1,17 +1,20 @@
 import { BundleInfo } from "../implementation";
 import { ChainTracker } from "../implementation/ChainTracker";
-import { ensure } from "../implementation/utils";
+import { ensure, digest, emptyBytes, librariesReady } from "../implementation/utils";
 
 it('track two bundles', async () => {
+    await librariesReady;
     const chainTracker = new ChainTracker({});
     const medallion = 521994040637930;
     const chainStart = 1662789574924000;
     const secondTime = 1662789590300000;
 
-    const bundleInfo1: BundleInfo = { "timestamp": chainStart, medallion, chainStart, "comment": "node instance" };
+    const bundleInfo1: BundleInfo = {
+        "timestamp": chainStart, medallion, chainStart, "comment": "node instance",
+        hashCode: digest(emptyBytes), };
     chainTracker.markAsHaving(bundleInfo1, true);
 
-    const bundleInfo2: BundleInfo = {
+    const bundleInfo2: BundleInfo = { hashCode: digest(emptyBytes),
         "timestamp": secondTime, medallion, chainStart, "priorTime": chainStart, "comment": "hello"
     };
     chainTracker.markAsHaving(bundleInfo2, true);

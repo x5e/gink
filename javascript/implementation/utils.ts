@@ -31,9 +31,10 @@ import { TreeMap, MapIterator } from 'jstreemap';
 
 import {ready as sodium_ready, crypto_sign_open,
     crypto_sign_keypair,
-    crypto_sign,
+    crypto_sign, crypto_generichash_BYTES, crypto_generichash,
 } from 'libsodium-wrappers';
 
+export const digest = (data: Bytes) => crypto_generichash(crypto_generichash_BYTES, data);
 
 export const librariesReady = sodium_ready;
 

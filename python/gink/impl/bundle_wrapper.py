@@ -1,8 +1,8 @@
 from typing import Optional
-from hashlib import sha256
 
 from .builders import BundleBuilder
 from .bundle_info import BundleInfo
+from .utilities import digest
 
 
 class BundleWrapper:
@@ -23,6 +23,6 @@ class BundleWrapper:
 
     def get_info(self) -> BundleInfo:
         if self._bundle_info is None:
-            hex_hash = sha256(self._bundle_bytes).hexdigest()
+            hex_hash = digest(self._bundle_bytes).hex()
             self._bundle_info = BundleInfo(builder=self.get_builder().metadata, hex_hash=hex_hash)
         return self._bundle_info

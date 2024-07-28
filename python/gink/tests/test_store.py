@@ -4,7 +4,6 @@
 from typing import Callable, Optional
 from contextlib import closing
 from nacl.signing import SigningKey, VerifyKey
-from hashlib import sha256
 
 # gink generated proto modules
 from ..impl.builders import BundleBuilder
@@ -16,6 +15,7 @@ from ..impl.bundle_info import BundleInfo
 from ..impl.bundle_wrapper import BundleWrapper
 from ..impl.muid import Muid
 from ..impl.tuples import Chain
+from ..impl.utilities import digest
 
 StoreMaker = Callable[[], AbstractStore]
 
@@ -60,7 +60,7 @@ def make_empty_bundle(bundle_info: BundleInfo, prior: Optional[bytes] = None) ->
     if bundle_info.timestamp == bundle_info.chain_start:
         builder.verify_key = bytes(verify_key)
     if prior:
-        builder.prior_hash = sha256(prior).digest()
+        builder.prior_hash = digest(prior)
     return signing_key.sign(builder.SerializeToString())  # type: ignore
 
 
@@ -320,7 +320,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         store.apply_bundle(first)
         bundle_builder = BundleBuilder()
         Parse(textproto1, bundle_builder)  # type: ignore
-        bundle_builder.prior_hash = sha256(first).digest()
+        bundle_builder.prior_hash = digest(first)
         serialized = bundle_builder.SerializeToString()  # type: ignore
         second = signing_key.sign(serialized)
         store.apply_bundle(second)
@@ -338,7 +338,7 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
 
         bundle_builder2 = BundleBuilder()
         Parse(textproto2, bundle_builder2)  # type: ignore
-        bundle_builder2.prior_hash = sha256(second).digest()
+        bundle_builder2.prior_hash = digest(second)
         serialized2 = bundle_builder2.SerializeToString()  # type: ignore
         store.apply_bundle(signing_key.sign(serialized2))
         found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124)]
@@ -420,7 +420,7 @@ def generic_test_negative_offsets(store_maker: StoreMaker):
         store.apply_bundle(first)
         bundle_builder = BundleBuilder()
         Parse(textproto1, bundle_builder)  # type: ignore
-        bundle_builder.prior_hash = sha256(first).digest()
+        bundle_builder.prior_hash = digest(first)
         serialized = bundle_builder.SerializeToString()  # type: ignore
         store.apply_bundle(signing_key.sign(serialized))
         sequence = Muid(123, 789, 1)
