@@ -11,7 +11,7 @@ import { muidToBuilder, ensure, wrapValue, matches, wrapKey, signBundle,
 
 } from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
-import { HeaderBuilder } from "../implementation/builders";
+import { MetadataBuilder } from "../implementation/builders";
 
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
@@ -99,19 +99,19 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sent: Array<BundleBytes> = [];
         await store.getBundles((x: BundleView) => { sent.push(x.bytes); });
         expect(sent.length).toBe(4);
-        expect((unbundle(sent[0])).getHeader().getTimestamp()).toBe(START_MICROS1);
-        expect((unbundle(sent[1])).getHeader().getTimestamp()).toBe(START_MICROS2);
-        expect((unbundle(sent[2])).getHeader().getTimestamp()).toBe(NEXT_TS1);
-        expect((unbundle(sent[3])).getHeader().getTimestamp()).toBe(NEXT_TS2);
+        expect((unbundle(sent[0])).getMetadata().getTimestamp()).toBe(START_MICROS1);
+        expect((unbundle(sent[1])).getMetadata().getTimestamp()).toBe(START_MICROS2);
+        expect((unbundle(sent[2])).getMetadata().getTimestamp()).toBe(NEXT_TS1);
+        expect((unbundle(sent[3])).getMetadata().getTimestamp()).toBe(NEXT_TS2);
     });
 
     it(`${implName} test save/fetch container`, async () => {
         const bundleBuilder = new BundleBuilder();
-        const headerBuilder = new HeaderBuilder();
-        headerBuilder.setChainStart(START_MICROS1);
-        headerBuilder.setTimestamp(START_MICROS1);
-        headerBuilder.setMedallion(MEDALLION1);
-        bundleBuilder.setHeader(headerBuilder);
+        const metadataBuilder = new MetadataBuilder();
+        metadataBuilder.setChainStart(START_MICROS1);
+        metadataBuilder.setTimestamp(START_MICROS1);
+        metadataBuilder.setMedallion(MEDALLION1);
+        bundleBuilder.setMetadata(metadataBuilder);
         bundleBuilder.setVerifyKey((await keyPair).publicKey);
         const changeBuilder = new ChangeBuilder();
         const containerBuilder = new ContainerBuilder();

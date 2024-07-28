@@ -1,5 +1,5 @@
 import { Muid, BundleInfo, Medallion, Timestamp, BundleView, BundleBytes, KeyPair } from "./typedefs";
-import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder, HeaderBuilder } from "./builders";
+import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder, MetadataBuilder } from "./builders";
 import { ensure, signBundle } from "./utils";
 
 export class Bundler implements BundleView {
@@ -96,14 +96,14 @@ export class Bundler implements BundleView {
         }
         this.bundleInfo = { ...bundleInfo };
         this.bundleInfo.comment = this.pendingComment;
-        const headerBuilder = new HeaderBuilder();
-        headerBuilder.setComment(this.pendingComment);
-        headerBuilder.setTimestamp(bundleInfo.timestamp);
-        headerBuilder.setPrevious(bundleInfo.priorTime);
-        headerBuilder.setChainStart(bundleInfo.chainStart);
-        headerBuilder.setMedallion(bundleInfo.medallion);
-        headerBuilder.setComment(this.bundleInfo.comment);
-        this.bundleBuilder.setHeader(headerBuilder);
+        const metadataBuilder = new MetadataBuilder();
+        metadataBuilder.setComment(this.pendingComment);
+        metadataBuilder.setTimestamp(bundleInfo.timestamp);
+        metadataBuilder.setPrevious(bundleInfo.priorTime);
+        metadataBuilder.setChainStart(bundleInfo.chainStart);
+        metadataBuilder.setMedallion(bundleInfo.medallion);
+        metadataBuilder.setComment(this.bundleInfo.comment);
+        this.bundleBuilder.setMetadata(metadataBuilder);
         if (bundleInfo.chainStart === bundleInfo.timestamp) {
             this.bundleBuilder.setVerifyKey(keyPair.publicKey);
         }

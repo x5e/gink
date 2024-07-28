@@ -53,7 +53,7 @@ export class ChangeBuilder extends ImplementedMessage {
     setClearance(ClearanceBuilder);
 }
 
-export class HeaderBuilder extends ImplementedMessage {
+export class MetadataBuilder extends ImplementedMessage {
     setTimestamp(number);
     setPrevious(number);
     setChainStart(number);
@@ -67,8 +67,8 @@ export class HeaderBuilder extends ImplementedMessage {
 }
 
 export class BundleBuilder extends ImplementedMessage {
-    getHeader(): HeaderBuilder;
-    setHeader(HeaderBuilder);
+    getMetadata(): MetadataBuilder;
+    setMetadata(MetadataBuilder);
     getChangesMap(): Map<number, ChangeBuilder>;
     getVerifyKey(): Bytes;
     setVerifyKey(Bytes);
