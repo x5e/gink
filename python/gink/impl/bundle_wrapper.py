@@ -20,5 +20,5 @@ class BundleWrapper:
 
     def get_info(self) -> BundleInfo:
         if self._bundle_info is None:
-            self._bundle_info = BundleInfo(builder=self.get_builder().header)
+            self._bundle_info = BundleInfo(builder=self.get_builder().metadata)
         return self._bundle_info

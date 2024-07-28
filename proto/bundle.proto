@@ -1,11 +1,11 @@
 syntax = "proto3";
 import "proto/change.proto";
-import "proto/header.proto";
+import "proto/metadata.proto";
 package gink;
 
 message Bundle {
 
-    Header header = 1;
+    Metadata metadata = 1;
 
     // key in changes map is the offset number: > 0 and < 2**20
     map<uint32, Change> changes = 2;

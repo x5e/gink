@@ -1,7 +1,7 @@
 syntax = "proto3";
 package gink;
 
-message Header {
+message Metadata {
     uint64 timestamp = 1;
     uint64 medallion = 2;
     uint64 previous = 3;

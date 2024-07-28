@@ -1,6 +1,6 @@
 import { Medallion, ChainStart, Timestamp, BundleView } from "../implementation/typedefs";
 import { Store } from "../implementation/Store";
-import { BundleBuilder, HeaderBuilder } from "../implementation/builders";
+import { BundleBuilder, MetadataBuilder } from "../implementation/builders";
 import { Decomposition } from "../implementation/Decomposition";
 import { createKeyPair, signBundle, librariesReady } from "../implementation/utils";
 
@@ -17,12 +17,12 @@ export const keyPair = librariesReady.then(() => createKeyPair());
 export async function makeChainStart(
         comment: string, medallion: Medallion, chainStart: ChainStart): Promise<BundleView> {
     const bundleBuilder = new BundleBuilder();
-    const headerBuilder = new HeaderBuilder();
-    headerBuilder.setChainStart(chainStart);
-    headerBuilder.setTimestamp(chainStart);
-    headerBuilder.setMedallion(medallion);
-    headerBuilder.setComment(comment);
-    bundleBuilder.setHeader(headerBuilder);
+    const metadataBuilder = new MetadataBuilder();
+    metadataBuilder.setChainStart(chainStart);
+    metadataBuilder.setTimestamp(chainStart);
+    metadataBuilder.setMedallion(medallion);
+    metadataBuilder.setComment(comment);
+    bundleBuilder.setMetadata(metadataBuilder);
     bundleBuilder.setVerifyKey((await keyPair).publicKey);
     return new Decomposition(signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey));
 }
@@ -33,15 +33,15 @@ export function unbundle(signed: Uint8Array): BundleBuilder {
 }
 
 export async function extendChain(comment: string, previous: BundleView, timestamp: Timestamp): Promise<BundleView> {
-    const parsedPrevious = previous.builder.getHeader();
-    const subsequent = new HeaderBuilder();
+    const parsedPrevious = previous.builder.getMetadata();
+    const subsequent = new MetadataBuilder();
     subsequent.setMedallion(parsedPrevious.getMedallion());
     subsequent.setPrevious(parsedPrevious.getTimestamp());
     subsequent.setChainStart(parsedPrevious.getChainStart());
     subsequent.setTimestamp(timestamp); // one millisecond later
     subsequent.setComment(comment);
     const bundleBuilder = new BundleBuilder();
-    bundleBuilder.setHeader(subsequent);
+    bundleBuilder.setMetadata(subsequent);
     return new Decomposition(signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey));
 }
 
