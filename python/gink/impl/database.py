@@ -134,11 +134,13 @@ class Database(Relay):
             timestamp = generate_timestamp()
             assert timestamp > seen_to
             assert self._signing_key is not None
+            assert self._last_link.hex_hash is not None
             bundle_bytes = bundler.seal(
                 chain=chain,
                 timestamp=timestamp,
                 previous=seen_to,
                 signing_key=self._signing_key,
+                prior_hash=self._last_link.hex_hash,
             )
             wrap = BundleWrapper(bundle_bytes)
             added = self.receive(wrap)

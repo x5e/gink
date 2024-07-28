@@ -23,6 +23,7 @@ if TYPE_CHECKING:
         metadata: MetadataBuilder
         changes: List[ChangeBuilder]
         verify_key: bytes
+        prior_hash: bytes
 
     class SyncMessage(Message):
         bundle: bytes

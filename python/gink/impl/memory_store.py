@@ -20,7 +20,7 @@ from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
                      Placement, decode_key, decode_entry_occupant)
-from .utilities import create_claim
+from .utilities import create_claim, is_needed
 
 
 class MemoryStore(AbstractStore):
@@ -273,7 +273,7 @@ class MemoryStore(AbstractStore):
         new_info = bundle.get_info()
         chain_key = new_info.get_chain()
         old_info = self._chain_infos.get(new_info.get_chain())
-        needed = AbstractStore._is_needed(new_info, old_info)
+        needed = is_needed(new_info, old_info)
         if needed:
             if new_info.chain_start == new_info.timestamp:
                 self._identities[chain_key] = new_info.comment
@@ -281,6 +281,10 @@ class MemoryStore(AbstractStore):
                 self._verify_keys[chain_key] = verify_key
             else:
                 verify_key = self._verify_keys[chain_key]
+                assert old_info is not None and old_info.hex_hash is not None
+                prior_hash = bundle_builder.prior_hash
+                if prior_hash != bytes.fromhex(old_info.hex_hash):
+                    raise ValueError("prior_hash doesn't match hash of prior bundle")
             verify_key.verify(bundle.get_bytes())
             self._bundles[new_info] = bundle
             self._chain_infos[chain_key] = new_info
