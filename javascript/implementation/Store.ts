@@ -61,7 +61,7 @@ export interface Store {
      *
      * Implicitly awaits on this.ready;
      */
-    addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo>;
+    addBundle(bundle: BundleView, claimChain?: boolean): Promise<Boolean>;
 
     /**
      * Get all bundles from a store ordered by [timestamp, medallion].

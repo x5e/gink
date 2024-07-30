@@ -351,7 +351,8 @@ export class Database {
      * @returns
      */
     private receiveBundle(bundle: BundleView, fromConnectionId?: number): Promise<BundleInfo> {
-        return this.store.addBundle(bundle).then(() => {
+        return this.store.addBundle(bundle).then((added) => {
+            if (!added) return;
             this.logger(`bundle from ${fromConnectionId}: ${JSON.stringify(bundle.info)}`);
             this.iHave.markAsHaving(bundle.info);
             const peer = this.peers.get(fromConnectionId);

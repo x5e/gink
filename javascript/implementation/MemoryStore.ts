@@ -141,7 +141,7 @@ export class MemoryStore implements Store {
         return this.chainInfos.values();
     }
 
-    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo> {
+    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<Boolean> {
         await this.ready;
         const bundleBuilder = bundle.builder;
         const bundleInfo = bundle.info;
@@ -149,20 +149,19 @@ export class MemoryStore implements Store {
         const oldChainInfo = this.chainInfos.get(medallionChainStartToString([medallion, chainStart]));
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
-                return bundleInfo;
+                return false;
             }
             if (oldChainInfo?.timestamp !== priorTime) {
                 throw new Error(`missing prior chain entry for ${JSON.stringify(bundleInfo)}, ` +
                     `have ${JSON.stringify(oldChainInfo)}`);
             }
-        }
-        // If this is a new chain, save the identity & claim this chain
-        const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
-        if (claimChain) {
-            ensure(bundleInfo.timestamp === bundleInfo.chainStart);
-            this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId());
+            const priorHash: Bytes = bundleBuilder.getPriorHash();
+            if (priorHash.length != 32 || !sameData(oldChainInfo.hashCode, priorHash)) {
+                throw new Error("bad prior hash");
+            }
         }
 
+        const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
         let verifyKey: Bytes = emptyBytes;
         if (bundleInfo.timestamp === bundleInfo.chainStart) {
             this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
@@ -173,6 +172,12 @@ export class MemoryStore implements Store {
             verifyKey = this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`);
         }
         verifyBundle(bundle.bytes, verifyKey);
+
+
+        if (claimChain) {
+            ensure(bundleInfo.timestamp === bundleInfo.chainStart);
+            this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId());
+        }
 
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const bundleKey: BundleInfoTuple = MemoryStore.bundleInfoToKey(bundleInfo);
@@ -255,7 +260,7 @@ export class MemoryStore implements Store {
             }
             throw new Error("don't know how to apply this kind of change");
         }
-        return bundleInfo;
+        return true;
     }
 
     private static bundleInfoToKey(bundleInfo: BundleInfo): BundleInfoTuple {

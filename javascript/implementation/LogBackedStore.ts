@@ -133,8 +133,10 @@ export class LogBackedStore extends LockableLog implements Store {
             const bundles = logFileBuilder.getBundlesList();
             for (const bundleBytes of bundles) {
                 const bundle: BundleView = new Decomposition(bundleBytes);
-                const info = await this.internalStore.addBundle(bundle);
-                this.chainTracker.markAsHaving(info);
+                const added = await this.internalStore.addBundle(bundle);
+                if (!added) throw new Error("unexpected not added");
+                const info = bundle.info;
+                this.chainTracker.markAsHaving(bundle.info);
                 // This is the start of a chain, and we need to keep track of the identity.
                 if (info.timestamp === info.chainStart && !info.priorTime) {
                     this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
@@ -172,7 +174,7 @@ export class LogBackedStore extends LockableLog implements Store {
         return this.bundlesProcessed;
     }
 
-    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo> {
+    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<Boolean> {
         // TODO(https://github.com/x5e/gink/issues/182): delay unlocking the file to give better throughput
 
         await this.ready;
@@ -182,15 +184,16 @@ export class LogBackedStore extends LockableLog implements Store {
         await this.pullDataFromFile();
         if (this.redTo === 0)
             await this.writeMagicNumber();
-        const info: BundleInfo = await this.internalStore.addBundle(bundle);
-
+        const info: BundleInfo = bundle.info;
+        const added = await this.internalStore.addBundle(bundle);
         if (claimChain) {
+            if (!added) throw new Error("can't claim chain on old bundle");
             await this.claimChain(info.medallion, info.chainStart, getActorId());
             if (info.timestamp === info.chainStart && !info.priorTime) {
                 this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
             }
         }
-        const added = this.chainTracker.markAsHaving(info);
+        this.chainTracker.markAsHaving(info);
         if (added) {
             ensure(this.fileLocked);
             await this.pullDataFromFile();
@@ -201,7 +204,7 @@ export class LogBackedStore extends LockableLog implements Store {
         if (!this.exclusive)
             await this.unlockFile();
         unlockingFunction();
-        return info;
+        return added;
     }
 
     async getClaimedChains(): Promise<Map<Medallion, ClaimedChain>> {
