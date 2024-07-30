@@ -37,7 +37,7 @@ export class Database {
 
     private listeners: Map<string, Map<string, BundleListener[]>> = new Map();
     private countConnections = 0; // Includes disconnected clients.
-    private myChain: ClaimedChain;
+    private lastLinkToExtend: BundleInfo;
     private keyPair: KeyPair;
     private identity: string;
     protected iHave: ChainTracker;
@@ -77,11 +77,11 @@ export class Database {
     /**
      * Starts a chain or finds one to reuse, then sets myChain.
      */
-    public async getOrStartChain(): Promise<ClaimedChain> {
-        if (this.myChain)
-            return this.myChain;
+    private async getOrStartChain(): Promise<void> {
+        if (this.lastLinkToExtend)
+            return;
         const claimedChains = await this.store.getClaimedChains();
-        let reused: ClaimedChain;
+        let toReuse: ClaimedChain;
         for (let value of claimedChains.values()) {
             const chainId = await this.store.getChainIdentity([value.medallion, value.chainStart]);
             if (chainId !== this.identity)
@@ -89,7 +89,7 @@ export class Database {
             if (await isAlive(value.actorId))
                 continue;
             // TODO: check to see if meta-data matches, and overwrite if not
-            reused = value;
+            toReuse = value;
             if (typeof window !== "undefined") {
                 // If we are running in a browser and take over a chain,
                 // start a new heartbeat.
@@ -99,12 +99,13 @@ export class Database {
             }
             break;
         }
-        if (reused) {
-            ensure(reused.medallion > 0);
-            const publicKey = await this.store.getVerifyKey([reused.medallion, reused.chainStart]);
+        if (toReuse) {
+            ensure(toReuse.medallion > 0);
+            const publicKey = await this.store.getVerifyKey([toReuse.medallion, toReuse.chainStart]);
             ensure(publicKey);
             this.keyPair = ensure(await this.store.pullKeyPair(publicKey));
-            this.myChain = reused;
+            this.lastLinkToExtend = this.iHave.getBundleInfo([toReuse.medallion, toReuse.chainStart]);
+
         } else {
             const medallion = makeMedallion();
             const chainStart = generateTimestamp();
@@ -118,7 +119,8 @@ export class Database {
             }, keyPair);
             ensure(bundler.info.comment === this.identity);
             await this.store.addBundle(bundler, true);
-            this.myChain = (await this.store.getClaimedChains()).get(medallion);
+            this.lastLinkToExtend = bundler.info;
+            ensure(this.lastLinkToExtend.hashCode && this.lastLinkToExtend.hashCode.length == 32);
             this.iHave.markAsHaving(bundler.info);
             // If there is already a connection before we claim a chain, ensure the
             // peers get this bundle as well so future bundles will be valid extensions.
@@ -126,8 +128,8 @@ export class Database {
                 peer._sendIfNeeded(bundler);
             }
         }
-        ensure(this.myChain, "myChain wasn't set.");
-        return this.myChain;
+        ensure(this.lastLinkToExtend, "myChain wasn't set.");
+        ensure(this.lastLinkToExtend.hashCode && this.lastLinkToExtend.hashCode.length == 32);
     }
 
     /**
@@ -143,7 +145,7 @@ export class Database {
     }
 
     getMedallionDirectory(): Directory {
-        return new Directory(this, { timestamp: -1, medallion: this.myChain[0], offset: Behavior.DIRECTORY });
+        return new Directory(this, { timestamp: -1, medallion: this.lastLinkToExtend[0], offset: Behavior.DIRECTORY });
     }
 
     /**
@@ -298,22 +300,20 @@ export class Database {
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
         return this.ready.then(() => this.getOrStartChain().then(() => {
-            if (!(this.myChain.medallion > 0))
-                throw new Error("zero medallion?");
             const nowMicros = generateTimestamp();
-            const lastBundleInfo = this.iHave.getBundleInfo([this.myChain.medallion, this.myChain.chainStart]);
-            const seenThrough = lastBundleInfo.timestamp;
+            const seenThrough = this.lastLinkToExtend.timestamp;
+            const newTimestamp = nowMicros > seenThrough ? nowMicros : seenThrough + 10;
             ensure(seenThrough > 0 && (seenThrough < nowMicros));
             const bundleInfo: BundleInfo = {
-                medallion: this.myChain.medallion,
-                chainStart: this.myChain.chainStart,
-                timestamp: seenThrough && (seenThrough >= nowMicros) ? seenThrough + 10 : nowMicros,
-                priorTime: seenThrough ?? nowMicros,
+                medallion: this.lastLinkToExtend.medallion,
+                chainStart: this.lastLinkToExtend.chainStart,
+                timestamp: newTimestamp,
+                priorTime: seenThrough,
             };
-            bundler.seal(bundleInfo, this.keyPair, lastBundleInfo.hashCode);
+            bundler.seal(bundleInfo, this.keyPair, this.lastLinkToExtend.hashCode);
             // The bundle is seralized then deserialized to catch problems before broadcasting.
             const decomposition = new Decomposition(bundler.bytes);
-            this.iHave.markAsHaving(decomposition.info);
+            this.lastLinkToExtend = decomposition.info;
             return this.receiveBundle(decomposition);
         }));
     }
@@ -476,7 +476,6 @@ export class Database {
         const authToken: string = (options && options.authToken) ? options.authToken : undefined;
 
         await this.ready;
-        await this.getOrStartChain();
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
             let protocols = [Database.PROTOCOL];

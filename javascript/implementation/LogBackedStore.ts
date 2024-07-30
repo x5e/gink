@@ -68,7 +68,10 @@ export class LogBackedStore extends LockableLog implements Store {
         super(filename, exclusive);
         this.logBackedStoreReady = super.ready.then(() => this.initializeLogBackedStore());
     }
-    getVerifyKey: (chainInfo: [Medallion, ChainStart]) => Promise<Bytes>;
+
+    getVerifyKey(chainInfo: [Medallion, ChainStart]): Promise<Bytes> {
+        return this.internalStore.getVerifyKey(chainInfo);
+    }
 
     async saveKeyPair(keyPair: KeyPair): Promise<void> {
         await this.internalStore.saveKeyPair(keyPair);

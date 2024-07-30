@@ -1,12 +1,15 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector");
 process.chdir(__dirname + "/..");
+let server = null;
+let client = null;
+let result = 1;
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", ["-l", port], { env: { ...process.env } });
+    server = new Expector("./tsc.out/implementation/main.js", ["-l", port], { env: { ...process.env } });
     await server.expect("listening", 10000);
-    const client = new Expector("./tsc.out/implementation/main.js", ["-c", `ws://127.0.0.1:${port}/`]);
+    client = new Expector("./tsc.out/implementation/main.js", ["-c", `ws://127.0.0.1:${port}/`]);
     await client.expect("using", 10000);
     console.log("all ready");
 
@@ -18,8 +21,14 @@ process.chdir(__dirname + "/..");
     await server.expect(/received bundle:.*world/);
 
     console.log("closing...");
-    await server.close();
-    await client.close();
     console.log("ok!");
-    process.exit(0);
-})().catch((reason) => { console.error(reason); process.exit(1); });
+    result = 0;
+})().catch((reason) => {
+    console.error(reason);
+}).finally(
+    async () => {
+        await server.close();
+        await client.close();
+        process.exit(result);
+    }
+)

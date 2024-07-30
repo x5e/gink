@@ -18,7 +18,7 @@ process.chdir(__dirname + "/..");
     console.log("instance started");
     instance.send("await root.set(3,4, 'test');\n");
     await sleep(100);
-    instance.send(`await root.set("chainStart", JSON.stringify(database.myChain));\n`);
+    instance.send(`await root.set("chainStart", database.myChain.chainStart);\n`);
     await sleep(100);
     await instance.close();
 
@@ -30,15 +30,15 @@ process.chdir(__dirname + "/..");
     console.log("instance started");
     instance2.send("await root.set(4,5, 'test2');\n");
     await sleep(100);
-    instance2.send(`console.log(database.myChain.chainStart, JSON.parse((await root.get("chainStart"))).chainStart);\n`);
+    instance2.send(`console.log(database.myChain.chainStart, await root.get("chainStart"));\n`);
     await sleep(100);
-    instance2.send(`ensure(database.myChain.chainStart === JSON.parse((await root.get("chainStart"))).chainStart);\n`);
+    instance2.send(`console.log(database.myChain.chainStart == await root.get("chainStart") ? 7 : 11)`);
     await sleep(100);
+    await instance2.expect("7");
     await instance2.close();
 
     process.exit(0);
 })().catch(async (reason) => {
     console.error(reason);
-    await server.close();
     process.exit(1);
 });

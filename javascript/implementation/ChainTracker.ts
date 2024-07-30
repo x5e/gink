@@ -62,7 +62,6 @@ export class ChainTracker {
      * @returns true if the bundle represents data not seen before
      */
     markAsHaving(bundleInfo: BundleInfo, checkValidExtension?: boolean): boolean {
-        ensure(bundleInfo.hashCode && bundleInfo.hashCode.length == 32, "missing hashCode");
         if (!this.data.has(bundleInfo.medallion))
             this.data.set(bundleInfo.medallion, new Map());
         const innerMap = this.data.get(bundleInfo.medallion);

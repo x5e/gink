@@ -12,10 +12,12 @@ Ensures if logbacked1 changes the file, logbacked2 will
 automatically pull the changes and broadcast them.
 */
 process.chdir(__dirname + "/..");
+let server = null;
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", ["-l", port], { env: { ...process.env } });
+    server = new Expector("./tsc.out/implementation/main.js",
+        ["-l", port], {env: { ...process.env}});
     await server.expect("listening", 10000);
     console.log("server started");
 
@@ -44,6 +46,7 @@ process.chdir(__dirname + "/..");
     process.exit(0);
 })().catch(async (reason) => {
     console.error(reason);
-    await server.close();
+    if (server)
+        await server.close();
     process.exit(1);
 });

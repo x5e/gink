@@ -54,7 +54,7 @@ import {
     bundleKeyToInfo,
     storageKeyToString,
 } from "./store_utils";
-import { Retrieval } from "./Retrieval";
+import { Decomposition } from "./Decomposition";
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
@@ -349,11 +349,8 @@ export class MemoryStore implements Store {
     }
 
     async getBundles(callBack: (bundle: BundleView) => void) {
-        for (const [key, val] of this.trxns) {
-            const bundleKey: BundleInfoTuple = key;
-            const bundleInfo = bundleKeyToInfo(bundleKey);
-            const bundleBytes: BundleBytes = val;
-            callBack(new Retrieval({ bundleBytes, bundleInfo }));
+        for (const [_, val] of this.trxns) {
+            callBack(new Decomposition(val));
         }
     }
 
