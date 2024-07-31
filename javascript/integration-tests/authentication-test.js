@@ -8,7 +8,8 @@ let client;
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    server = new Expector(`./tsc.out/implementation/main.js`, ["-l", port, "--auth-token", "abc"], { ...process.env });
+    server = new Expector(`./tsc.out/implementation/main.js`,
+        ["-l", port, "--auth-token", "abc"], { ...process.env });
     await server.expect("ready", 2000);
     client = new Expector("./tsc.out/implementation/main.js");
     await client.expect("node.gink", 2000);

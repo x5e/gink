@@ -34,16 +34,12 @@ export class CommandLineInterface {
         auth_token?: string,
         ssl_cert?: string,
         ssl_key?: string;
-        verbose?: string;
     }) {
         logToStdErr("starting...");
 
         // This makes debugging through integration tests way easier.
         globalThis.ensure = ensure;
-        let logger = noOp;
-        if (args.verbose && args.verbose.length > 0) {
-            logger = logToStdErr;
-        }
+        let logger = logToStdErr;
 
         this.authToken = args.auth_token;
         this.targets = args.connect_to ?? [];
@@ -106,7 +102,7 @@ export class CommandLineInterface {
             globalThis.root = this.instance.getGlobalDirectory();
             this.instance.addListener(
                 async (bundle: BundleView) => logToStdErr(
-                    `received bundle: ${JSON.stringify(bundle.info, ["medallion", "timestamp"])}`));
+                    `received bundle: ${JSON.stringify(bundle.info, ["medallion", "timestamp", "comment"])}`));
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
                 try {

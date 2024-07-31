@@ -13,6 +13,7 @@ module.exports = class Expector {
     constructor(program, args, options, verbose = true) {
         this.captured = "";
         this.expecting = null;
+        this.closing = null;
         this.verbose = verbose;
         this.proc = spawn(program, args, options);
         const appender = this.notify.bind(this);
@@ -82,13 +83,13 @@ module.exports = class Expector {
     */
     async close(timeout = 1000) {
         await this.spawned;
-        //TODO: detect when the underlying process has already exited so we don't reject on timeout
-        const thisExpector = this;
-        const returning = new Promise((resolve, reject) => {
-            thisExpector.proc.on('close', resolve);
-            setTimeout(reject, timeout);
-        });
-        this.proc.kill();
-        return returning;
+        if (! this.closing) {
+            this.closing = new Promise((resolve, reject) => {
+                this.proc.on('close', resolve);
+                setTimeout(reject, timeout);
+            });
+            this.proc.kill();
+        }
+        return this.closing;
     }
 };

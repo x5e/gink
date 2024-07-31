@@ -40,6 +40,7 @@ export class Database {
     private lastLinkToExtend: BundleInfo;
     private keyPair: KeyPair;
     private identity: string;
+    private chainGetter?: Promise<BundleInfo> = undefined;
     protected iHave: ChainTracker;
 
     //TODO: centralize platform dependent code
@@ -77,7 +78,12 @@ export class Database {
     /**
      * Starts a chain or finds one to reuse, then sets myChain.
      */
-    public async getChain(): Promise<BundleInfo> {
+    public getChain(): Promise<BundleInfo> {
+        if (! this.chainGetter) this.chainGetter = this.getChainHelper();
+        return this.chainGetter;
+    }
+
+    private async getChainHelper(): Promise<BundleInfo> {
         if (this.lastLinkToExtend)
             return this.lastLinkToExtend;
         this.logger("calling getChain()")
@@ -361,7 +367,13 @@ export class Database {
     private receiveBundle(bundle: BundleView, fromConnectionId?: number): Promise<BundleInfo> {
         return this.store.addBundle(bundle).then((added) => {
             if (!added) return;
-            this.logger(`bundle from ${fromConnectionId}: ${JSON.stringify(bundle.info)}`);
+            let summary;
+            if (bundle.info.chainStart === bundle.info.timestamp) {
+                summary = JSON.stringify(bundle.info, ["medallion", "timestamp", "chainStart",])
+            } else {
+                summary = JSON.stringify(bundle.info, ["medallion", "timestamp", "priorTime",])
+            }
+            this.logger(`added bundle from ${fromConnectionId}: ${summary}`);
             this.iHave.markAsHaving(bundle.info);
             const peer = this.peers.get(fromConnectionId);
             if (peer) {

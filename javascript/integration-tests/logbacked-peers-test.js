@@ -13,6 +13,7 @@ automatically pull the changes and broadcast them.
 */
 process.chdir(__dirname + "/..");
 let server = null;
+let result = 1;
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
@@ -41,12 +42,11 @@ let server = null;
     await new Promise(r => setTimeout(r, 100));
     await server.expect(/received bundle:.*testing peer callback/, 10000);
     console.log("received expected bundle");
-
-    await server.close();
-    process.exit(0);
+    result = 0;
 })().catch(async (reason) => {
     console.error(reason);
+}).finally(async () => {
     if (server)
         await server.close();
-    process.exit(1);
-});
+    process.exit(result);
+})
