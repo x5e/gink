@@ -20,6 +20,7 @@ const ClearanceBuilder = require("../proto/clearance_pb")["Clearance"];
 const Special = ValueBuilder.Special;
 const DocumentBuilder = ValueBuilder.Document;
 const TupleBuilder = ValueBuilder.Tuple;
+const KeyPairBuilder = require("../proto/key_pair_pb")["KeyPair"];
 
 module.exports = {
     MetadataBuilder,
@@ -42,5 +43,6 @@ module.exports = {
     DocumentBuilder,
     TupleBuilder,
     ClearanceBuilder,
-    AckBuilder
+    AckBuilder,
+    KeyPairBuilder,
 };

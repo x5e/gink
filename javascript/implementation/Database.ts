@@ -77,17 +77,23 @@ export class Database {
     /**
      * Starts a chain or finds one to reuse, then sets myChain.
      */
-    private async getOrStartChain(): Promise<void> {
+    public async getChain(): Promise<BundleInfo> {
         if (this.lastLinkToExtend)
-            return;
+            return this.lastLinkToExtend;
+        this.logger("calling getChain()")
         const claimedChains = await this.store.getClaimedChains();
         let toReuse: ClaimedChain;
         for (let value of claimedChains.values()) {
             const chainId = await this.store.getChainIdentity([value.medallion, value.chainStart]);
-            if (chainId !== this.identity)
+            this.logger(`considering chain: ${JSON.stringify(value)}`);
+            if (chainId !== this.identity) {
+                this.logger(`identities don't match: ${chainId} ${this.identity}`);
                 continue;
-            if (await isAlive(value.actorId))
+            }
+            if (await isAlive(value.actorId)) {
+                this.logger(`actor is still alive`)
                 continue;
+            }
             // TODO: check to see if meta-data matches, and overwrite if not
             toReuse = value;
             if (typeof window !== "undefined") {
@@ -122,6 +128,7 @@ export class Database {
             this.lastLinkToExtend = bundler.info;
             ensure(this.lastLinkToExtend.hashCode && this.lastLinkToExtend.hashCode.length == 32);
             this.iHave.markAsHaving(bundler.info);
+            this.logger(`started chain with ${JSON.stringify(bundler.info,["medallion", "chainStart"])}`);
             // If there is already a connection before we claim a chain, ensure the
             // peers get this bundle as well so future bundles will be valid extensions.
             for (const peer of this.peers.values()) {
@@ -130,6 +137,7 @@ export class Database {
         }
         ensure(this.lastLinkToExtend, "myChain wasn't set.");
         ensure(this.lastLinkToExtend.hashCode && this.lastLinkToExtend.hashCode.length == 32);
+        return this.lastLinkToExtend;
     }
 
     /**
@@ -299,7 +307,7 @@ export class Database {
      * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
-        return this.ready.then(() => this.getOrStartChain().then(() => {
+        return this.ready.then(() => this.getChain().then(() => {
             const nowMicros = generateTimestamp();
             const seenThrough = this.lastLinkToExtend.timestamp;
             const newTimestamp = nowMicros > seenThrough ? nowMicros : seenThrough + 10;

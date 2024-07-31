@@ -2,6 +2,7 @@
 syntax = "proto3";
 package gink;
 import "proto/claim.proto";
+import "proto/key_pair.proto";
 
 /**
     This proto is only used in the typescript/javascript implementation.
@@ -10,15 +11,20 @@ import "proto/claim.proto";
     structured.
 */
 message LogFile {
+
+
+    fixed32 magic_number = 1;  // should be 1263421767
+
+    repeated Claim claims = 2;
+
     /**
         The writer must ensure that all bundles per chain are in order
         and that there are no gaps in any of the chains.  Storing the
         bytes of the bundle so that it's forward compatible and doesn't
         drop unknown proto fields.
     */
-    repeated bytes bundles = 1;
+    repeated bytes bundles = 3;
 
-    repeated Claim claims = 2;
+    repeated KeyPair key_pairs = 4;
 
-    fixed32 magic_number = 3;  // should be 1263421767
 }

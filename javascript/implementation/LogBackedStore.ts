@@ -17,7 +17,7 @@ import { PromiseChainLock } from "./PromiseChainLock";
 import { LockableLog } from "./LockableLog";
 import { watch, FSWatcher } from "fs";
 import { ChainTracker } from "./ChainTracker";
-import { ClaimBuilder, LogFileBuilder } from "./builders";
+import { ClaimBuilder, LogFileBuilder, KeyPairBuilder } from "./builders";
 import { generateTimestamp, ensure, getActorId } from "./utils";
 import { Decomposition } from "./Decomposition";
 
@@ -74,6 +74,21 @@ export class LogBackedStore extends LockableLog implements Store {
     }
 
     async saveKeyPair(keyPair: KeyPair): Promise<void> {
+        await this.ready;
+        const unlockingFunction = await this.memoryLock.acquireLock();
+        if (!this.exclusive)
+            await this.lockFile(true);
+        if (this.redTo === 0)
+            this.redTo += await this.writeMagicNumber();
+        const keyPairBuilder = new KeyPairBuilder();
+        keyPairBuilder.setPublicKey(keyPair.publicKey);
+        keyPairBuilder.setSecretKey(keyPair.secretKey);
+        const logFragment = new LogFileBuilder();
+        logFragment.setKeyPairsList([keyPairBuilder]);
+        this.redTo += await this.writeLogFragment(logFragment, true);
+        if (!this.exclusive)
+            await this.unlockFile();
+        unlockingFunction();
         await this.internalStore.saveKeyPair(keyPair);
     }
 
@@ -155,6 +170,13 @@ export class LogBackedStore extends LockableLog implements Store {
                     claimTime: claims[i].getClaimTime(),
                 });
             }
+            const keyPairs: KeyPairBuilder[] = logFileBuilder.getKeyPairsList();
+            for (let i=0; i< keyPairs.length; i++) {
+                this.internalStore.saveKeyPair({
+                    publicKey: keyPairs[i].getPublicKey_asU8(),
+                    secretKey: keyPairs[i].getSecretKey_asU8(),
+                })
+            }
             this.redTo = totalSize;
         }
     }
@@ -183,7 +205,7 @@ export class LogBackedStore extends LockableLog implements Store {
             await this.lockFile(true);
         await this.pullDataFromFile();
         if (this.redTo === 0)
-            await this.writeMagicNumber();
+            this.redTo += await this.writeMagicNumber();
         const info: BundleInfo = bundle.info;
         const added = await this.internalStore.addBundle(bundle);
         if (claimChain) {

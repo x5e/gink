@@ -2,12 +2,15 @@
 const Expector = require("./Expector");
 process.chdir(__dirname + "/..");
 
+let result = 1;
+let server;
+let client;
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector(`./tsc.out/implementation/main.js`, ["-l", port, "--auth-token", "abc"], { ...process.env });
+    server = new Expector(`./tsc.out/implementation/main.js`, ["-l", port, "--auth-token", "abc"], { ...process.env });
     await server.expect("ready", 2000);
-    const client = new Expector("./tsc.out/implementation/main.js");
+    client = new Expector("./tsc.out/implementation/main.js");
     await client.expect("node.gink", 2000);
     console.log("all ready");
 
@@ -19,9 +22,12 @@ process.chdir(__dirname + "/..");
     await server.expect("Connection accepted.", 2000);
     console.log("correct token accepted");
 
-    console.log("closing...");
-    await server.close();
-    await client.close();
     console.log("ok!");
-    process.exit(0);
-})().catch((reason) => { console.error(reason); process.exit(1); });
+    result = 0;
+})().catch((reason) => { console.error(reason); }).finally(async () => {
+    if (server instanceof Expector)
+        await server.close();
+    if (client instanceof Expector)
+        await client.close();
+    process.exit(result);
+});
