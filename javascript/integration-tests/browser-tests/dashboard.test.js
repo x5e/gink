@@ -15,7 +15,7 @@ it('share bundles between two pages', async () => {
     try {
         server = new Expector("node", ["./tsc.out/implementation/main.js", "-l", port],
             { env: { ...process.env } }, false);
-        browser = await puppeteer.launch(getLaunchOptions(false)); // pass false to getLaunchOptions for local debugging.
+        browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
         await sleep(1000);
         await server.expect("ready");
 
