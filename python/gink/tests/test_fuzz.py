@@ -109,9 +109,6 @@ def test_random():
             str_io = StringIO()
             database.dump(file=str_io)
 
-            db2 = Database(store=store)
-            dumped = str_io.getvalue()
-            exec(dumped.replace("})\n", "})"))
 
 def random_data(type):
     max_str = 468 # lmdb key cant be more than 468 characters

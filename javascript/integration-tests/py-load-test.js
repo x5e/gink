@@ -65,7 +65,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
     );
     await sleep(1000);
     gink.send("root.get('foo');\n");
-    await gink.expect(/\b'bar'\b/, 2000);
+    await gink.expect(/.*'bar'.*/, 2000);
 
     await gink.close();
     console.log("finished!");

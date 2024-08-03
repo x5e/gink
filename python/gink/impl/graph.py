@@ -267,8 +267,8 @@ class Edge(Addressable):
                 entry_builder.effective = self._effective = effective
             muid = bundler.add_change(change_builder)
             if _immediate:
-                database.bundle(bundler)
-        super().__init__(database=database, muid=muid)
+                self._database.bundle(bundler)
+        super().__init__(database=self._database, muid=muid)
 
     def dumps(self, indent=1) -> str:
         contents = []
