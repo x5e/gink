@@ -3,43 +3,6 @@ const Expector = require("../Expector");
 const { expect } = require('@jest/globals');
 const { getLaunchOptions, sleep } = require("../browser_test_utilities");
 process.chdir(__dirname + "/../..");
-it('connect to server and display dashboard', async () => {
-    const port = 9998;
-    let browser, server;
-
-    try {
-        server = new Expector("node", ["./tsc.out/implementation/main.js", "-l", port],
-            { env: { ...process.env } }, false);
-        browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
-        await sleep(1000);
-        await server.expect("ready");
-        let page = await browser.newPage();
-
-        page.on('console', async e => {
-            const args = await Promise.all(e.args().map(a => a.jsonValue()));
-        });
-
-        await page.goto(`http://localhost:${port}/`);
-        await page.waitForSelector('#root', { timeout: 5000 });
-
-        await sleep(4000);
-
-        const title = await page.$eval("#title-bar", e => e.innerHTML);
-        expect(title).toMatch("Root Directory");
-
-        await page.reload();
-        await server.expect("disconnected.", 2000);
-
-        // Make sure server does not crash after page reload.
-        await server.expect("got ack from 2", 5000);
-    } catch (e) {
-        console.error(e);
-        throw new Error(e);
-    } finally {
-        if (server) await server.close();
-        if (browser) await browser.close();
-    }
-}, 40000);
 
 it('share bundles between two pages', async () => {
     /**
@@ -52,7 +15,7 @@ it('share bundles between two pages', async () => {
     try {
         server = new Expector("node", ["./tsc.out/implementation/main.js", "-l", port],
             { env: { ...process.env } }, false);
-        browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
+        browser = await puppeteer.launch(getLaunchOptions(false)); // pass false to getLaunchOptions for local debugging.
         await sleep(1000);
         await server.expect("ready");
 
@@ -73,6 +36,12 @@ it('share bundles between two pages', async () => {
             const title = await page.$eval("#title-bar", e => e.innerHTML);
             expect(title).toMatch("Root Directory");
         }
+
+        await page1.reload();
+        await server.expect("disconnected.", 2000);
+
+        // Make sure server does not crash after page reload.
+        await server.expect("got greeting", 5000);
 
         // Looks a little confusing but really this loop does the following:
         // Page1: set(key0, a value)
