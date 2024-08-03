@@ -89,7 +89,7 @@ export class Bundler implements BundleView {
      * @param bundleInfo the bundle metadata to add when serializing
      * @returns serialized
      */
-    seal(bundleInfo: BundleInfo, keyPair: KeyPair, prior_hash?: Bytes): void {
+    seal(bundleInfo: BundleInfo, keyPair: KeyPair, priorHash?: Bytes): void {
         this.requireNotSealed();
         if (this.preAssignedMedallion && this.preAssignedMedallion !== bundleInfo.medallion) {
             throw new Error("specified bundleInfo doesn't match pre-assigned medallion");
@@ -107,8 +107,8 @@ export class Bundler implements BundleView {
         if (bundleInfo.chainStart === bundleInfo.timestamp) {
             this.bundleBuilder.setVerifyKey(keyPair.publicKey);
         } else {
-            ensure(prior_hash && prior_hash.length == 32, "need prior_hash");
-            this.bundleBuilder.setPriorHash(prior_hash);
+            ensure(priorHash && priorHash.length == 32, "need prior_hash");
+            this.bundleBuilder.setPriorHash(priorHash);
         }
 
         this.bundleBytes = signBundle(this.bundleBuilder.serializeBinary(), keyPair.secretKey,);

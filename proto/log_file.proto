@@ -12,7 +12,7 @@ import "proto/key_pair.proto";
 */
 message LogFile {
 
-
+    // The first five bytes of the log file should be this field set to the specified value.
     fixed32 magic_number = 1;  // should be 1263421767
 
     repeated Claim claims = 2;

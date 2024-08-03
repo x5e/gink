@@ -507,7 +507,6 @@ export class IndexedDbStore implements Store {
             }
             throw new Error("don't know how to apply this kind of change");
         }
-        // console.log(`finished addBundleHelper for: ` + JSON.stringify(bundleInfo));
         return true;
     }
 
