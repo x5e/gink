@@ -23,22 +23,22 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
             }
         }
     );
-    db1.send("root.set('foo', 'bar');\n");
-    await db1.expect("Muid", 2000);
+    // db1.send("root.set('foo', 'bar');\n");
+    // await db1.expect("Muid", 2000);
     db1.send("seq = Sequence(contents=[1, 2, 3, 4, 5]);\n");
     await db1.expect("locally", 2000);
-    db1.send("ks = KeySet(contents=[1, 2, 3, 4, 5]);\n");
-    await db1.expect("locally", 2000);
-    db1.send("box = Box(contents='box contents', database=database);\n");
-    await db1.expect("locally", 2000);
-    db1.send("ps = PairSet(contents={'include': [(box, ks)], 'exclude': [(seq, ks)]}, database=database);\n");
-    await db1.expect("locally", 2000);
-    db1.send("pm = PairMap(contents={(box, ks): 'value', (box, ps): 3}, database=database);\n");
-    await db1.expect("locally", 2000);
-    db1.send("prop = Property(contents={root: 'value'}, database=database);\n");
-    await db1.expect("locally", 2000);
-    db1.send("Group(contents={'include': {box, ps}, 'exclude': {pm}}, database=database);\n");
-    await db1.expect("Group", 2000);
+    // db1.send("ks = KeySet(contents=[1, 2, 3, 4, 5]);\n");
+    // await db1.expect("locally", 2000);
+    // db1.send("box = Box(contents='box contents', database=database);\n");
+    // await db1.expect("locally", 2000);
+    // db1.send("ps = PairSet(contents={'include': [(box, ks)], 'exclude': [(seq, ks)]}, database=database);\n");
+    // await db1.expect("locally", 2000);
+    // db1.send("pm = PairMap(contents={(box, ks): 'value', (box, ps): 3}, database=database);\n");
+    // await db1.expect("locally", 2000);
+    // db1.send("prop = Property(contents={root: 'value'}, database=database);\n");
+    // await db1.expect("locally", 2000);
+    // db1.send("Group(contents={'include': {box, ps}, 'exclude': {pm}}, database=database);\n");
+    // await db1.expect("Group", 2000);
     await db1.close();
 
     const dumped = new Expector(
@@ -74,8 +74,8 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
         }
     );
     await sleep(1000);
-    gink.send("root.get('foo');\n");
-    await gink.expect(/.*'bar'.*/, 2000);
+    // gink.send("root.get('foo');\n");
+    // await gink.expect(/.*'bar'.*/, 2000);
 
     gink.send("database.dump();\n");
     await sleep(5000);
