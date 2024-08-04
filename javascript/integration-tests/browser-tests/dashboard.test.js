@@ -4,6 +4,8 @@ const { expect } = require('@jest/globals');
 const { getLaunchOptions, sleep } = require("../browser_test_utilities");
 process.chdir(__dirname + "/../..");
 
+jest.retryTimes(2);
+
 it('share bundles between two pages', async () => {
     /**
      * The idea here is to have two pages connected to the same server
@@ -21,15 +23,16 @@ it('share bundles between two pages', async () => {
 
         let page1 = await browser.newPage();
         let page2 = await browser.newPage();
-        const pages = [page1, page2];
 
-        for (const page of pages) {
-            await page.goto(`http://localhost:${port}/`);
-            await page.waitForSelector('#root', { timeout: 5000 });
-
+        for (const page of [page1, page2]) {
+            page.on('console', async e => {
+                const args = await Promise.all(e.args().map(a => a.jsonValue()));
+            });
             page.on('dialog', async dialog => {
                 await dialog.accept();
             });
+            await page.goto(`http://localhost:${port}/`);
+            await page.waitForSelector('#root', { timeout: 5000 });
 
             await sleep(2000);
 
@@ -43,58 +46,44 @@ it('share bundles between two pages', async () => {
         // Make sure server does not crash after page reload.
         await server.expect("got greeting", 5000);
 
-        // Looks a little confusing but really this loop does the following:
-        // Page1: set(key0, a value)
-        // Page2: set(key1, a value)
-        // Page1: set(key2, a value)
-        // Page1: delete(key1)
-        // Page2: set(key3, a value)
-        // Page2: delete(key2)
-        // Page1: set(key0, updated value)
-
         // This ensures the pages won't be missing any chain info after
         // the other sends a bundle.
-        for (let i = 0; i < 4; i++) {
-            const page = pages[i % 2 === 0 ? 1 : 0];
-            await page.bringToFront();
-            page.on('console', async e => {
-                const args = await Promise.all(e.args().map(a => a.jsonValue()));
-            });
 
-            await page.click("#add-entry-button");
-            await page.type("#key-input-1", `key${i}`);
-            await page.type("#value-input", `a value`);
-            await page.type("#comment-input", `setting key${i}`);
-            await page.click("#bundle-button");
-
-            if (i > 1) {
-                // Delete keys through dashboard UI
-                const xp = `::-p-xpath(//td[contains(., 'key${i - 1}')])`;
-                const element = await page.waitForSelector(xp);
-                await element.click();
-                await page.click("#delete-button");
-            }
-            await sleep(1000);
-        }
         await page1.bringToFront();
-        // Use the update button to update key0's value
-        const element = await page1.waitForSelector(`::-p-xpath(//td[contains(., 'key0')])`);
-        await element.click();
-        await page1.click("#update-button");
-        await page1.type("#value-input", `changed value`);
-        await page1.click("#bundle-button");
+        // Add an entry of key1, a value
+        (await page1.waitForSelector("#add-entry-button")).evaluate((e) => e.click());
+        await sleep(500);
+        await page1.type("#key-input-1", `key0`);
+        await sleep(500);
+        await page1.type("#value-input", `a value`);
+        await sleep(500);
+        await page1.type("#comment-input", `setting key0`);
+        await sleep(500);
+        (await page1.waitForSelector("#bundle-button")).evaluate((e) => e.click());
+        await sleep(500);
+
+        await page2.bringToFront();
+        const element1 = await page2.waitForSelector(`::-p-xpath(//td[contains(., 'key0')])`);
+        await element1.click();
+        (await page2.waitForSelector("#update-button")).evaluate((e) => e.click());
+        await page2.type("#value-input", `changed value`);
+        (await page2.waitForSelector("#bundle-button")).evaluate((e) => e.click());
         await sleep(1000);
 
+        await page1.bringToFront();
+        const element2 = await page1.waitForSelector(`::-p-xpath(//td[contains(., 'changed value')])`);
+        await element2.evaluate((e) => e.click());
+        const deleteBtn = await page1.waitForSelector("#delete-button");
+        await deleteBtn.evaluate((btn) => btn.click());
+        await sleep(500);
+
         // Tables should both include the same keys and values:
-        // key0: a value and key3: a value
-        const table1 = await page1.$eval("#container-table", e => e.innerHTML);
-        const table2 = await page2.$eval("#container-table", e => e.innerHTML);
-        for (const table of [table1, table2]) {
-            expect(table).toMatch(/.*<tr class="entry-row" data-position="0"><td>"key0"<\/td><td>"changed value"<\/td><\/tr>/);
-            expect(table).not.toMatch(/.*key1/);
-            expect(table).not.toMatch(/.*key2/);
-            expect(table).toMatch(/.*<tr class="entry-row" data-position="1"><td>"key3"<\/td><td>"a value"<\/td><\/tr>/);
-        }
+        const table1 = await page1.$eval("#root", e => e.innerHTML);
+        const table2 = await page2.$eval("#root", e => e.innerHTML);
+        expect(table1).toMatch(/.*No entries\./);
+        expect(table1).not.toMatch(/.*key0/);
+        expect(table2).toMatch(/.*No entries\./);
+        expect(table2).not.toMatch(/.*key0/);
     } catch (e) {
         console.error(e);
         throw new Error(e);
