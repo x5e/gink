@@ -4,7 +4,7 @@ import { Store } from "./Store";
 import { Database } from "./Database";
 import { AuthFunction, BundleInfo, BundleView } from "./typedefs";
 import { SimpleServer } from "./SimpleServer";
-import { ensure, generateTimestamp, getIdentity, logToStdErr } from "./utils";
+import { ensure, generateTimestamp, getIdentity, logToStdErr, noOp } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { start, REPLServer } from "node:repl";
 
@@ -39,6 +39,7 @@ export class CommandLineInterface {
 
         // This makes debugging through integration tests way easier.
         globalThis.ensure = ensure;
+        let logger = logToStdErr;
 
         this.authToken = args.auth_token;
         this.targets = args.connect_to ?? [];
@@ -76,7 +77,7 @@ export class CommandLineInterface {
                 sslKeyFilePath: args.ssl_key,
                 sslCertFilePath: args.ssl_cert,
                 staticContentRoot: args.static_path,
-                logger: logToStdErr,
+                logger: logger,
                 authFunc: authFunc
             };
             if (args.data_root) {
@@ -90,7 +91,7 @@ export class CommandLineInterface {
             }
         } else {
             // port not set so don't listen for incoming connections
-            this.instance = new Database(this.store, identity);
+            this.instance = new Database(this.store, identity, logger);
         }
     }
 
@@ -100,7 +101,8 @@ export class CommandLineInterface {
             globalThis.database = this.instance;
             globalThis.root = this.instance.getGlobalDirectory();
             this.instance.addListener(
-                async (bundle: BundleView) => logToStdErr(`received bundle: ${JSON.stringify(bundle.info)}`));
+                async (bundle: BundleView) => logToStdErr(
+                    `received bundle: ${JSON.stringify(bundle.info, ["medallion", "timestamp", "comment"])}`));
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
                 try {

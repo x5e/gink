@@ -1,6 +1,6 @@
-import { Muid, BundleInfo, Medallion, Timestamp, BundleView, BundleBytes } from "./typedefs";
-import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder, HeaderBuilder } from "./builders";
-import { ensure } from "./utils";
+import { Muid, BundleInfo, Medallion, Timestamp, BundleView, BundleBytes, KeyPair, Bytes } from "./typedefs";
+import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder, MetadataBuilder } from "./builders";
+import { digest, ensure, signBundle } from "./utils";
 
 export class Bundler implements BundleView {
     // note: this class is unit tested as part of Store.test.ts
@@ -89,21 +89,29 @@ export class Bundler implements BundleView {
      * @param bundleInfo the bundle metadata to add when serializing
      * @returns serialized
      */
-    seal(bundleInfo: BundleInfo): void {
+    seal(bundleInfo: BundleInfo, keyPair: KeyPair, priorHash?: Bytes): void {
         this.requireNotSealed();
         if (this.preAssignedMedallion && this.preAssignedMedallion !== bundleInfo.medallion) {
             throw new Error("specified bundleInfo doesn't match pre-assigned medallion");
         }
         this.bundleInfo = { ...bundleInfo };
         this.bundleInfo.comment = this.pendingComment;
-        const headerBuilder = new HeaderBuilder();
-        headerBuilder.setComment(this.pendingComment);
-        headerBuilder.setTimestamp(bundleInfo.timestamp);
-        headerBuilder.setPrevious(bundleInfo.priorTime);
-        headerBuilder.setChainStart(bundleInfo.chainStart);
-        headerBuilder.setMedallion(bundleInfo.medallion);
-        headerBuilder.setComment(this.bundleInfo.comment);
-        this.bundleBuilder.setHeader(headerBuilder);
-        this.bundleBytes = this.bundleBuilder.serializeBinary();
+        const metadataBuilder = new MetadataBuilder();
+        metadataBuilder.setComment(this.pendingComment);
+        metadataBuilder.setTimestamp(bundleInfo.timestamp);
+        metadataBuilder.setPrevious(bundleInfo.priorTime);
+        metadataBuilder.setChainStart(bundleInfo.chainStart);
+        metadataBuilder.setMedallion(bundleInfo.medallion);
+        metadataBuilder.setComment(this.bundleInfo.comment);
+        this.bundleBuilder.setMetadata(metadataBuilder);
+        if (bundleInfo.chainStart === bundleInfo.timestamp) {
+            this.bundleBuilder.setVerifyKey(keyPair.publicKey);
+        } else {
+            ensure(priorHash && priorHash.length == 32, "need prior_hash");
+            this.bundleBuilder.setPriorHash(priorHash);
+        }
+
+        this.bundleBytes = signBundle(this.bundleBuilder.serializeBinary(), keyPair.secretKey,);
+        this.bundleInfo.hashCode = digest(this.bundleBytes);
     }
 }

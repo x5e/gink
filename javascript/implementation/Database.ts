@@ -2,9 +2,10 @@ import { Peer } from "./Peer";
 import {
     makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
     encodeToken, isAlive,
-    getIdentity
+    getIdentity,
+    createKeyPair
 } from "./utils";
-import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, AsOf, } from "./typedefs";
+import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, AsOf, KeyPair, } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
 
@@ -36,8 +37,10 @@ export class Database {
 
     private listeners: Map<string, Map<string, BundleListener[]>> = new Map();
     private countConnections = 0; // Includes disconnected clients.
-    private myChain: ClaimedChain;
+    private lastLinkToExtend: BundleInfo;
+    private keyPair: KeyPair;
     private identity: string;
+    private chainGetter?: Promise<BundleInfo> = undefined;
     protected iHave: ChainTracker;
 
     //TODO: centralize platform dependent code
@@ -75,46 +78,72 @@ export class Database {
     /**
      * Starts a chain or finds one to reuse, then sets myChain.
      */
-    public async getOrStartChain(): Promise<ClaimedChain> {
-        if (this.myChain) return this.myChain;
+    public getChain(): Promise<BundleInfo> {
+        if (! this.chainGetter) this.chainGetter = this.getChainHelper();
+        return this.chainGetter;
+    }
+
+    private async getChainHelper(): Promise<BundleInfo> {
+        if (this.lastLinkToExtend)
+            return this.lastLinkToExtend;
+        this.logger("calling getChain()")
         const claimedChains = await this.store.getClaimedChains();
-        let reused;
+        let toReuse: ClaimedChain;
         for (let value of claimedChains.values()) {
-            if (!(await isAlive(value.actorId)) && await this.store.getChainIdentity([value.medallion, value.chainStart]) === this.identity) {
-                // TODO: check to see if meta-data matches, and overwrite if not
-                reused = value;
-                if (typeof window !== "undefined") {
-                    // If we are running in a browser and take over a chain,
-                    // start a new heartbeat.
-                    setInterval(() => {
-                        window.localStorage.setItem(`gink-${value.actorId}`, `${Date.now()}`);
-                    }, 1000);
-                }
-                break;
+            const chainId = await this.store.getChainIdentity([value.medallion, value.chainStart]);
+            this.logger(`considering chain: ${JSON.stringify(value)}`);
+            if (chainId !== this.identity) {
+                this.logger(`identities don't match: ${chainId} ${this.identity}`);
+                continue;
             }
+            if (await isAlive(value.actorId)) {
+                this.logger(`actor is still alive`)
+                continue;
+            }
+            // TODO: check to see if meta-data matches, and overwrite if not
+            toReuse = value;
+            if (typeof window !== "undefined") {
+                // If we are running in a browser and take over a chain,
+                // start a new heartbeat.
+                setInterval(() => {
+                    window.localStorage.setItem(`gink-${value.actorId}`, `${Date.now()}`);
+                }, 1000);
+            }
+            break;
         }
-        if (reused) {
-            ensure(reused.medallion > 0);
-            this.myChain = reused;
+        if (toReuse) {
+            ensure(toReuse.medallion > 0);
+            const publicKey = await this.store.getVerifyKey([toReuse.medallion, toReuse.chainStart]);
+            ensure(publicKey);
+            this.keyPair = ensure(await this.store.pullKeyPair(publicKey));
+            this.lastLinkToExtend = this.iHave.getBundleInfo([toReuse.medallion, toReuse.chainStart]);
+
         } else {
             const medallion = makeMedallion();
             const chainStart = generateTimestamp();
+            const keyPair = createKeyPair();
+            await this.store.saveKeyPair(keyPair);
+            this.keyPair = keyPair;
             const bundler = new Bundler(this.identity, medallion);
+            // Starting a new chain, so don't have/need a prior_hash.
             bundler.seal({
                 medallion, timestamp: chainStart, chainStart
-            });
+            }, keyPair);
             ensure(bundler.info.comment === this.identity);
             await this.store.addBundle(bundler, true);
-            this.myChain = (await this.store.getClaimedChains()).get(medallion);
+            this.lastLinkToExtend = bundler.info;
+            ensure(this.lastLinkToExtend.hashCode && this.lastLinkToExtend.hashCode.length == 32);
             this.iHave.markAsHaving(bundler.info);
+            this.logger(`started chain with ${JSON.stringify(bundler.info,["medallion", "chainStart"])}`);
             // If there is already a connection before we claim a chain, ensure the
             // peers get this bundle as well so future bundles will be valid extensions.
             for (const peer of this.peers.values()) {
                 peer._sendIfNeeded(bundler);
             }
         }
-        ensure(this.myChain, "myChain wasn't set.");
-        return this.myChain;
+        ensure(this.lastLinkToExtend, "myChain wasn't set.");
+        ensure(this.lastLinkToExtend.hashCode && this.lastLinkToExtend.hashCode.length == 32);
+        return this.lastLinkToExtend;
     }
 
     /**
@@ -130,7 +159,7 @@ export class Database {
     }
 
     getMedallionDirectory(): Directory {
-        return new Directory(this, { timestamp: -1, medallion: this.myChain[0], offset: Behavior.DIRECTORY });
+        return new Directory(this, { timestamp: -1, medallion: this.lastLinkToExtend[0], offset: Behavior.DIRECTORY });
     }
 
     /**
@@ -284,22 +313,22 @@ export class Database {
      * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
-        return this.ready.then(() => this.getOrStartChain().then(() => {
-            if (!(this.myChain.medallion > 0))
-                throw new Error("zero medallion?");
+        return this.ready.then(() => this.getChain().then(() => {
             const nowMicros = generateTimestamp();
-            const lastBundleInfo = this.iHave.getBundleInfo([this.myChain.medallion, this.myChain.chainStart]);
-            const seenThrough = lastBundleInfo.timestamp;
+            const seenThrough = this.lastLinkToExtend.timestamp;
+            const newTimestamp = nowMicros > seenThrough ? nowMicros : seenThrough + 10;
             ensure(seenThrough > 0 && (seenThrough < nowMicros));
             const bundleInfo: BundleInfo = {
-                medallion: this.myChain.medallion,
-                chainStart: this.myChain.chainStart,
-                timestamp: seenThrough && (seenThrough >= nowMicros) ? seenThrough + 10 : nowMicros,
-                priorTime: seenThrough ?? nowMicros,
+                medallion: this.lastLinkToExtend.medallion,
+                chainStart: this.lastLinkToExtend.chainStart,
+                timestamp: newTimestamp,
+                priorTime: seenThrough,
             };
-            bundler.seal(bundleInfo);
-            this.iHave.markAsHaving(bundleInfo);
-            return this.receiveBundle(bundler.bytes);
+            bundler.seal(bundleInfo, this.keyPair, this.lastLinkToExtend.hashCode);
+            // The bundle is seralized then deserialized to catch problems before broadcasting.
+            const decomposition = new Decomposition(bundler.bytes);
+            this.lastLinkToExtend = decomposition.info;
+            return this.receiveBundle(decomposition);
         }));
     }
 
@@ -335,10 +364,16 @@ export class Database {
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns
      */
-    private receiveBundle(bundleBytes: BundleBytes, fromConnectionId?: number): Promise<BundleInfo> {
-        const bundle = new Decomposition(bundleBytes);
-        return this.store.addBundle(bundle).then(() => {
-            this.logger(`bundle from ${fromConnectionId}: ${JSON.stringify(bundle.info)}`);
+    private receiveBundle(bundle: BundleView, fromConnectionId?: number): Promise<BundleInfo> {
+        return this.store.addBundle(bundle).then((added) => {
+            if (!added) return;
+            let summary;
+            if (bundle.info.chainStart === bundle.info.timestamp) {
+                summary = JSON.stringify(bundle.info, ["medallion", "timestamp", "chainStart",])
+            } else {
+                summary = JSON.stringify(bundle.info, ["medallion", "timestamp", "priorTime",])
+            }
+            this.logger(`added bundle from ${fromConnectionId}: ${summary}`);
             this.iHave.markAsHaving(bundle.info);
             const peer = this.peers.get(fromConnectionId);
             if (peer) {
@@ -411,7 +446,8 @@ export class Database {
             const parsed = <SyncMessageBuilder>SyncMessageBuilder.deserializeBinary(messageBytes);
             if (parsed.hasBundle()) {
                 const bundleBytes: BundleBytes = parsed.getBundle_asU8();
-                await this.receiveBundle(bundleBytes, fromConnectionId);
+                const decomposition = new Decomposition(bundleBytes);
+                await this.receiveBundle(decomposition, fromConnectionId);
                 return;
             }
             if (parsed.hasGreeting()) {
@@ -461,7 +497,6 @@ export class Database {
         const authToken: string = (options && options.authToken) ? options.authToken : undefined;
 
         await this.ready;
-        await this.getOrStartChain();
         const thisClient = this;
         return new Promise<Peer>((resolve, reject) => {
             let protocols = [Database.PROTOCOL];

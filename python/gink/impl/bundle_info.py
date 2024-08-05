@@ -3,7 +3,7 @@
 from typing import Optional
 from struct import Struct
 
-from .builders import SyncMessage, HeaderBuilder
+from .builders import SyncMessage, MetadataBuilder
 from .typedefs import Medallion, MuTimestamp
 from .tuples import Chain
 
@@ -11,21 +11,23 @@ from .tuples import Chain
 class BundleInfo:
     """ Metadata about a particular change set relevant for syncing. """
     _struct = Struct(">QQQQ")
-    __slots__ = ["timestamp", "medallion", "chain_start", "previous", "comment"]
+    __slots__ = ["timestamp", "medallion", "chain_start", "previous", "hex_hash", "comment"]
 
     timestamp: MuTimestamp
     medallion: Medallion
     chain_start: MuTimestamp
     previous: MuTimestamp
-    comment: str
+    hex_hash: Optional[str]
+    comment: Optional[str]
 
-    def __init__(self, *, builder: Optional[HeaderBuilder] = None, encoded: bytes = b'\x00' * 32, **kwargs):
+    def __init__(self, *, builder: Optional[MetadataBuilder] = None, encoded: bytes = b'\x00' * 32, **kwargs):
 
         if len(encoded) < 32:
             raise ValueError("need at least 32 bytes to unpack")
         unpacked = self._struct.unpack(encoded[0:32])
         (self.timestamp, self.medallion, self.chain_start, self.previous) = unpacked
-        self.comment = encoded[32:].decode()
+        self.hex_hash = encoded[32:64].hex() if len(encoded) > 32 else None
+        self.comment = encoded[64:].decode() if len(encoded) > 64 else None
 
         if builder:
             self.medallion = builder.medallion  # type: ignore # pylint: disable=maybe-no-member
@@ -33,6 +35,7 @@ class BundleInfo:
             self.chain_start = builder.chain_start  # type: ignore  # pylint: disable=maybe-no-member
             self.comment = builder.comment  # type: ignore # pylint: disable=maybe-no-member\
             self.previous = builder.previous  # type: ignore # pylint: disable=maybe-no-member
+            assert "hex_hash" in kwargs
 
         if "chain" in kwargs:
             chain = kwargs["chain"]
@@ -41,7 +44,8 @@ class BundleInfo:
             self.medallion = chain.medallion
         for key in self.__slots__:
             if key in kwargs:
-                setattr(self, key, kwargs[key])
+                val = kwargs[key]
+                setattr(self, key, val)
 
     def as_acknowledgement(self) -> SyncMessage:
         """ convert to an ack message that can be sent to a peer """
@@ -78,20 +82,26 @@ class BundleInfo:
 
     def __bytes__(self) -> bytes:
         """ Returns: a binary representation that sorts according to (timestamp, medallion)."""
+        assert self.hex_hash is not None, "hex_hash is None!"
         num = self._struct.pack(self.timestamp, self.medallion, self.chain_start, self.previous)
-        return num + self.comment.encode()
+        return num + bytes.fromhex(self.hex_hash) + (self.comment.encode() if self.comment else b"")
 
     def __lt__(self, other):
-        return (self.timestamp < other.timestamp or (
-                self.timestamp == other.timestamp and self.medallion < other.medallion))
+        assert isinstance(other, type(self))
+        return self._essential_tuple() < other._essential_tuple()
 
     def __repr__(self) -> str:
         contents = [f"{x}={repr(getattr(self, x))}" for x in self.__slots__ if getattr(self, x)]
         joined = ", ".join(contents)
         return self.__class__.__name__ + '(' + joined + ')'
 
+    def _essential_tuple(self) -> tuple:
+        return (self.timestamp, self.medallion, self.chain_start)
+
     def __eq__(self, other):
-        return bytes(self) == bytes(other)
+        if not isinstance(other, type(self)):
+            return False
+        return self._essential_tuple() == other._essential_tuple()
 
     def __hash__(self):
-        return hash(bytes(self))
+        return hash(self._essential_tuple())

@@ -2,7 +2,7 @@ import { sleep } from "./test_utils";
 import { Database, Bundler, IndexedDbStore, Directory, MemoryStore } from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 
-it('set and get Basic data', async function () {
+it('set and get basic data', async function () {
     for (const store of [
         new IndexedDbStore('Directory.test1', true),
         new MemoryStore(true),
@@ -13,10 +13,6 @@ it('set and get Basic data', async function () {
 
         // set a value
         await schema.set("a key", "a value");
-
-        // check that the desired result exists in the database
-        const result = await schema.get("a key");
-        ensure(result === "a value");
 
         const myKey = new Uint8Array(3);
         myKey[0] = 94;
@@ -29,6 +25,12 @@ it('set and get Basic data', async function () {
             const allEntries = await store.getAllEntries();
             throw new Error("didnt' get what i expected");
         }
+
+        // check that the desired result exists in the database
+        const result = await schema.get("a key");
+        ensure(result === "a value");
+
+
         await store.close();
     }
 });

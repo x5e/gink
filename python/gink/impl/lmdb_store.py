@@ -8,7 +8,8 @@ import uuid
 from typing import Tuple, Iterable, Optional, Set, Union, Mapping, Callable
 from struct import pack
 from pathlib import Path
-from lmdb import open as ldmbopen, Transaction as Trxn, Cursor, BadValsizeError # type: ignore
+from lmdb import open as ldmbopen, Transaction as Trxn, Cursor, BadValsizeError
+from nacl.signing import SigningKey, VerifyKey
 
 # Gink Implementation
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
@@ -20,7 +21,7 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, BundleWrapper
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
-from .utilities import generate_timestamp, create_claim
+from .utilities import generate_timestamp, create_claim, is_needed
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
@@ -80,6 +81,8 @@ class LmdbStore(AbstractStore):
         self._by_name = self._handle.open_db(b"by_name")
         self._by_side = self._handle.open_db(b"by_side")
         self._identities = self._handle.open_db(b"identities")
+        self._signing_keys = self._handle.open_db(b"signing_keys")
+        self._verify_keys = self._handle.open_db(b"verify_keys")
         if reset:
             with self._handle.begin(write=True) as txn:
                 # Setting delete=False signals to lmdb to truncate the tables rather than drop them
@@ -98,6 +101,8 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._by_name, delete=False)
                 txn.drop(self._by_side, delete=False)
                 txn.drop(self._identities, delete=False)
+                txn.drop(self._signing_keys, delete=False)
+                txn.drop(self._verify_keys, delete=False)
         with self._handle.begin() as txn:
             # I'm checking to see if retentions are set in a read-only transaction, because if
             # they are and another process has this file open I don't want to wait to get a lock.
@@ -115,18 +120,39 @@ class LmdbStore(AbstractStore):
             # TODO: add expiries table to keep track of when things need to be removed
         self._seen_through: MuTimestamp = 0
 
+    def save_signing_key(self, signing_key: SigningKey):
+        with self._handle.begin(write=True) as trxn:
+            trxn.put(bytes(signing_key.verify_key), bytes(signing_key), db=self._signing_keys)
+
+    def get_signing_key(self, verify_key: VerifyKey) -> SigningKey:
+        with self._handle.begin(write=False) as trxn:
+            found = trxn.get(bytes(verify_key), db=self._signing_keys)
+            if found is None:
+                raise KeyError("could not find a signing key for that verify key")
+            return SigningKey(found)
+
+    def get_verify_key(self, chain: Chain, trxn: Optional[Trxn]=None, /) -> VerifyKey:
+        if trxn is None:
+            with self._handle.begin(write=False) as trxn:
+                self.get_verify_key(chain, trxn)
+        else:
+            found = trxn.get(bytes(chain), db=self._verify_keys)
+            if found is None:
+                raise KeyError("could not find a verify key for that chain")
+            return VerifyKey(found)
+
     def _get_file_path(self):
         return self._file_path
 
     def get_edge_entries(
             self, *,
             as_of: MuTimestamp,
-            verb: Optional[Muid] = None,
+            edge_type: Optional[Muid] = None,
             source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:
-        if verb is None and source is None and target is None:
-            raise ValueError("need to specify verb or source or target")
-        # TODO: add support for clear operation on verbs.
+        if edge_type is None and source is None and target is None:
+            raise ValueError("need to specify edge_type or source or target")
+        # TODO: add support for clear operation on edge types.
         asof_bytes = bytes(Muid(as_of, -1, -1))
         side_bytes = None
         if source is not None:
@@ -148,13 +174,13 @@ class LmdbStore(AbstractStore):
                     entry_builder_bytes = trxn.get(entry_bytes, db=self._entries)
                     entry_builder = EntryBuilder.FromString(entry_builder_bytes)
                     entry_muid = Muid.from_bytes(entry_bytes)
-                    found_verb_muid = Muid.create(context=entry_muid, builder=entry_builder.container)
+                    found_edge_type_muid = Muid.create(context=entry_muid, builder=entry_builder.container)
                     include = True
-                    if verb and found_verb_muid != verb:
+                    if edge_type and found_edge_type_muid != edge_type:
                         include = False
                     if include:
-                        found_verb_bytes = bytes(found_verb_muid)
-                        found_removal = to_last_with_prefix(removal_cursor, found_verb_bytes + key[-16:])
+                        found_edge_type_bytes = bytes(found_edge_type_muid)
+                        found_removal = to_last_with_prefix(removal_cursor, found_edge_type_bytes + key[-16:])
                         if found_removal:
                             include = False
                     if include:
@@ -169,17 +195,17 @@ class LmdbStore(AbstractStore):
                     placed = side_cursor.next()
             else:
                 placement_cursor = trxn.cursor(self._placements)
-                assert verb
-                verb_bytes = bytes(verb)
-                placed = placement_cursor.set_range(verb_bytes)
+                assert edge_type
+                edge_type_bytes = bytes(edge_type)
+                placed = placement_cursor.set_range(edge_type_bytes)
                 while placed:
                     key, val = placement_cursor.item()
-                    if not key.startswith(verb_bytes):
+                    if not key.startswith(edge_type_bytes):
                         break
-                    if not key < verb_bytes + asof_bytes:
+                    if not key < edge_type_bytes + asof_bytes:
                         break
                     placement = Placement.from_bytes(key, using=EDGE_TYPE)
-                    removals_lookup = verb_bytes + bytes(placement.placer)
+                    removals_lookup = edge_type_bytes + bytes(placement.placer)
                     include = True
                     found_removal = to_last_with_prefix(removal_cursor, removals_lookup)
                     if found_removal:
@@ -670,7 +696,8 @@ class LmdbStore(AbstractStore):
                 if placement_key.expiry and (placement_key.expiry < as_of):
                     placed = placements_cursor.prev() if desc else placements_cursor.next()
                     continue  # this entry has expired by the as_of time
-                found_removal = to_last_with_prefix(removal_cursor, prefix=prefix + bytes(placement_key.get_positioner()))
+                found_removal = to_last_with_prefix(
+                    removal_cursor, prefix=prefix + bytes(placement_key.get_positioner()))
                 if found_removal and Muid.from_bytes(found_removal[32:]).timestamp < as_of:
                     placed = placements_cursor.prev() if desc else placements_cursor.next()
                     continue  # this entry at this position was (re)moved by this time
@@ -757,13 +784,11 @@ class LmdbStore(AbstractStore):
             self._refresh_helper(trxn=trxn, callback=callback)
             chain_value_old = trxn.get(chain_key, db=self._chains)
             old_info = BundleInfo(encoded=chain_value_old) if chain_value_old else None
-            needed = AbstractStore._is_needed(new_info, old_info)
+            needed = is_needed(new_info, old_info)
             if needed:
                 if claim_chain:
                     assert new_info.timestamp == new_info.chain_start
                     self._add_claim(trxn, new_info.get_chain())
-                if new_info.timestamp == new_info.chain_start:
-                    trxn.put(bytes(new_info.get_chain()), new_info.comment.encode(), db=self._identities)
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
                     bundle_receive_time = generate_timestamp()
                     bundle_location = encode_muts(bundle_receive_time)
@@ -774,7 +799,19 @@ class LmdbStore(AbstractStore):
                 change_items: List[int, ChangeBuilder] = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
                 if new_info.chain_start == new_info.timestamp:
-                    trxn.put(bytes(chain_key), new_info.comment.encode())
+                    identity = new_info.comment
+                    assert identity is not None
+                    trxn.put(bytes(chain_key), identity.encode(), db=self._identities)
+                    assert builder.verify_key is not None
+                    verify_key = VerifyKey(builder.verify_key)
+                    trxn.put(bytes(chain_key), bytes(verify_key), db=self._verify_keys)
+                else:
+                    verify_key = self.get_verify_key(new_info.get_chain(), trxn)
+                    assert old_info is not None and old_info.hex_hash is not None
+                    prior_hash = builder.prior_hash
+                    if prior_hash != bytes.fromhex(old_info.hex_hash):
+                        raise ValueError("prior_hash doesn't match hash of prior bundle")
+                verify_key.verify(wrapper.get_bytes())
                 for offset, change in change_items:
                     if not self._apply_changes:
                         break

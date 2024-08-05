@@ -51,6 +51,11 @@ if (require.main === module) {
         default: process.env["GINK_SSL_KEY"]
     });
 
+    parser.add_argument('-v', '--verbose', {
+        help: `whether or not to be verbose`,
+        default: ""
+    });
+
     const args = parser.parse_args();
 
     new CommandLineInterface(args).run();

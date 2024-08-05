@@ -36,7 +36,7 @@ def _libc_call(function, *args):
 
 
 def libc_rand():
-    _libc.srand(int(get_time()*1e6))
+    _libc.srand(int(get_time() * 1e6))
     print(_libc.rand())
 
 

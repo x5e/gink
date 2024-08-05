@@ -8,6 +8,7 @@ import {
     ActorId,
     BroadcastFunc,
     BundleView,
+    KeyPair,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
 import { MemoryStore } from "./MemoryStore";
@@ -16,7 +17,7 @@ import { PromiseChainLock } from "./PromiseChainLock";
 import { LockableLog } from "./LockableLog";
 import { watch, FSWatcher } from "fs";
 import { ChainTracker } from "./ChainTracker";
-import { ClaimBuilder, LogFileBuilder } from "./builders";
+import { ClaimBuilder, LogFileBuilder, KeyPairBuilder } from "./builders";
 import { generateTimestamp, ensure, getActorId } from "./utils";
 import { Decomposition } from "./Decomposition";
 
@@ -66,6 +67,33 @@ export class LogBackedStore extends LockableLog implements Store {
     ) {
         super(filename, exclusive);
         this.logBackedStoreReady = super.ready.then(() => this.initializeLogBackedStore());
+    }
+
+    getVerifyKey(chainInfo: [Medallion, ChainStart]): Promise<Bytes> {
+        return this.internalStore.getVerifyKey(chainInfo);
+    }
+
+    async saveKeyPair(keyPair: KeyPair): Promise<void> {
+        await this.ready;
+        const unlockingFunction = await this.memoryLock.acquireLock();
+        if (!this.exclusive)
+            await this.lockFile(true);
+        if (this.redTo === 0)
+            this.redTo += await this.writeMagicNumber();
+        const keyPairBuilder = new KeyPairBuilder();
+        keyPairBuilder.setPublicKey(keyPair.publicKey);
+        keyPairBuilder.setSecretKey(keyPair.secretKey);
+        const logFragment = new LogFileBuilder();
+        logFragment.setKeyPairsList([keyPairBuilder]);
+        this.redTo += await this.writeLogFragment(logFragment, true);
+        if (!this.exclusive)
+            await this.unlockFile();
+        unlockingFunction();
+        await this.internalStore.saveKeyPair(keyPair);
+    }
+
+    async pullKeyPair(publicKey: Bytes): Promise<KeyPair> {
+        return await this.internalStore.pullKeyPair(publicKey);
     }
 
     get ready() { return this.logBackedStoreReady; }
@@ -120,8 +148,10 @@ export class LogBackedStore extends LockableLog implements Store {
             const bundles = logFileBuilder.getBundlesList();
             for (const bundleBytes of bundles) {
                 const bundle: BundleView = new Decomposition(bundleBytes);
-                const info = await this.internalStore.addBundle(bundle);
-                this.chainTracker.markAsHaving(info);
+                const added = await this.internalStore.addBundle(bundle);
+                if (!added) throw new Error("unexpected not added");
+                const info = bundle.info;
+                this.chainTracker.markAsHaving(bundle.info);
                 // This is the start of a chain, and we need to keep track of the identity.
                 if (info.timestamp === info.chainStart && !info.priorTime) {
                     this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
@@ -139,6 +169,13 @@ export class LogBackedStore extends LockableLog implements Store {
                     actorId: claims[i].getProcessId(),
                     claimTime: claims[i].getClaimTime(),
                 });
+            }
+            const keyPairs: KeyPairBuilder[] = logFileBuilder.getKeyPairsList();
+            for (let i=0; i< keyPairs.length; i++) {
+                this.internalStore.saveKeyPair({
+                    publicKey: keyPairs[i].getPublicKey_asU8(),
+                    secretKey: keyPairs[i].getSecretKey_asU8(),
+                })
             }
             this.redTo = totalSize;
         }
@@ -159,7 +196,7 @@ export class LogBackedStore extends LockableLog implements Store {
         return this.bundlesProcessed;
     }
 
-    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo> {
+    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<Boolean> {
         // TODO(https://github.com/x5e/gink/issues/182): delay unlocking the file to give better throughput
 
         await this.ready;
@@ -168,16 +205,17 @@ export class LogBackedStore extends LockableLog implements Store {
             await this.lockFile(true);
         await this.pullDataFromFile();
         if (this.redTo === 0)
-            await this.writeMagicNumber();
-        const info: BundleInfo = await this.internalStore.addBundle(bundle);
-
+            this.redTo += await this.writeMagicNumber();
+        const info: BundleInfo = bundle.info;
+        const added = await this.internalStore.addBundle(bundle);
         if (claimChain) {
+            if (!added) throw new Error("can't claim chain on old bundle");
             await this.claimChain(info.medallion, info.chainStart, getActorId());
             if (info.timestamp === info.chainStart && !info.priorTime) {
                 this.identities.set(`${info.medallion},${info.chainStart}`, info.comment);
             }
         }
-        const added = this.chainTracker.markAsHaving(info);
+        this.chainTracker.markAsHaving(info);
         if (added) {
             ensure(this.fileLocked);
             await this.pullDataFromFile();
@@ -188,7 +226,7 @@ export class LogBackedStore extends LockableLog implements Store {
         if (!this.exclusive)
             await this.unlockFile();
         unlockingFunction();
-        return info;
+        return added;
     }
 
     async getClaimedChains(): Promise<Map<Medallion, ClaimedChain>> {

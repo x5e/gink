@@ -4,7 +4,7 @@
  * imports if two classes depend on each other so these functions have been pulled out into
  * something neither Container nor any of its subclasses need directly.
  */
-import { Muid, Value, Bytes, AsOf, Entry } from "./typedefs";
+import { Muid, Value, AsOf, Entry } from "./typedefs";
 import { Container } from "./Container";
 import { Directory } from "./Directory";
 import { Sequence } from "./Sequence";
@@ -14,8 +14,8 @@ import { PairSet } from "./PairSet";
 import { PairMap } from "./PairMap";
 import { KeySet } from "./KeySet";
 import { Database } from "./Database";
-import { ensure, unwrapValue, builderToMuid, valueToJson, muidTupleToMuid, rehydrate } from "./utils";
-import { Behavior, EntryBuilder, ContainerBuilder } from "./builders";
+import { ensure, valueToJson, muidTupleToMuid, rehydrate } from "./utils";
+import { Behavior, ContainerBuilder } from "./builders";
 import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
@@ -89,21 +89,4 @@ export async function toJson(
     indent: number | boolean = false,
     asOf?: AsOf, seen?: Set<string>): Promise<string> {
     return value instanceof Container ? (await value.toJson(indent, asOf, seen)) : valueToJson(value);
-}
-
-export async function convertEntryBytes(database: Database, entryBytes: Bytes, entryAddress?: Muid):
-    Promise<Value | Container | undefined> {
-    ensure(entryBytes instanceof Uint8Array);
-    const entryBuilder = <EntryBuilder>EntryBuilder.deserializeBinary(entryBytes);
-    if (entryBuilder.hasValue()) {
-        return unwrapValue(entryBuilder.getValue());
-    }
-    if (entryBuilder.hasPointee()) {
-        const destAddress = builderToMuid(entryBuilder.getPointee(), entryAddress);
-        return await construct(database, destAddress);
-    }
-    if (entryBuilder.getDeletion()) {
-        return undefined;
-    }
-    throw new Error("unsupported entry type");
 }

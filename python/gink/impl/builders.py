@@ -7,33 +7,30 @@ from .typedefs import Medallion, MuTimestamp
 
 if TYPE_CHECKING:
 
-    class HeaderBuilder(Message):
+    class MetadataBuilder(Message):
         timestamp: int
         medallion: int
         previous: int
         comment: str
         chain_start: int
 
-
     class ChangeBuilder(Message):
         entry: 'EntryBuilder'
         container: 'ContainerBuilder'
         movement: 'MovementBuilder'
 
-
     class BundleBuilder(Message):
-        header: HeaderBuilder
+        metadata: MetadataBuilder
         changes: List[ChangeBuilder]
-
+        verify_key: bytes
+        prior_hash: bytes
 
     class SyncMessage(Message):
         bundle: bytes
 
-
     class Pair:
         left: 'MuidBuilder'
         rite: 'MuidBuilder'
-
 
     class EntryBuilder(Message):
         describing: 'MuidBuilder'
@@ -112,4 +109,4 @@ else:
     from ..builders.behavior_pb2 import Behavior
     from ..builders.log_file_pb2 import LogFile as LogFileBuilder
     from ..builders.claim_pb2 import Claim as ClaimBuilder
-    from ..builders.header_pb2 import Header as HeaderBuilder
+    from ..builders.metadata_pb2 import Metadata as MetadataBuilder

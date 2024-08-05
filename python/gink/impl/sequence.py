@@ -76,7 +76,13 @@ class Sequence(Container):
         return result
 
     @typechecked
-    def append(self, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
+    def append(
+            self,
+            value: Union[UserValue, Container], *,
+            expiry: GenericTimestamp = None,
+            bundler=None,
+            comment=None
+    ) -> Muid:
         """ Append value to the end of the queue.
 
             If expiry is set, the added entry will be removed at the specified time.
@@ -84,7 +90,14 @@ class Sequence(Container):
         return self._add_entry(value=value, bundler=bundler, comment=comment, expiry=expiry)
 
     @typechecked
-    def insert(self, index: int, value: Union[UserValue, Container], expiry: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
+    def insert(
+            self,
+            index: int,
+            value: Union[UserValue, Container],
+            expiry: GenericTimestamp = None,
+            bundler=None,
+            comment=None
+    ) -> Muid:
         """ Inserts value before index.
 
             The resulting entry expires at expiry time if specified, which must be in the future.
@@ -102,8 +115,13 @@ class Sequence(Container):
             expiry=expiry)
 
     @typechecked
-    def extend(self, iterable: Iterable[Union[UserValue, Container]], expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]] = None,
-               bundler=None, comment=None):
+    def extend(
+            self,
+            iterable: Iterable[Union[UserValue, Container]], *,
+            expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]] = None,
+            bundler=None,
+            comment=None,
+    ):
         """ Adds all of the items in iterable at once to this sequence.
 
             expiries, if present, may be either a single expiry to be applied to all new entries,
@@ -183,7 +201,13 @@ class Sequence(Container):
         return entry_value
 
     @typechecked
-    def remove(self, value: Union[UserValue, Container], *, dest: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
+    def remove(
+        self,
+        value: Union[UserValue, Container], *,
+        dest: GenericTimestamp = None,
+        bundler=None,
+        comment=None
+    ) -> Muid:
         """ Remove first occurance of value.
 
             Raises ValueError if the value is not present.

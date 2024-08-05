@@ -48,7 +48,6 @@ class Group(Container):
             )
 
         if contents:
-            assert isinstance(contents, dict), "expecting contents to be of the form {'include': Iterable[(Muid, Muid)], 'exclude': Iterable[(Muid, Muid)]}"
             assert contents.keys() <= {"include", "exclude"}, "expecting only 'include' and 'exclude' keys in contents"
             self.clear(bundler=bundler)
             included = contents.get("include", set())

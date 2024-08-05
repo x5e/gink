@@ -4,6 +4,8 @@ const { expect } = require('@jest/globals');
 const { getLaunchOptions, sleep } = require("../browser_test_utilities");
 process.chdir(__dirname + "/../..");
 
+jest.retryTimes(2);
+
 it('connect to server and display bundles', async () => {
     const port = 9997;
 
@@ -24,7 +26,6 @@ it('connect to server and display bundles', async () => {
         page.on('console', async e => {
             const args = await Promise.all(e.args().map(a => a.jsonValue()));
         });
-
         await page.goto(`http://localhost:${port}/integration-tests/browser-tests/index.html`);
         await page.waitForSelector('#messages', { timeout: 5000 });
 

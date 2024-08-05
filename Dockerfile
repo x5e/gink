@@ -20,6 +20,7 @@ ENV PYTHONPATH=$GINK/python
 WORKDIR $GINK/python
 # Python lint
 RUN mypy gink/impl gink/tests
+RUN pycodestyle --max-line-length=120 --select=E501 gink/impl/*.py gink/tests/*.py
 
 # Python unit-tests
 RUN python3 -m nose2

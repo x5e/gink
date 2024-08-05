@@ -1,5 +1,6 @@
 """ the ChangeSet class """
 from typing import Optional, Union, Any
+from nacl.signing import SigningKey
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
 from .typedefs import MuTimestamp, Medallion
@@ -58,23 +59,33 @@ class Bundler:
         changes[self._count_items].CopyFrom(builder)  # type: ignore
         return muid
 
-    def seal(self,
-             chain: Chain,
-             timestamp: MuTimestamp,
-             previous: Optional[MuTimestamp] = None
-             ) -> bytes:
+    def seal(
+            self, *,
+            chain: Chain,
+            timestamp: MuTimestamp,
+            signing_key: SigningKey,
+            previous: Optional[MuTimestamp] = None,
+            prior_hash: Union[bytes, str, None] = None,
+            ) -> bytes:
         """ Finalizes a bundle and serializes it. """
         # pylint: disable=maybe-no-member
         if previous is None:
             assert timestamp == chain.chain_start
+            self._bundle_builder.verify_key = signing_key.verify_key.encode()
         else:
             assert chain.chain_start <= previous < timestamp
-            self._bundle_builder.header.previous = previous  # type: ignore
-        self._bundle_builder.header.chain_start = chain.chain_start  # type: ignore
-        self._medallion = self._bundle_builder.header.medallion = chain.medallion  # type: ignore
-        self._timestamp = self._bundle_builder.header.timestamp = timestamp  # type: ignore
+            self._bundle_builder.metadata.previous = previous  # type: ignore
+        self._bundle_builder.metadata.chain_start = chain.chain_start  # type: ignore
+        self._medallion = self._bundle_builder.metadata.medallion = chain.medallion  # type: ignore
+        self._timestamp = self._bundle_builder.metadata.timestamp = timestamp  # type: ignore
         if self._comment:
-            self._bundle_builder.header.comment = self.comment  # type: ignore
-        sealed = self._bundle_builder.SerializeToString()
-        self._sealed = sealed
-        return sealed
+            self._bundle_builder.metadata.comment = self.comment  # type: ignore
+        if prior_hash:
+            if isinstance(prior_hash, str):
+                prior_hash = bytes.fromhex(prior_hash)
+            assert isinstance(prior_hash, bytes) and len(prior_hash) == 32
+            self._bundle_builder.prior_hash = prior_hash
+        serialized = self._bundle_builder.SerializeToString()
+        signed = signing_key.sign(serialized)
+        self._sealed = signed
+        return signed

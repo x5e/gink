@@ -1,4 +1,4 @@
-""" Contains the Vertex, Verb, and Edge classes (all needed for graph database functionality). """
+""" Contains the Vertex, EdgeType, and Edge classes (all needed for graph database functionality). """
 from typing import Optional, Union, Iterable
 from typeguard import typechecked
 
@@ -107,7 +107,7 @@ Database.register_container_type(Vertex)
 
 
 @experimental
-class Verb(Container):
+class EdgeType(Container):
     BEHAVIOR = EDGE_TYPE
 
     @typechecked
@@ -122,11 +122,11 @@ class Verb(Container):
             comment: Optional[str] = None,
     ):
         """
-        Constructor for a Verb (otherwise known as Edge Type).
+        Constructor for a EdgeType (otherwise known as Edge Type).
 
         muid: the global id of this container, created on the fly if None
         arche: whether this will be the global version of this container (accessible by all databases)
-        contents: prefill the Verb with an iterable of edges upon initialization
+        contents: prefill the EdgeType with an iterable of edges upon initialization
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
@@ -184,7 +184,7 @@ class Verb(Container):
         source = source._muid if isinstance(source, Vertex) else source
         target = target._muid if isinstance(target, Vertex) else target
         for found_entry in self._database.get_store().get_edge_entries(
-                as_of=ts, verb=self._muid, source=source, target=target): # type: ignore
+                as_of=ts, edge_type=self._muid, source=source, target=target): # type: ignore
             yield Edge(muid=found_entry.address, _builder=found_entry.builder)
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
@@ -194,7 +194,7 @@ class Verb(Container):
         return count
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        """ Dump all the edges for this verb.
+        """ Dump all the edges for this edge_type.
         """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "arche=True"
@@ -208,7 +208,7 @@ class Verb(Container):
         result += ",\n\n".join(stuffing) + ",\n\n])"
         return result
 
-Database.register_container_type(Verb)
+Database.register_container_type(EdgeType)
 
 
 @experimental
@@ -216,10 +216,10 @@ class Edge(Addressable):
 
     @typechecked
     def __init__(self,
-                 muid: Optional[Muid]= None, *,
-                 action: Optional[Union[Muid, Verb]] = None,
-                 source: Optional[Union[Muid, Vertex]] = None,
-                 target: Optional[Union[Muid, Vertex]] = None,
+                 muid: Union[Muid, None] = None, *,
+                 action: Union[Muid, EdgeType, None] = None,
+                 source: Union[Muid, Vertex, None] = None,
+                 target: Union[Muid, Vertex, None] = None,
                  valued: Union[UserValue, Inclusion] = inclusion,
                  effective: Optional[MuTimestamp] = None,
                  bundler: Optional[Bundler] = None,
@@ -231,7 +231,7 @@ class Edge(Addressable):
         self._effective: Optional[MuTimestamp] = None
         if action is None or source is None or target is None:
             if muid is None:
-                raise ValueError("must specify muid for existing edge or verb, left, and rite")
+                raise ValueError("must specify muid for existing edge or edge_type, left, and rite")
             if _builder is None:
                 _builder = self._database.get_store().get_entry(muid)
                 if _builder is None:
@@ -283,8 +283,8 @@ class Edge(Addressable):
         padding = "    " * (indent - 1) if indent > 1 else ""
         return f"{padding}Edge({joined})"
 
-    def get_action(self) -> Verb:
-        return Verb(muid=self._action, database=self._database)
+    def get_action(self) -> EdgeType:
+        return EdgeType(muid=self._action, database=self._database)
 
     def get_source(self) -> Vertex:
         return Vertex(muid=self._source, database=self._database)

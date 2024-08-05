@@ -208,18 +208,18 @@ is_alive = user_vertex.is_alive() # returns False since we removed it.
 # an edge - more examples below.
 ```
 
-#### Edge and Verb
-An Edge is what connects a Vertex to another Vertex. The Verb is the `action` of an Edge, or the relationship between the vertexs. For example, one vertex may be a user, while the other node is an order. This may be depicted as (User)--Ordered-->(Order). User and Order are Vertexs, Ordered is the Verb, and the lines connecting them (and the direction) is the Edge.
+#### Edge and EdgeType
+An Edge is what connects a Vertex to another Vertex. The EdgeType is the `action` of an Edge, or the relationship between the vertexs. For example, one vertex may be a user, while the other node is an order. This may be depicted as (User)--Ordered-->(Order). User and Order are Vertexs, Ordered is the EdgeType, and the lines connecting them (and the direction) is the Edge.
 
 ```python
 user_vertex = Vertex(database=database)
 order_vertex = Vertex(database=database)
 
-# An easy way to connect vertexs is by creating a Verb
-ordered_verb = Verb(database=database)
+# An easy way to connect vertexs is by creating a EdgeType
+ordered_verb = EdgeType(database=database)
 ordered_verb.create_edge(user_vertex, order_vertex, "Ordered")
 
-# We can get all edges of any Verb (can specify source or target) since
+# We can get all edges of any EdgeType (can specify source or target) since
 # we only have one edge, we don't need to specify a source or target here.
 edges = ordered_verb.get_edges()
 
@@ -227,7 +227,7 @@ edges = ordered_verb.get_edges()
 ordered_edge = list(edges)[0]
 
 # Now we can get the source, target, and action of this edge
-# The action, in this context, is the actual message of the verb, "Ordered"
+# The action, in this context, is the actual message of the edge_type, "Ordered"
 source = ordered_edge.get_source()
 target = ordered_edge.get_target()
 action = ordered_edge.get_action()

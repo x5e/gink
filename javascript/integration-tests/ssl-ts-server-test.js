@@ -7,7 +7,8 @@ process.chdir(__dirname + "/..");
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
     const server = new Expector("./tsc.out/implementation/main.js",
-        ["-l", port, "--ssl-cert", "/etc/ssl/certs/localhost.crt", "--ssl-key", "/etc/ssl/certs/localhost.key"], {
+        ["-l", port, "--ssl-cert", "/etc/ssl/certs/localhost.crt",
+            "--ssl-key", "/etc/ssl/certs/localhost.key"], {
         env: { ...process.env }
     });
     await server.expect("Secure", 2000);

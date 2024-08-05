@@ -8,6 +8,7 @@ from .builders import Behavior, ChangeBuilder
 from .coding import encode_value, decode_value
 from typing import Dict
 
+
 class Addressable:
     def __init__(self, database: Database, muid: Muid):
         self._database: Database = database or Database.get_last()
@@ -31,7 +32,7 @@ class Addressable:
             if found.builder.deletion:
                 continue
             if not found.builder.HasField("value"):
-                continue # todo: support pointee properties
+                continue  # todo: support pointee properties
             property_muid = Muid.create(found.address, found.builder.container)
             property = self._database.get_container(property_muid, behavior=found.builder.behavior)
             name = property.get_name()
@@ -98,4 +99,4 @@ class Addressable:
 
     @abstractmethod
     def _get_container(self) -> Muid:
-        """ Gets the container associated with this addressable thing, either itself or the Verb. """
+        """ Gets the container associated with this addressable thing, either itself or the EdgeType. """

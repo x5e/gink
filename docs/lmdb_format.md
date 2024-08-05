@@ -31,7 +31,7 @@
             val: entry-id
             A couple of other wrinkles of note:
                 * In the case of a DIRECTORY, the middle-key will be binaryproto of the key.
-                * In the case of a SEQUENCE or VERB the middle-key will be effective-time
+                * In the case of a SEQUENCE or EDGE_TYPE the middle-key will be effective-time
                 * In the case of a PROPERTY/LABEL/REGISTRY the middle key will be subject muid
                 * In the case of a BOX or VERTEX the middle key will be a zero-length byte sequence.
 
@@ -77,3 +77,15 @@
         by_side - lookup for edges based on source or target muid
             key: (source/target-muid, placement-muid)
             val: entry-muid
+
+        verify_keys - lookup for the verify key for each chain
+            key: the tuple (medallion, chain_start), packed big endian
+            val: the verify key
+
+        signing_keys - the private key counterpart to the verify keys, but only for owned chains
+            key: the verify key
+            val: the signing key
+        (Note that to find the signing key for a chain you first need to look up the verify
+         key for that chain first then hit this signing_keys table.  This is done because
+         you won't know the chain_start time for a chain before it's created, but you
+         will want to ensure that you've created and stored the signing key before that step.)

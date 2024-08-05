@@ -9,7 +9,11 @@ import {
     getActorId,
     toLastWithPrefixBeforeSuffix,
     strToMuid,
-    muidToTuple
+    muidToTuple,
+    bytesToHex,
+    verifyBundle,
+    librariesReady,
+    emptyBytes,
 } from "./utils";
 import {
     AsOf,
@@ -32,6 +36,7 @@ import {
     BroadcastFunc,
     Movement,
     BundleView,
+    KeyPair,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
@@ -49,7 +54,7 @@ import {
     bundleKeyToInfo,
     storageKeyToString,
 } from "./store_utils";
-import { Retrieval } from "./Retrieval";
+import { Decomposition } from "./Decomposition";
 
 export class MemoryStore implements Store {
     ready: Promise<void>;
@@ -68,12 +73,26 @@ export class MemoryStore implements Store {
     private locations: TreeMap<string, string> = new TreeMap();
     private bySource: TreeMap<string, Entry> = new TreeMap();
     private byTarget: TreeMap<string, Entry> = new TreeMap();
+    private verifyKeys: Map<string, Bytes> = new Map();
+    private secretKeys: Map<string, KeyPair> = new Map();
     constructor(private keepingHistory = true) {
-        this.ready = Promise.resolve();
+        this.ready = librariesReady;
+    }
+    saveKeyPair(keyPair: KeyPair): Promise<void> {
+        this.secretKeys.set(bytesToHex(keyPair.publicKey), keyPair);
+        return Promise.resolve();
+    }
+
+    pullKeyPair(publicKey: Bytes): Promise<KeyPair> {
+        return Promise.resolve(this.secretKeys.get(bytesToHex(publicKey)));
     }
 
     dropHistory(container?: Muid, before?: AsOf): void {
         throw new Error("not implemented");
+    }
+
+    getVerifyKey(chainInfo: [Medallion, ChainStart]): Promise<Bytes> {
+        return Promise.resolve(this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`));
     }
 
     stopHistory(): void {
@@ -108,8 +127,8 @@ export class MemoryStore implements Store {
         return Promise.resolve(claim);
     }
 
-    async getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
-        return this.identities.get(`${chainInfo[0]},${chainInfo[1]}`);
+    getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
+        return Promise.resolve(this.identities.get(`${chainInfo[0]},${chainInfo[1]}`));
     }
 
     async getChainTracker(): Promise<ChainTracker> {
@@ -122,7 +141,7 @@ export class MemoryStore implements Store {
         return this.chainInfos.values();
     }
 
-    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<BundleInfo> {
+    async addBundle(bundle: BundleView, claimChain?: boolean): Promise<Boolean> {
         await this.ready;
         const bundleBuilder = bundle.builder;
         const bundleInfo = bundle.info;
@@ -130,19 +149,33 @@ export class MemoryStore implements Store {
         const oldChainInfo = this.chainInfos.get(medallionChainStartToString([medallion, chainStart]));
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
-                return bundleInfo;
+                return false;
             }
             if (oldChainInfo?.timestamp !== priorTime) {
                 throw new Error(`missing prior chain entry for ${JSON.stringify(bundleInfo)}, ` +
                     `have ${JSON.stringify(oldChainInfo)}`);
             }
+            const priorHash: Bytes = bundleBuilder.getPriorHash();
+            if (priorHash.length != 32 || !sameData(oldChainInfo.hashCode, priorHash)) {
+                throw new Error("bad prior hash");
+            }
         }
-        // If this is a new chain, save the identity & claim this chain
+
+        const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
+        let verifyKey: Bytes = emptyBytes;
+        if (bundleInfo.timestamp === bundleInfo.chainStart) {
+            this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
+            verifyKey = bundleBuilder.getVerifyKey();
+            ensure(verifyKey);
+            this.verifyKeys.set(`${chainInfo[0]},${chainInfo[1]}`, verifyKey);
+        } else {
+            verifyKey = this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`);
+        }
+        verifyBundle(bundle.bytes, verifyKey);
+
+
         if (claimChain) {
             ensure(bundleInfo.timestamp === bundleInfo.chainStart);
-            const chainInfo: [Medallion, ChainStart] = [bundleInfo.medallion, bundleInfo.chainStart];
-            this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, bundleInfo.comment);
-
             this.claimChain(bundleInfo.medallion, bundleInfo.chainStart, getActorId());
         }
 
@@ -227,7 +260,7 @@ export class MemoryStore implements Store {
             }
             throw new Error("don't know how to apply this kind of change");
         }
-        return bundleInfo;
+        return true;
     }
 
     private static bundleInfoToKey(bundleInfo: BundleInfo): BundleInfoTuple {
@@ -321,11 +354,8 @@ export class MemoryStore implements Store {
     }
 
     async getBundles(callBack: (bundle: BundleView) => void) {
-        for (const [key, val] of this.trxns) {
-            const bundleKey: BundleInfoTuple = key;
-            const bundleInfo = bundleKeyToInfo(bundleKey);
-            const bundleBytes: BundleBytes = val;
-            callBack(new Retrieval({ bundleBytes, bundleInfo }));
+        for (const [_, val] of this.trxns) {
+            callBack(new Decomposition(val));
         }
     }
 

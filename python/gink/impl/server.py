@@ -18,7 +18,7 @@ class Server(ABC):
         self._selectables: Set[Selectable] = set()
         self._closed = False
 
-    def get_selectables(self)-> Iterable[Selectable]:
+    def get_selectables(self) -> Iterable[Selectable]:
         for selectable in list(self._selectables):
             if selectable.is_closed():
                 self._selectables.discard(selectable)

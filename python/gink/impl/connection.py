@@ -42,7 +42,7 @@ from .sync_func import SyncFunc
 from .bundle_info import BundleInfo
 from .bundle_wrapper import BundleWrapper
 from .chain_tracker import ChainTracker
-from .utilities import decode_from_hex, encode_to_hex
+from .utilities import decode_from_hex, encode_to_hex, dedent
 
 
 class Connection:
@@ -77,7 +77,7 @@ class Connection:
             socket = Socket(AF_INET, SOCK_STREAM)
             if secure_connection:
                 context = create_default_context()
-                socket = context.wrap_socket(socket, server_hostname = host)
+                socket = context.wrap_socket(socket, server_hostname=host)
             socket.connect((host, port))
         self._socket: Union[Socket, SSLSocket] = socket
         self._host = host
@@ -140,29 +140,29 @@ class Connection:
                 key, val = header_line.split(":", 1)
                 self._request_headers[key.strip().lower()] = val.strip()
             if "upgrade" in self._request_headers.get("connection", "").lower():
-                    if not self._on_ws_act:
-                        self._socket.sendall(
-                            b"HTTP/1.0 400 Bad Request\r\n" +
-                            b"Content-type: text/plain\r\n" +
-                            b"\r\n"
-                            b"no websocket handler configured\r\n")
-                        self._logger.warning("websocket connection without handler set")
-                        raise Finished()
-                    self._is_websocket = True
-                    self._pending = True
-                    self._on_ws_act(self)
-                    return
+                if not self._on_ws_act:
+                    self._socket.sendall(dedent(b"""
+                        HTTP/1.0 400 Bad Request
+                        Content-type: text/plain
+
+                        no websocket handler configured"""))
+                    self._logger.warning("websocket connection without handler set")
+                    raise Finished()
+                self._is_websocket = True
+                self._pending = True
+                self._on_ws_act(self)
+                return
             else:
                 if not self._wsgi:
-                    self._socket.sendall(
-                        b"HTTP/1.0 400 Bad Request\r\n" +
-                        b"Content-type: text/plain\r\n" +
-                        b"\r\n"
-                        b"Websocket connections only!\r\n")
+                    self._socket.sendall(dedent(b"""
+                        HTTP/1.0 400 Bad Request
+                        Content-type: text/plain
+
+                        Websocket connections only!"""))
                     raise Finished()
                 body = match.group(2)
                 if int(self._request_headers.get("content-length", "0")) != len(body):
-                    #TODO wait for the rest of the body then process the post/put request
+                    # TODO wait for the rest of the body then process the post/put request
                     self._socket.sendall(b"HTTP/1.0 500 Internal Server Error\r\n\r\n")
                     self._logger.warning("improper HTTP POST handling, please fix me")
                     raise Finished()
@@ -202,7 +202,7 @@ class Connection:
                 raise Finished()  # will cause the loop to call close after deregistering
         raise AssertionError("did not expect to get here")
 
-    def _start_response(self, status: str, response_headers: List[tuple], exc_info = None):
+    def _start_response(self, status: str, response_headers: List[tuple], exc_info=None):
         server_headers: List[tuple] = [
             ("Date", format_date_time(get_time())),
             ('Server', 'gink'),

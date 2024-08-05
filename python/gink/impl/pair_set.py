@@ -53,7 +53,7 @@ class PairSet(Container):
                 bundler=bundler,
             )
         if contents:
-            assert isinstance(contents, dict), "expecting contents to be of the form {'include': Iterable[(Muid, Muid)], 'exclude': Iterable[(Muid, Muid)]}"
+            assert isinstance(contents, dict)
             assert contents.keys() <= {"include", "exclude"}, "expecting only 'include' and 'exclude' keys in contents"
             self.clear(bundler=bundler)
             included = contents.get("include", set())
@@ -126,13 +126,14 @@ class PairSet(Container):
 
         included_stuffing = "'include': [\n\t"
         excluded_stuffing = "'exclude': [\n\t"
-        for entry_pair in self._database.get_store().get_keyed_entries(container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of):
-            left = entry_pair.builder.pair.left
-            rite = entry_pair.builder.pair.rite
+        for entry_pair in self._database.get_store().get_keyed_entries(
+            container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of):
+            left = Muid.create(builder=entry_pair.builder.pair.left)
+            rite = Muid.create(builder=entry_pair.builder.pair.rite)
             if not entry_pair.builder.deletion:
-                included_stuffing += f"(Muid{(left.timestamp, left.medallion, left.offset)}, Muid{(rite.timestamp, rite.medallion, rite.offset)}),\n\t"
+                included_stuffing += f"({left!r}, {rite!r}),\n\t"
             else:
-                excluded_stuffing += f"(Muid{(left.timestamp, left.medallion, left.offset)}, Muid{(rite.timestamp, rite.medallion, rite.offset)}),\n\t"
+                excluded_stuffing += f"({left!r}, {rite!r}),\n\t"
 
         result += "\n\t"
         if included_stuffing != "'include': [\n\t":

@@ -21,7 +21,7 @@ from ..impl.braid import Braid
 from ..impl.muid import Muid
 from ..impl.chain_tracker import Chain
 from ..impl.utilities import generate_medallion, generate_timestamp
-from ..impl.graph import Edge, Verb, Vertex
+from ..impl.graph import Edge, EdgeType, Vertex
 from ..impl.coding import BOX, DIRECTORY, KEY_SET, SEQUENCE, PAIR_SET, PAIR_MAP, PROPERTY, GROUP, BRAID
 
 # TODO: Test graph
@@ -142,7 +142,7 @@ def random_data(type):
     elif type == Muid:
         return random_container().get_muid()
     elif type == Edge:
-        edge = Verb().create_edge(sub=Vertex(), obj=Vertex())
+        edge = EdgeType().create_edge(sub=Vertex(), obj=Vertex())
         edge.dumps()
         return edge
     elif type == Chain:

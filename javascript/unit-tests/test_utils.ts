@@ -1,7 +1,8 @@
 import { Medallion, ChainStart, Timestamp, BundleView } from "../implementation/typedefs";
 import { Store } from "../implementation/Store";
-import { BundleBuilder, HeaderBuilder } from "../implementation/builders";
+import { BundleBuilder, MetadataBuilder } from "../implementation/builders";
 import { Decomposition } from "../implementation/Decomposition";
+import { createKeyPair, signBundle, librariesReady, ensure } from "../implementation/utils";
 
 export const MEDALLION1 = 425579549941797;
 export const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;
@@ -11,38 +12,50 @@ export const MEDALLION2 = 458510670893748;
 export const START_MICROS2 = Date.parse("2022-02-20 00:38:21") * 1000;
 export const NEXT_TS2 = Date.parse("2022-02-20 00:40:12") * 1000;
 
-export function makeChainStart(comment: string, medallion: Medallion, chainStart: ChainStart): BundleView {
+export const keyPair = librariesReady.then(() => createKeyPair());
+
+export async function makeChainStart(
+        comment: string, medallion: Medallion, chainStart: ChainStart): Promise<BundleView> {
     const bundleBuilder = new BundleBuilder();
-    const headerBuilder = new HeaderBuilder();
-    headerBuilder.setChainStart(chainStart);
-    headerBuilder.setTimestamp(chainStart);
-    headerBuilder.setMedallion(medallion);
-    headerBuilder.setComment(comment);
-    bundleBuilder.setHeader(headerBuilder);
-    return new Decomposition(bundleBuilder.serializeBinary());
+    const metadataBuilder = new MetadataBuilder();
+    metadataBuilder.setChainStart(chainStart);
+    metadataBuilder.setTimestamp(chainStart);
+    metadataBuilder.setMedallion(medallion);
+    metadataBuilder.setComment(comment);
+    bundleBuilder.setMetadata(metadataBuilder);
+    bundleBuilder.setVerifyKey((await keyPair).publicKey);
+    return new Decomposition(signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey));
 }
 
-export function extendChain(comment: string, previous: BundleView, timestamp: Timestamp): BundleView {
-    const parsedPrevious = previous.builder.getHeader();
-    const subsequent = new HeaderBuilder();
+export function unbundle(signed: Uint8Array): BundleBuilder {
+    const inside = new Decomposition(signed);
+    return <BundleBuilder>inside.builder;
+}
+
+export async function extendChain(comment: string, previous: BundleView, timestamp: Timestamp): Promise<BundleView> {
+    const parsedPrevious = previous.builder.getMetadata();
+    const subsequent = new MetadataBuilder();
     subsequent.setMedallion(parsedPrevious.getMedallion());
     subsequent.setPrevious(parsedPrevious.getTimestamp());
     subsequent.setChainStart(parsedPrevious.getChainStart());
     subsequent.setTimestamp(timestamp); // one millisecond later
     subsequent.setComment(comment);
     const bundleBuilder = new BundleBuilder();
-    bundleBuilder.setHeader(subsequent);
-    return new Decomposition(bundleBuilder.serializeBinary());
+    bundleBuilder.setMetadata(subsequent);
+    const priorHash = previous.info.hashCode;
+    ensure(priorHash && priorHash.length === 32);
+    bundleBuilder.setPriorHash(priorHash);
+    return new Decomposition(signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey));
 }
 
 export async function addTrxns(store: Store) {
-    const start1 = makeChainStart("chain1,tx1", MEDALLION1, START_MICROS1);
+    const start1 = await makeChainStart("chain1,tx1", MEDALLION1, START_MICROS1);
     await store.addBundle(start1);
-    const next1 = extendChain("chain1,tx2", start1, NEXT_TS1);
+    const next1 = await extendChain("chain1,tx2", start1, NEXT_TS1);
     await store.addBundle(next1);
-    const start2 = makeChainStart("chain2,tx1", MEDALLION2, START_MICROS2);
+    const start2 = await makeChainStart("chain2,tx1", MEDALLION2, START_MICROS2);
     await store.addBundle(start2);
-    const next2 = extendChain("chain2,2", start2, NEXT_TS2);
+    const next2 = await extendChain("chain2,2", start2, NEXT_TS2);
     await store.addBundle(next2);
 }
 

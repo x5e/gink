@@ -1,24 +1,19 @@
 syntax = "proto3";
 import "proto/change.proto";
-import "proto/header.proto";
+import "proto/metadata.proto";
 package gink;
 
 message Bundle {
 
-    Header header = 1;
+    Metadata metadata = 1;
 
     // key in changes map is the offset number: > 0 and < 2**20
     map<uint32, Change> changes = 2;
 
-    // I'm using a map rather than a simple repeated field of Changes for a couple of reasons:
-    // * The offset of 0 is reserved to denote the transaction, and I don't want to confuse things by
-    //   forcing people to have 1 based indexing.
-    // * A bundle might involve the creation of a lot of objects, which all cross reference each other.
-    //   if part way through creating a bundle you decide you don't need an object, using a map allows
-    //   you to just exclude it (and have non-sequential keys).  If the items were in a repeated field
-    //   with the index being the implied offset, then removing an object from the middle of the list
-    //   would effectively change the muid of every object after it, which would cause problems when
-    //   objects within that bundle reference each other.  An alternative approach would be to use a
-    //   repeated field with implied offsets and use a tombstone (no-op) object in cases where the
-    //   creator of a bundle changes their mind and decides not to include a particular object.
+    // Only set in the first bundle in a chain.
+    bytes verify_key = 3;
+
+    // Set in every bundle except for the first in a chain.
+    bytes prior_hash = 4;  // the sha256 of the prior bundle
+
 }

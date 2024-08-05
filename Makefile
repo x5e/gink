@@ -4,7 +4,7 @@ PYTHON_CODE=$(wildcard python/*.py python/gink/impl/*.py python/gink/tests/*.py 
 
 all: python/gink/builders javascript/proto javascript/tsc.out javascript/content_root/generated
 
-.PHONY: clean running-as-root install-dependencies install-debian-packages javascript
+.PHONY: clean running-as-root install-dependencies install-debian-packages javascript push-base
 
 clean:
 	rm -rf javascript/proto javascript/content_root/generated javascript/tsc.out python/gink/builders
@@ -51,3 +51,9 @@ javascript/content_root/generated: javascript/tsc.out
 
 javascript/tsc.out: $(wildcard javascript/implementation/*.ts)
 	env tsc -p javascript && chmod a+x javascript/tsc.out/implementation/main.js
+
+push-base:
+	docker buildx build --platform linux/amd64,linux/arm64 --push --tag darinmcgill/base:latest --no-cache -f Dockerfile.base .
+
+build-base:
+	docker build --tag darinmcgill/base:latest -f Dockerfile.base .

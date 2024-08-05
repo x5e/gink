@@ -17,7 +17,7 @@ T = TypeVar('T')
 inf = float("inf")
 
 
-class Deletion: # pylint: disable=too-few-public-methods
+class Deletion:  # pylint: disable=too-few-public-methods
     """ Used internally to indicate that a key/value assocation has been removed. """
 
 

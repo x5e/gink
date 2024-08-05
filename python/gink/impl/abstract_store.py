@@ -3,6 +3,7 @@
 # standard python modules
 from typing import Tuple, Optional, Iterable, List, Union, Mapping, TypeVar, Generic, Callable
 from abc import abstractmethod
+from nacl.signing import SigningKey, VerifyKey
 
 
 # Gink specific modules
@@ -71,10 +72,10 @@ class AbstractStore(BundleStore, Generic[Lock]):
     def get_edge_entries(
             self, *,
             as_of: MuTimestamp,
-            verb: Optional[Muid] = None,
+            edge_type: Optional[Muid] = None,
             source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:
-        """ Returns all the edge entries with specified verb and/or subject and/or object. """
+        """ Returns all the edge entries with specified edge_type and/or subject and/or object. """
 
     @abstractmethod
     def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:
@@ -213,20 +214,6 @@ class AbstractStore(BundleStore, Generic[Lock]):
             to the timestamp argument passed in.
         """
 
-    @staticmethod
-    def _is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:
-        seen_through = 0
-        if old_info:
-            assert old_info.get_chain() == new_info.get_chain()
-            seen_through = old_info.timestamp
-        if seen_through >= new_info.timestamp:
-            return False
-        if new_info.timestamp != new_info.chain_start and not new_info.previous:
-            raise ValueError("Bundle isn't the start but has no prior.")
-        if (new_info.previous or seen_through) and new_info.previous != seen_through:
-            raise ValueError("Bundle received without prior link in chain!")
-        return True
-
     @abstractmethod
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
@@ -254,3 +241,15 @@ class AbstractStore(BundleStore, Generic[Lock]):
     def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:
         """ Returns all the containers (properties) that describe desc.
         """
+
+    @abstractmethod
+    def save_signing_key(self, signing_key: SigningKey):
+        """ Store a signing key for future use; can be retrieved using verify_key. """
+
+    @abstractmethod
+    def get_verify_key(self, chain: Chain, lock: Optional[Lock]=None, /) -> VerifyKey:
+        """ Get the verify key associated with a specific chain (stored in add-bundle). """
+
+    @abstractmethod
+    def get_signing_key(self, verify_key: VerifyKey) -> SigningKey:
+        """ Gets the key for use in continuing a chain (if previously stored). """
