@@ -61,7 +61,7 @@ class LmdbStore(AbstractStore):
         if isinstance(file_path, Path):
             file_path = str(file_path)
         self._file_path = file_path
-        self._seen_containers = set()
+        self._seen_containers: Set[Muid] = set()
         self._handle = ldmbopen(file_path, max_dbs=100, map_size=map_size, subdir=False)
         self._bundles = self._handle.open_db(b"bundles")
         self._bundle_infos = self._handle.open_db(b"bundle_infos")
