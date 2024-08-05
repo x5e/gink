@@ -15,6 +15,8 @@ from authlib.jose.errors import JoseError
 from time import time as get_time
 from typing import Optional, Tuple
 from random import choice
+from nacl.hash import blake2b
+from nacl.encoding import RawEncoder
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
@@ -27,7 +29,10 @@ from .builders import (
 )
 from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE
 from .builders import Behavior
+from .bundle_info import BundleInfo
 
+def digest(data: bytes) -> bytes:
+    return blake2b(data, digest_size=32, encoder=RawEncoder)
 
 def make_auth_func(token: str) -> AuthFunc:
     def auth_func(data: str, *_) -> int:
@@ -315,3 +320,17 @@ def validate_bundle_entries(bundle_builder: BundleBuilder) -> None:
 
             else:
                 raise ValueError(f"unknown behavior: {change.entry.behavior}")
+
+
+def is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:
+    seen_through = 0
+    if old_info:
+        assert old_info.get_chain() == new_info.get_chain()
+        seen_through = old_info.timestamp
+    if seen_through >= new_info.timestamp:
+        return False
+    if new_info.timestamp != new_info.chain_start and not new_info.previous:
+        raise ValueError("Bundle isn't the start but has no prior.")
+    if (new_info.previous or seen_through) and new_info.previous != seen_through:
+        raise ValueError("Bundle received without prior link in chain!")
+    return True

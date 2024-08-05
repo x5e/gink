@@ -214,20 +214,6 @@ class AbstractStore(BundleStore, Generic[Lock]):
             to the timestamp argument passed in.
         """
 
-    @staticmethod
-    def _is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:
-        seen_through = 0
-        if old_info:
-            assert old_info.get_chain() == new_info.get_chain()
-            seen_through = old_info.timestamp
-        if seen_through >= new_info.timestamp:
-            return False
-        if new_info.timestamp != new_info.chain_start and not new_info.previous:
-            raise ValueError("Bundle isn't the start but has no prior.")
-        if (new_info.previous or seen_through) and new_info.previous != seen_through:
-            raise ValueError("Bundle received without prior link in chain!")
-        return True
-
     @abstractmethod
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:

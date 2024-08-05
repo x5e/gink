@@ -65,6 +65,7 @@ class Bundler:
             timestamp: MuTimestamp,
             signing_key: SigningKey,
             previous: Optional[MuTimestamp] = None,
+            prior_hash: Union[bytes, str, None] = None,
             ) -> bytes:
         """ Finalizes a bundle and serializes it. """
         # pylint: disable=maybe-no-member
@@ -79,6 +80,11 @@ class Bundler:
         self._timestamp = self._bundle_builder.metadata.timestamp = timestamp  # type: ignore
         if self._comment:
             self._bundle_builder.metadata.comment = self.comment  # type: ignore
+        if prior_hash:
+            if isinstance(prior_hash, str):
+                prior_hash = bytes.fromhex(prior_hash)
+            assert isinstance(prior_hash, bytes) and len(prior_hash) == 32
+            self._bundle_builder.prior_hash = prior_hash
         serialized = self._bundle_builder.SerializeToString()
         signed = signing_key.sign(serialized)
         self._sealed = signed

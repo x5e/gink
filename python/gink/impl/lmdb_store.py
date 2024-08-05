@@ -21,7 +21,7 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, BundleWrapper
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
-from .utilities import generate_timestamp, create_claim
+from .utilities import generate_timestamp, create_claim, is_needed
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
@@ -788,13 +788,11 @@ class LmdbStore(AbstractStore):
             self._refresh_helper(trxn=trxn, callback=callback)
             chain_value_old = trxn.get(chain_key, db=self._chains)
             old_info = BundleInfo(encoded=chain_value_old) if chain_value_old else None
-            needed = AbstractStore._is_needed(new_info, old_info)
+            needed = is_needed(new_info, old_info)
             if needed:
                 if claim_chain:
                     assert new_info.timestamp == new_info.chain_start
                     self._add_claim(trxn, new_info.get_chain())
-                if new_info.timestamp == new_info.chain_start:
-                    trxn.put(bytes(new_info.get_chain()), new_info.comment.encode(), db=self._identities)
                 if decode_muts(trxn.get(b"bundles", db=self._retentions)):
                     bundle_receive_time = generate_timestamp()
                     bundle_location = encode_muts(bundle_receive_time)
@@ -805,12 +803,18 @@ class LmdbStore(AbstractStore):
                 change_items: List[int, ChangeBuilder] = list(builder.changes.items())  # type: ignore
                 change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
                 if new_info.chain_start == new_info.timestamp:
-                    trxn.put(bytes(chain_key), new_info.comment.encode(), db=self._identities)
+                    identity = new_info.comment
+                    assert identity is not None
+                    trxn.put(bytes(chain_key), identity.encode(), db=self._identities)
                     assert builder.verify_key is not None
                     verify_key = VerifyKey(builder.verify_key)
                     trxn.put(bytes(chain_key), bytes(verify_key), db=self._verify_keys)
                 else:
                     verify_key = self.get_verify_key(new_info.get_chain(), trxn)
+                    assert old_info is not None and old_info.hex_hash is not None
+                    prior_hash = builder.prior_hash
+                    if prior_hash != bytes.fromhex(old_info.hex_hash):
+                        raise ValueError("prior_hash doesn't match hash of prior bundle")
                 verify_key.verify(wrapper.get_bytes())
                 for offset, change in change_items:
                     if not self._apply_changes:

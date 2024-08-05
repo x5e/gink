@@ -31,15 +31,16 @@ import { TreeMap, MapIterator } from 'jstreemap';
 
 import {ready as sodium_ready, crypto_sign_open,
     crypto_sign_keypair,
-    crypto_sign,
+    crypto_sign, crypto_generichash_BYTES, crypto_generichash,
 } from 'libsodium-wrappers';
 
+export const digest = (data: Bytes) => crypto_generichash(crypto_generichash_BYTES, data);
 
 export const librariesReady = sodium_ready;
 
 export const signingBundles = true;
 
-export function noOp() { ensure(arguments.length > 0); }
+export function noOp(_?: any) { ensure(arguments.length > 0); }
 
 export function toLastWithPrefixBeforeSuffix<V>(
     map: TreeMap<string, V>, prefix: string, suffix: string = '~'):
@@ -476,7 +477,8 @@ export function logToStdErr(msg: string) {
     const caller = callerLine.split(/\//).pop()?.replace(/:\d+\)/, "");
     const timestamp = ((new Date()).toISOString()).split("T").pop();
     // using console.error because I want to write to stderr
-    console.error(`[${timestamp} ${caller}] ${msg}`);
+    const procId = process ? process.pid : 0;
+    console.error(`[${timestamp} ${caller} ${procId}] ${msg}`);
 }
 
 export function sameData(key1: any, key2: any): boolean {

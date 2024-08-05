@@ -120,9 +120,9 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         bundleBuilder.getChangesMap().set(7, changeBuilder);
         const decomposition = new Decomposition(
             signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey, ));
-        const bundleInfo = await store.addBundle(decomposition);
-        ensure(bundleInfo.medallion === MEDALLION1);
-        ensure(bundleInfo.timestamp === START_MICROS1);
+        const added = await store.addBundle(decomposition);
+        ensure(decomposition.info.medallion === MEDALLION1);
+        ensure(decomposition.info.timestamp === START_MICROS1);
         const containerBytes = await store.getContainerBytes(
             { medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
         ensure(containerBytes);

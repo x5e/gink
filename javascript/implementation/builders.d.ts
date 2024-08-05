@@ -72,6 +72,8 @@ export class BundleBuilder extends ImplementedMessage {
     getChangesMap(): Map<number, ChangeBuilder>;
     getVerifyKey(): Bytes;
     setVerifyKey(Bytes);
+    setPriorHash(Bytes);
+    getPriorHash(): Bytes;
 }
 
 export class PairBuilder extends ImplementedMessage {
@@ -214,6 +216,13 @@ export class ClaimBuilder extends ImplementedMessage {
     setClaimTime(number);
 }
 
+export class KeyPairBuilder extends ImplementedMessage {
+    getPublicKey_asU8(): Uint8Array;
+    getSecretKey_asU8(): Uint8Array;
+    setPublicKey(Uint8Array);
+    setSecretKey(Uint8Array);
+}
+
 export class LogFileBuilder extends ImplementedMessage {
     setBundlesList(bundles: Array<Uint8Array>);
     getBundlesList(): Array<Uint8Array>;
@@ -221,6 +230,8 @@ export class LogFileBuilder extends ImplementedMessage {
     setClaimsList(entries: Array<ClaimBuilder>);
     setMagicNumber(number);
     getMagicNumber(): number;
+    setKeyPairsList(array: Array<KeyPairBuilder>);
+    getKeyPairsList(): Array<KeyPairBuilder>;
 }
 
 export class MovementBuilder extends ImplementedMessage {

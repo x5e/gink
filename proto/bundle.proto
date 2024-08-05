@@ -13,4 +13,7 @@ message Bundle {
     // Only set in the first bundle in a chain.
     bytes verify_key = 3;
 
+    // Set in every bundle except for the first in a chain.
+    bytes prior_hash = 4;  // the sha256 of the prior bundle
+
 }

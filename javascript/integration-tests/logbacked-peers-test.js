@@ -12,10 +12,13 @@ Ensures if logbacked1 changes the file, logbacked2 will
 automatically pull the changes and broadcast them.
 */
 process.chdir(__dirname + "/..");
+let server = null;
+let result = 1;
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", ["-l", port], { env: { ...process.env } });
+    server = new Expector("./tsc.out/implementation/main.js",
+        ["-l", port], {env: { ...process.env}});
     await server.expect("listening", 10000);
     console.log("server started");
 
@@ -39,11 +42,11 @@ process.chdir(__dirname + "/..");
     await new Promise(r => setTimeout(r, 100));
     await server.expect(/received bundle:.*testing peer callback/, 10000);
     console.log("received expected bundle");
-
-    await server.close();
-    process.exit(0);
+    result = 0;
 })().catch(async (reason) => {
     console.error(reason);
-    await server.close();
-    process.exit(1);
-});
+}).finally(async () => {
+    if (server)
+        await server.close();
+    process.exit(result);
+})

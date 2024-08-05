@@ -2,7 +2,7 @@ import { Medallion, ChainStart, Timestamp, BundleView } from "../implementation/
 import { Store } from "../implementation/Store";
 import { BundleBuilder, MetadataBuilder } from "../implementation/builders";
 import { Decomposition } from "../implementation/Decomposition";
-import { createKeyPair, signBundle, librariesReady } from "../implementation/utils";
+import { createKeyPair, signBundle, librariesReady, ensure } from "../implementation/utils";
 
 export const MEDALLION1 = 425579549941797;
 export const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;
@@ -42,6 +42,9 @@ export async function extendChain(comment: string, previous: BundleView, timesta
     subsequent.setComment(comment);
     const bundleBuilder = new BundleBuilder();
     bundleBuilder.setMetadata(subsequent);
+    const priorHash = previous.info.hashCode;
+    ensure(priorHash && priorHash.length === 32);
+    bundleBuilder.setPriorHash(priorHash);
     return new Decomposition(signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey));
 }
 

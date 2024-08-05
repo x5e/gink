@@ -20,7 +20,7 @@ from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
                      Placement, decode_key, decode_entry_occupant)
-from .utilities import create_claim
+from .utilities import create_claim, is_needed
 
 
 class MemoryStore(AbstractStore):
@@ -28,7 +28,7 @@ class MemoryStore(AbstractStore):
 
         (Primarily for use in testing and to be used as a base clase for log-backed store.)
     """
-    _bundles: SortedDict  # BundleInfo => bytes
+    _bundles: SortedDict  # BundleInfo => BundleWrapper
     _entries: Dict[Muid, EntryBuilder]
     _chain_infos: SortedDict  # Chain => BundleInfo
     _claims: Dict[Medallion, ClaimBuilder]
@@ -80,10 +80,11 @@ class MemoryStore(AbstractStore):
             yield key, val
 
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
-        look_for = struct.pack(">QQ", timestamp, medallion)
+        look_for = BundleInfo(timestamp=timestamp, medallion=medallion)
         for thing in self._bundles.irange(minimum=look_for):
-            if thing.startswith(look_for):
-                return BundleInfo.from_bytes(thing).comment
+            assert isinstance(thing, BundleInfo)
+            if thing.timestamp == timestamp and thing.medallion == medallion:
+                return thing.comment
             else:
                 return None
         raise Exception("unexpected")
@@ -267,11 +268,12 @@ class MemoryStore(AbstractStore):
             ) -> bool:
         if isinstance(bundle, bytes):
             bundle = BundleWrapper(bundle)
+        assert isinstance(bundle, BundleWrapper)
         bundle_builder = bundle.get_builder()
         new_info = bundle.get_info()
         chain_key = new_info.get_chain()
         old_info = self._chain_infos.get(new_info.get_chain())
-        needed = AbstractStore._is_needed(new_info, old_info)
+        needed = is_needed(new_info, old_info)
         if needed:
             if new_info.chain_start == new_info.timestamp:
                 self._identities[chain_key] = new_info.comment
@@ -279,8 +281,12 @@ class MemoryStore(AbstractStore):
                 self._verify_keys[chain_key] = verify_key
             else:
                 verify_key = self._verify_keys[chain_key]
+                assert old_info is not None and old_info.hex_hash is not None
+                prior_hash = bundle_builder.prior_hash
+                if prior_hash != bytes.fromhex(old_info.hex_hash):
+                    raise ValueError("prior_hash doesn't match hash of prior bundle")
             verify_key.verify(bundle.get_bytes())
-            self._bundles[bytes(new_info)] = bundle.get_bytes()
+            self._bundles[new_info] = bundle
             self._chain_infos[chain_key] = new_info
             change_items: List[int, ChangeBuilder] = list(bundle_builder.changes.items())  # type: ignore
             change_items.sort()  # the protobuf library doesn't maintain order of maps
@@ -380,12 +386,9 @@ class MemoryStore(AbstractStore):
         **_
     ):
         start_scan_at: MuTimestamp = 0
-        for bundle_info_key in self._bundles.irange(minimum=encode_muts(start_scan_at)):
-            bundle_info = BundleInfo.from_bytes(bundle_info_key)
+        for bundle_info in self._bundles.irange(minimum=BundleInfo(timestamp=start_scan_at)):
             if limit_to is None or bundle_info.timestamp <= limit_to.get(bundle_info.get_chain(), 0):
-                bundle_bytes = self._bundles[bundle_info]
-                assert isinstance(bundle_bytes, bytes)
-                bundle_wrapper = BundleWrapper(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
+                bundle_wrapper = self._bundles[bundle_info]
                 callback(bundle_wrapper)
 
     def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:

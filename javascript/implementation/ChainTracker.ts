@@ -1,5 +1,6 @@
 import { BundleInfo, Medallion, ChainStart, SeenThrough, Muid, CallBack, Timestamp } from "./typedefs";
 import { SyncMessageBuilder, GreetingBuilder, GreetingEntryBuilder } from "./builders";
+import { ensure } from "./utils";
 
 
 /**

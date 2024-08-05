@@ -4,14 +4,14 @@ import { LockableFile } from "./LockableFile";
 
 export class LockableLog extends LockableFile {
 
-    protected async writeMagicNumber(): Promise<void> {
+    protected async writeMagicNumber(): Promise<number> {
         ensure(this.fileLocked);
         const size = await this.getFileLength();
         if (size !== 0)
             throw new Error("file not empty!");
         const logFragment = new LogFileBuilder();
         logFragment.setMagicNumber(1263421767);
-        await this.writeLogFragment(logFragment);
+        return await this.writeLogFragment(logFragment, true);
     }
 
     protected async writeLogFragment(fragment: LogFileBuilder, sync?: boolean): Promise<number> {

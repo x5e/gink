@@ -1,6 +1,6 @@
 import { BundleBuilder } from "./builders";
 import { BundleInfo, BundleView, BundleBytes, Bytes } from "./typedefs";
-import { signingBundles, getSig, generateTimestamp } from "./utils";
+import { signingBundles, getSig, generateTimestamp, ensure } from "./utils";
 
 /**
  * Creates a bundle view from the encoded bytes and metadata info, only parsing
