@@ -752,6 +752,7 @@ class LmdbStore(AbstractStore):
             callback: Optional[Callable[[BundleWrapper], None]]=None,
             claim_chain: bool=False
             ) -> bool:
+        seen_containers = set()
         wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
         builder = wrapper.get_builder()
         new_info = wrapper.get_info()
@@ -788,6 +789,14 @@ class LmdbStore(AbstractStore):
                                     change.container.SerializeToString(), db=self._containers)
                             continue
                         if change.HasField("entry"):
+                            container = change.entry.container
+                            muid = Muid(container.timestamp, container.medallion, container.offset)
+                            if not muid in seen_containers:
+                                if not self.get_container(muid):
+                                    container_builder = ContainerBuilder()
+                                    container_builder.behavior = change.entry.behavior
+                                    trxn.put(bytes(muid), container_builder.SerializeToString(), db=self._containers)
+                                    seen_containers.add(muid)
                             self._add_entry(new_info, trxn, offset, change.entry)
                             continue
                         if change.HasField("movement"):

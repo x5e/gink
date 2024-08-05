@@ -251,6 +251,7 @@ class MemoryStore(AbstractStore):
             callback: Optional[Callable[[BundleWrapper], None]]=None,
             claim_chain: bool=False,
             ) -> bool:
+        seen_containers = set()
         if isinstance(bundle, bytes):
             bundle = BundleWrapper(bundle)
         bundle_builder = bundle.get_builder()
@@ -273,6 +274,14 @@ class MemoryStore(AbstractStore):
                         self._containers[container_muid] = change.container
                         continue
                     if change.HasField("entry"):
+                        container = change.entry.container
+                        muid = Muid(container.timestamp, container.medallion, container.offset)
+                        if not muid in seen_containers:
+                            if not self.get_container(muid):
+                                container_builder = ContainerBuilder()
+                                container_builder.behavior = change.entry.behavior
+                                self._containers[muid] = container_builder
+                                seen_containers.add(muid)
                         self._add_entry(new_info=new_info, offset=offset, entry_builder=change.entry)
                         continue
                     if change.HasField("movement"):
