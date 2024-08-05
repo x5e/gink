@@ -1,5 +1,6 @@
 from .. import *
 from contextlib import closing
+from io import StringIO
 
 
 def test_basics():
@@ -105,3 +106,22 @@ def test_reset_vertex():
             noun1.reset(timestamp, bundler=bundler)
             db.bundle(bundler)
             assert noun1.is_alive()
+
+def test_graph_dump_load():
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            db = Database(store)
+            noun1 = Vertex(database=db)
+            noun2 = Vertex(database=db)
+            edge_type = EdgeType(database=db)
+            edge_type.create_edge(noun1, noun2, "edge1")
+            edge_type.create_edge(noun2, noun1, "edge2")
+            str_io = StringIO()
+            db.dump(file=str_io)
+            dump = str_io.getvalue()
+
+        store2 = LmdbStore()
+        with closing(store2):
+            db2 = Database(store2)
+            exec(dump)
+            db2.dump()
