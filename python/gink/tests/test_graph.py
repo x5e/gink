@@ -1,7 +1,6 @@
 from .. import *
 from contextlib import closing
 from io import StringIO
-from regex import match, compile
 
 
 def test_basics():
