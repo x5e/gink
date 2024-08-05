@@ -74,11 +74,19 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
         }
     );
     await sleep(1000);
-    gink.send("root.get('foo');\n");
-    await gink.expect(/.*'bar'.*/, 2000);
 
+    const regex = new RegExp(
+        `Sequence\\(muid=Muid\\((.*)\\), contents=\\[[\\s\\S]*?` +
+        `KeySet\\(muid=Muid\\((.*)\\), contents=\\{5,4,3,2,1\\}\\)[\\s\\S]*?` +
+        `Box\\(muid=Muid\\((.*)\\), contents='box contents'\\)[\\s\\S]*?` +
+        `PairSet\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
+        `PairMap\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
+        `Property\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
+        `Group\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
+        `Directory\\(arche=True, contents=\\{'foo': 'bar'\\}\\)`
+    );
     gink.send("database.dump();\n");
-    await sleep(5000);
+    await gink.expect(regex, 2000);
 
     await gink.close();
     console.log("finished!");

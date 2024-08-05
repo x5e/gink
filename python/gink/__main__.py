@@ -99,9 +99,11 @@ if args.dump_to:
 if args.load:
     if not args.db_path:
         raise ValueError("must specify a database path to load a database dump")
-    exec(open(args.load).read())
+    with open(args.load, "r") as file:
+        loaded = file.read()
+    loaded = loaded.replace("\n\t", "")
+    exec(loaded, globals(), locals())
     logger.info("Loaded database from %s into %s", args.load, args.db_path)
-    print(database.dump())
     exit(0)
 
 if args.show_bundles:

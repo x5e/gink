@@ -3,7 +3,7 @@
 # standard python stuff
 import struct
 from logging import getLogger
-from typing import Tuple, Callable, Optional, Iterable, Union, Dict, Mapping
+from typing import Tuple, Callable, Optional, Iterable, Union, Dict, Mapping, Set
 from sortedcontainers import SortedDict  # type: ignore
 from pathlib import Path
 
@@ -41,6 +41,7 @@ class MemoryStore(AbstractStore):
     def __init__(self):
         # TODO: add a "no retention" capability to allow the memory store to be configured to
         # drop out of date data like is currently implemented in the LmdbStore.
+        self._seen_containers: Set[Muid] = set()
         self._bundles = SortedDict()
         self._chain_infos = SortedDict()
         self._claims = SortedDict()
@@ -273,6 +274,14 @@ class MemoryStore(AbstractStore):
                         self._containers[container_muid] = change.container
                         continue
                     if change.HasField("entry"):
+                        container = change.entry.container
+                        muid = Muid(container.timestamp, container.medallion, container.offset)
+                        if not muid in self._seen_containers:
+                            if not self.get_container(muid):
+                                container_builder = ContainerBuilder()
+                                container_builder.behavior = change.entry.behavior
+                                self._containers[muid] = container_builder
+                                self._seen_containers.add(muid)
                         self._add_entry(new_info=new_info, offset=offset, entry_builder=change.entry)
                         continue
                     if change.HasField("movement"):
