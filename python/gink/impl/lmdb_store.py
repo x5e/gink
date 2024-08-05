@@ -61,6 +61,7 @@ class LmdbStore(AbstractStore):
         if isinstance(file_path, Path):
             file_path = str(file_path)
         self._file_path = file_path
+        self._seen_containers = set()
         self._handle = ldmbopen(file_path, max_dbs=100, map_size=map_size, subdir=False)
         self._bundles = self._handle.open_db(b"bundles")
         self._bundle_infos = self._handle.open_db(b"bundle_infos")
@@ -302,7 +303,7 @@ class LmdbStore(AbstractStore):
         if container is None and user_key is not None:
             raise ValueError("can't specify key without specifying container")
         if container is None:
-            recursive = False  # don't need to recuse if we're going to do everything anyway
+            recursive = False  # don't need to recurse if we're going to do everything anyway
         seen: Optional[Set] = set() if recursive else None
         with self._handle.begin() as txn:
             if container is None:
@@ -314,11 +315,6 @@ class LmdbStore(AbstractStore):
                     for change in self._container_reset_changes(to_time, muid, seen, txn):
                         yield change
                     cursor_placed = containers_cursor.next()
-                # then loop over the "magic" pre-defined
-                for behavior in [DIRECTORY, SEQUENCE, BOX, KEY_SET]:
-                    muid = Muid(-1, -1, behavior)
-                    for change in self._container_reset_changes(to_time, muid, seen, txn):
-                        yield change
             else:
                 if user_key is not None:
                     for change in self._get_keyed_reset(
@@ -752,7 +748,6 @@ class LmdbStore(AbstractStore):
             callback: Optional[Callable[[BundleWrapper], None]]=None,
             claim_chain: bool=False
             ) -> bool:
-        seen_containers = set()
         wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
         builder = wrapper.get_builder()
         new_info = wrapper.get_info()
@@ -791,12 +786,12 @@ class LmdbStore(AbstractStore):
                         if change.HasField("entry"):
                             container = change.entry.container
                             muid = Muid(container.timestamp, container.medallion, container.offset)
-                            if not muid in seen_containers:
+                            if not muid in self._seen_containers:
                                 if not self.get_container(muid):
                                     container_builder = ContainerBuilder()
                                     container_builder.behavior = change.entry.behavior
                                     trxn.put(bytes(muid), container_builder.SerializeToString(), db=self._containers)
-                                    seen_containers.add(muid)
+                                    self._seen_containers.add(muid)
                             self._add_entry(new_info, trxn, offset, change.entry)
                             continue
                         if change.HasField("movement"):
