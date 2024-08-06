@@ -199,7 +199,7 @@ class EdgeType(Container):
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "arche=True"
         else:
-            identifier = repr(str(self._muid))
+            identifier = f"muid={repr(self._muid)}"
         result = f"""{self.__class__.__name__}({identifier}, contents=["""
         if self.size() == 0:
             return result + "])"
@@ -226,7 +226,7 @@ class Edge(Addressable):
                  database: Optional[Database] = None,
                  _builder: Optional[EntryBuilder] = None,
                  _immediate=False):
-        database = database or Database.get_last()
+        self._database = database or Database.get_last()
         self._valued: Union[UserValue, Inclusion]
         self._effective: Optional[MuTimestamp] = None
         if action is None or source is None or target is None:
@@ -267,16 +267,16 @@ class Edge(Addressable):
                 entry_builder.effective = self._effective = effective
             muid = bundler.add_change(change_builder)
             if _immediate:
-                database.bundle(bundler)
-        super().__init__(database=database, muid=muid)
+                self._database.bundle(bundler)
+        super().__init__(database=self._database, muid=muid)
 
     def dumps(self, indent=1) -> str:
         contents = []
         formatting = "\n" + "    " * indent if indent else ""
-        contents.append((" " if indent else "")+"muid='%s'" % (self._muid,))
-        contents.append(formatting + "source='%s'" % (self._source,))
-        contents.append(formatting + "action='%s'" % (self._action,))
-        contents.append(formatting + "target='%s'" % (self._target,))
+        contents.append(formatting + "source=%s" % (repr(self._source),))
+        contents.append(formatting + "action=%s" % (repr(self._action),))
+        contents.append(formatting + "target=%s" % (repr(self._target),))
+        # load properties
         if not isinstance(self._valued, Inclusion):
             contents.append(formatting + "valued=%r" % self._valued)
         joined = ",".join(contents)

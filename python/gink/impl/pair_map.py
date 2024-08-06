@@ -22,7 +22,7 @@ class PairMap(Container):
             muid: Optional[Union[Muid, str]] = None,
             *,
             arche: Optional[bool] = None,
-            contents: Optional[Dict[Pair, Union[UserValue, Container]]] = None,
+            contents: Optional[Dict[Pair, Union[UserValue, Container, Muid]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -62,7 +62,7 @@ class PairMap(Container):
 
     @typechecked
     def set(self, key: Pair,
-            value: Union[UserValue, Container],
+            value: Union[UserValue, Container, Muid],
             bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         return self._add_entry(key=key, value=value, bundler=bundler, comment=comment)
 

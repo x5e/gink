@@ -1,7 +1,7 @@
 from random import choice, choices, randint, random, randbytes
 from string import ascii_lowercase
 from typing import Tuple, Dict, Set
-from datetime import datetime
+import datetime
 from io import StringIO
 from contextlib import closing
 
@@ -28,7 +28,7 @@ from ..impl.coding import BOX, DIRECTORY, KEY_SET, SEQUENCE, PAIR_SET, PAIR_MAP,
 
 NUM_ENTRIES = 50
 UserKey = {str, int, bytes}
-NoIterables = {str, int, float, bytes, bool, None, datetime}
+NoIterables = {str, int, float, bytes, bool, None, datetime.datetime}
 UserValue = NoIterables.union({list, tuple, dict})
 
 ValueContainer = UserValue.union({Container})
@@ -109,7 +109,6 @@ def test_random():
             str_io = StringIO()
             database.dump(file=str_io)
 
-            # TODO: reconstruct database
 
 def random_data(type):
     max_str = 468 # lmdb key cant be more than 468 characters
@@ -121,8 +120,8 @@ def random_data(type):
         return randint(0, 10000)
     elif type == float:
         return random() * 10000
-    elif type == datetime:
-        return datetime.now()
+    elif type == datetime.datetime:
+        return datetime.datetime.now()
     elif type == bytes:
         return randbytes(50)
     elif type == bool:
