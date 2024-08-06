@@ -12,14 +12,14 @@ from nacl.signing import SigningKey, VerifyKey
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder,
                        ContainerBuilder, Message, ChangeBuilder, ClaimBuilder)
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit
-from .tuples import Chain, FoundEntry, PositionedEntry
+from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, BundleWrapper, Lock
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
-                     Placement, decode_key, decode_entry_occupant)
+                     Placement, decode_key, decode_entry_occupant, PROPERTY)
 from .utilities import create_claim, is_needed
 
 
@@ -503,10 +503,39 @@ class MemoryStore(AbstractStore):
         else:
             raise NotImplementedError()
 
-    def get_by_name(self, name, as_of: MuTimestamp = -1):
+    def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
         """ Returns info about all things with the given name. """
-        _ = (name, as_of)
-        raise NotImplementedError()
+        as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
+        prop_bytes = bytes(Muid(-1, -1, PROPERTY))
+        clearance_time = None
+        for clearance_key in self._clearances.irange(
+                minimum=prop_bytes, maximum=prop_bytes + bytes(as_of_muid), reverse=True):
+            clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
+
+        iterator = self._placements.irange(
+            minimum=prop_bytes, maximum=prop_bytes + b"\xFF"*16, reverse=True)
+        last = None
+        # TODO this could be more efficient
+        for entry_key in iterator:
+            entry_storage_key = Placement.from_bytes(entry_key, PROPERTY)
+            if entry_storage_key.placer.timestamp >= as_of > 0:
+                continue
+            if entry_storage_key.middle == last:
+                continue
+            if clearance_time and entry_storage_key.placer.timestamp < clearance_time:
+                last = entry_storage_key.middle
+                continue
+            if entry_storage_key.expiry and entry_storage_key.expiry < as_of:
+                last = entry_storage_key.middle
+                continue
+            entry_builder = self._entries[self._placements[entry_key]]
+            if entry_builder.value.characters == name:
+                container_builder = ContainerBuilder()
+                container_builder.behavior = entry_builder.behavior
+                yield FoundContainer(
+                    builder=container_builder,
+                    address=entry_storage_key.placer)
+            last = entry_storage_key.middle
 
     def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1):
         _ = (desc, as_of)
