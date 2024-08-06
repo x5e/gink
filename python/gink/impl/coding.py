@@ -180,7 +180,7 @@ class Placement(NamedTuple):
         return Placement(container, middle_key, entry_muid, expiry)
 
     @staticmethod
-    def from_bytes(data: bytes, using: Union[int, bytes, EntryBuilder]=DIRECTORY):
+    def from_bytes(data: bytes, using: Union[int, bytes, EntryBuilder]):
         """ creates an entry key from its binary format, using either the entry(bytes) or behavior
         """
         # pylint: disable=maybe-no-member
