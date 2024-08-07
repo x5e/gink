@@ -23,8 +23,18 @@ process.chdir(__dirname + "/..");
     client.send("await root.get(3);\n");
     await client.expect("\n4n\n", 2000);
 
-    await client.close();
     await python.close();
+    await client.expect("retrying", 2000);
+
+    const python2 = new Expector(
+        "python3",
+        ["-u", "-m", "gink", "-l", `*:${port}`]);
+    await python2.expect("listen", 2000);
+
+    await client.expect("reconnected", 2000);
+
+    await client.close();
+    await python2.close();
     console.log("finished!");
     process.exit(0);
 })().catch((reason) => { console.error(reason); process.exit(1); });
