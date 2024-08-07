@@ -524,6 +524,7 @@ export class Database {
             websocketClient.onerror = function (ev: Event) {
                 // if/when this is called depends on the details of the websocket implementation
                 console.error(`error on connection ${connectionId} to ${target}, ${ev}`);
+                reject(ev);
             };
             websocketClient.onclose = async function (ev: CloseEvent) {
                 // this should always be called once the peer disconnects, including in cases of error
@@ -538,8 +539,9 @@ export class Database {
                 if (retryOnDisconnect) {
                     let peer: Peer;
                     let retry_ms = 1000;
+                    let jitter = Math.floor(Math.random() * 20);
                     while (retry_ms < 100000 && !peer) {
-                        await new Promise((resolve) => setTimeout(resolve, retry_ms));
+                        await new Promise((resolve) => setTimeout(resolve, retry_ms + jitter));
                         try {
                             console.log(`retrying connection to ${target}`);
                             peer = await thisClient.connectTo(target, options);
