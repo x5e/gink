@@ -21,7 +21,7 @@ process.chdir(__dirname + "/..");
 
     await sleep(100);
     client.send("await root.get(3);\n");
-    await client.expect("\n4n\n", 2000);
+    await client.expect("\n4\n", 2000);
 
     await client.close();
     await python.close();

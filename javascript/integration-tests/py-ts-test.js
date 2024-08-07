@@ -21,7 +21,15 @@ process.chdir(__dirname + "/..");
     await sleep(100);
 
     client.send("root.get(3);\n");
-    await client.expect("\n4.0\n", 1000);
+    await client.expect("\n4\n", 1000);
+    await sleep(100);
+
+    server.send("await root.set(4, 4.2);\n");
+    await server.expect("received bundle", 1000);
+    await sleep(100);
+
+    client.send("root.get(4);\n");
+    await client.expect(/.*4.2.*/, 1000);
     await sleep(100);
 
     await client.close();

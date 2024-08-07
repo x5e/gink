@@ -178,7 +178,10 @@ export function unwrapValue(valueBuilder: ValueBuilder): Value {
         return valueBuilder.getFloating();
     }
     if (valueBuilder.hasInteger()) {
-        return BigInt(valueBuilder.getInteger());
+        if (valueBuilder.getInteger() > Number.MAX_SAFE_INTEGER.toString()) {
+            return BigInt(valueBuilder.getInteger());
+        }
+        return Number(valueBuilder.getInteger());
     }
     if (valueBuilder.hasSpecial()) {
         const special = valueBuilder.getSpecial();
@@ -431,6 +434,9 @@ export function valueToJson(value: Value): string {
     if (type === "string" || type === "number" || value === true || value === false || value === null) {
         return JSON.stringify(value);
     }
+    if (type === "bigint") {
+        return value.toString();
+    }
     if ("function" === typeof value["toISOString"]) {
         return `"${(value as Date).toISOString()}"`;
     }
@@ -442,7 +448,7 @@ export function valueToJson(value: Value): string {
         entries.sort();
         return "{" + entries.map(function (pair) { return `"${pair[0]}":` + valueToJson(pair[1]); }).join(",") + "}";
     }
-    throw new Error(`value not recognized: ${value}`);
+    throw new Error(`value not recognized: ${value} - ${typeof value}`);
 }
 
 export function muidToTuple(muid: Muid): MuidTuple {

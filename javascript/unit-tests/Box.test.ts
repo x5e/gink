@@ -133,16 +133,21 @@ it('Box.Store', async function () {
 
         var date = new Date();
         await box.set(date);
-        var expectDate = <Date> await box.get();
+        var expectDate = <Date>await box.get();
 
         ensure(isDate(expectDate) && expectDate.getTime() === date.getTime());
 
-        var int = BigInt("137");
+        var bigInt = BigInt("9007199254740992");
+        await box.set(bigInt);
+        var expectBigInt = await box.get();
+        ensure(expectBigInt === bigInt);
+
+        var int = 137;
         await box.set(int);
         var expectInt = await box.get();
         ensure(expectInt === int);
 
-        var floating = 137;
+        var floating = 137.7;
         await box.set(floating);
         var expectFloating = await box.get();
         ensure(expectFloating === floating);
