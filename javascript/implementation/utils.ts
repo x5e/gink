@@ -29,7 +29,8 @@ import { hostname, userInfo } from 'os';
 import { TreeMap, MapIterator } from 'jstreemap';
 
 
-import {ready as sodium_ready, crypto_sign_open,
+import {
+    ready as sodium_ready, crypto_sign_open,
     crypto_sign_keypair,
     crypto_sign, crypto_generichash_BYTES, crypto_generichash,
 } from 'libsodium-wrappers';
@@ -258,7 +259,7 @@ export function wrapValue(arg: Value): ValueBuilder {
         return valueBuilder.setOctets(arg);
     }
     if (arg instanceof Date) {
-        return valueBuilder.setTimestamp(arg.getTime()*1000);
+        return valueBuilder.setTimestamp(arg.getTime() * 1000);
     }
     if (arg === null) {
         return valueBuilder.setSpecial(Special.NULL);
@@ -273,10 +274,15 @@ export function wrapValue(arg: Value): ValueBuilder {
         return valueBuilder.setCharacters(arg);
     }
     if (typeof (arg) === "number") {
-        return valueBuilder.setFloating(arg);
+        if (arg.toString().includes(".")) {
+            return valueBuilder.setFloating(arg);
+        }
+        else {
+            return valueBuilder.setInteger(arg.toString());
+        }
     }
     if (typeof (arg) === "bigint") {
-        return valueBuilder.setInteger(arg.toString())
+        return valueBuilder.setInteger(arg.toString());
     }
     if (Array.isArray(arg)) {
         const tupleBuilder = new TupleBuilder();
@@ -627,9 +633,9 @@ export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {
     }
 }
 
-export function createKeyPair() : KeyPair {
+export function createKeyPair(): KeyPair {
     const result = crypto_sign_keypair();
-    return {publicKey: result.publicKey, secretKey: result.privateKey}
+    return { publicKey: result.publicKey, secretKey: result.privateKey };
 
     /*
     uncomment for deterministic debugging
@@ -645,7 +651,7 @@ export function createKeyPair() : KeyPair {
 
 export function getSig(bytes: Bytes): number {
     let result = 0;
-    for (let i=0; i<bytes.byteLength;i++) {
+    for (let i = 0; i < bytes.byteLength; i++) {
         result = result ^ bytes[i];
     }
     return result;
