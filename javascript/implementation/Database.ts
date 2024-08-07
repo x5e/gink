@@ -482,6 +482,7 @@ export class Database {
      * @param target a websocket uri, e.g. "ws://127.0.0.1:8080/"
      * @param onClose optional callback to invoke when the connection is closed
      * @param resolveOnOpen if true, resolve when the connection is established, otherwise wait for greeting
+     * @param retryOnDisconnect if true, try to reconnect (with backoff) if the server closes the connection
      * @returns a promise to the peer
      */
     public async connectTo(
@@ -489,11 +490,13 @@ export class Database {
         options?: {
             onClose?: CallBack,
             resolveOnOpen?: boolean,
+            retryOnDisconnect?: boolean,
             authToken?: string;
         }): Promise<Peer> {
         //TODO(https://github.com/google/gink/issues/69): have the default be to wait for databases to sync
         const onClose: CallBack = (options && options.onClose) ? options.onClose : noOp;
         const resolveOnOpen: boolean = (options && options.resolveOnOpen) ? options.resolveOnOpen : false;
+        const retryOnDisconnect = (options && options.retryOnDisconnect === false) ? false : true;
         const authToken: string = (options && options.authToken) ? options.authToken : undefined;
 
         await this.ready;
@@ -532,28 +535,29 @@ export class Database {
 
                 // I'm intentionally leaving the peer object in the peers map just in case we get data from them.
                 // thisClient.peers.delete(connectionId);  // might still be processing data from peer
+                if (retryOnDisconnect) {
+                    let peer: Peer;
+                    let retry_ms = 1000;
+                    while (retry_ms < 100000 && !peer) {
+                        await new Promise((resolve) => setTimeout(resolve, retry_ms));
+                        try {
+                            console.log(`retrying connection to ${target}`);
+                            peer = await thisClient.connectTo(target, options);
 
-                let peer: Peer;
-                let retry_ms = 1000;
-                while (retry_ms < 100000 && !peer) {
-                    await new Promise((resolve) => setTimeout(resolve, retry_ms));
-                    try {
-                        console.log(`retrying connection to ${target}`);
-                        peer = await thisClient.connectTo(target, options);
-
-                        if (retry_ms > 120000) {
-                            console.error(`failed to reconnect to ${target}`);
-                            break;
+                            if (retry_ms > 120000) {
+                                console.error(`failed to reconnect to ${target}`);
+                                break;
+                            }
+                            if (peer) {
+                                console.log(`reconnected to ${target}`);
+                                break;
+                            }
                         }
-                        if (peer) {
-                            console.log(`reconnected to ${target}`);
-                            break;
+                        catch (e) {
+                            console.error(`retry failed: ${e.message}`);
+                        } finally {
+                            retry_ms *= 2;
                         }
-                    }
-                    catch (e) {
-                        console.error(`retry failed: ${e.message}`);
-                    } finally {
-                        retry_ms *= 2;
                     }
                 }
             };

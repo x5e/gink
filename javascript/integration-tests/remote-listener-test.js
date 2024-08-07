@@ -11,9 +11,9 @@ process.chdir(__dirname + "/..");
     await server.expect("ready", 2000);
 
     const client1 = new Database();
-    await client1.connectTo(`ws://localhost:${port}`);
+    await client1.connectTo(`ws://localhost:${port}`, { retryOnDisconnect: false });
     const client2 = new Database();
-    await client2.connectTo(`ws://localhost:${port}`);
+    await client2.connectTo(`ws://localhost:${port}`, { retryOnDisconnect: false });
 
     await sleep(200);
     console.log("connections established");
