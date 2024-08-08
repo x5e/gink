@@ -397,7 +397,10 @@ class MemoryStore(AbstractStore):
 
             elif entry_builder.HasField("describing") and entry_builder.HasField("deletion"):
                 iterator = self._by_name.irange(
-                    minimum = b"\x00" + bytes(entry_muid), maximum = b"\xFF"*16 + b"\x00" + bytes(entry_muid), reverse=True)
+                    minimum = b"\x00" + bytes(entry_muid),
+                    maximum = b"\xFF"*16 + b"\x00" + bytes(entry_muid),
+                    reverse=True
+                )
                 for key in iterator:
                     self._by_name.pop(key)
                     return
