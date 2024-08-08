@@ -435,7 +435,7 @@ def generic_test_negative_offsets(store_maker: StoreMaker):
         assert found[2].entry_muid == Muid(123, 789, 4)
 
 def generic_test_get_by_name(store_maker: StoreMaker):
-    """ makes sure that the get_by_name works """
+    """ Container names can be set and retrieved. """
     with closing(store_maker()) as store:
         db = Database(store)
         prop = Property.get_global_instance()
