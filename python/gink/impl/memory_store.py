@@ -38,6 +38,7 @@ class MemoryStore(AbstractStore):
     _clearances: SortedDict
     _identities: SortedDict # Dict[Chain, str]
     _by_name: SortedDict  # Dict[bytes(name) + b'x00' + bytes(entry_muid), bytes(describing_muid)]
+    _by_describing: SortedDict
     _verify_keys: Dict[Chain, VerifyKey]
     _signing_keys: Dict[VerifyKey, SigningKey]
 
@@ -56,6 +57,7 @@ class MemoryStore(AbstractStore):
         self._removals = SortedDict()
         self._clearances = SortedDict()
         self._by_name = SortedDict()
+        self._by_describing = SortedDict()
         self._signing_keys = dict()
         self._verify_keys = dict()
         self._logger = getLogger(self.__class__.__name__)
@@ -387,6 +389,9 @@ class MemoryStore(AbstractStore):
         entries_location_key = LocationKey(placement.placer, placement.placer)
         self._locations[entries_location_key] = encoded_placement_key
         container_muid = placement.container
+        if entry_builder.HasField("describing"):
+            describing_muid = Muid.create(new_info, entry_builder.describing)
+            self._by_describing[bytes(describing_muid) + bytes(entry_muid)] = bytes(container_muid)
         if container_muid == Muid(-1, -1, PROPERTY):
             if entry_builder.HasField("value") and entry_builder.HasField("describing"):
                 describing_muid = Muid.create(new_info, entry_builder.describing)
@@ -394,8 +399,8 @@ class MemoryStore(AbstractStore):
                 if isinstance(name, str):
                     by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
                     self._by_name[by_name_key] = bytes(describing_muid)
-
-            elif entry_builder.HasField("describing") and entry_builder.HasField("deletion"):
+        if entry_builder.HasField("describing") and entry_builder.HasField("deletion"):
+            if container_muid == Muid(-1, -1, PROPERTY):
                 iterator = self._by_name.irange(
                     minimum = b"\x00" + bytes(entry_muid),
                     maximum = b"\xFF"*16 + b"\x00" + bytes(entry_muid),
@@ -403,7 +408,11 @@ class MemoryStore(AbstractStore):
                 )
                 for key in iterator:
                     self._by_name.pop(key)
-                    return
+                    break
+
+            describing_muid = Muid.create(new_info, entry_builder.describing)
+            self._by_describing.pop(bytes(describing_muid) + bytes(entry_muid))
+
 
     def get_bundles(
         self,
@@ -546,5 +555,24 @@ class MemoryStore(AbstractStore):
                 yield FoundContainer(address=describing_muid, builder=container_builder)
 
     def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:
-        _ = (desc, as_of)
-        raise NotImplementedError()
+        min = bytes(desc)
+        as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
+        max = bytes(desc) + bytes(as_of_muid)
+
+        iterator = self._by_describing.irange(
+            minimum=min, maximum=max, reverse=True)
+        for encoded_by_describing_key in iterator:
+            if not min in encoded_by_describing_key:
+                break
+            container_muid_bytes = self._by_describing[encoded_by_describing_key]
+            clearance_time = 0
+            for clearance_key in self._clearances.irange(
+                    minimum=container_muid_bytes,
+                    maximum=container_muid_bytes + bytes(as_of_muid),
+                    reverse=True
+                ):
+                clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
+            entry_muid = Muid.from_bytes(encoded_by_describing_key[-16:])
+            entry_builder = self._entries[entry_muid]
+            if not clearance_time > entry_muid.timestamp:
+                yield FoundEntry(address=entry_muid, builder=entry_builder)
