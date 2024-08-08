@@ -19,7 +19,7 @@ from ..impl.bundle_info import BundleInfo
 from ..impl.bundle_wrapper import BundleWrapper
 from ..impl.muid import Muid
 from ..impl.tuples import Chain
-from ..impl.utilities import digest
+from ..impl.utilities import digest, generate_timestamp
 
 StoreMaker = Callable[[], AbstractStore]
 
@@ -434,17 +434,3 @@ def generic_test_negative_offsets(store_maker: StoreMaker):
         assert found[1].entry_muid == Muid(123, 789, 3)
         assert found[2].entry_muid == Muid(123, 789, 4)
 
-def generic_test_get_by_name(store_maker: StoreMaker):
-    """ Container names can be set and retrieved. """
-    with closing(store_maker()) as store:
-        db = Database(store)
-        prop = Property.get_global_instance()
-        prop.set(Directory(arche=True), "root")
-        new_dir = Directory(database=db)
-        prop.set(new_dir, "new_dir")
-        assert len(list(store.get_by_name("root"))) == 1
-        assert len(list(store.get_by_name("new_dir"))) == 1
-        prop.set(Sequence(arche=True), "root")
-        assert len(list(store.get_by_name("root"))) == 2
-        prop.delete(Sequence(arche=True))
-        assert len(list(store.get_by_name("root"))) == 1

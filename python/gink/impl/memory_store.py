@@ -405,7 +405,6 @@ class MemoryStore(AbstractStore):
                     self._by_name.pop(key)
                     return
 
-
     def get_bundles(
         self,
         callback: Callable[[BundleWrapper], None], *,
@@ -546,6 +545,6 @@ class MemoryStore(AbstractStore):
             if not clearance_time > entry_muid.timestamp:
                 yield FoundContainer(address=describing_muid, builder=container_builder)
 
-    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1):
+    def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:
         _ = (desc, as_of)
         raise NotImplementedError()

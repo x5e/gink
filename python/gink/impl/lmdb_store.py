@@ -8,7 +8,7 @@ import uuid
 from typing import Tuple, Iterable, Optional, Set, Union, Mapping, Callable
 from struct import pack
 from pathlib import Path
-from lmdb import open as ldmbopen, Transaction as Trxn, Cursor, BadValsizeError
+from lmdb import Environment, Transaction as Trxn, Cursor, BadValsizeError
 from nacl.signing import SigningKey, VerifyKey
 
 # Gink Implementation
@@ -63,7 +63,7 @@ class LmdbStore(AbstractStore):
             file_path = str(file_path)
         self._file_path = file_path
         self._seen_containers: Set[Muid] = set()
-        self._handle = ldmbopen(file_path, max_dbs=100, map_size=map_size, subdir=False)
+        self._handle = Environment(file_path, max_dbs=100, map_size=map_size, subdir=False)
         self._bundles = self._handle.open_db(b"bundles")
         self._bundle_infos = self._handle.open_db(b"bundle_infos")
         self._chains = self._handle.open_db(b"chains")

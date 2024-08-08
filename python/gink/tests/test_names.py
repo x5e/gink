@@ -24,7 +24,7 @@ def test_set_get():
                 assert directory.get_name() == "fred"
 
 def test_get_by_name():
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
             d = Directory()
@@ -39,7 +39,7 @@ def test_get_by_name():
             assert len(bobs) == 2 and b in bobs and s in bobs
 
 def test_properties_on_containers():
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
             d = Directory()
