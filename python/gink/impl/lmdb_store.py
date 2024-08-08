@@ -1123,7 +1123,11 @@ class LmdbStore(AbstractStore):
                     removed = None
                 if (not removed) and (as_of == -1 or entry_muid.timestamp < as_of):
                     proto_bytes = trxn.get(named_muid_bytes, db=self._containers)
+                    named_muid = Muid.from_bytes(named_muid_bytes)
                     container_builder = ContainerBuilder()
-                    container_builder.ParseFromString(proto_bytes)
+                    if named_muid.timestamp == -1:
+                        container_builder.behavior = named_muid.offset
+                    else:
+                        container_builder.ParseFromString(proto_bytes)
                     yield FoundContainer(Muid.from_bytes(named_muid_bytes), container_builder)
                 placed = by_name_cursor.next()
