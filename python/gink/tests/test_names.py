@@ -24,7 +24,7 @@ def test_set_get():
                 assert directory.get_name() == "fred"
 
 def test_get_by_name():
-    for store in [LmdbStore(), ]:
+    for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
             d = Directory()
@@ -37,6 +37,17 @@ def test_get_by_name():
             assert len(freds) == 1 and freds[0] == d
             bobs = database.get_by_name("bob")
             assert len(bobs) == 2 and b in bobs and s in bobs
+
+            prop = Property.get_global_instance()
+            prop.set(Directory(arche=True), "root")
+            new_dir = Directory(database=database)
+            prop.set(new_dir, "new_dir")
+            assert len(list(store.get_by_name("root"))) == 1
+            assert len(list(store.get_by_name("new_dir"))) == 1
+            prop.set(Sequence(arche=True), "root")
+            assert len(list(store.get_by_name("root"))) == 2
+            prop.delete(Sequence(arche=True))
+            assert len(list(store.get_by_name("root"))) == 1
 
 def test_properties_on_containers():
     for store in [LmdbStore(), ]:
