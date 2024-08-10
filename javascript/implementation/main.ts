@@ -54,8 +54,8 @@ if (require.main === module) {
         help: `whether or not to be verbose`,
         default: ""
     });
-    parser.add_argument('-r', '--retry', {
-        help: `retry connection to database servers if they disconnect?`,
+    parser.add_argument('-r', '--reconnect', {
+        help: `retry connection to database servers if they disconnect? default is true.`,
         nargs: "?",
         const: true
     });

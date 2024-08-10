@@ -538,18 +538,15 @@ export class Database {
                 // thisClient.peers.delete(connectionId);  // might still be processing data from peer
                 if (retryOnDisconnect) {
                     let peer: Peer;
+                    let pow = 0;
                     let retry_ms = 1000;
-                    let jitter = Math.floor(Math.random() * 20);
-                    while (retry_ms < 100000 && !peer) {
+                    let jitter = Math.floor(Math.random() * 1000);
+                    while (!peer) {
                         await new Promise((resolve) => setTimeout(resolve, retry_ms + jitter));
                         try {
                             console.log(`retrying connection to ${target}`);
                             peer = await thisClient.connectTo(target, options);
 
-                            if (retry_ms > 120000) {
-                                console.error(`failed to reconnect to ${target}`);
-                                break;
-                            }
                             if (peer) {
                                 console.log(`reconnected to ${target}`);
                                 break;
@@ -558,7 +555,11 @@ export class Database {
                         catch (e) {
                             console.error(`retry failed: ${e.message}`);
                         } finally {
-                            retry_ms *= 2;
+                            if (retry_ms < 30000) {
+                                pow += 1;
+                                retry_ms = 1000 * Math.pow(2, pow);
+                                jitter = Math.floor(Math.random() * 1000 * Math.pow(2, pow));
+                            }
                         }
                     }
                 }

@@ -2,7 +2,7 @@ import { RoutingServer } from "./RoutingServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { Store } from "./Store";
 import { Database } from "./Database";
-import { AuthFunction, BundleInfo, BundleView } from "./typedefs";
+import { AuthFunction, BundleView } from "./typedefs";
 import { SimpleServer } from "./SimpleServer";
 import { ensure, generateTimestamp, getIdentity, logToStdErr, noOp } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
@@ -31,7 +31,7 @@ export class CommandLineInterface {
         data_root?: string,
         data_file?: string,
         identity?: string,
-        retry?: boolean,
+        reconnect?: boolean,
         static_path?: string,
         auth_token?: string,
         ssl_cert?: string,
@@ -44,7 +44,7 @@ export class CommandLineInterface {
         let logger = logToStdErr;
 
         this.authToken = args.auth_token;
-        this.retryOnDisconnect = args.retry;
+        this.retryOnDisconnect = args.reconnect;
         this.targets = args.connect_to ?? [];
         const identity = args.identity ?? getIdentity();
         ensure(identity);
