@@ -2,7 +2,7 @@ import { RoutingServer } from "./RoutingServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { Store } from "./Store";
 import { Database } from "./Database";
-import { AuthFunction, BundleInfo, BundleView } from "./typedefs";
+import { AuthFunction, BundleView } from "./typedefs";
 import { SimpleServer } from "./SimpleServer";
 import { ensure, generateTimestamp, getIdentity, logToStdErr, noOp } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
@@ -23,6 +23,7 @@ export class CommandLineInterface {
     routingServer?: RoutingServer;
     replServer?: REPLServer;
     authToken?: string;
+    retryOnDisconnect: boolean;
 
     constructor(args: {
         connect_to?: string[],
@@ -30,6 +31,7 @@ export class CommandLineInterface {
         data_root?: string,
         data_file?: string,
         identity?: string,
+        reconnect?: boolean,
         static_path?: string,
         auth_token?: string,
         ssl_cert?: string,
@@ -42,6 +44,7 @@ export class CommandLineInterface {
         let logger = logToStdErr;
 
         this.authToken = args.auth_token;
+        this.retryOnDisconnect = args.reconnect;
         this.targets = args.connect_to ?? [];
         const identity = args.identity ?? getIdentity();
         ensure(identity);
@@ -106,7 +109,7 @@ export class CommandLineInterface {
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
                 try {
-                    await this.instance.connectTo(target, { onClose: logToStdErr, authToken: this.authToken });
+                    await this.instance.connectTo(target, { onClose: logToStdErr, retryOnDisconnect: this.retryOnDisconnect, authToken: this.authToken });
                     logToStdErr(`connected!`);
                 } catch (e) {
                     logToStdErr(`Failed connection to ${target}. Bad Auth token?\n` + e);

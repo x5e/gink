@@ -50,10 +50,14 @@ if (require.main === module) {
         help: `path to an ssl key. if this and --ssl-cert are provided and valid, gink will listen using wss:// for secure connections.`,
         default: process.env["GINK_SSL_KEY"]
     });
-
     parser.add_argument('-v', '--verbose', {
         help: `whether or not to be verbose`,
         default: ""
+    });
+    parser.add_argument('-r', '--reconnect', {
+        help: `retry connection to database servers if they disconnect? default is true.`,
+        nargs: "?",
+        const: true
     });
 
     const args = parser.parse_args();

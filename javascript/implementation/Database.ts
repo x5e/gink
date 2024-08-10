@@ -79,14 +79,14 @@ export class Database {
      * Starts a chain or finds one to reuse, then sets myChain.
      */
     public getChain(): Promise<BundleInfo> {
-        if (! this.chainGetter) this.chainGetter = this.getChainHelper();
+        if (!this.chainGetter) this.chainGetter = this.getChainHelper();
         return this.chainGetter;
     }
 
     private async getChainHelper(): Promise<BundleInfo> {
         if (this.lastLinkToExtend)
             return this.lastLinkToExtend;
-        this.logger("calling getChain()")
+        this.logger("calling getChain()");
         const claimedChains = await this.store.getClaimedChains();
         let toReuse: ClaimedChain;
         for (let value of claimedChains.values()) {
@@ -97,7 +97,7 @@ export class Database {
                 continue;
             }
             if (await isAlive(value.actorId)) {
-                this.logger(`actor is still alive`)
+                this.logger(`actor is still alive`);
                 continue;
             }
             // TODO: check to see if meta-data matches, and overwrite if not
@@ -134,7 +134,7 @@ export class Database {
             this.lastLinkToExtend = bundler.info;
             ensure(this.lastLinkToExtend.hashCode && this.lastLinkToExtend.hashCode.length == 32);
             this.iHave.markAsHaving(bundler.info);
-            this.logger(`started chain with ${JSON.stringify(bundler.info,["medallion", "chainStart"])}`);
+            this.logger(`started chain with ${JSON.stringify(bundler.info, ["medallion", "chainStart"])}`);
             // If there is already a connection before we claim a chain, ensure the
             // peers get this bundle as well so future bundles will be valid extensions.
             for (const peer of this.peers.values()) {
@@ -369,9 +369,9 @@ export class Database {
             if (!added) return;
             let summary;
             if (bundle.info.chainStart === bundle.info.timestamp) {
-                summary = JSON.stringify(bundle.info, ["medallion", "timestamp", "chainStart",])
+                summary = JSON.stringify(bundle.info, ["medallion", "timestamp", "chainStart",]);
             } else {
-                summary = JSON.stringify(bundle.info, ["medallion", "timestamp", "priorTime",])
+                summary = JSON.stringify(bundle.info, ["medallion", "timestamp", "priorTime",]);
             }
             this.logger(`added bundle from ${fromConnectionId}: ${summary}`);
             this.iHave.markAsHaving(bundle.info);
@@ -482,6 +482,7 @@ export class Database {
      * @param target a websocket uri, e.g. "ws://127.0.0.1:8080/"
      * @param onClose optional callback to invoke when the connection is closed
      * @param resolveOnOpen if true, resolve when the connection is established, otherwise wait for greeting
+     * @param retryOnDisconnect if true, try to reconnect (with backoff) if the server closes the connection
      * @returns a promise to the peer
      */
     public async connectTo(
@@ -489,11 +490,13 @@ export class Database {
         options?: {
             onClose?: CallBack,
             resolveOnOpen?: boolean,
+            retryOnDisconnect?: boolean,
             authToken?: string;
         }): Promise<Peer> {
         //TODO(https://github.com/google/gink/issues/69): have the default be to wait for databases to sync
         const onClose: CallBack = (options && options.onClose) ? options.onClose : noOp;
         const resolveOnOpen: boolean = (options && options.resolveOnOpen) ? options.resolveOnOpen : false;
+        const retryOnDisconnect = (options && options.retryOnDisconnect === false) ? false : true;
         const authToken: string = (options && options.authToken) ? options.authToken : undefined;
 
         await this.ready;
@@ -521,8 +524,9 @@ export class Database {
             websocketClient.onerror = function (ev: Event) {
                 // if/when this is called depends on the details of the websocket implementation
                 console.error(`error on connection ${connectionId} to ${target}, ${ev}`);
+                reject(ev);
             };
-            websocketClient.onclose = function (ev: CloseEvent) {
+            websocketClient.onclose = async function (ev: CloseEvent) {
                 // this should always be called once the peer disconnects, including in cases of error
                 onClose(`closed connection ${connectionId} to ${target}`);
 
@@ -532,6 +536,33 @@ export class Database {
 
                 // I'm intentionally leaving the peer object in the peers map just in case we get data from them.
                 // thisClient.peers.delete(connectionId);  // might still be processing data from peer
+                if (retryOnDisconnect) {
+                    let peer: Peer;
+                    let pow = 0;
+                    let retry_ms = 1000;
+                    let jitter = Math.floor(Math.random() * 1000);
+                    while (!peer) {
+                        await new Promise((resolve) => setTimeout(resolve, retry_ms + jitter));
+                        try {
+                            console.log(`retrying connection to ${target}`);
+                            peer = await thisClient.connectTo(target, options);
+
+                            if (peer) {
+                                console.log(`reconnected to ${target}`);
+                                break;
+                            }
+                        }
+                        catch (e) {
+                            console.error(`retry failed: ${e.message}`);
+                        } finally {
+                            if (retry_ms < 30000) {
+                                pow += 1;
+                                retry_ms = 1000 * Math.pow(2, pow);
+                                jitter = Math.floor(Math.random() * 1000 * Math.pow(2, pow));
+                            }
+                        }
+                    }
+                }
             };
             websocketClient.onmessage = function (ev: MessageEvent) {
                 // Called when any protocol messages are received.
