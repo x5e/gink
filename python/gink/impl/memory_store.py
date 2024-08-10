@@ -19,7 +19,7 @@ from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
-                     Placement, decode_key, decode_entry_occupant)
+                     Placement, decode_key, decode_entry_occupant, EDGE_TYPE)
 from .utilities import create_claim, is_needed
 
 
@@ -107,7 +107,7 @@ class MemoryStore(AbstractStore):
         for placement_bytes in self._placements.irange(minimum=edge_type_bytes):
             if not placement_bytes.startswith(edge_type_bytes):
                 break
-            placement = Placement.from_bytes(placement_bytes)
+            placement = Placement.from_bytes(placement_bytes, using=EDGE_TYPE)
             if placement.placer.timestamp > as_of:
                 continue
             entry_muid = self._placements[placement_bytes]
