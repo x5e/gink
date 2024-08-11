@@ -74,6 +74,12 @@ class Container(Addressable, ABC):
         """
         name_property = Muid(-1, -1, Behavior.PROPERTY)
         assert isinstance(name, str), "names must be strings"
+        already_named = self.get_name()
+        if already_named:
+            self._add_entry(
+                key=self._muid, value=deletion, on_muid=name_property,
+                behavior=Behavior.PROPERTY, bundler=bundler, comment=comment
+            )
         return self._add_entry(
             key=self._muid, value=name, on_muid=name_property, behavior=Behavior.PROPERTY,
             bundler=bundler, comment=comment)
