@@ -1,5 +1,5 @@
 import { Muid, BundleInfo, Medallion, Timestamp, BundleView, BundleBytes, KeyPair, Bytes } from "./typedefs";
-import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder, MetadataBuilder } from "./builders";
+import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder, } from "./builders";
 import { digest, ensure, signBundle } from "./utils";
 
 export class Bundler implements BundleView {
@@ -65,7 +65,7 @@ export class Bundler implements BundleView {
     addChange(changeBuilder: ChangeBuilder): Muid {
         this.requireNotSealed();
         const offset = ++this.countItems;
-        this.bundleBuilder.getChangesMap().set(offset, changeBuilder);
+        this.bundleBuilder.getChangesList().push(changeBuilder);
         // Using an anonymous class here because I only need the interface of Address,
         // but I need some non-trivial behavior: the timestamp and possibly medallion
         // are undefined until the associated bundle is finalized, then all the
@@ -75,12 +75,6 @@ export class Bundler implements BundleView {
             get medallion() { return this.bundler.medallion; }
             get timestamp() { return this.bundler.timestamp; }
         }(this, offset);
-    }
-
-    removeChange(address: Muid) {
-        this.requireNotSealed();
-        const map = this.bundleBuilder.getChangesMap();
-        map.delete(address.offset);
     }
 
 
@@ -96,14 +90,12 @@ export class Bundler implements BundleView {
         }
         this.bundleInfo = { ...bundleInfo };
         this.bundleInfo.comment = this.pendingComment;
-        const metadataBuilder = new MetadataBuilder();
-        metadataBuilder.setComment(this.pendingComment);
-        metadataBuilder.setTimestamp(bundleInfo.timestamp);
-        metadataBuilder.setPrevious(bundleInfo.priorTime);
-        metadataBuilder.setChainStart(bundleInfo.chainStart);
-        metadataBuilder.setMedallion(bundleInfo.medallion);
-        metadataBuilder.setComment(this.bundleInfo.comment);
-        this.bundleBuilder.setMetadata(metadataBuilder);
+        this.bundleBuilder.setComment(this.pendingComment);
+        this.bundleBuilder.setTimestamp(bundleInfo.timestamp);
+        this.bundleBuilder.setPrevious(bundleInfo.priorTime);
+        this.bundleBuilder.setChainStart(bundleInfo.chainStart);
+        this.bundleBuilder.setMedallion(bundleInfo.medallion);
+        this.bundleBuilder.setComment(this.bundleInfo.comment);
         if (bundleInfo.chainStart === bundleInfo.timestamp) {
             this.bundleBuilder.setVerifyKey(keyPair.publicKey);
         } else {

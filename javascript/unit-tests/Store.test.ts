@@ -11,7 +11,6 @@ import { muidToBuilder, ensure, wrapValue, matches, wrapKey, signBundle,
 
 } from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
-import { MetadataBuilder } from "../implementation/builders";
 
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
@@ -99,32 +98,30 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const sent: Array<BundleBytes> = [];
         await store.getBundles((x: BundleView) => { sent.push(x.bytes); });
         expect(sent.length).toBe(4);
-        expect((unbundle(sent[0])).getMetadata().getTimestamp()).toBe(START_MICROS1);
-        expect((unbundle(sent[1])).getMetadata().getTimestamp()).toBe(START_MICROS2);
-        expect((unbundle(sent[2])).getMetadata().getTimestamp()).toBe(NEXT_TS1);
-        expect((unbundle(sent[3])).getMetadata().getTimestamp()).toBe(NEXT_TS2);
+        expect((unbundle(sent[0])).getTimestamp()).toBe(START_MICROS1);
+        expect((unbundle(sent[1])).getTimestamp()).toBe(START_MICROS2);
+        expect((unbundle(sent[2])).getTimestamp()).toBe(NEXT_TS1);
+        expect((unbundle(sent[3])).getTimestamp()).toBe(NEXT_TS2);
     });
 
     it(`${implName} test save/fetch container`, async () => {
         const bundleBuilder = new BundleBuilder();
-        const metadataBuilder = new MetadataBuilder();
-        metadataBuilder.setChainStart(START_MICROS1);
-        metadataBuilder.setTimestamp(START_MICROS1);
-        metadataBuilder.setMedallion(MEDALLION1);
-        bundleBuilder.setMetadata(metadataBuilder);
+        bundleBuilder.setChainStart(START_MICROS1);
+        bundleBuilder.setTimestamp(START_MICROS1);
+        bundleBuilder.setMedallion(MEDALLION1);
         bundleBuilder.setVerifyKey((await keyPair).publicKey);
         const changeBuilder = new ChangeBuilder();
         const containerBuilder = new ContainerBuilder();
         containerBuilder.setBehavior(Behavior.DIRECTORY);
         changeBuilder.setContainer(containerBuilder);
-        bundleBuilder.getChangesMap().set(7, changeBuilder);
+        bundleBuilder.getChangesList().push(changeBuilder);
         const decomposition = new Decomposition(
             signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey, ));
         const added = await store.addBundle(decomposition);
         ensure(decomposition.info.medallion === MEDALLION1);
         ensure(decomposition.info.timestamp === START_MICROS1);
         const containerBytes = await store.getContainerBytes(
-            { medallion: MEDALLION1, timestamp: START_MICROS1, offset: 7 });
+            { medallion: MEDALLION1, timestamp: START_MICROS1, offset: 1 });
         ensure(containerBytes);
         const containerBuilder2 = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
         ensure(containerBuilder2.getBehavior() === Behavior.DIRECTORY);
