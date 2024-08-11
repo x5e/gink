@@ -81,6 +81,7 @@ def test_reset_everything():
     """ makes sure the database.reset works """
     for store in [
         LmdbStore(),
+        MemoryStore(),
     ]:
         with closing(store):
             database = Database(store=store)

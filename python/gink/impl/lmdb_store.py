@@ -314,7 +314,7 @@ class LmdbStore(AbstractStore):
                 yield change
             return
         if behavior in (DIRECTORY, BOX, GROUP, KEY_SET, PROPERTY):
-            for change in self._get_keyed_reset(container, to_time, trxn, seen, None, behavior):
+            for change in self._get_keyed_reset_changes(container, to_time, trxn, seen, None, behavior):
                 yield change
             return
         if behavior in (SEQUENCE, EDGE_TYPE):
@@ -343,7 +343,7 @@ class LmdbStore(AbstractStore):
                     cursor_placed = containers_cursor.next()
             else:
                 if user_key is not None:
-                    for change in self._get_keyed_reset(
+                    for change in self._get_keyed_reset_changes(
                             container, to_time, txn, seen, user_key, DIRECTORY):
                         yield change
                 else:
@@ -481,7 +481,7 @@ class LmdbStore(AbstractStore):
             entry_builder.deletion = was_deleted
             yield wrap_change(entry_builder)
 
-    def _get_keyed_reset(
+    def _get_keyed_reset_changes(
             self,
             container: Muid,
             to_time: MuTimestamp,

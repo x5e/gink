@@ -18,7 +18,8 @@ from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
-                     Placement, decode_key, decode_entry_occupant, PROPERTY, decode_value)
+                     Placement, decode_key, decode_entry_occupant, PROPERTY, decode_value,
+                     BOX, GROUP, KEY_SET, VERTEX, EDGE_TYPE)
 from .utilities import create_claim, is_needed
 
 
@@ -160,13 +161,8 @@ class MemoryStore(AbstractStore):
                 raise ValueError(f"don't know what to do with {key}")
 
     def get_keyed_entries(self, container: Muid, behavior: int, as_of: MuTimestamp) -> Iterable[FoundEntry]:
-        as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
         cont_bytes = bytes(container)
-        clearance_time = None
-        for clearance_key in self._clearances.irange(
-                minimum=cont_bytes, maximum=cont_bytes + bytes(as_of_muid), reverse=True):
-            clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
-
+        clearance_time = self._get_time_of_prior_clear(container, as_of)
         iterator = self._placements.irange(
             minimum=cont_bytes, maximum=cont_bytes + b"\xFF"*16, reverse=True)
         last = None
@@ -190,10 +186,7 @@ class MemoryStore(AbstractStore):
     def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None, Tuple[Muid, Muid]],
                          as_of: MuTimestamp) -> Optional[FoundEntry]:
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
-        clearance_time = 0
-        for clearance_key in self._clearances.irange(
-                minimum=bytes(container), maximum=bytes(container) + bytes(as_of_muid), reverse=True):
-            clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
+        clearance_time = self._get_time_of_prior_clear(container, as_of)
         epoch_muid = Muid(0, 0, 0)
         minimum = bytes(Placement(container, key, epoch_muid, None))
         maximum = bytes(Placement(container, key, as_of_muid, None))
@@ -226,11 +219,7 @@ class MemoryStore(AbstractStore):
     ) -> Iterable[PositionedEntry]:
 
         prefix = bytes(container)
-        as_of_muid = Muid(as_of, 0, 0)
-        clearance_time = 0
-        for clearance_key in self._clearances.irange(
-                minimum=prefix, maximum=prefix + bytes(as_of_muid), reverse=True):
-            clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
+        clearance_time = self._get_time_of_prior_clear(container, as_of)
         removals_suffix = b"\xFF" * 16
         for placement_bytes in self._placements.irange(prefix, prefix + encode_muts(as_of), reverse=desc):
             if limit is not None and limit <= 0:
@@ -460,86 +449,86 @@ class MemoryStore(AbstractStore):
 
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
-        return self.get_directory_reset_changes(
-            to_time=to_time, container=container, user_key=user_key, recursive=recursive)
-
-    def get_directory_reset_changes(
-            self,
-            container: Optional[Muid],
-            user_key: Optional[UserKey] = None,
-            to_time: MuTimestamp = -1,
-            recursive: Union[bool, set] = False) -> Iterable[ChangeBuilder]:
         if container is None and user_key is not None:
-            raise ValueError("Can't specify key without specifying container.")
+            raise ValueError("can't specify key without specifying container")
         if container is None:
-            recursive = False
-        if recursive is True:
-            recursive = set()
-            recursive.add(container)
-
-        if user_key is not None and container is not None:  # Reset specific key for directory
-            now_entry = self.get_entry_by_key(container=container, key=user_key, as_of=0)
-            then_entry = self.get_entry_by_key(container=container, key=user_key, as_of=to_time)
-
-            if now_entry != then_entry:
-                # If there is an entry, but it is different from current
-                if isinstance(then_entry, Deletion):
-                    # Handles entry that was deleted
-                    yield wrap_change(create_deleting_entry(container, key=user_key, behavior=DIRECTORY))
+            recursive = False  # don't need to recurse if we're going to do everything anyway
+        seen: Optional[Set] = set() if recursive else None
+        with self._handle.begin() as txn:
+            if container is None:
+                # we're resetting everything, so loop over the container definitions
+                containers_cursor = txn.cursor(self._containers)
+                cursor_placed: bool = containers_cursor.first()
+                while cursor_placed:
+                    muid = Muid.from_bytes(containers_cursor.key())
+                    for change in self._container_reset_changes(to_time, muid, seen, txn):
+                        yield change
+                    cursor_placed = containers_cursor.next()
+            else:
+                if user_key is not None:
+                    for change in self._get_keyed_reset_changes(
+                            container, to_time, txn, seen, user_key, DIRECTORY):
+                        yield change
                 else:
-                    yield wrap_change(then_entry.builder)  # type: ignore
+                    for change in self._container_reset_changes(to_time, container, seen, txn):
+                        yield change
 
-        elif user_key is None and container is not None:  # Reset whole container
-            now_set = set(self.get_keyed_entries(container=container, as_of=-1, behavior=DIRECTORY))
-            then_set = set(self.get_keyed_entries(container=container, as_of=to_time, behavior=DIRECTORY))
-
-            now_decoded = {decode_key(now.builder.key): decode_entry_occupant(now.address, now.builder)
-                           for now in now_set}
-            then_decoded = {decode_key(then.builder.key): decode_entry_occupant(then.address, then.builder)
-                            for then in then_set}
-
-            if now_decoded == then_decoded:
-                return
-
-            for now_entry in now_set:
-                key = decode_key(now_entry.builder.key)
-                value = now_decoded[key]
-                if key not in then_decoded.keys() and not isinstance(value, Deletion):
-                    # Deletes entries that were not present then
-                    yield wrap_change(
-                        create_deleting_entry(container, key=decode_key(now_entry.builder.key), behavior=DIRECTORY))
-
-            for then_entry in then_set:
-                key = decode_key(then_entry.builder.key)
-                value = then_decoded[key]
-                if isinstance(value, Muid) and isinstance(recursive, set):  # If entry points to another container
-                    if value not in recursive:
-                        for change in self.get_directory_reset_changes(value, to_time=to_time, recursive=recursive):
-                            yield change
-                        recursive.add(value)
-                elif isinstance(value, Deletion):
-                    # Handles entry that was deleted
-                    yield wrap_change(create_deleting_entry(container, key=key, behavior=DIRECTORY))
-
-                elif key in now_decoded.keys():  # Same key then and now
-                    if now_decoded[key] != value:
-                        yield wrap_change(then_entry.builder)
-                else:  # Key does not exist now, need to create entry
-                    yield wrap_change(then_entry.builder)
+    def _container_reset_changes(
+            self,
+            to_time: MuTimestamp,
+            container: Muid,
+            seen: Optional[Set],
+        ) -> Iterable[ChangeBuilder]:
+        """ Figures out which specific reset method to call to reset a container. """
+        behavior = self._get_behavior(container)
+        if behavior == VERTEX:
+            for change in self._get_vertex_reset_changes(container, to_time):
+                yield change
+            return
+        if behavior in (DIRECTORY, BOX, GROUP, KEY_SET, PROPERTY):
+            for change in self._get_keyed_reset_changes(container, to_time, seen, None, behavior):
+                yield change
+            return
+        if behavior in (SEQUENCE, EDGE_TYPE):
+            for change in self._get_changes_to_reset_sequence_or_edge_type(container, to_time, seen):
+                yield change
+            return
         else:
-            raise NotImplementedError()
+            raise NotImplementedError(f"don't know how to reset container of type {behavior}")
+
+    def _get_keyed_reset_changes(
+            self,
+            container: Muid,
+            to_time: MuTimestamp,
+            seen: Optional[Set],
+            single_user_key: Optional[UserKey],
+            behavior: int
+    ) -> Iterable[ChangeBuilder]:
+        """ Gets all the entries necessary to reset a specific keyed container to what it looked
+            like at some previous point in time (or only for a specific key if specified).
+            If "seen" is passed, then recursively update sub-containers.
+        """
+        if seen is not None:
+            if container in seen:
+                return
+            seen.add(container)
+
+    def _get_time_of_prior_clear(self, container: Muid, as_of: MuTimestamp) -> MuTimestamp:
+        """ Returns the time of the last clearance of the container before the given time. """
+        as_of_muid = Muid(as_of, 0, 0)
+        container_bytes = bytes(container)
+        clearance_time = 0
+        for clearance_key in self._clearances.irange(
+                minimum=container_bytes, maximum=container_bytes + bytes(as_of_muid), reverse=True):
+            clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
+        return clearance_time
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
         """ Returns info about all things with the given name. """
         as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
-        prop_bytes = bytes(Muid(-1, -1, PROPERTY))
         key_min = name.encode() + b"\x00"
         key_max = name.encode() + b"\x00" + bytes(as_of_muid)
-        clearance_time = 0
-        for clearance_key in self._clearances.irange(
-                minimum=prop_bytes, maximum=prop_bytes + bytes(as_of_muid), reverse=True):
-            clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
-
+        clearance_time = self._get_time_of_prior_clear(Muid(-1, -1, PROPERTY), as_of)
         iterator = self._by_name.irange(
             minimum=key_min, maximum=key_max + b"\xFF"*16, reverse=True)
         for encoded_by_name_key in iterator:
@@ -564,13 +553,7 @@ class MemoryStore(AbstractStore):
             if not min in encoded_by_describing_key:
                 break
             container_muid_bytes = self._by_describing[encoded_by_describing_key]
-            clearance_time = 0
-            for clearance_key in self._clearances.irange(
-                    minimum=container_muid_bytes,
-                    maximum=container_muid_bytes + bytes(as_of_muid),
-                    reverse=True
-            ):
-                clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
+            clearance_time = self._get_time_of_prior_clear(Muid.from_bytes(container_muid_bytes), as_of)
             entry_muid = Muid.from_bytes(encoded_by_describing_key[-16:])
             entry_builder = self._entries[entry_muid]
             if not clearance_time > entry_muid.timestamp:
