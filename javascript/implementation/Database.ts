@@ -392,8 +392,10 @@ export class Database {
             if (this.listeners.size > 1) {
                 // Loop through changes and gather a set of changed containers.
                 const changedContainers: Set<Muid> = new Set();
-                const changesMap: Map<Offset, ChangeBuilder> = bundle.builder.getChangesMap();
-                for (const [offset, changeBuilder] of changesMap.entries()) {
+                const changesList: Array<ChangeBuilder> = bundle.builder.getChangesList();
+                for (let index=0; index < changesList.length; index++) {
+                    const offset = index + 1;
+                    const changeBuilder = changesList[index];
                     const entry = changeBuilder.getEntry();
                     const clearance = changeBuilder.getClearance();
                     let container;

@@ -1,19 +1,34 @@
 syntax = "proto3";
 import "proto/change.proto";
-import "proto/metadata.proto";
 package gink;
 
 message Bundle {
 
-    Metadata metadata = 1;
+    // Typically only set in the first bundle of a chain.
+    string identity = 1;
 
-    // key in changes map is the offset number: > 0 and < 2**20
-    map<uint32, Change> changes = 2;
+    repeated Change changes = 2;
 
     // Only set in the first bundle in a chain.
     bytes verify_key = 3;
 
+    uint64 timestamp = 4;  // microseconds since epoch
+
+    uint64 chain_start = 5;  // timestamp of the first bundle in a chain
+
+    // implementations must accept any medallion > 0 and < 2**52
+    // but should only generated medallions in the range 281474976710656 to 562949953421311
+    uint64 medallion = 6;
+
+    uint64 previous = 7; // timestamp of the previous bundle in this chain
+
     // Set in every bundle except for the first in a chain.
-    bytes prior_hash = 4;  // the sha256 of the prior bundle
+    bytes prior_hash = 8;  // the sha256 of the prior bundle
+
+    fixed64 key_sig = 9;
+
+    bytes encrypted = 10;
+
+    string comment = 11;
 
 }

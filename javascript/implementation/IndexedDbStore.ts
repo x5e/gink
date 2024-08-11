@@ -365,8 +365,10 @@ export class IndexedDbStore implements Store {
         // the getNeededTransactions faster by not requiring parsing again.
         const bundleKey: BundleInfoTuple = bundleInfoToKey(bundleInfo);
         await trxn.objectStore("trxns").add(bundleView.bytes, bundleKey);
-        const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
-        for (const [offset, changeBuilder] of changesMap.entries()) {
+        const changesList: Array<ChangeBuilder> = bundleBuilder.getChangesList();
+        for (let index=0; index < changesList.length; index++) {
+            const offset = index + 1;
+            const changeBuilder = changesList[index];
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
             const changeAddress: Muid = { timestamp, medallion, offset };

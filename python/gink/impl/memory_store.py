@@ -41,7 +41,7 @@ class MemoryStore(AbstractStore):
     _verify_keys: Dict[Chain, VerifyKey]
     _signing_keys: Dict[VerifyKey, SigningKey]
 
-    def __init__(self):
+    def __init__(self) -> None:
         # TODO: add a "no retention" capability to allow the memory store to be configured to
         # drop out of date data like is currently implemented in the LmdbStore.
         self._seen_containers: Set[Muid] = set()
@@ -290,8 +290,7 @@ class MemoryStore(AbstractStore):
             verify_key.verify(bundle.get_bytes())
             self._bundles[new_info] = bundle
             self._chain_infos[chain_key] = new_info
-            change_items: List[int, ChangeBuilder] = list(bundle_builder.changes.items())  # type: ignore
-            change_items.sort()  # the protobuf library doesn't maintain order of maps
+            change_items: Iterable[Tuple[int, ChangeBuilder]] = enumerate(bundle_builder.changes, start=1)
             for offset, change in change_items:
                 try:
                     if change.HasField("container"):

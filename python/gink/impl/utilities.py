@@ -226,9 +226,9 @@ def dedent(val: bytes) -> bytes:
 user_key_fields = ["number", "octets", "characters"]
 user_value_fields = ["integer", "floating", "characters", "special", "timestamp", "document", "tuple", "octets"]
 
-def validate_bundle_entries(bundle_builder: BundleBuilder) -> None:
+def validate_bundle(bundle_builder: BundleBuilder) -> None:
     """Ensures entries in the bundle are valid for the container behavior. Throws a ValueError if not."""
-    changes = bundle_builder.changes.values() # type: ignore
+    changes = bundle_builder.changes
     for change in changes:
         assert isinstance(change, ChangeBuilder)
 

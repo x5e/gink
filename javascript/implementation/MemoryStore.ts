@@ -182,8 +182,10 @@ export class MemoryStore implements Store {
         this.chainInfos.set(medallionChainStartToString([medallion, chainStart]), bundleInfo);
         const bundleKey: BundleInfoTuple = MemoryStore.bundleInfoToKey(bundleInfo);
         this.trxns.set(bundleKey, bundle.bytes);
-        const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
-        for (const [offset, changeBuilder] of changesMap.entries()) {
+        const changesList: Array<ChangeBuilder> = bundleBuilder.getChangesList();
+        for (let index=0; index < changesList.length; index++) {
+            const offset = index + 1;
+            const changeBuilder = changesList[index];
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
             const changeAddress = { timestamp, medallion, offset };

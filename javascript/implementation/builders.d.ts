@@ -53,7 +53,13 @@ export class ChangeBuilder extends ImplementedMessage {
     setClearance(ClearanceBuilder);
 }
 
-export class MetadataBuilder extends ImplementedMessage {
+export class BundleBuilder extends ImplementedMessage {
+    getChangesList(): List<ChangeBuilder>;
+    getVerifyKey(): Bytes;
+    setVerifyKey(Bytes);
+    setPriorHash(Bytes);
+    getPriorHash(): Bytes;
+
     setTimestamp(number);
     setPrevious(number);
     setChainStart(number);
@@ -64,16 +70,6 @@ export class MetadataBuilder extends ImplementedMessage {
     getChainStart(): number;
     getPrevious(): number;
     getComment(): string;
-}
-
-export class BundleBuilder extends ImplementedMessage {
-    getMetadata(): MetadataBuilder;
-    setMetadata(MetadataBuilder);
-    getChangesMap(): Map<number, ChangeBuilder>;
-    getVerifyKey(): Bytes;
-    setVerifyKey(Bytes);
-    setPriorHash(Bytes);
-    getPriorHash(): Bytes;
 }
 
 export class PairBuilder extends ImplementedMessage {

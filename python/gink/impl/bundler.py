@@ -1,5 +1,5 @@
 """ the ChangeSet class """
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, List
 from nacl.signing import SigningKey
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
@@ -18,6 +18,7 @@ class Bundler:
         self._comment = comment
         self._medallion: Optional[Medallion] = None
         self._timestamp: Optional[MuTimestamp] = None
+        self._changes: List[ChangeBuilder] = []
 
     def __str__(self):
         return str(self._bundle_builder)
@@ -55,8 +56,7 @@ class Bundler:
             builder = ChangeBuilder()
             builder.entry.CopyFrom(entry_builder)  # type: ignore # pylint: disable=maybe-no-member
         assert isinstance(builder, ChangeBuilder)
-        changes = self._bundle_builder.changes  # type: ignore # pylint: disable=maybe-no-member
-        changes[self._count_items].CopyFrom(builder)  # type: ignore
+        self._changes.append(builder)
         return muid
 
     def seal(
@@ -74,17 +74,18 @@ class Bundler:
             self._bundle_builder.verify_key = signing_key.verify_key.encode()
         else:
             assert chain.chain_start <= previous < timestamp
-            self._bundle_builder.metadata.previous = previous  # type: ignore
-        self._bundle_builder.metadata.chain_start = chain.chain_start  # type: ignore
-        self._medallion = self._bundle_builder.metadata.medallion = chain.medallion  # type: ignore
-        self._timestamp = self._bundle_builder.metadata.timestamp = timestamp  # type: ignore
+            self._bundle_builder.previous = previous  # type: ignore
+        self._bundle_builder.chain_start = chain.chain_start  # type: ignore
+        self._medallion = self._bundle_builder.medallion = chain.medallion  # type: ignore
+        self._timestamp = self._bundle_builder.timestamp = timestamp  # type: ignore
         if self._comment:
-            self._bundle_builder.metadata.comment = self.comment  # type: ignore
+            self._bundle_builder.comment = self.comment  # type: ignore
         if prior_hash:
             if isinstance(prior_hash, str):
                 prior_hash = bytes.fromhex(prior_hash)
             assert isinstance(prior_hash, bytes) and len(prior_hash) == 32
             self._bundle_builder.prior_hash = prior_hash
+        self._bundle_builder.changes.extend(self._changes)
         serialized = self._bundle_builder.SerializeToString()
         signed = signing_key.sign(serialized)
         self._sealed = signed

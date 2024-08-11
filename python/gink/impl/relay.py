@@ -20,7 +20,7 @@ from .looping import Selectable, Finished
 from .bundle_store import BundleStore
 from .server import Server
 from .sync_func import SyncFunc
-from .utilities import validate_bundle_entries
+from .utilities import validate_bundle
 
 
 class Relay(Server):
@@ -109,7 +109,7 @@ class Relay(Server):
 
             Returns true if the bundle is novel.
         """
-        validate_bundle_entries(bundle_wrapper.get_builder())
+        validate_bundle(bundle_wrapper.get_builder())
         return self._store.apply_bundle(bundle_wrapper, self._on_bundle)
 
     def _on_connection_ready(self, connection: Connection) -> None:
