@@ -534,15 +534,14 @@ class MemoryStore(AbstractStore):
         as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
         prop_bytes = bytes(Muid(-1, -1, PROPERTY))
         key_min = name.encode() + b"\x00"
-        key_bytes = name.encode() + b"\x00" + bytes(as_of_muid)
+        key_max = name.encode() + b"\x00" + bytes(as_of_muid)
         clearance_time = 0
         for clearance_key in self._clearances.irange(
                 minimum=prop_bytes, maximum=prop_bytes + bytes(as_of_muid), reverse=True):
             clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
 
         iterator = self._by_name.irange(
-            minimum=key_min, maximum=key_bytes + b"\xFF"*16, reverse=True)
-
+            minimum=key_min, maximum=key_max + b"\xFF"*16, reverse=True)
         for encoded_by_name_key in iterator:
             describing_muid = Muid.from_bytes(self._by_name[encoded_by_name_key])
             if describing_muid.timestamp == -1:
@@ -570,7 +569,7 @@ class MemoryStore(AbstractStore):
                     minimum=container_muid_bytes,
                     maximum=container_muid_bytes + bytes(as_of_muid),
                     reverse=True
-                ):
+            ):
                 clearance_time = Muid.from_bytes(clearance_key[16:32]).timestamp
             entry_muid = Muid.from_bytes(encoded_by_describing_key[-16:])
             entry_builder = self._entries[entry_muid]

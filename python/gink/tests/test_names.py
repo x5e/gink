@@ -1,6 +1,5 @@
 from contextlib import closing
 
-from ..impl.muid import Muid
 from ..impl.directory import Directory
 from ..impl.sequence import Sequence
 from ..impl.box import Box
@@ -8,8 +7,6 @@ from ..impl.property import Property
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
-from ..impl.bundler import Bundler
-from ..impl.abstract_store import AbstractStore
 
 
 def test_set_get():
@@ -63,6 +60,7 @@ def test_properties_on_containers():
             after_rename = d.get_property_value_by_name("bar")
             assert after_rename == 33
             d.set_property_value_by_name("foo", 99)
+            assert d.get_property_value_by_name("foo") == 99
             properties_names = {p.get_name() for p in d.get_describing()}
             assert properties_names == {"foo", "bar"}, properties_names
             properties_values = {p.get(d) for p in d.get_describing()}
