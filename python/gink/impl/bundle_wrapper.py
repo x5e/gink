@@ -24,5 +24,5 @@ class BundleWrapper:
     def get_info(self) -> BundleInfo:
         if self._bundle_info is None:
             hex_hash = digest(self._bundle_bytes).hex()
-            self._bundle_info = BundleInfo(builder=self.get_builder().metadata, hex_hash=hex_hash)
+            self._bundle_info = BundleInfo(builder=self.get_builder(), hex_hash=hex_hash)
         return self._bundle_info

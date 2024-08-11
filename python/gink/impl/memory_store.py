@@ -290,8 +290,7 @@ class MemoryStore(AbstractStore):
             verify_key.verify(bundle.get_bytes())
             self._bundles[new_info] = bundle
             self._chain_infos[chain_key] = new_info
-            change_items: List[int, ChangeBuilder] = list(bundle_builder.changes.items())  # type: ignore
-            change_items.sort()  # the protobuf library doesn't maintain order of maps
+            change_items: Iterable[int, ChangeBuilder] = enumerate(bundle_builder.changes, start=1)
             for offset, change in change_items:
                 try:
                     if change.HasField("container"):

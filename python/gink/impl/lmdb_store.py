@@ -796,8 +796,7 @@ class LmdbStore(AbstractStore):
                     self._seen_through = bundle_receive_time
                     trxn.put(bytes(new_info), bundle_location, db=self._bundle_infos)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
-                change_items: List[int, ChangeBuilder] = list(builder.changes.items())  # type: ignore
-                change_items.sort()  # sometimes the protobuf library doesn't maintain order of maps
+                change_items: Iterable[int, ChangeBuilder] = enumerate(builder.changes, start=1)
                 if new_info.chain_start == new_info.timestamp:
                     identity = new_info.comment
                     assert identity is not None

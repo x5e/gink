@@ -51,12 +51,12 @@ def install_tests(into_where, from_place, store_maker):
 def make_empty_bundle(bundle_info: BundleInfo, prior: Optional[bytes] = None) -> bytes:
     """ Makes an empty change set that matches the given metadata. """
     builder = BundleBuilder()
-    builder.metadata.medallion = bundle_info.medallion  # type: ignore
-    builder.metadata.chain_start = bundle_info.chain_start  # type: ignore
-    builder.metadata.timestamp = bundle_info.timestamp  # type: ignore
-    builder.metadata.previous = bundle_info.previous  # type: ignore
+    builder.medallion = bundle_info.medallion  # type: ignore
+    builder.chain_start = bundle_info.chain_start  # type: ignore
+    builder.timestamp = bundle_info.timestamp  # type: ignore
+    builder.previous = bundle_info.previous  # type: ignore
     if bundle_info.comment:
-        builder.metadata.comment = bundle_info.comment  # type: ignore
+        builder.comment = bundle_info.comment  # type: ignore
     if bundle_info.timestamp == bundle_info.chain_start:
         builder.verify_key = bytes(verify_key)
     if prior:
@@ -233,85 +233,63 @@ def generic_test_tracks(store_maker: StoreMaker):
 def generic_test_get_ordered_entries(store_maker: StoreMaker):
     """ makes sure that the get_ordered_entries works """
     textproto1 = """
-        metadata {
-            medallion: 789
-            chain_start: 122
-            previous: 122
-            timestamp: 123
-        }
+        medallion: 789
+        chain_start: 122
+        previous: 122
+        timestamp: 123
+
         changes {
-            key: 1
-            value {
-                container {
-                    behavior: SEQUENCE
-                }
+            container {
+                behavior: SEQUENCE
             }
         }
         changes {
-            key: 2
-            value {
-                entry {
-                    behavior: SEQUENCE
-                    container { offset: 1 }
-                    pointee { offset: 1 }
-                }
+            entry {
+                behavior: SEQUENCE
+                container { offset: 1 }
+                pointee { offset: 1 }
             }
         }
         changes {
-            key: 3
-            value {
-                entry {
-                    behavior: SEQUENCE
-                    container { offset: 1 }
-                    value { characters: "Hello, World!" }
-                }
+            entry {
+                behavior: SEQUENCE
+                container { offset: 1 }
+                value { characters: "Hello, World!" }
             }
         }
         changes {
-            key: 4
-            value {
-                entry {
-                    behavior: SEQUENCE
-                    container { offset: 1 }
-                    value { characters: "Goodbye, World!" }
-                }
+            entry {
+                behavior: SEQUENCE
+                container { offset: 1 }
+                value { characters: "Goodbye, World!" }
             }
         }
     """
     textproto2 = """
-        metadata {
-            medallion: 789
-            chain_start: 122
-            timestamp: 234
-            previous: 123
+        medallion: 789
+        chain_start: 122
+        timestamp: 234
+        previous: 123
+
+        changes {
+            movement {
+                container { timestamp: 123 offset: 1 }
+                entry { timestamp: 123 offset: 2 }
+            }
+
         }
         changes {
-            key: 1
-            value {
-                movement {
-                    container { timestamp: 123 offset: 1 }
-                    entry { timestamp: 123 offset: 2 }
-                }
+            movement {
+                container { timestamp: 123 offset: 1 }
+                entry { timestamp: 123 offset: 4 }
+                dest: 120
             }
         }
         changes {
-            key: 2
-            value {
-                movement {
-                    container { timestamp: 123 offset: 1 }
-                    entry { timestamp: 123 offset: 4 }
-                    dest: 120
-                }
-            }
-        }
-        changes {
-            key: 3
-            value {
-                entry {
-                    behavior: SEQUENCE
-                    container { timestamp: -1 offset: 8 }
-                    value { characters: "Whatever" }
-                }
+            entry {
+                behavior: SEQUENCE
+                container { timestamp: -1 offset: 8 }
+                value { characters: "Whatever" }
             }
         }
     """
@@ -367,51 +345,39 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
 def generic_test_negative_offsets(store_maker: StoreMaker):
     """ makes sure that the get_ordered_entries works """
     textproto1 = """
-        metadata {
-            medallion: 789
-            chain_start: 122
-            timestamp: 123
-            previous: 122
-        }
+        medallion: 789
+        chain_start: 122
+        timestamp: 123
+        previous: 122
+
         changes {
-            key: 1
-            value {
-                container {
-                    behavior: SEQUENCE
-                }
+            container {
+                behavior: SEQUENCE
             }
         }
         changes {
-            key: 2
-            value {
-                entry {
-                    behavior: SEQUENCE
-                    container { offset: -1 }
-                    pointee {
-                        timestamp: -1
-                        medallion: -1
-                        offset: 1 }
-                }
+            entry {
+                behavior: SEQUENCE
+                container { offset: -1 }
+                pointee {
+                    timestamp: -1
+                    medallion: -1
+                    offset: 1 }
             }
         }
         changes {
-            key: 3
-            value {
-                entry {
-                    behavior: SEQUENCE
-                    container { offset: -2 }
-                    value { characters: "Hello, World!" }
-                }
+            entry {
+                behavior: SEQUENCE
+                container { offset: -2 }
+                value { characters: "Hello, World!" }
             }
+
         }
         changes {
-            key: 4
-            value {
-                entry {
-                    behavior: SEQUENCE
-                    container { offset: -3 }
-                    value { integer: "32" }
-                }
+            entry {
+                behavior: SEQUENCE
+                container { offset: -3 }
+                value { integer: "32" }
             }
         }
     """
