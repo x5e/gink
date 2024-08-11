@@ -15,7 +15,7 @@ from ..impl.bundle_info import BundleInfo
 from ..impl.bundle_wrapper import BundleWrapper
 from ..impl.muid import Muid
 from ..impl.tuples import Chain
-from ..impl.utilities import digest, generate_timestamp
+from ..impl.utilities import digest
 
 StoreMaker = Callable[[], AbstractStore]
 

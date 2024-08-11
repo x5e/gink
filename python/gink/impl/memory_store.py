@@ -36,9 +36,9 @@ class MemoryStore(AbstractStore):
     _containers: SortedDict  # muid => builder
     _removals: SortedDict  # bytes(removal_key) => MovementBuilder
     _clearances: SortedDict
-    _identities: SortedDict # Dict[Chain, str]
-    _by_name: SortedDict  # Dict[bytes(name) + b'x00' + bytes(entry_muid), bytes(describing_muid)]
-    _by_describing: SortedDict
+    _identities: SortedDict # Chain => str
+    _by_name: SortedDict  # bytes(name) + b'x00' + bytes(entry_muid) => bytes(describing_muid)
+    _by_describing: SortedDict # bytes(describing_muid) + bytes(entry_muid)] => bytes(container_muid)
     _verify_keys: Dict[Chain, VerifyKey]
     _signing_keys: Dict[VerifyKey, SigningKey]
 
