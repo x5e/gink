@@ -163,6 +163,7 @@ class Database(Relay):
             bundler = Bundler(comment)
         assert isinstance(bundler, Bundler)
         to_time = self.resolve_timestamp(to_time)
+        # print(list(self._store.get_reset_changes(to_time=to_time, container=None, user_key=None)))
         for change in self._store.get_reset_changes(to_time=to_time, container=None, user_key=None):
             bundler.add_change(change)
         if immediate and len(bundler):

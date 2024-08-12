@@ -17,9 +17,9 @@ from .abstract_store import AbstractStore, BundleWrapper, Lock
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
-                     SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
+                     SEQUENCE, LocationKey, create_deleting_entry, wrap_change, deletion,
                      Placement, decode_key, decode_entry_occupant, PROPERTY, decode_value,
-                     BOX, GROUP, KEY_SET, VERTEX, EDGE_TYPE)
+                     BOX, GROUP, KEY_SET, VERTEX, EDGE_TYPE, serialize, encode_key)
 from .utilities import create_claim, is_needed
 
 
@@ -454,24 +454,19 @@ class MemoryStore(AbstractStore):
         if container is None:
             recursive = False  # don't need to recurse if we're going to do everything anyway
         seen: Optional[Set] = set() if recursive else None
-        with self._handle.begin() as txn:
-            if container is None:
-                # we're resetting everything, so loop over the container definitions
-                containers_cursor = txn.cursor(self._containers)
-                cursor_placed: bool = containers_cursor.first()
-                while cursor_placed:
-                    muid = Muid.from_bytes(containers_cursor.key())
-                    for change in self._container_reset_changes(to_time, muid, seen, txn):
-                        yield change
-                    cursor_placed = containers_cursor.next()
+        if container is None:
+            # we're resetting everything, so loop over the container definitions
+            for muid in self._containers.keys():
+                for change in self._container_reset_changes(to_time, muid, seen):
+                    yield change
+        else:
+            if user_key is not None:
+                for change in self._get_keyed_reset_changes(
+                        container, to_time, seen, user_key, DIRECTORY):
+                    yield change
             else:
-                if user_key is not None:
-                    for change in self._get_keyed_reset_changes(
-                            container, to_time, txn, seen, user_key, DIRECTORY):
-                        yield change
-                else:
-                    for change in self._container_reset_changes(to_time, container, seen, txn):
-                        yield change
+                for change in self._container_reset_changes(to_time, container, seen):
+                    yield change
 
     def _container_reset_changes(
             self,
@@ -481,6 +476,7 @@ class MemoryStore(AbstractStore):
         ) -> Iterable[ChangeBuilder]:
         """ Figures out which specific reset method to call to reset a container. """
         behavior = self._get_behavior(container)
+        assert isinstance(behavior, int)
         if behavior == VERTEX:
             for change in self._get_vertex_reset_changes(container, to_time):
                 yield change
@@ -512,8 +508,84 @@ class MemoryStore(AbstractStore):
             if container in seen:
                 return
             seen.add(container)
+        last_clear_time = self._get_time_of_prior_clear(container)
+        maybe_user_key_bytes = serialize(encode_key(single_user_key)) if single_user_key else bytes()
+        to_process = self._get_last_with_max(bytes(container) + maybe_user_key_bytes + b"\xff"*16, self._placements)
+        while to_process:
+            assert isinstance(to_process, bytes)
+            placement_bytes = to_process
+            placement = Placement.from_bytes(placement_bytes)
+            entry_builder = self._entries[self._placements[placement_bytes]]
+            key = placement.get_key()
+            if placement.placer.timestamp < to_time and last_clear_time < to_time:
+                # no updates to this key specifically or clears have happened since to_time
+                recurse_on = decode_entry_occupant(placement.placer, entry_builder)
+            else:
+                # only here if a clear or change has been made to this key since to_time
+                if last_clear_time <= placement.placer.timestamp:
+                    contained_now = decode_entry_occupant(placement.placer, entry_builder)
+                else:
+                    contained_now = deletion
 
-    def _get_time_of_prior_clear(self, container: Muid, as_of: MuTimestamp) -> MuTimestamp:
+                # we know what's there now, next have to find out what was there at to_time
+                last_clear_before_to_time = self._get_time_of_prior_clear(container, to_time)
+                limit = Placement(container, key, Muid(to_time, 0, 0), None)
+                through_middle = placement_bytes[:-24]
+                assert bytes(limit)[:-24] == through_middle
+                limit_iterator = self._placements.irange(
+                    minimum=through_middle,
+                    maximum=bytes(limit),
+                    reverse=True
+                )
+                found = None
+                for limit_placement_bytes in limit_iterator:
+                    found = limit_placement_bytes
+                    break
+                placement_then = Placement.from_bytes(found) if found else None
+                builder_then = self._entries[self._placements[found]] if found else None
+                if placement_then and placement_then.placer.timestamp > last_clear_before_to_time:
+                    contained_then = decode_entry_occupant(placement_then.placer, self._entries[self._placements[found]])
+                else:
+                    contained_then = deletion
+
+                # now we know what was contained then, we just have to decide what to do with it
+                if contained_then != contained_now:
+                    if isinstance(contained_then, Deletion):
+                        yield wrap_change(create_deleting_entry(container, key, behavior))
+                    else:
+                        yield wrap_change(builder_then)  # type: ignore
+                recurse_on = contained_then
+
+            if seen is not None and isinstance(recurse_on, Muid):
+                for change in self._container_reset_changes(to_time, recurse_on, seen):
+                    yield change
+            if single_user_key:
+                break
+            limit = Placement(container, placement.middle, Muid(0, 0, 0), None)
+            to_process = self._get_last_with_max(bytes(limit), self._placements)
+
+    def _get_last_with_max(self, max, sorted_dict: SortedDict):
+        iterator = sorted_dict.irange(maximum=max, reverse=True)
+        for item in iterator:
+            return item
+        return None
+
+    def _get_last(self, min, max, sorted_dict: SortedDict):
+        iterator = sorted_dict.irange(minimum=min, maximum=max, reverse=True)
+        for item in iterator:
+            return item
+        return None
+
+    def _get_behavior(self, container: Muid) -> int:
+        if container.timestamp == -1:
+            return container.offset
+        container_definition_bytes = self._containers.get(container)
+        assert isinstance(container_definition_bytes, bytes)
+        container_builder = ContainerBuilder()
+        container_builder.ParseFromString(container_definition_bytes)
+        return container_builder.behavior
+
+    def _get_time_of_prior_clear(self, container: Muid, as_of: MuTimestamp = -1) -> MuTimestamp:
         """ Returns the time of the last clearance of the container before the given time. """
         as_of_muid = Muid(as_of, 0, 0)
         container_bytes = bytes(container)
