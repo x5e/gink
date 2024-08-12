@@ -48,7 +48,7 @@ export function getShortHashKey(): Bytes {
     return shorthashKey;
 }
 
-export const safeMask = BigInt("0x"  + (2**52 - 1).toString(16));
+export const safeMask = BigInt(2**52 - 1);
 
 export function shorterHash(data: Bytes): number {
     // I'm using this truncated shorthash because the Google protobuf library can't handle bignums.
