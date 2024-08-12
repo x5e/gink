@@ -1,4 +1,4 @@
-from ..impl.utilities import decode_from_hex, encode_to_hex, experimental, is_named_tuple
+from ..impl.utilities import decode_from_hex, encode_to_hex, experimental, is_named_tuple, hash13
 from ..impl.muid import Muid
 from ..impl.tuples import Chain
 
@@ -25,3 +25,7 @@ def test_is_named_tuple():
     muid = Muid(1, 2, 3)
     assert is_named_tuple(chain)
     assert not is_named_tuple((1, 2, 3))
+
+def test_hash13():
+    assert hash13(b"") == 841205362792771
+    assert hash13(b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b") == 2464109268650891

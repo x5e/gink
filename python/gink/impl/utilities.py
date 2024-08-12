@@ -15,8 +15,9 @@ from authlib.jose.errors import JoseError
 from time import time as get_time
 from typing import Optional, Tuple
 from random import choice
-from nacl.hash import blake2b
+from nacl.hash import blake2b, shorthash, SIPHASH_KEYBYTES
 from nacl.encoding import RawEncoder
+from struct import unpack
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
@@ -334,3 +335,17 @@ def is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:
     if (new_info.previous or seen_through) and new_info.previous != seen_through:
         raise ValueError("Bundle received without prior link in chain!")
     return True
+
+
+def hash13(data: bytes, _key = b"\x5e"*SIPHASH_KEYBYTES, _mask = 2**52 - 1) -> int:
+    """ create a version of shorthash truncated to 13 hex digits
+
+        The Google Javascript proto implementation can't encode bignums properly, so this is an
+        attempt to create a hashing function that will work in both python and javascript and
+        allow me to predictably generate a numeric hash from some bytes.
+    """
+    short_hash_result = shorthash(data, _key, encoder=RawEncoder)
+    assert len(short_hash_result) == 8, len(short_hash_result)
+    shorthash_int = unpack("<q", short_hash_result)[0]
+    truncated = shorthash_int & _mask
+    return truncated

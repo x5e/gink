@@ -25,7 +25,7 @@ message Bundle {
     // Set in every bundle except for the first in a chain.
     bytes prior_hash = 8;  // the sha256 of the prior bundle
 
-    fixed64 key_sig = 9;
+    uint64 key_id = 9;
 
     bytes encrypted = 10;
 
