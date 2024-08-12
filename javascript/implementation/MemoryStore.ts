@@ -17,7 +17,6 @@ import {
 } from "./utils";
 import {
     AsOf,
-    BundleBytes,
     BundleInfo,
     BundleInfoTuple,
     Bytes,
@@ -30,7 +29,6 @@ import {
     Medallion,
     Muid,
     MuidTuple,
-    Offset,
     Timestamp,
     ActorId,
     BroadcastFunc,
@@ -51,7 +49,6 @@ import {
     medallionChainStartToString,
     buildChainTracker,
     toStorageKey,
-    bundleKeyToInfo,
     storageKeyToString,
 } from "./store_utils";
 import { Decomposition } from "./Decomposition";
@@ -71,6 +68,7 @@ export class MemoryStore implements Store {
     private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
     private locations: TreeMap<string, string> = new TreeMap();
+    private byName: TreeMap<string, string> = new TreeMap(); // name,entryMuid => describingMuid
     private bySource: TreeMap<string, Entry> = new TreeMap();
     private byTarget: TreeMap<string, Entry> = new TreeMap();
     private verifyKeys: Map<string, Bytes> = new Map();
@@ -183,7 +181,7 @@ export class MemoryStore implements Store {
         const bundleKey: BundleInfoTuple = MemoryStore.bundleInfoToKey(bundleInfo);
         this.trxns.set(bundleKey, bundle.bytes);
         const changesList: Array<ChangeBuilder> = bundleBuilder.getChangesList();
-        for (let index=0; index < changesList.length; index++) {
+        for (let index = 0; index < changesList.length; index++) {
             const offset = index + 1;
             const changeBuilder = changesList[index];
             ensure(offset > 0);
@@ -410,21 +408,17 @@ export class MemoryStore implements Store {
         const srcAsStr = muidTupleToString(desiredSrc);
         const clearanceTime: Timestamp = this.getLastClearanceTime(srcAsStr, asOfTs);
         const clearTimeStr = muidTupleToString([clearanceTime, 0, 0]);
-        const iterator = this.placements.lowerBound(srcAsStr);
-
-        // TODO: This is a full scan and should definitely be replaced by an index
+        const iterator = this.byName.lowerBound(name);
         const result = [];
-        for (; iterator && iterator.key && !iterator.equals(this.placements.end()); iterator.next()) {
+        for (; iterator && iterator.key && !iterator.equals(this.byName.end()); iterator.next()) {
             const parts = iterator.key.split(",");
-            if (parts[0] !== srcAsStr) break;
-            const placementIdStr = muidTupleToString(iterator.value.placementId);
-            if (placementIdStr < clearTimeStr || placementIdStr > asOfTsStr)
+            if (parts[0] !== name) break;
+
+            const entryMuidStr = parts[1];
+            if (entryMuidStr < clearTimeStr || entryMuidStr > asOfTsStr)
                 continue;
-            const entry: Entry = iterator.value;
-            ensure(entry.behavior === Behavior.PROPERTY);
-            if (entry.value !== name) continue;
-            const key = storageKeyToString(entry.storageKey);
-            if (!entry.deletion) result.push(strToMuid(key));
+            const describingMuid = strToMuid(iterator.value);
+            result.push(describingMuid);
         }
         return result;
     }
@@ -517,6 +511,18 @@ export class MemoryStore implements Store {
             const targetIdStr = muidTupleToString(entry.targetList[0]);
             this.byTarget.set(`${targetIdStr},${middle},${placementIdStr}`, entry);
         }
+
+        if (entry.behavior == Behavior.PROPERTY && entry.containerId[0] == -1) {
+            if (entry.deletion) {
+                // TODO: remove on deletion/purge
+            } else {
+                if (Array.isArray(entry.storageKey) && entry.storageKey.length == 3) {
+                    this.byName.set(entry.value + "," + muidTupleToString(entry.entryId), muidTupleToString(entry.storageKey));
+                } else {
+                    throw new Error("global property storage key isnt a tuple?");
+                }
+            }
+        }
     }
 
     /**
@@ -538,7 +544,7 @@ export class MemoryStore implements Store {
 
     getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]> {
         return Promise.resolve(this.getEntriesBySourceOrTargetSync(vertex, source, asOf));
-    }
+    };
 
     getEntriesBySourceOrTargetSync(vertex: Muid, source: boolean, asOf?: AsOf): Entry[] {
         const asOfTs: Timestamp = asOf ? (this.asOfToTimestamp(asOf)) : generateTimestamp();
@@ -591,7 +597,7 @@ export class MemoryStore implements Store {
     // for debugging, not part of the api/interface
     getAllRemovals(): TreeMap<string, string> {
         return this.removals;
-    }
+    };
 
     // for debugging, not part of the api/interface
     getAllContainerTuples(): Array<MuidTuple> {

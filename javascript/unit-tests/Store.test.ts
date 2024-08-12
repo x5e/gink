@@ -7,7 +7,8 @@ import {
     makeChainStart, extendChain, addTrxns, unbundle,
     MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2, keyPair
 } from "./test_utils";
-import { muidToBuilder, ensure, wrapValue, matches, wrapKey, signBundle,
+import {
+    muidToBuilder, ensure, wrapValue, matches, wrapKey, signBundle,
 
 } from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
@@ -116,7 +117,7 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         changeBuilder.setContainer(containerBuilder);
         bundleBuilder.getChangesList().push(changeBuilder);
         const decomposition = new Decomposition(
-            signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey, ));
+            signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey,));
         const added = await store.addBundle(decomposition);
         ensure(decomposition.info.medallion === MEDALLION1);
         ensure(decomposition.info.timestamp === START_MICROS1);
@@ -157,5 +158,26 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         const chain = [...(await store.getClaimedChains()).entries()][0][1];
         const identity = await store.getChainIdentity([chain.medallion, chain.chainStart]);
         ensure(identity === 'test@identity');
+    });
+
+    it(`${implName} getContainersByName`, async () => {
+        const db = new Database(store, 'test@byName');
+        await db.ready;
+        const gd = db.getGlobalDirectory();
+        await gd.setName("foo");
+        const d2 = await db.createDirectory();
+        await d2.setName("bar");
+        const seq = await db.createSequence();
+        await seq.setName("bar");
+        const fooContainers = await store.getContainersByName("foo");
+        ensure(fooContainers.length === 1);
+        ensure(fooContainers[0].timestamp === gd.timestamp);
+        ensure(fooContainers[0].medallion === gd.medallion);
+        const barContainers = await store.getContainersByName("bar");
+        ensure(barContainers.length === 2);
+        ensure(barContainers[0].timestamp === d2.timestamp);
+        ensure(barContainers[0].medallion === d2.medallion);
+        ensure(barContainers[1].timestamp === seq.timestamp);
+        ensure(barContainers[1].medallion === seq.medallion);
     });
 }
