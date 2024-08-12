@@ -337,7 +337,7 @@ def is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:
     return True
 
 
-def hash13(data: bytes, _key = b"\x5e"*SIPHASH_KEYBYTES, _mask = 2**52 - 1) -> int:
+def shorter_hash(data: bytes, _key = b"\x5e"*SIPHASH_KEYBYTES, _mask = 2**52 - 1) -> int:
     """ create a version of shorthash truncated to 13 hex digits
 
         The Google Javascript proto implementation can't encode bignums properly, so this is an
