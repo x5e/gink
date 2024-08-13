@@ -65,7 +65,7 @@ export class MemoryStore implements Store {
     private clearances: TreeMap<string, Clearance> = new TreeMap(); // ContainerId,ClearanceId => Clearance
     private containers: TreeMap<string, Uint8Array> = new TreeMap(); // ContainerId => bytes
     private removals: TreeMap<string, string> = new TreeMap(); // placementId,removalId => ""
-    private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => PlacementId
+    private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => Entry
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
     private locations: TreeMap<string, string> = new TreeMap();
     private byName: TreeMap<string, string> = new TreeMap(); // name,entryMuid => describingMuid
@@ -513,14 +513,22 @@ export class MemoryStore implements Store {
         }
 
         if (entry.behavior == Behavior.PROPERTY && entry.containerId[0] == -1) {
-            if (entry.deletion) {
-                // TODO: remove on deletion/purge
-            } else {
-                if (Array.isArray(entry.storageKey) && entry.storageKey.length == 3) {
-                    this.byName.set(entry.value + "," + muidTupleToString(entry.entryId), muidTupleToString(entry.storageKey));
-                } else {
-                    throw new Error("global property storage key isnt a tuple?");
+            if (Array.isArray(entry.storageKey) && entry.storageKey.length == 3) {
+                let globalPropIterator = toLastWithPrefixBeforeSuffix(this.placements, containerIdStr);
+                for (
+                    let iterator = globalPropIterator;
+                    iterator && iterator.key && iterator.key.startsWith(containerIdStr);
+                    iterator.prev()
+                ) {
+                    const foundEntry = iterator.value;
+                    if (foundEntry.storageKey.toString() === entry.storageKey.toString() &&
+                        foundEntry.value !== entry.value) {
+                        this.byName.delete(foundEntry.value + "," + muidTupleToString(foundEntry.entryId));
+                    }
                 }
+                this.byName.set(entry.value + "," + muidTupleToString(entry.entryId), muidTupleToString(entry.storageKey));
+            } else {
+                throw new Error("global property storage key isnt a tuple?");
             }
         }
     }
