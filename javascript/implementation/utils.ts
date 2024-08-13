@@ -31,8 +31,31 @@ import { TreeMap, MapIterator } from 'jstreemap';
 
 import {ready as sodium_ready, crypto_sign_open,
     crypto_sign_keypair,
-    crypto_sign, crypto_generichash_BYTES, crypto_generichash,
+    crypto_sign,
+    crypto_generichash_BYTES,
+    crypto_generichash,
+    crypto_shorthash,
+    crypto_shorthash_KEYBYTES,
 } from 'libsodium-wrappers';
+
+export const emptyBytes = new Uint8Array(0);
+
+let shorthashKey: Uint8Array = emptyBytes;
+
+export function getShortHashKey(): Bytes {
+    if (shorthashKey.length === 0)
+        shorthashKey = new Uint8Array(Array(crypto_shorthash_KEYBYTES).fill(0x5e));
+    return shorthashKey;
+}
+
+export const safeMask = BigInt(2**52 - 1);
+
+export function shorterHash(data: Bytes): number {
+    // I'm using this truncated shorthash because the Google protobuf library can't handle bignums.
+    const out1 = crypto_shorthash(data, getShortHashKey());
+    const asBigNum = (new DataView(out1.buffer)).getBigUint64(0, true);
+    return Number(asBigNum & safeMask)
+}
 
 export const digest = (data: Bytes) => crypto_generichash(crypto_generichash_BYTES, data);
 
@@ -408,8 +431,6 @@ export const bytesToHex = (bytes: Uint8Array) => Array.from(bytes).map(oneByteTo
 export const parseByte = (twoHexDigits: string) => parseInt(twoHexDigits, 16);
 
 export const hexToBytes = (hex: string) => Uint8Array.from(hex.match(/.{1,2}/g).map(parseByte));
-
-export const emptyBytes = new Uint8Array(0);
 
 export function timestampToString(timestamp: Timestamp): string {
     return intToHex(timestamp, 14);
