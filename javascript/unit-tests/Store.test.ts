@@ -188,5 +188,13 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         ensure(bazContainers.length === 1);
         ensure(bazContainers[0].timestamp === seq.timestamp);
         ensure(bazContainers[0].medallion === seq.medallion);
+        await seq.setName("last");
+        const bazContainers2 = await store.getContainersByName("baz");
+        ensure(bazContainers2.length === 0);
+        const lastContainers = await store.getContainersByName("last");
+        ensure(lastContainers.length === 1);
+        ensure(lastContainers[0].timestamp === seq.timestamp);
+        ensure(lastContainers[0].medallion === seq.medallion);
+
     });
 }
