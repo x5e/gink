@@ -40,7 +40,7 @@ it('Property.toMap', async function () {
 });
 
 it('Global property sets and gets names', async function () {
-    for (const store of [new MemoryStore(true)]) { //new IndexedDbStore('Global property sets and gets names', true),
+    for (const store of [new IndexedDbStore('Global property sets and gets names', true), new MemoryStore(true)]) {
         const instance = new Database(store);
         await instance.ready;
         const gd = instance.getGlobalDirectory();

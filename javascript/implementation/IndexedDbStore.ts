@@ -409,24 +409,6 @@ export class IndexedDbStore implements Store {
                     targetList,
                 };
                 if (!(behavior === Behavior.SEQUENCE || behavior === Behavior.EDGE_TYPE)) {
-                    // if (behavior === Behavior.PROPERTY && entry.containerId[0] === -1) {
-                    //     const range = IDBKeyRange.upperBound([containerId, storageKey, [Infinity]]);
-                    //     const search = await trxn.objectStore("entries")
-                    //         .index("by-container-key-placement")
-                    //         .openCursor(range, "prev");
-                    //     console.log("SEARCHING", search);
-
-                    //     while (search && search.value.containerId[0] === -1 && search.value.containerId[2] === Behavior.PROPERTY) {
-                    //         if (search.value.storageKey === storageKey && !search.value.deletion) {
-                    //             await trxn.objectStore("entries").add({
-                    //                 ...search.value,
-                    //                 deletion: true,
-                    //             });
-                    //             break;
-                    //         }
-                    //         search.continue();
-                    //     }
-                    // }
                     const range = IDBKeyRange.bound([containerId, storageKey], [containerId, storageKey, placementId]);
                     const search = await trxn.objectStore("entries").index("by-container-key-placement"
                     ).openCursor(range, "prev");
