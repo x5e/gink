@@ -8,8 +8,11 @@ import { Edge } from "./Edge";
 import { Vertex } from "./Vertex";
 
 export class EdgeType extends Container {
-
-    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(
+        database: Database,
+        address: Muid,
+        containerBuilder?: ContainerBuilder
+    ) {
         super(database, address, Behavior.EDGE_TYPE);
         if (this.address.timestamp < 0) {
             ensure(address.offset === Behavior.EDGE_TYPE);
@@ -22,7 +25,8 @@ export class EdgeType extends Container {
         source: Vertex,
         target: Vertex,
         value?: Value,
-        change?: Bundler | string): Promise<Edge> {
+        change?: Bundler | string
+    ): Promise<Edge> {
         const muid = await this.addEntry([source, target], value, change);
         const edgeData: EdgeData = {
             source: source.address,

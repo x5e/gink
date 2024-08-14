@@ -18,8 +18,20 @@ process.chdir(__dirname + "/..");
 
         const result1 = spawnSync(
             "python3",
-            ["-u", "-m", "gink", TEST_DB_PATH, "--format", format,
-                "--identity", "abc", "--set", "foo", "<<<", "bar"],
+            [
+                "-u",
+                "-m",
+                "gink",
+                TEST_DB_PATH,
+                "--format",
+                format,
+                "--identity",
+                "abc",
+                "--set",
+                "foo",
+                "<<<",
+                "bar",
+            ],
             { shell: shell }
         );
 
@@ -29,8 +41,20 @@ process.chdir(__dirname + "/..");
 
         const result2 = spawnSync(
             "python3",
-            ["-u", "-m", "gink", TEST_DB_PATH, "--format", format,
-                "--identity", "abc", "--set", "bar", "<<<", "baz"],
+            [
+                "-u",
+                "-m",
+                "gink",
+                TEST_DB_PATH,
+                "--format",
+                format,
+                "--identity",
+                "abc",
+                "--set",
+                "bar",
+                "<<<",
+                "baz",
+            ],
             { shell: shell }
         );
 
@@ -40,8 +64,20 @@ process.chdir(__dirname + "/..");
 
         const result3 = spawnSync(
             "python3",
-            ["-u", "-m", "gink", TEST_DB_PATH, "--format", format,
-                "--identity", "xyz", "--set", "xxx", "<<<", "zzz"],
+            [
+                "-u",
+                "-m",
+                "gink",
+                TEST_DB_PATH,
+                "--format",
+                format,
+                "--identity",
+                "xyz",
+                "--set",
+                "xxx",
+                "<<<",
+                "zzz",
+            ],
             { shell: shell }
         );
 
@@ -50,8 +86,11 @@ process.chdir(__dirname + "/..");
         }
 
         const result4 = spawnSync(
-            shell, ["-c",
-            `"python3 -m gink ${TEST_DB_PATH} --log --format ${format} | cut -b 1-13 | sort -u | wc -l "`],
+            shell,
+            [
+                "-c",
+                `"python3 -m gink ${TEST_DB_PATH} --log --format ${format} | cut -b 1-13 | sort -u | wc -l "`,
+            ],
             { shell: shell }
         );
 
@@ -67,5 +106,8 @@ process.chdir(__dirname + "/..");
             process.exit(1);
         }
     }
-})().catch((reason) => { console.error(reason); process.exit(1); });
+})().catch((reason) => {
+    console.error(reason);
+    process.exit(1);
+});
 process.exit(0);

@@ -1,21 +1,23 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Gink</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+        <script type="text/javascript" src="create_connection.js"></script>
+    </head>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gink</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
-    <script type="text/javascript" src="create_connection.js"></script>
-</head>
-
-<body>
-    <h1>Create Gink Connection</h1>
-    <form action="javascript:createConnection()">
-        <input type="text" name="ipAddress" id="ipAddress" placeholder="ws://127.0.0.1:8080">
-        <input type="submit">
-    </form>
-
-</body>
-
+    <body>
+        <h1>Create Gink Connection</h1>
+        <form action="javascript:createConnection()">
+            <input
+                type="text"
+                name="ipAddress"
+                id="ipAddress"
+                placeholder="ws://127.0.0.1:8080"
+            />
+            <input type="submit" />
+        </form>
+    </body>
 </html>

@@ -13,14 +13,9 @@ function createMaker(reset: boolean, testFile = "/tmp/test.store") {
     };
 }
 
+testStore("LogBackedStore", createMaker(true), createMaker(false));
 
-testStore('LogBackedStore',
-    createMaker(true),
-    createMaker(false),
-);
-
-
-it('test locks', async () => {
+it("test locks", async () => {
     const TEST_FILE_FOR_LOCKS = "/tmp/test_file_for_locks.store";
     if (existsSync(TEST_FILE_FOR_LOCKS)) {
         unlinkSync(TEST_FILE_FOR_LOCKS);
@@ -29,19 +24,21 @@ it('test locks', async () => {
     await lbs1.ready;
     const lbs2 = new LogBackedStore(TEST_FILE_FOR_LOCKS, true);
     let result = "unknown";
-    await lbs2.ready.then(() => {
-        result = "acquired";
-    }).catch(() => {
-        result = "barfed";
-        lbs2.close();
-    });
+    await lbs2.ready
+        .then(() => {
+            result = "acquired";
+        })
+        .catch(() => {
+            result = "barfed";
+            lbs2.close();
+        });
     if (result !== "barfed") {
         throw new Error("locking broken");
     }
     await lbs1.close();
 });
 
-it('test automatic data pulling & callbacks', async () => {
+it("test automatic data pulling & callbacks", async () => {
     const testFile = "/tmp/basic_test.store";
     if (existsSync(testFile)) {
         unlinkSync(testFile);
@@ -63,7 +60,7 @@ it('test automatic data pulling & callbacks', async () => {
 
     await globalDir1.set("key", "value", "test bundle");
 
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 100));
 
     expect(cb.calledTimes > 0).toBe(true);
     expect((await store2.getAllEntries()).length).toBeTruthy();
@@ -72,8 +69,7 @@ it('test automatic data pulling & callbacks', async () => {
     await store2.close();
 });
 
-it('test magic', async () => {
-
+it("test magic", async () => {
     const fn = "/tmp/testMagic.bin";
     const store1 = await createMaker(true, fn)();
 
@@ -91,5 +87,4 @@ it('test magic', async () => {
     ensure(contents[2] === 73); // I
     ensure(contents[3] === 78); // N
     ensure(contents[4] === 75); // K
-
 });

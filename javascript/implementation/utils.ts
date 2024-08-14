@@ -25,18 +25,19 @@ import {
     DocumentBuilder,
 } from "./builders";
 
-import { hostname, userInfo } from 'os';
-import { TreeMap, MapIterator } from 'jstreemap';
+import { hostname, userInfo } from "os";
+import { TreeMap, MapIterator } from "jstreemap";
 
-
-import {ready as sodium_ready, crypto_sign_open,
+import {
+    ready as sodium_ready,
+    crypto_sign_open,
     crypto_sign_keypair,
     crypto_sign,
     crypto_generichash_BYTES,
     crypto_generichash,
     crypto_shorthash,
     crypto_shorthash_KEYBYTES,
-} from 'libsodium-wrappers';
+} from "libsodium-wrappers";
 
 export const emptyBytes = new Uint8Array(0);
 
@@ -44,30 +45,37 @@ let shorthashKey: Uint8Array = emptyBytes;
 
 export function getShortHashKey(): Bytes {
     if (shorthashKey.length === 0)
-        shorthashKey = new Uint8Array(Array(crypto_shorthash_KEYBYTES).fill(0x5e));
+        shorthashKey = new Uint8Array(
+            Array(crypto_shorthash_KEYBYTES).fill(0x5e)
+        );
     return shorthashKey;
 }
 
-export const safeMask = BigInt(2**52 - 1);
+export const safeMask = BigInt(2 ** 52 - 1);
 
 export function shorterHash(data: Bytes): number {
     // I'm using this truncated shorthash because the Google protobuf library can't handle bignums.
     const out1 = crypto_shorthash(data, getShortHashKey());
-    const asBigNum = (new DataView(out1.buffer)).getBigUint64(0, true);
-    return Number(asBigNum & safeMask)
+    const asBigNum = new DataView(out1.buffer).getBigUint64(0, true);
+    return Number(asBigNum & safeMask);
 }
 
-export const digest = (data: Bytes) => crypto_generichash(crypto_generichash_BYTES, data);
+export const digest = (data: Bytes) =>
+    crypto_generichash(crypto_generichash_BYTES, data);
 
 export const librariesReady = sodium_ready;
 
 export const signingBundles = true;
 
-export function noOp(_?: any) { ensure(arguments.length > 0); }
+export function noOp(_?: any) {
+    ensure(arguments.length > 0);
+}
 
 export function toLastWithPrefixBeforeSuffix<V>(
-    map: TreeMap<string, V>, prefix: string, suffix: string = '~'):
-    MapIterator<string, V> | undefined {
+    map: TreeMap<string, V>,
+    prefix: string,
+    suffix: string = "~"
+): MapIterator<string, V> | undefined {
     const iterator = map.upperBound(prefix + suffix);
     iterator.prev();
     if (!iterator.key) return undefined;
@@ -78,11 +86,11 @@ export function toLastWithPrefixBeforeSuffix<V>(
 // Since find-process uses child-process, we can't load this if gink
 // is running in a browser
 // TODO: only install this package when you will be using as a backend?
-const findProcess = (typeof window === "undefined") ? eval("require('find-process')") : undefined;
+const findProcess =
+    typeof window === "undefined" ? eval("require('find-process')") : undefined;
 
 export function ensure(x: any, msg?: string) {
-    if (!x)
-        throw new Error(msg ?? "assert failed");
+    if (!x) throw new Error(msg ?? "assert failed");
     return x;
 }
 
@@ -113,33 +121,40 @@ export function makeMedallion() {
         if (getRandomValues) {
             const array = new Uint16Array(3);
             globalThis.crypto.getRandomValues(array);
-            return 2 ** 48 + (array[0] * 2 ** 32) + (array[1] * 2 ** 16) + array[2];
+            return 2 ** 48 + array[0] * 2 ** 32 + array[1] * 2 ** 16 + array[2];
         }
-        const randomInt = crypto["randomInt"];  // defined in some versions of node
+        const randomInt = crypto["randomInt"]; // defined in some versions of node
         if (randomInt) {
-            return randomInt((2 ** 48) + 1, (2 ** 49) - 1);
+            return randomInt(2 ** 48 + 1, 2 ** 49 - 1);
         }
     }
-    return Math.floor(Math.random() * (2 ** 48)) + 1 + 2 ** 48;
+    return Math.floor(Math.random() * 2 ** 48) + 1 + 2 ** 48;
 }
 
-export function muidToBuilder(address: Muid, relativeTo?: Medallion): MuidBuilder {
+export function muidToBuilder(
+    address: Muid,
+    relativeTo?: Medallion
+): MuidBuilder {
     const muid = new MuidBuilder();
     if (address.medallion && address.medallion !== relativeTo)
         muid.setMedallion(address.medallion);
-    if (address.timestamp) // not set if also pending
+    if (address.timestamp)
+        // not set if also pending
         muid.setTimestamp(address.timestamp);
     muid.setOffset(address.offset);
     return muid;
 }
 
-export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid {
+export function builderToMuid(
+    muidBuilder: MuidBuilder,
+    relativeTo?: Muid
+): Muid {
     // If a MuidBuilder in a message has a zero medallion and/or timestamp, it should be
     // interpreted that those values are the same as the trxn it comes from.
     return {
         timestamp: muidBuilder.getTimestamp() || relativeTo.timestamp,
         medallion: muidBuilder.getMedallion() || relativeTo.medallion,
-        offset: ensure(muidBuilder.getOffset(), "zero offset")
+        offset: ensure(muidBuilder.getOffset(), "zero offset"),
     };
 }
 
@@ -150,11 +165,11 @@ export function builderToMuid(muidBuilder: MuidBuilder, relativeTo?: Muid): Muid
  */
 export function wrapKey(key: number | string | Uint8Array): KeyBuilder {
     const keyBuilder = new KeyBuilder();
-    if (typeof (key) === "string") {
+    if (typeof key === "string") {
         keyBuilder.setCharacters(key);
         return keyBuilder;
     }
-    if (typeof (key) === "number") {
+    if (typeof key === "number") {
         ensure(Number.isSafeInteger(key), `key=${key} not a safe integer`);
         keyBuilder.setNumber(key);
         return keyBuilder;
@@ -248,7 +263,10 @@ export function decodeToken(hex: string): string {
         let hexValue = hex.substring(i, i + 2);
         token += String.fromCharCode(parseInt(hexValue, 16));
     }
-    ensure(token.includes("token "), `Token '${token}' does not begin with 'token '`);
+    ensure(
+        token.includes("token "),
+        `Token '${token}' does not begin with 'token '`
+    );
     return token;
 }
 
@@ -281,7 +299,7 @@ export function wrapValue(arg: Value): ValueBuilder {
         return valueBuilder.setOctets(arg);
     }
     if (arg instanceof Date) {
-        return valueBuilder.setTimestamp(arg.getTime()*1000);
+        return valueBuilder.setTimestamp(arg.getTime() * 1000);
     }
     if (arg === null) {
         return valueBuilder.setSpecial(Special.NULL);
@@ -292,14 +310,14 @@ export function wrapValue(arg: Value): ValueBuilder {
     if (arg === false) {
         return valueBuilder.setSpecial(Special.FALSE);
     }
-    if (typeof (arg) === "string") {
+    if (typeof arg === "string") {
         return valueBuilder.setCharacters(arg);
     }
-    if (typeof (arg) === "number") {
+    if (typeof arg === "number") {
         return valueBuilder.setFloating(arg);
     }
-    if (typeof (arg) === "bigint") {
-        return valueBuilder.setInteger(arg.toString())
+    if (typeof arg === "bigint") {
+        return valueBuilder.setInteger(arg.toString());
     }
     if (Array.isArray(arg)) {
         const tupleBuilder = new TupleBuilder();
@@ -309,7 +327,7 @@ export function wrapValue(arg: Value): ValueBuilder {
     if (arg instanceof Map) {
         const documentBuilder = new DocumentBuilder();
         for (const [key, val] of arg.entries()) {
-            if (typeof (key) !== "number" && typeof (key) !== "string") {
+            if (typeof key !== "number" && typeof key !== "string") {
                 throw new Error("keys in documents must be numbers or strings");
             }
             documentBuilder.addKeys(wrapKey(key));
@@ -332,7 +350,10 @@ export function wrapValue(arg: Value): ValueBuilder {
 }
 
 export function isDate(value: any): boolean {
-    return typeof value === "object" && Object.prototype.toString.call(value) === "[object Date]";
+    return (
+        typeof value === "object" &&
+        Object.prototype.toString.call(value) === "[object Date]"
+    );
 }
 
 export function matches(a: any[], b: any[]) {
@@ -367,9 +388,8 @@ export function muidToString(muid: Muid): string {
 export function muidTupleToString(muidTuple: MuidTuple): string {
     let timestamp: string;
     if (muidTuple[0] === Infinity) {
-        timestamp = 'FFFFFFFFFFFFFF';
-    }
-    else {
+        timestamp = "FFFFFFFFFFFFFF";
+    } else {
         timestamp = intToHex(muidTuple[0], 14);
     }
     let medallion = intToHex(muidTuple[1], 13);
@@ -382,7 +402,7 @@ export function strToMuid(value: string): Muid {
     return {
         timestamp: muidHexToInt(nums[0]),
         medallion: muidHexToInt(nums[1]),
-        offset: muidHexToInt(nums[2])
+        offset: muidHexToInt(nums[2]),
     };
 }
 
@@ -398,14 +418,14 @@ function muidHexToInt(hexString: string): number {
     if (hexString.length === 14) {
         let beginning = hexString.substring(0, 1);
         hexString = hexString.substring(1);
-        if (beginning === '1') {
+        if (beginning === "1") {
             beginningAddition = BigInt(16) ** BigInt(14);
         }
     }
     let len = hexString.length;
     let mod = BigInt(16) ** BigInt(len);
     let num = BigInt(parseInt(hexString, 16));
-    mod = mod * ((num > (mod >> BigInt(1))) ? BigInt(1) : BigInt(0));
+    mod = mod * (num > mod >> BigInt(1) ? BigInt(1) : BigInt(0));
     return Number(num + beginningAddition - mod);
 }
 
@@ -417,20 +437,22 @@ function muidHexToInt(hexString: string): number {
  */
 export function intToHex(value: number, padding?: number): string {
     const digits = padding || 0;
-    const twosComplement = value < 0
-        ? BigInt(16) ** BigInt(digits) + BigInt(value)
-        : value;
+    const twosComplement =
+        value < 0 ? BigInt(16) ** BigInt(digits) + BigInt(value) : value;
 
-    return twosComplement.toString(16).padStart(digits, '0').toUpperCase();
+    return twosComplement.toString(16).padStart(digits, "0").toUpperCase();
 }
 
-export const oneByteToHex = (byte: number) => byte.toString(16).padStart(2, '0').toUpperCase();
+export const oneByteToHex = (byte: number) =>
+    byte.toString(16).padStart(2, "0").toUpperCase();
 
-export const bytesToHex = (bytes: Uint8Array) => Array.from(bytes).map(oneByteToHex).join("");
+export const bytesToHex = (bytes: Uint8Array) =>
+    Array.from(bytes).map(oneByteToHex).join("");
 
 export const parseByte = (twoHexDigits: string) => parseInt(twoHexDigits, 16);
 
-export const hexToBytes = (hex: string) => Uint8Array.from(hex.match(/.{1,2}/g).map(parseByte));
+export const hexToBytes = (hex: string) =>
+    Uint8Array.from(hex.match(/.{1,2}/g).map(parseByte));
 
 export function timestampToString(timestamp: Timestamp): string {
     return intToHex(timestamp, 14);
@@ -443,7 +465,13 @@ export function valueToJson(value: Value): string {
         value = Array.from(value).map(intToHex).join("");
     }
     const type = typeof value;
-    if (type === "string" || type === "number" || value === true || value === false || value === null) {
+    if (
+        type === "string" ||
+        type === "number" ||
+        value === true ||
+        value === false ||
+        value === null
+    ) {
         return JSON.stringify(value);
     }
     if ("function" === typeof value["toISOString"]) {
@@ -453,9 +481,17 @@ export function valueToJson(value: Value): string {
         return "[" + value.map(valueToJson).join(",") + "]";
     }
     if (value instanceof Map || value[Symbol.toStringTag] === "Map") {
-        const entries = Array.from((value)["entries"]());
+        const entries = Array.from(value["entries"]());
         entries.sort();
-        return "{" + entries.map(function (pair) { return `"${pair[0]}":` + valueToJson(pair[1]); }).join(",") + "}";
+        return (
+            "{" +
+            entries
+                .map(function (pair) {
+                    return `"${pair[0]}":` + valueToJson(pair[1]);
+                })
+                .join(",") +
+            "}"
+        );
     }
     throw new Error(`value not recognized: ${value}`);
 }
@@ -482,21 +518,27 @@ export function muidTupleToMuid(tuple: MuidTuple): Muid {
  */
 export function isPathDangerous(path: string): boolean {
     const pathParts = path.split(/\/+/).filter((part) => part.length > 0);
-    return (pathParts.length === 0 || !pathParts.every((part) => /^\w[\w.@-]*$/.test(part)));
+    return (
+        pathParts.length === 0 ||
+        !pathParts.every((part) => /^\w[\w.@-]*$/.test(part))
+    );
 }
 
 /**
-* Uses `console.error` to log messages to stderr in a form like:
-* [04:07:03.227Z CommandLineInterface.ts:51] got chain manager, using medallion=383316229311328
-* That is to say, it's:
-* [<Timestamp> <SourceFileName>:<SourceLine>] <Message>
-* @param msg message to log
-*/
+ * Uses `console.error` to log messages to stderr in a form like:
+ * [04:07:03.227Z CommandLineInterface.ts:51] got chain manager, using medallion=383316229311328
+ * That is to say, it's:
+ * [<Timestamp> <SourceFileName>:<SourceLine>] <Message>
+ * @param msg message to log
+ */
 export function logToStdErr(msg: string) {
-    const stackString = (new Error()).stack;
+    const stackString = new Error().stack;
     const callerLine = stackString ? stackString.split("\n")[2] : "";
-    const caller = callerLine.split(/\//).pop()?.replace(/:\d+\)/, "");
-    const timestamp = ((new Date()).toISOString()).split("T").pop();
+    const caller = callerLine
+        .split(/\//)
+        .pop()
+        ?.replace(/:\d+\)/, "");
+    const timestamp = new Date().toISOString().split("T").pop();
     // using console.error because I want to write to stderr
     const procId = process ? process.pid : 0;
     console.error(`[${timestamp} ${caller} ${procId}] ${msg}`);
@@ -513,12 +555,15 @@ export function sameData(key1: any, key2: any): boolean {
     if (Array.isArray(key1) && Array.isArray(key2)) {
         if (key1.length !== key2.length) return false;
         for (let i = 0; i < key1.length; i++) {
-            if (!sameData(key1[i], key2[i]))
-                return false;
+            if (!sameData(key1[i], key2[i])) return false;
         }
         return true;
     }
-    if (typeof key1 === "number" || typeof key1 === "string" || typeof key1 === "undefined") {
+    if (
+        typeof key1 === "number" ||
+        typeof key1 === "string" ||
+        typeof key1 === "undefined"
+    ) {
         return key1 === key2;
     }
     return false;
@@ -538,18 +583,22 @@ export const dehydrate = muidToTuple;
 export const rehydrate = muidTupleToMuid;
 
 export function getActorId(): ActorId {
-    if (typeof window === "undefined")
-        return process.pid;
+    if (typeof window === "undefined") return process.pid;
     else {
         // So we don't assign multiple gink instances in different windows the same actorId
         if (!window.localStorage.getItem(`gink-current-window`)) {
             window.localStorage.setItem(`gink-current-window`, "1");
         }
-        let currentWindow = Number(window.localStorage.getItem(`gink-current-window`));
+        let currentWindow = Number(
+            window.localStorage.getItem(`gink-current-window`)
+        );
         // Using 2^22 since that is the max pid for any process on a 64 bit machine.
-        const aId = (2 ** 22) + currentWindow;
+        const aId = 2 ** 22 + currentWindow;
         currentWindow++;
-        window.localStorage.setItem(`gink-current-window`, String(currentWindow));
+        window.localStorage.setItem(
+            `gink-current-window`,
+            String(currentWindow)
+        );
 
         window.localStorage.setItem(`gink-${aId}`, `${Date.now()}`);
         // Heartbeat the browser's localStorage every 1 second with the current time.
@@ -573,9 +622,16 @@ export function getIdentity(): string {
     if (typeof window === "undefined")
         return `${userInfo().username}@${hostname()}`;
     else {
-        return 'browser-client-' + ("10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
-            (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
-        ));
+        return (
+            "browser-client-" +
+            "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) =>
+                (
+                    +c ^
+                    (crypto.getRandomValues(new Uint8Array(1))[0] &
+                        (15 >> (+c / 4)))
+                ).toString(16)
+            )
+        );
     }
 }
 
@@ -589,7 +645,7 @@ export function getIdentity(): string {
 export async function isAlive(actorId: ActorId): Promise<boolean> {
     if (typeof window === "undefined") {
         ensure(findProcess, "find-process library didn't load in browser");
-        const found = await findProcess('pid', actorId);
+        const found = await findProcess("pid", actorId);
         ensure(found.length === 0 || found.length === 1);
         return found.length === 1;
     } else {
@@ -601,21 +657,21 @@ export async function isAlive(actorId: ActorId): Promise<boolean> {
 
         // Compare current time to the last window heartbeat
         // Using 5 seconds here for a bit of a buffer
-        return (currentTime - lastPingedTime) < 5000;
+        return currentTime - lastPingedTime < 5000;
     }
 }
 
 export function getType(extension: string) {
     const types = {
-        html: 'text/html',
-        css: 'text/css',
-        js: 'application/javascript',
-        png: 'image/png',
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-        gif: 'image/gif',
-        json: 'application/json',
-        xml: 'application/xml',
+        html: "text/html",
+        css: "text/css",
+        js: "application/javascript",
+        png: "image/png",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        gif: "image/gif",
+        json: "application/json",
+        xml: "application/xml",
     };
     const result = types[extension];
     if (!result) {
@@ -632,13 +688,12 @@ export function mergeBytes(arrayOne: Bytes, arrayTwo: Bytes): Bytes {
 }
 
 export function signBundle(message: Bytes, secretKey: Bytes): Bytes {
-    if (secretKey.length != 64) throw new Error("secret key not appropriate length!");
+    if (secretKey.length != 64)
+        throw new Error("secret key not appropriate length!");
     if (signingBundles) {
         //return mergeBytes(secretKey, message);
         return crypto_sign(message, secretKey);
-    }
-    else
-        return message;
+    } else return message;
 }
 
 export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {
@@ -648,9 +703,9 @@ export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {
     }
 }
 
-export function createKeyPair() : KeyPair {
+export function createKeyPair(): KeyPair {
     const result = crypto_sign_keypair();
-    return {publicKey: result.publicKey, secretKey: result.privateKey}
+    return { publicKey: result.publicKey, secretKey: result.privateKey };
 
     /*
     uncomment for deterministic debugging
@@ -663,10 +718,9 @@ export function createKeyPair() : KeyPair {
         */
 }
 
-
 export function getSig(bytes: Bytes): number {
     let result = 0;
-    for (let i=0; i<bytes.byteLength;i++) {
+    for (let i = 0; i < bytes.byteLength; i++) {
         result = result ^ bytes[i];
     }
     return result;

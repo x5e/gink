@@ -6,12 +6,20 @@ process.chdir(__dirname + "/..");
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector("./tsc.out/implementation/main.js", ["-l", port], { env: { ...process.env } });
+    const server = new Expector(
+        "./tsc.out/implementation/main.js",
+        ["-l", port],
+        { env: { ...process.env } }
+    );
     await server.expect("ready", 2000);
 
-    const client = new Expector(
-        "python3",
-        ["-u", "-m", "gink", "-c", `ws://localhost:${port}`]);
+    const client = new Expector("python3", [
+        "-u",
+        "-m",
+        "gink",
+        "-c",
+        `ws://localhost:${port}`,
+    ]);
     await client.expect("connect");
     await server.expect("accepted");
     await sleep(100);
@@ -28,4 +36,7 @@ process.chdir(__dirname + "/..");
     await server.close();
     console.log("finished!");
     process.exit(0);
-})().catch((reason) => { console.error(reason); process.exit(1); });
+})().catch((reason) => {
+    console.error(reason);
+    process.exit(1);
+});

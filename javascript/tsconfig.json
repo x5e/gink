@@ -1,21 +1,26 @@
 {
-  "compilerOptions": {
-    "module": "commonjs",
-    "sourceMap": true,
-    "target": "es2017",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "outDir": "tsc.out",
-    "declaration": true,
-    "skipLibCheck": true,
-    "allowJs": true
-  },
-  "include": ["implementation/*.ts", "implementation/*.js", "builders/*.js", "unit-tests/*.ts"],
-  "typedocOptions": {
-    "name": "Gink",
-    "entryPointStrategy": "expand",
-    "entryPoints": ["./implementation"],
-    "out": "docs",
-    "readme": "./markdown/index.md"
-}
+    "compilerOptions": {
+        "module": "commonjs",
+        "sourceMap": true,
+        "target": "es2017",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "outDir": "tsc.out",
+        "declaration": true,
+        "skipLibCheck": true,
+        "allowJs": true
+    },
+    "include": [
+        "implementation/*.ts",
+        "implementation/*.js",
+        "builders/*.js",
+        "unit-tests/*.ts"
+    ],
+    "typedocOptions": {
+        "name": "Gink",
+        "entryPointStrategy": "expand",
+        "entryPoints": ["./implementation"],
+        "out": "docs",
+        "readme": "./markdown/index.md"
+    }
 }

@@ -23,55 +23,71 @@ import { EdgeType } from "./EdgeType";
 export async function construct(
     database: Database,
     address: Muid,
-    containerBuilder?: ContainerBuilder): Promise<Container> {
-
+    containerBuilder?: ContainerBuilder
+): Promise<Container> {
     if (address.timestamp === -1) {
-        if (address.offset === Behavior.DIRECTORY) return new Directory(database, address);
-        if (address.offset === Behavior.SEQUENCE) return new Sequence(database, address);
+        if (address.offset === Behavior.DIRECTORY)
+            return new Directory(database, address);
+        if (address.offset === Behavior.SEQUENCE)
+            return new Sequence(database, address);
         if (address.offset === Behavior.BOX) return new Box(database, address);
-        if (address.offset === Behavior.PAIR_MAP) return new PairMap(database, address);
-        if (address.offset === Behavior.PAIR_SET) return new PairSet(database, address);
-        if (address.offset === Behavior.KEY_SET) return new KeySet(database, address);
-        if (address.offset === Behavior.GROUP) return new Group(database, address);
-        if (address.offset === Behavior.PROPERTY) return new Property(database, address);
-        if (address.offset === Behavior.VERTEX) return new Vertex(database, address);
+        if (address.offset === Behavior.PAIR_MAP)
+            return new PairMap(database, address);
+        if (address.offset === Behavior.PAIR_SET)
+            return new PairSet(database, address);
+        if (address.offset === Behavior.KEY_SET)
+            return new KeySet(database, address);
+        if (address.offset === Behavior.GROUP)
+            return new Group(database, address);
+        if (address.offset === Behavior.PROPERTY)
+            return new Property(database, address);
+        if (address.offset === Behavior.VERTEX)
+            return new Vertex(database, address);
     }
 
     if (containerBuilder === undefined) {
-        const containerBytes = ensure(await database.store.getContainerBytes(address));
-        containerBuilder = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
+        const containerBytes = ensure(
+            await database.store.getContainerBytes(address)
+        );
+        containerBuilder = <ContainerBuilder>(
+            ContainerBuilder.deserializeBinary(containerBytes)
+        );
     }
 
     if (containerBuilder.getBehavior() === Behavior.BOX)
-        return (new Box(database, address, containerBuilder));
+        return new Box(database, address, containerBuilder);
     if (containerBuilder.getBehavior() === Behavior.SEQUENCE)
-        return (new Sequence(database, address, containerBuilder));
+        return new Sequence(database, address, containerBuilder);
     if (containerBuilder.getBehavior() === Behavior.KEY_SET)
-        return (new KeySet(database, address, containerBuilder));
+        return new KeySet(database, address, containerBuilder);
     if (containerBuilder.getBehavior() === Behavior.DIRECTORY)
-        return (new Directory(database, address, containerBuilder));
+        return new Directory(database, address, containerBuilder);
     if (containerBuilder.getBehavior() === Behavior.PAIR_SET)
-        return (new PairSet(database, address, containerBuilder));
+        return new PairSet(database, address, containerBuilder);
     if (containerBuilder.getBehavior() === Behavior.PAIR_MAP)
-        return (new PairMap(database, address, containerBuilder));
+        return new PairMap(database, address, containerBuilder);
     if (containerBuilder.getBehavior() === Behavior.VERTEX)
-        return (new Vertex(database, address, containerBuilder));
+        return new Vertex(database, address, containerBuilder);
     if (containerBuilder.getBehavior() === Behavior.EDGE_TYPE)
-        return (new EdgeType(database, address, containerBuilder));
+        return new EdgeType(database, address, containerBuilder);
     if (containerBuilder.getBehavior() === Behavior.PROPERTY)
-        return (new Property(database, address, containerBuilder));
+        return new Property(database, address, containerBuilder);
     if (containerBuilder.getBehavior() === Behavior.GROUP)
-        return (new Group(database, address, containerBuilder));
+        return new Group(database, address, containerBuilder);
 
-    throw new Error(`container type not recognized/implemented: ${containerBuilder.getBehavior()}`);
+    throw new Error(
+        `container type not recognized/implemented: ${containerBuilder.getBehavior()}`
+    );
 }
 
-export async function interpret(entry: Entry, database: Database): Promise<Container | Value | undefined> {
+export async function interpret(
+    entry: Entry,
+    database: Database
+): Promise<Container | Value | undefined> {
     if (entry === undefined || entry.deletion) {
         return undefined;
     }
-    if (entry.value !== undefined)
-        return entry.value;
+    if (entry.value !== undefined) return entry.value;
     if (entry.pointeeList.length > 0) {
         const muid: Muid = rehydrate(entry.pointeeList[0]);
         return construct(database, muid);
@@ -80,13 +96,18 @@ export async function interpret(entry: Entry, database: Database): Promise<Conta
         // For a MuidTuple effective key
         return await construct(database, muidTupleToMuid(entry.storageKey));
     }
-    throw new Error(`don't know how to interpret entry: ${JSON.stringify(entry)}`);
-
+    throw new Error(
+        `don't know how to interpret entry: ${JSON.stringify(entry)}`
+    );
 }
 
 export async function toJson(
     value: Value | Container,
     indent: number | boolean = false,
-    asOf?: AsOf, seen?: Set<string>): Promise<string> {
-    return value instanceof Container ? (await value.toJson(indent, asOf, seen)) : valueToJson(value);
+    asOf?: AsOf,
+    seen?: Set<string>
+): Promise<string> {
+    return value instanceof Container
+        ? await value.toJson(indent, asOf, seen)
+        : valueToJson(value);
 }

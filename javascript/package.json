@@ -1,78 +1,78 @@
 {
-  "name": "@x5e/gink",
-  "version": "${VERSION}",
-  "description": "an eventually consistent database",
-  "main": "tsc.out/implementation/index.js",
-  "browser": {
-    "@x5e/gink": "content_root/generated/packed.js",
-    "fs": false,
-    "fs/promises": false,
-    "fs-ext": false
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/x5e/gink.git"
-  },
-  "keywords": [
-    "database",
-    "browser",
-    "crdt",
-    "crdts",
-    "document-store"
-  ],
-  "author": "Darin McGill",
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/x5e/gink/issues"
-  },
-  "files": [
-    "package.json",
-    "content_root/**",
-    "tsc.out/**",
-    "README.md"
-  ],
-  "bin": "./tsc.out/implementation/main.js",
-  "scripts": {
-    "serve": "./tsc.out/implementation/main.js -l",
-    "build": "tsc",
-    "test": "jest --testPathPattern=javascript/unit-tests",
-    "browser-unit": "karma start",
-    "browser-integration": "jest --detectOpenHandles browser.test.js dashboard.test.js",
-    "browser-performance": "node performance-tests/browser-performance-test.js"
-  },
-  "homepage": "https://github.com/x5e/gink#readme",
-  "dependencies": {
-    "@types/libsodium-wrappers": "^0.7.14",
-    "argparse": "^2.0.1",
-    "chrome-remote-interface": "^0.32.2",
-    "crypto-browserify": "^3.12.0",
-    "fake-indexeddb": "^4.0.1",
-    "find-process": "^1.4.7",
-    "fs-ext": "^2.0.0",
-    "google-protobuf": "^3.21.2",
-    "idb": "^7.1.1",
-    "jstreemap": "^1.28.2",
-    "libsodium-wrappers": "^0.7.14",
-    "stream-browserify": "^3.0.0",
-    "vm-browserify": "^1.1.2",
-    "websocket": "^1.0.34"
-  },
-  "devDependencies": {
-    "@types/google-protobuf": "^3.15.6",
-    "@types/jest": "^29.5.0",
-    "@types/websocket": "^1.0.10",
-    "expect": "^29.7.0",
-    "jest-puppeteer": "^9.0.1",
-    "karma": "^6.4.2",
-    "karma-chrome-launcher": "^3.2.0",
-    "karma-jasmine": "^5.1.0",
-    "karma-mocha-reporter": "^2.2.5",
-    "karma-webpack": "^5.0.0",
-    "node-loader": "^2.0.0",
-    "puppeteer": "^22.11.2",
-    "ts-jest": "^29.0.5",
-    "ts-loader": "^9.5.0",
-    "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4"
-  }
+    "name": "@x5e/gink",
+    "version": "${VERSION}",
+    "description": "an eventually consistent database",
+    "main": "tsc.out/implementation/index.js",
+    "browser": {
+        "@x5e/gink": "content_root/generated/packed.js",
+        "fs": false,
+        "fs/promises": false,
+        "fs-ext": false
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/x5e/gink.git"
+    },
+    "keywords": [
+        "database",
+        "browser",
+        "crdt",
+        "crdts",
+        "document-store"
+    ],
+    "author": "Darin McGill",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/x5e/gink/issues"
+    },
+    "files": [
+        "package.json",
+        "content_root/**",
+        "tsc.out/**",
+        "README.md"
+    ],
+    "bin": "./tsc.out/implementation/main.js",
+    "scripts": {
+        "serve": "./tsc.out/implementation/main.js -l",
+        "build": "tsc",
+        "test": "jest --testPathPattern=javascript/unit-tests",
+        "browser-unit": "karma start",
+        "browser-integration": "jest --detectOpenHandles browser.test.js dashboard.test.js",
+        "browser-performance": "node performance-tests/browser-performance-test.js"
+    },
+    "homepage": "https://github.com/x5e/gink#readme",
+    "dependencies": {
+        "@types/libsodium-wrappers": "^0.7.14",
+        "argparse": "^2.0.1",
+        "chrome-remote-interface": "^0.32.2",
+        "crypto-browserify": "^3.12.0",
+        "fake-indexeddb": "^4.0.1",
+        "find-process": "^1.4.7",
+        "fs-ext": "^2.0.0",
+        "google-protobuf": "^3.21.2",
+        "idb": "^7.1.1",
+        "jstreemap": "^1.28.2",
+        "libsodium-wrappers": "^0.7.14",
+        "stream-browserify": "^3.0.0",
+        "vm-browserify": "^1.1.2",
+        "websocket": "^1.0.34"
+    },
+    "devDependencies": {
+        "@types/google-protobuf": "^3.15.6",
+        "@types/jest": "^29.5.0",
+        "@types/websocket": "^1.0.10",
+        "expect": "^29.7.0",
+        "jest-puppeteer": "^9.0.1",
+        "karma": "^6.4.2",
+        "karma-chrome-launcher": "^3.2.0",
+        "karma-jasmine": "^5.1.0",
+        "karma-mocha-reporter": "^2.2.5",
+        "karma-webpack": "^5.0.0",
+        "node-loader": "^2.0.0",
+        "puppeteer": "^22.11.2",
+        "ts-jest": "^29.0.5",
+        "ts-loader": "^9.5.0",
+        "webpack": "^5.89.0",
+        "webpack-cli": "^5.1.4"
+    }
 }

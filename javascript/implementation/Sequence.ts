@@ -2,23 +2,43 @@ import { Database } from "./Database";
 import { Container } from "./Container";
 import { AsOf, Entry, Muid, Value } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, generateTimestamp, muidToBuilder, muidToString, muidTupleToMuid } from "./utils";
+import {
+    ensure,
+    generateTimestamp,
+    muidToBuilder,
+    muidToString,
+    muidTupleToMuid,
+} from "./utils";
 import { interpret, toJson } from "./factories";
-import { Behavior, ChangeBuilder, MovementBuilder, ContainerBuilder } from "./builders";
+import {
+    Behavior,
+    ChangeBuilder,
+    MovementBuilder,
+    ContainerBuilder,
+} from "./builders";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
  * Doesn't support unshift because order is defined by insertion order.
  */
 export class Sequence extends Container {
-
-    constructor(database: Database, address?: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(
+        database: Database,
+        address?: Muid,
+        containerBuilder?: ContainerBuilder
+    ) {
         super(database, address, Behavior.SEQUENCE);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
-            ensure(address.offset === Behavior.SEQUENCE, "magic tag not SEQUENCE");
+            ensure(
+                address.offset === Behavior.SEQUENCE,
+                "magic tag not SEQUENCE"
+            );
         } else {
-            ensure(containerBuilder.getBehavior() === Behavior.SEQUENCE, "container not sequence");
+            ensure(
+                containerBuilder.getBehavior() === Behavior.SEQUENCE,
+                "container not sequence"
+            );
         }
     }
 
@@ -28,7 +48,10 @@ export class Sequence extends Container {
      * @param change change set to apply the change to or comment to put in
      * @returns
      */
-    async push(value: Value | Container, change?: Bundler | string): Promise<Muid> {
+    async push(
+        value: Value | Container,
+        change?: Bundler | string
+    ): Promise<Muid> {
         return await this.addEntry(undefined, value, change);
     }
 
@@ -36,24 +59,48 @@ export class Sequence extends Container {
         muidOrPosition: Muid | number,
         dest: number,
         purge?: boolean,
-        bundlerOrComment?: Bundler | string) {
+        bundlerOrComment?: Bundler | string
+    ) {
         const store = this.database.store;
         // TODO: clarify what's going on here
-        const muid = (typeof (muidOrPosition) === "object") ? muidOrPosition :
-            muidTupleToMuid(Array.from(
-                (await store.getOrderedEntries(this.address, muidOrPosition)).values()).pop().entryId);
+        const muid =
+            typeof muidOrPosition === "object"
+                ? muidOrPosition
+                : muidTupleToMuid(
+                      Array.from(
+                          (
+                              await store.getOrderedEntries(
+                                  this.address,
+                                  muidOrPosition
+                              )
+                          ).values()
+                      ).pop().entryId
+                  );
         ensure(muid.timestamp && muid.medallion && muid.offset);
-        return this.movementHelper(muid, await this.findDest(dest), purge, bundlerOrComment);
+        return this.movementHelper(
+            muid,
+            await this.findDest(dest),
+            purge,
+            bundlerOrComment
+        );
     }
 
     private async findDest(dest: number): Promise<number> {
         if (dest === 0 || dest === -1) {
-            const currentFrontOrBack = <number>(await this.getEntryAt(dest)).storageKey;
-            return currentFrontOrBack - Math.sign(dest + .5) * Math.floor(1e3 * Math.random());
+            const currentFrontOrBack = <number>(
+                (await this.getEntryAt(dest)).storageKey
+            );
+            return (
+                currentFrontOrBack -
+                Math.sign(dest + 0.5) * Math.floor(1e3 * Math.random())
+            );
         }
         if (dest > +1e6) return dest;
         if (dest < -1e6) return generateTimestamp() + dest;
-        const entryMap = await this.database.store.getOrderedEntries(this.address, dest);
+        const entryMap = await this.database.store.getOrderedEntries(
+            this.address,
+            dest
+        );
         const entryArray = Array.from(entryMap.entries());
         const a = entryArray[entryArray.length - 2];
         const b = entryArray[entryArray.length - 1];
@@ -72,21 +119,33 @@ export class Sequence extends Container {
      * @param purge - If true, removes so data cannot be recovered with "asOf" query
      * @param bundlerOrComment
      */
-    async pop(what?: Muid | number, purge?: boolean, bundlerOrComment?: Bundler | string):
-        Promise<Container | Value | undefined> {
+    async pop(
+        what?: Muid | number,
+        purge?: boolean,
+        bundlerOrComment?: Bundler | string
+    ): Promise<Container | Value | undefined> {
         let returning: Container | Value;
         let muid: Muid;
-        if (what && typeof (what) === "object") {
+        if (what && typeof what === "object") {
             muid = what;
             const entry = await this.database.store.getEntryById(muid);
-            if (!entry)
-                return undefined;
-            ensure(entry.entryId[0] === muid.timestamp && entry.entryId[2] === muid.offset);
+            if (!entry) return undefined;
+            ensure(
+                entry.entryId[0] === muid.timestamp &&
+                    entry.entryId[2] === muid.offset
+            );
             returning = await interpret(entry, this.database);
         } else {
-            what = (typeof (what) === "number") ? what : -1;
+            what = typeof what === "number" ? what : -1;
             // Should probably change the implementation to not copy all intermediate entries into memory.
-            const entries = Array.from((await this.database.store.getOrderedEntries(this.address, what)).values());
+            const entries = Array.from(
+                (
+                    await this.database.store.getOrderedEntries(
+                        this.address,
+                        what
+                    )
+                ).values()
+            );
             if (entries.length === 0) return undefined;
             const entry = entries[entries.length - 1];
             returning = await interpret(entry, this.database);
@@ -96,7 +155,12 @@ export class Sequence extends Container {
         return returning;
     }
 
-    private async movementHelper(muid: Muid, dest?: number, purge?: boolean, bundlerOrComment?: string | Bundler) {
+    private async movementHelper(
+        muid: Muid,
+        dest?: number,
+        purge?: boolean,
+        bundlerOrComment?: string | Bundler
+    ) {
         let immediate = false;
         let bundler: Bundler;
         if (bundlerOrComment instanceof Bundler) {
@@ -107,11 +171,9 @@ export class Sequence extends Container {
         }
         const movementBuilder = new MovementBuilder();
         movementBuilder.setEntry(muidToBuilder(muid));
-        if (dest)
-            movementBuilder.setDest(dest);
+        if (dest) movementBuilder.setDest(dest);
         movementBuilder.setContainer(muidToBuilder(this.address));
-        if (purge)
-            movementBuilder.setPurge(true);
+        if (purge) movementBuilder.setPurge(true);
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setMovement(movementBuilder);
         bundler.addChange(changeBuilder);
@@ -123,7 +185,10 @@ export class Sequence extends Container {
     /**
      * Alias for this.pop(0, purge, bundlerOrComment)
      */
-    async shift(purge?: boolean, bundlerOrComment?: Bundler | string): Promise<Container | Value | undefined> {
+    async shift(
+        purge?: boolean,
+        bundlerOrComment?: Bundler | string
+    ): Promise<Container | Value | undefined> {
         return await this.pop(0, purge, bundlerOrComment);
     }
 
@@ -136,21 +201,28 @@ export class Sequence extends Container {
      * @param iterable An iterable of stuff to add to the sequence.
      * @param bundlerOrComment A bundler or comment for these changes
      */
-    async extend(iterable: Iterable<Value | Container>, bundlerOrComment?: Bundler | string): Promise<void> {
+    async extend(
+        iterable: Iterable<Value | Container>,
+        bundlerOrComment?: Bundler | string
+    ): Promise<void> {
         for (const value of iterable) {
             await this.push(value, bundlerOrComment);
         }
     }
 
-    private async getEntryAt(position: number, asOf?: AsOf): Promise<Entry | undefined> {
+    private async getEntryAt(
+        position: number,
+        asOf?: AsOf
+    ): Promise<Entry | undefined> {
         //TODO add a store method to only return the entry at a given location
-        const entries = await this.database.store.getOrderedEntries(this.address, position, asOf);
-        if (entries.size === 0)
-            return undefined;
-        if (position >= 0 && position >= entries.size)
-            return undefined;
-        if (position < 0 && Math.abs(position) > entries.size)
-            return undefined;
+        const entries = await this.database.store.getOrderedEntries(
+            this.address,
+            position,
+            asOf
+        );
+        if (entries.size === 0) return undefined;
+        if (position >= 0 && position >= entries.size) return undefined;
+        if (position < 0 && Math.abs(position) > entries.size) return undefined;
         let val: Entry;
         for (let found of entries.values()) {
             val = found;
@@ -164,8 +236,11 @@ export class Sequence extends Container {
      * @param asOf
      * @returns value at the position of the list, or undefined if list is too small
      */
-    async at(position: number, asOf?: AsOf): Promise<Container | Value | undefined> {
-        if (typeof (position) === "number") {
+    async at(
+        position: number,
+        asOf?: AsOf
+    ): Promise<Container | Value | undefined> {
+        if (typeof position === "number") {
             const entry = await this.getEntryAt(position, asOf);
             return await interpret(entry, this.database);
         }
@@ -179,17 +254,32 @@ export class Sequence extends Container {
      * @param asOf effective time to get the dump for: leave undefined to get data as of the present
      * @returns an array containing Values (e.g. numbers, strings) and Containers (e.g. other Lists, Boxes, Directories)
      */
-    async toArray(through = Infinity, asOf?: AsOf): Promise<(Container | Value)[]> {
+    async toArray(
+        through = Infinity,
+        asOf?: AsOf
+    ): Promise<(Container | Value)[]> {
         const thisList = this;
-        const entries = await thisList.database.store.getOrderedEntries(thisList.address, through, asOf);
+        const entries = await thisList.database.store.getOrderedEntries(
+            thisList.address,
+            through,
+            asOf
+        );
         const applied = Array.from(entries.values());
-        return await Promise.all(applied.map(async function (entry: Entry): Promise<Container | Value> {
-            return await interpret(entry, thisList.database);
-        }));
+        return await Promise.all(
+            applied.map(async function (
+                entry: Entry
+            ): Promise<Container | Value> {
+                return await interpret(entry, thisList.database);
+            })
+        );
     }
 
     async size(asOf?: AsOf): Promise<number> {
-        const entries = await this.database.store.getOrderedEntries(this.address, Infinity, asOf);
+        const entries = await this.database.store.getOrderedEntries(
+            this.address,
+            Infinity,
+            asOf
+        );
         return entries.size;
     }
 
@@ -199,13 +289,20 @@ export class Sequence extends Container {
      * @param asOf effective time to get the contents for
      * @returns an async iterator across everything in the list, with values returned being pairs of Muid, (Value|Container),
      */
-    entries(through = Infinity, asOf?: AsOf): AsyncGenerator<[Muid, Value | Container], void, unknown> {
+    entries(
+        through = Infinity,
+        asOf?: AsOf
+    ): AsyncGenerator<[Muid, Value | Container], void, unknown> {
         const thisList = this;
         return (async function* () {
             // Note: I'm loading all entries memory despite using an async generator due to shitty IndexedDb
             // behavior of closing transactions when you await on something else.  Hopefully they'll fix that in
             // the future and I can improve this.  Alternative, it might make sense to hydrate everything in a single pass.
-            const entries = await thisList.database.store.getOrderedEntries(thisList.address, through, asOf);
+            const entries = await thisList.database.store.getOrderedEntries(
+                thisList.address,
+                through,
+                asOf
+            );
             for (const entry of entries) {
                 const hydrated = await interpret(entry[1], thisList.database);
                 yield [muidTupleToMuid(entry[1].entryId), hydrated];
@@ -221,7 +318,11 @@ export class Sequence extends Container {
      * @param seen (internal use only! This prevents cycles from breaking things)
      * @returns a JSON string
      */
-    async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+    async toJson(
+        indent: number | boolean = false,
+        asOf?: AsOf,
+        seen?: Set<string>
+    ): Promise<string> {
         if (seen === undefined) seen = new Set();
         ensure(indent === false, "indent not implemented");
         const mySig = muidToString(this.address);
@@ -236,10 +337,14 @@ export class Sequence extends Container {
             } else {
                 returning += ",";
             }
-            returning += await toJson(value, indent === false ? false : +indent + 1, asOf, seen);
+            returning += await toJson(
+                value,
+                indent === false ? false : +indent + 1,
+                asOf,
+                seen
+            );
         }
         returning += "]";
         return returning;
     }
-
 }

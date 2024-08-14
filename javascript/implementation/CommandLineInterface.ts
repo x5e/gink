@@ -4,10 +4,15 @@ import { Store } from "./Store";
 import { Database } from "./Database";
 import { AuthFunction, BundleView } from "./typedefs";
 import { SimpleServer } from "./SimpleServer";
-import { ensure, generateTimestamp, getIdentity, logToStdErr, noOp } from "./utils";
+import {
+    ensure,
+    generateTimestamp,
+    getIdentity,
+    logToStdErr,
+    noOp,
+} from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { start, REPLServer } from "node:repl";
-
 
 /**
     Intended to manage server side running of Gink.
@@ -26,15 +31,15 @@ export class CommandLineInterface {
     retryOnDisconnect: boolean;
 
     constructor(args: {
-        connect_to?: string[],
-        listen_on?: string,
-        data_root?: string,
-        data_file?: string,
-        identity?: string,
-        reconnect?: boolean,
-        static_path?: string,
-        auth_token?: string,
-        ssl_cert?: string,
+        connect_to?: string[];
+        listen_on?: string;
+        data_root?: string;
+        data_file?: string;
+        identity?: string;
+        reconnect?: boolean;
+        static_path?: string;
+        auth_token?: string;
+        ssl_cert?: string;
         ssl_key?: string;
     }) {
         logToStdErr("starting...");
@@ -65,7 +70,10 @@ export class CommandLineInterface {
 
         if (args.data_root) {
             logToStdErr(`using data root ${args.data_root}`);
-            ensure(args.listen_on, "must provide port for routing server to listen on hint: -l [port]");
+            ensure(
+                args.listen_on,
+                "must provide port for routing server to listen on hint: -l [port]"
+            );
         } else if (args.data_file) {
             logToStdErr(`using data file=${args.data_file}`);
             this.store = new LogBackedStore(args.data_file);
@@ -81,16 +89,19 @@ export class CommandLineInterface {
                 sslCertFilePath: args.ssl_cert,
                 staticContentRoot: args.static_path,
                 logger: logger,
-                authFunc: authFunc
+                authFunc: authFunc,
             };
             if (args.data_root) {
                 this.routingServer = new RoutingServer({
                     identity: identity,
                     dataFilesRoot: args.data_root,
-                    ...common
+                    ...common,
                 });
             } else {
-                this.instance = new SimpleServer(this.store, { identity: identity, ...common });
+                this.instance = new SimpleServer(this.store, {
+                    identity: identity,
+                    ...common,
+                });
             }
         } else {
             // port not set so don't listen for incoming connections
@@ -103,16 +114,24 @@ export class CommandLineInterface {
             await this.instance.ready;
             globalThis.database = this.instance;
             globalThis.root = this.instance.getGlobalDirectory();
-            this.instance.addListener(
-                async (bundle: BundleView) => logToStdErr(
-                    `received bundle: ${JSON.stringify(bundle.info, ["medallion", "timestamp", "comment"])}`));
+            this.instance.addListener(async (bundle: BundleView) =>
+                logToStdErr(
+                    `received bundle: ${JSON.stringify(bundle.info, ["medallion", "timestamp", "comment"])}`
+                )
+            );
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
                 try {
-                    await this.instance.connectTo(target, { onClose: logToStdErr, retryOnDisconnect: this.retryOnDisconnect, authToken: this.authToken });
+                    await this.instance.connectTo(target, {
+                        onClose: logToStdErr,
+                        retryOnDisconnect: this.retryOnDisconnect,
+                        authToken: this.authToken,
+                    });
                     logToStdErr(`connected!`);
                 } catch (e) {
-                    logToStdErr(`Failed connection to ${target}. Bad Auth token?\n` + e);
+                    logToStdErr(
+                        `Failed connection to ${target}. Bad Auth token?\n` + e
+                    );
                 }
             }
         } else {

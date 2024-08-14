@@ -1,5 +1,19 @@
-import { Muid, BundleInfo, Medallion, Timestamp, BundleView, BundleBytes, KeyPair, Bytes } from "./typedefs";
-import { BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder, } from "./builders";
+import {
+    Muid,
+    BundleInfo,
+    Medallion,
+    Timestamp,
+    BundleView,
+    BundleBytes,
+    KeyPair,
+    Bytes,
+} from "./typedefs";
+import {
+    BundleBuilder,
+    ChangeBuilder,
+    EntryBuilder,
+    ContainerBuilder,
+} from "./builders";
 import { digest, ensure, signBundle } from "./utils";
 
 export class Bundler implements BundleView {
@@ -9,8 +23,10 @@ export class Bundler implements BundleView {
     private bundleBuilder = new BundleBuilder();
     private countItems = 0;
 
-    constructor(private pendingComment?: string, readonly preAssignedMedallion?: Medallion) {
-    }
+    constructor(
+        private pendingComment?: string,
+        readonly preAssignedMedallion?: Medallion
+    ) {}
 
     private requireNotSealed() {
         if (this.bundleInfo)
@@ -26,8 +42,7 @@ export class Bundler implements BundleView {
     }
 
     get builder(): BundleBuilder {
-        if (!this.bundleInfo)
-            throw new Error("Bundle not yet sealed.");
+        if (!this.bundleInfo) throw new Error("Bundle not yet sealed.");
         return this.bundleBuilder;
     }
 
@@ -49,11 +64,13 @@ export class Bundler implements BundleView {
     }
 
     addEntry(entryBuilder: EntryBuilder): Muid {
-        return this.addChange((new ChangeBuilder()).setEntry(entryBuilder));
+        return this.addChange(new ChangeBuilder().setEntry(entryBuilder));
     }
 
     addContainer(containerBuilder: ContainerBuilder): Muid {
-        return this.addChange((new ChangeBuilder()).setContainer(containerBuilder));
+        return this.addChange(
+            new ChangeBuilder().setContainer(containerBuilder)
+        );
     }
 
     /**
@@ -70,13 +87,19 @@ export class Bundler implements BundleView {
         // but I need some non-trivial behavior: the timestamp and possibly medallion
         // are undefined until the associated bundle is finalized, then all the
         // components of the address become well-defined.
-        return new class {
-            constructor(private bundler: Bundler, readonly offset: number) { }
-            get medallion() { return this.bundler.medallion; }
-            get timestamp() { return this.bundler.timestamp; }
-        }(this, offset);
+        return new (class {
+            constructor(
+                private bundler: Bundler,
+                readonly offset: number
+            ) {}
+            get medallion() {
+                return this.bundler.medallion;
+            }
+            get timestamp() {
+                return this.bundler.timestamp;
+            }
+        })(this, offset);
     }
-
 
     /**
      * Intended to be called by a Database to finalize a bundle.
@@ -85,8 +108,13 @@ export class Bundler implements BundleView {
      */
     seal(bundleInfo: BundleInfo, keyPair: KeyPair, priorHash?: Bytes): void {
         this.requireNotSealed();
-        if (this.preAssignedMedallion && this.preAssignedMedallion !== bundleInfo.medallion) {
-            throw new Error("specified bundleInfo doesn't match pre-assigned medallion");
+        if (
+            this.preAssignedMedallion &&
+            this.preAssignedMedallion !== bundleInfo.medallion
+        ) {
+            throw new Error(
+                "specified bundleInfo doesn't match pre-assigned medallion"
+            );
         }
         this.bundleInfo = { ...bundleInfo };
         this.bundleInfo.comment = this.pendingComment;
@@ -103,7 +131,10 @@ export class Bundler implements BundleView {
             this.bundleBuilder.setPriorHash(priorHash);
         }
 
-        this.bundleBytes = signBundle(this.bundleBuilder.serializeBinary(), keyPair.secretKey,);
+        this.bundleBytes = signBundle(
+            this.bundleBuilder.serializeBinary(),
+            keyPair.secretKey
+        );
         this.bundleInfo.hashCode = digest(this.bundleBytes);
     }
 }

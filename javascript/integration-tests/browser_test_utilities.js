@@ -12,31 +12,24 @@ function getLaunchOptions(headless = true) {
         launchOptions = {
             executablePath: process.env.CHROME_BIN,
             headless: headless,
-            args: [
-                "--no-sandbox",
-                "--disable-gpu",
-            ]
+            args: ["--no-sandbox", "--disable-gpu"],
         };
-    }
-    else {
+    } else {
         // if path to chrome is not specified, try to find it.
         launchOptions = {
-            product: 'chrome',
+            product: "chrome",
             headless: headless,
-            args: [
-                "--no-sandbox",
-                "--disable-gpu",
-            ]
+            args: ["--no-sandbox", "--disable-gpu"],
         };
     }
     return launchOptions;
-};
+}
 
 async function sleep(ms) {
-    return new Promise(r => setTimeout(r, ms));
-};
+    return new Promise((r) => setTimeout(r, ms));
+}
 
 module.exports = {
     getLaunchOptions: getLaunchOptions,
-    sleep: sleep
+    sleep: sleep,
 };

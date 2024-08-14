@@ -1,12 +1,22 @@
-import { Database, IndexedDbStore, Bundler, MemoryStore } from "../implementation";
+import {
+    Database,
+    IndexedDbStore,
+    Bundler,
+    MemoryStore,
+} from "../implementation";
 import { SimpleServer } from "../implementation/SimpleServer";
 import { ensure } from "../implementation/utils";
 
-it('test bundle', async () => {
-    for (const store of [new IndexedDbStore('Database.bundle', true), new MemoryStore(true)]) {
+it("test bundle", async () => {
+    for (const store of [
+        new IndexedDbStore("Database.bundle", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
-        const bundleInfo = await instance.addBundler(new Bundler("hello world"));
+        const bundleInfo = await instance.addBundler(
+            new Bundler("hello world")
+        );
         ensure(bundleInfo.comment === "hello world");
         const chainTracker = await store.getChainTracker();
         const allChains = chainTracker.getChains();
@@ -16,9 +26,9 @@ it('test bundle', async () => {
     }
 });
 
-it('test listeners', async () => {
+it("test listeners", async () => {
     for (const store of [
-        new IndexedDbStore('Database.listeners.test', true),
+        new IndexedDbStore("Database.listeners.test", true),
         new MemoryStore(true),
     ]) {
         await store.ready;
@@ -54,9 +64,9 @@ it('test listeners', async () => {
     }
 });
 
-it('test container naming', async function () {
+it("test container naming", async function () {
     for (const store of [
-        new IndexedDbStore('Database.naming.test', true),
+        new IndexedDbStore("Database.naming.test", true),
         new MemoryStore(true),
     ]) {
         await store.ready;
@@ -73,8 +83,8 @@ it('test container naming', async function () {
         await seq2.setName("seq");
         await seq3.setName("seq");
 
-        ensure(await root.getName() === "root");
-        ensure(await seq1.getName() === "seq");
+        ensure((await root.getName()) === "root");
+        ensure((await seq1.getName()) === "seq");
 
         const rootContainers = await db.getContainersWithName("root");
         ensure(rootContainers.length === 1);

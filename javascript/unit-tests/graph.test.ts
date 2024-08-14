@@ -1,10 +1,15 @@
-
-import { Database, IndexedDbStore, Vertex, EdgeType, MemoryStore } from "../implementation";
+import {
+    Database,
+    IndexedDbStore,
+    Vertex,
+    EdgeType,
+    MemoryStore,
+} from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 
-it('isAlive and remove', async function () {
+it("isAlive and remove", async function () {
     for (const store of [
-        new IndexedDbStore('graph.test1', true),
+        new IndexedDbStore("graph.test1", true),
         new MemoryStore(true),
     ]) {
         const instance = new Database(store);
@@ -14,33 +19,36 @@ it('isAlive and remove', async function () {
         ensure(await vertex.isAlive());
         await vertex.remove();
         const deadTime = generateTimestamp();
-        ensure(!await vertex.isAlive());
+        ensure(!(await vertex.isAlive()));
         ensure(await vertex.isAlive(aliveTime));
         await vertex.revive();
         ensure(await vertex.isAlive());
-        ensure(!await vertex.isAlive(deadTime));
+        ensure(!(await vertex.isAlive(deadTime)));
     }
 });
 
-it('edge_type.createEdge', async function () {
-    for (const store of [new IndexedDbStore('edge_type.createEdge', true), new MemoryStore(true)]) {
+it("edge_type.createEdge", async function () {
+    for (const store of [
+        new IndexedDbStore("edge_type.createEdge", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const vertex1 = await instance.createVertex();
         const vertex2 = await instance.createVertex();
         const verb1 = await instance.createEdgeType();
         const edge1 = await verb1.createEdge(vertex1, vertex2);
-        ensure((edge1.getSourceVertex()).equals(vertex1));
-        ensure((edge1.getTargetVertex()).equals(vertex2));
-        ensure(!(edge1.getSourceVertex()).equals(vertex2));
-        ensure((edge1.getEdgeType()).equals(verb1));
+        ensure(edge1.getSourceVertex().equals(vertex1));
+        ensure(edge1.getTargetVertex().equals(vertex2));
+        ensure(!edge1.getSourceVertex().equals(vertex2));
+        ensure(edge1.getEdgeType().equals(verb1));
     }
 });
 
-it('from_to', async function () {
+it("from_to", async function () {
     for (const store of [
         new MemoryStore(true),
-        new IndexedDbStore('from_to', true),
+        new IndexedDbStore("from_to", true),
     ]) {
         const instance = new Database(store);
         await instance.ready;
@@ -81,9 +89,9 @@ it('from_to', async function () {
     }
 });
 
-it('edge_reorder', async function () {
+it("edge_reorder", async function () {
     for (const store of [
-        new IndexedDbStore('edge_reorder', true),
+        new IndexedDbStore("edge_reorder", true),
         new MemoryStore(true),
     ]) {
         const instance = new Database(store);
@@ -101,18 +109,29 @@ it('edge_reorder', async function () {
         const entries = await store.getAllEntries();
         ensure(entries.length === 2);
         const edges1 = await a.getEdgesFrom();
-        ensure(edges1.length === 2 && edges1[0].equals(x) && edges1[1].equals(y), edges1.toString());
+        ensure(
+            edges1.length === 2 && edges1[0].equals(x) && edges1[1].equals(y),
+            edges1.toString()
+        );
 
         await y.remove(beforeX);
 
         const edges2 = await a.getEdgesFrom();
-        ensure(edges2.length === 2 && edges2[0].equals(y) && edges2[1].equals(x), edges2.toString());
+        ensure(
+            edges2.length === 2 && edges2[0].equals(y) && edges2[1].equals(x),
+            edges2.toString()
+        );
 
         const edges3 = await b.getEdgesTo(afterX);
-        ensure(edges3.length === 2 && edges3[0].equals(x) && edges3[1].equals(y), edges3.toString());
+        ensure(
+            edges3.length === 2 && edges3[0].equals(x) && edges3[1].equals(y),
+            edges3.toString()
+        );
 
         const edges4 = await b.getEdgesTo();
-        ensure(edges4.length === 2 && edges4[0].equals(y) && edges4[1].equals(x), edges4.toString());
-
+        ensure(
+            edges4.length === 2 && edges4[0].equals(y) && edges4[1].equals(x),
+            edges4.toString()
+        );
     }
 });
