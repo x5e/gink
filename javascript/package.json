@@ -37,7 +37,7 @@
     "build": "tsc",
     "test": "jest --testPathPattern=javascript/unit-tests",
     "test-integration": "./integration-tests/run_integration_tests.sh",
-    "browser-unit": "if [[ -z ${CHROME_BIN} ]]; then export CHROME_BIN=/usr/bin/chromium; fi && karma start",
+    "browser-unit": "karma start",
     "browser-integration": "jest --detectOpenHandles browser.test.js dashboard.test.js",
     "browser-performance": "node performance-tests/browser-performance-test.js"
   },
