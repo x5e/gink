@@ -13,7 +13,7 @@ This builds everything and runs tests and linters. This is what is run on push t
 
 ## Build without Docker
 
-This project uses a Makefile to handle most of the building processes. Before we jump in, ensure you have make, protobuf-compiler, and curl installed. If not, run the following commands: \
+This project uses a Makefile to handle most of the building processes. Before we jump in, ensure you have make, protobuf-compiler, and curl installed. If not, run the following commands:
 
 ### Prerequisites
 
@@ -30,7 +30,7 @@ apt-get install npm python3-pip python3-venv -y
 ### Install dependencies
 
 ```sh
-make install-debian-packages && /
+make install-debian-packages && \
 make javascript/node_modules
 ```
 
