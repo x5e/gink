@@ -1,0 +1,12 @@
+wsproto
+sortedcontainers
+lmdb
+protobuf
+psutil
+authlib
+typeguard
+pynacl
+nose2
+flask
+requests
+mypy

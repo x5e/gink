@@ -25,3 +25,4 @@ venv
 data.json
 *.db
 *.db-lock
+.venv

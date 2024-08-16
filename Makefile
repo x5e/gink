@@ -9,6 +9,8 @@ all: python/gink/builders javascript/proto javascript/tsc.out javascript/content
 clean:
 	rm -rf javascript/proto javascript/content_root/generated javascript/tsc.out python/gink/builders
 
+rebuild: clean all
+
 running-as-root:
 	bash -c 'test `id -u` -eq 0'
 
@@ -21,7 +23,8 @@ test-javascript:
 test: test-python test-javascript
 
 install-debian-packages: running-as-root
-	apt-get update && apt-get install -y `cat packages.txt | tr '\n' ' '`
+	apt-get update && \
+	apt-get install -y `cat packages.txt | tr '\n' ' '`
 
 install-protoc-gen-js: running-as-root
 	npm install -g protoc-gen-js # https://stackoverflow.com/questions/72572040
@@ -34,6 +37,10 @@ python/gink/builders: $(PROTOS)
 	sed -i -- 's/^from proto import /from . import /' python/gink/proto/* && \
 	touch python/gink/proto/__init__.py && \
 	mv python/gink/proto python/gink/builders
+
+install-python-packages:
+	cd python && \
+	pip install -r requirements.txt
 
 javascript: javascript/proto javascript/tsc.out javascript/content_root/generated
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #set -o errexit
+export PYTHONPATH=../../python
 export CURRENT_SAFE_PORT=8080
 cd "$(dirname "$0")"
 
