@@ -26,7 +26,7 @@ from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, de
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
                      LocationKey, PROPERTY, BOX, GROUP, decode_value, EDGE_TYPE, PAIR_MAP, PAIR_SET, KEY_SET,
-                     normalize_entry_builder, VERTEX, new_entries_replace)
+                     normalize_entry_builder, VERTEX, new_entries_replace, RemovalKey)
 
 
 class LmdbStore(AbstractStore):
@@ -115,10 +115,32 @@ class LmdbStore(AbstractStore):
                 if not retentions_set:
                     txn.put(b"bundles", encode_muts(int(retain_bundles)), db=self._retentions)
                     txn.put(b"entries", encode_muts(int(retain_entries)), db=self._retentions)
-            # TODO: add methods to drop out-of-date entries and/or turn off retention
             # TODO: add purge method to remove particular data even when retention is on
             # TODO: add expiries table to keep track of when things need to be removed
         self._seen_through: MuTimestamp = 0
+
+    def drop_history(self, as_of: Optional[MuTimestamp] = -1):
+        asof_bytes = bytes(Muid(as_of, -1, -1))
+        with self._handle.begin(write=True) as txn:
+            removal_cursor = txn.cursor(self._removals)
+            placed = removal_cursor.last()
+            while placed:
+                key, val = removal_cursor.item()
+                if not len(key):
+                    break
+                removal_key = RemovalKey.from_bytes(key)
+                self._remove_entry(removal_key.removing, txn)
+                removal_cursor.delete()
+                # removal_cursor.prev()
+
+    def start_history(self):
+        with self._handle.begin(write=True) as txn:
+            txn.put(b"entries", encode_muts(1), db=self._retentions)
+
+    def stop_history(self):
+        with self._handle.begin(write=True) as txn:
+            txn.put(b"entries", encode_muts(0), db=self._retentions)
+        self.drop_history()
 
     def save_signing_key(self, signing_key: SigningKey):
         with self._handle.begin(write=True) as trxn:
@@ -973,8 +995,8 @@ class LmdbStore(AbstractStore):
         except BadValsizeError:
             raise BadValsizeError("Max key size for LMDB is 511 bytes.")
         entries_loc_key = bytes(LocationKey(entry_muid, entry_muid))
-        if builder.behavior in (EDGE_TYPE, SEQUENCE):
-            txn.put(entries_loc_key, serialized_placement_key, db=self._locations)
+        # if builder.behavior in (EDGE_TYPE, SEQUENCE):
+        txn.put(entries_loc_key, serialized_placement_key, db=self._locations)
         if builder.HasField("describing"):
             describing_muid = Muid.create(entry_muid, builder.describing)
             descriptor_key = bytes(describing_muid) + bytes(entry_muid)

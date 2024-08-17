@@ -36,6 +36,18 @@ class AbstractStore(BundleStore, Generic[Lock]):
         self.close()
 
     @abstractmethod
+    def drop_history(self, as_of: Optional[MuTimestamp] = None):
+        """ Drops all entries from the store before the given time. """
+
+    @abstractmethod
+    def start_history(self):
+        """ Starts retaining entries after deletion, unless marked for purge. """
+
+    @abstractmethod
+    def stop_history(self):
+        """ Stops retaining entry history and drops all previously retained entries. """
+
+    @abstractmethod
     def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
         """ Gets the container definition associated with a particular address. """
 

@@ -62,6 +62,15 @@ class MemoryStore(AbstractStore):
         self._verify_keys = dict()
         self._logger = getLogger(self.__class__.__name__)
 
+    def drop_history(self, as_of: Optional[MuTimestamp] = None):
+        raise NotImplementedError("MemoryStore.drop_history is not implemented")
+
+    def start_history(self):
+        raise NotImplementedError("MemoryStore.start_history is not implemented")
+
+    def stop_history(self):
+        raise NotImplementedError("MemoryStore.stop_history is not implemented")
+
     def save_signing_key(self, signing_key: SigningKey):
         self._signing_keys[signing_key.verify_key] = signing_key
 
