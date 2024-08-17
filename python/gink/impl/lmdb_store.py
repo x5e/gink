@@ -131,7 +131,7 @@ class LmdbStore(AbstractStore):
                 removal_key = RemovalKey.from_bytes(key)
                 self._remove_entry(removal_key.removing, txn)
                 removal_cursor.delete()
-                # removal_cursor.prev()
+                removal_cursor.prev()
 
     def start_history(self):
         with self._handle.begin(write=True) as txn:

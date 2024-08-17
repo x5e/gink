@@ -16,6 +16,10 @@ from ..impl.bundle_wrapper import BundleWrapper
 from ..impl.muid import Muid
 from ..impl.tuples import Chain
 from ..impl.utilities import digest
+from ..impl.database import Database
+from ..impl.directory import Directory
+from ..impl.sequence import Sequence
+from ..impl.utilities import generate_timestamp
 
 StoreMaker = Callable[[], AbstractStore]
 
@@ -339,6 +343,41 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         assert len(found) == 2
         assert found[0].entry_muid == Muid(123, 789, 3)
         assert found[1].entry_muid == Muid(123, 789, 4)
+
+def generic_test_drop_history(store_maker: StoreMaker):
+    with closing(store_maker()) as store:
+        database = Database(store=store)
+        gdi = Directory.get_global_instance(database=database)
+        seq = Sequence(database=database)
+        seq.append("foo")
+        gdi.set("foo", "bar")
+        after_setting = generate_timestamp()
+        assert seq.size() == 1
+        assert gdi["foo"] == "bar"
+        seq.remove("foo")
+        gdi.delete("foo")
+        assert seq.size() == 0
+        assert "foo" not in gdi
+        assert seq.size(as_of=after_setting) == 1
+        assert gdi.get("foo", as_of=after_setting) == "bar"
+
+        store.stop_history()
+
+        assert seq.size(as_of=after_setting) == 0
+        assert gdi.get("foo", as_of=after_setting) == None
+
+        store.start_history()
+
+        seq.append("foo")
+        gdi.set("foo", "bar")
+        after_setting_2 = generate_timestamp()
+        assert seq.size() == 1
+        assert gdi["foo"] == "bar"
+        seq.remove("foo")
+        gdi.delete("foo")
+
+        assert seq.size(as_of=after_setting_2) == 1
+        assert gdi.get("foo", as_of=after_setting_2) == "bar"
 
 
 
