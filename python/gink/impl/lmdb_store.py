@@ -1005,7 +1005,6 @@ class LmdbStore(AbstractStore):
         except BadValsizeError:
             raise BadValsizeError("Max key size for LMDB is 511 bytes.")
         entries_loc_key = bytes(LocationKey(entry_muid, entry_muid))
-        # if builder.behavior in (EDGE_TYPE, SEQUENCE):
         txn.put(entries_loc_key, serialized_placement_key, db=self._locations)
         if builder.HasField("describing"):
             describing_muid = Muid.create(entry_muid, builder.describing)
