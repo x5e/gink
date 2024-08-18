@@ -139,7 +139,7 @@ class LmdbStore(AbstractStore):
                 removal = RemovalKey.from_bytes(val)
                 self._remove_entry(removal.removing, txn)
                 txn.delete(val, db=self._removals)
-                removal_cursor.delete()
+                # removal_cursor.delete()
                 removal_cursor.next()
 
     def start_history(self):
@@ -961,6 +961,7 @@ class LmdbStore(AbstractStore):
             removal_key = RemovalKey(container, existing_placement.get_positioner(), movement_muid)
             removal_val = serialize(builder)
             txn.put(bytes(removal_key), removal_val, db=self._removals)
+            print("putting seq movement", entry_muid, removal_key)
             txn.put(bytes(movement_muid), bytes(removal_key), db=self._removals_by_movement)
         new_location_key = bytes(LocationKey(entry_muid, movement_muid))
         if dest:
@@ -994,10 +995,10 @@ class LmdbStore(AbstractStore):
             found_entry = self.get_entry_by_key(container_muid, placement_key.middle)
             if found_entry:
                 if retaining:
-                    removal_key = bytes(container_muid) + bytes(found_entry.address) + bytes(entry_muid)
-                    txn.put(removal_key, b"", db=self._removals)
-                    print("putting ", entry_muid, removal_key)
-                    txn.put(bytes(Muid(new_info.timestamp, new_info.medallion, 1)), removal_key, db=self._removals_by_movement)
+                    removal_key = RemovalKey(container_muid, found_entry.address, entry_muid)
+                    txn.put(bytes(removal_key), b"", db=self._removals)
+                    print("putting dir entry", entry_muid, removal_key)
+                    txn.put(bytes(Muid(new_info.timestamp, new_info.medallion, 1)), bytes(removal_key), db=self._removals_by_movement)
                 else:
                     self._remove_entry(found_entry.address, txn)
         entry_bytes = bytes(entry_muid)
