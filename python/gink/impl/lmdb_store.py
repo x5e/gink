@@ -21,7 +21,7 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, BundleWrapper
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
-from .utilities import generate_timestamp, create_claim, is_needed
+from .utilities import generate_timestamp, create_claim, is_needed, resolve_timestamp
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
@@ -64,25 +64,26 @@ class LmdbStore(AbstractStore):
         self._file_path = file_path
         self._seen_containers: Set[Muid] = set()
         self._handle = Environment(file_path, max_dbs=100, map_size=map_size, subdir=False)
-        self._bundles = self._handle.open_db(b"bundles")
-        self._bundle_infos = self._handle.open_db(b"bundle_infos")
-        self._chains = self._handle.open_db(b"chains")
-        self._claims = self._handle.open_db(b"claims")
-        self._entries = self._handle.open_db(b"entries")
-        self._removals = self._handle.open_db(b"removals")
-        self._containers = self._handle.open_db(b"containers")
-        self._locations = self._handle.open_db(b"locations")
-        self._retentions = self._handle.open_db(b"retentions")
-        self._clearances = self._handle.open_db(b"clearances")
+        self._bundles = self._handle.open_db(b"bundles")                    # bundle_receive_time -> bundle_wrapper
+        self._bundle_infos = self._handle.open_db(b"bundle_infos")          # bundle_info -> bundle_receive_time
+        self._chains = self._handle.open_db(b"chains")                      # chain -> bundle_info
+        self._claims = self._handle.open_db(b"claims")                      # claim_time -> claim_builder
+        self._entries = self._handle.open_db(b"entries")                    # entry_muid -> entry_builder
+        self._removals = self._handle.open_db(b"removals")                  # removal_key -> movement_builder | b''
+        self._removals_by_movement = self._handle.open_db(b"_removals_by_movement")
+        self._containers = self._handle.open_db(b"containers")              # container_muid -> container_builder
+        self._locations = self._handle.open_db(b"locations")                # location_key -> placement
+        self._retentions = self._handle.open_db(b"retentions")              # b"bundles" | b"entries" -> b"1" | b"0"
+        self._clearances = self._handle.open_db(b"clearances")              # container_muid + clearance_muid -> bytes(clearance_builder
         self._properties = self._handle.open_db(b"properties")
-        self._placements = self._handle.open_db(b"placements")
-        self._by_describing = self._handle.open_db(b"by_describing")
-        self._by_pointee = self._handle.open_db(b"by_pointee")
-        self._by_name = self._handle.open_db(b"by_name")
-        self._by_side = self._handle.open_db(b"by_side")
-        self._identities = self._handle.open_db(b"identities")
-        self._signing_keys = self._handle.open_db(b"signing_keys")
-        self._verify_keys = self._handle.open_db(b"verify_keys")
+        self._placements = self._handle.open_db(b"placements")              # placement -> entry_muid
+        self._by_describing = self._handle.open_db(b"by_describing")        # describing_muid + entry_muid -> container_muid
+        self._by_pointee = self._handle.open_db(b"by_pointee")              # pointee_muid + entry_muid -> container_muid
+        self._by_name = self._handle.open_db(b"by_name")                    # pointee_muid + entry_muid -> container_muid
+        self._by_side = self._handle.open_db(b"by_side")                    # (left | rite)_muid + entry_muid -> entry_muid
+        self._identities = self._handle.open_db(b"identities")              # chain -> str_identity
+        self._signing_keys = self._handle.open_db(b"signing_keys")          # signing_key.verify_key -> signing_key
+        self._verify_keys = self._handle.open_db(b"verify_keys")            # chain -> verify_key
         if reset:
             with self._handle.begin(write=True) as txn:
                 # Setting delete=False signals to lmdb to truncate the tables rather than drop them
@@ -119,19 +120,27 @@ class LmdbStore(AbstractStore):
             # TODO: add expiries table to keep track of when things need to be removed
         self._seen_through: MuTimestamp = 0
 
-    def drop_history(self, as_of: Optional[MuTimestamp] = -1):
-        asof_bytes = bytes(Muid(as_of, -1, -1))
+    def drop_history(self, as_of: Optional[MuTimestamp] = None):
+        if as_of is None:
+            as_of = generate_timestamp()
+        else:
+            as_of = resolve_timestamp(as_of)
         with self._handle.begin(write=True) as txn:
-            removal_cursor = txn.cursor(self._removals)
-            placed = removal_cursor.last()
+            removal_cursor = txn.cursor(self._removals_by_movement)
+            placed = removal_cursor.first()
             while placed:
                 key, val = removal_cursor.item()
+                print("key ", key)
                 if not len(key):
                     break
-                removal_key = RemovalKey.from_bytes(key)
-                self._remove_entry(removal_key.removing, txn)
+                muid_key = Muid.from_bytes(key)
+                if muid_key.timestamp > as_of:
+                    break
+                removal = RemovalKey.from_bytes(val)
+                self._remove_entry(removal.removing, txn)
+                txn.delete(val, db=self._removals)
                 removal_cursor.delete()
-                removal_cursor.prev()
+                removal_cursor.next()
 
     def start_history(self):
         with self._handle.begin(write=True) as txn:
@@ -952,6 +961,7 @@ class LmdbStore(AbstractStore):
             removal_key = RemovalKey(container, existing_placement.get_positioner(), movement_muid)
             removal_val = serialize(builder)
             txn.put(bytes(removal_key), removal_val, db=self._removals)
+            txn.put(bytes(movement_muid), bytes(removal_key), db=self._removals_by_movement)
         new_location_key = bytes(LocationKey(entry_muid, movement_muid))
         if dest:
             middle_key = QueueMiddleKey(dest)
@@ -986,6 +996,8 @@ class LmdbStore(AbstractStore):
                 if retaining:
                     removal_key = bytes(container_muid) + bytes(found_entry.address) + bytes(entry_muid)
                     txn.put(removal_key, b"", db=self._removals)
+                    print("putting ", entry_muid, removal_key)
+                    txn.put(bytes(Muid(new_info.timestamp, new_info.medallion, 1)), removal_key, db=self._removals_by_movement)
                 else:
                     self._remove_entry(found_entry.address, txn)
         entry_bytes = bytes(entry_muid)
