@@ -64,26 +64,26 @@ class LmdbStore(AbstractStore):
         self._file_path = file_path
         self._seen_containers: Set[Muid] = set()
         self._handle = Environment(file_path, max_dbs=100, map_size=map_size, subdir=False)
-        self._bundles = self._handle.open_db(b"bundles")                    # bundle_receive_time -> bundle_wrapper
-        self._bundle_infos = self._handle.open_db(b"bundle_infos")          # bundle_info -> bundle_receive_time
-        self._chains = self._handle.open_db(b"chains")                      # chain -> bundle_info
-        self._claims = self._handle.open_db(b"claims")                      # claim_time -> claim_builder
-        self._entries = self._handle.open_db(b"entries")                    # entry_muid -> entry_builder
-        self._removals = self._handle.open_db(b"removals")                  # removal_key -> movement_builder | b''
+        self._bundles = self._handle.open_db(b"bundles") # bundle_receive_time -> bundle_wrapper
+        self._bundle_infos = self._handle.open_db(b"bundle_infos") # bundle_info -> bundle_receive_time
+        self._chains = self._handle.open_db(b"chains") # chain -> bundle_info
+        self._claims = self._handle.open_db(b"claims") # claim_time -> claim_builder
+        self._entries = self._handle.open_db(b"entries") # entry_muid -> entry_builder
+        self._removals = self._handle.open_db(b"removals") # removal_key -> movement_builder | b''
         self._removals_by_time = self._handle.open_db(b"_removals_by_time") # removal_time -> removal_key
-        self._containers = self._handle.open_db(b"containers")              # container_muid -> container_builder
-        self._locations = self._handle.open_db(b"locations")                # location_key -> placement
-        self._retentions = self._handle.open_db(b"retentions")              # b"bundles" | b"entries" -> b"1" | b"0"
-        self._clearances = self._handle.open_db(b"clearances")              # container_muid + clearance_muid -> bytes(clearance_builder
+        self._containers = self._handle.open_db(b"containers") # container_muid -> container_builder
+        self._locations = self._handle.open_db(b"locations") # location_key -> placement
+        self._retentions = self._handle.open_db(b"retentions") # b"bundles" | b"entries" -> b"1" | b"0"
+        self._clearances = self._handle.open_db(b"clearances") # container_muid + clearance_muid -> clearance_builder
         self._properties = self._handle.open_db(b"properties")
-        self._placements = self._handle.open_db(b"placements")              # placement -> entry_muid
-        self._by_describing = self._handle.open_db(b"by_describing")        # describing_muid + entry_muid -> container_muid
-        self._by_pointee = self._handle.open_db(b"by_pointee")              # pointee_muid + entry_muid -> container_muid
-        self._by_name = self._handle.open_db(b"by_name")                    # pointee_muid + entry_muid -> container_muid
-        self._by_side = self._handle.open_db(b"by_side")                    # (left | rite)_muid + entry_muid -> entry_muid
-        self._identities = self._handle.open_db(b"identities")              # chain -> str_identity
-        self._signing_keys = self._handle.open_db(b"signing_keys")          # signing_key.verify_key -> signing_key
-        self._verify_keys = self._handle.open_db(b"verify_keys")            # chain -> verify_key
+        self._placements = self._handle.open_db(b"placements") # placement -> entry_muid
+        self._by_describing = self._handle.open_db(b"by_describing") # describing_muid + entry_muid -> container_muid
+        self._by_pointee = self._handle.open_db(b"by_pointee") # pointee_muid + entry_muid -> container_muid
+        self._by_name = self._handle.open_db(b"by_name") # pointee_muid + entry_muid -> container_muid
+        self._by_side = self._handle.open_db(b"by_side") # (left | rite)_muid + entry_muid -> entry_muid
+        self._identities = self._handle.open_db(b"identities") # chain -> str_identity
+        self._signing_keys = self._handle.open_db(b"signing_keys") # signing_key.verify_key -> signing_key
+        self._verify_keys = self._handle.open_db(b"verify_keys") # chain -> verify_key
         if reset:
             with self._handle.begin(write=True) as txn:
                 # Setting delete=False signals to lmdb to truncate the tables rather than drop them
@@ -133,6 +133,7 @@ class LmdbStore(AbstractStore):
                 if not len(key):
                     break
                 timestamp = decode_muts(key)
+                assert timestamp is not None, "removal with 0 timestamp?"
                 if timestamp > as_of:
                     break
                 removal = RemovalKey.from_bytes(val)
