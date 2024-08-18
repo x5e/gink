@@ -70,7 +70,7 @@ class LmdbStore(AbstractStore):
         self._claims = self._handle.open_db(b"claims")                      # claim_time -> claim_builder
         self._entries = self._handle.open_db(b"entries")                    # entry_muid -> entry_builder
         self._removals = self._handle.open_db(b"removals")                  # removal_key -> movement_builder | b''
-        self._removals_by_movement = self._handle.open_db(b"_removals_by_movement")
+        self._removals_by_time = self._handle.open_db(b"_removals_by_time") # removal_time -> removal_key
         self._containers = self._handle.open_db(b"containers")              # container_muid -> container_builder
         self._locations = self._handle.open_db(b"locations")                # location_key -> placement
         self._retentions = self._handle.open_db(b"retentions")              # b"bundles" | b"entries" -> b"1" | b"0"
@@ -126,21 +126,19 @@ class LmdbStore(AbstractStore):
         else:
             as_of = resolve_timestamp(as_of)
         with self._handle.begin(write=True) as txn:
-            removal_cursor = txn.cursor(self._removals_by_movement)
+            removal_cursor = txn.cursor(self._removals_by_time)
             placed = removal_cursor.first()
             while placed:
                 key, val = removal_cursor.item()
-                print("key ", key)
                 if not len(key):
                     break
-                muid_key = Muid.from_bytes(key)
-                if muid_key.timestamp > as_of:
+                timestamp = decode_muts(key)
+                if timestamp > as_of:
                     break
                 removal = RemovalKey.from_bytes(val)
                 self._remove_entry(removal.removing, txn)
                 txn.delete(val, db=self._removals)
-                # removal_cursor.delete()
-                removal_cursor.next()
+                removal_cursor.delete()
 
     def start_history(self):
         with self._handle.begin(write=True) as txn:
@@ -961,8 +959,7 @@ class LmdbStore(AbstractStore):
             removal_key = RemovalKey(container, existing_placement.get_positioner(), movement_muid)
             removal_val = serialize(builder)
             txn.put(bytes(removal_key), removal_val, db=self._removals)
-            print("putting seq movement", entry_muid, removal_key)
-            txn.put(bytes(movement_muid), bytes(removal_key), db=self._removals_by_movement)
+            txn.put(encode_muts(movement_muid.timestamp), bytes(removal_key), db=self._removals_by_time)
         new_location_key = bytes(LocationKey(entry_muid, movement_muid))
         if dest:
             middle_key = QueueMiddleKey(dest)
@@ -997,8 +994,7 @@ class LmdbStore(AbstractStore):
                 if retaining:
                     removal_key = RemovalKey(container_muid, found_entry.address, entry_muid)
                     txn.put(bytes(removal_key), b"", db=self._removals)
-                    print("putting dir entry", entry_muid, removal_key)
-                    txn.put(bytes(Muid(new_info.timestamp, new_info.medallion, 1)), bytes(removal_key), db=self._removals_by_movement)
+                    txn.put(encode_muts(new_info.timestamp), bytes(removal_key), db=self._removals_by_time)
                 else:
                     self._remove_entry(found_entry.address, txn)
         entry_bytes = bytes(entry_muid)
