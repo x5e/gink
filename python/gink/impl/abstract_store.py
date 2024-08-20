@@ -77,8 +77,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
     @abstractmethod
     def get_ordered_entries(self, container: Muid, as_of: MuTimestamp, limit: Optional[int] = None,
                             offset: int = 0, desc: bool = False) -> Iterable[PositionedEntry]:
-        """ Get data for Sequence and Registry data types.
-        """
+        """ Get data for the Sequence data structure. """
 
     @abstractmethod
     def get_edge_entries(
@@ -97,19 +96,18 @@ class AbstractStore(BundleStore, Generic[Lock]):
         """Safely releases resources."""
 
     def is_closed(self) -> bool:
-        """ return true if closed """
+        """ Return true if closed """
         return False
 
     @abstractmethod
     def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[BundleWrapper], None]]=None, /) -> int:
-        """ do a refresh using a lock/transaction """
+        """ Do a refresh using a lock/transaction """
 
     def maybe_reuse_chain(
             self,
             identity: str,
             callback: Optional[Callable[[BundleWrapper], None]]=None) -> Optional[BundleInfo]:
-        """ Tries to find a chain for reuse.  The callback is used for refresh.
-        """
+        """ Tries to find a chain for reuse. The callback is used for refresh. """
         lock: Lock = self._acquire_lock()
         try:
             self._refresh_helper(lock, callback)

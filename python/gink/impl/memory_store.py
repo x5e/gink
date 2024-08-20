@@ -365,12 +365,14 @@ class MemoryStore(AbstractStore):
         raise ValueError("chain not found")
 
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):
+        """ Add a clearance to the store. """
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
         clearance_muid = Muid.create(context=new_info, offset=offset)
         new_key = bytes(container_muid) + bytes(clearance_muid)
         self._clearances[new_key] = builder
 
     def _add_movement(self, new_info: BundleInfo, offset: int, builder: MovementBuilder):
+        """ Add a movement to the store, adding a removal for the previous entry."""
         container = Muid.create(builder=getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(builder=getattr(builder, "entry"), context=new_info)
         movement_muid = Muid.create(context=new_info, offset=offset)
@@ -402,6 +404,7 @@ class MemoryStore(AbstractStore):
             self._locations[new_location_key] = None
 
     def _add_entry(self, new_info: BundleInfo, offset: int, entry_builder: EntryBuilder):
+        """ Add an entry to the store, removing the previous entry if necessary. """
         placement = Placement.from_builder(entry_builder, new_info, offset)
         entry_muid = placement.placer
         container_muid = placement.container
@@ -445,6 +448,10 @@ class MemoryStore(AbstractStore):
             self._by_describing.pop(bytes(describing_muid) + bytes(entry_muid))
 
     def _remove_entry(self, entry_muid: Muid):
+        """ Deletes an entry from the entries database and all related and relevant indexes.
+            Note: This method should only be called when an entry needs to be purged,
+            as this is a hard delete.
+        """
         entry_builder = self._entries.pop(entry_muid)
         if entry_builder is None:
             self._logger.warning(f"entry already gone? {entry_muid}")
@@ -490,7 +497,7 @@ class MemoryStore(AbstractStore):
         return self._chain_infos[chain]
 
     def _get_entry_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
-        # bkey = bytes(entry_muid)
+        """ Returns bytes(PlacementKey) for the given entry Muid, if found. """
         for location_key in self._locations.irange(
                 LocationKey(entry_muid, Muid(0, 0, 0)),
                 LocationKey(entry_muid, Muid(as_of, -1, -1)), reverse=True):
@@ -581,7 +588,6 @@ class MemoryStore(AbstractStore):
             raise NotImplementedError()
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
-        """ Returns info about all things with the given name. """
         as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
         prop_bytes = bytes(Muid(-1, -1, PROPERTY))
         key_min = name.encode() + b"\x00"

@@ -17,16 +17,16 @@ class Finished(BaseException):
 class Selectable(Protocol):
 
     def fileno(self) -> int:
-        """ return the underlying filehandle """
+        """ Return the underlying filehandle """
 
     def close(self):
-        """ close the file object """
+        """ Close the file object """
 
     def on_ready(self) -> Optional[Iterable['Selectable']]:
-        """ what to call when selected """
+        """ What to call when selected """
 
     def is_closed(self) -> bool:
-        """ return true if this object has been closed """
+        """ Return true if this object has been closed """
 
 
 def loop(
@@ -36,12 +36,18 @@ def loop(
         until: GenericTimestamp = None,
         _logger = getLogger(__name__),
         ) -> None:
+    """ Select loop for handling multiple Selectables. A Selectable is an object that has a fileno method and
+        can be registered with a selector. For example, a websocket connection or a Console. The loop will call
+        the on_ready method of the Selectable when it is ready to be read from. The loop will continue until the
+        until timestamp is reached, or until the program is exited.
+    """
     selector = selector or DefaultSelector()
     assert isinstance(selector, BaseSelector)
     registered: Set[Selectable] = set()
     until_muts = None if until is None else resolve_timestamp(until)
 
     def add(_selectables: Iterable[Optional[Selectable]]):
+        """ Add selectables to the selector """
         assert isinstance(selector, BaseSelector)
         for selectable_ in _selectables:
             if selectable_ and selectable_ not in registered:

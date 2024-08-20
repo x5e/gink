@@ -55,7 +55,7 @@ class Container(Addressable, ABC):
 
     @abstractmethod
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        """ return the contents of this container as a string """
+        """ Return the contents of this container as a string """
 
     def dump(self, *, as_of: GenericTimestamp = None, file=stdout):
         """ Dumps the contents of this container to file (default stdout)."""
@@ -304,7 +304,7 @@ class Container(Addressable, ABC):
 
     @abstractmethod
     def size(self, *, as_of: GenericTimestamp = None) -> int:
-        """ returns the number of elements contained """
+        """ Returns the number of elements contained """
 
     def __len__(self):
         return self.size()

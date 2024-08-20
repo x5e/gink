@@ -323,6 +323,7 @@ class LmdbStore(AbstractStore):
                 placed = cursor.next() if last_index >= 0 else cursor.prev()
 
     def _get_behavior(self, container: Muid, trxn: Trxn) -> int:
+        """ Gets the behavior of the container associated with the provided Muid. """
         if container.timestamp == -1:
             return container.offset
         container_definition_bytes = trxn.get(bytes(container), db=self._containers)
@@ -381,6 +382,7 @@ class LmdbStore(AbstractStore):
                         yield change
 
     def _parse_entry(self, entries_cursor, behavior: int, trxn: Trxn) -> PlacementBuilderPair:
+        """ Returns the item at the current position of the cursor as a PlacementBuilderPair. """
         key_as_bytes, value_as_bytes = entries_cursor.item()
         parsed_key = Placement.from_bytes(key_as_bytes, behavior)
         entry_builder = EntryBuilder()
@@ -463,20 +465,23 @@ class LmdbStore(AbstractStore):
             describing_muid_bytes: bytes,
             to_time: MuTimestamp,
     ) -> Iterable[ChangeBuilder]:
+        """ Returns an iterable of ChangeBuilders required to reissue properties
+            for a given container.
+        """
         describing_cursor = trxn.cursor(self._by_describing)
         found = to_last_with_prefix(
             describing_cursor, describing_muid_bytes, suffix=bytes(Muid(to_time,0,0)))
         issued = set()
         offset = 0
         while found and describing_cursor.key().startswith(describing_muid_bytes):
-            describor_entry_bytes = describing_cursor.key()[16:]
-            describor_property = describing_cursor.value()
-            if describor_property not in issued:
-                issued.add(describor_property)
+            describer_entry_bytes = describing_cursor.key()[16:]
+            describer_property = describing_cursor.value()
+            if describer_property not in issued:
+                issued.add(describer_property)
                 entry_builder = EntryBuilder()
-                entry_builder.ParseFromString(trxn.get(describor_entry_bytes, db=self._entries))
+                entry_builder.ParseFromString(trxn.get(describer_entry_bytes, db=self._entries))
                 normalize_entry_builder(
-                    entry_builder=entry_builder, entry_muid=Muid.from_bytes(describor_entry_bytes))
+                    entry_builder=entry_builder, entry_muid=Muid.from_bytes(describer_entry_bytes))
                 offset -= 1
                 Muid(0, 0, offset).put_into(entry_builder.describing)
                 yield wrap_change(entry_builder)
@@ -488,6 +493,7 @@ class LmdbStore(AbstractStore):
             to_time: MuTimestamp,
             trxn: Trxn,
     ) -> Iterable[ChangeBuilder]:
+        """ Returns an iterable of ChangeBuilders required to reset a vertex container. """
         placement_cursor = trxn.cursor(db=self._placements)
         suffix = bytes(Muid(to_time, 0, 0))
         previous_change = to_last_with_prefix(placement_cursor, bytes(container), suffix=suffix)
@@ -636,6 +642,7 @@ class LmdbStore(AbstractStore):
 
     def _get_time_of_prior_clear(self, trxn: Trxn, container: Muid,
                                  as_of: MuTimestamp = -1) -> MuTimestamp:
+        """ Returns the time of the most recent clearance of the container before the given time. """
         as_of_muid_bytes = bytes(Muid(as_of, 0, 0))
         cursor = trxn.cursor(self._clearances)
         most_recent_clear = to_last_with_prefix(cursor, bytes(container), as_of_muid_bytes)
@@ -749,7 +756,7 @@ class LmdbStore(AbstractStore):
                 placed = placements_cursor.prev() if desc else placements_cursor.next()
 
     def get_keyed_entries(self, container: Muid, behavior: int, as_of: MuTimestamp) -> Iterable[FoundEntry]:
-        """ gets all the active entries in a direcotry as of a particular time """
+        """ Gets all the active entries in a keyed container as of a particular time """
         container_prefix = bytes(container)
         as_of_bytes = bytes(Muid(as_of, 0, 0))
         with self._handle.begin() as txn:
@@ -897,6 +904,7 @@ class LmdbStore(AbstractStore):
 
     def _apply_clearance(self, new_info: BundleInfo, trxn: Trxn, offset: int,
                          builder: ClearanceBuilder):
+        """ Adds a clearance to the store. """
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
         clearance_muid = Muid.create(context=new_info, offset=offset)
         entry_retention = decode_muts(trxn.get(b"entries", db=self._retentions))  # type: ignore
@@ -983,6 +991,10 @@ class LmdbStore(AbstractStore):
             txn: Trxn,
             offset: int,
             builder: EntryBuilder):
+        """ Adds an entry to the store.
+            If the container type calls for an entry to be replaced,
+            then either a removal will be added, or the existing entry will be removed.
+        """
         retaining = bool(decode_muts(bytes(txn.get(b"entries", db=self._retentions))))
         ensure_entry_is_valid(builder=builder, context=new_info, offset=offset)
         placement_key = Placement.from_builder(builder, new_info, offset)
@@ -1028,6 +1040,10 @@ class LmdbStore(AbstractStore):
                     txn.put(by_name_key, bytes(describing_muid), db=self._by_name)
 
     def _remove_entry(self, entry_muid: Muid, trxn: Trxn):
+        """ Deletes an entry from the entries database and all related and relevant indexes.
+            Note: This method should only be called when an entry needs to be purged,
+            as this is a hard delete.
+        """
         entry_muid_bytes = bytes(entry_muid)
         entry_payload = trxn.pop(entry_muid_bytes, db=self._entries)
         if entry_payload is None:
