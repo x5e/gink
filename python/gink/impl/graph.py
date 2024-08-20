@@ -63,6 +63,7 @@ class Vertex(Container):
         return repr(self)
 
     def is_alive(self, as_of: GenericTimestamp = None) -> bool:
+        """ Returns True if the vertex is alive at the given timestamp, False otherwise. """
         ts = self._database.resolve_timestamp(as_of)
         store = self._database.get_store()
         if store.get_container(self._muid) is None:
@@ -74,11 +75,13 @@ class Vertex(Container):
         return self.is_alive()
 
     def get_edges_from(self, as_of: GenericTimestamp = None) -> Iterable['Edge']:
+        """ Returns an iterable of edges that have this vertex as their source. """
         ts = self._database.resolve_timestamp(as_of)
         for found in self._database.get_store().get_edge_entries(source=self._muid, as_of=ts):
             yield Edge(muid=found.address, database=self._database, _builder=found.builder)
 
     def get_edges_to(self, as_of: GenericTimestamp = None) -> Iterable['Edge']:
+        """ Returns an iterable of edges that have this vertex as their target. """
         ts = self._database.resolve_timestamp(as_of)
         for found in self._database.get_store().get_edge_entries(target=self._muid, as_of=ts):
             yield Edge(muid=found.address, database=self._database, _builder=found.builder)
@@ -87,6 +90,7 @@ class Vertex(Container):
                purge: bool = False,
                bundler: Optional[Bundler] = None,
                comment: Optional[str] = None) -> Muid:
+        """ Marks this vertex for deletion. Optionally purges it from the database. """
         immediate = False
         if bundler is None:
             immediate = True
@@ -180,6 +184,7 @@ class EdgeType(Container):
                   source: Union[Vertex, Muid, None] = None,
                   target: Union[Vertex, Muid, None] = None,
                   as_of: GenericTimestamp = None) -> Iterable['Edge']:
+        """ Returns an iterable of edges that match the given source and target vertices."""
         ts = self._database.resolve_timestamp(as_of)
         source = source._muid if isinstance(source, Vertex) else source
         target = target._muid if isinstance(target, Vertex) else target
@@ -194,8 +199,7 @@ class EdgeType(Container):
         return count
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        """ Dump all the edges for this edge_type.
-        """
+        """ Dump all the edges for this edge_type. """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "arche=True"
         else:
@@ -271,6 +275,7 @@ class Edge(Addressable):
         super().__init__(database=self._database, muid=muid)
 
     def dumps(self, indent=1) -> str:
+        """ Return this edge as a string. """
         contents = []
         formatting = "\n" + "    " * indent if indent else ""
         contents.append(formatting + "source=%s" % (repr(self._source),))
@@ -284,12 +289,15 @@ class Edge(Addressable):
         return f"{padding}Edge({joined})"
 
     def get_action(self) -> EdgeType:
+        """ Return the EdgeType that this edge is associated with. """
         return EdgeType(muid=self._action, database=self._database)
 
     def get_source(self) -> Vertex:
+        """ Return the source vertex of this edge. """
         return Vertex(muid=self._source, database=self._database)
 
     def get_target(self) -> Vertex:
+        """ Return the target vertex of this edge. """
         return Vertex(muid=self._target, database=self._database)
 
     def _get_container(self) -> Muid:
@@ -302,6 +310,7 @@ class Edge(Addressable):
         return f"{self.__class__.__name__}('{self._muid}')"
 
     def get_effective(self) -> MuTimestamp:
+        """ Return the effective timestamp of this edge. """
         effective = self._effective or self._muid.timestamp
         return effective
 
@@ -316,6 +325,9 @@ class Edge(Addressable):
                purge: bool = False,
                bundler: Optional[Bundler] = None,
                comment: Optional[str] = None) -> Muid:
+        """ Move this edge to a new timestamp.
+            Returns the muid of the change.
+        """
         immediate = False
         if not isinstance(bundler, Bundler):
             bundler = Bundler(comment=comment)

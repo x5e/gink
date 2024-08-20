@@ -53,7 +53,7 @@ class BraidServer(Server):
             directory using app_id as the key (creating it if it doesn't exist).  If no
             app_id is given, then we have the application root directory linked to from
             the archetype box (creating if a directory isn't there).
-          """
+        """
         box = Box(arche=True, database=self._control_db)
         box_contents = box.get()
         if self._app_id is not None:
@@ -75,11 +75,15 @@ class BraidServer(Server):
             return directory
 
     def _get_connections(self) -> Iterable[Connection]:
+        """ Returns an iterable of active selectable Connection objects. """
         for selectable in self.get_selectables():
             if isinstance(selectable, Connection):
                 yield selectable
 
     def _after_relay_recieves_bundle(self, bundle_wrapper: BundleWrapper) -> None:
+        """ Internal callback that distributes a bundle to all connections when
+            the relay receives a bundle.
+        """
         info = bundle_wrapper.get_info()
         chain = info.get_chain()
         # TODO: do something more efficient than looping over connections
@@ -89,7 +93,9 @@ class BraidServer(Server):
                 # Note: connection internally keeps track of what peer has and will prevent echo
                 connection.send_bundle(bundle_wrapper)
 
-    def _get_braid(self, path: Path, create_if_missing: bool) -> Braid:
+    def _get_braid(self, path: Path, create_if_missing: bool = False) -> Braid:
+        """ Returns the braid associated with the given path, creating it create_if_missing is True.
+        """
         parts = path.parts
         if len(parts) == 0 or parts[0] == "/":
             raise ValueError(f"invaid path: {path}")
@@ -124,8 +130,12 @@ class BraidServer(Server):
         return ct.to_greeting_message()
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
-        (socket, addr) = listener.accept()
+        """ Called when a listener is ready to accept a connection.
+            Attempts to accept the connection, then returns the connection as a list.
 
+            If the connection is not accepted, then an empty list is returned.
+        """
+        (socket, addr) = listener.accept()
         context = listener.get_context()
         if context:
             try:
