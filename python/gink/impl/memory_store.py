@@ -44,8 +44,7 @@ class MemoryStore(AbstractStore):
     _signing_keys: Dict[VerifyKey, SigningKey]
 
     def __init__(self, retain_entries = True) -> None:
-        # TODO: add a "no retention" capability to allow the memory store to be configured to
-        # drop out of date data like is currently implemented in the LmdbStore.
+        # TODO: add a "no retention" capability for bundles?
         self._seen_containers: Set[Muid] = set()
         self._bundles = SortedDict()
         self._chain_infos = SortedDict()
@@ -452,13 +451,12 @@ class MemoryStore(AbstractStore):
             return
         min_location = LocationKey(entry_muid, Muid(0, 0, 0))
         iterator = self._locations.irange(minimum=min_location)
+        # just need the first entry found
         for location_key in iterator:
             assert location_key.entry_muid == entry_muid
             self._placements.pop(self._locations[location_key])
             self._locations.pop(location_key)
             break
-
-
         container_muid = Muid.create(entry_muid, entry_builder.container)
         if container_muid == Muid(-1, -1, PROPERTY):
             if entry_builder.HasField("value") and entry_builder.HasField("describing"):
