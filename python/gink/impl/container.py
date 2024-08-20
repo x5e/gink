@@ -205,7 +205,7 @@ class Container(Addressable, ABC):
                    ) -> Muid:
         """ Add a new entry to this container.
 
-            if on_muid is specified, then the entry will be added to that container instead of this one.
+            If on_muid is specified, then the entry will be added to that container instead of this one.
         """
         behavior = behavior or self.get_behavior()
         immediate = False

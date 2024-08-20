@@ -4,7 +4,6 @@ from typing import Union, Optional
 from uuid import UUID
 
 from .builders import MuidBuilder
-from .bundle_info import BundleInfo
 from .dummy import Dummy
 from .typedefs import MuTimestamp, Medallion
 
@@ -90,7 +89,7 @@ class Muid:
     @classmethod
     def create(
         cls,
-        context: Optional[Union[BundleInfo, 'Muid']] = None,
+        context = None,
         builder: Union[MuidBuilder, Dummy] = Dummy(),
         offset: Optional[int] = None,
     ):
