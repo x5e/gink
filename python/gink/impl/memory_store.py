@@ -448,7 +448,7 @@ class MemoryStore(AbstractStore):
                                placement_key.placer, entry_builder)
 
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
-                          user_key: Optional[UserKey], recursive=False) -> Iterable[ChangeBuilder]:
+                          user_key: Optional[UserKey], recursive=True) -> Iterable[ChangeBuilder]:
         if container is None and user_key is not None:
             raise ValueError("can't specify key without specifying container")
         if container is None:
@@ -510,11 +510,13 @@ class MemoryStore(AbstractStore):
             seen.add(container)
         last_clear_time = self._get_time_of_prior_clear(container)
         maybe_user_key_bytes = serialize(encode_key(single_user_key)) if single_user_key else bytes()
-        to_process = self._get_last_with_max(bytes(container) + maybe_user_key_bytes + b"\xff"*16, self._placements)
+        to_process = self._get_last_with_max(bytes(container) + maybe_user_key_bytes + bytes(Muid(-1, -1, -1)), self._placements)
         while to_process:
             assert isinstance(to_process, bytes)
             placement_bytes = to_process
             placement = Placement.from_bytes(placement_bytes)
+            if placement.container != container:
+                break
             entry_builder = self._entries[self._placements[placement_bytes]]
             key = placement.get_key()
             if placement.placer.timestamp < to_time and last_clear_time < to_time:
@@ -555,7 +557,6 @@ class MemoryStore(AbstractStore):
                     else:
                         yield wrap_change(builder_then)  # type: ignore
                 recurse_on = contained_then
-
             if seen is not None and isinstance(recurse_on, Muid):
                 for change in self._container_reset_changes(to_time, recurse_on, seen):
                     yield change
@@ -579,10 +580,8 @@ class MemoryStore(AbstractStore):
     def _get_behavior(self, container: Muid) -> int:
         if container.timestamp == -1:
             return container.offset
-        container_definition_bytes = self._containers.get(container)
-        assert isinstance(container_definition_bytes, bytes)
-        container_builder = ContainerBuilder()
-        container_builder.ParseFromString(container_definition_bytes)
+        container_builder = self._containers.get(container)
+        assert isinstance(container_builder, ContainerBuilder), container_builder
         return container_builder.behavior
 
     def _get_time_of_prior_clear(self, container: Muid, as_of: MuTimestamp = -1) -> MuTimestamp:
