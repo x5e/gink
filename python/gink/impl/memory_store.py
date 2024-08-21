@@ -111,17 +111,18 @@ class MemoryStore(AbstractStore):
         for placement_bytes in self._placements.irange(minimum=edge_type_bytes):
             if not placement_bytes.startswith(edge_type_bytes):
                 break
-            placement = Placement.from_bytes(placement_bytes)
+            placement = Placement.from_bytes(placement_bytes, using=EDGE_TYPE)
             if placement.placer.timestamp > as_of:
                 continue
             entry_muid = self._placements[placement_bytes]
             entry_builder: EntryBuilder = self._entries[entry_muid]
-            # TODO: check for removals
-            if source and source != Muid.create(builder=entry_builder.pair.left, context=entry_muid):
-                continue
-            if target and target != Muid.create(builder=entry_builder.pair.rite, context=entry_muid):
-                continue
-            yield FoundEntry(entry_muid, entry_builder)
+            found_removal = self._get_last_removal_before_placer(placement.container, placement.placer)
+            if not found_removal:
+                if source and source != Muid.create(builder=entry_builder.pair.left, context=entry_muid):
+                    continue
+                if target and target != Muid.create(builder=entry_builder.pair.rite, context=entry_muid):
+                    continue
+                yield FoundEntry(entry_muid, entry_builder)
 
     def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:
         return self._entries.get(muid)
@@ -220,7 +221,6 @@ class MemoryStore(AbstractStore):
 
         prefix = bytes(container)
         clearance_time = self._get_time_of_prior_clear(container, as_of)
-        removals_suffix = b"\xFF" * 16
         for placement_bytes in self._placements.irange(prefix, prefix + encode_muts(as_of), reverse=desc):
             if limit is not None and limit <= 0:
                 break
@@ -232,12 +232,10 @@ class MemoryStore(AbstractStore):
                 continue
             if placement_key.expiry and placement_key.expiry < as_of:
                 continue
-            removals_prefix = prefix + bytes(placement_key.get_positioner())
-            found_removal = False
-            for rkey in self._removals.irange(removals_prefix, removals_prefix + removals_suffix):
-                found_removal = Muid.from_bytes(rkey[32:]).timestamp < as_of
-                break
-            if found_removal:
+            found_removal = self._get_last_removal_before_placer(container, placement_key.get_positioner())
+            # Get the muid of the movement that removed the entry
+            removal_before_asof = Muid.from_bytes(found_removal[32:]).timestamp < as_of if found_removal else False
+            if removal_before_asof:
                 continue
             # If we got here, then we know the entry is active at the as_of time.
             if offset > 0:
@@ -319,6 +317,16 @@ class MemoryStore(AbstractStore):
 
     def _release_lock(self, _, /):
         pass
+
+    def _get_last_removal_before_placer(self, container: Muid, placer: Muid, /) -> Optional[bytes]:
+        """ Gets the last removal that happened before a specific placer was placed.
+            Returns the RemovalKey as bytes.
+        """
+        removals_prefix = bytes(container) + bytes(placer)
+        removals_suffix = b"\xFF" * 16
+        for rkey in self._removals.irange(removals_prefix, removals_prefix + removals_suffix, reverse=True):
+            return rkey
+        return None
 
     def get_identity(self, chain: Chain, lock: Optional[bool]=None, /) -> str:
         return self._identities[chain]
