@@ -18,8 +18,8 @@ from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change, deletion,
-                     Placement, decode_key, decode_entry_occupant, PROPERTY, decode_value,
-                     BOX, GROUP, KEY_SET, VERTEX, EDGE_TYPE, serialize, encode_key)
+                     Placement, decode_entry_occupant, PROPERTY, decode_value, BOX, GROUP,
+                     KEY_SET, VERTEX, EDGE_TYPE, serialize, encode_key, normalize_entry_builder)
 from .utilities import create_claim, is_needed
 
 
@@ -343,7 +343,7 @@ class MemoryStore(AbstractStore):
         entry_muid = Muid.create(builder=getattr(builder, "entry"), context=new_info)
         movement_muid = Muid.create(context=new_info, offset=offset)
         dest = getattr(builder, "dest")
-        old_serialized_placement = self._get_entry_location(entry_muid)
+        old_serialized_placement = self._get_location(entry_muid)
         if not old_serialized_placement:
             self._logger.warning(f"could not find location for {entry_muid}")
             return
@@ -427,7 +427,7 @@ class MemoryStore(AbstractStore):
     def get_last(self, chain: Chain) -> BundleInfo:
         return self._chain_infos[chain]
 
-    def _get_entry_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
+    def _get_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
         # bkey = bytes(entry_muid)
         for location_key in self._locations.irange(
                 LocationKey(entry_muid, Muid(0, 0, 0)),
@@ -436,7 +436,7 @@ class MemoryStore(AbstractStore):
         return None
 
     def get_positioned_entry(self, entry: Muid, as_of: MuTimestamp = -1) -> Optional[PositionedEntry]:
-        location = self._get_entry_location(entry, as_of)
+        location = self._get_location(entry, as_of)
         if location is None:
             return None
         entry_builder = self._entries[self._placements[location]]
@@ -564,6 +564,94 @@ class MemoryStore(AbstractStore):
                 break
             limit = Placement(container, placement.middle, Muid(0, 0, 0), None)
             to_process = self._get_last_with_max(bytes(limit), self._placements)
+
+    def _get_changes_to_reset_sequence_or_edge_type(
+            self,
+            container: Muid,
+            to_time: MuTimestamp,
+            seen: Optional[Set[Muid]],
+    ) -> Iterable[ChangeBuilder]:
+        """ Gets all the changes needed to reset a specific Gink sequence to a past time.
+
+            If the `seen` argument is not None, then we're making the changes recursively.
+
+            Assumes that you're retaining entry history.
+        """
+        if seen is not None:
+            if container in seen:
+                return
+            seen.add(container)
+        last_clear_time = self._get_time_of_prior_clear(container)
+        clear_before_to = self._get_time_of_prior_clear(container, as_of=to_time)
+        prefix = bytes(container)
+        # Sequence entries can be repositioned, but they can't be re-added once removed or expired.
+        iterator = self._placements.irange(minimum=prefix)
+        for placement_key_bytes in iterator:
+            entry_muid = self._placements[placement_key_bytes]
+            parsed_key = Placement.from_bytes(placement_key_bytes, SEQUENCE)
+            if parsed_key.container != container:
+                break
+            location_bytes = self._get_location(entry_muid=entry_muid)
+            location = Placement.from_bytes(location_bytes, SEQUENCE) if location_bytes else None
+            previous_bytes = self._get_location(entry_muid=entry_muid, as_of=to_time)
+            previous = Placement.from_bytes(previous_bytes, SEQUENCE) if previous_bytes else None
+            placed_time = parsed_key.get_placed_time()
+            if placed_time >= to_time and last_clear_time < placed_time and location == parsed_key:
+                # this entry was put there recently, and it's still there, so it needs to be removed
+                change_builder = ChangeBuilder()
+                container.put_into(change_builder.movement.container)  # type: ignore
+                entry_muid.put_into(change_builder.movement.entry)  # type: ignore
+                if not previous:
+                    yield change_builder
+                elif previous.get_queue_position() != parsed_key.get_queue_position():
+                    change_builder.movement.dest = previous.get_queue_position()  # type: ignore
+                    yield change_builder
+            if previous == parsed_key and clear_before_to < placed_time:
+                # this particular placement was active at to_time
+                entry_builder = self._entries[entry_muid]
+                occupant = decode_entry_occupant(entry_muid, entry_builder)
+                if isinstance(occupant, Muid) and seen is not None:
+                    for change in self._container_reset_changes(to_time, occupant, seen):
+                        yield change
+                if location is None or last_clear_time > placed_time:
+                    # but isn't there any longer
+                    normalize_entry_builder(entry_builder=entry_builder, entry_muid=entry_muid)
+                    entry_builder.effective = parsed_key.get_queue_position()  # type: ignore
+                    yield wrap_change(entry_builder)
+                    if entry_builder.behavior == EDGE_TYPE:
+                        for change in self._reissue_properties(
+                            describing_muid_bytes=bytes(entry_muid),
+                            to_time=to_time):
+                                yield change
+
+    def _get_vertex_reset_changes(self, container: Muid, to_time: MuTimestamp) -> Iterable[ChangeBuilder]:
+        raise NotImplementedError("vertex reset not yet implemented")
+
+    def _reissue_properties(
+            self,
+            describing_muid_bytes: bytes,
+            to_time: MuTimestamp,
+    ) -> Iterable[ChangeBuilder]:
+        issued = set()
+        offset = 0
+        iterator = self._by_describing.irange(
+            minimum=describing_muid_bytes,
+            maximum=describing_muid_bytes + bytes(Muid(to_time, 0, 0)),
+            reverse=True)
+        for desc_key in iterator:
+            if not desc_key.startswith(describing_muid_bytes):
+                break
+
+            describer_entry_bytes = desc_key[16:]
+            describer_property = self._by_describing[desc_key]
+            if describer_property not in issued:
+                issued.add(describer_property)
+                entry_builder = self._entries[Muid.from_bytes(describer_property)]
+                normalize_entry_builder(
+                    entry_builder=entry_builder, entry_muid=Muid.from_bytes(describer_entry_bytes))
+                offset -= 1
+                Muid(0, 0, offset).put_into(entry_builder.describing)
+                yield wrap_change(entry_builder)
 
     def _get_last_with_max(self, max, sorted_dict: SortedDict):
         iterator = sorted_dict.irange(maximum=max, reverse=True)

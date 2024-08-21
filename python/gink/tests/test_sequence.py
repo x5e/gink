@@ -206,7 +206,7 @@ def test_clear():
 
 def test_reset():
     """ make sure that sequence.reset behaves as expected """
-    for store in [LmdbStore()]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
             seq1 = Sequence.get_global_instance(database)
