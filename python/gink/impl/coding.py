@@ -307,6 +307,9 @@ def decode_entry_occupant(entry_muid: Muid, builder: EntryBuilder) -> Union[User
         return Muid.create(builder=builder.pointee, context=entry_muid)
     if builder.HasField("value"):
         return decode_value(builder.value)
+    if builder.HasField("pair"):
+        return (Muid.create(builder=builder.pair.left, context=entry_muid),
+                Muid.create(builder=builder.pair.rite, context=entry_muid))
     if builder.behavior in (GROUP, KEY_SET):
         return inclusion
     raise ValueError(f"can't interpret {builder}")

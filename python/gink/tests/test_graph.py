@@ -4,7 +4,7 @@ from contextlib import closing
 
 def test_basics():
     """ test that I can create new directories as well as proxies for existing ones """
-    for store in [LmdbStore()]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             db = Database(store)
             vertex = Vertex(database=db)
@@ -27,24 +27,25 @@ def test_basics():
             assert edges == {edge2}
 
 def test_to_from():
-    store = LmdbStore()
-    db = Database(store=store)
-    bundler = Bundler()
-    vertex1 = Vertex(bundler=bundler)
-    vertex2 = Vertex(bundler=bundler)
-    db.bundle(bundler=bundler)
-    edge_type = EdgeType()
-    bundler = Bundler()
-    edge12 = edge_type.create_edge(vertex1, vertex2, bundler=bundler)
-    edge21 = edge_type.create_edge(vertex2, vertex1, bundler=bundler)
-    db.bundle(bundler=bundler)
-    edges_from1 = set(vertex1.get_edges_from())
-    assert edges_from1 == {edge12}, edges_from1
-    edges_to = set(vertex1.get_edges_to())
-    assert edges_to == {edge21}, edges_to
+    for store in [LmdbStore()]:
+        with closing(store):
+            db = Database(store=store)
+            bundler = Bundler()
+            vertex1 = Vertex(bundler=bundler)
+            vertex2 = Vertex(bundler=bundler)
+            db.bundle(bundler=bundler)
+            edge_type = EdgeType()
+            bundler = Bundler()
+            edge12 = edge_type.create_edge(vertex1, vertex2, bundler=bundler)
+            edge21 = edge_type.create_edge(vertex2, vertex1, bundler=bundler)
+            db.bundle(bundler=bundler)
+            edges_from1 = set(vertex1.get_edges_from())
+            assert edges_from1 == {edge12}, edges_from1
+            edges_to = set(vertex1.get_edges_to())
+            assert edges_to == {edge21}, edges_to
 
 def test_ordered_edges():
-    for store in [LmdbStore()]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             db = Database(store)
             vertex1 = Vertex(database=db)
@@ -89,7 +90,7 @@ def test_reissue_properties():
             assert val_after_reset == "baz", val_after_reset
 
 def test_reset_vertex():
-    for store in [LmdbStore()]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             db = Database(store)
             vertex1 = Vertex(database=db)
@@ -113,9 +114,9 @@ def test_reset_edge():
             vertex2 = Vertex(database=db)
             edge_type = EdgeType(database=db)
             edge1 = edge_type.create_edge(vertex1, vertex2)
-            assert len(edge_type.get_edges()) == 1
+            assert len(list(edge_type.get_edges())) == 1
             before_remove = generate_timestamp()
             edge1.remove()
-            assert len(edge_type.get_edges()) == 0
+            assert len(list(edge_type.get_edges())) == 0
             db.reset(before_remove)
-            assert len(edge_type.get_edges()) == 1
+            assert len(list(edge_type.get_edges())) == 1

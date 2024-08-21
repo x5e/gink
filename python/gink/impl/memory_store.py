@@ -518,7 +518,10 @@ class MemoryStore(AbstractStore):
             seen.add(container)
         last_clear_time = self._get_time_of_prior_clear(container)
         maybe_user_key_bytes = serialize(encode_key(single_user_key)) if single_user_key else bytes()
-        to_process = self._get_last_with_max(bytes(container) + maybe_user_key_bytes + bytes(Muid(-1, -1, -1)), self._placements)
+        to_process = self._get_last_with_max(
+            bytes(container) + maybe_user_key_bytes + bytes(Muid(-1, -1, -1)),
+            self._placements
+        )
         while to_process:
             assert isinstance(to_process, bytes)
             placement_bytes = to_process
@@ -554,7 +557,8 @@ class MemoryStore(AbstractStore):
                 placement_then = Placement.from_bytes(found) if found else None
                 builder_then = self._entries[self._placements[found]] if found else None
                 if placement_then and placement_then.placer.timestamp > last_clear_before_to_time:
-                    contained_then = decode_entry_occupant(placement_then.placer, self._entries[self._placements[found]])
+                    contained_then = decode_entry_occupant(placement_then.placer,
+                                                           self._entries[self._placements[found]])
                 else:
                     contained_then = deletion
 
@@ -632,8 +636,39 @@ class MemoryStore(AbstractStore):
                             to_time=to_time):
                                 yield change
 
-    def _get_vertex_reset_changes(self, container: Muid, to_time: MuTimestamp) -> Iterable[ChangeBuilder]:
-        raise NotImplementedError("vertex reset not yet implemented")
+    def _get_vertex_reset_changes(
+            self,
+            container: Muid,
+            to_time: MuTimestamp,
+    ) -> Iterable[ChangeBuilder]:
+        min = bytes(container)
+        max = bytes(Muid(to_time, 0, 0))
+        prev_iterator = self._placements.irange(minimum=min, maximum=max, reverse=True)
+        previous_change = None
+        for placement_key_bytes in prev_iterator:
+            previous_change = placement_key_bytes
+            break
+        was_deleted = container.timestamp > to_time
+        if previous_change:
+            entry_builder = self._entries[self._placements[previous_change]]
+            if entry_builder.deletion:
+                was_deleted = True
+        is_deleted = False
+        current_iterator = self._placements.irange(maximum=bytes(container) + b"\xff"*16, reverse=True)
+        current_change = None
+        for placement_key_bytes in current_iterator:
+            current_change = placement_key_bytes
+            break
+        if current_change:
+            entry_builder = self._entries[self._placements[current_change]]
+            if entry_builder.deletion:
+                is_deleted = True
+        if is_deleted != was_deleted:
+            entry_builder = EntryBuilder()
+            entry_builder.behavior = VERTEX
+            container.put_into(entry_builder.container)
+            entry_builder.deletion = was_deleted
+            yield wrap_change(entry_builder)
 
     def _reissue_properties(
             self,
