@@ -319,7 +319,7 @@ class MemoryStore(AbstractStore):
         pass
 
     def _get_last_removal_before_placer(self, container: Muid, placer: Muid, /) -> Optional[bytes]:
-        """ Gets the last removal that happened before a specific placer was placed.
+        """ Gets the last removal that happened before the time of a placer muid.
             Returns the RemovalKey as bytes.
         """
         removals_prefix = bytes(container) + bytes(placer)
@@ -518,9 +518,9 @@ class MemoryStore(AbstractStore):
             seen.add(container)
         last_clear_time = self._get_time_of_prior_clear(container)
         maybe_user_key_bytes = serialize(encode_key(single_user_key)) if single_user_key else bytes()
-        to_process = self._get_last_with_max(
-            bytes(container) + maybe_user_key_bytes + bytes(Muid(-1, -1, -1)),
-            self._placements
+        to_process = self._get_last(
+            self._placements,
+            max=bytes(container) + maybe_user_key_bytes + bytes(Muid(-1, -1, -1))
         )
         while to_process:
             assert isinstance(to_process, bytes)
@@ -575,7 +575,7 @@ class MemoryStore(AbstractStore):
             if single_user_key:
                 break
             limit = Placement(container, placement.middle, Muid(0, 0, 0), None)
-            to_process = self._get_last_with_max(bytes(limit), self._placements)
+            to_process = self._get_last(self._placements, max=bytes(limit))
 
     def _get_changes_to_reset_sequence_or_edge_type(
             self,
@@ -696,13 +696,7 @@ class MemoryStore(AbstractStore):
                 Muid(0, 0, offset).put_into(entry_builder.describing)
                 yield wrap_change(entry_builder)
 
-    def _get_last_with_max(self, max, sorted_dict: SortedDict):
-        iterator = sorted_dict.irange(maximum=max, reverse=True)
-        for item in iterator:
-            return item
-        return None
-
-    def _get_last(self, min, max, sorted_dict: SortedDict):
+    def _get_last(self, sorted_dict: SortedDict, min=None, max=None, ):
         iterator = sorted_dict.irange(minimum=min, maximum=max, reverse=True)
         for item in iterator:
             return item
