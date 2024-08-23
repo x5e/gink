@@ -20,7 +20,7 @@ from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change, deletion,
                      Placement, decode_entry_occupant, PROPERTY, decode_value, BOX, GROUP,
                      KEY_SET, VERTEX, EDGE_TYPE, serialize, encode_key, normalize_entry_builder)
-from .utilities import create_claim, is_needed
+from .utilities import create_claim, is_needed, resolve_timestamp
 
 
 class MemoryStore(AbstractStore):
@@ -436,10 +436,10 @@ class MemoryStore(AbstractStore):
         return self._chain_infos[chain]
 
     def _get_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
-        # bkey = bytes(entry_muid)
         for location_key in self._locations.irange(
                 LocationKey(entry_muid, Muid(0, 0, 0)),
-                LocationKey(entry_muid, Muid(as_of, -1, -1)), reverse=True):
+                LocationKey(entry_muid, Muid(as_of, 0, 0)),
+                reverse=True):
             return self._locations[location_key]
         return None
 
@@ -494,7 +494,7 @@ class MemoryStore(AbstractStore):
                 yield change
             return
         if behavior in (SEQUENCE, EDGE_TYPE):
-            for change in self._get_changes_to_reset_sequence_or_edge_type(container, to_time, seen):
+            for change in self._get_ordered_reset_changes(container, to_time, seen, behavior):
                 yield change
             return
         else:
@@ -525,9 +525,9 @@ class MemoryStore(AbstractStore):
         while to_process:
             assert isinstance(to_process, bytes)
             placement_bytes = to_process
-            placement = Placement.from_bytes(placement_bytes)
-            if placement.container != container:
+            if placement_bytes[:16] != bytes(container):
                 break
+            placement = Placement.from_bytes(placement_bytes, behavior)
             entry_builder = self._entries[self._placements[placement_bytes]]
             key = placement.get_key()
             if placement.placer.timestamp < to_time and last_clear_time < to_time:
@@ -577,13 +577,14 @@ class MemoryStore(AbstractStore):
             limit = Placement(container, placement.middle, Muid(0, 0, 0), None)
             to_process = self._get_last(self._placements, max=bytes(limit))
 
-    def _get_changes_to_reset_sequence_or_edge_type(
+    def _get_ordered_reset_changes(
             self,
             container: Muid,
             to_time: MuTimestamp,
             seen: Optional[Set[Muid]],
+            behavior: int
     ) -> Iterable[ChangeBuilder]:
-        """ Gets all the changes needed to reset a specific Gink sequence to a past time.
+        """ Gets all the changes needed to reset a specific Gink Sequence or EdgeType to a past time.
 
             If the `seen` argument is not None, then we're making the changes recursively.
 
@@ -600,13 +601,13 @@ class MemoryStore(AbstractStore):
         iterator = self._placements.irange(minimum=prefix)
         for placement_key_bytes in iterator:
             entry_muid = self._placements[placement_key_bytes]
-            parsed_key = Placement.from_bytes(placement_key_bytes, SEQUENCE)
-            if parsed_key.container != container:
+            if placement_key_bytes[:16] != prefix:
                 break
+            parsed_key = Placement.from_bytes(placement_key_bytes, behavior)
             location_bytes = self._get_location(entry_muid=entry_muid)
-            location = Placement.from_bytes(location_bytes, SEQUENCE) if location_bytes else None
+            location = Placement.from_bytes(location_bytes, behavior) if location_bytes else None
             previous_bytes = self._get_location(entry_muid=entry_muid, as_of=to_time)
-            previous = Placement.from_bytes(previous_bytes, SEQUENCE) if previous_bytes else None
+            previous = Placement.from_bytes(previous_bytes, behavior) if previous_bytes else None
             placed_time = parsed_key.get_placed_time()
             if placed_time >= to_time and last_clear_time < placed_time and location == parsed_key:
                 # this entry was put there recently, and it's still there, so it needs to be removed

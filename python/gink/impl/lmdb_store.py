@@ -318,7 +318,7 @@ class LmdbStore(AbstractStore):
                 yield change
             return
         if behavior in (SEQUENCE, EDGE_TYPE):
-            for change in self._get_changes_to_reset_sequence_or_edge_type(container, to_time, trxn, seen):
+            for change in self._get_ordered_reset_changes(container, to_time, trxn, seen):
                 yield change
             return
         else:
@@ -357,7 +357,7 @@ class LmdbStore(AbstractStore):
         entry_builder.ParseFromString(trxn.get(value_as_bytes, db=self._entries))  # type: ignore
         return PlacementBuilderPair(parsed_key, entry_builder)
 
-    def _get_changes_to_reset_sequence_or_edge_type(
+    def _get_ordered_reset_changes(
             self,
             container: Muid,
             to_time: MuTimestamp,

@@ -103,7 +103,8 @@ def test_reset_everything():
             assert len(ks) == 1
             assert len(globalks) == 1
             database.reset()
-            assert len(root) == 0, root.dumps()
+            after_first = generate_timestamp()
+            assert len(root) == 0
             assert len(queue) == 0
             assert len(misc) == 0
             assert len(ks) == 0
@@ -115,6 +116,30 @@ def test_reset_everything():
             assert len(ks) == 1
             assert len(globalks) == 1
 
+            after_second = generate_timestamp()
+            misc.set("no", True)
+            root.set(3, 4)
+            queue.append("something else")
+            ks.add("key2")
+            globalks.add("globalkey2")
+
+            assert len(root) == 2
+            assert len(queue) == 2
+            assert len(misc) == 2
+            assert len(ks) == 2
+            assert len(globalks) == 2
+            database.reset(to_time=after_second)
+            assert len(root) == 1
+            assert len(queue) == 1
+            assert len(misc) == 1
+            assert len(ks) == 1
+            assert len(globalks) == 1
+            database.reset(to_time=after_first)
+            assert len(root) == 0
+            assert len(queue) == 0
+            assert len(misc) == 0
+            assert len(ks) == 0
+            assert len(globalks) == 0
 
 def test_react_to_store_changes():
     for store_class in [
