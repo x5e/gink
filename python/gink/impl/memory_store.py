@@ -613,7 +613,7 @@ class MemoryStore(AbstractStore):
                 for limit_placement_bytes in limit_iterator:
                     found = limit_placement_bytes
                     break
-                placement_then = Placement.from_bytes(found) if found else None
+                placement_then = Placement.from_bytes(found, behavior) if found else None
                 builder_then = self._entries[self._placements[found]] if found else None
                 if placement_then and placement_then.placer.timestamp > last_clear_before_to_time:
                     contained_then = decode_entry_occupant(placement_then.placer,
