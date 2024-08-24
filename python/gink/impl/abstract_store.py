@@ -253,3 +253,14 @@ class AbstractStore(BundleStore, Generic[Lock]):
     @abstractmethod
     def get_signing_key(self, verify_key: VerifyKey) -> SigningKey:
         """ Gets the key for use in continuing a chain (if previously stored). """
+
+    @abstractmethod
+    def save_symmetric_key(self, symmetric_key: bytes) -> int:
+        """ Saves a symmetric key for future use.
+
+            Returns the key_id (a 52 bit digest of the key).
+        """
+
+    @abstractmethod
+    def get_symmetric_key(self, key_id: int) -> bytes:
+        """ Retrieves a previously stored symmetric key. """

@@ -19,7 +19,7 @@ from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change,
                      Placement, decode_key, decode_entry_occupant, EDGE_TYPE, PROPERTY, decode_value)
-from .utilities import create_claim, is_needed
+from .utilities import create_claim, is_needed, shorter_hash
 
 
 class MemoryStore(AbstractStore):
@@ -41,6 +41,7 @@ class MemoryStore(AbstractStore):
     _by_describing: SortedDict # bytes(describing_muid) + bytes(entry_muid)] => bytes(container_muid)
     _verify_keys: Dict[Chain, VerifyKey]
     _signing_keys: Dict[VerifyKey, SigningKey]
+    _symmetric_keys: Dict[int, bytes]
 
     def __init__(self) -> None:
         # TODO: add a "no retention" capability to allow the memory store to be configured to
@@ -60,7 +61,18 @@ class MemoryStore(AbstractStore):
         self._by_describing = SortedDict()
         self._signing_keys = dict()
         self._verify_keys = dict()
+        self._symmetric_keys = dict()
         self._logger = getLogger(self.__class__.__name__)
+
+    def save_symmetric_key(self, symmetric_key: bytes) -> int:
+        if len(symmetric_key) != 32:
+            raise ValueError("expecting 32 byte symmetric keys")
+        key_id = shorter_hash(symmetric_key)
+        self._symmetric_keys[key_id] = symmetric_key
+        return key_id
+
+    def get_symmetric_key(self, key_id: int) -> bytes:
+        return self._symmetric_keys[key_id]
 
     def save_signing_key(self, signing_key: SigningKey):
         self._signing_keys[signing_key.verify_key] = signing_key

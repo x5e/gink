@@ -21,7 +21,7 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, BundleWrapper
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
-from .utilities import generate_timestamp, create_claim, is_needed
+from .utilities import generate_timestamp, create_claim, is_needed, shorter_hash
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
@@ -83,6 +83,7 @@ class LmdbStore(AbstractStore):
         self._identities = self._handle.open_db(b"identities")
         self._signing_keys = self._handle.open_db(b"signing_keys")
         self._verify_keys = self._handle.open_db(b"verify_keys")
+        self._symmetric_keys = self._handle.open_db(b"symmetric_keys")
         if reset:
             with self._handle.begin(write=True) as txn:
                 # Setting delete=False signals to lmdb to truncate the tables rather than drop them
@@ -103,6 +104,7 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._identities, delete=False)
                 txn.drop(self._signing_keys, delete=False)
                 txn.drop(self._verify_keys, delete=False)
+                txn.drop(self._symmetric_keys, delete=False)
         with self._handle.begin() as txn:
             # I'm checking to see if retentions are set in a read-only transaction, because if
             # they are and another process has this file open I don't want to wait to get a lock.
@@ -119,6 +121,22 @@ class LmdbStore(AbstractStore):
             # TODO: add purge method to remove particular data even when retention is on
             # TODO: add expiries table to keep track of when things need to be removed
         self._seen_through: MuTimestamp = 0
+
+    def save_symmetric_key(self, symmetric_key: bytes) -> int:
+        if len(symmetric_key) != 32:
+            raise ValueError("expecting 32 byte symmetric keys")
+        key_id = shorter_hash(symmetric_key)
+        with self._handle.begin(write=True) as trxn:
+            trxn.put(encode_muts(key_id), symmetric_key, db=self._symmetric_keys)
+        return key_id
+
+    def get_symmetric_key(self, key_id) -> bytes:
+        with self._handle.begin(write=False) as trxn:
+            found = trxn.get(encode_muts(key_id), db=self._symmetric_keys)
+            if found is None:
+                raise KeyError("could not find a symmetric key for that key id")
+            assert len(found) == 32, "I thought we were only storing 32 byte symmetric keys!"
+            return found
 
     def save_signing_key(self, signing_key: SigningKey):
         with self._handle.begin(write=True) as trxn:
