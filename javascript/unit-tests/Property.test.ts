@@ -38,3 +38,19 @@ it('Property.toMap', async function () {
         ensure(asObject["-1,-1,10"] === true, Array.from(asMap.keys()).toString());
     }
 });
+
+it('Global property sets and gets names', async function () {
+    for (const store of [new IndexedDbStore('Global property sets and gets names', true), new MemoryStore(true)]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const gd = instance.getGlobalDirectory();
+        const d2 = await instance.createDirectory();
+        await gd.setName("foo");
+        await d2.setName("bar");
+        const name = await gd.getName();
+        ensure(name === "foo");
+        await gd.setName("changed");
+        const name2 = await gd.getName();
+        ensure(name2 === "changed");
+    }
+});
