@@ -73,16 +73,17 @@ class PairSet(Container):
 
     @typechecked
     def include(self, pair: Pair, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
-        """ Includes a pair of Vertexs in the pair set """
+        """ Includes a pair of Containers or Muids in the pair set """
         return self._add_entry(key=pair, value=inclusion, bundler=bundler, comment=comment)
 
     @typechecked
     def exclude(self, pair: Pair, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
-        """ Excludes a pair of Vertexs from the pair set """
+        """ Excludes a pair of Containers or Muids from the pair set """
         return self._add_entry(key=pair, value=deletion, bundler=bundler, comment=comment)
 
     @typechecked
     def contains(self, pair: Pair, *, as_of: GenericTimestamp = None) -> bool:
+        """ Returns True if the pair is included the pair set """
         ts = self._database.resolve_timestamp(as_of)
         pair = normalize_pair(pair)
         found = self._database.get_store().get_entry_by_key(self.get_muid(), key=pair, as_of=ts)
@@ -93,7 +94,7 @@ class PairSet(Container):
         return self.contains(pair)
 
     def get_pairs(self, *, as_of: GenericTimestamp = None) -> Set[Tuple[Muid, Muid]]:
-        """ Returns a set of muid pairs in the pair set at a given time """
+        """ Returns a set of muid pairs included in the pair set at a given time """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
             container=self._muid, as_of=as_of, behavior=self.BEHAVIOR)
@@ -107,7 +108,7 @@ class PairSet(Container):
             yield pair
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
-        """ returns the number of elements contained """
+        """ Returns the number of elements included in the pair set, optionally at a given time """
         ts = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
             container=self._muid, as_of=ts, behavior=self.BEHAVIOR)
@@ -118,7 +119,7 @@ class PairSet(Container):
         return count
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        """ return the contents of this container as a string """
+        """ Returns the contents of this container as a string """
         as_of = self._database.resolve_timestamp(as_of)
         identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""

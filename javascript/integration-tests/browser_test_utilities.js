@@ -1,3 +1,5 @@
+const { existsSync } = require("fs");
+
 function getLaunchOptions(headless = true) {
     if (headless === true) {
         headless = "new";
@@ -5,12 +7,20 @@ function getLaunchOptions(headless = true) {
         headless = false;
     }
     let launchOptions;
+    let chromeLocation = process.env.CHROME_BIN;
+    if (!chromeLocation) {
+        if (existsSync("/usr/bin/chromium")) {
+            chromeLocation = "/usr/bin/chromium";
+        } else if (existsSync("/usr/bin/chromium-browser")) {
+            chromeLocation = "/usr/bin/chromium-browser";
+        }
+    }
     // for this test to run as intended, set env CHROME_BIN
     // to the path to the chrome binary. Chromium works too.
     // ex: export CHROME_BIN=/bin/chromium-browser
-    if (process.env.CHROME_BIN) {
+    if (chromeLocation) {
         launchOptions = {
-            executablePath: process.env.CHROME_BIN,
+            executablePath: chromeLocation,
             headless: headless,
             args: ["--no-sandbox", "--disable-gpu"],
         };

@@ -19,6 +19,7 @@ class Server(ABC):
         self._closed = False
 
     def get_selectables(self) -> Iterable[Selectable]:
+        """ Returns an iterable of active selectables. """
         for selectable in list(self._selectables):
             if selectable.is_closed():
                 self._selectables.discard(selectable)
@@ -26,20 +27,32 @@ class Server(ABC):
                 yield selectable
 
     def fileno(self) -> int:
+        """ Returns the file descriptor of the rite socket,
+            which is used to signal that a new selectable has been added.
+        """
         return self._socket_rite.fileno()
 
     def _add_selectable(self, selectable: Selectable):
+        """ Adds a selectable to the list of active selectables.
+            Send a bit to the rite socket so on_ready is called
+            and the selectable list is updated.
+        """
         self._selectables.add(selectable)
         self._socket_left.send(b'1')
 
     def _remove_selectable(self, selectable: Selectable):
+        """ Removes a selectable from the list of active selectables. """
         self._selectables.discard(selectable)
 
     def on_ready(self) -> Iterable[Selectable]:
+        """ Called when a new selectable is added.
+            Returns an iterable of active selectables.
+        """
         self._socket_rite.recv(1)
         return self.get_selectables()
 
     def close(self):
+        """ Close the server, all listeners, and its underlying socket pair."""
         self._socket_left.close()
         self._socket_rite.close()
         for listener in self._listeners:
@@ -56,8 +69,7 @@ class Server(ABC):
                         keyfile: Optional[str] = None,
                         ):
 
-        """ Listen for incoming connections on the given port.
-        """
+        """ Listen for incoming connections on the given port. """
         port = int(port)
         listener = Listener(addr=addr, port=port, auth=auth, certfile=certfile, keyfile=keyfile,
                             on_ready=self._on_listener_ready)

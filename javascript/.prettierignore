@@ -2,3 +2,4 @@ tsc.out
 proto
 *.md
 */generated
+package-lock.json

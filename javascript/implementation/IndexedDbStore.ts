@@ -244,7 +244,6 @@ export class IndexedDbStore implements Store {
     }
 
     private clearTransaction() {
-        // console.log("clearing transaction");
         this.transaction = null;
     }
 
@@ -252,7 +251,6 @@ export class IndexedDbStore implements Store {
         const stackString = new Error().stack;
         const callerLine = stackString ? stackString.split("\n")[2] : "";
         if (this.transaction === null || this.lastCaller !== callerLine) {
-            // console.log(`creating new transaction for ${callerLine}`)
             this.lastCaller = callerLine;
             this.countTrxns += 1;
             this.transaction = this.wrapped.transaction(
@@ -271,8 +269,6 @@ export class IndexedDbStore implements Store {
                 "readwrite"
             );
             this.transaction.done.finally(() => this.clearTransaction());
-        } else {
-            // console.log(`reusing transaction for ${callerLine}`);
         }
         return this.transaction;
     }
@@ -1009,7 +1005,7 @@ export class IndexedDbStore implements Store {
         const asOfTs = asOf ? await this.asOfToTimestamp(asOf) : Infinity;
         const desiredSrc: MuidTuple = [-1, -1, Behavior.PROPERTY];
         const trxn = this.wrapped.transaction(
-            ["clearances", "entries"],
+            ["clearances", "entries", "removals"],
             "readonly"
         );
         const clearanceTime = await this.getClearanceTime(
@@ -1034,6 +1030,17 @@ export class IndexedDbStore implements Store {
         ) {
             const entry = <Entry>cursor.value;
             ensure(entry.behavior === Behavior.PROPERTY);
+            const range = IDBKeyRange.lowerBound([entry.entryId]);
+            const removal = await trxn
+                .objectStore("removals")
+                .index("by-removing")
+                .openCursor(range);
+            if (
+                removal &&
+                removal.value.entryId.toString() === entry.entryId.toString()
+            ) {
+                continue;
+            }
             let key: [number, number, number];
             if (
                 Array.isArray(entry.storageKey) &&

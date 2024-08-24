@@ -36,6 +36,7 @@
         "serve": "./tsc.out/implementation/main.js -l",
         "build": "tsc",
         "test": "jest --testPathPattern=javascript/unit-tests",
+        "test-integration": "./integration-tests/run_integration_tests.sh",
         "browser-unit": "karma start",
         "browser-integration": "jest --detectOpenHandles browser.test.js dashboard.test.js",
         "browser-performance": "node performance-tests/browser-performance-test.js"
