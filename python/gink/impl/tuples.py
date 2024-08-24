@@ -23,7 +23,7 @@ class Chain(NamedTuple):
 class FoundEntry(NamedTuple):
     """ Entry information returned by the store for keyed containers.
 
-    The address is necessary because some muids in the proto may be relative.
+        The address is necessary because some muids in the proto may be relative.
     """
     address: Muid
     builder: EntryBuilder
@@ -39,12 +39,13 @@ class FoundEntry(NamedTuple):
 
 
 class FoundContainer(NamedTuple):
+    """ Muid and Builder for a container. """
     address: Muid
     builder: ContainerBuilder
 
 
 class PositionedEntry(NamedTuple):
-    """ represents data in a positioned data structure like Sequence """
+    """ Represents data in a positioned data structure like Sequence """
     position: MuTimestamp
     positioner: Muid
     entry_muid: Muid

@@ -31,6 +31,7 @@ class ChainTracker:
                 self._data[chain] = greeting_entry.seen_through
 
     def get_subset(self, chains=Iterable[Chain]) -> 'ChainTracker':
+        """ Returns a subset of this ChainTracker with the chains in the given iterable. """
         result = ChainTracker()
         for chain in chains:
             i_have = self._data.get(chain)
@@ -39,6 +40,9 @@ class ChainTracker:
         return result
 
     def is_valid_extension(self, bundle_info: BundleInfo) -> bool:
+        """ Reports if the bundle_info is a valid extension of the data tracked by this object.
+            That is, if the bundle_info's previous is the last timestamp seen in the chain.
+        """
         if bundle_info.timestamp == bundle_info.chain_start:
             return True
         seen_to = self._data.get(bundle_info.get_chain())
@@ -52,10 +56,10 @@ class ChainTracker:
             self._data[chain] = bundle_info.timestamp
 
     def has(self, what: Union[Muid, BundleInfo]) -> bool:
-        """Reports if the instance tracked by this object has the given data. """
+        """ Reports if the instance tracked by this object has the given data. """
         if isinstance(what, BundleInfo):
             return what.timestamp <= self._data.get(what.get_chain(), 0)
-        if isinstance(what, Muid):
+        elif isinstance(what, Muid):
             iterator = self._data.irange(
                 minimum=Chain(medallion=Medallion(what.medallion), chain_start=0),
                 maximum=Chain(medallion=Medallion(what.medallion), chain_start=what.timestamp))
@@ -64,7 +68,8 @@ class ChainTracker:
                 if chain.chain_start <= what.timestamp <= seen_to:
                     return True
             return False
-        raise ValueError()
+        else:
+            raise ValueError("'what' must be a BundleInfo or Muid")
 
     def to_greeting_message(self) -> SyncMessage:
         """ Constructs a SyncMessage containing a Greeting with the tracked data.

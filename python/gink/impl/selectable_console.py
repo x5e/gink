@@ -16,8 +16,7 @@ from .looping import Finished
 class SelectableConsole(InteractiveInterpreter):
 
     def __init__(self, locals_, interactive: bool, heartbeat_to: Optional[Path] = None):
-        """ Line mode (non-interactive), if specified, or if not using a TTY.
-        """
+        """ Line mode (non-interactive), if specified, or if not using a TTY. """
         super().__init__(locals_)
         self._interactive = interactive
         self._buffer: List[str] = []
@@ -33,6 +32,7 @@ class SelectableConsole(InteractiveInterpreter):
         pass
 
     def fileno(self) -> int:
+        """ Returns the file descriptor of stdin. """
         return self._input.fileno()
 
     def __enter__(self):
@@ -54,6 +54,7 @@ class SelectableConsole(InteractiveInterpreter):
         return self._c_int.value
 
     def on_ready(self):
+        """ Reads and processes input from stdin. """
         try:
             if self._interactive:
                 for _ in range(self._bytes_available()):
@@ -68,6 +69,9 @@ class SelectableConsole(InteractiveInterpreter):
             raise Finished()
 
     def on_line(self, line):
+        """ Run the line. Logs a warning if the line is
+            incomplete (likely due to multi-line input).
+        """
         result = self.runsource(line)
         if result is True:
             self._logger.warning("multi-line input not yet implemented")
@@ -86,6 +90,7 @@ class SelectableConsole(InteractiveInterpreter):
         self._output.flush()
 
     def on_character(self, character: str) -> None:
+        """ Processes a single character of input. """
         if character == '\x1b':
             self._logger.info("history and line editing keys not yet supported")
             self._input.read(2)  # swallow extra characters

@@ -39,12 +39,17 @@ class Listener(Socket):
         self._on_ready = on_ready
 
     def on_ready(self) -> Iterable[Selectable]:
+        """ Called when this listener is ready to accept a connection.
+            Returns the list of Selectables to be added to the event loop.
+        """
         return self._on_ready(self) if self._on_ready else []
 
     def get_auth(self) -> Optional[AuthFunc]:
+        """ Returns the authentication function for this listener. """
         return self._auth_func
 
     def get_context(self) -> Optional[SSLContext]:
+        """ Returns the SSL context for this listener. """
         return self._context
 
     def is_closed(self) -> bool:
