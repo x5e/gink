@@ -346,48 +346,46 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
 
 def generic_test_drop_history(store_maker: StoreMaker):
     with closing(store_maker()) as store:
-        if hasattr(store, "_file_path"):
-            # MemoryStore drop history not implemented yet
-            database = Database(store=store)
-            gdi = Directory.get_global_instance(database=database)
-            seq = Sequence(database=database)
-            seq.append("foo")
-            gdi.set("foo", "bar")
-            after_setting = generate_timestamp()
-            assert seq.size() == 1
-            assert gdi["foo"] == "bar"
-            seq.remove("foo")
-            gdi.delete("foo")
-            assert seq.size() == 0
-            assert "foo" not in gdi
-            assert seq.size(as_of=after_setting) == 1
-            assert gdi.get("foo", as_of=after_setting) == "bar"
+        database = Database(store=store)
+        gdi = Directory.get_global_instance(database=database)
+        seq = Sequence(database=database)
+        seq.append("foo")
+        gdi.set("foo", "bar")
+        after_setting = generate_timestamp()
+        assert seq.size() == 1
+        assert gdi["foo"] == "bar"
+        seq.remove("foo")
+        gdi.delete("foo")
+        assert seq.size() == 0
+        assert "foo" not in gdi
+        assert seq.size(as_of=after_setting) == 1
+        assert gdi.get("foo", as_of=after_setting) == "bar"
 
-            store.stop_history()
+        store.stop_history()
 
-            assert seq.size(as_of=after_setting) == 0, seq.dumps(as_of=after_setting)
-            assert gdi.get("foo", as_of=after_setting) == None, gdi.get("foo", as_of=after_setting)
+        assert seq.size(as_of=after_setting) == 0, seq.dumps(as_of=after_setting)
+        assert gdi.get("foo", as_of=after_setting) == None, gdi.get("foo", as_of=after_setting)
 
-            store.start_history()
+        store.start_history()
 
-            new_dir = Directory(database=database)
-            seq.append("foo")
-            gdi.set("foo", "bar")
-            before_new = generate_timestamp()
-            new_dir.set("foo", "baz")
-            assert seq.size() == 1
-            assert gdi["foo"] == "bar"
-            assert new_dir["foo"] == "baz"
-            seq.pop()
-            gdi.delete("foo")
+        new_dir = Directory(database=database)
+        seq.append("foo")
+        gdi.set("foo", "bar")
+        before_new = generate_timestamp()
+        new_dir.set("foo", "baz")
+        assert seq.size() == 1
+        assert gdi["foo"] == "bar"
+        assert new_dir["foo"] == "baz"
+        seq.pop()
+        gdi.delete("foo")
 
-            assert new_dir.get("foo", as_of=before_new) == None
+        assert new_dir.get("foo", as_of=before_new) == None
 
-            store.drop_history(as_of=before_new)
+        store.drop_history(as_of=before_new)
 
-            assert seq.size() == 0
-            assert "foo" not in gdi
-            assert new_dir["foo"] == "baz"
+        assert seq.size() == 0
+        assert "foo" not in gdi
+        assert new_dir["foo"] == "baz"
 
 def generic_test_negative_offsets(store_maker: StoreMaker):
     """ makes sure that the get_ordered_entries works """
