@@ -1,5 +1,7 @@
 # Development
 
+This guide currently only walks through setup on Debian.
+
 ## Build with Docker
 
 To run the entire build process for both TypeScript and Python: \
@@ -32,25 +34,6 @@ apt-get install npm python3-pip python3-venv -y
 ```sh
 make install-debian-packages && \
 make javascript/node_modules
-```
-
-### Install Python dependencies
-
-```sh
-cd python
-```
-
-Create and activate a Python virtual environment
-
-```sh
-python3 -m venv .venv && \
-source .venv/bin/activate
-```
-
-Install python packages
-
-```sh
-pip3 install -r requirements.txt
 ```
 
 ### Python
