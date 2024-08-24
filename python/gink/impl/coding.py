@@ -108,8 +108,8 @@ class RemovalKey(NamedTuple):
         """ inverse of __bytes__ """
         return RemovalKey(
             Muid.from_bytes(data[0:16]),
-            Muid.from_bytes(data[24:40]),
-            Muid.from_bytes(data[40:]))
+            Muid.from_bytes(data[16:32]),
+            Muid.from_bytes(data[32:]))
 
     def __bytes__(self) -> bytes:
         return bytes(self.container) + bytes(self.removing) + bytes(self.movement)
