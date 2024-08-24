@@ -34,6 +34,9 @@ class WsgiListener(Selectable):
         return self._fd
 
     def on_ready(self) -> Iterable[Connection]:
+        """ Called when the wsgi server receives a connection.
+            Returns an iterable with a single new Connection object.
+        """
         socket, _ = self._socket.accept()
         yield Connection(
             wsgi_func=self._app,
@@ -41,6 +44,7 @@ class WsgiListener(Selectable):
             port=self._server_port)
 
     def close(self):
+        """ Close the socket for this server. """
         self._socket.close()
         self._closed = True
 

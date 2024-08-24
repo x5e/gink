@@ -66,6 +66,7 @@ class Group(Container):
     @typechecked
     def include(self, what: Union[Muid, Container], *,
                 bundler: Optional[Bundler] = None, comment: Optional[str] = None):
+        """ Include a muid or container into the group. """
         if isinstance(what, Container):
             what = what._muid
         if not hasattr(what, "timestamp"):
@@ -75,6 +76,9 @@ class Group(Container):
     @typechecked
     def exclude(self, what: Union[Muid, Container], *,
                 bundler: Optional[Bundler] = None, comment: Optional[str] = None):
+        """ Exclude a muid or container from the group.
+            Note: you can exclude a container that has never been included.
+        """
         if isinstance(what, Container):
             what = what._muid
         if not hasattr(what, "timestamp"):
@@ -82,8 +86,7 @@ class Group(Container):
         return self._add_entry(key=what, value=deletion, bundler=bundler, comment=comment)
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        """ Dumps the contents of this group to a string.
-        """
+        """ Dumps the contents of this group to a string. """
         ts = self._database.resolve_timestamp(as_of)
         identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
@@ -130,6 +133,9 @@ class Group(Container):
         return self.contains(what)
 
     def get_member_ids(self, *, excluded: bool = False, as_of: GenericTimestamp = None) -> Iterable[Muid]:
+        """ Returns a list of muids included in the group at the given time.
+            Optionally include muids that have been excluded.
+        """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
             container=self._muid, as_of=as_of, behavior=Behavior.GROUP)
@@ -143,6 +149,7 @@ class Group(Container):
 
     @typechecked
     def contains(self, what: Union[Muid, Container], *, as_of: GenericTimestamp = None) -> bool:
+        """ Returns a boolean stating whether the container is included in the group at the given time. """
         ts = self._database.resolve_timestamp(as_of)
         if isinstance(what, Container):
             what = what._muid

@@ -177,11 +177,10 @@ export class IndexedDbStore implements Store {
         await this.ready;
         const trxn = this.getTransaction();
         const secretKey = await trxn.objectStore('secretKeys').get(publicKey);
-        return {secretKey, publicKey};
+        return { secretKey, publicKey };
     }
 
     private clearTransaction() {
-        // console.log("clearing transaction");
         this.transaction = null;
     }
 
@@ -189,7 +188,6 @@ export class IndexedDbStore implements Store {
         const stackString = (new Error()).stack;
         const callerLine = stackString ? stackString.split("\n")[2] : "";
         if (this.transaction === null || this.lastCaller !== callerLine) {
-            // console.log(`creating new transaction for ${callerLine}`)
             this.lastCaller = callerLine;
             this.countTrxns += 1;
             this.transaction = this.wrapped.transaction(
@@ -197,8 +195,6 @@ export class IndexedDbStore implements Store {
                     'containers', 'identities', 'verifyKeys', "secretKeys"],
                 'readwrite');
             this.transaction.done.finally(() => this.clearTransaction());
-        } else {
-            // console.log(`reusing transaction for ${callerLine}`);
         }
         return this.transaction;
     }
@@ -316,16 +312,16 @@ export class IndexedDbStore implements Store {
     addBundle(bundleView: BundleView, claimChain?: boolean): Promise<boolean> {
         if (!this.initialized) throw new Error("need to await on store.ready");
         return this.processingLock.acquireLock().then(async (unlock) => {
-                const trxn = this.getTransaction();
-                const added = await this.addBundleHelper(trxn, bundleView, claimChain);
-                unlock();
-                await trxn.done;
-                return added;
+            const trxn = this.getTransaction();
+            const added = await this.addBundleHelper(trxn, bundleView, claimChain);
+            unlock();
+            await trxn.done;
+            return added;
         });
     }
 
     private async addBundleHelper(trxn: Transaction, bundleView: BundleView, claimChain?: boolean):
-            Promise<boolean> {
+        Promise<boolean> {
         const bundleInfo = bundleView.info;
         const bundleBuilder = bundleView.builder;
         // console.log(`starting addBundleHelper for: ` + JSON.stringify(bundleInfo));
@@ -365,8 +361,10 @@ export class IndexedDbStore implements Store {
         // the getNeededTransactions faster by not requiring parsing again.
         const bundleKey: BundleInfoTuple = bundleInfoToKey(bundleInfo);
         await trxn.objectStore("trxns").add(bundleView.bytes, bundleKey);
-        const changesMap: Map<Offset, ChangeBuilder> = bundleBuilder.getChangesMap();
-        for (const [offset, changeBuilder] of changesMap.entries()) {
+        const changesList: Array<ChangeBuilder> = bundleBuilder.getChangesList();
+        for (let index = 0; index < changesList.length; index++) {
+            const offset = index + 1;
+            const changeBuilder = changesList[index];
             ensure(offset > 0);
             const changeAddressTuple: MuidTuple = [timestamp, medallion, offset];
             const changeAddress: Muid = { timestamp, medallion, offset };
@@ -607,7 +605,7 @@ export class IndexedDbStore implements Store {
                 returning.push(entry);
         }
         return returning;
-    }
+    };
 
     /**
      * Returns entry data for a List.  Does it in a single pass rather than using an async generator
@@ -677,7 +675,7 @@ export class IndexedDbStore implements Store {
     async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
         const asOfTs = asOf ? (await this.asOfToTimestamp(asOf)) : Infinity;
         const desiredSrc: MuidTuple = [-1, -1, Behavior.PROPERTY];
-        const trxn = this.wrapped.transaction(["clearances", "entries"], "readonly");
+        const trxn = this.wrapped.transaction(["clearances", "entries", "removals"], "readonly");
         const clearanceTime = await this.getClearanceTime(<Transaction><unknown>trxn, desiredSrc, asOfTs);
         const lower = [desiredSrc, name];
         const searchRange = IDBKeyRange.lowerBound(lower);
@@ -688,6 +686,11 @@ export class IndexedDbStore implements Store {
         for (; cursor && matches(cursor.key[0], desiredSrc) && cursor.key[1] === name; cursor = await cursor.continue()) {
             const entry = <Entry>cursor.value;
             ensure(entry.behavior === Behavior.PROPERTY);
+            const range = IDBKeyRange.lowerBound([entry.entryId]);
+            const removal = await trxn.objectStore("removals").index("by-removing").openCursor(range);
+            if (removal && removal.value.entryId.toString() === entry.entryId.toString()) {
+                continue;
+            }
             let key: [number, number, number];
             if (Array.isArray(entry.storageKey) && entry.storageKey.length === 3) {
                 key = entry.storageKey;
@@ -709,7 +712,7 @@ export class IndexedDbStore implements Store {
     // for debugging, not part of the api/interface
     async getAllEntries(): Promise<Entry[]> {
         return await this.wrapped.transaction("entries", "readonly").objectStore("entries").getAll();
-    }
+    };
 
     // for debugging, not part of the api/interface
     async getAllRemovals() {

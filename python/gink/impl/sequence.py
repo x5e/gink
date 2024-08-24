@@ -130,7 +130,7 @@ class Sequence(Container):
             Since all items will be appended to the sequence in the same transaction, they will
             all have the same timestamp, and so it won't be possible to move anything between them.
 
-            returns the bundler (either passed or created on the fly)
+            Returns the bundler (either passed or created on the fly)
         """
         immediate = False
         if not isinstance(bundler, Bundler):
@@ -221,8 +221,7 @@ class Sequence(Container):
         raise ValueError("matching item not found")
 
     def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[SequenceKey, Union[UserValue, Container]]]:
-        """ Returns pairs of (muid, contents) for the sequence at the given time.
-        """
+        """ Returns pairs of (muid, contents) for the sequence at the given time. """
         as_of = self._database.resolve_timestamp(as_of)
         for positioned in self._database.get_store().get_ordered_entries(self._muid, as_of=as_of):
             found = self._get_occupant(positioned.builder, positioned.entry_muid)
@@ -230,10 +229,12 @@ class Sequence(Container):
             yield sequence_key, found
 
     def keys(self, *, as_of: GenericTimestamp = None) -> Iterable[SequenceKey]:
+        """ Returns an iterable of the keys in the sequence at the given time. """
         for key, _ in self.items(as_of=as_of):
             yield key
 
     def values(self, *, as_of: GenericTimestamp = None) -> Iterable[Union[UserValue, Container]]:
+        """ Returns an iterable of the values in the sequence at the given time. """
         for _, val in self.items(as_of=as_of):
             yield val
 
@@ -245,7 +246,7 @@ class Sequence(Container):
         return self.at(what)[1]
 
     @typechecked
-    def at(self, index: int, *, as_of: GenericTimestamp = None):
+    def at(self, index: int, *, as_of: GenericTimestamp = None) -> Tuple[SequenceKey, Union[UserValue, Container]]:
         """ Returns the ((position-ts, entry-muid), value) at the specified index.
 
             Index may be negative, in which case starts looking at the end.
@@ -263,8 +264,7 @@ class Sequence(Container):
         raise IndexError(f"could not find anything at index {index}")
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
-        """ Tells the size at the specified as_of time.
-        """
+        """ Tells the size at the specified as_of time. """
         as_of = self._database.resolve_timestamp(as_of)
         count = 0
         for _ in self._database.get_store().get_ordered_entries(self._muid, as_of=as_of):

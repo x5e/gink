@@ -55,7 +55,7 @@ class Container(Addressable, ABC):
 
     @abstractmethod
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        """ return the contents of this container as a string """
+        """ Return the contents of this container as a string """
 
     def dump(self, *, as_of: GenericTimestamp = None, file=stdout):
         """ Dumps the contents of this container to file (default stdout)."""
@@ -85,6 +85,7 @@ class Container(Addressable, ABC):
             bundler=bundler, comment=comment)
 
     def get_name(self, as_of: GenericTimestamp = None) -> Optional[str]:
+        """ Returns the name of this container, if it has one. """
         as_of = self._database.resolve_timestamp(as_of)
         name_property = Muid(-1, -1, Behavior.PROPERTY)
         found = self._database.get_store().get_entry_by_key(name_property, key=self._muid, as_of=as_of)
@@ -156,6 +157,9 @@ class Container(Addressable, ABC):
 
     @staticmethod
     def _create(behavior: int, database: Database, bundler: Optional[Bundler] = None) -> Muid:
+        """ Creates a new container with the given behavior and returns its muid.
+            Either adds the change to the provided bundler or immediately bundles it.
+        """
         immediate = False
         if bundler is None:
             bundler = Bundler()
@@ -199,6 +203,10 @@ class Container(Addressable, ABC):
                    behavior: Optional[int] = None,  # defaults to behavior of current container
                    on_muid: Optional[Muid] = None,  # defaults to current container
                    ) -> Muid:
+        """ Add a new entry to this container.
+
+            If on_muid is specified, then the entry will be added to that container instead of this one.
+        """
         behavior = behavior or self.get_behavior()
         immediate = False
         if not isinstance(bundler, Bundler):
@@ -296,7 +304,7 @@ class Container(Addressable, ABC):
 
     @abstractmethod
     def size(self, *, as_of: GenericTimestamp = None) -> int:
-        """ returns the number of elements contained """
+        """ Returns the number of elements contained """
 
     def __len__(self):
         return self.size()

@@ -33,7 +33,7 @@ setup(
     ],
     extras_require={
         "test": ["nose2", "flask", "requests"],
-        "lint": ["mypy==0.812"],
+        "lint": ["mypy"],
         "performance": ["matplotlib"],
         "docs": [
             "sphinx",

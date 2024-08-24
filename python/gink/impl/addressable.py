@@ -24,6 +24,9 @@ class Addressable:
         return hash(self._muid)
 
     def get_properties_values_by_name_as_dict(self, as_of: GenericTimestamp = None):
+        """ Returns a dictionary of the properties of this container,
+            with a mapping from property name to value for this container.
+        """
         as_of = self._database.resolve_timestamp(as_of)
         result: Dict[str, UserValue] = dict()
         for found in self._database.get_store().get_by_describing(self._muid, as_of):
@@ -32,7 +35,7 @@ class Addressable:
             if found.builder.deletion:
                 continue
             if not found.builder.HasField("value"):
-                continue  # todo: support pointee properties
+                continue  # TODO: support pointee properties
             property_muid = Muid.create(found.address, found.builder.container)
             property = self._database.get_container(property_muid, behavior=found.builder.behavior)
             name = property.get_name()
@@ -64,6 +67,10 @@ class Addressable:
 
     def set_property_value_by_name(self, name: str, value: UserValue, *,
                                    create=True, bundler=None, comment=None):
+        """ Sets the value of the property with the given name on this container.
+
+            If create is True, creates the property if it doesn't exist. Otherwise, raises a ValueError.
+        """
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True

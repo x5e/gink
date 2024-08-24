@@ -56,8 +56,7 @@ class Property(Container):
             self._database.bundle(bundler)
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        """ Dumps the contents of this property to a string.
-        """
+        """ Dumps the contents of this property to a string. """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "arche=True"
         else:
@@ -73,6 +72,7 @@ class Property(Container):
         return result
 
     def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[Muid, Union[UserValue, Container]]]:
+        """ Returns an iterable of (describing_muid, value) pairs for all entries in this property. """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
             container=self._muid, as_of=as_of, behavior=PROPERTY)
@@ -109,11 +109,10 @@ class Property(Container):
     def update(self, from_what: Union[Dict[Union[Addressable, Muid], Union[UserValue, Container]],
                                 Iterable[Tuple[Union[Addressable, Muid], Union[UserValue, Container]]]],
                                 *, bundler=None, comment=None):
-        """
-        Performs a shallow copy of key/value pairs from the argument.
+        """ Performs a shallow copy of key/value pairs from the argument.
 
-        When from_what hasattr "keys", then will try: for k in E: D[k] = E[k]
-        otherwise will try:  for k, v in E: D[k] = v
+            When from_what hasattr "keys", then will try: for k in E: D[k] = E[k]
+            otherwise will try:  for k, v in E: D[k] = v
         """
         immediate = False
         if bundler is None:
@@ -138,9 +137,7 @@ class Property(Container):
     @typechecked
     def get(self, describing: Union[Addressable, Muid], default: Union[UserValue, Container] = None, *,
             as_of: GenericTimestamp = None) -> Union[UserValue, Container]:
-        """ Gets the value of the property on the object it's describing, optionally in the past.
-
-        """
+        """ Gets the value of the property on the object it's describing, optionally in the past. """
         if not hasattr(describing, "_muid"):
             raise ValueError("describing must be a container")
         as_of = self._database.resolve_timestamp(as_of)

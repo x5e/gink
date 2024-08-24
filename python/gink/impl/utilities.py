@@ -15,8 +15,9 @@ from authlib.jose.errors import JoseError
 from time import time as get_time
 from typing import Optional, Tuple
 from random import choice
-from nacl.hash import blake2b
+from nacl.hash import blake2b, shorthash, SIPHASH_KEYBYTES
 from nacl.encoding import RawEncoder
+from struct import unpack
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
@@ -41,22 +42,25 @@ def make_auth_func(token: str) -> AuthFunc:
 
 
 def encode_to_hex(string: str) -> str:
-    """
-    Takes a string and encodes it into a hex string prefixed with '0x'.
-    """
+    """ Takes a string and encodes it into a hex string prefixed with '0x'. """
     # Adding 0x so we can easily determine if a subprotocol is a hex string
     return "0x" + string.encode("utf-8").hex()
 
 
 def is_named_tuple(obj) -> bool:
+    """ Checks if an object is a named tuple.
+
+        A named tuple will have private fields _asdict and _fields.
+    """
     return (
-        isinstance(obj, tuple) and hasattr(obj, '_asdict') and hasattr(obj, '_fields'))
+        isinstance(obj, tuple) and
+        hasattr(obj, '_asdict') and
+        hasattr(obj, '_fields')
+    )
 
 
 def decode_from_hex(hex_str: str) -> str:
-    """
-    Decodes a hex string into a string using utf-8.
-    """
+    """ Decodes a hex string into a string using utf-8. """
     hex_str = hex_str[2:]  # Cut off the '0x'
     bytes_obj = bytes.fromhex(hex_str)
     string = bytes_obj.decode('utf-8')
@@ -67,9 +71,9 @@ _last_time = get_time()
 
 
 def generate_timestamp() -> MuTimestamp:
-    """ returns the current time in microseconds since epoch
+    """ Returns the current time in microseconds since epoch
 
-        sleeps if needed to ensure no duplicate timestamps and
+        Sleeps if needed to ensure no duplicate timestamps and
         that the timestamps returned are monotonically increasing
     """
     global _last_time
@@ -83,15 +87,18 @@ def generate_timestamp() -> MuTimestamp:
 
 
 def generate_medallion() -> Medallion:
+    """ Creates a new medallion. """
     return randint((2 ** 48) + 1, (2 ** 49) - 1)
 
 
 def get_identity() -> str:
+    """ Returns the current user's identity, which is username@hostname. """
     user_data = getpwuid(getuid())
     return "%s@%s" % (user_data[0], gethostname())
 
 
 def experimental(thing):
+    """ Decorator to mark a function or class as experimental. """
     warned = [False]
     name = f"{thing.__module__}.{thing.__name__}"
     the_class = None
@@ -115,12 +122,14 @@ def experimental(thing):
 
 
 def is_certainly_gone(process_id: int) -> bool:
+    """ Returns true if a process id does NOT exist. """
     if not pid_exists(process_id):
         return True
     return False
 
 
 def create_claim(chain: Chain) -> ClaimBuilder:
+    """ Create a claim by populating and returning a ClaimBuilder. """
     claim_builder = ClaimBuilder()
     claim_builder.claim_time = generate_timestamp()
     claim_builder.medallion = chain.medallion
@@ -130,6 +139,7 @@ def create_claim(chain: Chain) -> ClaimBuilder:
 
 
 def resolve_timestamp(timestamp: GenericTimestamp) -> MuTimestamp:
+    """ Interprets a timestamp in a variety of formats and returns a microsecond timestamp since epoch. """
     if isinstance(timestamp, str):
         if fullmatch(r"-?\d+", timestamp):
             timestamp = int(timestamp)
@@ -159,6 +169,10 @@ def resolve_timestamp(timestamp: GenericTimestamp) -> MuTimestamp:
 
 
 def normalize_pair(pair: Tuple) -> Tuple[Muid, Muid]:
+    """ Returns a tuple of Muids from a tuple of 2 containers or muids.
+
+        If the pair contains anything other than 2 containers or muids, a ValueError is raised.
+    """
     assert len(pair) == 2, "pair must be a tuple of 2 elements"
     left = None
     rite = None
@@ -210,6 +224,7 @@ def decode_and_verify_jwt(token: bytes, app_id: Optional[str] = None) -> dict:
 
 
 def generate_random_token() -> str:
+    """ Generate a random 40 character token starting with 'T'. """
     capitals = "ABCDEFGHJKLMNPQRSTVWXYZ"
     digits = "23456789"
     choices = capitals + digits
@@ -226,12 +241,11 @@ def dedent(val: bytes) -> bytes:
 user_key_fields = ["number", "octets", "characters"]
 user_value_fields = ["integer", "floating", "characters", "special", "timestamp", "document", "tuple", "octets"]
 
-def validate_bundle_entries(bundle_builder: BundleBuilder) -> None:
-    """Ensures entries in the bundle are valid for the container behavior. Throws a ValueError if not."""
-    changes = bundle_builder.changes.values() # type: ignore
+def validate_bundle(bundle_builder: BundleBuilder) -> None:
+    """ Ensures entries in the bundle are valid for the container behavior. Throws a ValueError if not. """
+    changes = bundle_builder.changes
     for change in changes:
         assert isinstance(change, ChangeBuilder)
-
         if change.HasField("entry"):
             assert isinstance(change.entry, EntryBuilder)
             # Value is a oneof field, so the proto will have already ensured this is only one item.
@@ -323,6 +337,11 @@ def validate_bundle_entries(bundle_builder: BundleBuilder) -> None:
 
 
 def is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:
+    """ Determines if a bundle is needed based on the old and new bundle info
+        Raises a ValueError if the bundle does not have a previous timestamp
+        and it is not the chain start. Also raises a ValueError if the bundle
+        is received without a prior link in the chain.
+    """
     seen_through = 0
     if old_info:
         assert old_info.get_chain() == new_info.get_chain()
@@ -334,3 +353,17 @@ def is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:
     if (new_info.previous or seen_through) and new_info.previous != seen_through:
         raise ValueError("Bundle received without prior link in chain!")
     return True
+
+
+def shorter_hash(data: bytes, _key = b"\x5e"*SIPHASH_KEYBYTES, _mask = 2**52 - 1) -> int:
+    """ Create a version of shorthash truncated to 13 hex digits
+
+        The Google Javascript proto implementation can't encode bignums properly, so this is an
+        attempt to create a hashing function that will work in both python and javascript and
+        allow me to predictably generate a numeric hash from some bytes.
+    """
+    short_hash_result = shorthash(data, _key, encoder=RawEncoder)
+    assert len(short_hash_result) == 8, len(short_hash_result)
+    shorthash_int = unpack("<q", short_hash_result)[0]
+    truncated = shorthash_int & _mask
+    return truncated

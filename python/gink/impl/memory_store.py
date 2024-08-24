@@ -18,9 +18,10 @@ from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change, deletion,
-                     Placement, decode_entry_occupant, PROPERTY, decode_value, BOX, GROUP,
+                     Placement, decode_entry_occupant, EDGE_TYPE,
+                     PROPERTY, decode_value, new_entries_replace, BOX, GROUP,
                      KEY_SET, VERTEX, EDGE_TYPE, serialize, encode_key, normalize_entry_builder)
-from .utilities import create_claim, is_needed, resolve_timestamp
+from .utilities import create_claim, is_needed, generate_timestamp, resolve_timestamp, resolve_timestamp
 
 
 class MemoryStore(AbstractStore):
@@ -33,7 +34,7 @@ class MemoryStore(AbstractStore):
     _chain_infos: SortedDict  # Chain => BundleInfo
     _claims: Dict[Medallion, ClaimBuilder]
     _placements: SortedDict  # bytes(PlacementKey) => EntryMuid
-    _locations: SortedDict  # LocationKey => bytes
+    _locations: SortedDict  # LocationKey => bytes(PlacementKey)
     _containers: SortedDict  # muid => builder
     _removals: SortedDict  # bytes(removal_key) => MovementBuilder
     _clearances: SortedDict
@@ -43,9 +44,8 @@ class MemoryStore(AbstractStore):
     _verify_keys: Dict[Chain, VerifyKey]
     _signing_keys: Dict[VerifyKey, SigningKey]
 
-    def __init__(self):
-        # TODO: add a "no retention" capability to allow the memory store to be configured to
-        # drop out of date data like is currently implemented in the LmdbStore.
+    def __init__(self, retain_entries = True) -> None:
+        # TODO: add a "no retention" capability for bundles?
         self._seen_containers: Set[Muid] = set()
         self._bundles = SortedDict()
         self._chain_infos = SortedDict()
@@ -62,6 +62,28 @@ class MemoryStore(AbstractStore):
         self._signing_keys = dict()
         self._verify_keys = dict()
         self._logger = getLogger(self.__class__.__name__)
+        self._retaining_entries = retain_entries
+
+    def drop_history(self, as_of: Optional[MuTimestamp] = None):
+        if as_of is None:
+            as_of = generate_timestamp()
+        else:
+            as_of = resolve_timestamp(as_of)
+        # Casting to a list to avoid changing the dict while iterating over it.
+        removal_keys = list(self._removals.keys())
+        for key in removal_keys:
+            removal = RemovalKey.from_bytes(key)
+            if removal.movement.timestamp > as_of:
+                break
+            self._remove_entry(removal.removing)
+            self._removals.pop(key)
+
+    def start_history(self):
+        self._retaining_entries = True
+
+    def stop_history(self):
+        self._retaining_entries = False
+        self.drop_history()
 
     def save_signing_key(self, signing_key: SigningKey):
         self._signing_keys[signing_key.verify_key] = signing_key
@@ -279,8 +301,7 @@ class MemoryStore(AbstractStore):
             verify_key.verify(bundle.get_bytes())
             self._bundles[new_info] = bundle
             self._chain_infos[chain_key] = new_info
-            change_items: List[int, ChangeBuilder] = list(bundle_builder.changes.items())  # type: ignore
-            change_items.sort()  # the protobuf library doesn't maintain order of maps
+            change_items: Iterable[Tuple[int, ChangeBuilder]] = enumerate(bundle_builder.changes, start=1)
             for offset, change in change_items:
                 try:
                     if change.HasField("container"):
@@ -341,12 +362,14 @@ class MemoryStore(AbstractStore):
         raise ValueError("chain not found")
 
     def _add_clearance(self, new_info: BundleInfo, offset: int, builder: ClearanceBuilder):
+        """ Add a clearance to the store. """
         container_muid = Muid.create(builder=getattr(builder, "container"), context=new_info)
         clearance_muid = Muid.create(context=new_info, offset=offset)
         new_key = bytes(container_muid) + bytes(clearance_muid)
         self._clearances[new_key] = builder
 
     def _add_movement(self, new_info: BundleInfo, offset: int, builder: MovementBuilder):
+        """ Add a movement to the store, adding a removal for the previous entry."""
         container = Muid.create(builder=getattr(builder, "container"), context=new_info)
         entry_muid = Muid.create(builder=getattr(builder, "entry"), context=new_info)
         movement_muid = Muid.create(context=new_info, offset=offset)
@@ -378,9 +401,20 @@ class MemoryStore(AbstractStore):
             self._locations[new_location_key] = None
 
     def _add_entry(self, new_info: BundleInfo, offset: int, entry_builder: EntryBuilder):
+        """ Add an entry to the store, removing the previous entry if necessary. """
         placement = Placement.from_builder(entry_builder, new_info, offset)
         entry_muid = placement.placer
+        container_muid = placement.container
         encoded_placement_key = bytes(placement)
+        if new_entries_replace(entry_builder.behavior):
+            found_entry = self.get_entry_by_key(container_muid, placement.middle, as_of=generate_timestamp())
+            if found_entry:
+                if self._retaining_entries:
+                    removal_key = RemovalKey(container_muid, found_entry.address, entry_muid)
+                    self._removals[bytes(removal_key)] = b""
+                else:
+                    self._remove_entry(found_entry.address)
+
         self._entries[entry_muid] = entry_builder
         self._placements[encoded_placement_key] = entry_muid
         entries_location_key = LocationKey(placement.placer, placement.placer)
@@ -410,6 +444,30 @@ class MemoryStore(AbstractStore):
             describing_muid = Muid.create(new_info, entry_builder.describing)
             self._by_describing.pop(bytes(describing_muid) + bytes(entry_muid))
 
+    def _remove_entry(self, entry_muid: Muid):
+        """ Deletes an entry from the entries database and all related and relevant indexes.
+            Note: This method should only be called when an entry needs to be purged,
+            as this is a hard delete.
+        """
+        entry_builder = self._entries.pop(entry_muid)
+        if entry_builder is None:
+            self._logger.warning(f"entry already gone? {entry_muid}")
+            return
+        min_location = LocationKey(entry_muid, Muid(0, 0, 0))
+        iterator = self._locations.irange(minimum=min_location)
+        # just need the first entry found
+        for location_key in iterator:
+            assert location_key.entry_muid == entry_muid
+            self._placements.pop(self._locations[location_key])
+            self._locations.pop(location_key)
+            break
+        container_muid = Muid.create(entry_muid, entry_builder.container)
+        if container_muid == Muid(-1, -1, PROPERTY):
+            if entry_builder.HasField("value") and entry_builder.HasField("describing"):
+                name = decode_value(entry_builder.value)
+                if isinstance(name, str):
+                    by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
+                    self._by_name.pop(by_name_key)
 
     def get_bundles(
         self,
@@ -436,6 +494,7 @@ class MemoryStore(AbstractStore):
         return self._chain_infos[chain]
 
     def _get_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
+        """ Returns bytes(PlacementKey) for the given entry Muid, if found. """
         for location_key in self._locations.irange(
                 LocationKey(entry_muid, Muid(0, 0, 0)),
                 LocationKey(entry_muid, Muid(as_of, 0, 0)),
@@ -721,7 +780,6 @@ class MemoryStore(AbstractStore):
         return clearance_time
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
-        """ Returns info about all things with the given name. """
         as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
         key_min = name.encode() + b"\x00"
         key_max = name.encode() + b"\x00" + bytes(as_of_muid)

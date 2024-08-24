@@ -56,6 +56,7 @@ class Database(Relay):
 
     @staticmethod
     def get_last():
+        """ Gets the last database created """
         last = getattr(Database, "_last")
         assert isinstance(last, Database)
         return last

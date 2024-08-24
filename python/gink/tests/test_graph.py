@@ -1,5 +1,6 @@
 from .. import *
 from contextlib import closing
+from io import StringIO
 
 
 def test_basics():
@@ -120,3 +121,32 @@ def test_reset_edge():
             assert len(list(edge_type.get_edges())) == 0
             db.reset(before_remove)
             assert len(list(edge_type.get_edges())) == 1
+
+def test_graph_dump_load():
+    for store in [LmdbStore(), MemoryStore(), ]:
+        with closing(store):
+            db = Database(store)
+            noun1 = Vertex(database=db)
+            noun2 = Vertex(database=db)
+            prop = Property(database=db)
+            edge_type = EdgeType(database=db)
+            edge1 = edge_type.create_edge(noun1, noun2, "edge1")
+            edge2 = edge_type.create_edge(noun2, noun1, "edge2")
+            prop.set(edge1, "edge1 property")
+            prop.set(edge2, "edge2 property")
+            str_io = StringIO()
+            db.dump(file=str_io)
+            dump = str_io.getvalue()
+
+        store2 = LmdbStore()
+        with closing(store2):
+            db2 = Database(store2)
+            exec(dump)
+            after_load = StringIO()
+            db2.dump(file=after_load)
+            after_load = after_load.getvalue()
+            assert "valued='edge1'" in after_load
+            assert "valued='edge2'" in after_load
+            assert "edge1 property" in after_load
+            assert "edge2 property" in after_load
+

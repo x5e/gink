@@ -1,4 +1,4 @@
-import { BundleBuilder, MetadataBuilder } from "./builders";
+import { BundleBuilder,  } from "./builders";
 import { BundleInfo, BundleView, Bytes } from "./typedefs";
 import { signingBundles, digest } from "./utils";
 
@@ -12,13 +12,12 @@ export class Decomposition implements BundleView {
             body = body.subarray(64);
         }
         const bundleBuilder = this.builder = <BundleBuilder>BundleBuilder.deserializeBinary(body);
-        const metadataBuilder: MetadataBuilder = bundleBuilder.getMetadata();
         this.info = {
-            timestamp: metadataBuilder.getTimestamp(),
-            medallion: metadataBuilder.getMedallion(),
-            chainStart: metadataBuilder.getChainStart(),
-            priorTime: metadataBuilder.getPrevious() || undefined,
-            comment: metadataBuilder.getComment() || undefined,
+            timestamp: bundleBuilder.getTimestamp(),
+            medallion: bundleBuilder.getMedallion(),
+            chainStart: bundleBuilder.getChainStart(),
+            priorTime: bundleBuilder.getPrevious() || undefined,
+            comment: bundleBuilder.getComment() || undefined,
             hashCode: digest(bytes),
         };
     }

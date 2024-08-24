@@ -1,6 +1,6 @@
 import { Medallion, ChainStart, Timestamp, BundleView } from "../implementation/typedefs";
 import { Store } from "../implementation/Store";
-import { BundleBuilder, MetadataBuilder } from "../implementation/builders";
+import { BundleBuilder } from "../implementation/builders";
 import { Decomposition } from "../implementation/Decomposition";
 import { createKeyPair, signBundle, librariesReady, ensure } from "../implementation/utils";
 
@@ -17,12 +17,10 @@ export const keyPair = librariesReady.then(() => createKeyPair());
 export async function makeChainStart(
         comment: string, medallion: Medallion, chainStart: ChainStart): Promise<BundleView> {
     const bundleBuilder = new BundleBuilder();
-    const metadataBuilder = new MetadataBuilder();
-    metadataBuilder.setChainStart(chainStart);
-    metadataBuilder.setTimestamp(chainStart);
-    metadataBuilder.setMedallion(medallion);
-    metadataBuilder.setComment(comment);
-    bundleBuilder.setMetadata(metadataBuilder);
+    bundleBuilder.setChainStart(chainStart);
+    bundleBuilder.setTimestamp(chainStart);
+    bundleBuilder.setMedallion(medallion);
+    bundleBuilder.setComment(comment);
     bundleBuilder.setVerifyKey((await keyPair).publicKey);
     return new Decomposition(signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey));
 }
@@ -33,15 +31,13 @@ export function unbundle(signed: Uint8Array): BundleBuilder {
 }
 
 export async function extendChain(comment: string, previous: BundleView, timestamp: Timestamp): Promise<BundleView> {
-    const parsedPrevious = previous.builder.getMetadata();
-    const subsequent = new MetadataBuilder();
-    subsequent.setMedallion(parsedPrevious.getMedallion());
-    subsequent.setPrevious(parsedPrevious.getTimestamp());
-    subsequent.setChainStart(parsedPrevious.getChainStart());
-    subsequent.setTimestamp(timestamp); // one millisecond later
-    subsequent.setComment(comment);
     const bundleBuilder = new BundleBuilder();
-    bundleBuilder.setMetadata(subsequent);
+    const parsedPrevious = previous.builder;
+    bundleBuilder.setMedallion(parsedPrevious.getMedallion());
+    bundleBuilder.setPrevious(parsedPrevious.getTimestamp());
+    bundleBuilder.setChainStart(parsedPrevious.getChainStart());
+    bundleBuilder.setTimestamp(timestamp); // one millisecond later
+    bundleBuilder.setComment(comment);
     const priorHash = previous.info.hashCode;
     ensure(priorHash && priorHash.length === 32);
     bundleBuilder.setPriorHash(priorHash);
