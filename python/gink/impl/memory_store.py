@@ -6,6 +6,7 @@ from typing import Tuple, Callable, Optional, Iterable, Union, Dict, Mapping, Se
 from sortedcontainers import SortedDict  # type: ignore
 from pathlib import Path
 from nacl.signing import SigningKey, VerifyKey
+from nacl.secret import SecretBox
 
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder,
@@ -304,6 +305,18 @@ class MemoryStore(AbstractStore):
             verify_key.verify(bundle.get_bytes())
             self._bundles[new_info] = bundle
             self._chain_infos[chain_key] = new_info
+            if bundle_builder.encrypted:
+                if bundle_builder.changes:
+                    raise ValueError("did not expect plain changes when using encryption")
+                if not bundle_builder.key_id:
+                    raise ValueError("expected to have a key_id when encrypted is present")
+                symmetric_key = self._symmetric_keys[bundle_builder.key_id]
+                if not symmetric_key:
+                    raise KeyError("could not find symmetric key referenced in bundle")
+                secret_box = SecretBox(symmetric_key)
+                decrypted = secret_box.decrypt(bundle_builder.encrypted)
+                bundle_builder = BundleBuilder()
+                bundle_builder.ParseFromString(decrypted)
             change_items: Iterable[Tuple[int, ChangeBuilder]] = enumerate(bundle_builder.changes, start=1)
             for offset, change in change_items:
                 try:

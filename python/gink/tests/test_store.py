@@ -5,6 +5,7 @@ from typing import Callable, Optional
 from contextlib import closing
 from nacl.signing import SigningKey, VerifyKey
 from nacl.utils import random
+from nacl.secret import SecretBox
 
 # gink generated proto modules
 from ..impl.builders import BundleBuilder
@@ -353,7 +354,6 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         assert found[1].entry_muid == Muid(123, 789, 4)
 
 
-
 def generic_test_negative_offsets(store_maker: StoreMaker):
     """ makes sure that the get_ordered_entries works """
     textproto1 = """
@@ -407,3 +407,48 @@ def generic_test_negative_offsets(store_maker: StoreMaker):
         assert found[0].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
         assert found[2].entry_muid == Muid(123, 789, 4)
+
+
+def generic_test_encryption(store_maker: StoreMaker):
+    """ makes sure that the get_ordered_entries works """
+
+    outside_textproto = """
+        medallion: 789
+        chain_start: 122
+        timestamp: 123
+        previous: 122
+    """
+
+    inside_textproto = """
+        changes {
+            entry {
+                behavior: BOX
+                container { timestamp: -1, medallion: -1, offset: 1 }
+                value {
+                    characters: "top secret"
+                }
+            }
+        }
+    """
+
+    with closing(store_maker()) as store:
+        symmetric_key = random(32)
+        secret_box = SecretBox(symmetric_key)
+        key_id = store.save_symmetric_key(symmetric_key)
+        first = make_empty_bundle(BundleInfo(medallion=789, chain_start=122, timestamp=122))
+        store.apply_bundle(first)
+        bundle_builder = BundleBuilder()
+        Parse(inside_textproto, bundle_builder)  # type: ignore
+        inside_serialized = bundle_builder.SerializeToString()
+        bundle_builder.Clear()
+        Parse(outside_textproto, bundle_builder) # type: ignore
+        bundle_builder.key_id = key_id
+        bundle_builder.encrypted = secret_box.encrypt(inside_serialized)
+        bundle_builder.prior_hash = digest(first)
+        outside_serialized = bundle_builder.SerializeToString()  # type: ignore
+        store.apply_bundle(signing_key.sign(outside_serialized))
+        global_box_id = Muid(-1, -1, 1)
+        result = store.get_entry_by_key(global_box_id, None, -1)
+        assert result is not None
+        secret = result.builder.value.characters
+        assert secret == "top secret"

@@ -10,6 +10,7 @@ from struct import pack
 from pathlib import Path
 from lmdb import Environment, Transaction as Trxn, Cursor, BadValsizeError
 from nacl.signing import SigningKey, VerifyKey
+from nacl.secret import SecretBox
 
 # Gink Implementation
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
@@ -814,7 +815,6 @@ class LmdbStore(AbstractStore):
                     self._seen_through = bundle_receive_time
                     trxn.put(bytes(new_info), bundle_location, db=self._bundle_infos)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
-                change_items: Iterable[Tuple[int, ChangeBuilder]] = enumerate(builder.changes, start=1)
                 if new_info.chain_start == new_info.timestamp:
                     identity = new_info.comment
                     assert identity is not None
@@ -829,6 +829,19 @@ class LmdbStore(AbstractStore):
                     if prior_hash != bytes.fromhex(old_info.hex_hash):
                         raise ValueError("prior_hash doesn't match hash of prior bundle")
                 verify_key.verify(wrapper.get_bytes())
+                if builder.encrypted:
+                    if builder.changes:
+                        raise ValueError("did not expect plain changes when using encryption")
+                    if not builder.key_id:
+                        raise ValueError("expected to have a key_id when encrypted is present")
+                    symmetric_key = trxn.get(encode_muts(builder.key_id), db=self._symmetric_keys)
+                    if not symmetric_key:
+                        raise KeyError("could not find symmetric key referenced in bundle")
+                    secret_box = SecretBox(symmetric_key)
+                    decrypted = secret_box.decrypt(builder.encrypted)
+                    builder = BundleBuilder()
+                    builder.ParseFromString(decrypted)
+                change_items: Iterable[Tuple[int, ChangeBuilder]] = enumerate(builder.changes, start=1)
                 for offset, change in change_items:
                     if not self._apply_changes:
                         break
