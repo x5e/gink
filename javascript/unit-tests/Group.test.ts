@@ -1,8 +1,11 @@
 import { Database, IndexedDbStore, MemoryStore } from "../implementation";
 import { ensure, muidToString, muidTupleToMuid } from "../implementation/utils";
 
-it('include and exclude work as intended', async function () {
-    for (const store of [new IndexedDbStore('Group.test1', true), new MemoryStore(true)]) {
+it("include and exclude work as intended", async function () {
+    for (const store of [
+        new IndexedDbStore("Group.test1", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const group1 = await instance.createGroup();
@@ -14,15 +17,24 @@ it('include and exclude work as intended', async function () {
         ensure(await group1.isIncluded(box1.address));
 
         await group1.exclude(box1);
-        ensure(!(await group1.isIncluded(box1)), `Still contains box1 after exclude`);
+        ensure(
+            !(await group1.isIncluded(box1)),
+            `Still contains box1 after exclude`
+        );
 
         // Testing a container can be excluded before it was included.
         await group1.exclude(box2);
         let found = false;
         const box2MuidStr = muidToString(box2.address);
         for (const entry of await store.getAllEntries()) {
-            if (Array.isArray(entry.storageKey) && entry.storageKey.length === 3) {
-                if (box2MuidStr === muidToString(muidTupleToMuid(entry.storageKey))) {
+            if (
+                Array.isArray(entry.storageKey) &&
+                entry.storageKey.length === 3
+            ) {
+                if (
+                    box2MuidStr ===
+                    muidToString(muidTupleToMuid(entry.storageKey))
+                ) {
                     found = true;
                 }
             }
@@ -31,8 +43,11 @@ it('include and exclude work as intended', async function () {
     }
 });
 
-it('contains, toArray, and getMembers work properly', async function () {
-    for (const store of [new IndexedDbStore('Group.test2', true), new MemoryStore(true)]) {
+it("contains, toArray, and getMembers work properly", async function () {
+    for (const store of [
+        new IndexedDbStore("Group.test2", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const group1 = await instance.createGroup();
@@ -45,7 +60,7 @@ it('contains, toArray, and getMembers work properly', async function () {
         ensure(await group1.isIncluded(box1));
         ensure(!(await group1.isIncluded(box3)));
 
-        ensure(await group1.size() === 2);
+        ensure((await group1.size()) === 2);
 
         ensure((await group1.includedAsArray()).length === 2);
         ensure((await group1.includedAsArray())[0].behavior);

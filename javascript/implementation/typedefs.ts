@@ -13,14 +13,29 @@ export type DirPath = string;
 export type FilePath = string;
 export type NumberStr = string;
 export type ScalarKey = number | string | Bytes;
-export type Value = number | string | boolean | null | Bytes | Map<ScalarKey, Value> | Array<Value> | Date | BigInt;
-export type BundleInfoTuple = [Timestamp, Medallion, ChainStart, PriorTime, string];
+export type Value =
+    | number
+    | string
+    | boolean
+    | null
+    | Bytes
+    | Map<ScalarKey, Value>
+    | Array<Value>
+    | Date
+    | BigInt;
+export type BundleInfoTuple = [
+    Timestamp,
+    Medallion,
+    ChainStart,
+    PriorTime,
+    string,
+];
 export type ChangeSetOffset = number;
 export type AsOf = Timestamp | Date | ChangeSetOffset;
 export type MuidTuple = [Timestamp, Medallion, Offset];
 export type Cookies = Map<string, string>;
 export type Indexable = MuidTuple;
-export type ActorId = number;  // process ID on the server side, something more complex in the browser
+export type ActorId = number; // process ID on the server side, something more complex in the browser
 export type StorageKey = ScalarKey | MuidTuple | [MuidTuple, MuidTuple] | [];
 
 export interface BundleListener {
@@ -74,7 +89,7 @@ export interface BundleView {
 // data structure to represent an Entry; some fields are tuples of 0 or 1 entries because
 // the indexeddb system can't handle null or undefined in keys (but can handle tuples).
 export interface Entry {
-    behavior: Behavior,
+    behavior: Behavior;
     containerId: MuidTuple;
 
     /**
@@ -94,7 +109,7 @@ export interface Entry {
 }
 
 export interface Removal {
-    removing: MuidTuple;  // describes the placementId of the thing to be removed
+    removing: MuidTuple; // describes the placementId of the thing to be removed
     removalId: MuidTuple; // the ID of the movement or entry doing the removing
     containerId: MuidTuple;
     dest: number;
@@ -124,8 +139,8 @@ export interface EdgeData {
 }
 
 export interface KeyPair {
-    publicKey: Bytes,
-    secretKey: Bytes,
+    publicKey: Bytes;
+    secretKey: Bytes;
 }
 
 export interface IndexedDbStoreSchema extends DBSchema {
@@ -149,8 +164,8 @@ export interface IndexedDbStoreSchema extends DBSchema {
         value: Removal;
         key: MuidTuple; // movementId
         indexes: {
-            'by-container-movement': [MuidTuple, MuidTuple]; // containerId, movementId
-            'by-removing': [MuidTuple, MuidTuple]; // removing, removalId
+            "by-container-movement": [MuidTuple, MuidTuple]; // containerId, movementId
+            "by-removing": [MuidTuple, MuidTuple]; // removing, removalId
         };
     };
     clearances: {
@@ -161,12 +176,16 @@ export interface IndexedDbStoreSchema extends DBSchema {
         value: Entry;
         key: MuidTuple;
         indexes: {
-            "by-container-key-placement": [MuidTuple, ScalarKey | Timestamp | MuidTuple | [], MuidTuple];
+            "by-container-key-placement": [
+                MuidTuple,
+                ScalarKey | Timestamp | MuidTuple | [],
+                MuidTuple,
+            ];
             "by-container-name": [MuidTuple, string]; // for use with global property and container names
-            'pointees': Indexable;
-            'locations': [MuidTuple, MuidTuple];
-            'sources': Indexable;
-            'targets': Indexable;
+            pointees: Indexable;
+            locations: [MuidTuple, MuidTuple];
+            sources: Indexable;
+            targets: Indexable;
         };
     };
     identities: {

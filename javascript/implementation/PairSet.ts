@@ -7,8 +7,11 @@ import { toJson } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class PairSet extends Container {
-
-    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(
+        database: Database,
+        address: Muid,
+        containerBuilder?: ContainerBuilder
+    ) {
         super(database, address, Behavior.PAIR_SET);
         if (this.address.timestamp < 0) {
             ensure(address.offset === Behavior.PAIR_SET);
@@ -23,7 +26,10 @@ export class PairSet extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the inclusion
      */
-    async include(key: [Container, Container], change?: Bundler | string): Promise<Muid> {
+    async include(
+        key: [Container, Container],
+        change?: Bundler | string
+    ): Promise<Muid> {
         return await this.addEntry(key, Container.INCLUSION, change);
     }
 
@@ -33,7 +39,10 @@ export class PairSet extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the exclusion
      */
-    async exclude(key: [Container, Container], change?: Bundler | string): Promise<Muid> {
+    async exclude(
+        key: [Container, Container],
+        change?: Bundler | string
+    ): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, change);
     }
 
@@ -43,12 +52,19 @@ export class PairSet extends Container {
      * @param asOf optional timestamp to look back to
      * @returns a promise that resolves to a boolean, true if the key is included, false if not
      */
-    async contains(key: [Muid | Container, Muid | Container], asOf?: AsOf): Promise<boolean> {
+    async contains(
+        key: [Muid | Container, Muid | Container],
+        asOf?: AsOf
+    ): Promise<boolean> {
         const aKey: [Muid, Muid] = [
             key[0] instanceof Container ? key[0].address : key[0],
             key[1] instanceof Container ? key[1].address : key[1],
         ];
-        const found = await this.database.store.getEntryByKey(this.address, aKey, asOf);
+        const found = await this.database.store.getEntryByKey(
+            this.address,
+            aKey,
+            asOf
+        );
         if (found && found.deletion) return false;
         return Boolean(found);
     }
@@ -59,7 +75,10 @@ export class PairSet extends Container {
      * @returns a promise that resolves to the number of entries
      */
     async size(asOf?: AsOf): Promise<number> {
-        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(
+            this.address,
+            asOf
+        );
         return entries.size;
     }
 
@@ -69,7 +88,10 @@ export class PairSet extends Container {
      * @returns a promise that resolves to a set of pairs [Muid, Muid]
      */
     async getPairs(asOf?: AsOf): Promise<Set<Array<Muid>>> {
-        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(
+            this.address,
+            asOf
+        );
         const toSet = new Set<Array<Muid>>();
         for (const [key, entry] of entries) {
             if (!entry.deletion) {
@@ -87,7 +109,11 @@ export class PairSet extends Container {
      * @param seen (internal use only! This prevents cycles from breaking things)
      * @returns a JSON string
      */
-    async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+    async toJson(
+        indent: number | boolean = false,
+        asOf?: AsOf,
+        seen?: Set<string>
+    ): Promise<string> {
         //TODO(https://github.com/google/gink/issues/62): add indentation
         ensure(indent === false, "indent not implemented");
         if (seen === undefined) seen = new Set();
@@ -103,8 +129,12 @@ export class PairSet extends Container {
             } else {
                 returning += ",";
             }
-            returning += await toJson(`[${muidToString(key[0])}, ${muidToString(key[1])}]`,
-                indent === false ? false : +indent + 1, asOf, seen);
+            returning += await toJson(
+                `[${muidToString(key[0])}, ${muidToString(key[1])}]`,
+                indent === false ? false : +indent + 1,
+                asOf,
+                seen
+            );
         }
         returning += "]";
         return returning;

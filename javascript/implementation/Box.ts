@@ -7,8 +7,11 @@ import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class Box extends Container {
-
-    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(
+        database: Database,
+        address: Muid,
+        containerBuilder?: ContainerBuilder
+    ) {
         super(database, address, Behavior.BOX);
         if (this.address.timestamp < 0) {
             //TODO(https://github.com/google/gink/issues/64): document default magic containers
@@ -30,16 +33,23 @@ export class Box extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created entry
      */
-    async set(value: Value | Container, change?: Bundler | string): Promise<Muid> {
+    async set(
+        value: Value | Container,
+        change?: Bundler | string
+    ): Promise<Muid> {
         return this.addEntry(undefined, value, change);
     }
 
     /**
-    * Returns a promise that resolves to the most recent value put in the box, or undefined.
-    * @returns undefined, a basic value, or a container
-    */
+     * Returns a promise that resolves to the most recent value put in the box, or undefined.
+     * @returns undefined, a basic value, or a container
+     */
     async get(asOf?: AsOf): Promise<Container | Value | undefined> {
-        const entry = await this.database.store.getEntryByKey(this.address, undefined, asOf);
+        const entry = await this.database.store.getEntryByKey(
+            this.address,
+            undefined,
+            asOf
+        );
         return interpret(entry, this.database);
     }
 
@@ -49,7 +59,11 @@ export class Box extends Container {
      * @returns 0 or 1 depending on whether there's something in the box.
      */
     async size(asOf?: AsOf): Promise<number> {
-        const entry = await this.database.store.getEntryByKey(this.address, undefined, asOf);
+        const entry = await this.database.store.getEntryByKey(
+            this.address,
+            undefined,
+            asOf
+        );
         return +!(entry === undefined || entry.deletion);
     }
 
@@ -59,8 +73,12 @@ export class Box extends Container {
      * @returns true if no value or container is in the box
      */
     async isEmpty(asOf?: AsOf): Promise<boolean> {
-        const entry = await this.database.store.getEntryByKey(this.address, undefined, asOf);
-        return (entry === undefined || entry.deletion);
+        const entry = await this.database.store.getEntryByKey(
+            this.address,
+            undefined,
+            asOf
+        );
+        return entry === undefined || entry.deletion;
     }
 
     /**
@@ -71,11 +89,14 @@ export class Box extends Container {
      * @param seen (internal use only! Prevent cycles from breaking things)
      * @returns a JSON string
      */
-    async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+    async toJson(
+        indent: number | boolean = false,
+        asOf?: AsOf,
+        seen?: Set<string>
+    ): Promise<string> {
         if (seen === undefined) seen = new Set();
         const contents = await this.get(asOf);
         if (contents === undefined) return "null";
         return await toJson(contents, indent, asOf, seen);
     }
-
 }

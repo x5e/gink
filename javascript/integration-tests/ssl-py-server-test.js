@@ -1,17 +1,31 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
-const Expector = require('./Expector');
-const { sleep } = require('./browser_test_utilities');
+const Expector = require("./Expector");
+const { sleep } = require("./browser_test_utilities");
 process.chdir(__dirname + "/..");
 
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector("python3",
-        ["-u", "-m", "gink", "-l", `*:${port}`, "--ssl-cert", "/etc/ssl/certs/localhost.crt", "--ssl-key", "/etc/ssl/certs/localhost.key"]);
+    const server = new Expector("python3", [
+        "-u",
+        "-m",
+        "gink",
+        "-l",
+        `*:${port}`,
+        "--ssl-cert",
+        "/etc/ssl/certs/localhost.crt",
+        "--ssl-key",
+        "/etc/ssl/certs/localhost.key",
+    ]);
     await server.expect("secure", 2000);
 
-    const client = new Expector("python3",
-        ["-u", "-m", "gink", "-c", `wss://localhost:${port}`]);
+    const client = new Expector("python3", [
+        "-u",
+        "-m",
+        "gink",
+        "-c",
+        `wss://localhost:${port}`,
+    ]);
     await client.expect("connect");
     await server.expect("accepted");
     await sleep(100);
@@ -26,6 +40,3 @@ process.chdir(__dirname + "/..");
     await client.close();
     await server.close();
 })();
-
-
-

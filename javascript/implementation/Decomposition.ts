@@ -1,7 +1,6 @@
-import { BundleBuilder,  } from "./builders";
+import { BundleBuilder } from "./builders";
 import { BundleInfo, BundleView, Bytes } from "./typedefs";
 import { signingBundles, digest } from "./utils";
-
 
 export class Decomposition implements BundleView {
     readonly builder: BundleBuilder;
@@ -11,7 +10,9 @@ export class Decomposition implements BundleView {
         if (signingBundles) {
             body = body.subarray(64);
         }
-        const bundleBuilder = this.builder = <BundleBuilder>BundleBuilder.deserializeBinary(body);
+        const bundleBuilder = (this.builder = <BundleBuilder>(
+            BundleBuilder.deserializeBinary(body)
+        ));
         this.info = {
             timestamp: bundleBuilder.getTimestamp(),
             medallion: bundleBuilder.getMedallion(),

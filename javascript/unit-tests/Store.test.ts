@@ -2,13 +2,33 @@ import { BundleBytes, Entry, BundleView } from "../implementation/typedefs";
 import { ChainTracker } from "../implementation/ChainTracker";
 import { Store } from "../implementation/Store";
 import { Decomposition } from "../implementation/Decomposition";
-import { Behavior, EntryBuilder, ContainerBuilder, ChangeBuilder, BundleBuilder } from "../implementation/builders";
 import {
-    makeChainStart, extendChain, addTrxns, unbundle,
-    MEDALLION1, START_MICROS1, NEXT_TS1, MEDALLION2, START_MICROS2, NEXT_TS2, keyPair
+    Behavior,
+    EntryBuilder,
+    ContainerBuilder,
+    ChangeBuilder,
+    BundleBuilder,
+} from "../implementation/builders";
+import {
+    makeChainStart,
+    extendChain,
+    addTrxns,
+    unbundle,
+    MEDALLION1,
+    START_MICROS1,
+    NEXT_TS1,
+    MEDALLION2,
+    START_MICROS2,
+    NEXT_TS2,
+    keyPair,
 } from "./test_utils";
 import {
-    muidToBuilder, ensure, wrapValue, matches, wrapKey, signBundle,
+    muidToBuilder,
+    ensure,
+    wrapValue,
+    matches,
+    wrapKey,
+    signBundle,
 } from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
 
@@ -16,10 +36,9 @@ import { Bundler, Database } from "../implementation";
 export type StoreMaker = () => Promise<Store>;
 
 // Jest complains if there's a test suite without a test.
-it('placeholder', () => {
+it("placeholder", () => {
     expect(1 + 2).toBe(3);
 });
-
 
 /**
  *
@@ -27,7 +46,11 @@ it('placeholder', () => {
  * @param implName name of this implementation
  * @param replacer thing to check when using persistence
  */
-export function testStore(implName: string, storeMaker: StoreMaker, replacer?: StoreMaker) {
+export function testStore(
+    implName: string,
+    storeMaker: StoreMaker,
+    replacer?: StoreMaker
+) {
     let store: Store;
 
     beforeEach(async () => {
@@ -50,8 +73,16 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     */
 
     it(`${implName} ensure that it rejects when doesn't have chain start`, async () => {
-        const chainStart = await makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const secondTrxn = await extendChain("Hello, again!", chainStart, NEXT_TS1);
+        const chainStart = await makeChainStart(
+            "Hello, World!",
+            MEDALLION1,
+            START_MICROS1
+        );
+        const secondTrxn = await extendChain(
+            "Hello, again!",
+            chainStart,
+            NEXT_TS1
+        );
         let added: boolean = false;
         let barfed = false;
         try {
@@ -65,9 +96,21 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     });
 
     it(`${implName} test rejects missing link`, async () => {
-        const chainStart = await makeChainStart("Hello, World!", MEDALLION1, START_MICROS1);
-        const secondTrxn = await extendChain("Hello, again!", chainStart, NEXT_TS1);
-        const thirdTrxn = await extendChain("Hello, a third!", secondTrxn, NEXT_TS1 + 1);
+        const chainStart = await makeChainStart(
+            "Hello, World!",
+            MEDALLION1,
+            START_MICROS1
+        );
+        const secondTrxn = await extendChain(
+            "Hello, again!",
+            chainStart,
+            NEXT_TS1
+        );
+        const thirdTrxn = await extendChain(
+            "Hello, a third!",
+            secondTrxn,
+            NEXT_TS1 + 1
+        );
         await store.addBundle(chainStart);
         let added: boolean = false;
         let barfed = false;
@@ -85,8 +128,12 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         await addTrxns(store);
         const hasMap = <ChainTracker>await store.getChainTracker();
 
-        expect(hasMap.getBundleInfo([MEDALLION1, START_MICROS1])!.timestamp).toBe(NEXT_TS1);
-        expect(hasMap.getBundleInfo([MEDALLION2, START_MICROS2])!.timestamp).toBe(NEXT_TS2);
+        expect(
+            hasMap.getBundleInfo([MEDALLION1, START_MICROS1])!.timestamp
+        ).toBe(NEXT_TS1);
+        expect(
+            hasMap.getBundleInfo([MEDALLION2, START_MICROS2])!.timestamp
+        ).toBe(NEXT_TS2);
     });
 
     it(`${implName} test sends trxns in order`, async () => {
@@ -96,12 +143,14 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
             store = await replacer();
         }
         const sent: Array<BundleBytes> = [];
-        await store.getBundles((x: BundleView) => { sent.push(x.bytes); });
+        await store.getBundles((x: BundleView) => {
+            sent.push(x.bytes);
+        });
         expect(sent.length).toBe(4);
-        expect((unbundle(sent[0])).getTimestamp()).toBe(START_MICROS1);
-        expect((unbundle(sent[1])).getTimestamp()).toBe(START_MICROS2);
-        expect((unbundle(sent[2])).getTimestamp()).toBe(NEXT_TS1);
-        expect((unbundle(sent[3])).getTimestamp()).toBe(NEXT_TS2);
+        expect(unbundle(sent[0]).getTimestamp()).toBe(START_MICROS1);
+        expect(unbundle(sent[1]).getTimestamp()).toBe(START_MICROS2);
+        expect(unbundle(sent[2]).getTimestamp()).toBe(NEXT_TS1);
+        expect(unbundle(sent[3]).getTimestamp()).toBe(NEXT_TS2);
     });
 
     it(`${implName} test save/fetch container`, async () => {
@@ -116,14 +165,23 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         changeBuilder.setContainer(containerBuilder);
         bundleBuilder.getChangesList().push(changeBuilder);
         const decomposition = new Decomposition(
-            signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey,));
+            signBundle(
+                bundleBuilder.serializeBinary(),
+                (await keyPair).secretKey
+            )
+        );
         const added = await store.addBundle(decomposition);
         ensure(decomposition.info.medallion === MEDALLION1);
         ensure(decomposition.info.timestamp === START_MICROS1);
-        const containerBytes = await store.getContainerBytes(
-            { medallion: MEDALLION1, timestamp: START_MICROS1, offset: 1 });
+        const containerBytes = await store.getContainerBytes({
+            medallion: MEDALLION1,
+            timestamp: START_MICROS1,
+            offset: 1,
+        });
         ensure(containerBytes);
-        const containerBuilder2 = <ContainerBuilder>ContainerBuilder.deserializeBinary(containerBytes);
+        const containerBuilder2 = <ContainerBuilder>(
+            ContainerBuilder.deserializeBinary(containerBytes)
+        );
         ensure(containerBuilder2.getBehavior() === Behavior.DIRECTORY);
     });
 
@@ -137,11 +195,14 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
             .setKey(wrapKey("abc"))
             .setValue(wrapValue("xyz"));
         const address = bundler.addEntry(entryBuilder);
-        bundler.seal({ medallion: 4, chainStart: 5, timestamp: 5 }, await keyPair);
+        bundler.seal(
+            { medallion: 4, chainStart: 5, timestamp: 5 },
+            await keyPair
+        );
         await store.addBundle(bundler);
         ensure(address.medallion === 4);
         ensure(address.timestamp === 5);
-        const entry = <Entry>await store.getEntryByKey(sourceAddress, "abc",);
+        const entry = <Entry>await store.getEntryByKey(sourceAddress, "abc");
         ensure(entry);
         ensure(matches(entry.containerId, [2, 1, 3]));
         ensure(matches(entry.entryId, [5, 4, 1]));
@@ -150,17 +211,20 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
     });
 
     it(`${implName} getChainIdentity works`, async () => {
-        const db = new Database(store, 'test@identity');
+        const db = new Database(store, "test@identity");
         await db.ready;
         ensure((await store.getClaimedChains()).size === 0);
         await db.getGlobalDirectory().set(3, 4);
         const chain = [...(await store.getClaimedChains()).entries()][0][1];
-        const identity = await store.getChainIdentity([chain.medallion, chain.chainStart]);
-        ensure(identity === 'test@identity');
+        const identity = await store.getChainIdentity([
+            chain.medallion,
+            chain.chainStart,
+        ]);
+        ensure(identity === "test@identity");
     });
 
     it(`${implName} getContainersByName`, async () => {
-        const db = new Database(store, 'test@byName');
+        const db = new Database(store, "test@byName");
         await db.ready;
         const gd = db.getGlobalDirectory();
         await gd.setName("foo");
@@ -194,6 +258,5 @@ export function testStore(implName: string, storeMaker: StoreMaker, replacer?: S
         ensure(lastContainers.length === 1);
         ensure(lastContainers[0].timestamp === seq.timestamp);
         ensure(lastContainers[0].medallion === seq.medallion);
-
     });
 }

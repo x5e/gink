@@ -3,19 +3,20 @@ import { FileHandle, open } from "fs/promises";
 import { Stats } from "fs";
 
 export class LockableFile {
-
     protected fileHandle: FileHandle;
     protected fileLocked: boolean = false;
     private lockableFileReady: Promise<void>;
 
     constructor(
         readonly filename: string,
-        readonly exclusive: boolean = false,
+        readonly exclusive: boolean = false
     ) {
         this.lockableFileReady = this.initializeLockableFile();
     }
 
-    get ready() { return this.lockableFileReady; }
+    get ready() {
+        return this.lockableFileReady;
+    }
 
     private async initializeLockableFile(): Promise<void> {
         this.fileHandle = await open(this.filename, "a+");
@@ -27,7 +28,7 @@ export class LockableFile {
     protected async lockFile(block: boolean): Promise<boolean> {
         const thisLogBackedStore = this;
         return new Promise((resolve, reject) => {
-            flock(this.fileHandle.fd, (block ? "ex" : "exnb"), (err) => {
+            flock(this.fileHandle.fd, block ? "ex" : "exnb", (err) => {
                 if (err) {
                     return reject(err);
                 }
@@ -40,7 +41,7 @@ export class LockableFile {
     protected async unlockFile(): Promise<boolean> {
         const thisLogBackedStore = this;
         return new Promise((resolve, reject) => {
-            flock(this.fileHandle.fd, ("un"), async (err) => {
+            flock(this.fileHandle.fd, "un", async (err) => {
                 if (err) {
                     return reject(err);
                 }
@@ -60,5 +61,4 @@ export class LockableFile {
         }
         return stats.size;
     }
-
 }

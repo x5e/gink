@@ -3,7 +3,6 @@ import { ensure, noOp } from "./utils";
 import { ChainTracker } from "./ChainTracker";
 import { AckBuilder, SyncMessageBuilder } from "./builders";
 
-
 export class Peer {
     private sendFunc: (msg: Uint8Array) => void;
     private readonly closeFunc: () => void;
@@ -12,7 +11,10 @@ export class Peer {
     hasMap?: ChainTracker;
     ready: Promise<Peer>;
 
-    constructor(sendFunc: (msg: Uint8Array) => void, closeFunc: () => void = noOp) {
+    constructor(
+        sendFunc: (msg: Uint8Array) => void,
+        closeFunc: () => void = noOp
+    ) {
         this.sendFunc = sendFunc;
         this.closeFunc = closeFunc;
         const thisPeer = this;
@@ -20,7 +22,9 @@ export class Peer {
             thisPeer.callWhenReady = resolve;
             thisPeer.callOnTimeout = reject;
         });
-        setTimeout(() => { thisPeer.callOnTimeout(); }, 1000);
+        setTimeout(() => {
+            thisPeer.callOnTimeout();
+        }, 1000);
     }
 
     close() {
@@ -31,7 +35,10 @@ export class Peer {
     }
 
     _receiveHasMap(hasMap: ChainTracker) {
-        ensure(!this.hasMap, "Already received a HasMap/Greeting from this Peer!");
+        ensure(
+            !this.hasMap,
+            "Already received a HasMap/Greeting from this Peer!"
+        );
         this.hasMap = hasMap;
         this.callWhenReady(this);
     }

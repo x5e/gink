@@ -19,8 +19,8 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
         ["-u", "-m", "gink", TEST_DB_PATH1, "--format", "lmdb", "-v", "DEBUG"],
         {
             env: {
-                ...process.env
-            }
+                ...process.env,
+            },
         }
     );
     db1.send("root.set('foo', 'bar');\n");
@@ -31,23 +31,38 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
     await db1.expect("locally", 2000);
     db1.send("box = Box(contents='box contents', database=database);\n");
     await db1.expect("locally", 2000);
-    db1.send("ps = PairSet(contents={'include': [(box, ks)], 'exclude': [(seq, ks)]}, database=database);\n");
+    db1.send(
+        "ps = PairSet(contents={'include': [(box, ks)], 'exclude': [(seq, ks)]}, database=database);\n"
+    );
     await db1.expect("locally", 2000);
-    db1.send("pm = PairMap(contents={(box, ks): 'value', (box, ps): 3}, database=database);\n");
+    db1.send(
+        "pm = PairMap(contents={(box, ks): 'value', (box, ps): 3}, database=database);\n"
+    );
     await db1.expect("locally", 2000);
     db1.send("prop = Property(contents={root: 'value'}, database=database);\n");
     await db1.expect("locally", 2000);
-    db1.send("Group(contents={'include': {box, ps}, 'exclude': {pm}}, database=database);\n");
+    db1.send(
+        "Group(contents={'include': {box, ps}, 'exclude': {pm}}, database=database);\n"
+    );
     await db1.expect("Group", 2000);
     await db1.close();
 
     const dumped = new Expector(
         "python3",
-        ["-u", "-m", "gink", TEST_DB_PATH1, "--format", "lmdb", "--dump_to", DUMP_PATH],
+        [
+            "-u",
+            "-m",
+            "gink",
+            TEST_DB_PATH1,
+            "--format",
+            "lmdb",
+            "--dump_to",
+            DUMP_PATH,
+        ],
         {
             env: {
-                ...process.env
-            }
+                ...process.env,
+            },
         }
     );
     await dumped.expect(/\bDumped\b/, 2000);
@@ -55,11 +70,20 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
 
     const loaded = new Expector(
         "python3",
-        ["-u", "-m", "gink", TEST_DB_PATH2, "--format", "lmdb", "--load", DUMP_PATH],
+        [
+            "-u",
+            "-m",
+            "gink",
+            TEST_DB_PATH2,
+            "--format",
+            "lmdb",
+            "--load",
+            DUMP_PATH,
+        ],
         {
             env: {
-                ...process.env
-            }
+                ...process.env,
+            },
         }
     );
     await loaded.expect(/\bLoaded\b/, 2000);
@@ -69,21 +93,21 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
         ["-u", "-m", "gink", TEST_DB_PATH2, "--format", "lmdb"],
         {
             env: {
-                ...process.env
-            }
+                ...process.env,
+            },
         }
     );
     await sleep(1000);
 
     const regex = new RegExp(
         `Sequence\\(muid=Muid\\((.*)\\), contents=\\[[\\s\\S]*?` +
-        `KeySet\\(muid=Muid\\((.*)\\), contents=\\{5,4,3,2,1\\}\\)[\\s\\S]*?` +
-        `Box\\(muid=Muid\\((.*)\\), contents='box contents'\\)[\\s\\S]*?` +
-        `PairSet\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
-        `PairMap\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
-        `Property\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
-        `Group\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
-        `Directory\\(arche=True, contents=\\{'foo': 'bar'\\}\\)`
+            `KeySet\\(muid=Muid\\((.*)\\), contents=\\{5,4,3,2,1\\}\\)[\\s\\S]*?` +
+            `Box\\(muid=Muid\\((.*)\\), contents='box contents'\\)[\\s\\S]*?` +
+            `PairSet\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
+            `PairMap\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
+            `Property\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
+            `Group\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
+            `Directory\\(arche=True, contents=\\{'foo': 'bar'\\}\\)`
     );
     gink.send("database.dump();\n");
     await gink.expect(regex, 2000);
@@ -91,4 +115,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
     await gink.close();
     console.log("finished!");
     process.exit(0);
-})().catch((reason) => { console.error(reason); process.exit(1); });
+})().catch((reason) => {
+    console.error(reason);
+    process.exit(1);
+});

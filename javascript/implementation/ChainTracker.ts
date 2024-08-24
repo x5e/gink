@@ -1,7 +1,18 @@
-import { BundleInfo, Medallion, ChainStart, SeenThrough, Muid, CallBack, Timestamp } from "./typedefs";
-import { SyncMessageBuilder, GreetingBuilder, GreetingEntryBuilder } from "./builders";
+import {
+    BundleInfo,
+    Medallion,
+    ChainStart,
+    SeenThrough,
+    Muid,
+    CallBack,
+    Timestamp,
+} from "./typedefs";
+import {
+    SyncMessageBuilder,
+    GreetingBuilder,
+    GreetingEntryBuilder,
+} from "./builders";
 import { ensure } from "./utils";
-
 
 /**
  * A class to keep track of what data a given instance (self or peer) has for each
@@ -10,7 +21,8 @@ import { ensure } from "./utils";
  * functionality to convert from/to Greeting objects.
  */
 export class ChainTracker {
-    private readonly data: Map<Medallion, Map<ChainStart, BundleInfo>> = new Map();
+    private readonly data: Map<Medallion, Map<ChainStart, BundleInfo>> =
+        new Map();
     private readonly waiters: Map<CallBack, [Medallion, Timestamp]> = new Map();
 
     constructor({ greetingBytes = null, greeting = null }) {
@@ -25,7 +37,9 @@ export class ChainTracker {
             if (!this.data.has(medallion)) {
                 this.data.set(medallion, new Map());
             }
-            this.data.get(medallion).set(chainStart, { medallion, chainStart, timestamp });
+            this.data
+                .get(medallion)
+                .set(chainStart, { medallion, chainStart, timestamp });
         }
     }
 
@@ -35,19 +49,24 @@ export class ChainTracker {
      * @param timeoutMs how long to wait before giving up, default of undefined doesn't time out
      * @returns a promise that resolves when the thing has been marked as seen, or rejects at timeout
      */
-    waitTillHas({ medallion, timestamp }: BundleInfo | Muid, timeoutMs?: number): Promise<void> {
+    waitTillHas(
+        { medallion, timestamp }: BundleInfo | Muid,
+        timeoutMs?: number
+    ): Promise<void> {
         const innerMap = this.data.get(medallion);
         if (innerMap) {
             for (const [chainStart, bundleInfo] of innerMap.entries()) {
-                if (chainStart <= timestamp && bundleInfo.timestamp >= timestamp)
+                if (
+                    chainStart <= timestamp &&
+                    bundleInfo.timestamp >= timestamp
+                )
                     return Promise.resolve();
             }
         }
         const waiters = this.waiters;
         //TODO: prune waiters after their timeout
         return new Promise((resolve, reject) => {
-            if (timeoutMs)
-                setTimeout(reject, timeoutMs);
+            if (timeoutMs) setTimeout(reject, timeoutMs);
             waiters.set(resolve, [medallion, timestamp]);
         });
     }
@@ -61,21 +80,35 @@ export class ChainTracker {
      * @param checkValidExtension If true then barfs if this bundle isn't a valid extension.
      * @returns true if the bundle represents data not seen before
      */
-    markAsHaving(bundleInfo: BundleInfo, checkValidExtension?: boolean): boolean {
+    markAsHaving(
+        bundleInfo: BundleInfo,
+        checkValidExtension?: boolean
+    ): boolean {
         if (!this.data.has(bundleInfo.medallion))
             this.data.set(bundleInfo.medallion, new Map());
         const innerMap = this.data.get(bundleInfo.medallion);
         const seenThrough = innerMap.get(bundleInfo.chainStart)?.timestamp || 0;
         if (bundleInfo.timestamp > seenThrough) {
             if (checkValidExtension) {
-                if (bundleInfo.timestamp !== bundleInfo.chainStart && !bundleInfo.priorTime)
-                    throw new Error(`bundleInfo appears to be invalid: ${JSON.stringify(bundleInfo)}`);
+                if (
+                    bundleInfo.timestamp !== bundleInfo.chainStart &&
+                    !bundleInfo.priorTime
+                )
+                    throw new Error(
+                        `bundleInfo appears to be invalid: ${JSON.stringify(bundleInfo)}`
+                    );
                 if ((bundleInfo.priorTime ?? 0) !== seenThrough)
-                    throw new Error(`proposed bundle would be an invalid extension ${JSON.stringify(bundleInfo)}`);
+                    throw new Error(
+                        `proposed bundle would be an invalid extension ${JSON.stringify(bundleInfo)}`
+                    );
             }
             innerMap.set(bundleInfo.chainStart, bundleInfo);
             for (const [cb, pair] of this.waiters) {
-                if (pair[0] === bundleInfo.medallion && pair[1] >= bundleInfo.chainStart && pair[1] <= bundleInfo.timestamp) {
+                if (
+                    pair[0] === bundleInfo.medallion &&
+                    pair[1] >= bundleInfo.chainStart &&
+                    pair[1] <= bundleInfo.timestamp
+                ) {
                     this.waiters.delete(cb);
                     cb();
                 }
@@ -105,8 +138,8 @@ export class ChainTracker {
     }
 
     /**
-    * @returns bytes that can be sent during the initial handshake
-    */
+     * @returns bytes that can be sent during the initial handshake
+     */
     getGreetingMessageBytes(): Uint8Array {
         const greeting = this.constructGreeting();
         const msg = new SyncMessageBuilder();

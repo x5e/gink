@@ -7,8 +7,11 @@ import { toJson } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class KeySet extends Container {
-
-    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(
+        database: Database,
+        address: Muid,
+        containerBuilder?: ContainerBuilder
+    ) {
         super(database, address, Behavior.KEY_SET);
         if (this.address.timestamp < 0) {
             ensure(address.offset === Behavior.KEY_SET);
@@ -39,7 +42,10 @@ export class KeySet extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to a Bundler object for the created entries.
      */
-    async update(keys: Iterable<ScalarKey>, change?: Bundler | string): Promise<Bundler> {
+    async update(
+        keys: Iterable<ScalarKey>,
+        change?: Bundler | string
+    ): Promise<Bundler> {
         let bundler: Bundler;
         if (change instanceof Bundler) {
             bundler = change;
@@ -69,10 +75,15 @@ export class KeySet extends Container {
      * @param asOf
      * @returns an async iterator across everything in the key set, with values returned as pairs of Key, Key
      */
-    entries(asOf?: AsOf): AsyncGenerator<[ScalarKey, ScalarKey], void, unknown> {
+    entries(
+        asOf?: AsOf
+    ): AsyncGenerator<[ScalarKey, ScalarKey], void, unknown> {
         const thisSet = this;
         return (async function* () {
-            const entries = await thisSet.database.store.getKeyedEntries(thisSet.address, asOf);
+            const entries = await thisSet.database.store.getKeyedEntries(
+                thisSet.address,
+                asOf
+            );
             for (const [key, entry] of entries) {
                 const storageKey = <ScalarKey>entry.storageKey;
                 yield [storageKey, storageKey];
@@ -87,7 +98,11 @@ export class KeySet extends Container {
      * @returns true if the key set has the key, false if not.
      */
     async has(key: ScalarKey, asOf?: AsOf): Promise<boolean> {
-        const result = await this.database.store.getEntryByKey(this.address, key, asOf);
+        const result = await this.database.store.getEntryByKey(
+            this.address,
+            key,
+            asOf
+        );
         if (result !== undefined && result.deletion) {
             return false;
         }
@@ -100,7 +115,10 @@ export class KeySet extends Container {
      * @returns a promise that resolves to a set with KeyTypes.
      */
     async toSet(asOf?: AsOf): Promise<Set<ScalarKey>> {
-        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(
+            this.address,
+            asOf
+        );
         const resultSet = new Set<ScalarKey>();
         for (const [key, entry] of entries) {
             const storageKey = <ScalarKey>entry.storageKey;
@@ -115,7 +133,10 @@ export class KeySet extends Container {
      * @returns a promise that resolves to a number.
      */
     async size(asOf?: AsOf): Promise<number> {
-        const entries = await this.database.store.getKeyedEntries(this.address, asOf);
+        const entries = await this.database.store.getKeyedEntries(
+            this.address,
+            asOf
+        );
         return entries.size;
     }
 
@@ -127,7 +148,11 @@ export class KeySet extends Container {
      * @param seen (internal use only! This prevents cycles from breaking things)
      * @returns a JSON string
      */
-    async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+    async toJson(
+        indent: number | boolean = false,
+        asOf?: AsOf,
+        seen?: Set<string>
+    ): Promise<string> {
         //TODO(https://github.com/google/gink/issues/62): add indentation
         ensure(indent === false, "indent not implemented");
         if (seen === undefined) seen = new Set();
@@ -144,10 +169,14 @@ export class KeySet extends Container {
                 returning += ",";
             }
             // returning += `"${key}"`;
-            returning += await toJson(key, indent === false ? false : +indent + 1, asOf, seen);
+            returning += await toJson(
+                key,
+                indent === false ? false : +indent + 1,
+                asOf,
+                seen
+            );
         }
         returning += "]";
         return returning;
-
     }
 }

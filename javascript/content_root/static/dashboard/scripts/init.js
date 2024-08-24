@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener("DOMContentLoaded", async () => {
     // Initialize and connect database store and instance
     const store = new gink.MemoryStore();
     const instance = new gink.Database(store);
@@ -13,7 +13,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     await page.displayPage(...page.unwrapHash(window.location.hash));
 
     // Connect to server
-    await instance.connectTo(`${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`);
+    await instance.connectTo(
+        `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`
+    );
 
     const refreshContainer = async () => {
         if (page.pageType === "container") {

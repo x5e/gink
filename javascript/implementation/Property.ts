@@ -6,8 +6,11 @@ import { Keyed } from "./Keyed";
 import { Addressable } from "./Addressable";
 
 export class Property extends Keyed<Addressable> {
-
-    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(
+        database: Database,
+        address: Muid,
+        containerBuilder?: ContainerBuilder
+    ) {
         super(database, address, Behavior.PROPERTY);
         if (this.address.timestamp < 0) {
             ensure(address.offset === Behavior.PROPERTY);
