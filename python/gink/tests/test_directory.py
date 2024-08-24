@@ -151,7 +151,6 @@ def test_update():
 def test_reset():
     """ tests that the reset(time) functionality works """
     for store in [LmdbStore(), MemoryStore()]:
-        # TODO: implement reset in memory store
         with store:
             database = Database(store=store)
             gdi = Directory.get_global_instance(database=database)

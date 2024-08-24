@@ -173,14 +173,12 @@ def test_insert():
             for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
                 for letter in "abc":
                     seq.append(letter, comment=letter)
-                    time.sleep(.001)
+                    time.sleep(.01)
                 assert list(seq) == ["a", "b", "c"], list(seq)
                 seq.insert(1, "x", comment="x")
-                if list(seq) != ["a", "x", "b", "c"]:
-                    raise AssertionError(f"{list(seq)} {store}")
+                assert list(seq) == ["a", "x", "b", "c"], list(seq)
                 seq.insert(0, "y", comment="y")
-                if list(seq) != ["y", "a", "x", "b", "c"]:
-                    raise AssertionError(list(seq))
+                assert list(seq) == ["y", "a", "x", "b", "c"], list(seq)
 
 
 def test_clear():
@@ -206,7 +204,7 @@ def test_clear():
 
 def test_reset():
     """ make sure that sequence.reset behaves as expected """
-    for store in [LmdbStore()]:
+    for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
             seq1 = Sequence.get_global_instance(database)
