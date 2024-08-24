@@ -324,8 +324,8 @@ def entries_equiv(pair1: PlacementBuilderPair, pair2: PlacementBuilderPair) -> b
     assert pair1.placement.container == pair2.placement.container
     if pair1.builder.HasField("pointee"):
         if pair2.builder.HasField("pointee"):
-            pointee1 = Muid.create(builder=pair1.builder.pointee)
-            pointee2 = Muid.create(builder=pair2.builder.pointee)
+            pointee1 = Muid.create(builder=pair1.builder.pointee, context=pair1.placement.placer)
+            pointee2 = Muid.create(builder=pair2.builder.pointee, context=pair2.placement.placer)
             return pointee1 == pointee2
         return False
     if pair1.builder.HasField("value"):
