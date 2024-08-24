@@ -89,3 +89,7 @@
          key for that chain first then hit this signing_keys table.  This is done because
          you won't know the chain_start time for a chain before it's created, but you
          will want to ensure that you've created and stored the signing key before that step.)
+
+        symmetric_keys - Keys for use in SecretBox encryption.
+            key: the shorter hash, stored big endian as a 64 bit integer
+            val: The 32 byte symmetric key.
