@@ -22,7 +22,7 @@ if TYPE_CHECKING:
         medallion: int
         previous: int
         prior_hash: bytes
-        key_id: bytes
+        key_id: int
         encrypted: bytes
         comment: str
 
