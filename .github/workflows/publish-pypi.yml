@@ -2,7 +2,7 @@ name: Publish Python distribution to PyPI
 
 on:
   push:
-    # branches: [main]
+    branches: [main]
     paths:
     - python/gink/__init__.py
     - python/gink/__main__.py
@@ -27,14 +27,9 @@ jobs:
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: protobuf-compiler
-    # - name: Update Version
-    #   run: export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" setup.py
     - name: Update Version ENV
       run: |
         echo "GINK_VERSION=`date -u +0.%Y%m%d.%s`" >> "$GITHUB_ENV"
-    - name: test
-      run: |
-        printf '%s\n' "$GINK_VERSION"
     - name: Build protos
       run: cd .. && make python/gink/builders
     - name: Install pypa/build
@@ -51,23 +46,23 @@ jobs:
         name: python-package-distributions
         path: python/dist/
 
-  # publish-to-pypi:
-  #   name: >-
-  #     Publish Python distribution to PyPI
-  #   needs:
-  #   - build
-  #   runs-on: ubuntu-latest
-  #   environment:
-  #     name: pypi
-  #     url: https://pypi.org/p/gink
-  #   permissions:
-  #     id-token: write
+  publish-to-pypi:
+    name: >-
+      Publish Python distribution to PyPI
+    needs:
+    - build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/gink
+    permissions:
+      id-token: write
 
-  #   steps:
-  #   - name: Download all the dists
-  #     uses: actions/download-artifact@v3
-  #     with:
-  #       name: python-package-distributions
-  #       path: dist/
-  #   - name: Publish distribution to PyPI
-  #     uses: pypa/gh-action-pypi-publish@release/v1
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: Publish distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
