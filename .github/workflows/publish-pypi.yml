@@ -27,8 +27,9 @@ jobs:
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: protobuf-compiler
-    - name: Update Version
-      run: export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "s/\${VERSION}/${VERSION}/g" setup.py
+    - name: Update Version ENV
+      run: |
+        echo "GINK_VERSION=`date -u +0.%Y%m%d.%s`" >> "$GITHUB_ENV"
     - name: Build protos
       run: cd .. && make python/gink/builders
     - name: Install pypa/build
