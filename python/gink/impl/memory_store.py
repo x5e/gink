@@ -22,7 +22,9 @@ from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
                      Placement, decode_entry_occupant, EDGE_TYPE,
                      PROPERTY, decode_value, new_entries_replace, BOX, GROUP,
                      KEY_SET, VERTEX, EDGE_TYPE, serialize, encode_key, normalize_entry_builder)
-from .utilities import create_claim, is_needed, shorter_hash
+
+from .utilities import (create_claim, is_needed, generate_timestamp, resolve_timestamp,
+                        resolve_timestamp, shorter_hash)
 
 
 class MemoryStore(AbstractStore):
@@ -87,16 +89,6 @@ class MemoryStore(AbstractStore):
     def stop_history(self):
         self._retaining_entries = False
         self.drop_history()
-
-    def save_symmetric_key(self, symmetric_key: bytes) -> int:
-        if len(symmetric_key) != 32:
-            raise ValueError("expecting 32 byte symmetric keys")
-        key_id = shorter_hash(symmetric_key)
-        self._symmetric_keys[key_id] = symmetric_key
-        return key_id
-
-    def get_symmetric_key(self, key_id: int) -> bytes:
-        return self._symmetric_keys[key_id]
 
     def save_symmetric_key(self, symmetric_key: bytes) -> int:
         if len(symmetric_key) != 32:
