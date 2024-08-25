@@ -1,12 +1,22 @@
-import { createServer as createHttpServer, Server as HttpServer, ServerResponse, IncomingMessage } from 'http';
-import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
-import { readFileSync } from 'fs';
-import { server as WebSocketServer, request as WebSocketRequest, } from 'websocket';
-import { NumberStr, DirPath, CallBack, FilePath } from './typedefs';
-import { createReadStream, existsSync } from 'fs';
-import { getType } from './utils';
-import { join, extname } from 'path';
-
+import {
+    createServer as createHttpServer,
+    Server as HttpServer,
+    ServerResponse,
+    IncomingMessage,
+} from "http";
+import {
+    createServer as createHttpsServer,
+    Server as HttpsServer,
+} from "https";
+import { readFileSync } from "fs";
+import {
+    server as WebSocketServer,
+    request as WebSocketRequest,
+} from "websocket";
+import { NumberStr, DirPath, CallBack, FilePath } from "./typedefs";
+import { createReadStream, existsSync } from "fs";
+import { getType } from "./utils";
+import { join, extname } from "path";
 
 /**
  * Just a utility class to wrap websocket.server.
@@ -19,17 +29,22 @@ export class Listener {
     readonly index?: string;
 
     constructor(args: {
-        requestHandler: (request: WebSocketRequest) => void,
-        requestListener?: (request: IncomingMessage, response: ServerResponse) => void,
-        staticContentRoot?: DirPath,
-        port?: NumberStr,
-        logger?: CallBack,
-        sslKeyFilePath?: FilePath,
-        sslCertFilePath?: FilePath,
-        index?: string,
+        requestHandler: (request: WebSocketRequest) => void;
+        requestListener?: (
+            request: IncomingMessage,
+            response: ServerResponse
+        ) => void;
+        staticContentRoot?: DirPath;
+        port?: NumberStr;
+        logger?: CallBack;
+        sslKeyFilePath?: FilePath;
+        sslCertFilePath?: FilePath;
+        index?: string;
     }) {
-        this.staticContentRoot = args.staticContentRoot ?? join(__dirname, "../../content_root");
-        const requestListener = args.requestListener || this.requestListener.bind(this);
+        this.staticContentRoot =
+            args.staticContentRoot ?? join(__dirname, "../../content_root");
+        const requestListener =
+            args.requestListener || this.requestListener.bind(this);
         const port = args.port || "8080";
         let callWhenReady: CallBack;
         this.index = args.index;
@@ -42,18 +57,28 @@ export class Listener {
                 key: readFileSync(args.sslKeyFilePath),
                 cert: readFileSync(args.sslCertFilePath),
             };
-            this.httpServer = createHttpsServer(options, requestListener).listen(port, () => {
+            this.httpServer = createHttpsServer(
+                options,
+                requestListener
+            ).listen(port, () => {
                 args?.logger(`Secure server is listening on port ${port}`);
                 callWhenReady();
             });
         } else {
-            this.httpServer = createHttpServer(requestListener).listen(port, function () {
-                args?.logger(`Insecure server is listening on port ${port}`);
-                callWhenReady();
-            });
+            this.httpServer = createHttpServer(requestListener).listen(
+                port,
+                function () {
+                    args?.logger(
+                        `Insecure server is listening on port ${port}`
+                    );
+                    callWhenReady();
+                }
+            );
         }
-        this.websocketServer = new WebSocketServer({ httpServer: this.httpServer });
-        this.websocketServer.on('request', args.requestHandler);
+        this.websocketServer = new WebSocketServer({
+            httpServer: this.httpServer,
+        });
+        this.websocketServer.on("request", args.requestHandler);
     }
 
     public requestListener(request: IncomingMessage, response: ServerResponse) {
@@ -63,14 +88,11 @@ export class Listener {
         if (existsSync(localPath)) {
             const readStream = createReadStream(localPath);
             const extension = extname(localPath).slice(1);
-            response.writeHead(200, { 'Content-type': getType(extension) });
+            response.writeHead(200, { "Content-type": getType(extension) });
             readStream.pipe(response);
-        }
-        else {
+        } else {
             response.writeHead(404, "Not Found");
             response.end("not found");
         }
-    };
-
-
+    }
 }

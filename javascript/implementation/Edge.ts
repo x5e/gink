@@ -8,7 +8,6 @@ import { Bundler } from "./Bundler";
 import { ChangeBuilder, MovementBuilder } from "./builders";
 
 export class Edge extends Addressable {
-
     private source: Muid;
     private target: Muid;
     private action: Muid;
@@ -17,7 +16,8 @@ export class Edge extends Addressable {
     constructor(
         readonly database: Database,
         address: Muid,
-        data: EdgeData) {
+        data: EdgeData
+    ) {
         super(address);
         this.setFromEdgeData(data);
     }
@@ -30,7 +30,10 @@ export class Edge extends Addressable {
     }
 
     static async load(database: Database, address: Muid): Promise<Edge> {
-        const entry = await database.store.getEntryById(address, address.timestamp + 1);
+        const entry = await database.store.getEntryById(
+            address,
+            address.timestamp + 1
+        );
         if (!entry) {
             throw new Error("edge not found");
         }
@@ -54,11 +57,14 @@ export class Edge extends Addressable {
     }
 
     async isAlive(asOf?: AsOf): Promise<boolean> {
-        return 0 !== await this.getEffective(asOf);
+        return 0 !== (await this.getEffective(asOf));
     }
 
     async getEffective(asOf?: AsOf): Promise<Timestamp> {
-        const entry = await this.database.store.getEntryById(this.address, asOf);
+        const entry = await this.database.store.getEntryById(
+            this.address,
+            asOf
+        );
         if (!entry) {
             return 0;
         } else {
@@ -66,7 +72,11 @@ export class Edge extends Addressable {
         }
     }
 
-    async remove(dest?: number, purge?: boolean, bundlerOrComment?: string | Bundler) {
+    async remove(
+        dest?: number,
+        purge?: boolean,
+        bundlerOrComment?: string | Bundler
+    ) {
         let immediate = false;
         let bundler: Bundler;
         if (bundlerOrComment instanceof Bundler) {
@@ -77,11 +87,9 @@ export class Edge extends Addressable {
         }
         const movementBuilder = new MovementBuilder();
         movementBuilder.setEntry(muidToBuilder(this.address));
-        if (dest)
-            movementBuilder.setDest(dest);
+        if (dest) movementBuilder.setDest(dest);
         movementBuilder.setContainer(muidToBuilder(this.action));
-        if (purge)
-            movementBuilder.setPurge(true);
+        if (purge) movementBuilder.setPurge(true);
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setMovement(movementBuilder);
         bundler.addChange(changeBuilder);

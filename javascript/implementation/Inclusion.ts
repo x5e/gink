@@ -1,2 +1,1 @@
-
-export class Inclusion { }
+export class Inclusion {}

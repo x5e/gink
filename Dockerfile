@@ -26,13 +26,14 @@ RUN pycodestyle --max-line-length=120 --select=E501 gink/impl/*.py gink/tests/*.
 RUN python3 -m nose2
 
 WORKDIR $GINK
-COPY javascript/*.js ./javascript/
+COPY javascript/*.js javascript/.prettier* ./javascript/
 COPY javascript/implementation ./javascript/implementation
 RUN make javascript
 WORKDIR $GINK/javascript
 
 # JavaScript/TypeScript unit-tests
 COPY javascript/unit-tests ./unit-tests
+RUN npx prettier . --check
 RUN npm test
 RUN npm run browser-unit
 

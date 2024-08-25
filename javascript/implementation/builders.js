@@ -1,4 +1,3 @@
-
 const BundleBuilder = require("../proto/bundle_pb")["Bundle"];
 const Behavior = require("../proto/behavior_pb")["Behavior"];
 const ChangeBuilder = require("../proto/change_pb")["Change"];

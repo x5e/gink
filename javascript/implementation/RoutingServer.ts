@@ -1,15 +1,20 @@
-
 import {
     request as WebSocketRequest,
-    connection as WebSocketConnection
-} from 'websocket';
-import { AuthFunction, CallBack, DirPath, NumberStr, FilePath } from "./typedefs";
+    connection as WebSocketConnection,
+} from "websocket";
+import {
+    AuthFunction,
+    CallBack,
+    DirPath,
+    NumberStr,
+    FilePath,
+} from "./typedefs";
 import { Database } from "./Database";
-import { RoutingServerInstance } from './RoutingServerInstance';
-import { ensure, decodeToken, isPathDangerous } from './utils';
-import { existsSync } from 'fs';
+import { RoutingServerInstance } from "./RoutingServerInstance";
+import { ensure, decodeToken, isPathDangerous } from "./utils";
+import { existsSync } from "fs";
 import { join } from "path";
-import { Listener } from './Listener';
+import { Listener } from "./Listener";
 
 /**
  * A class that listens on a port, and then serves either static content over HTTP(S)
@@ -29,7 +34,7 @@ export class RoutingServer {
     private instances: Map<string, RoutingServerInstance> = new Map();
 
     constructor(args: {
-        dataFilesRoot: DirPath,
+        dataFilesRoot: DirPath;
         port?: NumberStr;
         sslKeyFilePath?: FilePath;
         sslCertFilePath?: FilePath;
@@ -38,16 +43,19 @@ export class RoutingServer {
         logger?: CallBack;
         authFunc?: AuthFunction;
     }) {
-        const logger = this.logger = args.logger || (() => null);
+        const logger = (this.logger = args.logger || (() => null));
         this.authFunc = args.authFunc || (() => true);
         this.identity = args.identity;
         this.dataFilesRoot = args.dataFilesRoot;
         ensure(existsSync(this.dataFilesRoot), "data root not there");
         this.listener = new Listener({
-            requestHandler: this.onRequest.bind(this), logger,
-            ...args
+            requestHandler: this.onRequest.bind(this),
+            logger,
+            ...args,
         });
-        this.ready = this.listener.ready.then(() => logger(`RoutingServer ready`));
+        this.ready = this.listener.ready.then(() =>
+            logger(`RoutingServer ready`)
+        );
     }
 
     /**
@@ -59,7 +67,11 @@ export class RoutingServer {
         // Note: can't afford to await for the instance to be ready, or you'll miss the greeting.
         let instance = this.instances.get(path);
         if (!instance) {
-            instance = new RoutingServerInstance(path, this.identity, this.logger);
+            instance = new RoutingServerInstance(
+                path,
+                this.identity,
+                this.logger
+            );
             this.instances.set(path, instance);
         }
         return instance;
@@ -82,8 +94,7 @@ export class RoutingServer {
 
             if (request.requestedProtocols.includes(Database.PROTOCOL))
                 protocol = Database.PROTOCOL;
-            else
-                return request.reject(400, "bad protocol");
+            else return request.reject(400, "bad protocol");
         }
 
         if (isPathDangerous(request.resource))
@@ -92,7 +103,10 @@ export class RoutingServer {
         if (!this.authFunc(token)) {
             return request.reject(401, "authentication failed");
         }
-        const connection: WebSocketConnection = request.accept(protocol, request.origin);
+        const connection: WebSocketConnection = request.accept(
+            protocol,
+            request.origin
+        );
         const instanceKey = join(this.dataFilesRoot, request.resource);
         const instance = this.getInstance(instanceKey);
         await instance.onConnection(connection);

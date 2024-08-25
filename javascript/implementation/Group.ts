@@ -7,8 +7,11 @@ import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class Group extends Container {
-
-    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(
+        database: Database,
+        address: Muid,
+        containerBuilder?: ContainerBuilder
+    ) {
         super(database, address, Behavior.GROUP);
         if (this.address.timestamp < 0) {
             ensure(address.offset === Behavior.GROUP);
@@ -55,7 +58,11 @@ export class Group extends Container {
         if ("address" in key) {
             key = key.address;
         }
-        const entry = await this.database.store.getEntryByKey(this.address, key, asOf);
+        const entry = await this.database.store.getEntryByKey(
+            this.address,
+            key,
+            asOf
+        );
         if (entry && !entry.deletion) {
             return true;
         }
@@ -71,7 +78,10 @@ export class Group extends Container {
         const thisGroup = this;
         let container;
         return (async function* () {
-            const entries = await thisGroup.database.store.getKeyedEntries(thisGroup.address, asOf);
+            const entries = await thisGroup.database.store.getKeyedEntries(
+                thisGroup.address,
+                asOf
+            );
             for (const [key, entry] of entries) {
                 container = await interpret(entry, thisGroup.database);
                 if ("behavior" in container) {
@@ -87,17 +97,22 @@ export class Group extends Container {
      * @param asOf effective time to get the dump for: leave undefined to get data as of the present
      * @returns an array containing Values (e.g. numbers, strings) and Containers (e.g. other Lists, Boxes, Directories)
      */
-    async includedAsArray(asOf?: AsOf): Promise<(Container)[]> {
+    async includedAsArray(asOf?: AsOf): Promise<Container[]> {
         const thisList = this;
         let toArray: Array<Container> = [];
         let container;
-        const entries = await thisList.database.store.getKeyedEntries(thisList.address, asOf);
+        const entries = await thisList.database.store.getKeyedEntries(
+            thisList.address,
+            asOf
+        );
         for (const [key, entry] of entries) {
             container = await interpret(entry, thisList.database);
             if ("behavior" in container) {
                 toArray.push(container);
             } else {
-                throw Error("All entries should be containers - something is broken");
+                throw Error(
+                    "All entries should be containers - something is broken"
+                );
             }
         }
         return toArray;
@@ -111,7 +126,11 @@ export class Group extends Container {
      * @param seen (internal use only! This prevents cycles from breaking things)
      * @returns a JSON string
      */
-    async toJson(indent: number | boolean = false, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+    async toJson(
+        indent: number | boolean = false,
+        asOf?: AsOf,
+        seen?: Set<string>
+    ): Promise<string> {
         //TODO(https://github.com/google/gink/issues/62): add indentation
         ensure(indent === false, "indent not implemented");
         if (seen === undefined) seen = new Set();
@@ -127,7 +146,12 @@ export class Group extends Container {
             } else {
                 returning += ",";
             }
-            returning += await toJson(container, indent === false ? false : +indent + 1, asOf, seen);
+            returning += await toJson(
+                container,
+                indent === false ? false : +indent + 1,
+                asOf,
+                seen
+            );
         }
         returning += "]";
         return returning;

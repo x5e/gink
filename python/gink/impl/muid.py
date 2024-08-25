@@ -93,10 +93,10 @@ class Muid:
         builder: Union[MuidBuilder, Dummy] = Dummy(),
         offset: Optional[int] = None,
     ):
-        """Creates a muid.
+        """ Creates a muid.
 
-        The context argument should be a BundleInfo
-
+            The context argument should be a BundleInfo,
+            or a Muid if offset is negative.
         """
         timestamp = builder.timestamp or context.timestamp  # type: ignore
         medallion = builder.medallion or context.medallion  # type: ignore
@@ -111,7 +111,7 @@ class Muid:
 
     @staticmethod
     def from_str(hexed: str):
-        """the inverse of str(muid)"""
+        """ The inverse of str(muid) """
         timestamp_mod = 16**14
         medallion_mod = 16**13
         offset_mod = 16**5
@@ -129,7 +129,7 @@ class Muid:
 
     @staticmethod
     def from_bytes(data: bytes):
-        """does the inverse of bytes(muid)"""
+        """ The inverse of bytes(muid) """
         # there's probably a more efficient way to do this
         if len(data) < 16:
             raise ValueError("can't parse less than 16 bytes into a muid")

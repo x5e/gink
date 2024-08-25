@@ -1,8 +1,13 @@
 import { testStore } from "./Store.test";
-import { Database, MemoryStore, generateTimestamp, ensure } from "../implementation";
+import {
+    Database,
+    MemoryStore,
+    generateTimestamp,
+    ensure,
+} from "../implementation";
 
-testStore('MemoryStore', async () => new MemoryStore(true));
-it('test basic operations', async () => {
+testStore("MemoryStore", async () => new MemoryStore(true));
+it("test basic operations", async () => {
     const memStore = new MemoryStore(true);
     const instance = new Database(memStore);
     await instance.ready;
@@ -13,7 +18,10 @@ it('test basic operations', async () => {
     const entries = memStore.getAllEntries();
     ensure(entries.length === 2);
     const removals = memStore.getAllRemovals();
-    ensure(removals.size === 1, `removals.size is ${removals.size}, expected 1`);
+    ensure(
+        removals.size === 1,
+        `removals.size is ${removals.size}, expected 1`
+    );
     /*
     await memStore.dropHistory();
     const entriesAfterDrop = memStore.getAllEntryKeys();
@@ -22,7 +30,7 @@ it('test basic operations', async () => {
     */
 });
 
-it('tests getEntryByKey and getKeyedEntries', async () => {
+it("tests getEntryByKey and getKeyedEntries", async () => {
     const memStore = new MemoryStore(true);
     const instance = new Database(memStore);
     await instance.ready;

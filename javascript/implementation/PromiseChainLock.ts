@@ -1,7 +1,6 @@
 import { CallBack } from "./typedefs";
 
 export class PromiseChainLock {
-
     // Chain of promises that allow multiple attempts to acquire to wait their turn for the lock.
     private queue: Promise<void> = Promise.resolve();
 
@@ -19,9 +18,13 @@ export class PromiseChainLock {
     async acquireLock(): Promise<CallBack> {
         let calledWhenLockAcquired: (cb: CallBack) => void = null;
         let calledToReleaseLock: CallBack = null;
-        const resolvesWhenLockAcquired = new Promise<CallBack>((r) => { calledWhenLockAcquired = r; });
+        const resolvesWhenLockAcquired = new Promise<CallBack>((r) => {
+            calledWhenLockAcquired = r;
+        });
         this.queue = this.queue.then(() => {
-            const resolvesWhenLockReleased = new Promise<void>((r) => { calledToReleaseLock = r; });
+            const resolvesWhenLockReleased = new Promise<void>((r) => {
+                calledToReleaseLock = r;
+            });
             calledWhenLockAcquired(calledToReleaseLock);
             return resolvesWhenLockReleased;
         });

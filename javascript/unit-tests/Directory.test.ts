@@ -1,10 +1,16 @@
 import { sleep } from "./test_utils";
-import { Database, Bundler, IndexedDbStore, Directory, MemoryStore } from "../implementation";
+import {
+    Database,
+    Bundler,
+    IndexedDbStore,
+    Directory,
+    MemoryStore,
+} from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 
-it('set and get basic data', async function () {
+it("set and get basic data", async function () {
     for (const store of [
-        new IndexedDbStore('Directory.test1', true),
+        new IndexedDbStore("Directory.test1", true),
         new MemoryStore(true),
     ]) {
         const instance = new Database(store);
@@ -30,17 +36,15 @@ it('set and get basic data', async function () {
         const result = await schema.get("a key");
         ensure(result === "a value");
 
-
         await store.close();
     }
 });
 
-it('set and get data in two directories', async function () {
-    for (const store of
-        [
-            new IndexedDbStore('two.directories', true),
-            new MemoryStore(true),
-        ]) {
+it("set and get data in two directories", async function () {
+    for (const store of [
+        new IndexedDbStore("two.directories", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const dir1 = await instance.createDirectory();
@@ -68,10 +72,11 @@ it('set and get data in two directories', async function () {
     }
 });
 
-
-
-it('set multiple key/value pairs in one change-set', async function () {
-    for (const store of [new IndexedDbStore('Directory.test2', true), new MemoryStore(true)]) {
+it("set multiple key/value pairs in one change-set", async function () {
+    for (const store of [
+        new IndexedDbStore("Directory.test2", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const schema = await instance.createDirectory();
@@ -92,9 +97,11 @@ it('set multiple key/value pairs in one change-set', async function () {
     }
 });
 
-
-it('use a sub-schema', async function () {
-    for (const store of [new IndexedDbStore('Directory.test3', true), new MemoryStore(true)]) {
+it("use a sub-schema", async function () {
+    for (const store of [
+        new IndexedDbStore("Directory.test3", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const schema = await instance.createDirectory();
@@ -105,15 +112,16 @@ it('use a sub-schema', async function () {
         await schema.set("abc", newSchema);
 
         const anotherProxy = await schema.get("abc");
-        if (!(anotherProxy instanceof Directory)) throw new Error("not a schema?");
-        ensure("123" === await anotherProxy.get("xyz"));
+        if (!(anotherProxy instanceof Directory))
+            throw new Error("not a schema?");
+        ensure("123" === (await anotherProxy.get("xyz")));
         await store.close();
     }
 });
 
-it('purge one directory leaving other untouched', async function () {
+it("purge one directory leaving other untouched", async function () {
     for (const store of [
-        new IndexedDbStore('purge etc.', true),
+        new IndexedDbStore("purge etc.", true),
         new MemoryStore(true),
     ]) {
         const instance = new Database(store);
@@ -126,14 +134,17 @@ it('purge one directory leaving other untouched', async function () {
 
         await d1.clear(true);
 
-        ensure(0 === await d1.size());
+        ensure(0 === (await d1.size()));
         const size = await d2.size();
         ensure(0 !== size, "directory 2 has been purged!");
     }
 });
 
-it('convert to standard Map', async function () {
-    for (const store of [new IndexedDbStore('Directory.convert', true), new MemoryStore(true)]) {
+it("convert to standard Map", async function () {
+    for (const store of [
+        new IndexedDbStore("Directory.convert", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const directory = await instance.createDirectory();
@@ -145,7 +156,10 @@ it('convert to standard Map', async function () {
         await directory.set("cheese", "fries");
 
         const asMap = await directory.toMap();
-        ensure(asMap.size === 2, `expected to be 2: ${asMap.size} ${JSON.stringify(asMap)}`);
+        ensure(
+            asMap.size === 2,
+            `expected to be 2: ${asMap.size} ${JSON.stringify(asMap)}`
+        );
         ensure(!asMap.has("foo"));
         ensure(asMap.get("bar") === "iron");
         ensure(asMap.get("cheese") === "fries");
@@ -160,8 +174,11 @@ it('convert to standard Map', async function () {
     }
 });
 
-it('Directory.toJSON', async function () {
-    for (const store of [new IndexedDbStore('Directory.toJSON', true), new MemoryStore(true)]) {
+it("Directory.toJSON", async function () {
+    for (const store of [
+        new IndexedDbStore("Directory.toJSON", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const directory = await instance.createDirectory();
@@ -184,87 +201,100 @@ it('Directory.toJSON', async function () {
     }
 });
 
-it('Directory.asOf', async function () {
-    for (const store of [new IndexedDbStore('Directory.asOf', true), new MemoryStore(true)]) {
+it("Directory.asOf", async function () {
+    for (const store of [
+        new IndexedDbStore("Directory.asOf", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const directory = await instance.createDirectory();
 
         const time0 = generateTimestamp();
         await sleep(10);
-        await directory.set('A', 'B');
+        await directory.set("A", "B");
         await sleep(10);
         const time1 = generateTimestamp();
         await sleep(10);
-        await directory.set('cheese', 4);
+        await directory.set("cheese", 4);
         await sleep(10);
         const time2 = generateTimestamp();
 
         const asJsonNow = await directory.toJson();
         ensure(asJsonNow === `{"A":"B","cheese":4}`);
-        ensure((await directory.get('cheese')) === 4);
+        ensure((await directory.get("cheese")) === 4);
 
         const asJson2 = await directory.toJson(false, time2);
         ensure(asJson2 === `{"A":"B","cheese":4}`);
-        ensure((await directory.get('cheese', time2)) === 4);
+        ensure((await directory.get("cheese", time2)) === 4);
 
         const asJson1 = await directory.toJson(false, time1);
         ensure(asJson1 === `{"A":"B"}`);
-        ensure((await directory.get('cheese', time1)) === undefined);
+        ensure((await directory.get("cheese", time1)) === undefined);
 
         const asMap0 = await directory.toMap(time0);
         ensure(asMap0.size === 0);
 
         const asJsonBack = await directory.toJson(false, -1);
         ensure(asJsonBack === `{"A":"B"}`);
-        ensure((await directory.get('cheese', -1)) === undefined);
-        ensure((await directory.get('A', -1)) === 'B');
+        ensure((await directory.get("cheese", -1)) === undefined);
+        ensure((await directory.get("A", -1)) === "B");
         await store.close();
     }
 });
 
-it('Directory.purge', async function () {
-    for (const store of [new IndexedDbStore('Directory.purge', true), new MemoryStore(true)]) {
-        const instance = new Database(store);
-        await instance.ready;
-        const directory = await instance.createDirectory();
-
-        await directory.set('A', 99);
-        await sleep(10);
-        const middle = generateTimestamp();
-        await sleep(10);
-        await directory.set('B', false);
-
-        ensure(await directory.has("A") && await directory.has("B"));
-        await directory.clear(true);
-
-        const found = await instance.store.getKeyedEntries(directory.address, middle);
-        ensure(!found.size);
-        ensure(!await directory.size());
-        await store.close();
-    }
-});
-
-it('Directory.clear', async function () {
+it("Directory.purge", async function () {
     for (const store of [
-        new IndexedDbStore('Directory.clear', true),
+        new IndexedDbStore("Directory.purge", true),
         new MemoryStore(true),
     ]) {
         const instance = new Database(store);
         await instance.ready;
         const directory = await instance.createDirectory();
-        await directory.set('A', 99);
-        const clearMuid = await directory.clear();
-        await directory.set('B', false);
-        const asMap = await directory.toMap();
-        ensure(asMap.has("B") && !asMap.has("A"), "did not clear");
-        const asMapBeforeClear = await directory.toMap(clearMuid.timestamp);
-        if (asMapBeforeClear.has("B") || !asMapBeforeClear.has("A")) {
-            throw new Error("busted");
-        }
-        // Ensure getEntryByKey works the same way
-        ensure(await directory.get("A", clearMuid.timestamp));
-        ensure(!(await directory.get("B", clearMuid.timestamp)));
+
+        await directory.set("A", 99);
+        await sleep(10);
+        const middle = generateTimestamp();
+        await sleep(10);
+        await directory.set("B", false);
+
+        ensure((await directory.has("A")) && (await directory.has("B")));
+        await directory.clear(true);
+
+        const found = await instance.store.getKeyedEntries(
+            directory.address,
+            middle
+        );
+        ensure(!found.size);
+        ensure(!(await directory.size()));
         await store.close();
     }
-}, 1000 * 1000 * 1000);
+});
+
+it(
+    "Directory.clear",
+    async function () {
+        for (const store of [
+            new IndexedDbStore("Directory.clear", true),
+            new MemoryStore(true),
+        ]) {
+            const instance = new Database(store);
+            await instance.ready;
+            const directory = await instance.createDirectory();
+            await directory.set("A", 99);
+            const clearMuid = await directory.clear();
+            await directory.set("B", false);
+            const asMap = await directory.toMap();
+            ensure(asMap.has("B") && !asMap.has("A"), "did not clear");
+            const asMapBeforeClear = await directory.toMap(clearMuid.timestamp);
+            if (asMapBeforeClear.has("B") || !asMapBeforeClear.has("A")) {
+                throw new Error("busted");
+            }
+            // Ensure getEntryByKey works the same way
+            ensure(await directory.get("A", clearMuid.timestamp));
+            ensure(!(await directory.get("B", clearMuid.timestamp)));
+            await store.close();
+        }
+    },
+    1000 * 1000 * 1000
+);

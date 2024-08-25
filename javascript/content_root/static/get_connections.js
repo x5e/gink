@@ -1,7 +1,7 @@
 function getConnections() {
     $.ajax({
         url: `${window.location.origin}/list_connections`,
-        type: 'GET',
+        type: "GET",
         success: function (data) {
             $("#connections-list").remove();
             let body = document.querySelector("body");
@@ -18,6 +18,6 @@ function getConnections() {
         },
         error: function (error) {
             console.log(error);
-        }
+        },
     });
 }

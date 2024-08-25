@@ -1,8 +1,11 @@
 import { Database, IndexedDbStore, MemoryStore } from "../implementation";
 import { ensure, sameData } from "../implementation/utils";
 
-it('Property.basics', async function () {
-    for (const store of [new IndexedDbStore('Property.basics', true), new MemoryStore(true)]) {
+it("Property.basics", async function () {
+    for (const store of [
+        new IndexedDbStore("Property.basics", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const gd = instance.getGlobalDirectory();
@@ -23,8 +26,11 @@ it('Property.basics', async function () {
     }
 });
 
-it('Property.toMap', async function () {
-    for (const store of [new IndexedDbStore('Property.toMap', true), new MemoryStore(true)]) {
+it("Property.toMap", async function () {
+    for (const store of [
+        new IndexedDbStore("Property.toMap", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const gd = instance.getGlobalDirectory();
@@ -34,7 +40,32 @@ it('Property.toMap', async function () {
         const asMap = await property.toMap();
         const asObject = Object.fromEntries(asMap.entries());
         ensure(asMap.size === 2);
-        ensure(asObject["-1,-1,4"] === "foobar", Array.from(asMap.keys()).toString());
-        ensure(asObject["-1,-1,10"] === true, Array.from(asMap.keys()).toString());
+        ensure(
+            asObject["-1,-1,4"] === "foobar",
+            Array.from(asMap.keys()).toString()
+        );
+        ensure(
+            asObject["-1,-1,10"] === true,
+            Array.from(asMap.keys()).toString()
+        );
+    }
+});
+
+it("Global property sets and gets names", async function () {
+    for (const store of [
+        new IndexedDbStore("Global property sets and gets names", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const gd = instance.getGlobalDirectory();
+        const d2 = await instance.createDirectory();
+        await gd.setName("foo");
+        await d2.setName("bar");
+        const name = await gd.getName();
+        ensure(name === "foo");
+        await gd.setName("changed");
+        const name2 = await gd.getName();
+        ensure(name2 === "changed");
     }
 });

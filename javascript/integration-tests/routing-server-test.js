@@ -9,8 +9,11 @@ process.chdir(__dirname + "/..");
     await new Promise((resolve) => setTimeout(resolve, 10));
     let server;
     if (!process.env["GINK_DEBUG"]) {
-        server = new Expector("./tsc.out/implementation/main.js", ["-l", port, "--data-root", "/tmp/routing-server-test"],
-            { env: { ...process.env } });
+        server = new Expector(
+            "./tsc.out/implementation/main.js",
+            ["-l", port, "--data-root", "/tmp/routing-server-test"],
+            { env: { ...process.env } }
+        );
 
         await server.expect("RoutingServer ready", 2000);
     }
@@ -19,24 +22,39 @@ process.chdir(__dirname + "/..");
     // that will only be seen in the future by clients connecting to the same path.
 
     const firstAbcStore = new IndexedDbStore("firstAbc");
-    const firstAbcInstance = new Database(firstAbcStore, undefined, (msg) => console.log('firstAbc: ' + msg));
-    const firstAbcPeer = await firstAbcInstance.connectTo(`ws://127.0.0.1:${port}/abc`);
+    const firstAbcInstance = new Database(firstAbcStore, undefined, (msg) =>
+        console.log("firstAbc: " + msg)
+    );
+    const firstAbcPeer = await firstAbcInstance.connectTo(
+        `ws://127.0.0.1:${port}/abc`
+    );
     const firstAbcDir = firstAbcInstance.getGlobalDirectory();
     const change = await firstAbcDir.set("abc", 123, "firstAbc");
     const valueAfterSet = await firstAbcDir.get("abc");
-    if (valueAfterSet !== 123) throw new Error(`valueAfterSet=${valueAfterSet}`);
+    if (valueAfterSet !== 123)
+        throw new Error(`valueAfterSet=${valueAfterSet}`);
     await firstAbcPeer.hasMap?.waitTillHas(change);
     await firstAbcInstance.close();
 
-    const firstXyzInstance = new Database(new IndexedDbStore("firstXyz"), "firstXyz@identity", (msg) => console.log('firstXyz: ' + msg));
-    const firstXyzPeer = await firstXyzInstance.connectTo(`ws://127.0.0.1:${port}/xyz`);
+    const firstXyzInstance = new Database(
+        new IndexedDbStore("firstXyz"),
+        "firstXyz@identity",
+        (msg) => console.log("firstXyz: " + msg)
+    );
+    const firstXyzPeer = await firstXyzInstance.connectTo(
+        `ws://127.0.0.1:${port}/xyz`
+    );
     const firstXyzDir = firstXyzInstance.getGlobalDirectory();
     console.log(await firstXyzInstance.store.getClaimedChains());
     const xyzChange = await firstXyzDir.set("xyz", 789, "firstXyz");
     await firstXyzPeer.hasMap?.waitTillHas(xyzChange);
     await firstXyzInstance.close();
 
-    const secondAbcInstance = new Database(new IndexedDbStore("secondAbc"), undefined, (msg) => console.log('secondAbc: ' + msg));
+    const secondAbcInstance = new Database(
+        new IndexedDbStore("secondAbc"),
+        undefined,
+        (msg) => console.log("secondAbc: " + msg)
+    );
     await secondAbcInstance.connectTo(`ws://127.0.0.1:${port}/abc`);
     // TODO: Add a way to ask to wait until instances are caught up with each other.
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -48,7 +66,11 @@ process.chdir(__dirname + "/..");
     await secondAbcInstance.close();
 
     const secondXyzStore = new IndexedDbStore("secondXyz");
-    const secondXyzInstance = new Database(secondXyzStore, "secondXyz@identity", (msg) => console.log('secondXyz: ' + msg));
+    const secondXyzInstance = new Database(
+        secondXyzStore,
+        "secondXyz@identity",
+        (msg) => console.log("secondXyz: " + msg)
+    );
     await secondXyzInstance.connectTo(`ws://127.0.0.1:${port}/xyz`);
     await new Promise((resolve) => setTimeout(resolve, 100));
     const secondXyzDir = secondXyzInstance.getGlobalDirectory();

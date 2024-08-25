@@ -7,9 +7,14 @@ let result = 1;
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    server = new Expector("./tsc.out/implementation/main.js", ["-l", port], { env: { ...process.env } });
+    server = new Expector("./tsc.out/implementation/main.js", ["-l", port], {
+        env: { ...process.env },
+    });
     await server.expect("listening", 10000);
-    client = new Expector("./tsc.out/implementation/main.js", ["-c", `ws://127.0.0.1:${port}/`]);
+    client = new Expector("./tsc.out/implementation/main.js", [
+        "-c",
+        `ws://127.0.0.1:${port}/`,
+    ]);
     await client.expect("using", 10000);
     console.log("all ready");
 
@@ -23,12 +28,12 @@ let result = 1;
     console.log("closing...");
     console.log("ok!");
     result = 0;
-})().catch((reason) => {
-    console.error(reason);
-}).finally(
-    async () => {
+})()
+    .catch((reason) => {
+        console.error(reason);
+    })
+    .finally(async () => {
         await server.close();
         await client.close();
         process.exit(result);
-    }
-)
+    });
