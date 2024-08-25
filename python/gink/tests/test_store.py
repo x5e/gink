@@ -4,6 +4,7 @@
 from typing import Callable, Optional
 from contextlib import closing
 from nacl.signing import SigningKey, VerifyKey
+from nacl.utils import random
 
 # gink generated proto modules
 from ..impl.builders import BundleBuilder
@@ -205,6 +206,17 @@ def generic_test_orders_bundles(store_maker: StoreMaker):
         assert ordered[2] == (cs2, info2) or ordered[2] == (cs3, info3)
         assert ordered[3] == (cs4, info4)
 
+def generic_test_symmetric_keys(store_maker: StoreMaker):
+    with closing(store_maker()) as store:
+        key1 = random(32)
+        key2 = random(32)
+        assert key1 != key2
+        id1 = store.save_symmetric_key(key1)
+        id2 = store.save_symmetric_key(key2)
+        result1 = store.get_symmetric_key(id1)
+        assert result1 == key1
+        result2 = store.get_symmetric_key(id2)
+        assert result2 == key2
 
 def generic_test_tracks(store_maker: StoreMaker):
     """ Ensures that the store orders change sets correctly. """
