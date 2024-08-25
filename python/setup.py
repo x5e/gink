@@ -1,9 +1,12 @@
 from setuptools import setup, find_packages
 from pathlib import Path
+from os import environ
+
+print("FOUND VERSION ", environ.get("GINK_VERSION", "0.0.0"))
 
 setup(
     name='gink',
-    version='${VERSION}',
+    version=environ.get("GINK_VERSION", "0.0.0"),
     description='a system for storing data structures in lmdb',
     url='https://github.com/x5e/gink',
     author='Darin McGill',
