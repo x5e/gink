@@ -2,7 +2,7 @@ function createConnection() {
     let ipAddress = document.getElementById("ipAddress").value;
     $.ajax({
         url: `${window.location.origin}/create_connection?ipAddress=${ipAddress}`,
-        type: 'POST',
+        type: "POST",
         success: function (data) {
             $(".connection-msg").remove();
             data = JSON.parse(data);
@@ -13,6 +13,6 @@ function createConnection() {
         },
         error: function (error) {
             console.log(error);
-        }
+        },
     });
 }

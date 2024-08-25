@@ -1,6 +1,21 @@
-import { ChainTracker } from './ChainTracker';
-import { Behavior, ChangeBuilder, EntryBuilder, MovementBuilder, MuidBuilder } from "./builders";
-import { ScalarKey, StorageKey, MuidTuple, Muid, BundleInfo, Indexable, BundleInfoTuple, Movement } from "./typedefs";
+import { ChainTracker } from "./ChainTracker";
+import {
+    Behavior,
+    ChangeBuilder,
+    EntryBuilder,
+    MovementBuilder,
+    MuidBuilder,
+} from "./builders";
+import {
+    ScalarKey,
+    StorageKey,
+    MuidTuple,
+    Muid,
+    BundleInfo,
+    Indexable,
+    BundleInfoTuple,
+    Movement,
+} from "./typedefs";
 import {
     ensure,
     unwrapKey,
@@ -8,7 +23,7 @@ import {
     muidToTuple,
     dehydrate,
     intToHex,
-    muidTupleToString
+    muidTupleToString,
 } from "./utils";
 import { Container } from "./Container";
 
@@ -18,21 +33,32 @@ import { Container } from "./Container";
  * @param entryMuid
  * @returns A well defined string that's different for each valid key, given the behavior
  */
-export function getStorageKey(entryBuilder: EntryBuilder, entryMuid: Muid): StorageKey {
+export function getStorageKey(
+    entryBuilder: EntryBuilder,
+    entryMuid: Muid
+): StorageKey {
     const behavior: Behavior = entryBuilder.getBehavior();
     if (behavior === Behavior.DIRECTORY || behavior === Behavior.KEY_SET) {
         ensure(entryBuilder.hasKey());
         const key = unwrapKey(entryBuilder.getKey());
         // if (key instanceof Uint8Array) return [key.toString()];
         return key;
-    } else if (behavior === Behavior.SEQUENCE || behavior === Behavior.EDGE_TYPE) {
-        return (entryBuilder.getEffective() || entryMuid.timestamp);
+    } else if (
+        behavior === Behavior.SEQUENCE ||
+        behavior === Behavior.EDGE_TYPE
+    ) {
+        return entryBuilder.getEffective() || entryMuid.timestamp;
     } else if (behavior === Behavior.BOX || behavior === Behavior.VERTEX) {
         return [];
     } else if (behavior === Behavior.PROPERTY || behavior === Behavior.GROUP) {
         ensure(entryBuilder.hasDescribing());
-        return muidToTuple(builderToMuid(entryBuilder.getDescribing(), entryMuid));
-    } else if (behavior === Behavior.PAIR_SET || behavior === Behavior.PAIR_MAP) {
+        return muidToTuple(
+            builderToMuid(entryBuilder.getDescribing(), entryMuid)
+        );
+    } else if (
+        behavior === Behavior.PAIR_SET ||
+        behavior === Behavior.PAIR_MAP
+    ) {
         ensure(entryBuilder.hasPair());
         const pair = entryBuilder.getPair();
         const left = builderToMuid(pair.getLeft(), entryMuid);
@@ -44,26 +70,34 @@ export function getStorageKey(entryBuilder: EntryBuilder, entryMuid: Muid): Stor
 }
 
 export function storageKeyToString(storageKey: StorageKey): string {
-    if (storageKey instanceof Uint8Array)
-        return `(${storageKey})`;
+    if (storageKey instanceof Uint8Array) return `(${storageKey})`;
     if (Array.isArray(storageKey)) {
         if (storageKey.length === 3) {
             return muidTupleToString(<MuidTuple>storageKey);
         }
         return storageKey.toString();
     }
-    if (typeof (storageKey) === "number" || typeof (storageKey) === "string")
+    if (typeof storageKey === "number" || typeof storageKey === "string")
         return JSON.stringify(storageKey);
 }
 
-export function extractMovement(changeBuilder: ChangeBuilder, bundleInfo: BundleInfo, offset: number): Movement {
+export function extractMovement(
+    changeBuilder: ChangeBuilder,
+    bundleInfo: BundleInfo,
+    offset: number
+): Movement {
     const movementBuilder: MovementBuilder = changeBuilder.getMovement();
     const entryMuid = movementBuilder.getEntry();
     const entryId: MuidTuple = [
         entryMuid.getTimestamp() || bundleInfo.timestamp,
         entryMuid.getMedallion() || bundleInfo.medallion,
-        entryMuid.getOffset()];
-    const movementId: MuidTuple = [bundleInfo.timestamp, bundleInfo.medallion, offset];
+        entryMuid.getOffset(),
+    ];
+    const movementId: MuidTuple = [
+        bundleInfo.timestamp,
+        bundleInfo.medallion,
+        offset,
+    ];
     const containerId: MuidTuple = [0, 0, 0];
     if (movementBuilder.hasContainer()) {
         const srcMuid: MuidBuilder = movementBuilder.getContainer();
@@ -80,7 +114,10 @@ export function extractMovement(changeBuilder: ChangeBuilder, bundleInfo: Bundle
     };
 }
 
-export function extractContainerMuid(entryBuilder: EntryBuilder, bundleInfo: BundleInfo): MuidTuple {
+export function extractContainerMuid(
+    entryBuilder: EntryBuilder,
+    bundleInfo: BundleInfo
+): MuidTuple {
     const containerId: MuidTuple = [0, 0, 0];
     const srcMuid: MuidBuilder = entryBuilder.getContainer();
     containerId[0] = srcMuid.getTimestamp() || bundleInfo.timestamp;
@@ -89,7 +126,10 @@ export function extractContainerMuid(entryBuilder: EntryBuilder, bundleInfo: Bun
     return containerId;
 }
 
-export function buildPointeeList(entryBuilder: EntryBuilder, bundleInfo: BundleInfo): Array<MuidTuple> {
+export function buildPointeeList(
+    entryBuilder: EntryBuilder,
+    bundleInfo: BundleInfo
+): Array<MuidTuple> {
     const pointeeList = <Indexable[]>[];
     const pointeeMuidBuilder: MuidBuilder = entryBuilder.getPointee();
     const pointee = dehydrate({
@@ -101,20 +141,23 @@ export function buildPointeeList(entryBuilder: EntryBuilder, bundleInfo: BundleI
     return pointeeList;
 }
 
-export function buildPairLists(entryBuilder: EntryBuilder, bundleInfo: BundleInfo): Array<Array<MuidTuple>> {
+export function buildPairLists(
+    entryBuilder: EntryBuilder,
+    bundleInfo: BundleInfo
+): Array<Array<MuidTuple>> {
     const sourceList = <Indexable[]>[];
     const targetList = <Indexable[]>[];
     const pairBuilder = entryBuilder.getPair();
     const source = dehydrate({
         timestamp: pairBuilder.getLeft().getTimestamp() || bundleInfo.timestamp,
         medallion: pairBuilder.getLeft().getMedallion() || bundleInfo.medallion,
-        offset: pairBuilder.getLeft().getOffset()
+        offset: pairBuilder.getLeft().getOffset(),
     });
     sourceList.push(source);
     const target = dehydrate({
         timestamp: pairBuilder.getRite().getTimestamp() || bundleInfo.timestamp,
         medallion: pairBuilder.getRite().getMedallion() || bundleInfo.medallion,
-        offset: pairBuilder.getRite().getOffset()
+        offset: pairBuilder.getRite().getOffset(),
     });
     targetList.push(target);
 
@@ -126,8 +169,9 @@ export function medallionChainStartToString(tuple: [number, number]): string {
     return `${intToHex(tuple[0])}-${intToHex(tuple[1])}`;
 }
 
-
-export function buildChainTracker(chainInfos: Iterable<BundleInfo>): ChainTracker {
+export function buildChainTracker(
+    chainInfos: Iterable<BundleInfo>
+): ChainTracker {
     const hasMap: ChainTracker = new ChainTracker({});
     for (const value of chainInfos) {
         hasMap.markAsHaving(value);
@@ -135,10 +179,11 @@ export function buildChainTracker(chainInfos: Iterable<BundleInfo>): ChainTracke
     return hasMap;
 }
 
-export function toStorageKey(key: ScalarKey | Muid | [Muid | Container, Muid | Container]): StorageKey {
-    if (key instanceof Uint8Array)
-        return key;
-    if (typeof (key) === "number" || typeof (key) === "string") {
+export function toStorageKey(
+    key: ScalarKey | Muid | [Muid | Container, Muid | Container]
+): StorageKey {
+    if (key instanceof Uint8Array) return key;
+    if (typeof key === "number" || typeof key === "string") {
         return key;
     } else if (Array.isArray(key)) {
         return [muidToTuple(<Muid>key[0]), muidToTuple(<Muid>key[1])];
@@ -162,6 +207,11 @@ export function bundleKeyToInfo(bundleKey: BundleInfoTuple) {
 }
 
 export function bundleInfoToKey(bundleInfo: BundleInfo): BundleInfoTuple {
-    return [bundleInfo.timestamp, bundleInfo.medallion, bundleInfo.chainStart,
-    bundleInfo.priorTime || 0, bundleInfo.comment || ""];
+    return [
+        bundleInfo.timestamp,
+        bundleInfo.medallion,
+        bundleInfo.chainStart,
+        bundleInfo.priorTime || 0,
+        bundleInfo.comment || "",
+    ];
 }

@@ -15,7 +15,6 @@ import {
 } from "./typedefs";
 
 export interface Store {
-
     /**
      * Can be awaited on for the underlying store to be ready for operations.
      * Methods of the store should await on this, so if initialization fails then
@@ -82,15 +81,27 @@ export interface Store {
     getContainerBytes: (address: Muid) => Promise<Bytes | undefined>;
 
     getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined>;
-    getEntryByKey(container: Muid, key?: ScalarKey | Muid | [Muid, Muid], asOf?: AsOf): Promise<Entry | undefined>;
+    getEntryByKey(
+        container: Muid,
+        key?: ScalarKey | Muid | [Muid, Muid],
+        asOf?: AsOf
+    ): Promise<Entry | undefined>;
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<string, Entry>>;
 
     /**
      * returns a map where the entries were inserted in the desired order, and the keys
      * correspond to <effectiveTs>,<placementIdStr>.
      */
-    getOrderedEntries(source: Muid, through: number, asOf?: AsOf): Promise<Map<string, Entry>>;
-    getEntriesBySourceOrTarget(vertex: Muid, source: boolean, asOf?: AsOf): Promise<Entry[]>;
+    getOrderedEntries(
+        source: Muid,
+        through: number,
+        asOf?: AsOf
+    ): Promise<Map<string, Entry>>;
+    getEntriesBySourceOrTarget(
+        vertex: Muid,
+        source: boolean,
+        asOf?: AsOf
+    ): Promise<Entry[]>;
 
     /**
      * Returns an Array of all containers matching the provided name.

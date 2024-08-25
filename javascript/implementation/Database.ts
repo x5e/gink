@@ -1,15 +1,32 @@
 import { Peer } from "./Peer";
 import {
-    makeMedallion, ensure, noOp, generateTimestamp, muidToString, builderToMuid,
-    encodeToken, isAlive,
+    makeMedallion,
+    ensure,
+    noOp,
+    generateTimestamp,
+    muidToString,
+    builderToMuid,
+    encodeToken,
+    isAlive,
     getIdentity,
-    createKeyPair
+    createKeyPair,
 } from "./utils";
-import { BundleBytes, BundleListener, CallBack, BundleInfo, Muid, Offset, ClaimedChain, BundleView, AsOf, KeyPair, } from "./typedefs";
+import {
+    BundleBytes,
+    BundleListener,
+    CallBack,
+    BundleInfo,
+    Muid,
+    Offset,
+    ClaimedChain,
+    BundleView,
+    AsOf,
+    KeyPair,
+} from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
 
-import { PairSet } from './PairSet';
+import { PairSet } from "./PairSet";
 import { PairMap } from "./PairMap";
 import { KeySet } from "./KeySet";
 import { Directory } from "./Directory";
@@ -17,7 +34,12 @@ import { Box } from "./Box";
 import { Sequence } from "./Sequence";
 import { Group } from "./Group";
 import { Store } from "./Store";
-import { Behavior, ChangeBuilder, ContainerBuilder, SyncMessageBuilder } from "./builders";
+import {
+    Behavior,
+    ChangeBuilder,
+    ContainerBuilder,
+    SyncMessageBuilder,
+} from "./builders";
 import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
@@ -30,7 +52,6 @@ import { MemoryStore } from "./MemoryStore";
  * listening (see SimpleServer for that capability).
  */
 export class Database {
-
     ready: Promise<any>;
     readonly peers: Map<number, Peer> = new Map();
     static readonly PROTOCOL = "gink";
@@ -44,12 +65,16 @@ export class Database {
     protected iHave: ChainTracker;
 
     //TODO: centralize platform dependent code
-    private static W3cWebSocket = typeof WebSocket === 'function' ? WebSocket :
-        eval("require('websocket').w3cwebsocket");
+    private static W3cWebSocket =
+        typeof WebSocket === "function"
+            ? WebSocket
+            : eval("require('websocket').w3cwebsocket");
 
-    constructor(readonly store: Store = new MemoryStore(true),
+    constructor(
+        readonly store: Store = new MemoryStore(true),
         identity: string = getIdentity(),
-        readonly logger: CallBack = noOp) {
+        readonly logger: CallBack = noOp
+    ) {
         this.identity = identity;
         this.ready = this.initialize();
     }
@@ -84,16 +109,20 @@ export class Database {
     }
 
     private async getChainHelper(): Promise<BundleInfo> {
-        if (this.lastLinkToExtend)
-            return this.lastLinkToExtend;
+        if (this.lastLinkToExtend) return this.lastLinkToExtend;
         this.logger("calling getChain()");
         const claimedChains = await this.store.getClaimedChains();
         let toReuse: ClaimedChain;
         for (let value of claimedChains.values()) {
-            const chainId = await this.store.getChainIdentity([value.medallion, value.chainStart]);
+            const chainId = await this.store.getChainIdentity([
+                value.medallion,
+                value.chainStart,
+            ]);
             this.logger(`considering chain: ${JSON.stringify(value)}`);
             if (chainId !== this.identity) {
-                this.logger(`identities don't match: ${chainId} ${this.identity}`);
+                this.logger(
+                    `identities don't match: ${chainId} ${this.identity}`
+                );
                 continue;
             }
             if (await isAlive(value.actorId)) {
@@ -106,18 +135,26 @@ export class Database {
                 // If we are running in a browser and take over a chain,
                 // start a new heartbeat.
                 setInterval(() => {
-                    window.localStorage.setItem(`gink-${value.actorId}`, `${Date.now()}`);
+                    window.localStorage.setItem(
+                        `gink-${value.actorId}`,
+                        `${Date.now()}`
+                    );
                 }, 1000);
             }
             break;
         }
         if (toReuse) {
             ensure(toReuse.medallion > 0);
-            const publicKey = await this.store.getVerifyKey([toReuse.medallion, toReuse.chainStart]);
+            const publicKey = await this.store.getVerifyKey([
+                toReuse.medallion,
+                toReuse.chainStart,
+            ]);
             ensure(publicKey);
             this.keyPair = ensure(await this.store.pullKeyPair(publicKey));
-            this.lastLinkToExtend = this.iHave.getBundleInfo([toReuse.medallion, toReuse.chainStart]);
-
+            this.lastLinkToExtend = this.iHave.getBundleInfo([
+                toReuse.medallion,
+                toReuse.chainStart,
+            ]);
         } else {
             const medallion = makeMedallion();
             const chainStart = generateTimestamp();
@@ -126,15 +163,25 @@ export class Database {
             this.keyPair = keyPair;
             const bundler = new Bundler(this.identity, medallion);
             // Starting a new chain, so don't have/need a prior_hash.
-            bundler.seal({
-                medallion, timestamp: chainStart, chainStart
-            }, keyPair);
+            bundler.seal(
+                {
+                    medallion,
+                    timestamp: chainStart,
+                    chainStart,
+                },
+                keyPair
+            );
             ensure(bundler.info.comment === this.identity);
             await this.store.addBundle(bundler, true);
             this.lastLinkToExtend = bundler.info;
-            ensure(this.lastLinkToExtend.hashCode && this.lastLinkToExtend.hashCode.length == 32);
+            ensure(
+                this.lastLinkToExtend.hashCode &&
+                    this.lastLinkToExtend.hashCode.length == 32
+            );
             this.iHave.markAsHaving(bundler.info);
-            this.logger(`started chain with ${JSON.stringify(bundler.info, ["medallion", "chainStart"])}`);
+            this.logger(
+                `started chain with ${JSON.stringify(bundler.info, ["medallion", "chainStart"])}`
+            );
             // If there is already a connection before we claim a chain, ensure the
             // peers get this bundle as well so future bundles will be valid extensions.
             for (const peer of this.peers.values()) {
@@ -142,7 +189,10 @@ export class Database {
             }
         }
         ensure(this.lastLinkToExtend, "myChain wasn't set.");
-        ensure(this.lastLinkToExtend.hashCode && this.lastLinkToExtend.hashCode.length == 32);
+        ensure(
+            this.lastLinkToExtend.hashCode &&
+                this.lastLinkToExtend.hashCode.length == 32
+        );
         return this.lastLinkToExtend;
     }
 
@@ -151,15 +201,27 @@ export class Database {
      * @returns a "magic" global directory that always exists and is accessible by all instances
      */
     getGlobalDirectory(): Directory {
-        return new Directory(this, { timestamp: -1, medallion: -1, offset: Behavior.DIRECTORY });
+        return new Directory(this, {
+            timestamp: -1,
+            medallion: -1,
+            offset: Behavior.DIRECTORY,
+        });
     }
 
     getGlobalProperty(): Property {
-        return new Property(this, { timestamp: -1, medallion: -1, offset: Behavior.PROPERTY });
+        return new Property(this, {
+            timestamp: -1,
+            medallion: -1,
+            offset: Behavior.PROPERTY,
+        });
     }
 
     getMedallionDirectory(): Directory {
-        return new Directory(this, { timestamp: -1, medallion: this.lastLinkToExtend[0], offset: Behavior.DIRECTORY });
+        return new Directory(this, {
+            timestamp: -1,
+            medallion: this.lastLinkToExtend[0],
+            offset: Behavior.DIRECTORY,
+        });
     }
 
     /**
@@ -168,7 +230,10 @@ export class Database {
      * @returns promise that resolves to the Box container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createBox(change?: Bundler | string): Promise<Box> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.BOX, change);
+        const [muid, containerBuilder] = await this.createContainer(
+            Behavior.BOX,
+            change
+        );
         return new Box(this, muid, containerBuilder);
     }
 
@@ -178,7 +243,10 @@ export class Database {
      * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createSequence(change?: Bundler | string): Promise<Sequence> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.SEQUENCE, change);
+        const [muid, containerBuilder] = await this.createContainer(
+            Behavior.SEQUENCE,
+            change
+        );
         return new Sequence(this, muid, containerBuilder);
     }
 
@@ -188,7 +256,10 @@ export class Database {
      * @returns promise that resolves to the Key Set container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createKeySet(change?: Bundler | string): Promise<KeySet> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.KEY_SET, change);
+        const [muid, containerBuilder] = await this.createContainer(
+            Behavior.KEY_SET,
+            change
+        );
         return new KeySet(this, muid, containerBuilder);
     }
 
@@ -198,7 +269,10 @@ export class Database {
      * @returns promise that resolves to the Group container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createGroup(change?: Bundler | string): Promise<Group> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.GROUP, change);
+        const [muid, containerBuilder] = await this.createContainer(
+            Behavior.GROUP,
+            change
+        );
         return new Group(this, muid, containerBuilder);
     }
 
@@ -208,7 +282,10 @@ export class Database {
      * @returns promise that resolves to the PairSet container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createPairSet(change?: Bundler | string): Promise<PairSet> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_SET, change);
+        const [muid, containerBuilder] = await this.createContainer(
+            Behavior.PAIR_SET,
+            change
+        );
         return new PairSet(this, muid, containerBuilder);
     }
 
@@ -218,7 +295,10 @@ export class Database {
      * @returns promise that resolves to the PairMap container (immediately if a bundler is passed in, otherwise after the bundle)
      */
     async createPairMap(change?: Bundler | string): Promise<PairMap> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.PAIR_MAP, change);
+        const [muid, containerBuilder] = await this.createContainer(
+            Behavior.PAIR_MAP,
+            change
+        );
         return new PairMap(this, muid, containerBuilder);
     }
 
@@ -229,28 +309,43 @@ export class Database {
      */
     // TODO: allow user to specify the types allowed for keys and values
     async createDirectory(change?: Bundler | string): Promise<Directory> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.DIRECTORY, change);
+        const [muid, containerBuilder] = await this.createContainer(
+            Behavior.DIRECTORY,
+            change
+        );
         return new Directory(this, muid, containerBuilder);
     }
 
     async createVertex(change?: Bundler | string): Promise<Vertex> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.VERTEX, change);
+        const [muid, containerBuilder] = await this.createContainer(
+            Behavior.VERTEX,
+            change
+        );
         return new Vertex(this, muid, containerBuilder);
     }
 
-
     async createEdgeType(change?: Bundler | string): Promise<EdgeType> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.EDGE_TYPE, change);
+        const [muid, containerBuilder] = await this.createContainer(
+            Behavior.EDGE_TYPE,
+            change
+        );
         return new EdgeType(this, muid, containerBuilder);
     }
 
-
-    async createProperty(bundlerOrComment?: Bundler | string): Promise<Property> {
-        const [muid, containerBuilder] = await this.createContainer(Behavior.PROPERTY, bundlerOrComment);
+    async createProperty(
+        bundlerOrComment?: Bundler | string
+    ): Promise<Property> {
+        const [muid, containerBuilder] = await this.createContainer(
+            Behavior.PROPERTY,
+            bundlerOrComment
+        );
         return new Property(this, muid, containerBuilder);
     }
 
-    protected async createContainer(behavior: Behavior, change?: Bundler | string): Promise<[Muid, ContainerBuilder]> {
+    protected async createContainer(
+        behavior: Behavior,
+        change?: Bundler | string
+    ): Promise<[Muid, ContainerBuilder]> {
         let immediate = false;
         if (!(change instanceof Bundler)) {
             immediate = true;
@@ -271,17 +366,24 @@ export class Database {
      * @param asOf optional timestamp to look back to.
      * @returns an array of Muids.
      */
-    public async getContainersWithName(name: string, asOf?: AsOf): Promise<Muid[]> {
+    public async getContainersWithName(
+        name: string,
+        asOf?: AsOf
+    ): Promise<Muid[]> {
         return await this.store.getContainersByName(name, asOf);
     }
 
     /**
-    * Adds a listener that will be called every time a bundle is received with the
-    * BundleInfo (which contains chain information, timestamp, and bundle comment).
-    * @param listener a callback to be invoked when a change occurs in the database or container
-    * @param containerMuid the Muid of a container to subscribe to. If left out, subscribe to all containers.
-    */
-    public addListener(listener: BundleListener, containerMuid?: Muid, remoteOnly: boolean = false) {
+     * Adds a listener that will be called every time a bundle is received with the
+     * BundleInfo (which contains chain information, timestamp, and bundle comment).
+     * @param listener a callback to be invoked when a change occurs in the database or container
+     * @param containerMuid the Muid of a container to subscribe to. If left out, subscribe to all containers.
+     */
+    public addListener(
+        listener: BundleListener,
+        containerMuid?: Muid,
+        remoteOnly: boolean = false
+    ) {
         const key = containerMuid ? muidToString(containerMuid) : "all";
         if (!this.listeners.has(key)) {
             const innerMap = new Map();
@@ -294,15 +396,20 @@ export class Database {
     }
 
     /**
-    * Gets a list of bundle listeners per container, listening to all bundles or just remote.
-    * @param remoteOnly true if looking for listeners only subscribed to remote bundles.
-    * @param containerMuid optional container muid to find listeners subscribed to a specific container.
-    */
-    private getListeners(remoteOnly: boolean = false, containerMuid?: Muid): BundleListener[] {
+     * Gets a list of bundle listeners per container, listening to all bundles or just remote.
+     * @param remoteOnly true if looking for listeners only subscribed to remote bundles.
+     * @param containerMuid optional container muid to find listeners subscribed to a specific container.
+     */
+    private getListeners(
+        remoteOnly: boolean = false,
+        containerMuid?: Muid
+    ): BundleListener[] {
         const key = containerMuid ? muidToString(containerMuid) : "all";
         const containerMap = this.listeners.get(key);
         if (!containerMap) return [];
-        const innerMap = remoteOnly ? containerMap.get("remote_only") : containerMap.get("all_bundles");
+        const innerMap = remoteOnly
+            ? containerMap.get("remote_only")
+            : containerMap.get("all_bundles");
         return innerMap || [];
     }
 
@@ -313,23 +420,30 @@ export class Database {
      * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
      */
     public addBundler(bundler: Bundler): Promise<BundleInfo> {
-        return this.ready.then(() => this.getChain().then(() => {
-            const nowMicros = generateTimestamp();
-            const seenThrough = this.lastLinkToExtend.timestamp;
-            const newTimestamp = nowMicros > seenThrough ? nowMicros : seenThrough + 10;
-            ensure(seenThrough > 0 && (seenThrough < nowMicros));
-            const bundleInfo: BundleInfo = {
-                medallion: this.lastLinkToExtend.medallion,
-                chainStart: this.lastLinkToExtend.chainStart,
-                timestamp: newTimestamp,
-                priorTime: seenThrough,
-            };
-            bundler.seal(bundleInfo, this.keyPair, this.lastLinkToExtend.hashCode);
-            // The bundle is seralized then deserialized to catch problems before broadcasting.
-            const decomposition = new Decomposition(bundler.bytes);
-            this.lastLinkToExtend = decomposition.info;
-            return this.receiveBundle(decomposition);
-        }));
+        return this.ready.then(() =>
+            this.getChain().then(() => {
+                const nowMicros = generateTimestamp();
+                const seenThrough = this.lastLinkToExtend.timestamp;
+                const newTimestamp =
+                    nowMicros > seenThrough ? nowMicros : seenThrough + 10;
+                ensure(seenThrough > 0 && seenThrough < nowMicros);
+                const bundleInfo: BundleInfo = {
+                    medallion: this.lastLinkToExtend.medallion,
+                    chainStart: this.lastLinkToExtend.chainStart,
+                    timestamp: newTimestamp,
+                    priorTime: seenThrough,
+                };
+                bundler.seal(
+                    bundleInfo,
+                    this.keyPair,
+                    this.lastLinkToExtend.hashCode
+                );
+                // The bundle is seralized then deserialized to catch problems before broadcasting.
+                const decomposition = new Decomposition(bundler.bytes);
+                this.lastLinkToExtend = decomposition.info;
+                return this.receiveBundle(decomposition);
+            })
+        );
     }
 
     /**
@@ -364,14 +478,25 @@ export class Database {
      * @param fromConnectionId The (truthy) connectionId if it came from a peer.
      * @returns
      */
-    private receiveBundle(bundle: BundleView, fromConnectionId?: number): Promise<BundleInfo> {
+    private receiveBundle(
+        bundle: BundleView,
+        fromConnectionId?: number
+    ): Promise<BundleInfo> {
         return this.store.addBundle(bundle).then((added) => {
             if (!added) return;
             let summary;
             if (bundle.info.chainStart === bundle.info.timestamp) {
-                summary = JSON.stringify(bundle.info, ["medallion", "timestamp", "chainStart",]);
+                summary = JSON.stringify(bundle.info, [
+                    "medallion",
+                    "timestamp",
+                    "chainStart",
+                ]);
             } else {
-                summary = JSON.stringify(bundle.info, ["medallion", "timestamp", "priorTime",]);
+                summary = JSON.stringify(bundle.info, [
+                    "medallion",
+                    "timestamp",
+                    "priorTime",
+                ]);
             }
             this.logger(`added bundle from ${fromConnectionId}: ${summary}`);
             this.iHave.markAsHaving(bundle.info);
@@ -381,8 +506,7 @@ export class Database {
                 peer._sendAck(bundle.info);
             }
             for (const [peerId, peer] of this.peers) {
-                if (peerId !== fromConnectionId)
-                    peer._sendIfNeeded(bundle);
+                if (peerId !== fromConnectionId) peer._sendIfNeeded(bundle);
             }
             // Send to listeners subscribed to all containers.
             for (const listener of this.getListeners()) {
@@ -392,8 +516,9 @@ export class Database {
             if (this.listeners.size > 1) {
                 // Loop through changes and gather a set of changed containers.
                 const changedContainers: Set<Muid> = new Set();
-                const changesList: Array<ChangeBuilder> = bundle.builder.getChangesList();
-                for (let index=0; index < changesList.length; index++) {
+                const changesList: Array<ChangeBuilder> =
+                    bundle.builder.getChangesList();
+                for (let index = 0; index < changesList.length; index++) {
                     const offset = index + 1;
                     const changeBuilder = changesList[index];
                     const entry = changeBuilder.getEntry();
@@ -401,19 +526,20 @@ export class Database {
                     let container;
                     if (entry) {
                         container = entry.getContainer();
-                    }
-                    else if (clearance) {
+                    } else if (clearance) {
                         container = clearance.getContainer();
                     }
-                    if (container && container.getTimestamp() && container.getMedallion() && container.getOffset()) {
-                        const muid = builderToMuid(
-                            container,
-                            {
-                                timestamp: bundle.info.timestamp,
-                                medallion: bundle.info.medallion,
-                                offset: offset
-                            }
-                        );
+                    if (
+                        container &&
+                        container.getTimestamp() &&
+                        container.getMedallion() &&
+                        container.getOffset()
+                    ) {
+                        const muid = builderToMuid(container, {
+                            timestamp: bundle.info.timestamp,
+                            medallion: bundle.info.medallion,
+                            offset: offset,
+                        });
                         changedContainers.add(muid);
                     }
                 }
@@ -440,12 +566,18 @@ export class Database {
      * @param fromConnectionId Local name of the peer the data was received from.
      * @returns
      */
-    protected async receiveMessage(messageBytes: Uint8Array, fromConnectionId: number) {
+    protected async receiveMessage(
+        messageBytes: Uint8Array,
+        fromConnectionId: number
+    ) {
         await this.ready;
         const peer = this.peers.get(fromConnectionId);
-        if (!peer) throw Error("Got a message from a peer I don't have a proxy for?");
+        if (!peer)
+            throw Error("Got a message from a peer I don't have a proxy for?");
         try {
-            const parsed = <SyncMessageBuilder>SyncMessageBuilder.deserializeBinary(messageBytes);
+            const parsed = <SyncMessageBuilder>(
+                SyncMessageBuilder.deserializeBinary(messageBytes)
+            );
             if (parsed.hasBundle()) {
                 const bundleBytes: BundleBytes = parsed.getBundle_asU8();
                 const decomposition = new Decomposition(bundleBytes);
@@ -464,9 +596,11 @@ export class Database {
                 const info: BundleInfo = {
                     medallion: ack.getMedallion(),
                     timestamp: ack.getTimestamp(),
-                    chainStart: ack.getChainStart()
+                    chainStart: ack.getChainStart(),
                 };
-                this.logger(`got ack from ${fromConnectionId}: ${JSON.stringify(info)}`);
+                this.logger(
+                    `got ack from ${fromConnectionId}: ${JSON.stringify(info)}`
+                );
                 this.peers.get(fromConnectionId)?.hasMap?.markAsHaving(info);
             }
         } catch (e) {
@@ -490,16 +624,21 @@ export class Database {
     public async connectTo(
         target: string,
         options?: {
-            onClose?: CallBack,
-            resolveOnOpen?: boolean,
-            retryOnDisconnect?: boolean,
+            onClose?: CallBack;
+            resolveOnOpen?: boolean;
+            retryOnDisconnect?: boolean;
             authToken?: string;
-        }): Promise<Peer> {
+        }
+    ): Promise<Peer> {
         //TODO(https://github.com/google/gink/issues/69): have the default be to wait for databases to sync
-        const onClose: CallBack = (options && options.onClose) ? options.onClose : noOp;
-        const resolveOnOpen: boolean = (options && options.resolveOnOpen) ? options.resolveOnOpen : false;
-        const retryOnDisconnect = (options && options.retryOnDisconnect === false) ? false : true;
-        const authToken: string = (options && options.authToken) ? options.authToken : undefined;
+        const onClose: CallBack =
+            options && options.onClose ? options.onClose : noOp;
+        const resolveOnOpen: boolean =
+            options && options.resolveOnOpen ? options.resolveOnOpen : false;
+        const retryOnDisconnect =
+            options && options.retryOnDisconnect === false ? false : true;
+        const authToken: string =
+            options && options.authToken ? options.authToken : undefined;
 
         await this.ready;
         const thisClient = this;
@@ -508,24 +647,30 @@ export class Database {
 
             if (authToken) protocols.push(encodeToken(authToken));
             const connectionId = this.createConnectionId();
-            let websocketClient: WebSocket = new Database.W3cWebSocket(target, protocols);
+            let websocketClient: WebSocket = new Database.W3cWebSocket(
+                target,
+                protocols
+            );
             websocketClient.binaryType = "arraybuffer";
             const peer = new Peer(
                 websocketClient.send.bind(websocketClient),
-                websocketClient.close.bind(websocketClient));
+                websocketClient.close.bind(websocketClient)
+            );
 
             websocketClient.onopen = function (_ev: Event) {
                 // called once the new connection has been established
-                websocketClient.send(thisClient.iHave.getGreetingMessageBytes());
+                websocketClient.send(
+                    thisClient.iHave.getGreetingMessageBytes()
+                );
                 thisClient.peers.set(connectionId, peer);
-                if (resolveOnOpen)
-                    resolve(peer);
-                else
-                    peer.ready.then(resolve);
+                if (resolveOnOpen) resolve(peer);
+                else peer.ready.then(resolve);
             };
             websocketClient.onerror = function (ev: Event) {
                 // if/when this is called depends on the details of the websocket implementation
-                console.error(`error on connection ${connectionId} to ${target}, ${ev}`);
+                console.error(
+                    `error on connection ${connectionId} to ${target}, ${ev}`
+                );
                 reject(ev);
             };
             websocketClient.onclose = async function (ev: CloseEvent) {
@@ -544,7 +689,9 @@ export class Database {
                     let retry_ms = 1000;
                     let jitter = Math.floor(Math.random() * 1000);
                     while (!peer) {
-                        await new Promise((resolve) => setTimeout(resolve, retry_ms + jitter));
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, retry_ms + jitter)
+                        );
                         try {
                             console.log(`retrying connection to ${target}`);
                             peer = await thisClient.connectTo(target, options);
@@ -553,14 +700,15 @@ export class Database {
                                 console.log(`reconnected to ${target}`);
                                 break;
                             }
-                        }
-                        catch (e) {
+                        } catch (e) {
                             console.error(`retry failed: ${e.message}`);
                         } finally {
                             if (retry_ms < 30000) {
                                 pow += 1;
                                 retry_ms = 1000 * Math.pow(2, pow);
-                                jitter = Math.floor(Math.random() * 1000 * Math.pow(2, pow));
+                                jitter = Math.floor(
+                                    Math.random() * 1000 * Math.pow(2, pow)
+                                );
                             }
                         }
                     }

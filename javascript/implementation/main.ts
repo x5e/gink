@@ -12,52 +12,52 @@ import { ArgumentParser } from "argparse";
 // Run the CLI if run as a script.
 if (require.main === module) {
     const parser = new ArgumentParser();
-    parser.add_argument('-c', '--connect-to', {
+    parser.add_argument("-c", "--connect-to", {
         help: `gink databases to connect to (e.g wss://localhost:8080)`,
-        nargs: "*"
+        nargs: "*",
     });
-    parser.add_argument('-l', '--listen-on', {
+    parser.add_argument("-l", "--listen-on", {
         help: `port to listen on (default 8080). if flag is not included, gink does not listen for incoming connections.`,
         default: process.env["GINK_PORT"],
         nargs: "?",
         const: 8080,
     });
-    parser.add_argument('--data-root', {
+    parser.add_argument("--data-root", {
         help: `path to a directory storing gink database files. this will cause gink to behave as a routing server`,
-        default: process.env["GINK_DATA_ROOT"]
+        default: process.env["GINK_DATA_ROOT"],
     });
-    parser.add_argument('--data-file', {
+    parser.add_argument("--data-file", {
         help: `path to a logbacked store database file.`,
-        default: process.env["GINK_DATA_FILE"]
+        default: process.env["GINK_DATA_FILE"],
     });
-    parser.add_argument('-i', '--identity', {
-        help: `explicitly set your identity. default is user@hostname.`
+    parser.add_argument("-i", "--identity", {
+        help: `explicitly set your identity. default is user@hostname.`,
     });
-    parser.add_argument('--static-path', {
+    parser.add_argument("--static-path", {
         help: `the path to serve static files from. if you change this, you won't be able to access the gink dashboard.`,
-        default: process.env["GINK_STATIC_PATH"]
+        default: process.env["GINK_STATIC_PATH"],
     });
-    parser.add_argument('--auth-token', {
+    parser.add_argument("--auth-token", {
         help: `if gink is listening for connections, this is the token required for clients to connect.
         if gink is connecting to other databases, this token will be passed.`,
-        default: process.env["GINK_AUTH_TOKEN"]
+        default: process.env["GINK_AUTH_TOKEN"],
     });
-    parser.add_argument('--ssl-cert', {
+    parser.add_argument("--ssl-cert", {
         help: `path to an ssl certificate. if this and --ssl-key are provided and valid, gink will listen using wss:// for secure connections.`,
-        default: process.env["GINK_SSL_CERT"]
+        default: process.env["GINK_SSL_CERT"],
     });
-    parser.add_argument('--ssl-key', {
+    parser.add_argument("--ssl-key", {
         help: `path to an ssl key. if this and --ssl-cert are provided and valid, gink will listen using wss:// for secure connections.`,
-        default: process.env["GINK_SSL_KEY"]
+        default: process.env["GINK_SSL_KEY"],
     });
-    parser.add_argument('-v', '--verbose', {
+    parser.add_argument("-v", "--verbose", {
         help: `whether or not to be verbose`,
-        default: ""
+        default: "",
     });
-    parser.add_argument('-r', '--reconnect', {
+    parser.add_argument("-r", "--reconnect", {
         help: `retry connection to database servers if they disconnect? default is true.`,
         nargs: "?",
-        const: true
+        const: true,
     });
 
     const args = parser.parse_args();
@@ -67,5 +67,8 @@ if (require.main === module) {
 
 process.on("unhandledRejection", (reason: string, promise) => {
     if (reason) throw new Error(reason);
-    else console.log("Unhandled Promise Rejection: Likely due to closed websocket connection.");
+    else
+        console.log(
+            "Unhandled Promise Rejection: Likely due to closed websocket connection."
+        );
 });

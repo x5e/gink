@@ -12,8 +12,8 @@
  * @returns an Array of [keyType, valueType] strings
  */
 function determineContainerStorage(container) {
-    let keyType = 'none';
-    let valueType = 'none';
+    let keyType = "none";
+    let valueType = "none";
     switch (container.behavior) {
         case 1: // Box
             valueType = "any";
@@ -44,7 +44,9 @@ function determineContainerStorage(container) {
             break;
 
         default:
-            throw new Error(`Either invalid behavior or container is edge_type, or vertex, which don't have entries.`);
+            throw new Error(
+                `Either invalid behavior or container is edge_type, or vertex, which don't have entries.`
+            );
     }
     return [keyType, valueType];
 }
@@ -63,25 +65,20 @@ function interpretKey(key, container) {
             // Ensure string key is a valid muid format
             gink.ensure(key.length === 34, "Key is not a valid muid.");
             returning = gink.strToMuid(key);
-        }
-        else if ("timestamp" in key) returning = key;
+        } else if ("timestamp" in key) returning = key;
         else throw new Error("Muid key type got unexpected key");
-    }
-    else if (keyType === "pair") {
+    } else if (keyType === "pair") {
         gink.ensure(Array.isArray(key) && key.length === 2);
         if (typeof key[0] === "string" && typeof key[1] === "string") {
             // Ensure string keys are valid muid format
             gink.ensure(key[0].length === 34 && key[1].length === 34);
             returning = [gink.strToMuid(key[0]), gink.strToMuid(key[1])];
-        }
-        else if ("timestamp" in key[0] && "timestamp" in key[1]) returning = key;
+        } else if ("timestamp" in key[0] && "timestamp" in key[1])
+            returning = key;
         else throw new Error("Pair key type got unexpected key");
-
-    }
-    else if (keyType === "any") {
+    } else if (keyType === "any") {
         returning = key;
-    }
-    else {
+    } else {
         throw new Error("This container doesn't use keys.");
     }
     return returning;
@@ -105,8 +102,7 @@ function unwrapToString(element) {
 function shortenedString(string) {
     if (string.length <= 20) {
         return string;
-    }
-    else {
+    } else {
         return string.substring(0, 21) + "...";
     }
 }

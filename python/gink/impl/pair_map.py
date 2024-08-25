@@ -61,14 +61,18 @@ class PairMap(Container):
             self._database.bundle(bundler)
 
     @typechecked
-    def set(self, key: Pair,
+    def set(self,
+            key: Pair,
             value: Union[UserValue, Container, Muid],
-            bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+            bundler: Optional[Bundler]=None,
+            comment: Optional[str]=None) -> Muid:
+        """ Sets the muid or container pair key to the value, returning the Muid of the change. """
         return self._add_entry(key=key, value=value, bundler=bundler, comment=comment)
 
     @typechecked
     def get(self, key: Pair,
             default=None, *, as_of: GenericTimestamp = None):
+        """ Get the value associated with the pair. """
         as_of = self._database.resolve_timestamp(as_of)
         key = normalize_pair(key)
         found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
@@ -78,13 +82,16 @@ class PairMap(Container):
         return self._get_occupant(found.builder, found.address)
 
     @typechecked
-    def delete(self, key: Pair,
-               bundler: Optional[Bundler]=None, comment: Optional[str]=None):
+    def delete(self,
+               key: Pair,
+               bundler: Optional[Bundler]=None,
+               comment: Optional[str]=None) -> Muid:
+        """ Removes the key, value pair, returning the Muid of the change. """
         return self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
     @typechecked
-    def has(self, key: Pair, *, as_of=None):
-        """ returns true if the given key exists in the mapping, optionally at specific time """
+    def has(self, key: Pair, *, as_of=None) -> bool:
+        """ Returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
         key = normalize_pair(key)
         found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
@@ -92,7 +99,7 @@ class PairMap(Container):
 
     @typechecked
     def items(self, *, as_of=None) -> Iterable[Tuple[Tuple[Muid, Muid], Union[UserValue, Container]]]:
-        """ returns an iterable of key,value pairs, as of the effective time (or now) """
+        """ Returns an iterable of key,value pairs, as of the effective time (or now) """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=PAIR_MAP)
         for entry_pair in iterable:
@@ -125,7 +132,7 @@ class PairMap(Container):
         self.delete(key)
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        """ return the contents of this container as a string """
+        """ Return the contents of this container as a string """
         as_of = self._database.resolve_timestamp(as_of)
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
             identifier = "arche=True"
@@ -153,7 +160,7 @@ class PairMap(Container):
         return result
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
-        """ returns the number of elements contained """
+        """ Returns the number of elements contained """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
             container=self._muid, as_of=as_of, behavior=PAIR_MAP)

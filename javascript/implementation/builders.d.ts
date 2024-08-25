@@ -20,11 +20,13 @@ export declare enum Behavior {
     PROPERTY = 10,
     EDGE_TYPE = 11,
     TABLE = 12,
-    BRAID = 13
+    BRAID = 13,
 }
 export declare enum Special {
     MISSING = 0,
-    NULL = 3, TRUE = 1, FALSE = 2,
+    NULL = 3,
+    TRUE = 1,
+    FALSE = 2,
 }
 export class ContainerBuilder extends ImplementedMessage {
     getBehavior(): Behavior;

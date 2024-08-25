@@ -181,6 +181,9 @@ class Directory(Container):
 
     @typechecked
     def walk(self, path: Iterable[UserKey], /, *, as_of: GenericTimestamp = None) -> 'Directory':
+        """ Walks through the directory structure to find the directory at the end of the path.
+            Raises a KeyError if it can't find the directory at the end of the path.
+        """
         default = object()
         current: Directory = self
         for key in path:
@@ -307,8 +310,8 @@ class Directory(Container):
                                 /, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         """ Performs a shallow copy of key/value pairs from the argument.
 
-        When from_what hasattr "keys", then will try: for k in E: D[k] = E[k]
-        otherwise will try:  for k, v in E: D[k] = v
+            When from_what hasattr "keys", then will try: for k in E: D[k] = E[k]
+            otherwise will try:  for k, v in E: D[k] = v
 
         """
         immediate = False

@@ -5,8 +5,11 @@ import { Behavior, ContainerBuilder } from "./builders";
 import { Keyed } from "./Keyed";
 
 export class Directory extends Keyed<ScalarKey> {
-
-    constructor(database: Database, address: Muid, containerBuilder?: ContainerBuilder) {
+    constructor(
+        database: Database,
+        address: Muid,
+        containerBuilder?: ContainerBuilder
+    ) {
         super(database, address, Behavior.DIRECTORY);
         if (this.address.timestamp < 0) {
             ensure(address.offset === Behavior.DIRECTORY);

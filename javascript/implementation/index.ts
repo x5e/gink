@@ -22,6 +22,6 @@ export {
     muidTupleToMuid,
     muidToString,
     muidTupleToString,
-    strToMuid
+    strToMuid,
 } from "./utils";
-export { construct } from './factories';
+export { construct } from "./factories";

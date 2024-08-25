@@ -7,13 +7,22 @@ process.chdir(__dirname + "/..");
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting remote listener test");
-    const server = new Expector("./tsc.out/implementation/main.js", ["-l", port], { env: { ...process.env } }, false);
+    const server = new Expector(
+        "./tsc.out/implementation/main.js",
+        ["-l", port],
+        { env: { ...process.env } },
+        false
+    );
     await server.expect("ready", 2000);
 
     const client1 = new Database();
-    await client1.connectTo(`ws://localhost:${port}`, { retryOnDisconnect: false });
+    await client1.connectTo(`ws://localhost:${port}`, {
+        retryOnDisconnect: false,
+    });
     const client2 = new Database();
-    await client2.connectTo(`ws://localhost:${port}`, { retryOnDisconnect: false });
+    await client2.connectTo(`ws://localhost:${port}`, {
+        retryOnDisconnect: false,
+    });
 
     await sleep(200);
     console.log("connections established");
@@ -42,5 +51,4 @@ process.chdir(__dirname + "/..");
     await client1.close();
     await client2.close();
     await server.close();
-
 })();

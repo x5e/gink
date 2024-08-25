@@ -1,10 +1,17 @@
-import { Box, IndexedDbStore, Database, MemoryStore, Bundler, Muid } from "../implementation/index";
+import {
+    Box,
+    IndexedDbStore,
+    Database,
+    MemoryStore,
+    Bundler,
+    Muid,
+} from "../implementation/index";
 import { ensure, isDate } from "../implementation/utils";
 
-it('create a box; set and get data in it', async function () {
+it("create a box; set and get data in it", async function () {
     // set up the objects
     for (const store of [
-        new IndexedDbStore('Box.test1', true),
+        new IndexedDbStore("Box.test1", true),
         new MemoryStore(true),
     ]) {
         const instance = new Database(store);
@@ -37,10 +44,12 @@ it('create a box; set and get data in it', async function () {
     }
 });
 
-
-it('set a box in a bundler', async function () {
+it("set a box in a bundler", async function () {
     // set up the objects
-    for (const store of [new IndexedDbStore('box.test2', true), new MemoryStore(true)]) {
+    for (const store of [
+        new IndexedDbStore("box.test2", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const aBox: Box = await instance.createBox();
@@ -60,10 +69,12 @@ it('set a box in a bundler', async function () {
     }
 });
 
-
-it('create a box and set in same CS', async function () {
+it("create a box and set in same CS", async function () {
     // set up the objects
-    for (const store of [new IndexedDbStore('box.test3', true), new MemoryStore(true)]) {
+    for (const store of [
+        new IndexedDbStore("box.test3", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         // create a box and set in on CL
@@ -81,8 +92,11 @@ it('create a box and set in same CS', async function () {
     }
 });
 
-it('set a value in a box then clear it', async function () {
-    for (const store of [new IndexedDbStore('box.test4', true), new MemoryStore(true)]) {
+it("set a value in a box then clear it", async function () {
+    for (const store of [
+        new IndexedDbStore("box.test4", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         // put a value into the box
@@ -91,7 +105,7 @@ it('set a value in a box then clear it', async function () {
 
         // make sure it's there
         const current = await box.get();
-        ensure(current === 'foo');
+        ensure(current === "foo");
 
         // clear the box
         await box.clear();
@@ -102,8 +116,11 @@ it('set a value in a box then clear it', async function () {
     }
 });
 
-it('Box.toJson', async function () {
-    for (const store of [new IndexedDbStore('box.toJson', true), new MemoryStore(true)]) {
+it("Box.toJson", async function () {
+    for (const store of [
+        new IndexedDbStore("box.toJson", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         // put a value into the box
@@ -114,7 +131,7 @@ it('Box.toJson', async function () {
 
         const box2 = await instance.createBox();
 
-        await directory.set('cheese', box2);
+        await directory.set("cheese", box2);
 
         await box2.set("fries");
 
@@ -124,8 +141,11 @@ it('Box.toJson', async function () {
     }
 });
 
-it('Box.Store', async function () {
-    for (const store of [new IndexedDbStore('box.Store', true), new MemoryStore(true)]) {
+it("Box.Store", async function () {
+    for (const store of [
+        new IndexedDbStore("box.Store", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         // put a value into the box
@@ -133,7 +153,7 @@ it('Box.Store', async function () {
 
         var date = new Date();
         await box.set(date);
-        var expectDate = <Date> await box.get();
+        var expectDate = <Date>await box.get();
 
         ensure(isDate(expectDate) && expectDate.getTime() === date.getTime());
 

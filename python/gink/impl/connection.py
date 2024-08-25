@@ -20,7 +20,6 @@ from socket import (
     SOCK_STREAM,
 )
 
-# modules from requirements.txt
 from wsproto import WSConnection, ConnectionType
 from wsproto.utilities import RemoteProtocolError
 from wsproto.events import (
@@ -116,6 +115,9 @@ class Connection:
         self._response_started = False
 
     def on_ready(self) -> None:
+        """ Called when the connection is ready to be used.
+            Handles both websocket requests, and http(s) requests if a WSGI function is provided.
+        """
         if self._is_websocket:
             assert self._on_ws_act
             self._on_ws_act(self)
@@ -392,6 +394,7 @@ class Connection:
         self._tracker.mark_as_having(info)
 
     def receive_objects(self) -> Iterable[Union[BundleInfo, BundleWrapper, ChainTracker]]:
+        """ Receive BundleWrappers, BundleInfos, and/or ChainTrackers from a peer. """
         for sync_message in self.receive():
             if sync_message.HasField("bundle"):
                 bundle_bytes = sync_message.bundle
@@ -415,8 +418,7 @@ class Connection:
         return self._perms
 
     def fileno(self):
-        """ Return the file descriptor of the underlying socket.
-        """
+        """ Return the file descriptor of the underlying socket. """
         return self._socket.fileno()
 
     def is_closed(self) -> bool:

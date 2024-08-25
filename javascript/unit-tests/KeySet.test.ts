@@ -1,11 +1,19 @@
 import { sleep } from "./test_utils";
-import { Database, Bundler, IndexedDbStore, MemoryStore } from "../implementation";
+import {
+    Database,
+    Bundler,
+    IndexedDbStore,
+    MemoryStore,
+} from "../implementation";
 import { ensure, matches } from "../implementation/utils";
 import { KeySet } from "../implementation";
 
-it('add and has basic data', async function () {
+it("add and has basic data", async function () {
     // set up the objects
-    for (const store of [new IndexedDbStore('ks-test1', true), new MemoryStore(true)]) {
+    for (const store of [
+        new IndexedDbStore("ks-test1", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
@@ -25,31 +33,37 @@ it('add and has basic data', async function () {
     }
 });
 
-it('delete, and size work as intended', async function () {
-    for (const store of [new IndexedDbStore('ks-test2', true), new MemoryStore(true)]) {
+it("delete, and size work as intended", async function () {
+    for (const store of [
+        new IndexedDbStore("ks-test2", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
 
         await ks.add("key1");
         ensure(await ks.has("key1"));
-        ensure(await ks.size() === 1);
+        ensure((await ks.size()) === 1);
 
         await ks.delete("key1");
-        ensure(!await ks.has("key1"));
-        ensure(await ks.size() === 0);
+        ensure(!(await ks.has("key1")));
+        ensure((await ks.size()) === 0);
 
         await ks.add("key1");
         await ks.add("key2");
-        ensure(await ks.size() === 2);
+        ensure((await ks.size()) === 2);
 
         await ks.delete("key2");
-        ensure(!await ks.has("key2"));
+        ensure(!(await ks.has("key2")));
     }
 });
 
-it('entries works as intended', async function () {
-    for (const store of [new IndexedDbStore('ks-test3', true), new MemoryStore(true)]) {
+it("entries works as intended", async function () {
+    for (const store of [
+        new IndexedDbStore("ks-test3", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const ks: KeySet = await instance.createKeySet();
@@ -64,8 +78,11 @@ it('entries works as intended', async function () {
     }
 });
 
-it('add multiple keys within a bundler', async function () {
-    for (const store of [new IndexedDbStore('ks-test4', true), new MemoryStore(true)]) {
+it("add multiple keys within a bundler", async function () {
+    for (const store of [
+        new IndexedDbStore("ks-test4", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
@@ -80,12 +97,15 @@ it('add multiple keys within a bundler', async function () {
         // verify the result
         ensure(await ks.has("key1"));
         ensure(await ks.has("key2"));
-        ensure(!await ks.has("key3"));
+        ensure(!(await ks.has("key3")));
     }
 });
 
-it('KeySet.toJson', async function () {
-    for (const store of [new IndexedDbStore('ks-test6', true), new MemoryStore(true)]) {
+it("KeySet.toJson", async function () {
+    for (const store of [
+        new IndexedDbStore("ks-test6", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
@@ -98,8 +118,11 @@ it('KeySet.toJson', async function () {
     }
 });
 
-it('KeySet.asOf', async function () {
-    for (const store of [new IndexedDbStore('ks-test7', true), new MemoryStore(true)]) {
+it("KeySet.asOf", async function () {
+    for (const store of [
+        new IndexedDbStore("ks-test7", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
@@ -118,16 +141,16 @@ it('KeySet.asOf', async function () {
         ensure(await ks.has("key1", time1));
         ensure(await ks.has("key1", -1));
         ensure(await ks.has("key1", time2));
-        ensure(!await ks.has("key2", time1));
+        ensure(!(await ks.has("key2", time1)));
 
         // testing asOf for toJson
-        ensure(await ks.toJson(false, time1) === `["key1"]`);
-        ensure(await ks.toJson(false, time2) === `["key1","key2"]`);
+        ensure((await ks.toJson(false, time1)) === `["key1"]`);
+        ensure((await ks.toJson(false, time2)) === `["key1","key2"]`);
 
         // testing asOf for size
-        ensure(await ks.size(time0) === 0);
-        ensure(await ks.size(time1) === 1);
-        ensure(await ks.size(time2) === 2);
+        ensure((await ks.size(time0)) === 0);
+        ensure((await ks.size(time1)) === 1);
+        ensure((await ks.size(time2)) === 2);
 
         // testing asOf toSet
         const values = await ks.toSet(time0);
@@ -140,14 +163,17 @@ it('KeySet.asOf', async function () {
     }
 });
 
-it('KeySet.clear', async function () {
-    for (const store of [new IndexedDbStore('ks-test8', true), new MemoryStore(true)]) {
+it("KeySet.clear", async function () {
+    for (const store of [
+        new IndexedDbStore("ks-test8", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
         await ks.update(["key1", "key2"]);
         const clearMuid = await ks.clear();
-        ensure(await ks.update(["key3", "key4"]) instanceof Bundler);
+        ensure((await ks.update(["key3", "key4"])) instanceof Bundler);
         const asSet = await ks.toSet();
         ensure(asSet.has("key4") && !asSet.has("key1"), "did not clear");
         const asSetBeforeClear = await ks.toSet(clearMuid.timestamp);
@@ -158,16 +184,19 @@ it('KeySet.clear', async function () {
     }
 });
 
-it('KeySet.clear(purge)', async function () {
-    for (const store of [new IndexedDbStore('ks-test9', true), new MemoryStore(true)]) {
+it("KeySet.clear(purge)", async function () {
+    for (const store of [
+        new IndexedDbStore("ks-test9", true),
+        new MemoryStore(true),
+    ]) {
         const instance = new Database(store);
         await instance.ready;
         const ks = await instance.createKeySet();
-        await ks.add('key1');
+        await ks.add("key1");
         await sleep(10);
         const middle = Date.now() * 1000;
         await sleep(10);
-        await ks.add('key2');
+        await ks.add("key2");
         ensure(await ks.has("key2"));
         await ks.clear(true);
         const found = await instance.store.getKeyedEntries(ks.address, middle);
