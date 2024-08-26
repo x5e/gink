@@ -19,6 +19,7 @@ def test_notification():
     ts = generate_timestamp()
     store1.apply_bundle(Bundler("test").seal(
             chain=Chain(chain_start=ts, medallion=0),
+            identity="test",
             timestamp=ts,
             signing_key=signing_key,
         )

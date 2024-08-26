@@ -304,7 +304,9 @@ class MemoryStore(AbstractStore):
         needed = is_needed(new_info, old_info)
         if needed:
             if new_info.chain_start == new_info.timestamp:
-                self._identities[chain_key] = new_info.comment
+                identity = bundle.get_builder().identity
+                assert identity is not None, "no identity in first bundle?"
+                self._identities[chain_key] = identity
                 verify_key = VerifyKey(bundle_builder.verify_key)
                 self._verify_keys[chain_key] = verify_key
             else:

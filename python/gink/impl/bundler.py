@@ -62,18 +62,24 @@ class Bundler:
     def seal(
             self, *,
             chain: Chain,
+            identity: Optional[str] = None,
             timestamp: MuTimestamp,
             signing_key: SigningKey,
             previous: Optional[MuTimestamp] = None,
             prior_hash: Union[bytes, str, None] = None,
             ) -> bytes:
-        """ Finalizes a bundle and serializes it. """
+        """ Finalizes a bundle and serializes it.
+            Identity is required if this is the first bundle in a chain.
+        """
         # pylint: disable=maybe-no-member
         if previous is None:
             assert timestamp == chain.chain_start
+            assert identity is not None, "Identity is required for first bundle in a chain."
+            self._bundle_builder.identity = identity
             self._bundle_builder.verify_key = signing_key.verify_key.encode()
         else:
             assert chain.chain_start <= previous < timestamp
+            assert identity is None, "Identity is only used in first bundle in a chain."
             self._bundle_builder.previous = previous  # type: ignore
         self._bundle_builder.chain_start = chain.chain_start  # type: ignore
         self._medallion = self._bundle_builder.medallion = chain.medallion  # type: ignore
