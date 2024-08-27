@@ -217,42 +217,45 @@ export class LogBackedStore extends LockableLog implements Store {
         claimChain?: boolean
     ): Promise<Boolean> {
         // TODO(https://github.com/x5e/gink/issues/182): delay unlocking the file to give better throughput
-
         await this.ready;
+        let added = false;
         const unlockingFunction = await this.memoryLock.acquireLock();
         if (!this.exclusive) await this.lockFile(true);
-        await this.pullDataFromFile();
-        if (this.redTo === 0) this.redTo += await this.writeMagicNumber();
-        const info: BundleInfo = bundle.info;
-        const added = await this.internalStore.addBundle(bundle);
-        const identity = bundle.builder.getIdentity();
-        if (claimChain) {
-            if (!added) throw new Error("can't claim chain on old bundle");
-            await this.claimChain(
-                info.medallion,
-                info.chainStart,
-                getActorId()
-            );
-            if (info.timestamp === info.chainStart && !info.priorTime) {
-                ensure(identity, "chain start bundle has no identity");
-                this.identities.set(
-                    `${info.medallion},${info.chainStart}`,
-                    bundle.builder.getIdentity()
-                );
-            } else {
-                ensure(!identity, "non-chain-start bundle has identity");
-            }
-        }
-        this.chainTracker.markAsHaving(info);
-        if (added) {
-            ensure(this.fileLocked);
+        try {
             await this.pullDataFromFile();
-            const logFragment = new LogFileBuilder();
-            logFragment.setBundlesList([bundle.bytes]);
-            this.redTo += await this.writeLogFragment(logFragment, true);
+            if (this.redTo === 0) this.redTo += await this.writeMagicNumber();
+            const info: BundleInfo = bundle.info;
+            added = await this.internalStore.addBundle(bundle);
+            const identity = bundle.builder.getIdentity();
+            if (claimChain) {
+                if (!added) throw new Error("can't claim chain on old bundle");
+                await this.claimChain(
+                    info.medallion,
+                    info.chainStart,
+                    getActorId()
+                );
+                if (info.timestamp === info.chainStart && !info.priorTime) {
+                    ensure(identity, "chain start bundle has no identity");
+                    this.identities.set(
+                        `${info.medallion},${info.chainStart}`,
+                        bundle.builder.getIdentity()
+                    );
+                } else {
+                    ensure(!identity, "non-chain-start bundle has identity");
+                }
+            }
+            this.chainTracker.markAsHaving(info);
+            if (added) {
+                ensure(this.fileLocked);
+                await this.pullDataFromFile();
+                const logFragment = new LogFileBuilder();
+                logFragment.setBundlesList([bundle.bytes]);
+                this.redTo += await this.writeLogFragment(logFragment, true);
+            }
+        } finally {
+            unlockingFunction();
+            if (!this.exclusive) await this.unlockFile();
         }
-        if (!this.exclusive) await this.unlockFile();
-        unlockingFunction();
         return added;
     }
 

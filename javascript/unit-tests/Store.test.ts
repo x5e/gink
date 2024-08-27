@@ -274,7 +274,6 @@ export function testStore(
         bundleBuilder.setComment("should error");
         bundleBuilder.setVerifyKey(kp1.publicKey);
         const decomp = new Decomposition(
-            // bundleBuilder.serializeBinary()
             signBundle(
                 bundleBuilder.serializeBinary(),
                 kp1.secretKey
@@ -287,33 +286,21 @@ export function testStore(
             errored = true;
         }
         ensure(errored, "chain start bundle allowed without identity?");
-
         // Add a chain start with an identity
-        const kp2 = await keyPair;
-        const bundleBuilder2 = new BundleBuilder();
-        bundleBuilder2.setChainStart(START_MICROS1);
-        bundleBuilder2.setTimestamp(START_MICROS1);
-        bundleBuilder2.setMedallion(MEDALLION1);
-        bundleBuilder2.setComment("should error");
-        bundleBuilder2.setVerifyKey(kp2.publicKey);
-        bundleBuilder2.setIdentity("test-identity");
-        const decomp2 = new Decomposition(
-            // bundleBuilder2.serializeBinary()
-            signBundle(
-                bundleBuilder2.serializeBinary(),
-                kp2.secretKey
-            )
+        const decomp2 = await makeChainStart(
+            "should not error",
+            MEDALLION2,
+            START_MICROS2
         );
         const added = await store.addBundle(decomp2);
         ensure(added, "adding chain start bundle with identity failed");
-
         // Now identities should not be allowed for subsequent bundles
         const kp3 = await keyPair;
         const bundleBuilder3 = new BundleBuilder();
-        const parsedPrevious = bundleBuilder2;
-        bundleBuilder3.setMedallion(parsedPrevious.getMedallion());
-        bundleBuilder3.setPrevious(parsedPrevious.getTimestamp());
-        bundleBuilder3.setChainStart(parsedPrevious.getChainStart());
+        const parsedPrevious = decomp2.info;
+        bundleBuilder3.setMedallion(parsedPrevious.medallion);
+        bundleBuilder3.setPrevious(parsedPrevious.timestamp);
+        bundleBuilder3.setChainStart(parsedPrevious.chainStart);
         bundleBuilder3.setTimestamp(NEXT_TS1);
         bundleBuilder3.setComment("should error again");
         bundleBuilder3.setVerifyKey(kp3.publicKey);
@@ -322,7 +309,6 @@ export function testStore(
         ensure(priorHash && priorHash.length === 32);
         bundleBuilder3.setPriorHash(priorHash);
         const decomp3 = new Decomposition(
-            // bundleBuilder3.serializeBinary()
             signBundle(bundleBuilder3.serializeBinary(), kp3.secretKey)
         );
         let errored2 = false;

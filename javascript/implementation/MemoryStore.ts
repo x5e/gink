@@ -150,7 +150,7 @@ export class MemoryStore implements Store {
     async addBundle(
         bundle: BundleView,
         claimChain?: boolean
-    ): Promise<Boolean> {
+    ): Promise<boolean> {
         await this.ready;
         const bundleBuilder = bundle.builder;
         const bundleInfo = bundle.info;
