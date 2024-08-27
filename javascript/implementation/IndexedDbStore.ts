@@ -413,23 +413,26 @@ export class IndexedDbStore implements Store {
 
     addBundle(bundleView: BundleView, claimChain?: boolean): Promise<boolean> {
         if (!this.initialized) throw new Error("need to await on store.ready");
-        return this.processingLock.acquireLock().then(async (unlock) => {
-            const trxn = this.getTransaction();
-            let added = false;
-            try {
-                added = await this.addBundleHelper(
-                    trxn,
-                    bundleView,
-                    claimChain
-                );
-            } finally {
-                unlock();
-            }
-            await trxn.done;
-            return added;
-        }).catch((e) => {
-            throw e;
-        });
+        return this.processingLock
+            .acquireLock()
+            .then(async (unlock) => {
+                const trxn = this.getTransaction();
+                let added = false;
+                try {
+                    added = await this.addBundleHelper(
+                        trxn,
+                        bundleView,
+                        claimChain
+                    );
+                } finally {
+                    unlock();
+                }
+                await trxn.done;
+                return added;
+            })
+            .catch((e) => {
+                throw e;
+            });
     }
 
     private async addBundleHelper(
@@ -468,10 +471,7 @@ export class IndexedDbStore implements Store {
                 bundleInfo.timestamp === bundleInfo.chainStart,
                 "timestamp !== chainstart"
             );
-            ensure(
-                identity,
-                "identity required to start a chain"
-            );
+            ensure(identity, "identity required to start a chain");
             await this.claimChain(
                 bundleInfo.medallion,
                 bundleInfo.chainStart,
@@ -486,14 +486,18 @@ export class IndexedDbStore implements Store {
         ];
 
         if (bundleInfo.chainStart === bundleInfo.timestamp) {
-            ensure(identity, `identity required to start a chain - ${identity}`);
-            await trxn
-                .objectStore("identities")
-                .add(identity, chainInfo);
+            ensure(
+                identity,
+                `identity required to start a chain - ${identity}`
+            );
+            await trxn.objectStore("identities").add(identity, chainInfo);
             verifyKey = bundleBuilder.getVerifyKey();
             await trxn.objectStore("verifyKeys").put(verifyKey, chainInfo);
         } else {
-            ensure(!identity, `cannot have identity in non-chain-start bundle - ${identity}`);
+            ensure(
+                !identity,
+                `cannot have identity in non-chain-start bundle - ${identity}`
+            );
             verifyKey = await trxn.objectStore("verifyKeys").get(chainInfo);
         }
         verifyBundle(bundleView.bytes, verifyKey);

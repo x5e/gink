@@ -274,10 +274,7 @@ export function testStore(
         bundleBuilder.setComment("should error");
         bundleBuilder.setVerifyKey(kp1.publicKey);
         const decomp = new Decomposition(
-            signBundle(
-                bundleBuilder.serializeBinary(),
-                kp1.secretKey
-            )
+            signBundle(bundleBuilder.serializeBinary(), kp1.secretKey)
         );
         let errored = false;
         try {
