@@ -34,6 +34,7 @@ export async function makeChainStart(
     bundleBuilder.setTimestamp(chainStart);
     bundleBuilder.setMedallion(medallion);
     bundleBuilder.setComment(comment);
+    bundleBuilder.setIdentity("test-chain-start");
     bundleBuilder.setVerifyKey((await keyPair).publicKey);
     return new Decomposition(
         signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey)

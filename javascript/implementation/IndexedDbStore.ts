@@ -433,7 +433,6 @@ export class IndexedDbStore implements Store {
     ): Promise<boolean> {
         const bundleInfo = bundleView.info;
         const bundleBuilder = bundleView.builder;
-        // console.log(`starting addBundleHelper for: ` + JSON.stringify(bundleInfo));
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
 
         const oldChainInfo: BundleInfo = await trxn
@@ -464,8 +463,8 @@ export class IndexedDbStore implements Store {
                 "timestamp !== chainstart"
             );
             ensure(
-                bundleInfo.comment,
-                "comment (identity) required to start a chain"
+                bundleBuilder.getIdentity(),
+                "identity required to start a chain"
             );
             await this.claimChain(
                 bundleInfo.medallion,
@@ -480,9 +479,10 @@ export class IndexedDbStore implements Store {
             bundleInfo.chainStart,
         ];
         if (bundleInfo.chainStart === bundleInfo.timestamp) {
+            ensure(bundleBuilder.getIdentity());
             await trxn
                 .objectStore("identities")
-                .add(bundleInfo.comment, chainInfo);
+                .add(bundleBuilder.getIdentity(), chainInfo);
             verifyKey = bundleBuilder.getVerifyKey();
             await trxn.objectStore("verifyKeys").put(verifyKey, chainInfo);
         } else {

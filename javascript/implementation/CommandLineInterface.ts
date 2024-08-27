@@ -4,13 +4,7 @@ import { Store } from "./Store";
 import { Database } from "./Database";
 import { AuthFunction, BundleView } from "./typedefs";
 import { SimpleServer } from "./SimpleServer";
-import {
-    ensure,
-    generateTimestamp,
-    getIdentity,
-    logToStdErr,
-    noOp,
-} from "./utils";
+import { ensure, generateTimestamp, getIdentity, logToStdErr } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { start, REPLServer } from "node:repl";
 

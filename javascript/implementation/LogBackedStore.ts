@@ -148,13 +148,17 @@ export class LogBackedStore extends LockableLog implements Store {
                 const added = await this.internalStore.addBundle(bundle);
                 if (!added) throw new Error("unexpected not added");
                 const info = bundle.info;
+                const identity = bundle.builder.getIdentity();
                 this.chainTracker.markAsHaving(bundle.info);
                 // This is the start of a chain, and we need to keep track of the identity.
                 if (info.timestamp === info.chainStart && !info.priorTime) {
+                    ensure(identity, "chain start bundle has no identity");
                     this.identities.set(
                         `${info.medallion},${info.chainStart}`,
-                        info.comment
+                        bundle.builder.getIdentity()
                     );
+                } else {
+                    ensure(!identity, "non-chain-start bundle has identity");
                 }
                 for (const callback of this.foundBundleCallBacks) {
                     callback(bundle);
@@ -221,6 +225,7 @@ export class LogBackedStore extends LockableLog implements Store {
         if (this.redTo === 0) this.redTo += await this.writeMagicNumber();
         const info: BundleInfo = bundle.info;
         const added = await this.internalStore.addBundle(bundle);
+        const identity = bundle.builder.getIdentity();
         if (claimChain) {
             if (!added) throw new Error("can't claim chain on old bundle");
             await this.claimChain(
@@ -229,10 +234,13 @@ export class LogBackedStore extends LockableLog implements Store {
                 getActorId()
             );
             if (info.timestamp === info.chainStart && !info.priorTime) {
+                ensure(identity, "chain start bundle has no identity");
                 this.identities.set(
                     `${info.medallion},${info.chainStart}`,
-                    info.comment
+                    bundle.builder.getIdentity()
                 );
+            } else {
+                ensure(!identity, "non-chain-start bundle has identity");
             }
         }
         this.chainTracker.markAsHaving(info);
