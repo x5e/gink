@@ -155,7 +155,7 @@ export class LogBackedStore extends LockableLog implements Store {
                     ensure(identity, "chain start bundle has no identity");
                     this.identities.set(
                         `${info.medallion},${info.chainStart}`,
-                        bundle.builder.getIdentity()
+                        identity
                     );
                 } else {
                     ensure(!identity, "non-chain-start bundle has identity");

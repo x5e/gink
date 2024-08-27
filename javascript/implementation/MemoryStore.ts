@@ -185,10 +185,7 @@ export class MemoryStore implements Store {
         const identity: string = bundleBuilder.getIdentity();
         if (bundleInfo.timestamp === bundleInfo.chainStart) {
             ensure(identity, "chain start bundle missing identity");
-            this.identities.set(
-                `${chainInfo[0]},${chainInfo[1]}`,
-                bundleBuilder.getIdentity()
-            );
+            this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, identity);
             verifyKey = ensure(bundleBuilder.getVerifyKey());
             this.verifyKeys.set(`${chainInfo[0]},${chainInfo[1]}`, verifyKey);
         } else {

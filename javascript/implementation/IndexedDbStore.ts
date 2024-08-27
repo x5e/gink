@@ -12,7 +12,6 @@ import {
     muidTupleToMuid,
     verifyBundle,
     librariesReady,
-    emptyBytes,
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from "idb";
 import {
@@ -33,7 +32,6 @@ import {
     Medallion,
     Muid,
     MuidTuple,
-    Offset,
     Removal,
     Timestamp,
     BundleView,
@@ -53,12 +51,7 @@ import {
 } from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import {
-    Behavior,
-    BundleBuilder,
-    ChangeBuilder,
-    EntryBuilder,
-} from "./builders";
+import { Behavior, ChangeBuilder, EntryBuilder } from "./builders";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { Retrieval } from "./Retrieval";
 
@@ -486,10 +479,7 @@ export class IndexedDbStore implements Store {
         ];
 
         if (bundleInfo.chainStart === bundleInfo.timestamp) {
-            ensure(
-                identity,
-                `identity required to start a chain - ${identity}`
-            );
+            ensure(identity, `identity required to start a chain`);
             await trxn.objectStore("identities").add(identity, chainInfo);
             verifyKey = bundleBuilder.getVerifyKey();
             await trxn.objectStore("verifyKeys").put(verifyKey, chainInfo);
