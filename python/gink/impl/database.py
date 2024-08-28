@@ -117,8 +117,13 @@ class Database(Relay):
         medallion = generate_medallion()
         chain_start = generate_timestamp()
         chain = Chain(medallion=medallion, chain_start=chain_start)
-        bundler = Bundler(self._identity)
-        bundle_bytes = bundler.seal(chain=chain, timestamp=chain_start, signing_key=self._signing_key)
+        bundler = Bundler()
+        bundle_bytes = bundler.seal(
+            chain=chain,
+            identity=self._identity,
+            timestamp=chain_start,
+            signing_key=self._signing_key
+        )
         wrapper = BundleWrapper(bundle_bytes=bundle_bytes)
         self._store.apply_bundle(wrapper, self._on_bundle, claim_chain=True)
         return wrapper.get_info()

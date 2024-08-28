@@ -106,7 +106,12 @@ export class Bundler implements BundleView {
      * @param bundleInfo the bundle metadata to add when serializing
      * @returns serialized
      */
-    seal(bundleInfo: BundleInfo, keyPair: KeyPair, priorHash?: Bytes): void {
+    seal(
+        bundleInfo: BundleInfo,
+        keyPair: KeyPair,
+        priorHash?: Bytes,
+        identity?: string
+    ): void {
         this.requireNotSealed();
         if (
             this.preAssignedMedallion &&
@@ -125,9 +130,15 @@ export class Bundler implements BundleView {
         this.bundleBuilder.setMedallion(bundleInfo.medallion);
         this.bundleBuilder.setComment(this.bundleInfo.comment);
         if (bundleInfo.chainStart === bundleInfo.timestamp) {
+            ensure(identity, "identity required for chain-start bundles");
+            this.bundleBuilder.setIdentity(identity);
             this.bundleBuilder.setVerifyKey(keyPair.publicKey);
         } else {
             ensure(priorHash && priorHash.length == 32, "need prior_hash");
+            ensure(
+                !identity,
+                "identity not allowed for non-chain-start bundles"
+            );
             this.bundleBuilder.setPriorHash(priorHash);
         }
 

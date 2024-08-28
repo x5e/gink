@@ -67,11 +67,13 @@ export class BundleBuilder extends ImplementedMessage {
     setChainStart(number);
     setMedallion(number);
     setComment(string);
+    setIdentity(string);
     getTimestamp(): number;
     getMedallion(): number;
     getChainStart(): number;
     getPrevious(): number;
     getComment(): string;
+    getIdentity(): string;
 }
 
 export class PairBuilder extends ImplementedMessage {

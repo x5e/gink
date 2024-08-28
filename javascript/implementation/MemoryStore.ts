@@ -150,7 +150,7 @@ export class MemoryStore implements Store {
     async addBundle(
         bundle: BundleView,
         claimChain?: boolean
-    ): Promise<Boolean> {
+    ): Promise<boolean> {
         await this.ready;
         const bundleBuilder = bundle.builder;
         const bundleInfo = bundle.info;
@@ -182,15 +182,14 @@ export class MemoryStore implements Store {
             bundleInfo.chainStart,
         ];
         let verifyKey: Bytes = emptyBytes;
+        const identity: string = bundleBuilder.getIdentity();
         if (bundleInfo.timestamp === bundleInfo.chainStart) {
-            this.identities.set(
-                `${chainInfo[0]},${chainInfo[1]}`,
-                bundleInfo.comment
-            );
-            verifyKey = bundleBuilder.getVerifyKey();
-            ensure(verifyKey);
+            ensure(identity, "chain start bundle missing identity");
+            this.identities.set(`${chainInfo[0]},${chainInfo[1]}`, identity);
+            verifyKey = ensure(bundleBuilder.getVerifyKey());
             this.verifyKeys.set(`${chainInfo[0]},${chainInfo[1]}`, verifyKey);
         } else {
+            ensure(!identity, "non-chain start bundle has identity");
             verifyKey = this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`);
         }
         verifyBundle(bundle.bytes, verifyKey);

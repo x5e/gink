@@ -27,12 +27,11 @@ it("shorterHash", async function () {
     ensure(safeMask.toString(16).match(/^f{13}$/));
     await librariesReady;
     const result1 = shorterHash(emptyBytes);
-    console.log(`result1=${result1}`);
     ensure(result1, result1.toString());
 
     const bytes11 = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     const result11 = shorterHash(bytes11);
-    console.log(`result11=${result11}`); // ensure(result1, result1.toString());
+    ensure(result11, result11.toString());
 });
 
 it("generate", async function () {

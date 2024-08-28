@@ -17,7 +17,6 @@ import {
     CallBack,
     BundleInfo,
     Muid,
-    Offset,
     ClaimedChain,
     BundleView,
     AsOf,
@@ -161,7 +160,7 @@ export class Database {
             const keyPair = createKeyPair();
             await this.store.saveKeyPair(keyPair);
             this.keyPair = keyPair;
-            const bundler = new Bundler(this.identity, medallion);
+            const bundler = new Bundler(undefined, medallion);
             // Starting a new chain, so don't have/need a prior_hash.
             bundler.seal(
                 {
@@ -169,9 +168,11 @@ export class Database {
                     timestamp: chainStart,
                     chainStart,
                 },
-                keyPair
+                keyPair,
+                undefined,
+                this.identity
             );
-            ensure(bundler.info.comment === this.identity);
+            ensure(bundler.builder.getIdentity() === this.identity);
             await this.store.addBundle(bundler, true);
             this.lastLinkToExtend = bundler.info;
             ensure(

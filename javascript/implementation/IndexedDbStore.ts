@@ -12,7 +12,6 @@ import {
     muidTupleToMuid,
     verifyBundle,
     librariesReady,
-    emptyBytes,
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from "idb";
 import {
@@ -33,7 +32,6 @@ import {
     Medallion,
     Muid,
     MuidTuple,
-    Offset,
     Removal,
     Timestamp,
     BundleView,
@@ -53,12 +51,7 @@ import {
 } from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import {
-    Behavior,
-    BundleBuilder,
-    ChangeBuilder,
-    EntryBuilder,
-} from "./builders";
+import { Behavior, ChangeBuilder, EntryBuilder } from "./builders";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { Retrieval } from "./Retrieval";
 
@@ -413,17 +406,26 @@ export class IndexedDbStore implements Store {
 
     addBundle(bundleView: BundleView, claimChain?: boolean): Promise<boolean> {
         if (!this.initialized) throw new Error("need to await on store.ready");
-        return this.processingLock.acquireLock().then(async (unlock) => {
-            const trxn = this.getTransaction();
-            const added = await this.addBundleHelper(
-                trxn,
-                bundleView,
-                claimChain
-            );
-            unlock();
-            await trxn.done;
-            return added;
-        });
+        return this.processingLock
+            .acquireLock()
+            .then(async (unlock) => {
+                const trxn = this.getTransaction();
+                let added = false;
+                try {
+                    added = await this.addBundleHelper(
+                        trxn,
+                        bundleView,
+                        claimChain
+                    );
+                } finally {
+                    unlock();
+                }
+                await trxn.done;
+                return added;
+            })
+            .catch((e) => {
+                throw e;
+            });
     }
 
     private async addBundleHelper(
@@ -433,9 +435,7 @@ export class IndexedDbStore implements Store {
     ): Promise<boolean> {
         const bundleInfo = bundleView.info;
         const bundleBuilder = bundleView.builder;
-        // console.log(`starting addBundleHelper for: ` + JSON.stringify(bundleInfo));
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
-
         const oldChainInfo: BundleInfo = await trxn
             .objectStore("chainInfos")
             .get([medallion, chainStart]);
@@ -457,16 +457,14 @@ export class IndexedDbStore implements Store {
             )
                 throw new Error("prior hash is invalid");
         }
+        const identity = bundleBuilder.getIdentity();
         // If this is a new chain, save the identity & claim this chain
         if (claimChain) {
             ensure(
                 bundleInfo.timestamp === bundleInfo.chainStart,
                 "timestamp !== chainstart"
             );
-            ensure(
-                bundleInfo.comment,
-                "comment (identity) required to start a chain"
-            );
+            ensure(identity, "identity required to start a chain");
             await this.claimChain(
                 bundleInfo.medallion,
                 bundleInfo.chainStart,
@@ -479,13 +477,17 @@ export class IndexedDbStore implements Store {
             bundleInfo.medallion,
             bundleInfo.chainStart,
         ];
+
         if (bundleInfo.chainStart === bundleInfo.timestamp) {
-            await trxn
-                .objectStore("identities")
-                .add(bundleInfo.comment, chainInfo);
+            ensure(identity, `identity required to start a chain`);
+            await trxn.objectStore("identities").add(identity, chainInfo);
             verifyKey = bundleBuilder.getVerifyKey();
             await trxn.objectStore("verifyKeys").put(verifyKey, chainInfo);
         } else {
+            ensure(
+                !identity,
+                `cannot have identity in non-chain-start bundle - ${identity}`
+            );
             verifyKey = await trxn.objectStore("verifyKeys").get(chainInfo);
         }
         verifyBundle(bundleView.bytes, verifyKey);

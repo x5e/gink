@@ -855,7 +855,7 @@ class LmdbStore(AbstractStore):
                     trxn.put(bytes(new_info), bundle_location, db=self._bundle_infos)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
                 if new_info.chain_start == new_info.timestamp:
-                    identity = new_info.comment
+                    identity = builder.identity
                     assert identity is not None
                     trxn.put(bytes(chain_key), identity.encode(), db=self._identities)
                     assert builder.verify_key is not None
