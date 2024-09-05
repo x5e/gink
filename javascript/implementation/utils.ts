@@ -510,16 +510,6 @@ export function muidTupleToMuid(tuple: MuidTuple): Muid {
     };
 }
 
-export function isMuidTuple(maybe: any): boolean {
-    return (
-        Array.isArray(maybe) &&
-        maybe.length === 3 &&
-        typeof maybe[0] === "number" &&
-        typeof maybe[1] === "number" &&
-        typeof maybe[2] === "number"
-    );
-}
-
 /**
  * Checks the resource path to ensure that it will resolve to a sensible file.
  * Specifically, it will require that each path component start with [a-zA-Z0-9_],
