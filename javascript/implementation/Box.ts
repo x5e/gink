@@ -69,7 +69,6 @@ export class Box extends Container {
 
     async reset(
         toTime?: AsOf,
-        recurse: boolean = true,
         bundlerOrComment?: Bundler | string
     ): Promise<void> {
         let bundler: Bundler;
@@ -86,13 +85,10 @@ export class Box extends Container {
             // If no time is specified, we are resetting to epoch, which is just a clear
             this.clear(false, bundler);
         } else {
-            const entryThen = await this.database.store.getEntryByKey(
-                this.address,
-                undefined,
-                toTime
-            );
-            if (entryThen.value !== (await this.get())) {
-                await this.set(entryThen.value, bundler);
+            const thereNow = await this.get();
+            const thereThen = await this.get(toTime);
+            if (thereThen !== thereNow) {
+                await this.set(thereThen, bundler);
             }
         }
         if (immediate) {

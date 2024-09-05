@@ -92,7 +92,6 @@ export class Container extends Addressable {
      */
     public async reset(
         toTime?: AsOf,
-        recurse: boolean = true,
         bundlerOrComment?: Bundler | string
     ): Promise<void> {
         throw new Error("Child class should have implemented this method.");

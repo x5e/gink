@@ -81,7 +81,6 @@ export class Keyed<
 
     async reset(
         toTime?: AsOf,
-        recurse: boolean = true,
         bundlerOrComment?: Bundler | string
     ): Promise<void> {
         let bundler: Bundler;
