@@ -1,7 +1,13 @@
 import { Container } from "./Container";
 import { Value, Muid, ScalarKey, AsOf, StorageKey } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, isMuidTuple, muidToString, muidTupleToMuid, valueToJson } from "./utils";
+import {
+    ensure,
+    isMuidTuple,
+    muidToString,
+    muidTupleToMuid,
+    valueToJson,
+} from "./utils";
 import { interpret, construct } from "./factories";
 import { Addressable } from "./Addressable";
 import { storageKeyToString } from "./store_utils";
@@ -106,7 +112,11 @@ export class Keyed<
                 const valueThen = thenMap.get(keyNow);
                 if (valueThen !== valueNow) {
                     if (valueThen === undefined) {
-                        await this.addEntry(genericKeyNow, Container.DELETION, bundler);
+                        await this.addEntry(
+                            genericKeyNow,
+                            Container.DELETION,
+                            bundler
+                        );
                     } else {
                         await this.addEntry(genericKeyNow, valueThen, bundler);
                         // Done processing this key in the thenMap
@@ -214,18 +224,22 @@ export class Keyed<
      * @param storageKey
      * @returns
      */
-    private storageKeyToGeneric(storageKey: StorageKey): ScalarKey | Addressable | [Addressable, Addressable] {
+    private storageKeyToGeneric(
+        storageKey: StorageKey
+    ): ScalarKey | Addressable | [Addressable, Addressable] {
         let newKey: ScalarKey | Addressable | [Addressable, Addressable];
         if (Array.isArray(storageKey)) {
             if (storageKey.length === 3) {
                 newKey = new Addressable(muidTupleToMuid(storageKey));
             } else if (storageKey.length === 2) {
-                newKey = [new Addressable(muidTupleToMuid(storageKey[0])), new Addressable(muidTupleToMuid(storageKey[1]))];
+                newKey = [
+                    new Addressable(muidTupleToMuid(storageKey[0])),
+                    new Addressable(muidTupleToMuid(storageKey[1])),
+                ];
             } else {
                 throw new Error("Invalid key length?");
             }
-        }
-        else {
+        } else {
             newKey = storageKey;
         }
         return newKey;
