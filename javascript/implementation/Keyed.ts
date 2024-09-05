@@ -97,32 +97,55 @@ export class Keyed<
             // If no time is specified, we are resetting to epoch, which is just a clear
             this.clear(false, bundler);
         } else {
-            const thenMap = await this.toMap(toTime);
-            const nowMap = await this.toMap();
-            // For the entries we currently have, either delete them or update their value
-            for (const [keyNow, valueNow] of nowMap.entries()) {
-                const genericKeyNow = this.storageKeyToGeneric(keyNow);
+            const keys: Set<StorageKey> = new Set();
+            const thenEntries = await this.database.store.getKeyedEntries(
+                this.address,
+                toTime
+            );
+            for (const [key, entry] of thenEntries) {
+                keys.add(entry.storageKey);
+            }
 
-                const valueThen = thenMap.get(keyNow);
-                if (valueThen !== valueNow) {
-                    if (valueThen === undefined) {
+            const nowEntries = await this.database.store.getKeyedEntries(
+                this.address
+            );
+            for (const [key, entry] of nowEntries) {
+                keys.add(entry.storageKey);
+            }
+
+            for (const key of keys) {
+                const genericKey = this.storageToKey(key);
+                const thenEntry = await this.database.store.getEntryByKey(
+                    this.address,
+                    genericKey,
+                    toTime
+                );
+                const nowEntry = await this.database.store.getEntryByKey(
+                    this.address,
+                    genericKey
+                );
+                if (!nowEntry) {
+                    // This key was present then, but not now, so we need to add it back
+                    ensure(thenEntry && thenEntry.value, "missing value?");
+                    await this.addEntry(genericKey, thenEntry.value, bundler);
+                } else if (!thenEntry) {
+                    // This key is present now, but not then, so we need to delete it
+                    ensure(nowEntry && nowEntry.value, "missing value?");
+                    await this.addEntry(
+                        genericKey,
+                        Container.DELETION,
+                        bundler
+                    );
+                } else {
+                    // Present both then and now. Check if the values are different
+                    if (nowEntry.value !== thenEntry.value) {
                         await this.addEntry(
-                            genericKeyNow,
-                            Container.DELETION,
+                            genericKey,
+                            thenEntry.value,
                             bundler
                         );
-                    } else {
-                        await this.addEntry(genericKeyNow, valueThen, bundler);
-                        // Done processing this key in the thenMap
-                        ensure(thenMap.delete(keyNow), "failed to delete?");
                     }
                 }
-            }
-            // Now add new entries for those that were there at toTime, but not now
-            // thenMap will be smaller since the entries there now have been removed.
-            for (const [keyThen, valueThen] of thenMap.entries()) {
-                const genericKeyThen = this.storageKeyToGeneric(keyThen);
-                await this.addEntry(genericKeyThen, valueThen, bundler);
             }
         }
         if (immediate) {
@@ -214,21 +237,21 @@ export class Keyed<
 
     /**
      * Converts a storage key (which is the key used in EntryBuilders) to a
-     * GenericType, which is what Keyed Containers use to add and remove entries.
+     * key usable by addEntry, etc.
      * @param storageKey
      * @returns
      */
-    private storageKeyToGeneric(
+    private storageToKey(
         storageKey: StorageKey
-    ): ScalarKey | Addressable | [Addressable, Addressable] {
-        let newKey: ScalarKey | Addressable | [Addressable, Addressable];
+    ): ScalarKey | Muid | [Muid, Muid] {
+        let newKey: ScalarKey | Muid | [Muid, Muid];
         if (Array.isArray(storageKey)) {
             if (storageKey.length === 3) {
-                newKey = new Addressable(muidTupleToMuid(storageKey));
+                newKey = muidTupleToMuid(storageKey);
             } else if (storageKey.length === 2) {
                 newKey = [
-                    new Addressable(muidTupleToMuid(storageKey[0])),
-                    new Addressable(muidTupleToMuid(storageKey[1])),
+                    muidTupleToMuid(storageKey[0]),
+                    muidTupleToMuid(storageKey[1]),
                 ];
             } else {
                 throw new Error("Invalid key length?");

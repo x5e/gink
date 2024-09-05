@@ -109,7 +109,12 @@ export class Container extends Addressable {
      * @returns a promise the resolves to the muid of the change
      */
     protected addEntry(
-        key?: ScalarKey | Addressable | [Addressable, Addressable],
+        key?:
+            | ScalarKey
+            | Addressable
+            | [Addressable, Addressable]
+            | Muid
+            | [Muid, Muid],
         value?: Value | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string
     ): Promise<Muid> {
@@ -140,11 +145,19 @@ export class Container extends Addressable {
             entryBuilder.setKey(wrapKey(key));
         } else if (Array.isArray(key)) {
             const pair = new PairBuilder();
-            pair.setLeft(muidToBuilder(key[0].address));
-            pair.setRite(muidToBuilder(key[1].address));
+            let key1 = key[0];
+            let key2 = key[1];
+            if ("address" in key[0] && "address" in key[1]) {
+                key1 = key[0].address;
+                key2 = key[1].address;
+            }
+            pair.setLeft(muidToBuilder(key1));
+            pair.setRite(muidToBuilder(key2));
             entryBuilder.setPair(pair);
         } else if (key instanceof Addressable) {
             entryBuilder.setDescribing(muidToBuilder(key.address));
+        } else if (key && "timestamp" in key) {
+            entryBuilder.setDescribing(muidToBuilder(key));
         }
 
         // TODO: check that the destination/value is compatible with Container
