@@ -1,13 +1,7 @@
 import { Container } from "./Container";
 import { Value, Muid, ScalarKey, AsOf, StorageKey } from "./typedefs";
 import { Bundler } from "./Bundler";
-import {
-    ensure,
-    isMuidTuple,
-    muidToString,
-    muidTupleToMuid,
-    valueToJson,
-} from "./utils";
+import { ensure, muidToString, muidTupleToMuid, valueToJson } from "./utils";
 import { interpret, construct } from "./factories";
 import { Addressable } from "./Addressable";
 import { storageKeyToString } from "./store_utils";
@@ -87,22 +81,23 @@ export class Keyed<
 
     async reset(
         toTime?: AsOf,
+        recurse: boolean = true,
         bundlerOrComment?: Bundler | string
     ): Promise<void> {
+        let bundler: Bundler;
+        let immediate = true;
+        if (typeof bundlerOrComment === "string") {
+            bundler = new Bundler(bundlerOrComment);
+        } else if (bundlerOrComment instanceof Bundler) {
+            immediate = false;
+            bundler = bundlerOrComment;
+        } else {
+            bundler = new Bundler();
+        }
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, bundlerOrComment);
+            this.clear(false, bundler);
         } else {
-            let bundler: Bundler;
-            let immediate = true;
-            if (typeof bundlerOrComment === "string") {
-                bundler = new Bundler(bundlerOrComment);
-            } else if (bundlerOrComment instanceof Bundler) {
-                immediate = false;
-                bundler = bundlerOrComment;
-            } else {
-                bundler = new Bundler();
-            }
             const thenMap = await this.toMap(toTime);
             const nowMap = await this.toMap();
             // For the entries we currently have, either delete them or update their value
@@ -130,9 +125,9 @@ export class Keyed<
                 const genericKeyThen = this.storageKeyToGeneric(keyThen);
                 await this.addEntry(genericKeyThen, valueThen, bundler);
             }
-            if (immediate) {
-                await this.database.addBundler(bundler);
-            }
+        }
+        if (immediate) {
+            await this.database.addBundler(bundler);
         }
     }
 

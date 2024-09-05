@@ -67,6 +67,39 @@ export class Box extends Container {
         return +!(entry === undefined || entry.deletion);
     }
 
+    async reset(
+        toTime?: AsOf,
+        recurse: boolean = true,
+        bundlerOrComment?: Bundler | string
+    ): Promise<void> {
+        let bundler: Bundler;
+        let immediate = true;
+        if (typeof bundlerOrComment === "string") {
+            bundler = new Bundler(bundlerOrComment);
+        } else if (bundlerOrComment instanceof Bundler) {
+            immediate = false;
+            bundler = bundlerOrComment;
+        } else {
+            bundler = new Bundler();
+        }
+        if (!toTime) {
+            // If no time is specified, we are resetting to epoch, which is just a clear
+            this.clear(false, bundler);
+        } else {
+            const entryThen = await this.database.store.getEntryByKey(
+                this.address,
+                undefined,
+                toTime
+            );
+            if (entryThen.value !== (await this.get())) {
+                await this.set(entryThen.value, bundler);
+            }
+        }
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
+    }
+
     /**
      * checks to see if something is in the box
      * @param asOf

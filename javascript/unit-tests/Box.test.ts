@@ -6,7 +6,7 @@ import {
     Bundler,
     Muid,
 } from "../implementation/index";
-import { ensure, isDate } from "../implementation/utils";
+import { ensure, generateTimestamp, isDate } from "../implementation/utils";
 
 it("create a box; set and get data in it", async function () {
     // set up the objects
@@ -166,5 +166,27 @@ it("Box.Store", async function () {
         await box.set(floating);
         var expectFloating = await box.get();
         ensure(expectFloating === floating);
+    }
+});
+
+it("Box.reset", async function () {
+    for (const store of [
+        new IndexedDbStore("box.reset", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const box = await instance.createBox();
+
+        await box.set("value 1");
+        const afterSet = generateTimestamp();
+        await box.set("changed");
+        const afterSecond = generateTimestamp();
+        await box.reset(afterSet);
+        ensure((await box.get()) === "value 1");
+        await box.reset();
+        ensure((await box.get()) === undefined);
+        await box.reset(afterSecond);
+        ensure((await box.get()) === "changed");
     }
 });
