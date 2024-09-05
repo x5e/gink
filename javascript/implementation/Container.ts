@@ -82,6 +82,13 @@ export class Container extends Addressable {
         return address;
     }
 
+    public async reset(
+        toTime?: AsOf,
+        bundlerOrComment?: Bundler | string
+    ): Promise<void> {
+        throw new Error("Child class should have implemented this method.");
+    }
+
     public async size(): Promise<number> {
         throw new Error("Child class should have implemented this method.");
     }

@@ -15,6 +15,7 @@ import {
     Timestamp,
     Bytes,
     KeyPair,
+    StorageKey,
 } from "./typedefs";
 import {
     MuidBuilder,
@@ -38,6 +39,7 @@ import {
     crypto_shorthash,
     crypto_shorthash_KEYBYTES,
 } from "libsodium-wrappers";
+import { Addressable } from "./Addressable";
 
 export const emptyBytes = new Uint8Array(0);
 
@@ -506,6 +508,16 @@ export function muidTupleToMuid(tuple: MuidTuple): Muid {
         medallion: tuple[1],
         offset: tuple[2],
     };
+}
+
+export function isMuidTuple(maybe: any): boolean {
+    return (
+        Array.isArray(maybe) &&
+        maybe.length === 3 &&
+        typeof maybe[0] === "number" &&
+        typeof maybe[1] === "number" &&
+        typeof maybe[2] === "number"
+    );
 }
 
 /**

@@ -1,7 +1,7 @@
 import { Container } from "./Container";
 import { Value, Muid, ScalarKey, AsOf, StorageKey } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, muidTupleToMuid, valueToJson } from "./utils";
+import { ensure, isMuidTuple, muidToString, muidTupleToMuid, valueToJson } from "./utils";
 import { interpret, construct } from "./factories";
 import { Addressable } from "./Addressable";
 import { storageKeyToString } from "./store_utils";
@@ -77,6 +77,53 @@ export class Keyed<
             return false;
         }
         return result !== undefined;
+    }
+
+    async reset(
+        toTime?: AsOf,
+        bundlerOrComment?: Bundler | string
+    ): Promise<void> {
+        if (!toTime) {
+            // If no time is specified, we are resetting to epoch, which is just a clear
+            this.clear(false, bundlerOrComment);
+        } else {
+            let bundler: Bundler;
+            let immediate = true;
+            if (typeof bundlerOrComment === "string") {
+                bundler = new Bundler(bundlerOrComment);
+            } else if (bundlerOrComment instanceof Bundler) {
+                immediate = false;
+                bundler = bundlerOrComment;
+            } else {
+                bundler = new Bundler();
+            }
+            const thenMap = await this.toMap(toTime);
+            const nowMap = await this.toMap();
+            // For the entries we currently have, either delete them or update their value
+            for (const [keyNow, valueNow] of nowMap.entries()) {
+                const genericKeyNow = this.storageKeyToGeneric(keyNow);
+
+                const valueThen = thenMap.get(keyNow);
+                if (valueThen !== valueNow) {
+                    if (valueThen === undefined) {
+                        await this.addEntry(genericKeyNow, Container.DELETION, bundler);
+                    } else {
+                        await this.addEntry(genericKeyNow, valueThen, bundler);
+                        // Done processing this key in the thenMap
+                        ensure(thenMap.delete(keyNow), "failed to delete?");
+                    }
+                }
+            }
+            // Now add new entries for those that were there at toTime, but not now
+            // thenMap will be smaller since the entries there now have been removed.
+            for (const [keyThen, valueThen] of thenMap.entries()) {
+                const genericKeyThen = this.storageKeyToGeneric(keyThen);
+                await this.addEntry(genericKeyThen, valueThen, bundler);
+            }
+            if (immediate) {
+                await this.database.addBundler(bundler);
+            }
+        }
     }
 
     /**
@@ -159,5 +206,28 @@ export class Keyed<
         }
         returning += "}";
         return returning;
+    }
+
+    /**
+     * Converts a storage key (which is the key used in EntryBuilders) to a
+     * GenericType, which is what Keyed Containers use to add and remove entries.
+     * @param storageKey
+     * @returns
+     */
+    private storageKeyToGeneric(storageKey: StorageKey): ScalarKey | Addressable | [Addressable, Addressable] {
+        let newKey: ScalarKey | Addressable | [Addressable, Addressable];
+        if (Array.isArray(storageKey)) {
+            if (storageKey.length === 3) {
+                newKey = new Addressable(muidTupleToMuid(storageKey));
+            } else if (storageKey.length === 2) {
+                newKey = [new Addressable(muidTupleToMuid(storageKey[0])), new Addressable(muidTupleToMuid(storageKey[1]))];
+            } else {
+                throw new Error("Invalid key length?");
+            }
+        }
+        else {
+            newKey = storageKey;
+        }
+        return newKey;
     }
 }
