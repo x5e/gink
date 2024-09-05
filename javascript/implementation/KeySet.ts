@@ -109,6 +109,33 @@ export class KeySet extends Container {
         return result !== undefined;
     }
 
+    async reset(
+        toTime?: AsOf,
+        bundlerOrComment?: Bundler | string
+    ): Promise<void> {
+        let bundler: Bundler;
+        let immediate = true;
+        if (typeof bundlerOrComment === "string") {
+            bundler = new Bundler(bundlerOrComment);
+        } else if (bundlerOrComment instanceof Bundler) {
+            immediate = false;
+            bundler = bundlerOrComment;
+        } else {
+            bundler = new Bundler();
+        }
+            // If no time is specified, we are resetting to epoch, which is just a clear
+            this.clear(false, bundler);
+            if (toTime) {
+                const setThen = await this.toSet(toTime);
+                for (const key of setThen) {
+                    await this.add(key, bundler);
+                }
+            }
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
+    }
+
     /**
      * Returns the contents of the key set as a set.
      * @param asOf
