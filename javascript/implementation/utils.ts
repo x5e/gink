@@ -15,7 +15,6 @@ import {
     Timestamp,
     Bytes,
     KeyPair,
-    StorageKey,
 } from "./typedefs";
 import {
     MuidBuilder,
@@ -39,7 +38,6 @@ import {
     crypto_shorthash,
     crypto_shorthash_KEYBYTES,
 } from "libsodium-wrappers";
-import { Addressable } from "./Addressable";
 
 export const emptyBytes = new Uint8Array(0);
 
