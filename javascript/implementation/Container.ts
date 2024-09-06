@@ -85,14 +85,17 @@ export class Container extends Addressable {
     /**
      * Reset this Container to a previous time. If no time is specified, the container will
      * be cleared.
-     * @param toTime Optional time to reset to. If absent, the container will be cleared.
-     * @param bundlerOrComment Bundler to add this change to, string to add a comment to a
+     * @param args Optional arguments, including:
+     * @argument toTime Optional time to reset to. If absent, the container will be cleared.
+     * @argument bundlerOrComment Bundler to add this change to, string to add a comment to a
      * new bundle, or empty to apply immediately.
+     * @argument recurse If true, reset all child containers as well.
      */
-    public async reset(
-        toTime?: AsOf,
-        bundlerOrComment?: Bundler | string
-    ): Promise<void> {
+    public async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        recurse?: boolean;
+    }): Promise<void> {
         throw new Error("Child class should have implemented this method.");
     }
 

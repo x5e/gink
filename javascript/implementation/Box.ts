@@ -67,10 +67,14 @@ export class Box extends Container {
         return +!(entry === undefined || entry.deletion);
     }
 
-    async reset(
-        toTime?: AsOf,
-        bundlerOrComment?: Bundler | string
-    ): Promise<void> {
+    async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        recurse?: boolean;
+    }): Promise<void> {
+        const toTime = args?.toTime;
+        const bundlerOrComment = args?.bundlerOrComment;
+        const recurse = args?.recurse;
         let bundler: Bundler;
         let immediate = true;
         if (typeof bundlerOrComment === "string") {
@@ -89,6 +93,13 @@ export class Box extends Container {
             const thereThen = await this.get(toTime);
             if (thereThen !== thereNow) {
                 await this.set(thereThen, bundler);
+            }
+            if (recurse && thereThen instanceof Container) {
+                await thereThen.reset({
+                    toTime,
+                    bundlerOrComment: bundler,
+                    recurse,
+                });
             }
         }
         if (immediate) {

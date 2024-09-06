@@ -1,10 +1,17 @@
 import { Container } from "./Container";
 import { Value, Muid, ScalarKey, AsOf, StorageKey } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, muidTupleToMuid, valueToJson } from "./utils";
+import {
+    ensure,
+    muidToString,
+    muidTupleToMuid,
+    storageToKey,
+    valueToJson,
+} from "./utils";
 import { interpret, construct } from "./factories";
 import { Addressable } from "./Addressable";
 import { storageKeyToString } from "./store_utils";
+import { Behavior } from "./builders";
 
 export class Keyed<
     GenericType extends ScalarKey | Addressable | [Addressable, Addressable],
@@ -79,10 +86,14 @@ export class Keyed<
         return result !== undefined;
     }
 
-    async reset(
-        toTime?: AsOf,
-        bundlerOrComment?: Bundler | string
-    ): Promise<void> {
+    async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        recurse?: boolean;
+    }): Promise<void> {
+        const toTime = args?.toTime;
+        const bundlerOrComment = args?.bundlerOrComment;
+        const recurse = args?.recurse;
         let bundler: Bundler;
         let immediate = true;
         if (typeof bundlerOrComment === "string") {
@@ -114,23 +125,39 @@ export class Keyed<
             }
 
             for (const key of keys) {
-                const genericKey = this.storageToKey(key);
+                const genericKey = storageToKey(key);
                 const thenEntry = await this.database.store.getEntryByKey(
                     this.address,
                     genericKey,
                     toTime
                 );
+                const thenValue: Value | Container =
+                    thenEntry?.pointeeList.length > 0
+                        ? await construct(
+                              this.database,
+                              muidTupleToMuid(thenEntry.pointeeList[0])
+                          )
+                        : thenEntry?.value;
+
                 const nowEntry = await this.database.store.getEntryByKey(
                     this.address,
                     genericKey
                 );
+                const nowValue: Value | Container =
+                    nowEntry?.pointeeList.length > 0
+                        ? await construct(
+                              this.database,
+                              muidTupleToMuid(nowEntry.pointeeList[0])
+                          )
+                        : nowEntry?.value;
+
                 if (!nowEntry) {
                     // This key was present then, but not now, so we need to add it back
-                    ensure(thenEntry && thenEntry.value, "missing value?");
-                    await this.addEntry(genericKey, thenEntry.value, bundler);
+                    ensure(thenEntry && thenValue, "missing value?");
+                    await this.addEntry(genericKey, thenValue, bundler);
                 } else if (!thenEntry) {
                     // This key is present now, but not then, so we need to delete it
-                    ensure(nowEntry && nowEntry.value, "missing value?");
+                    ensure(nowEntry && nowValue, "missing value?");
                     await this.addEntry(
                         genericKey,
                         Container.DELETION,
@@ -138,13 +165,27 @@ export class Keyed<
                     );
                 } else {
                     // Present both then and now. Check if the values are different
-                    if (nowEntry.value !== thenEntry.value) {
-                        await this.addEntry(
-                            genericKey,
-                            thenEntry.value,
-                            bundler
-                        );
+                    if (nowValue !== thenValue) {
+                        // Make sure the values are not the same container
+                        if (
+                            !(
+                                nowValue instanceof Container &&
+                                thenValue instanceof Container &&
+                                muidToString(nowValue.address) ===
+                                    muidToString(thenValue.address)
+                            )
+                        ) {
+                            // Update the entry
+                            await this.addEntry(genericKey, thenValue, bundler);
+                        }
                     }
+                }
+                if (recurse && thenValue instanceof Container) {
+                    await thenValue.reset({
+                        toTime,
+                        bundlerOrComment: bundler,
+                        recurse,
+                    });
                 }
             }
         }
@@ -233,32 +274,5 @@ export class Keyed<
         }
         returning += "}";
         return returning;
-    }
-
-    /**
-     * Converts a storage key (which is the key used in EntryBuilders) to a
-     * key usable by addEntry, etc.
-     * @param storageKey
-     * @returns
-     */
-    private storageToKey(
-        storageKey: StorageKey
-    ): ScalarKey | Muid | [Muid, Muid] {
-        let newKey: ScalarKey | Muid | [Muid, Muid];
-        if (Array.isArray(storageKey)) {
-            if (storageKey.length === 3) {
-                newKey = muidTupleToMuid(storageKey);
-            } else if (storageKey.length === 2) {
-                newKey = [
-                    muidTupleToMuid(storageKey[0]),
-                    muidTupleToMuid(storageKey[1]),
-                ];
-            } else {
-                throw new Error("Invalid key length?");
-            }
-        } else {
-            newKey = storageKey;
-        }
-        return newKey;
     }
 }
