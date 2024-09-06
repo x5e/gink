@@ -5,7 +5,6 @@ import {
     Muid,
     Bytes,
     ScalarKey,
-    BundleInfo,
     ClaimedChain,
     Entry,
     AsOf,

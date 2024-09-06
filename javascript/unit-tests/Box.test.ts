@@ -5,6 +5,7 @@ import {
     MemoryStore,
     Bundler,
     Muid,
+    Container,
 } from "../implementation/index";
 import { ensure, generateTimestamp, isDate } from "../implementation/utils";
 
@@ -182,11 +183,30 @@ it("Box.reset", async function () {
         const afterSet = generateTimestamp();
         await box.set("changed");
         const afterSecond = generateTimestamp();
-        await box.reset(afterSet);
+        await box.reset({ toTime: afterSet });
         ensure((await box.get()) === "value 1");
         await box.reset();
         ensure((await box.get()) === undefined);
-        await box.reset(afterSecond);
+        await box.reset({ toTime: afterSecond });
         ensure((await box.get()) === "changed");
+
+        const dir = await instance.createDirectory();
+        await box.set(dir);
+        await dir.set("cheese", "fries");
+        const resetTo = generateTimestamp();
+        await dir.set("cheese", "no fries");
+        const noFries = generateTimestamp();
+        ensure((await dir.get("cheese")) === "no fries");
+        await box.reset({ toTime: resetTo, recurse: true });
+        ensure((await dir.get("cheese")) === "fries");
+
+        await box.clear();
+        ensure((await box.get()) === undefined);
+        await box.reset({ toTime: resetTo });
+
+        ensure(typeof (await box.get()) === "object");
+        ensure((await dir.get("cheese")) === "fries");
+        await box.reset({ toTime: noFries, recurse: true });
+        ensure((await dir.get("cheese")) === "no fries");
     }
 });

@@ -11,6 +11,7 @@ import {
 import { interpret, construct } from "./factories";
 import { Addressable } from "./Addressable";
 import { storageKeyToString } from "./store_utils";
+import { Behavior } from "./builders";
 
 export class Keyed<
     GenericType extends ScalarKey | Addressable | [Addressable, Addressable],
@@ -85,19 +86,27 @@ export class Keyed<
         return result !== undefined;
     }
 
-    async reset(
-        toTime?: AsOf,
-        bundlerOrComment?: Bundler | string
-    ): Promise<void> {
+    async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        recurse?: boolean;
+    }): Promise<void> {
+        if (this.behavior === Behavior.PROPERTY) {
+            throw new Error(
+                "Cannot directly reset a property. " +
+                    "Calling reset on a Container will reset its properties."
+            );
+        }
+        const toTime = args?.toTime;
+        const bundlerOrComment = args?.bundlerOrComment;
+        const recurse = args?.recurse;
+        let immediate = false;
         let bundler: Bundler;
-        let immediate = true;
-        if (typeof bundlerOrComment === "string") {
-            bundler = new Bundler(bundlerOrComment);
-        } else if (bundlerOrComment instanceof Bundler) {
-            immediate = false;
+        if (bundlerOrComment instanceof Bundler) {
             bundler = bundlerOrComment;
         } else {
-            bundler = new Bundler();
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
         }
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
@@ -126,17 +135,33 @@ export class Keyed<
                     genericKey,
                     toTime
                 );
+                const thenValue: Value | Container =
+                    thenEntry?.pointeeList.length > 0
+                        ? await construct(
+                              this.database,
+                              muidTupleToMuid(thenEntry.pointeeList[0])
+                          )
+                        : thenEntry?.value;
+
                 const nowEntry = await this.database.store.getEntryByKey(
                     this.address,
                     genericKey
                 );
+                const nowValue: Value | Container =
+                    nowEntry?.pointeeList.length > 0
+                        ? await construct(
+                              this.database,
+                              muidTupleToMuid(nowEntry.pointeeList[0])
+                          )
+                        : nowEntry?.value;
+
                 if (!nowEntry) {
                     // This key was present then, but not now, so we need to add it back
-                    ensure(thenEntry && thenEntry.value, "missing value?");
-                    await this.addEntry(genericKey, thenEntry.value, bundler);
+                    ensure(thenEntry && thenValue, "missing value?");
+                    await this.addEntry(genericKey, thenValue, bundler);
                 } else if (!thenEntry) {
                     // This key is present now, but not then, so we need to delete it
-                    ensure(nowEntry && nowEntry.value, "missing value?");
+                    ensure(nowEntry && nowValue, "missing value?");
                     await this.addEntry(
                         genericKey,
                         Container.DELETION,
@@ -144,13 +169,27 @@ export class Keyed<
                     );
                 } else {
                     // Present both then and now. Check if the values are different
-                    if (nowEntry.value !== thenEntry.value) {
-                        await this.addEntry(
-                            genericKey,
-                            thenEntry.value,
-                            bundler
-                        );
+                    if (nowValue !== thenValue) {
+                        // Make sure the values are not the same container
+                        if (
+                            !(
+                                nowValue instanceof Container &&
+                                thenValue instanceof Container &&
+                                muidToString(nowValue.address) ===
+                                    muidToString(thenValue.address)
+                            )
+                        ) {
+                            // Update the entry
+                            await this.addEntry(genericKey, thenValue, bundler);
+                        }
                     }
+                }
+                if (recurse && thenValue instanceof Container) {
+                    await thenValue.reset({
+                        toTime,
+                        bundlerOrComment: bundler,
+                        recurse,
+                    });
                 }
             }
         }
