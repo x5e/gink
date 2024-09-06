@@ -1,5 +1,10 @@
 import { Database, IndexedDbStore, MemoryStore } from "../implementation";
-import { ensure, muidToString, muidTupleToMuid } from "../implementation/utils";
+import {
+    ensure,
+    generateTimestamp,
+    muidToString,
+    muidTupleToMuid,
+} from "../implementation/utils";
 
 it("include and exclude work as intended", async function () {
     for (const store of [
@@ -68,5 +73,34 @@ it("contains, toArray, and getMembers work properly", async function () {
         for await (const member of group1.getMembers()) {
             ensure(member.address && member.behavior && member.database);
         }
+    }
+});
+
+it("Group.reset", async function () {
+    for (const store of [
+        new IndexedDbStore("Group.test3", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const box1 = await instance.createBox();
+        const box2 = await instance.createBox();
+        const group = await instance.createGroup();
+        await group.include(box1);
+        const afterOne = generateTimestamp();
+        await group.include(box2);
+        ensure(await group.isIncluded(box2));
+        await group.reset(afterOne);
+        ensure(!(await group.isIncluded(box2)));
+        ensure(await group.isIncluded(box1));
+        await group.reset();
+        ensure((await group.size()) === 0);
+        await group.include(box1);
+        await group.include(box2);
+        const beforeExclude = generateTimestamp();
+        await group.exclude(box1);
+        await group.reset(beforeExclude);
+        ensure(await group.isIncluded(box1));
+        ensure(await group.isIncluded(box2));
     }
 });

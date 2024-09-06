@@ -73,7 +73,6 @@ export class PairSet extends Container {
         toTime?: AsOf,
         bundlerOrComment?: Bundler | string
     ): Promise<void> {
-        // TODO: figure out how to handle excluded pairs
         let bundler: Bundler;
         let immediate = true;
         if (typeof bundlerOrComment === "string") {

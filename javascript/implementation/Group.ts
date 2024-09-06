@@ -1,8 +1,8 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
-import { Muid, AsOf } from "./typedefs";
+import { Muid, AsOf, MuidTuple } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString } from "./utils";
+import { ensure, muidToString, storageToKey } from "./utils";
 import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
@@ -116,6 +116,94 @@ export class Group extends Container {
             }
         }
         return toArray;
+    }
+
+    async reset(
+        toTime?: AsOf,
+        bundlerOrComment?: Bundler | string
+    ): Promise<void> {
+        let bundler: Bundler;
+        let immediate = true;
+        if (typeof bundlerOrComment === "string") {
+            bundler = new Bundler(bundlerOrComment);
+        } else if (bundlerOrComment instanceof Bundler) {
+            immediate = false;
+            bundler = bundlerOrComment;
+        } else {
+            bundler = new Bundler();
+        }
+        if (!toTime) {
+            // If no time is specified, we are resetting to epoch, which is just a clear
+            this.clear(false, bundler);
+        } else {
+            const union = new Set<MuidTuple>();
+            const entriesThen = await this.database.store.getKeyedEntries(
+                this.address,
+                toTime
+            );
+            const entriesNow = await this.database.store.getKeyedEntries(
+                this.address
+            );
+
+            for (const [key, entry] of entriesThen) {
+                const storageKey = <MuidTuple>entry.storageKey;
+                union.add(storageKey);
+            }
+            for (const [key, entry] of entriesNow) {
+                const storageKey = <MuidTuple>entry.storageKey;
+                union.add(storageKey);
+            }
+            for (const key of union) {
+                const genericKey = storageToKey(key);
+                const thenEntry = await this.database.store.getEntryByKey(
+                    this.address,
+                    genericKey,
+                    toTime
+                );
+                const nowEntry = await this.database.store.getEntryByKey(
+                    this.address,
+                    genericKey
+                );
+                ensure(nowEntry || thenEntry, "both then and now undefined?");
+                if (!nowEntry) {
+                    // This key was present then, but not now, so we need to add it back
+                    ensure(thenEntry, "missing then entry?");
+                    await this.addEntry(genericKey, thenEntry.value, bundler);
+                } else if (!thenEntry) {
+                    // This key is present now, but not then, so we need to delete it
+                    ensure(nowEntry, "missing now entry?");
+                    await this.addEntry(
+                        genericKey,
+                        Container.DELETION,
+                        bundler
+                    );
+                } else if (nowEntry.deletion !== thenEntry.deletion) {
+                    if (nowEntry.deletion) {
+                        // Present then, deleted now. Need to revive.
+                        await this.addEntry(
+                            genericKey,
+                            Container.INCLUSION,
+                            bundler
+                        );
+                    } else if (thenEntry.deletion) {
+                        // Present now, deleted then. Need to delete.
+                        await this.addEntry(
+                            genericKey,
+                            Container.DELETION,
+                            bundler
+                        );
+                    }
+                } else {
+                    ensure(
+                        nowEntry.deletion === thenEntry.deletion,
+                        "last case should be same entry"
+                    );
+                }
+            }
+        }
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
     }
 
     /**
