@@ -118,19 +118,20 @@ export class Group extends Container {
         return toArray;
     }
 
-    async reset(
-        toTime?: AsOf,
-        bundlerOrComment?: Bundler | string
-    ): Promise<void> {
+    async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        recurse?: boolean;
+    }): Promise<void> {
+        const toTime = args?.toTime;
+        const bundlerOrComment = args?.bundlerOrComment;
+        let immediate = false;
         let bundler: Bundler;
-        let immediate = true;
-        if (typeof bundlerOrComment === "string") {
-            bundler = new Bundler(bundlerOrComment);
-        } else if (bundlerOrComment instanceof Bundler) {
-            immediate = false;
+        if (bundlerOrComment instanceof Bundler) {
             bundler = bundlerOrComment;
         } else {
-            bundler = new Bundler();
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
         }
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear

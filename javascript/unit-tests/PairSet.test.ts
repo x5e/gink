@@ -83,7 +83,7 @@ it("PairSet.reset", async function () {
         const afterOne = generateTimestamp();
         await ps.include([box2, box1]);
         ensure(await ps.contains([box2, box1]));
-        await ps.reset(afterOne);
+        await ps.reset({ toTime: afterOne });
         ensure(!(await ps.contains([box2, box1])));
         ensure(await ps.contains([box1, box2]));
         await ps.reset();
@@ -92,7 +92,7 @@ it("PairSet.reset", async function () {
         await ps.include([box2, box1]);
         const beforeExclude = generateTimestamp();
         await ps.exclude([box1, box2]);
-        await ps.reset(beforeExclude);
+        await ps.reset({ toTime: beforeExclude });
         ensure(await ps.contains([box1, box2]));
         ensure(await ps.contains([box2, box1]));
     }

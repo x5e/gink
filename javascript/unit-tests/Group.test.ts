@@ -90,7 +90,7 @@ it("Group.reset", async function () {
         const afterOne = generateTimestamp();
         await group.include(box2);
         ensure(await group.isIncluded(box2));
-        await group.reset(afterOne);
+        await group.reset({ toTime: afterOne });
         ensure(!(await group.isIncluded(box2)));
         ensure(await group.isIncluded(box1));
         await group.reset();
@@ -99,7 +99,7 @@ it("Group.reset", async function () {
         await group.include(box2);
         const beforeExclude = generateTimestamp();
         await group.exclude(box1);
-        await group.reset(beforeExclude);
+        await group.reset({ toTime: beforeExclude });
         ensure(await group.isIncluded(box1));
         ensure(await group.isIncluded(box2));
     }

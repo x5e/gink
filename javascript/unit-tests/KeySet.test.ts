@@ -216,7 +216,7 @@ it("KeySet.reset", async function () {
         const afterOne = generateTimestamp();
         await ks.add("key2");
         ensure(await ks.has("key2"));
-        await ks.reset(afterOne);
+        await ks.reset({ toTime: afterOne });
         ensure(!(await ks.has("key2")));
         ensure(await ks.has("key1"));
         await ks.reset();
@@ -228,7 +228,7 @@ it("KeySet.reset", async function () {
         ensure((await ks.size()) === 2);
         await ks.delete("key3");
         ensure((await ks.size()) === 1);
-        await ks.reset(after3);
+        await ks.reset({ toTime: after3 });
         ensure((await ks.size()) === 1);
         ensure(await ks.has("key3"));
         ensure(!(await ks.has("key4")));
