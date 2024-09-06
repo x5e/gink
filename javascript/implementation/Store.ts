@@ -5,7 +5,6 @@ import {
     Muid,
     Bytes,
     ScalarKey,
-    BundleInfo,
     ClaimedChain,
     Entry,
     AsOf,
@@ -128,4 +127,17 @@ export interface Store {
     saveKeyPair(keyPair: KeyPair): Promise<void>;
 
     pullKeyPair(publicKey: Bytes): Promise<KeyPair>;
+
+    /**
+     * Saves a symmetric key for future use.
+     * Returns the keyId (a 52 bit digest of the key).
+     * @param symmetricKey the symmetric key to store
+     */
+    saveSymmetricKey(symmetricKey: Bytes): Promise<Number>;
+
+    /**
+     * Retrieves a previously stored symmetric key.
+     * @param keyId the id of the symmetric key to retrieve
+     */
+    getSymmetricKey(keyId: Number): Promise<Bytes>;
 }

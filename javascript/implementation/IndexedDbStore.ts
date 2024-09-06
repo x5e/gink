@@ -12,6 +12,7 @@ import {
     muidTupleToMuid,
     verifyBundle,
     librariesReady,
+    shorterHash,
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from "idb";
 import {
@@ -68,6 +69,7 @@ type Transaction = IDBPTransaction<
         | "identities"
         | "verifyKeys"
         | "secretKeys"
+        | "symmetricKeys"
     )[],
     "readwrite"
 >;
@@ -163,6 +165,7 @@ export class IndexedDbStore implements Store {
                 db.createObjectStore("identities");
                 db.createObjectStore("verifyKeys");
                 db.createObjectStore("secretKeys");
+                db.createObjectStore("symmetricKeys");
 
                 db.createObjectStore("clearances", {
                     keyPath: ["containerId", "clearanceId"],
@@ -236,6 +239,23 @@ export class IndexedDbStore implements Store {
         return { secretKey, publicKey };
     }
 
+    async saveSymmetricKey(symmetricKey: Bytes): Promise<number> {
+        if (symmetricKey.length !== 32) {
+            throw new Error("symmetric key must be 32 bytes");
+        }
+        await this.ready;
+        const keyId = shorterHash(symmetricKey);
+        const trxn = this.getTransaction();
+        await trxn.objectStore("symmetricKeys").put(symmetricKey, keyId);
+        return keyId;
+    }
+
+    async getSymmetricKey(keyId: number): Promise<Bytes> {
+        await this.ready;
+        const trxn = this.getTransaction();
+        return await trxn.objectStore("symmetricKeys").get(keyId);
+    }
+
     private clearTransaction() {
         this.transaction = null;
     }
@@ -258,6 +278,7 @@ export class IndexedDbStore implements Store {
                     "identities",
                     "verifyKeys",
                     "secretKeys",
+                    "symmetricKeys",
                 ],
                 "readwrite"
             );
