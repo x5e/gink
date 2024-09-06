@@ -75,15 +75,13 @@ export class Box extends Container {
         const toTime = args?.toTime;
         const bundlerOrComment = args?.bundlerOrComment;
         const recurse = args?.recurse;
+        let immediate = false;
         let bundler: Bundler;
-        let immediate = true;
-        if (typeof bundlerOrComment === "string") {
-            bundler = new Bundler(bundlerOrComment);
-        } else if (bundlerOrComment instanceof Bundler) {
-            immediate = false;
+        if (bundlerOrComment instanceof Bundler) {
             bundler = bundlerOrComment;
         } else {
-            bundler = new Bundler();
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
         }
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
