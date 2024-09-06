@@ -1,7 +1,13 @@
 import { Container } from "./Container";
 import { Value, Muid, ScalarKey, AsOf, StorageKey } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, muidTupleToMuid, valueToJson } from "./utils";
+import {
+    ensure,
+    muidToString,
+    muidTupleToMuid,
+    storageToKey,
+    valueToJson,
+} from "./utils";
 import { interpret, construct } from "./factories";
 import { Addressable } from "./Addressable";
 import { storageKeyToString } from "./store_utils";
@@ -114,7 +120,7 @@ export class Keyed<
             }
 
             for (const key of keys) {
-                const genericKey = this.storageToKey(key);
+                const genericKey = storageToKey(key);
                 const thenEntry = await this.database.store.getEntryByKey(
                     this.address,
                     genericKey,
@@ -233,32 +239,5 @@ export class Keyed<
         }
         returning += "}";
         return returning;
-    }
-
-    /**
-     * Converts a storage key (which is the key used in EntryBuilders) to a
-     * key usable by addEntry, etc.
-     * @param storageKey
-     * @returns
-     */
-    private storageToKey(
-        storageKey: StorageKey
-    ): ScalarKey | Muid | [Muid, Muid] {
-        let newKey: ScalarKey | Muid | [Muid, Muid];
-        if (Array.isArray(storageKey)) {
-            if (storageKey.length === 3) {
-                newKey = muidTupleToMuid(storageKey);
-            } else if (storageKey.length === 2) {
-                newKey = [
-                    muidTupleToMuid(storageKey[0]),
-                    muidTupleToMuid(storageKey[1]),
-                ];
-            } else {
-                throw new Error("Invalid key length?");
-            }
-        } else {
-            newKey = storageKey;
-        }
-        return newKey;
     }
 }

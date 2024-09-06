@@ -222,5 +222,15 @@ it("KeySet.reset", async function () {
         await ks.reset();
         ensure(!(await ks.has("key1")));
         ensure((await ks.size()) === 0);
+        await ks.add("key3");
+        const after3 = generateTimestamp();
+        await ks.add("key4");
+        ensure((await ks.size()) === 2);
+        await ks.delete("key3");
+        ensure((await ks.size()) === 1);
+        await ks.reset(after3);
+        ensure((await ks.size()) === 1);
+        ensure(await ks.has("key3"));
+        ensure(!(await ks.has("key4")));
     }
 });
