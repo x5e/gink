@@ -112,7 +112,7 @@ export function generateTimestamp() {
  * @param storageKey
  * @returns
  */
-export function storageToKey(
+export function fromStorageKey(
     storageKey: StorageKey
 ): ScalarKey | Muid | [Muid, Muid] {
     let newKey: ScalarKey | Muid | [Muid, Muid];
