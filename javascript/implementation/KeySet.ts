@@ -2,7 +2,7 @@ import { Database } from "./Database";
 import { Container } from "./Container";
 import { ScalarKey, Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, storageToKey } from "./utils";
+import { ensure, muidToString, fromStorageKey } from "./utils";
 import { toJson } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
@@ -157,7 +157,7 @@ export class KeySet extends Container {
                 union.add(storageKey);
             }
             for (const key of union) {
-                const genericKey = storageToKey(key);
+                const genericKey = fromStorageKey(key);
                 const thenEntry = await this.database.store.getEntryByKey(
                     this.address,
                     genericKey,
