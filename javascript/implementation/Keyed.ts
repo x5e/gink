@@ -5,7 +5,7 @@ import {
     ensure,
     muidToString,
     muidTupleToMuid,
-    storageToKey,
+    fromStorageKey,
     valueToJson,
 } from "./utils";
 import { interpret, construct } from "./factories";
@@ -134,7 +134,7 @@ export class Keyed<
             }
 
             for (const key of keys) {
-                const genericKey = storageToKey(key);
+                const genericKey = fromStorageKey(key);
                 const thenEntry = await this.database.store.getEntryByKey(
                     this.address,
                     genericKey,

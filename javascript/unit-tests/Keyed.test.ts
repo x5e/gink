@@ -1,3 +1,4 @@
+import { isEqual } from "lodash";
 import {
     Database,
     IndexedDbStore,
@@ -119,19 +120,19 @@ it("test reset", async function () {
         ensure((await box.get()) instanceof Directory);
 
         // Test non-immediate reset
+        const arr = [1, 2, 3];
         await schema.set("hmm", 2);
-        await schema.set(2, 3);
+        await schema.set(2, arr);
         const afterNumbers = generateTimestamp();
         await schema.set("hmm", 20);
         const bundler = new Bundler();
-        console.log("resetting");
 
         await schema.reset({ toTime: afterNumbers, bundlerOrComment: bundler });
         ensure((await schema.get("hmm")) === 20);
-        ensure((await schema.get(2)) === 3);
+        ensure(isEqual(await schema.get(2), arr));
         await database.addBundler(bundler);
         ensure((await schema.get("hmm")) === 2, await schema.toJson());
-        ensure((await schema.get(2)) === 3);
+        ensure(isEqual(await schema.get(2), arr));
 
         await store.close();
     }
