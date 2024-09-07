@@ -69,10 +69,21 @@ export class PairSet extends Container {
         return Boolean(found);
     }
 
+    /**
+     *
+     * @param args Optional arguments, including:
+     * @argument toTime Optional time to reset to. If absent, the container will be cleared.
+     * @argument bundlerOrComment Optional bundler or comment to add this change to
+     * @argument recurse NOTE: THIS FLAG IS IGNORED. Recursive reset for PairSet is not yet implemented,
+     * but this arg needs to be accepted for other containers recursively resetting this one.
+     * @argument seen NOTE: THIS FLAG IS IGNORED. Recursive reset for PairSet is not yet implemented,
+     * but this arg needs to be accepted for other containers recursively resetting this one.
+     */
     async reset(args?: {
         toTime?: AsOf;
         bundlerOrComment?: Bundler | string;
         recurse?: boolean;
+        seen?: Set<string>;
     }): Promise<void> {
         const toTime = args?.toTime;
         const bundlerOrComment = args?.bundlerOrComment;
