@@ -3,6 +3,8 @@ import {
     IndexedDbStore,
     MemoryStore,
     Directory,
+    Box,
+    Bundler,
 } from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 
@@ -11,11 +13,11 @@ it("test reset", async function () {
         new IndexedDbStore("Keyed.reset", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
-        await instance.ready;
-        const box = await instance.createBox();
-        const pairMap = await instance.createPairMap();
-        const schema = await instance.createDirectory();
+        const database = new Database(store);
+        await database.ready;
+        const box = await database.createBox();
+        const pairMap = await database.createPairMap();
+        const schema = await database.createDirectory();
         await schema.set("a key", "a value");
         await pairMap.set([box, schema], "a value");
 
@@ -62,8 +64,8 @@ it("test reset", async function () {
         ensure((await schema.get("a key")) === "a value");
 
         // Test recursive reset
-        const child = await instance.createDirectory();
-        const childOfChild = await instance.createDirectory();
+        const child = await database.createDirectory();
+        const childOfChild = await database.createDirectory();
         await child.set("childOfChild", childOfChild);
         await child.set("random key", "random");
         await childOfChild.set("key", "value");
@@ -106,6 +108,30 @@ it("test reset", async function () {
         ensure((await childOfChild.get("key")) === "value");
         ensure((await child.get("random key")) === "random");
         ensure((await schema.get("child")) instanceof Directory);
+
+        // Test circular references doesn't cause infinite loops
+        await box.set(schema);
+        await schema.set("circle", box);
+        const resetTo = generateTimestamp();
+        await schema.set("circle", "not a box");
+        await schema.reset({ toTime: resetTo, recurse: true });
+        ensure((await schema.get("circle")) instanceof Box);
+        ensure((await box.get()) instanceof Directory);
+
+        // Test non-immediate reset
+        await schema.set("hmm", 2);
+        await schema.set(2, 3);
+        const afterNumbers = generateTimestamp();
+        await schema.set("hmm", 20);
+        const bundler = new Bundler();
+        console.log("resetting");
+
+        await schema.reset({ toTime: afterNumbers, bundlerOrComment: bundler });
+        ensure((await schema.get("hmm")) === 20);
+        ensure((await schema.get(2)) === 3);
+        await database.addBundler(bundler);
+        ensure((await schema.get("hmm")) === 2, await schema.toJson());
+        ensure((await schema.get(2)) === 3);
 
         await store.close();
     }

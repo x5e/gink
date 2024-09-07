@@ -90,6 +90,7 @@ export class Keyed<
         toTime?: AsOf;
         bundlerOrComment?: Bundler | string;
         recurse?: boolean;
+        seen?: Set<string>;
     }): Promise<void> {
         if (this.behavior === Behavior.PROPERTY) {
             throw new Error(
@@ -100,6 +101,10 @@ export class Keyed<
         const toTime = args?.toTime;
         const bundlerOrComment = args?.bundlerOrComment;
         const recurse = args?.recurse;
+        const seen = recurse ? (args?.seen ?? new Set()) : undefined;
+        if (seen) {
+            seen.add(muidToString(this.address));
+        }
         let immediate = false;
         let bundler: Bundler;
         if (bundlerOrComment instanceof Bundler) {
@@ -184,11 +189,16 @@ export class Keyed<
                         }
                     }
                 }
-                if (recurse && thenValue instanceof Container) {
+                if (
+                    seen &&
+                    thenValue instanceof Container &&
+                    !seen.has(muidToString(thenValue.address))
+                ) {
                     await thenValue.reset({
                         toTime,
                         bundlerOrComment: bundler,
                         recurse,
+                        seen,
                     });
                 }
             }
