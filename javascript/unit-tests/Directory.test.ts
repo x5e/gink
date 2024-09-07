@@ -197,6 +197,26 @@ it("Directory.toJSON", async function () {
         ensure(fromJson.bar === 3 && fromJson.foo === "bar", fromJson);
         ensure(fromJson.blue.xxx === "yyy" && fromJson.zoom === null, fromJson);
         ensure(fromJson["94,10"] === "^\n", asJson);
+
+        // Test number keys
+        await directory.clear();
+        await directory.set(1, "foo");
+        const json = await directory.toJson();
+        ensure(json === '{"1":"foo"}', json);
+        await directory.set(2, "bar");
+        await directory.set(3, "baz");
+        await directory.set(4, "aaa");
+        await directory.set(123103, "woo");
+        const parsed = JSON.parse(await directory.toJson());
+        ensure(
+            parsed["1"] === "foo" &&
+                parsed["2"] === "bar" &&
+                parsed["3"] === "baz" &&
+                parsed["4"] === "aaa" &&
+                parsed["123103"] === "woo",
+            JSON.stringify(parsed)
+        );
+
         await store.close();
     }
 });
