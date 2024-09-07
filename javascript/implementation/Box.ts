@@ -106,6 +106,7 @@ export class Box extends Container {
                     toTime,
                     bundlerOrComment: bundler,
                     recurse,
+                    seen,
                 });
             }
         }
