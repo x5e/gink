@@ -11,6 +11,7 @@ import {
     BundleView,
     BroadcastFunc,
     KeyPair,
+    Value,
 } from "./typedefs";
 
 export interface Store {
@@ -109,6 +110,18 @@ export interface Store {
      * @param asOf optional timestamp to look back to
      */
     getContainersByName(name: string, asOf?: AsOf): Promise<Array<Muid>>;
+
+    /**
+     * Get the properties corresponding to a container.
+     * @param containerMuid the Muid of the container to get the properties of
+     * @param asOf optional timestamp to look back to
+     * @returns an array of [Muid, Value] pairs, where the Muid is
+     * the property's address
+     */
+    getContainerProperties(
+        containerMuid: Muid,
+        asOf?: AsOf
+    ): Promise<Array<[Muid, Value]>>;
 
     /**
      * Adds a callback to be called when a bundle was added by a

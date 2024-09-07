@@ -1,3 +1,4 @@
+import { isEqual } from "lodash";
 import {
     builderToMuid,
     ensure,
@@ -36,6 +37,7 @@ import {
     Timestamp,
     BundleView,
     KeyPair,
+    Value,
 } from "./typedefs";
 import {
     extractContainerMuid,
@@ -69,7 +71,7 @@ type Transaction = IDBPTransaction<
         | "verifyKeys"
         | "secretKeys"
     )[],
-    "readwrite"
+    "readwrite" | "readonly"
 >;
 
 if (eval("typeof indexedDB") === "undefined") {
@@ -193,6 +195,12 @@ export class IndexedDbStore implements Store {
                     "containerId",
                     "value",
                 ]); // Useful for quickly looking up a container by its name
+
+                // This index is used to find all properties that describe a particular container.
+                entries.createIndex("by-key-placement", [
+                    "storageKey",
+                    "placementId",
+                ]);
 
                 // ideally the next three indexes would be partial indexes, covering only sequences and edges
                 // it might be worth pulling them out into separate lookup tables.
@@ -1061,6 +1069,68 @@ export class IndexedDbStore implements Store {
                 !entry.deletion
             ) {
                 result.push(muidTupleToMuid(key));
+            }
+        }
+        return result;
+    }
+
+    async getContainerProperties(
+        containerMuid: Muid,
+        asOf?: AsOf
+    ): Promise<Array<[Muid, Value]>> {
+        const asOfTs: Timestamp = asOf
+            ? await this.asOfToTimestamp(asOf)
+            : generateTimestamp();
+        const containerTuple = muidToTuple(containerMuid);
+
+        const txn = this.wrapped.transaction(
+            ["entries", "clearances"],
+            "readonly"
+        );
+        const range = IDBKeyRange.bound(
+            [containerTuple],
+            [containerTuple, [asOfTs]]
+        );
+        let cursor = await txn
+            .objectStore("entries")
+            .index("by-key-placement")
+            .openCursor(range);
+        const result: Array<[Muid, Value]> = [];
+        for (
+            ;
+            cursor &&
+            Array.isArray(cursor.key[0]) &&
+            isEqual(cursor.key[0], containerTuple);
+            cursor = await cursor.continue()
+        ) {
+            const entry = <Entry>cursor.value;
+            ensure(entry.behavior === Behavior.PROPERTY);
+            ensure(isEqual(entry.storageKey, containerTuple));
+            if (
+                !(
+                    Array.isArray(entry.storageKey) &&
+                    entry.storageKey.length === 3
+                )
+            ) {
+                // This is also kinda just to keep typescript happy.
+                // If storageKey is equal to containerMuid, this will never run.
+                throw new Error("Unexpected storageKey for property");
+            }
+            const clearanceTime = await this.getClearanceTime(
+                txn,
+                muidToTuple(muidTupleToMuid(entry.containerId)),
+                asOfTs
+            );
+            if (
+                entry.entryId[0] < asOfTs &&
+                entry.entryId[0] >= clearanceTime
+            ) {
+                if (!entry.deletion) {
+                    result.push([
+                        muidTupleToMuid(entry.storageKey),
+                        entry.value,
+                    ]);
+                }
             }
         }
         return result;

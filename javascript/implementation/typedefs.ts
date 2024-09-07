@@ -182,6 +182,7 @@ export interface IndexedDbStoreSchema extends DBSchema {
                 MuidTuple,
             ];
             "by-container-name": [MuidTuple, string]; // for use with global property and container names
+            "by-key-placement": [StorageKey, MuidTuple]; // for use with properties and the containers they describe
             pointees: Indexable;
             locations: [MuidTuple, MuidTuple];
             sources: Indexable;

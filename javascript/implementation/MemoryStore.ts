@@ -35,6 +35,7 @@ import {
     Movement,
     BundleView,
     KeyPair,
+    Value,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
@@ -558,6 +559,13 @@ export class MemoryStore implements Store {
             result.push(describingMuid);
         }
         return result;
+    }
+
+    async getContainerProperties(
+        containerMuid: Muid,
+        asOf?: AsOf
+    ): Promise<Array<[Muid, Value]>> {
+        return [];
     }
 
     /**
