@@ -5,7 +5,7 @@ import {
     IndexedDbStore,
     MemoryStore,
 } from "../implementation";
-import { ensure, matches } from "../implementation/utils";
+import { ensure, generateTimestamp, matches } from "../implementation/utils";
 import { KeySet } from "../implementation";
 
 it("add and has basic data", async function () {
@@ -201,5 +201,36 @@ it("KeySet.clear(purge)", async function () {
         await ks.clear(true);
         const found = await instance.store.getKeyedEntries(ks.address, middle);
         ensure(!found.size);
+    }
+});
+
+it("KeySet.reset", async function () {
+    for (const store of [
+        new IndexedDbStore("ks-test10", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const ks = await instance.createKeySet();
+        await ks.add("key1");
+        const afterOne = generateTimestamp();
+        await ks.add("key2");
+        ensure(await ks.has("key2"));
+        await ks.reset({ toTime: afterOne });
+        ensure(!(await ks.has("key2")));
+        ensure(await ks.has("key1"));
+        await ks.reset();
+        ensure(!(await ks.has("key1")));
+        ensure((await ks.size()) === 0);
+        await ks.add("key3");
+        const after3 = generateTimestamp();
+        await ks.add("key4");
+        ensure((await ks.size()) === 2);
+        await ks.delete("key3");
+        ensure((await ks.size()) === 1);
+        await ks.reset({ toTime: after3 });
+        ensure((await ks.size()) === 1);
+        ensure(await ks.has("key3"));
+        ensure(!(await ks.has("key4")));
     }
 });

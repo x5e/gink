@@ -1,10 +1,17 @@
 import { Container } from "./Container";
 import { Value, Muid, ScalarKey, AsOf, StorageKey } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString, muidTupleToMuid, valueToJson } from "./utils";
+import {
+    ensure,
+    muidToString,
+    muidTupleToMuid,
+    fromStorageKey,
+    valueToJson,
+} from "./utils";
 import { interpret, construct } from "./factories";
 import { Addressable } from "./Addressable";
 import { storageKeyToString } from "./store_utils";
+import { Behavior } from "./builders";
 
 export class Keyed<
     GenericType extends ScalarKey | Addressable | [Addressable, Addressable],
@@ -77,6 +84,128 @@ export class Keyed<
             return false;
         }
         return result !== undefined;
+    }
+
+    async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        recurse?: boolean;
+        seen?: Set<string>;
+    }): Promise<void> {
+        if (this.behavior === Behavior.PROPERTY) {
+            throw new Error(
+                "Cannot directly reset a property. " +
+                    "Calling reset on a Container will reset its properties."
+            );
+        }
+        const toTime = args?.toTime;
+        const bundlerOrComment = args?.bundlerOrComment;
+        const recurse = args?.recurse;
+        const seen = recurse ? (args?.seen ?? new Set()) : undefined;
+        if (seen) {
+            seen.add(muidToString(this.address));
+        }
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
+        if (!toTime) {
+            // If no time is specified, we are resetting to epoch, which is just a clear
+            this.clear(false, bundler);
+        } else {
+            const keys: Set<StorageKey> = new Set();
+            const thenEntries = await this.database.store.getKeyedEntries(
+                this.address,
+                toTime
+            );
+            for (const [key, entry] of thenEntries) {
+                keys.add(entry.storageKey);
+            }
+
+            const nowEntries = await this.database.store.getKeyedEntries(
+                this.address
+            );
+            for (const [key, entry] of nowEntries) {
+                keys.add(entry.storageKey);
+            }
+
+            for (const key of keys) {
+                const genericKey = fromStorageKey(key);
+                const thenEntry = await this.database.store.getEntryByKey(
+                    this.address,
+                    genericKey,
+                    toTime
+                );
+                const thenValue: Value | Container =
+                    thenEntry?.pointeeList.length > 0
+                        ? await construct(
+                              this.database,
+                              muidTupleToMuid(thenEntry.pointeeList[0])
+                          )
+                        : thenEntry?.value;
+
+                const nowEntry = await this.database.store.getEntryByKey(
+                    this.address,
+                    genericKey
+                );
+                const nowValue: Value | Container =
+                    nowEntry?.pointeeList.length > 0
+                        ? await construct(
+                              this.database,
+                              muidTupleToMuid(nowEntry.pointeeList[0])
+                          )
+                        : nowEntry?.value;
+
+                if (!nowEntry) {
+                    // This key was present then, but not now, so we need to add it back
+                    ensure(thenEntry && thenValue, "missing value?");
+                    await this.addEntry(genericKey, thenValue, bundler);
+                } else if (!thenEntry) {
+                    // This key is present now, but not then, so we need to delete it
+                    ensure(nowEntry && nowValue, "missing value?");
+                    await this.addEntry(
+                        genericKey,
+                        Container.DELETION,
+                        bundler
+                    );
+                } else {
+                    // Present both then and now. Check if the values are different
+                    if (nowValue !== thenValue) {
+                        // Make sure the values are not the same container
+                        if (
+                            !(
+                                nowValue instanceof Container &&
+                                thenValue instanceof Container &&
+                                muidToString(nowValue.address) ===
+                                    muidToString(thenValue.address)
+                            )
+                        ) {
+                            // Update the entry
+                            await this.addEntry(genericKey, thenValue, bundler);
+                        }
+                    }
+                }
+                if (
+                    seen &&
+                    thenValue instanceof Container &&
+                    !seen.has(muidToString(thenValue.address))
+                ) {
+                    await thenValue.reset({
+                        toTime,
+                        bundlerOrComment: bundler,
+                        recurse,
+                        seen,
+                    });
+                }
+            }
+        }
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
     }
 
     /**

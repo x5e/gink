@@ -1,8 +1,8 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
-import { Muid, AsOf } from "./typedefs";
+import { Muid, AsOf, MuidTuple } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure, muidToString } from "./utils";
+import { ensure, muidToString, fromStorageKey } from "./utils";
 import { toJson } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
@@ -67,6 +67,106 @@ export class PairSet extends Container {
         );
         if (found && found.deletion) return false;
         return Boolean(found);
+    }
+
+    /**
+     *
+     * @param args Optional arguments, including:
+     * @argument toTime Optional time to reset to. If absent, the container will be cleared.
+     * @argument bundlerOrComment Optional bundler or comment to add this change to
+     * @argument recurse NOTE: THIS FLAG IS IGNORED. Recursive reset for PairSet is not yet implemented,
+     * but this arg needs to be accepted for other containers recursively resetting this one.
+     * @argument seen NOTE: THIS FLAG IS IGNORED. Recursive reset for PairSet is not yet implemented,
+     * but this arg needs to be accepted for other containers recursively resetting this one.
+     */
+    async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        recurse?: boolean;
+        seen?: Set<string>;
+    }): Promise<void> {
+        const toTime = args?.toTime;
+        const bundlerOrComment = args?.bundlerOrComment;
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
+        if (!toTime) {
+            // If no time is specified, we are resetting to epoch, which is just a clear
+            this.clear(false, bundler);
+        } else {
+            const union = new Set<[MuidTuple, MuidTuple]>();
+            const entriesThen = await this.database.store.getKeyedEntries(
+                this.address,
+                toTime
+            );
+            const entriesNow = await this.database.store.getKeyedEntries(
+                this.address
+            );
+
+            for (const [key, entry] of entriesThen) {
+                const storageKey = <[MuidTuple, MuidTuple]>entry.storageKey;
+                union.add(storageKey);
+            }
+            for (const [key, entry] of entriesNow) {
+                const storageKey = <[MuidTuple, MuidTuple]>entry.storageKey;
+                union.add(storageKey);
+            }
+            for (const key of union) {
+                const genericKey = fromStorageKey(key);
+                const thenEntry = await this.database.store.getEntryByKey(
+                    this.address,
+                    genericKey,
+                    toTime
+                );
+                const nowEntry = await this.database.store.getEntryByKey(
+                    this.address,
+                    genericKey
+                );
+                ensure(nowEntry || thenEntry, "both then and now undefined?");
+                if (!nowEntry) {
+                    // This key was present then, but not now, so we need to add it back
+                    ensure(thenEntry, "missing then entry?");
+                    await this.addEntry(genericKey, thenEntry.value, bundler);
+                } else if (!thenEntry) {
+                    // This key is present now, but not then, so we need to delete it
+                    ensure(nowEntry, "missing now entry?");
+                    await this.addEntry(
+                        genericKey,
+                        Container.DELETION,
+                        bundler
+                    );
+                } else if (nowEntry.deletion !== thenEntry.deletion) {
+                    if (nowEntry.deletion) {
+                        // Present then, deleted now. Need to revive.
+                        await this.addEntry(
+                            genericKey,
+                            Container.INCLUSION,
+                            bundler
+                        );
+                    } else if (thenEntry.deletion) {
+                        // Present now, deleted then. Need to delete.
+                        await this.addEntry(
+                            genericKey,
+                            Container.DELETION,
+                            bundler
+                        );
+                    }
+                } else {
+                    ensure(
+                        nowEntry.deletion === thenEntry.deletion,
+                        "last case should be same entry"
+                    );
+                }
+            }
+        }
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
     }
 
     /**

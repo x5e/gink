@@ -82,6 +82,26 @@ export class Container extends Addressable {
         return address;
     }
 
+    /**
+     * Reset this Container to a previous time. If no time is specified, the container will
+     * be cleared.
+     * @param args Optional arguments, including:
+     * @argument toTime Optional time to reset to. If absent, the container will be cleared.
+     * @argument bundlerOrComment Bundler to add this change to, string to add a comment to a
+     * new bundle, or empty to apply immediately.
+     * @argument recurse Recursively reset all child containers held by this container at reset time?
+     * @argument seen A Set of seen container muids (in string form) to prevent infinite recursion.
+     * Primarily for internal use, but could be used to prevent specific containers from being reset.
+     */
+    public async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        recurse?: boolean;
+        seen?: Set<string>;
+    }): Promise<void> {
+        throw new Error("Child class should have implemented this method.");
+    }
+
     public async size(): Promise<number> {
         throw new Error("Child class should have implemented this method.");
     }
@@ -94,7 +114,12 @@ export class Container extends Addressable {
      * @returns a promise the resolves to the muid of the change
      */
     protected addEntry(
-        key?: ScalarKey | Addressable | [Addressable, Addressable],
+        key?:
+            | ScalarKey
+            | Addressable
+            | [Addressable, Addressable]
+            | Muid
+            | [Muid, Muid],
         value?: Value | Deletion | Inclusion,
         bundlerOrComment?: Bundler | string
     ): Promise<Muid> {
@@ -125,11 +150,19 @@ export class Container extends Addressable {
             entryBuilder.setKey(wrapKey(key));
         } else if (Array.isArray(key)) {
             const pair = new PairBuilder();
-            pair.setLeft(muidToBuilder(key[0].address));
-            pair.setRite(muidToBuilder(key[1].address));
+            let key1 = key[0];
+            let key2 = key[1];
+            if ("address" in key[0] && "address" in key[1]) {
+                key1 = key[0].address;
+                key2 = key[1].address;
+            }
+            pair.setLeft(muidToBuilder(key1));
+            pair.setRite(muidToBuilder(key2));
             entryBuilder.setPair(pair);
         } else if (key instanceof Addressable) {
             entryBuilder.setDescribing(muidToBuilder(key.address));
+        } else if (key && "timestamp" in key) {
+            entryBuilder.setDescribing(muidToBuilder(key));
         }
 
         // TODO: check that the destination/value is compatible with Container
