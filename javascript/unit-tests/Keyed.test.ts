@@ -3,6 +3,7 @@ import {
     IndexedDbStore,
     MemoryStore,
     Directory,
+    Box,
 } from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 
@@ -106,6 +107,15 @@ it("test reset", async function () {
         ensure((await childOfChild.get("key")) === "value");
         ensure((await child.get("random key")) === "random");
         ensure((await schema.get("child")) instanceof Directory);
+
+        // Test circular references doesn't cause infinite loops
+        await box.set(schema);
+        await schema.set("circle", box);
+        const resetTo = generateTimestamp();
+        await schema.set("circle", "not a box");
+        await schema.reset({ toTime: resetTo, recurse: true });
+        ensure((await schema.get("circle")) instanceof Box);
+        ensure((await box.get()) instanceof Directory);
 
         await store.close();
     }

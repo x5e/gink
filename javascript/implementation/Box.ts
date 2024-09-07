@@ -2,7 +2,7 @@ import { Database } from "./Database";
 import { Container } from "./Container";
 import { Value, Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure } from "./utils";
+import { ensure, muidToString } from "./utils";
 import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
@@ -71,10 +71,15 @@ export class Box extends Container {
         toTime?: AsOf;
         bundlerOrComment?: Bundler | string;
         recurse?: boolean;
+        seen?: Set<string>;
     }): Promise<void> {
         const toTime = args?.toTime;
         const bundlerOrComment = args?.bundlerOrComment;
         const recurse = args?.recurse;
+        const seen = recurse ? (args?.seen ?? new Set()) : undefined;
+        if (seen) {
+            seen.add(muidToString(this.address));
+        }
         let immediate = false;
         let bundler: Bundler;
         if (bundlerOrComment instanceof Bundler) {
@@ -92,7 +97,11 @@ export class Box extends Container {
             if (thereThen !== thereNow) {
                 await this.set(thereThen, bundler);
             }
-            if (recurse && thereThen instanceof Container) {
+            if (
+                seen &&
+                thereThen instanceof Container &&
+                !seen.has(muidToString(thereThen.address))
+            ) {
                 await thereThen.reset({
                     toTime,
                     bundlerOrComment: bundler,
