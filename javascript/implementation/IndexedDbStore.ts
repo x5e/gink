@@ -806,7 +806,7 @@ export class IndexedDbStore implements Store {
             desiredSrc,
             asOfTs
         );
-        const lower = [desiredSrc, Behavior.DIRECTORY];
+        const lower = [desiredSrc];
         const searchRange = IDBKeyRange.lowerBound(lower);
         let cursor = await trxn
             .objectStore("entries")
