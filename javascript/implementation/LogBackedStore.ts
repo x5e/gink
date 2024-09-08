@@ -9,6 +9,7 @@ import {
     BroadcastFunc,
     BundleView,
     KeyPair,
+    Value,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
 import { MemoryStore } from "./MemoryStore";
@@ -183,6 +184,14 @@ export class LogBackedStore extends LockableLog implements Store {
             }
             this.redTo = totalSize;
         }
+    }
+
+    async getContainerProperties(
+        containerMuid: Muid,
+        asOf?: AsOf
+    ): Promise<Array<[Muid, Value]>> {
+        await this.ready;
+        return this.internalStore.getContainerProperties(containerMuid, asOf);
     }
 
     async getOrderedEntries(

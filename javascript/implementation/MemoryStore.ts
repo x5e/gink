@@ -67,6 +67,8 @@ export class MemoryStore implements Store {
     private containers: TreeMap<string, Uint8Array> = new TreeMap(); // ContainerId => bytes
     private removals: TreeMap<string, string> = new TreeMap(); // placementId,removalId => ""
     private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => Entry
+    // key-placement index used to find properties by the container they describe (the key)
+    private byKeyPlacement: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => Entry
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
     private locations: TreeMap<string, string> = new TreeMap();
     private byName: TreeMap<string, string> = new TreeMap(); // name,entryMuid => describingMuid
@@ -293,6 +295,7 @@ export class MemoryStore implements Store {
                         );
                         if (it.equals(to) || !it.key) break;
                         this.placements.erase(it);
+                        this.byKeyPlacement.delete(it.key.slice(35));
                         // TODO: also delete removals, locations
                     }
                     // When doing a purging clear, remove previous clearances for the container.
@@ -357,6 +360,7 @@ export class MemoryStore implements Store {
                     storageKey: dest,
                 };
                 this.placements.delete(iterator.value);
+                this.byKeyPlacement.delete(iterator.value.slice(35));
                 this.locations.erase(iterator);
                 iterator.next();
             }
@@ -565,7 +569,30 @@ export class MemoryStore implements Store {
         containerMuid: Muid,
         asOf?: AsOf
     ): Promise<Array<[Muid, Value]>> {
-        return [];
+        const asOfTs = asOf ? this.asOfToTimestamp(asOf) : generateTimestamp();
+        const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
+        const strMuid = muidToString(containerMuid);
+        const clearanceTime = this.getLastClearanceTime(strMuid, asOfTs);
+        const clearTimeStr = muidTupleToString([clearanceTime, 0, 0]);
+        const iterator = this.byKeyPlacement.lowerBound(strMuid);
+        const result = [];
+        for (
+            ;
+            iterator &&
+            iterator.key &&
+            !iterator.equals(this.byKeyPlacement.end());
+            iterator.next()
+        ) {
+            const parts = iterator.key.split(",");
+            if (parts[0] !== strMuid) break;
+
+            const entryMuidStr = parts[1];
+            if (entryMuidStr < clearTimeStr || entryMuidStr > asOfTsStr)
+                continue;
+            const describingMuid = strToMuid(parts[0]);
+            result.push([describingMuid, iterator.value.value]);
+        }
+        return result;
     }
 
     /**
@@ -668,6 +695,7 @@ export class MemoryStore implements Store {
             ) {
                 if (entry.purging || !this.keepingHistory) {
                     this.placements.erase(iterator);
+                    this.byKeyPlacement.delete(iterator.key.slice(35));
                 } else {
                     const placementIdStr = iterator.key.slice(-34);
                     this.removals.set(`${placementIdStr},${entryIdStr}`, "");
@@ -675,6 +703,10 @@ export class MemoryStore implements Store {
             }
         }
         this.placements.set(placementKey, entry);
+        this.byKeyPlacement.set(
+            `${storageKeyToString(entry.storageKey)},${placementIdStr}`,
+            entry
+        );
         if (entry.sourceList.length) {
             // TODO: remove these on deletion/purge
             const middle =

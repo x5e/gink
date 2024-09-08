@@ -1,3 +1,4 @@
+import { isEqual } from "lodash";
 import { BundleBytes, Entry, BundleView } from "../implementation/typedefs";
 import { ChainTracker } from "../implementation/ChainTracker";
 import { Store } from "../implementation/Store";
@@ -171,7 +172,7 @@ export function testStore(
                 (await keyPair).secretKey
             )
         );
-        const added = await store.addBundle(decomposition);
+        await store.addBundle(decomposition);
         ensure(decomposition.info.medallion === MEDALLION1);
         ensure(decomposition.info.timestamp === START_MICROS1);
         const containerBytes = await store.getContainerBytes({
@@ -315,5 +316,29 @@ export function testStore(
             errored2 = true;
         }
         ensure(errored2, "chain extension bundle allowed with identity?");
+    });
+
+    it(`${implName} getContainerProperties`, async () => {
+        await store.ready;
+        const database = new Database(store);
+        await database.ready;
+
+        const dir = database.getGlobalDirectory();
+        await dir.set("foo", "bar");
+
+        const prop = await database.createProperty();
+        await prop.set(dir, "bar");
+
+        const prop2 = await database.createProperty();
+        await prop2.set(dir, "baz");
+
+        const box = await database.createBox();
+        await prop.set(box, "box");
+
+        const properties = await store.getContainerProperties(dir.address);
+
+        ensure(properties.length === 2);
+        ensure(isEqual(properties[0], [dir.address, "bar"]));
+        ensure(isEqual(properties[1], [dir.address, "baz"]));
     });
 }

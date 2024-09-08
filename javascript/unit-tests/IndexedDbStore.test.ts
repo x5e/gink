@@ -1,4 +1,3 @@
-import { isEqual } from "lodash";
 import { testStore } from "./Store.test";
 import {
     Database,
@@ -26,29 +25,4 @@ it("use methods", async () => {
     const entriesAfterDrop = await indexedDbStore.getAllEntryKeys();
     ensure(entriesAfterDrop.length === 1);
     ensure(!(await dir.has("foo", beforeSecondSet)));
-});
-
-it("getContainerProperties", async () => {
-    const indexedDbStore = new IndexedDbStore("IndexedDbStore.test.2");
-    const database = new Database(indexedDbStore);
-    await database.ready;
-
-    const dir = database.getGlobalDirectory();
-    await dir.set("foo", "bar");
-
-    const prop = await database.createProperty();
-    await prop.set(dir, "bar");
-
-    const prop2 = await database.createProperty();
-    await prop2.set(dir, "baz");
-
-    const box = await database.createBox();
-    await prop.set(box, "box");
-
-    const properties = await indexedDbStore.getContainerProperties(dir.address);
-    console.log(properties);
-
-    ensure(properties.length === 2);
-    ensure(isEqual(properties[0], [dir.address, "bar"]));
-    ensure(isEqual(properties[1], [dir.address, "baz"]));
 });
