@@ -1,4 +1,3 @@
-import { isEqual } from "lodash";
 import { BundleBytes, Entry, BundleView } from "../implementation/typedefs";
 import { ChainTracker } from "../implementation/ChainTracker";
 import { Store } from "../implementation/Store";
