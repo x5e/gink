@@ -89,6 +89,8 @@ export class Container extends Addressable {
      * @argument toTime Optional time to reset to. If absent, the container will be cleared.
      * @argument bundlerOrComment Bundler to add this change to, string to add a comment to a
      * new bundle, or empty to apply immediately.
+     * @argument skipProperties If true, do not reset properties of this container. By default,
+     * all properties associated with this container will be reset to the time specified in toTime.
      * @argument recurse Recursively reset all child containers held by this container at reset time?
      * @argument seen A Set of seen container muids (in string form) to prevent infinite recursion.
      * Primarily for internal use, but could be used to prevent specific containers from being reset.
@@ -96,6 +98,7 @@ export class Container extends Addressable {
     public async reset(args?: {
         toTime?: AsOf;
         bundlerOrComment?: Bundler | string;
+        skipProperties?: boolean;
         recurse?: boolean;
         seen?: Set<string>;
     }): Promise<void> {

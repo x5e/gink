@@ -21,11 +21,17 @@ it("test reset", async function () {
         const schema = await database.createDirectory();
         await schema.set("a key", "a value");
         await pairMap.set([box, schema], "a value");
+        const prop1 = await database.createProperty();
+        const prop2 = await database.createProperty();
+        await prop1.set(schema, "foo");
+        await prop2.set(schema, "bar");
 
         const afterFirst = generateTimestamp();
 
         await schema.set("another key", "another value");
         await pairMap.set([schema, box], "reversed");
+        await prop1.set(schema, "foo2");
+        await prop2.set(schema, "bar2");
         ensure((await schema.get("another key")) === "another value");
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
@@ -39,6 +45,9 @@ it("test reset", async function () {
         ensure((await schema.get("a key")) === "a value");
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
+        // Properties should have also reset
+        ensure((await prop1.get(schema)) === "foo");
+        ensure((await prop2.get(schema)) === "bar");
 
         // Reset to epoch
         await schema.reset();
@@ -47,12 +56,18 @@ it("test reset", async function () {
         ensure((await schema.get("a key")) === undefined);
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
+        // Properties should have also reset
+        ensure((await prop1.get(schema)) === undefined);
+        ensure((await prop2.get(schema)) === undefined);
 
-        await schema.reset({ toTime: afterFirst });
+        await schema.reset({ toTime: afterFirst, skipProperties: true });
         ensure((await schema.get("another key")) === undefined);
         ensure((await schema.get("a key")) === "a value");
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
+        // properties skipped, should still be undefined
+        ensure((await prop1.get(schema)) === undefined);
+        ensure((await prop2.get(schema)) === undefined);
 
         await pairMap.reset({ toTime: afterFirst });
         ensure((await pairMap.get([box, schema])) === "a value");
