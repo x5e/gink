@@ -361,3 +361,50 @@ it("extend", async function () {
         ensure((await seq.at(10)) === 10);
     }
 });
+
+it("List.reset", async function () {
+    for (const store of [
+        new IndexedDbStore("list-reset", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+
+        const seq = await instance.createSequence();
+        const prop1 = await instance.createProperty();
+        const prop2 = await instance.createProperty();
+        await prop1.set(seq, "foo");
+        await prop2.set(seq, "bar");
+        const array = [0, 1, 2, 3, 4, 5, 6];
+        await seq.extend(array);
+        ensure((await seq.at(0)) === 0);
+        ensure((await seq.at(6)) === 6);
+        const afterExtend = generateTimestamp();
+
+        const array2 = [7, 8, 9];
+        await seq.extend(array2);
+        await prop1.set(seq, "foo2");
+        await prop2.set(seq, "bar2");
+        ensure((await seq.size()) === 10);
+        const afterSecond = generateTimestamp();
+
+        await seq.reset({ toTime: afterExtend });
+        ensure((await seq.size()) === 7);
+        ensure((await seq.at(0)) === 0);
+        ensure((await seq.at(6)) === 6);
+        ensure((await prop1.get(seq)) === "foo");
+        ensure((await prop2.get(seq)) === "bar");
+
+        await seq.reset();
+        ensure((await seq.size()) === 0);
+        ensure((await prop1.get(seq)) === undefined);
+        ensure((await prop2.get(seq)) === undefined);
+
+        await seq.reset({ toTime: afterSecond, skipProperties: true });
+        ensure((await seq.size()) === 10);
+        ensure((await seq.at(0)) === 0);
+        ensure((await seq.at(9)) === 9);
+        ensure((await prop1.get(seq)) === undefined);
+        ensure((await prop2.get(seq)) === undefined);
+    }
+});
