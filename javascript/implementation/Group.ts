@@ -123,6 +123,8 @@ export class Group extends Container {
      * @param args Optional arguments, including:
      * @argument toTime Optional time to reset to. If absent, the container will be cleared.
      * @argument bundlerOrComment Optional bundler or comment to add this change to
+     * @argument skipProperties If true, do not reset properties of this container. By default,
+     * all properties associated with this container will be reset to the time specified in toTime.
      * @argument recurse NOTE: THIS FLAG IS IGNORED. Recursive reset for PairSet is not yet implemented,
      * but this arg needs to be accepted for other containers recursively resetting this one.
      * @argument seen NOTE: THIS FLAG IS IGNORED. Recursive reset for PairSet is not yet implemented,
@@ -131,11 +133,13 @@ export class Group extends Container {
     async reset(args?: {
         toTime?: AsOf;
         bundlerOrComment?: Bundler | string;
+        skipProperties?: boolean;
         recurse?: boolean;
         seen?: Set<string>;
     }): Promise<void> {
         const toTime = args?.toTime;
         const bundlerOrComment = args?.bundlerOrComment;
+        const skipProperties = args?.skipProperties;
         let immediate = false;
         let bundler: Bundler;
         if (bundlerOrComment instanceof Bundler) {
@@ -212,6 +216,9 @@ export class Group extends Container {
                     );
                 }
             }
+        }
+        if (!skipProperties) {
+            await this.database.resetContainerProperties(this, toTime, bundler);
         }
         if (immediate) {
             await this.database.addBundler(bundler);
