@@ -68,7 +68,7 @@ export class MemoryStore implements Store {
     private removals: TreeMap<string, string> = new TreeMap(); // placementId,removalId => ""
     private placements: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => Entry
     // key-placement index used to find properties by the container they describe (the key)
-    private byKeyPlacement: TreeMap<string, Entry> = new TreeMap(); // ContainerID,Key,PlacementId => Entry
+    private byKeyPlacement: TreeMap<string, Entry> = new TreeMap(); // Key,PlacementId => Entry
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
     private locations: TreeMap<string, string> = new TreeMap();
     private byName: TreeMap<string, string> = new TreeMap(); // name,entryMuid => describingMuid
@@ -568,14 +568,12 @@ export class MemoryStore implements Store {
     async getContainerProperties(
         containerMuid: Muid,
         asOf?: AsOf
-    ): Promise<Array<[Muid, Value]>> {
+    ): Promise<Map<string, Value>> {
+        const resultMap = new Map<string, Value>();
         const asOfTs = asOf ? this.asOfToTimestamp(asOf) : generateTimestamp();
-        const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
         const strMuid = muidToString(containerMuid);
-        const clearanceTime = this.getLastClearanceTime(strMuid, asOfTs);
-        const clearTimeStr = muidTupleToString([clearanceTime, 0, 0]);
+        const clearTime = this.getLastClearanceTime(strMuid, asOfTs);
         const iterator = this.byKeyPlacement.lowerBound(strMuid);
-        const result = [];
         for (
             ;
             iterator &&
@@ -585,14 +583,18 @@ export class MemoryStore implements Store {
         ) {
             const parts = iterator.key.split(",");
             if (parts[0] !== strMuid) break;
-
-            const entryMuidStr = parts[1];
-            if (entryMuidStr < clearTimeStr || entryMuidStr > asOfTsStr)
+            const entry = iterator.value;
+            const entryMuid = strToMuid(parts[1]);
+            if (
+                entryMuid.timestamp < clearTime ||
+                entryMuid.timestamp > asOfTs
+            ) {
                 continue;
-            const describingMuid = strToMuid(parts[0]);
-            result.push([describingMuid, iterator.value.value]);
+            }
+            const containerMuid = entry.containerId;
+            resultMap.set(muidTupleToString(containerMuid), entry.value);
         }
-        return result;
+        return resultMap;
     }
 
     /**

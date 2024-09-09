@@ -115,13 +115,12 @@ export interface Store {
      * Get the properties corresponding to a container.
      * @param containerMuid the Muid of the container to get the properties of
      * @param asOf optional timestamp to look back to
-     * @returns an array of [Muid, Value] pairs, where the Muid is
-     * the property's address
+     * @returns a Map of string Muid (of the Property Container) to Value
      */
     getContainerProperties(
         containerMuid: Muid,
         asOf?: AsOf
-    ): Promise<Array<[Muid, Value]>>;
+    ): Promise<Map<string, Value>>;
 
     /**
      * Adds a callback to be called when a bundle was added by a

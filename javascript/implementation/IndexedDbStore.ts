@@ -1077,7 +1077,7 @@ export class IndexedDbStore implements Store {
     async getContainerProperties(
         containerMuid: Muid,
         asOf?: AsOf
-    ): Promise<Array<[Muid, Value]>> {
+    ): Promise<Map<string, Value>> {
         const asOfTs: Timestamp = asOf
             ? await this.asOfToTimestamp(asOf)
             : generateTimestamp();
@@ -1095,7 +1095,7 @@ export class IndexedDbStore implements Store {
             .objectStore("entries")
             .index("by-key-placement")
             .openCursor(range);
-        const result: Array<[Muid, Value]> = [];
+        const result: Map<string, Value> = new Map();
         for (
             ;
             cursor &&
@@ -1126,10 +1126,10 @@ export class IndexedDbStore implements Store {
                 entry.entryId[0] >= clearanceTime
             ) {
                 if (!entry.deletion) {
-                    result.push([
-                        muidTupleToMuid(entry.storageKey),
-                        entry.value,
-                    ]);
+                    result.set(
+                        muidTupleToString(entry.containerId),
+                        entry.value
+                    );
                 }
             }
         }

@@ -30,6 +30,8 @@ import {
     matches,
     wrapKey,
     signBundle,
+    generateTimestamp,
+    muidToString,
 } from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
 
@@ -334,11 +336,31 @@ export function testStore(
 
         const box = await database.createBox();
         await prop.set(box, "box");
+        const after = generateTimestamp();
 
         const properties = await store.getContainerProperties(dir.address);
+        ensure(properties.size === 2);
+        ensure(properties.get(muidToString(prop.address)) === "bar");
+        ensure(properties.get(muidToString(prop2.address)) === "baz");
 
-        ensure(properties.length === 2);
-        ensure(isEqual(properties[0], [dir.address, "bar"]));
-        ensure(isEqual(properties[1], [dir.address, "baz"]));
+        // Test asOf
+        prop.set(dir, "bar2");
+        prop2.set(dir, "baz2");
+        const prop3 = await database.createProperty();
+        await prop3.set(dir, "baz3");
+        const properties2 = await store.getContainerProperties(dir.address);
+
+        ensure(properties2.size === 3);
+        ensure(properties2.get(muidToString(prop.address)) === "bar2");
+        ensure(properties2.get(muidToString(prop2.address)) === "baz2");
+        ensure(properties2.get(muidToString(prop3.address)) === "baz3");
+
+        const asOfProperties = await store.getContainerProperties(
+            dir.address,
+            after
+        );
+        ensure(asOfProperties.size === 2);
+        ensure(asOfProperties.get(muidToString(prop.address)) === "bar");
+        ensure(asOfProperties.get(muidToString(prop2.address)) === "baz");
     });
 }

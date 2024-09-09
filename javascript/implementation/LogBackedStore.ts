@@ -189,7 +189,7 @@ export class LogBackedStore extends LockableLog implements Store {
     async getContainerProperties(
         containerMuid: Muid,
         asOf?: AsOf
-    ): Promise<Array<[Muid, Value]>> {
+    ): Promise<Map<string, Value>> {
         await this.ready;
         return this.internalStore.getContainerProperties(containerMuid, asOf);
     }
