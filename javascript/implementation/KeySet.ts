@@ -116,10 +116,12 @@ export class KeySet extends Container {
      * @argument bundlerOrComment Optional bundler or comment to add this change to
      * @argument skipProperties If true, do not reset properties of this container. By default,
      * all properties associated with this container will be reset to the time specified in toTime.
-     * @argument recurse NOTE: THIS FLAG IS IGNORED. Recursive reset for PairSet is not yet implemented,
-     * but this arg needs to be accepted for other containers recursively resetting this one.
-     * @argument seen NOTE: THIS FLAG IS IGNORED. Recursive reset for PairSet is not yet implemented,
-     * but this arg needs to be accepted for other containers recursively resetting this one.
+     * @argument recurse NOTE: THIS FLAG IS IGNORED. Recursive reset for Inclusion-based containers
+     * is not yet implemented, but this arg needs to be accepted for other containers recursively
+     * resetting this one.
+     * @argument seen NOTE: THIS FLAG IS IGNORED. Recursive reset for Inclusion-based containers
+     * is not yet implemented, but this arg needs to be accepted for other containers recursively
+     * resetting this one.
      */
     async reset(args?: {
         toTime?: AsOf;

@@ -135,3 +135,33 @@ it("edge_reorder", async function () {
         );
     }
 });
+
+it("vertex reset", async function () {
+    for (const store of [
+        new IndexedDbStore("vertex reset", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const vertex = await instance.createVertex();
+        const prop1 = await instance.createProperty();
+        const prop2 = await instance.createProperty();
+        await prop1.set(vertex, "foo");
+        await prop2.set(vertex, "bar");
+        const afterSet = generateTimestamp();
+        await vertex.remove();
+        await prop1.set(vertex, "foo2");
+        await prop2.set(vertex, "bar2");
+        const afterSecond = generateTimestamp();
+        await vertex.reset({ toTime: afterSet });
+        // Vertex should be alive again, and properties should be reset
+        ensure(await vertex.isAlive());
+        ensure((await prop1.get(vertex)) === "foo");
+        ensure((await prop2.get(vertex)) === "bar");
+        await vertex.reset({ toTime: afterSecond, skipProperties: true });
+        // Vertex should be removed and properties should not have changed.
+        ensure(!(await vertex.isAlive()));
+        ensure((await prop1.get(vertex)) === "foo");
+        ensure((await prop2.get(vertex)) === "bar");
+    }
+});
