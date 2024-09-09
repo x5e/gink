@@ -1125,7 +1125,9 @@ export class IndexedDbStore implements Store {
                 entry.entryId[0] < asOfTs &&
                 entry.entryId[0] >= clearanceTime
             ) {
-                if (!entry.deletion) {
+                if (entry.deletion) {
+                    result.delete(muidTupleToString(entry.containerId));
+                } else {
                     result.set(
                         muidTupleToString(entry.containerId),
                         entry.value

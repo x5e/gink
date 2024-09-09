@@ -592,7 +592,11 @@ export class MemoryStore implements Store {
                 continue;
             }
             const containerMuid = entry.containerId;
-            resultMap.set(muidTupleToString(containerMuid), entry.value);
+            if (entry.deletion) {
+                resultMap.delete(muidTupleToString(containerMuid));
+            } else {
+                resultMap.set(muidTupleToString(containerMuid), entry.value);
+            }
         }
         return resultMap;
     }

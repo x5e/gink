@@ -102,18 +102,6 @@ export class Container extends Addressable {
         throw new Error("Child class should have implemented this method.");
     }
 
-    /**
-     * Reset the properties associated with this container to a previous time.
-     * @param toTime optional timestamp to reset to. If not provided, the properties will be deleted.
-     * @param bundlerOrComment optional bundler to add this change to, or a string to add a comment to a new bundle.
-     */
-    public async resetProperties(
-        toTime?: AsOf,
-        bundlerOrComment?: Bundler | string
-    ): Promise<void> {
-        throw new Error("not implemented");
-    }
-
     public async size(): Promise<number> {
         throw new Error("Child class should have implemented this method.");
     }
