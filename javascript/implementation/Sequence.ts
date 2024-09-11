@@ -1,3 +1,4 @@
+import { isEqual } from "lodash";
 import { Database } from "./Database";
 import { Container } from "./Container";
 import { AsOf, Entry, Muid, Value } from "./typedefs";
@@ -8,6 +9,8 @@ import {
     muidToBuilder,
     muidToString,
     muidTupleToMuid,
+    muidTupleToString,
+    wrapValue,
 } from "./utils";
 import { interpret, toJson } from "./factories";
 import {
@@ -16,6 +19,7 @@ import {
     MovementBuilder,
     ContainerBuilder,
 } from "./builders";
+import { EntryBuilder } from "./builders";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
@@ -83,6 +87,108 @@ export class Sequence extends Container {
             purge,
             bundlerOrComment
         );
+    }
+
+    async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        skipProperties?: boolean;
+        recurse?: boolean;
+        seen?: Set<string>;
+    }): Promise<void> {
+        const toTime = args?.toTime;
+        const bundlerOrComment = args?.bundlerOrComment;
+        const skipProperties = args?.skipProperties;
+        const recurse = args?.recurse;
+        const seen = recurse ? (args?.seen ?? new Set()) : undefined;
+        if (seen) {
+            seen.add(muidToString(this.address));
+        }
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
+        if (!toTime) {
+            // If no time is specified, we are resetting to epoch, which is just a clear
+            this.clear(false, bundler);
+        } else {
+            const entriesThen = await this.database.store.getOrderedEntries(
+                this.address,
+                Infinity,
+                toTime
+            );
+            // Need something subscriptable to compare by position
+            const entriesNow = await this.database.store.getOrderedEntries(
+                this.address,
+                Infinity
+            );
+            for (const [key, entry] of entriesThen) {
+                const placementMuidThen = muidTupleToMuid(entry.placementId);
+                const placementNow = await this.database.store.getLocation(
+                    muidTupleToMuid(entry.entryId)
+                );
+                const placementMuidNow = placementNow
+                    ? placementNow.placement
+                    : undefined;
+
+                if (!placementNow) {
+                    // This entry existed then, but has since been deleted
+                    // Need to re-add it to the previous location
+                    // TODO: recurse if entry is a pointee
+                    const entryBuilder = new EntryBuilder();
+                    entryBuilder.setContainer(muidToBuilder(this.address));
+                    entryBuilder.setEffective(placementMuidThen[0]);
+                    entryBuilder.setBehavior(entry.behavior);
+                    entryBuilder.setValue(wrapValue(entry.value));
+                    if (entry.pointeeList)
+                        entryBuilder.setPointee(entry.pointeeList[0]);
+
+                    const changeBuilder = new ChangeBuilder();
+                    changeBuilder.setEntry(entryBuilder);
+                    bundler.addChange(changeBuilder);
+                } else if (
+                    placementMuidNow &&
+                    !isEqual(placementMuidThen, placementMuidNow)
+                ) {
+                    // This entry exists, but has been moved
+                    // Need to move it back
+                    // TODO: recurse if entry is a pointee
+                    await this.movementHelper(
+                        muidTupleToMuid(entry.entryId),
+                        placementMuidThen.timestamp,
+                        false,
+                        bundler
+                    );
+                    ensure(
+                        entriesNow.delete(
+                            `${placementMuidNow[0]},${muidTupleToString(entry.entryId)}`
+                        ),
+                        "entry not found in entriesNow"
+                    );
+                }
+            }
+            // We will need to loop through the remaining entries in entriesNow
+            // to delete them, since we know they weren't in the sequence at toTime
+            for (const [key, entry] of entriesNow) {
+                // TODO: recurse if entry is a pointee
+                await this.movementHelper(
+                    muidTupleToMuid(entry.entryId),
+                    undefined,
+                    false,
+                    bundler
+                );
+            }
+        }
+        if (!skipProperties) {
+            await this.database.resetContainerProperties(this, toTime, bundler);
+        }
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
     }
 
     private async findDest(dest: number): Promise<number> {

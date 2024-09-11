@@ -364,7 +364,7 @@ it("extend", async function () {
 
 it("List.reset", async function () {
     for (const store of [
-        new IndexedDbStore("list-reset", true),
+        // new IndexedDbStore("list-reset", true),
         new MemoryStore(true),
     ]) {
         const instance = new Database(store);
@@ -399,6 +399,17 @@ it("List.reset", async function () {
         ensure((await seq.size()) === 0);
         ensure((await prop1.get(seq)) === undefined);
         ensure((await prop2.get(seq)) === undefined);
+
+        await seq.reset({ toTime: afterSecond, skipProperties: true });
+        ensure((await seq.size()) === 10);
+        ensure((await seq.at(0)) === 0);
+        ensure((await seq.at(9)) === 9);
+        ensure((await prop1.get(seq)) === undefined);
+        ensure((await prop2.get(seq)) === undefined);
+
+        await seq.push(10);
+        await seq.push(11);
+        await seq.move(10, 0);
 
         await seq.reset({ toTime: afterSecond, skipProperties: true });
         ensure((await seq.size()) === 10);

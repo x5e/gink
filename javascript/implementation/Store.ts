@@ -12,6 +12,7 @@ import {
     BroadcastFunc,
     KeyPair,
     Value,
+    Placement,
 } from "./typedefs";
 
 export interface Store {
@@ -79,6 +80,8 @@ export interface Store {
      */
     // TODO maybe return an actual data structure ?
     getContainerBytes: (address: Muid) => Promise<Bytes | undefined>;
+
+    getLocation: (entry: Muid, asOf?: AsOf) => Promise<Placement | undefined>;
 
     getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined>;
     getEntryByKey(

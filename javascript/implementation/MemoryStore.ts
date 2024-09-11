@@ -14,6 +14,7 @@ import {
     verifyBundle,
     librariesReady,
     emptyBytes,
+    strToMuidTuple,
 } from "./utils";
 import {
     AsOf,
@@ -36,6 +37,7 @@ import {
     BundleView,
     KeyPair,
     Value,
+    Placement,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
@@ -70,7 +72,7 @@ export class MemoryStore implements Store {
     // key-placement index used to find properties by the container they describe (the key)
     private byKeyPlacement: TreeMap<string, Entry> = new TreeMap(); // Key,PlacementId => Entry
     private identities: Map<string, string> = new Map(); // Medallion,chainStart => identity
-    private locations: TreeMap<string, string> = new TreeMap();
+    private locations: TreeMap<string, string> = new TreeMap(); // entryId,placementId => containerId,key,placementId
     private byName: TreeMap<string, string> = new TreeMap(); // name,entryMuid => describingMuid
     private bySource: TreeMap<string, Entry> = new TreeMap();
     private byTarget: TreeMap<string, Entry> = new TreeMap();
@@ -677,6 +679,35 @@ export class MemoryStore implements Store {
             returning.set(returningKey, entry);
         }
         return returning;
+    }
+
+    getLocation(entry: Muid, asOf?: AsOf): Promise<Placement | undefined> {
+        const asOfTs: Timestamp = asOf
+            ? this.asOfToTimestamp(asOf)
+            : generateTimestamp();
+        const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
+        const prefix = `${muidToString(entry)}`;
+        const suffix = `${muidToString(entry)},${asOfTsStr}`;
+        const it = toLastWithPrefixBeforeSuffix(this.locations, prefix, suffix);
+        if (!it) return undefined;
+        const parts = it.value.split(",");
+
+        const containerIdStr = parts[0];
+        const key = parts[1];
+        const placementIdStr = parts[2];
+        const placementTuple = strToMuidTuple(placementIdStr);
+        const lastClear = this.getLastClearanceTime(containerIdStr, asOfTs);
+        const removal = toLastWithPrefixBeforeSuffix(
+            this.removals,
+            placementIdStr,
+            `${placementIdStr},${asOfTsStr}`
+        );
+        if (lastClear > placementTuple[0] || removal) return undefined;
+        return Promise.resolve({
+            container: strToMuidTuple(containerIdStr),
+            key: key,
+            placement: placementTuple,
+        });
     }
 
     addEntry(entry: Entry) {

@@ -38,6 +38,7 @@ import {
     BundleView,
     KeyPair,
     Value,
+    Placement,
 } from "./typedefs";
 import {
     extractContainerMuid,
@@ -327,6 +328,16 @@ export class IndexedDbStore implements Store {
                 this.wrapped.close();
             }
         }
+    }
+
+    async getLocation(
+        entry: Muid,
+        asOf?: AsOf
+    ): Promise<Placement | undefined> {
+        const asOfTs: Timestamp = asOf
+            ? await this.asOfToTimestamp(asOf)
+            : generateTimestamp();
+        return undefined;
     }
 
     private async asOfToTimestamp(asOf: AsOf): Promise<Timestamp> {
