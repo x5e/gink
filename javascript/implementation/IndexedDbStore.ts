@@ -337,6 +337,46 @@ export class IndexedDbStore implements Store {
         const asOfTs: Timestamp = asOf
             ? await this.asOfToTimestamp(asOf)
             : generateTimestamp();
+        const trxn = this.wrapped.transaction(
+            ["entries", "clearances", "removals"],
+            "readonly"
+        );
+        const range = IDBKeyRange.bound(
+            [muidToTuple(entry), [0]],
+            [muidToTuple(entry), [Infinity]]
+        );
+        let cursor = await trxn
+            .objectStore("entries")
+            .index("locations")
+            .openCursor(range, "prev");
+        if (cursor && cursor.value) {
+            const containerId = cursor.value.containerId;
+            const placementId = cursor.value.placementId;
+            const entryId = cursor.value.entryId;
+            const lastClear = await this.getClearanceTime(
+                trxn,
+                containerId,
+                asOfTs
+            );
+            const removalLower = [entryId];
+            const removalUpper = [entryId, [asOfTs]];
+            const removalCursor = await trxn
+                .objectStore("removals")
+                .index("by-removing")
+                .openCursor(
+                    IDBKeyRange.bound(removalLower, removalUpper),
+                    "prev"
+                );
+            const foundRemoval = removalCursor && removalCursor.value;
+
+            if (lastClear > placementId[0] || foundRemoval) return undefined;
+
+            return {
+                container: containerId,
+                key: cursor.value.storageKey,
+                placement: placementId,
+            };
+        }
         return undefined;
     }
 

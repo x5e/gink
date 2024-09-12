@@ -10,6 +10,7 @@ import {
     BundleView,
     KeyPair,
     Value,
+    Placement,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
 import { MemoryStore } from "./MemoryStore";
@@ -219,6 +220,11 @@ export class LogBackedStore extends LockableLog implements Store {
     async getBundlesProcessed() {
         await this.ready;
         return this.bundlesProcessed;
+    }
+
+    async getLocation(entry: Muid, asOf?: AsOf): Promise<Placement> {
+        await this.ready;
+        return await this.internalStore.getLocation(entry, asOf);
     }
 
     async addBundle(

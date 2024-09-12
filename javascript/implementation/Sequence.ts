@@ -10,6 +10,7 @@ import {
     muidToString,
     muidTupleToMuid,
     muidTupleToString,
+    wrapKey,
     wrapValue,
 } from "./utils";
 import { interpret, toJson } from "./factories";
@@ -126,12 +127,13 @@ export class Sequence extends Container {
                 this.address,
                 Infinity
             );
+
             for (const [key, entry] of entriesThen) {
-                const placementMuidThen = muidTupleToMuid(entry.placementId);
+                const placementTupleThen = entry.placementId;
                 const placementNow = await this.database.store.getLocation(
                     muidTupleToMuid(entry.entryId)
                 );
-                const placementMuidNow = placementNow
+                const placementTupleNow = placementNow
                     ? placementNow.placement
                     : undefined;
 
@@ -141,7 +143,7 @@ export class Sequence extends Container {
                     // TODO: recurse if entry is a pointee
                     const entryBuilder = new EntryBuilder();
                     entryBuilder.setContainer(muidToBuilder(this.address));
-                    entryBuilder.setEffective(placementMuidThen[0]);
+                    entryBuilder.setKey(wrapKey(placementTupleThen[0]));
                     entryBuilder.setBehavior(entry.behavior);
                     entryBuilder.setValue(wrapValue(entry.value));
                     if (entry.pointeeList)
@@ -150,22 +152,26 @@ export class Sequence extends Container {
                     const changeBuilder = new ChangeBuilder();
                     changeBuilder.setEntry(entryBuilder);
                     bundler.addChange(changeBuilder);
-                } else if (
-                    placementMuidNow &&
-                    !isEqual(placementMuidThen, placementMuidNow)
-                ) {
-                    // This entry exists, but has been moved
-                    // Need to move it back
-                    // TODO: recurse if entry is a pointee
-                    await this.movementHelper(
-                        muidTupleToMuid(entry.entryId),
-                        placementMuidThen.timestamp,
-                        false,
-                        bundler
-                    );
+                } else {
+                    if (
+                        placementTupleNow &&
+                        placementTupleThen[0] !== placementTupleNow[0]
+                    ) {
+                        // This entry exists, but has been moved
+                        // Need to move it back
+                        // TODO: recurse if entry is a pointee
+                        await this.movementHelper(
+                            muidTupleToMuid(entry.entryId),
+                            placementTupleThen[0],
+                            false,
+                            bundler
+                        );
+                    }
+                    // Need to remove the current entry from entriesNow if
+                    // 1) the entry exists but was moved, or 2) the entry is untouched
                     ensure(
                         entriesNow.delete(
-                            `${placementMuidNow[0]},${muidTupleToString(entry.entryId)}`
+                            `${placementTupleNow[0]},${muidTupleToString(entry.entryId)}`
                         ),
                         "entry not found in entriesNow"
                     );
