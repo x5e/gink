@@ -175,7 +175,7 @@ export class Sequence extends Container {
                     );
                 }
                 // Finally, if the previous entry was a container, recusively reset it
-                if (recurse && entry.pointeeList.length > 0) {
+                if (seen && entry.pointeeList.length > 0) {
                     const pointeeMuid = muidTupleToMuid(entry.pointeeList[0]);
                     if (!seen.has(muidToString(pointeeMuid))) {
                         const container = await construct(

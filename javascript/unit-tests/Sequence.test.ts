@@ -437,7 +437,7 @@ it("List.reset", async function () {
         await dir.set("foo", "baz");
         await box.set("changed!");
         await seq.push(1);
-        await seq.reset({ toTime: afterBox });
+        await seq.reset({ toTime: afterBox, recurse: true });
         ensure((await seq.size()) === 1);
         ensure((await box.get()) instanceof Directory);
         ensure((await dir.get("foo")) === "bar");
