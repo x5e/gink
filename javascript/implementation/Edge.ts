@@ -3,9 +3,9 @@ import { Database } from "./Database";
 import { AsOf, EdgeData, Muid, Value, Timestamp } from "./typedefs";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
-import { muidToBuilder, entryToEdgeData, strToMuid, ensure } from "./utils";
+import { entryToEdgeData } from "./utils";
 import { Bundler } from "./Bundler";
-import { ChangeBuilder, MovementBuilder } from "./builders";
+import { movementHelper } from "./store_utils";
 
 export class Edge extends Addressable {
     private source: Muid;
@@ -91,14 +91,7 @@ export class Edge extends Addressable {
             immediate = true;
             bundler = new Bundler(bundlerOrComment);
         }
-        const movementBuilder = new MovementBuilder();
-        movementBuilder.setEntry(muidToBuilder(this.address));
-        if (dest) movementBuilder.setDest(dest);
-        movementBuilder.setContainer(muidToBuilder(this.action));
-        if (purge) movementBuilder.setPurge(true);
-        const changeBuilder = new ChangeBuilder();
-        changeBuilder.setMovement(movementBuilder);
-        bundler.addChange(changeBuilder);
+        await movementHelper(bundler, this.address, this.action, dest, purge);
         if (immediate) {
             await this.database.addBundler(bundler);
         }

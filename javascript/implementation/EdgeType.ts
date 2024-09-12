@@ -20,10 +20,10 @@ import { Edge } from "./Edge";
 import { Vertex } from "./Vertex";
 import { EntryBuilder } from "./builders";
 import { ChangeBuilder } from "./builders";
-import { MovementBuilder } from "./builders";
 import { PairBuilder } from "./builders";
 import { construct } from "./factories";
 import { Property } from "./Property";
+import { movementHelper } from "./store_utils";
 
 export class EdgeType extends Container {
     constructor(
@@ -153,11 +153,12 @@ export class EdgeType extends Container {
                     ) {
                         // This entry exists, but has been moved
                         // Need to move it back
-                        await this.movementHelper(
+                        await movementHelper(
+                            bundler,
                             muidTupleToMuid(entry.entryId),
+                            this.address,
                             placementTupleThen[0],
-                            false,
-                            bundler
+                            false
                         );
                         // reset the properties of this edge
                         await this.database.resetContainerProperties(
@@ -179,11 +180,12 @@ export class EdgeType extends Container {
             // We will need to loop through the remaining entries in entriesNow
             // to delete them, since we know they weren't in the sequence at toTime
             for (const [key, entry] of entriesNow) {
-                await this.movementHelper(
+                await movementHelper(
+                    bundler,
                     muidTupleToMuid(entry.entryId),
+                    this.address,
                     undefined,
-                    false,
-                    bundler
+                    false
                 );
             }
         }
@@ -191,33 +193,6 @@ export class EdgeType extends Container {
             // Reset the properties of this edgeType
             await this.database.resetContainerProperties(this, toTime, bundler);
         }
-        if (immediate) {
-            await this.database.addBundler(bundler);
-        }
-    }
-
-    private async movementHelper(
-        muid: Muid,
-        dest?: number,
-        purge?: boolean,
-        bundlerOrComment?: string | Bundler
-    ) {
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
-        }
-        const movementBuilder = new MovementBuilder();
-        movementBuilder.setEntry(muidToBuilder(muid));
-        if (dest) movementBuilder.setDest(dest);
-        movementBuilder.setContainer(muidToBuilder(this.address));
-        if (purge) movementBuilder.setPurge(true);
-        const changeBuilder = new ChangeBuilder();
-        changeBuilder.setMovement(movementBuilder);
-        bundler.addChange(changeBuilder);
         if (immediate) {
             await this.database.addBundler(bundler);
         }
