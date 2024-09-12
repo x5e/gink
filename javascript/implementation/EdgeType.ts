@@ -93,7 +93,6 @@ export class EdgeType extends Container {
                 Infinity
             );
             for (const [key, entry] of entriesThen) {
-                // TODO: reset properties on each edge
                 const placementTupleThen = entry.placementId;
                 const placementNow = await this.database.store.getLocation(
                     muidTupleToMuid(entry.entryId)
@@ -178,7 +177,7 @@ export class EdgeType extends Container {
                 }
             }
             // We will need to loop through the remaining entries in entriesNow
-            // to delete them, since we know they weren't in the sequence at toTime
+            // to delete them, since we know they weren't active at toTime
             for (const [key, entry] of entriesNow) {
                 await movementHelper(
                     bundler,
