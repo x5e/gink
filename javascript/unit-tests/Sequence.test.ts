@@ -437,9 +437,26 @@ it("List.reset", async function () {
         await dir.set("foo", "baz");
         await box.set("changed!");
         await seq.push(1);
+        const beforeReset = generateTimestamp();
         await seq.reset({ toTime: afterBox, recurse: true });
         ensure((await seq.size()) === 1);
         ensure((await box.get()) instanceof Directory);
         ensure((await dir.get("foo")) === "bar");
+
+        // Reset back
+        await seq.reset({ toTime: beforeReset, recurse: true });
+        ensure((await seq.size()) === 2);
+        ensure((await seq.at(1)) === 1);
+        ensure((await box.get()) === "changed!");
+        // This will not have been reset, since the directory was not held
+        // in the box at the time of the reset
+        ensure((await dir.get("foo")) === "bar");
+
+        await seq.shift(); // Remove the box
+
+        await seq.reset({ toTime: beforeReset, recurse: true });
+        ensure((await seq.size()) === 2);
+        ensure((await seq.at(1)) === 1);
+        ensure((await box.get()) === "changed!");
     }
 });

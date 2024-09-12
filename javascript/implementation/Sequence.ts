@@ -1,4 +1,3 @@
-import { isEqual } from "lodash";
 import { Database } from "./Database";
 import { Container } from "./Container";
 import { AsOf, Entry, Muid, Value } from "./typedefs";
@@ -144,10 +143,16 @@ export class Sequence extends Container {
                     entryBuilder.setContainer(muidToBuilder(this.address));
                     entryBuilder.setKey(wrapKey(placementTupleThen[0]));
                     entryBuilder.setBehavior(entry.behavior);
-                    entryBuilder.setValue(wrapValue(entry.value));
-                    if (entry.pointeeList)
-                        entryBuilder.setPointee(entry.pointeeList[0]);
+                    if (entry.value !== undefined) {
+                        entryBuilder.setValue(wrapValue(entry.value));
+                    }
 
+                    if (entry.pointeeList.length > 0) {
+                        const pointeeMuid = muidTupleToMuid(
+                            entry.pointeeList[0]
+                        );
+                        entryBuilder.setPointee(muidToBuilder(pointeeMuid));
+                    }
                     const changeBuilder = new ChangeBuilder();
                     changeBuilder.setEntry(entryBuilder);
                     bundler.addChange(changeBuilder);
