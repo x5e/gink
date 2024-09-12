@@ -7,6 +7,7 @@ import {
     Sequence,
     Muid,
     Value,
+    Directory,
 } from "../implementation";
 import { ensure, matches, generateTimestamp } from "../implementation/utils";
 
@@ -424,5 +425,21 @@ it("List.reset", async function () {
         ensure((await seq.size()) === 10);
         ensure((await seq.at(0)) === 0);
         ensure((await seq.at(9)) === 9);
+
+        // Test recursive reset
+        await seq.clear();
+        const box = await instance.createBox();
+        const dir = await instance.createDirectory();
+        await box.set(dir);
+        await dir.set("foo", "bar");
+        await seq.push(box);
+        const afterBox = generateTimestamp();
+        await dir.set("foo", "baz");
+        await box.set("changed!");
+        await seq.push(1);
+        await seq.reset({ toTime: afterBox });
+        ensure((await seq.size()) === 1);
+        ensure((await box.get()) instanceof Directory);
+        ensure((await dir.get("foo")) === "bar");
     }
 });

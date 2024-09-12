@@ -13,7 +13,7 @@ import {
     wrapKey,
     wrapValue,
 } from "./utils";
-import { interpret, toJson } from "./factories";
+import { construct, interpret, toJson } from "./factories";
 import {
     Behavior,
     ChangeBuilder,
@@ -140,7 +140,6 @@ export class Sequence extends Container {
                 if (!placementNow) {
                     // This entry existed then, but has since been deleted
                     // Need to re-add it to the previous location
-                    // TODO: recurse if entry is a pointee
                     const entryBuilder = new EntryBuilder();
                     entryBuilder.setContainer(muidToBuilder(this.address));
                     entryBuilder.setKey(wrapKey(placementTupleThen[0]));
@@ -159,7 +158,6 @@ export class Sequence extends Container {
                     ) {
                         // This entry exists, but has been moved
                         // Need to move it back
-                        // TODO: recurse if entry is a pointee
                         await this.movementHelper(
                             muidTupleToMuid(entry.entryId),
                             placementTupleThen[0],
@@ -176,11 +174,27 @@ export class Sequence extends Container {
                         "entry not found in entriesNow"
                     );
                 }
+                // Finally, if the previous entry was a container, recusively reset it
+                if (recurse && entry.pointeeList.length > 0) {
+                    const pointeeMuid = muidTupleToMuid(entry.pointeeList[0]);
+                    if (!seen.has(muidToString(pointeeMuid))) {
+                        const container = await construct(
+                            this.database,
+                            pointeeMuid
+                        );
+                        await container.reset({
+                            toTime,
+                            bundlerOrComment: bundler,
+                            skipProperties,
+                            recurse,
+                            seen,
+                        });
+                    }
+                }
             }
             // We will need to loop through the remaining entries in entriesNow
             // to delete them, since we know they weren't in the sequence at toTime
             for (const [key, entry] of entriesNow) {
-                // TODO: recurse if entry is a pointee
                 await this.movementHelper(
                     muidTupleToMuid(entry.entryId),
                     undefined,
