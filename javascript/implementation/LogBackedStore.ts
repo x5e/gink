@@ -11,6 +11,7 @@ import {
     KeyPair,
     Value,
     Placement,
+    MuidTuple,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
 import { MemoryStore } from "./MemoryStore";
@@ -363,6 +364,10 @@ export class LogBackedStore extends LockableLog implements Store {
 
     async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
         return await this.internalStore.getContainersByName(name, asOf);
+    }
+
+    async getAllContainerTuples(): Promise<MuidTuple[]> {
+        return await this.internalStore.getAllContainerTuples();
     }
 
     /**

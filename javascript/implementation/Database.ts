@@ -11,6 +11,7 @@ import {
     getIdentity,
     createKeyPair,
     strToMuid,
+    muidTupleToMuid,
 } from "./utils";
 import {
     BundleBytes,
@@ -22,6 +23,7 @@ import {
     BundleView,
     AsOf,
     KeyPair,
+    MuidTuple,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
@@ -201,11 +203,49 @@ export class Database {
     }
 
     /**
+     * Reset all containers in the database to a previous time.
+     * @param toTime optional timestamp to reset to. If not provided, each container
+     * will be cleared.
+     * @param bundlerOrComment optional bundler to add this change to, or a string to
+     * add a comment to a new bundle.
+     */
+    async reset(
+        toTime?: AsOf,
+        bundlerOrComment?: Bundler | string
+    ): Promise<void> {
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
+        const globalContainers: MuidTuple[] = [[-1, -1, Behavior.DIRECTORY]];
+        const containers = await this.store.getAllContainerTuples();
+
+        for (const muidTuple of containers) {
+            const container = await construct(this, muidTupleToMuid(muidTuple));
+            if (container instanceof Property) continue;
+            await container.reset({ toTime, bundlerOrComment: bundler });
+        }
+
+        for (const muidTuple of globalContainers) {
+            const container = await construct(this, muidTupleToMuid(muidTuple));
+            await container.reset({ toTime, bundlerOrComment: bundler });
+        }
+
+        if (immediate) {
+            await this.addBundler(bundler);
+        }
+    }
+
+    /**
      * Reset the properties associated with a container to a previous time.
      * @param toTime optional timestamp to reset to. If not provided, the properties will be deleted.
      * @param bundlerOrComment optional bundler to add this change to, or a string to add a comment to a new bundle.
      */
-    public async resetContainerProperties(
+    async resetContainerProperties(
         container: Muid | Container,
         toTime?: AsOf,
         bundlerOrComment?: Bundler | string
