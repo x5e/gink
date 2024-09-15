@@ -178,17 +178,29 @@ it("Box.reset", async function () {
         const instance = new Database(store);
         await instance.ready;
         const box = await instance.createBox();
+        const prop1 = await instance.createProperty();
+        const prop2 = await instance.createProperty();
+        await prop1.set(box, "foo");
+        await prop2.set(box, "bar");
 
         await box.set("value 1");
         const afterSet = generateTimestamp();
         await box.set("changed");
+        await prop1.set(box, "foo2");
+        await prop2.set(box, "bar2");
         const afterSecond = generateTimestamp();
         await box.reset({ toTime: afterSet });
         ensure((await box.get()) === "value 1");
+        ensure((await prop1.get(box)) === "foo");
+        ensure((await prop2.get(box)) === "bar");
         await box.reset();
         ensure((await box.get()) === undefined);
-        await box.reset({ toTime: afterSecond });
+        ensure((await prop1.get(box)) === undefined);
+        ensure((await prop2.get(box)) === undefined);
+        await box.reset({ toTime: afterSecond, skipProperties: true });
         ensure((await box.get()) === "changed");
+        ensure((await prop1.get(box)) === undefined);
+        ensure((await prop2.get(box)) === undefined);
 
         const dir = await instance.createDirectory();
         await box.set(dir);

@@ -70,11 +70,13 @@ export class Box extends Container {
     async reset(args?: {
         toTime?: AsOf;
         bundlerOrComment?: Bundler | string;
+        skipProperties?: boolean;
         recurse?: boolean;
         seen?: Set<string>;
     }): Promise<void> {
         const toTime = args?.toTime;
         const bundlerOrComment = args?.bundlerOrComment;
+        const skipProperties = args?.skipProperties;
         const recurse = args?.recurse;
         const seen = recurse ? (args?.seen ?? new Set()) : undefined;
         if (seen) {
@@ -105,10 +107,14 @@ export class Box extends Container {
                 await thereThen.reset({
                     toTime,
                     bundlerOrComment: bundler,
+                    skipProperties,
                     recurse,
                     seen,
                 });
             }
+        }
+        if (!skipProperties) {
+            await this.database.resetContainerProperties(this, toTime, bundler);
         }
         if (immediate) {
             await this.database.addBundler(bundler);

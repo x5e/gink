@@ -89,6 +89,7 @@ export class Keyed<
     async reset(args?: {
         toTime?: AsOf;
         bundlerOrComment?: Bundler | string;
+        skipProperties?: boolean;
         recurse?: boolean;
         seen?: Set<string>;
     }): Promise<void> {
@@ -100,6 +101,7 @@ export class Keyed<
         }
         const toTime = args?.toTime;
         const bundlerOrComment = args?.bundlerOrComment;
+        const skipProperties = args?.skipProperties;
         const recurse = args?.recurse;
         const seen = recurse ? (args?.seen ?? new Set()) : undefined;
         if (seen) {
@@ -197,11 +199,15 @@ export class Keyed<
                     await thenValue.reset({
                         toTime,
                         bundlerOrComment: bundler,
+                        skipProperties,
                         recurse,
                         seen,
                     });
                 }
             }
+        }
+        if (!skipProperties) {
+            await this.database.resetContainerProperties(this, toTime, bundler);
         }
         if (immediate) {
             await this.database.addBundler(bundler);

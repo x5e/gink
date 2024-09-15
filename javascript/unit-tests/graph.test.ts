@@ -1,10 +1,4 @@
-import {
-    Database,
-    IndexedDbStore,
-    Vertex,
-    EdgeType,
-    MemoryStore,
-} from "../implementation";
+import { Database, IndexedDbStore, MemoryStore } from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 
 it("isAlive and remove", async function () {
@@ -63,12 +57,6 @@ it("from_to", async function () {
         const edge22 = await edge_type.createEdge(vertex2, vertex2);
         const edge23 = await edge_type.createEdge(vertex2, vertex3);
 
-        /*
-        const entries = await store.getAllEntries();
-        for (let i = 0; i< entries.length; i++) {
-            console.log(JSON.stringify(entries[i]));
-        }
-         */
         const edgesTo2 = await vertex2.getEdgesTo();
         ensure(edgesTo2.length === 2, `wtf: ${edgesTo2.length}`);
         ensure(edgesTo2[0].equals(edge12) || edgesTo2[0].equals(edge22));
@@ -101,13 +89,15 @@ it("edge_reorder", async function () {
         const b = await instance.createVertex();
 
         const p = await instance.createEdgeType();
+        const prop = await instance.createProperty();
 
         const beforeX = generateTimestamp();
         const x = await p.createEdge(a, b);
         const y = await p.createEdge(a, b);
+        await prop.set(y, "foo");
         const afterX = generateTimestamp();
         const entries = await store.getAllEntries();
-        ensure(entries.length === 2);
+        ensure(entries.length === 3);
         const edges1 = await a.getEdgesFrom();
         ensure(
             edges1.length === 2 && edges1[0].equals(x) && edges1[1].equals(y),
@@ -117,10 +107,13 @@ it("edge_reorder", async function () {
         await y.remove(beforeX);
 
         const edges2 = await a.getEdgesFrom();
+        const newY = edges2[0];
         ensure(
-            edges2.length === 2 && edges2[0].equals(y) && edges2[1].equals(x),
+            edges2.length === 2 && newY.equals(y) && edges2[1].equals(x),
             edges2.toString()
         );
+        // make sure property gets set again on "new" edge
+        ensure((await prop.get(newY)) === "foo");
 
         const edges3 = await b.getEdgesTo(afterX);
         ensure(
@@ -133,5 +126,125 @@ it("edge_reorder", async function () {
             edges4.length === 2 && edges4[0].equals(y) && edges4[1].equals(x),
             edges4.toString()
         );
+    }
+});
+
+it("vertex reset", async function () {
+    for (const store of [
+        new IndexedDbStore("vertex reset", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const vertex = await instance.createVertex();
+        const prop1 = await instance.createProperty();
+        const prop2 = await instance.createProperty();
+        await prop1.set(vertex, "foo");
+        await prop2.set(vertex, "bar");
+        const afterSet = generateTimestamp();
+        await vertex.remove();
+        await prop1.set(vertex, "foo2");
+        await prop2.set(vertex, "bar2");
+        const afterSecond = generateTimestamp();
+        await vertex.reset({ toTime: afterSet });
+        // Vertex should be alive again, and properties should be reset
+        ensure(await vertex.isAlive());
+        ensure((await prop1.get(vertex)) === "foo");
+        ensure((await prop2.get(vertex)) === "bar");
+        await vertex.reset({ toTime: afterSecond, skipProperties: true });
+        // Vertex should be removed and properties should not have changed.
+        ensure(!(await vertex.isAlive()));
+        ensure((await prop1.get(vertex)) === "foo");
+        ensure((await prop2.get(vertex)) === "bar");
+    }
+});
+
+it("edge_type reset", async function () {
+    for (const store of [
+        new IndexedDbStore("edgetype reset", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+
+        const vertex1 = await instance.createVertex();
+        const vertex2 = await instance.createVertex();
+        const vertex3 = await instance.createVertex();
+        const edgeType = await instance.createEdgeType();
+        const edge1 = await edgeType.createEdge(vertex1, vertex2);
+        const edge2 = await edgeType.createEdge(vertex2, vertex1);
+        const prop1 = await instance.createProperty();
+        const prop2 = await instance.createProperty();
+        await prop1.set(edgeType, "foo");
+        await prop2.set(edgeType, "bar");
+        const afterInit = generateTimestamp();
+        const edge3 = await edgeType.createEdge(vertex1, vertex3);
+        await prop1.set(edgeType, "foo");
+        await prop2.set(edgeType, "baz");
+        const afterSecond = generateTimestamp();
+
+        await edgeType.reset({ toTime: afterInit });
+        const edgesFrom1 = await vertex1.getEdgesFrom();
+        const edgesFrom2 = await vertex2.getEdgesFrom();
+        ensure(edgesFrom1.length === 1);
+        ensure(edgesFrom2.length === 1);
+        ensure((await prop1.get(edgeType)) === "foo");
+        ensure((await prop2.get(edgeType)) === "bar");
+
+        await edge1.remove();
+        ensure((await vertex1.getEdgesFrom()).length === 0);
+
+        await edgeType.reset({ toTime: afterSecond, skipProperties: true });
+        ensure((await vertex1.getEdgesFrom()).length === 2);
+        ensure((await vertex2.getEdgesFrom()).length === 1);
+        ensure((await vertex3.getEdgesTo()).length === 1);
+        ensure((await prop1.get(edgeType)) === "foo");
+        ensure((await prop2.get(edgeType)) === "bar");
+    }
+});
+
+it("edge property restoration", async function () {
+    for (const store of [
+        new IndexedDbStore("edge property restore", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+
+        const vertex1 = await instance.createVertex();
+        const vertex2 = await instance.createVertex();
+        const edgeType = await instance.createEdgeType();
+        const edge1 = await edgeType.createEdge(vertex1, vertex2);
+        const e1muid = (await vertex1.getEdgesFrom())[0].address;
+        const prop1 = await instance.createProperty();
+        const prop2 = await instance.createProperty();
+        await prop1.set(edge1, "foo");
+        await prop2.set(edge1, "bar");
+        const beforeRemove = generateTimestamp();
+        await edge1.remove();
+        await edgeType.reset({ toTime: beforeRemove });
+        const edges = await vertex1.getEdgesFrom();
+        ensure(edges.length === 1);
+        ensure(edges[0].address.timestamp !== e1muid.timestamp);
+        ensure((await prop1.get(edges[0])) === "foo");
+        ensure((await prop2.get(edges[0])) === "bar");
+
+        await prop1.set(edges[0], "baz");
+        ensure((await prop1.get(edges[0])) === "baz");
+
+        await edgeType.reset({ toTime: beforeRemove });
+        const edges2 = await vertex1.getEdgesFrom();
+        ensure(edges2.length === 1);
+        ensure((await prop1.get(edges2[0])) === "foo");
+        ensure((await prop2.get(edges2[0])) === "bar");
+
+        await prop2.delete(edges[0]);
+        ensure((await prop2.get(edges[0])) === undefined);
+
+        await edgeType.reset({ toTime: beforeRemove });
+        const edges3 = await vertex1.getEdgesFrom();
+        ensure(edges3.length === 1);
+        ensure((await prop1.get(edges3[0])) === "foo");
+        ensure((await prop2.get(edges3[0])) === "bar");
     }
 });

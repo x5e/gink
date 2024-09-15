@@ -10,6 +10,7 @@ import {
     isAlive,
     getIdentity,
     createKeyPair,
+    strToMuid,
 } from "./utils";
 import {
     BundleBytes,
@@ -44,6 +45,8 @@ import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
+import { construct } from "./factories";
+import { Container } from "./Container";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -195,6 +198,81 @@ export class Database {
                 this.lastLinkToExtend.hashCode.length == 32
         );
         return this.lastLinkToExtend;
+    }
+
+    /**
+     * Reset the properties associated with a container to a previous time.
+     * @param toTime optional timestamp to reset to. If not provided, the properties will be deleted.
+     * @param bundlerOrComment optional bundler to add this change to, or a string to add a comment to a new bundle.
+     */
+    public async resetContainerProperties(
+        container: Muid | Container,
+        toTime?: AsOf,
+        bundlerOrComment?: Bundler | string
+    ): Promise<void> {
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
+        if ("timestamp" in container) {
+            container = await construct(this, container);
+        }
+        if (!(container instanceof Container))
+            throw new Error("something went wrong");
+
+        const propertiesNow =
+            await this.store.getContainerProperties(container);
+        if (!toTime) {
+            for (const [key, _] of propertiesNow.entries()) {
+                const property = <Property>(
+                    await construct(this, strToMuid(key))
+                );
+                ensure(
+                    property.behavior === Behavior.PROPERTY,
+                    "constructed container isn't a property?"
+                );
+                await property.delete(container, bundler);
+            }
+        } else {
+            const propertiesThen = await this.store.getContainerProperties(
+                container,
+                toTime
+            );
+
+            for (const [key, value] of propertiesThen.entries()) {
+                if (value !== propertiesNow.get(key)) {
+                    const property = <Property>(
+                        await construct(this, strToMuid(key))
+                    );
+                    ensure(
+                        property.behavior === Behavior.PROPERTY,
+                        "constructed container isn't a property?"
+                    );
+                    await property.set(container, value, bundler);
+                }
+                // Remove from propertiesNow so we can delete the rest
+                // after this iteration
+                propertiesNow.delete(key);
+            }
+            // Now loop through the remaining propertiesNow and delete them
+            for (const [key, _] of propertiesNow.entries()) {
+                const property = <Property>(
+                    await construct(this, strToMuid(key))
+                );
+                ensure(
+                    property.behavior === Behavior.PROPERTY,
+                    "constructed container isn't a property?"
+                );
+                await property.delete(container, bundler);
+            }
+        }
+        if (immediate) {
+            await this.addBundler(bundler);
+        }
     }
 
     /**

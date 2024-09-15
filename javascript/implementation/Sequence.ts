@@ -8,14 +8,14 @@ import {
     muidToBuilder,
     muidToString,
     muidTupleToMuid,
+    muidTupleToString,
+    wrapKey,
+    wrapValue,
 } from "./utils";
-import { interpret, toJson } from "./factories";
-import {
-    Behavior,
-    ChangeBuilder,
-    MovementBuilder,
-    ContainerBuilder,
-} from "./builders";
+import { construct, interpret, toJson } from "./factories";
+import { Behavior, ChangeBuilder, ContainerBuilder } from "./builders";
+import { EntryBuilder } from "./builders";
+import { movementHelper } from "./store_utils";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
@@ -61,6 +61,14 @@ export class Sequence extends Container {
         purge?: boolean,
         bundlerOrComment?: Bundler | string
     ) {
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
         const store = this.database.store;
         // TODO: clarify what's going on here
         const muid =
@@ -77,12 +85,145 @@ export class Sequence extends Container {
                       ).pop().entryId
                   );
         ensure(muid.timestamp && muid.medallion && muid.offset);
-        return this.movementHelper(
+        await movementHelper(
+            bundler,
             muid,
+            this.address,
             await this.findDest(dest),
-            purge,
-            bundlerOrComment
+            purge
         );
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
+    }
+
+    async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        skipProperties?: boolean;
+        recurse?: boolean;
+        seen?: Set<string>;
+    }): Promise<void> {
+        const toTime = args?.toTime;
+        const bundlerOrComment = args?.bundlerOrComment;
+        const skipProperties = args?.skipProperties;
+        const recurse = args?.recurse;
+        const seen = recurse ? (args?.seen ?? new Set()) : undefined;
+        if (seen) {
+            seen.add(muidToString(this.address));
+        }
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
+        if (!toTime) {
+            // If no time is specified, we are resetting to epoch, which is just a clear
+            this.clear(false, bundler);
+        } else {
+            const entriesThen = await this.database.store.getOrderedEntries(
+                this.address,
+                Infinity,
+                toTime
+            );
+            // Need something subscriptable to compare by position
+            const entriesNow = await this.database.store.getOrderedEntries(
+                this.address,
+                Infinity
+            );
+
+            for (const [key, entry] of entriesThen) {
+                const placementTupleThen = entry.placementId;
+                const placementNow = await this.database.store.getLocation(
+                    muidTupleToMuid(entry.entryId)
+                );
+                const placementTupleNow = placementNow
+                    ? placementNow.placement
+                    : undefined;
+
+                if (!placementNow) {
+                    // This entry existed then, but has since been deleted
+                    // Need to re-add it to the previous location
+                    const entryBuilder = new EntryBuilder();
+                    entryBuilder.setContainer(muidToBuilder(this.address));
+                    entryBuilder.setKey(wrapKey(placementTupleThen[0]));
+                    entryBuilder.setBehavior(entry.behavior);
+                    if (entry.value !== undefined) {
+                        entryBuilder.setValue(wrapValue(entry.value));
+                    }
+
+                    if (entry.pointeeList.length > 0) {
+                        const pointeeMuid = muidTupleToMuid(
+                            entry.pointeeList[0]
+                        );
+                        entryBuilder.setPointee(muidToBuilder(pointeeMuid));
+                    }
+                    const changeBuilder = new ChangeBuilder();
+                    changeBuilder.setEntry(entryBuilder);
+                    bundler.addChange(changeBuilder);
+                } else {
+                    if (
+                        placementTupleNow &&
+                        placementTupleThen[0] !== placementTupleNow[0]
+                    ) {
+                        // This entry exists, but has been moved
+                        // Need to move it back
+                        await movementHelper(
+                            bundler,
+                            muidTupleToMuid(entry.entryId),
+                            this.address,
+                            placementTupleThen[0],
+                            false
+                        );
+                    }
+                    // Need to remove the current entry from entriesNow if
+                    // 1) the entry exists but was moved, or 2) the entry is untouched
+                    ensure(
+                        entriesNow.delete(
+                            `${placementTupleNow[0]},${muidTupleToString(entry.entryId)}`
+                        ),
+                        "entry not found in entriesNow"
+                    );
+                }
+                // Finally, if the previous entry was a container, recusively reset it
+                if (seen && entry.pointeeList.length > 0) {
+                    const pointeeMuid = muidTupleToMuid(entry.pointeeList[0]);
+                    if (!seen.has(muidToString(pointeeMuid))) {
+                        const container = await construct(
+                            this.database,
+                            pointeeMuid
+                        );
+                        await container.reset({
+                            toTime,
+                            bundlerOrComment: bundler,
+                            skipProperties,
+                            recurse,
+                            seen,
+                        });
+                    }
+                }
+            }
+            // We will need to loop through the remaining entries in entriesNow
+            // to delete them, since we know they weren't in the sequence at toTime
+            for (const [key, entry] of entriesNow) {
+                await movementHelper(
+                    bundler,
+                    muidTupleToMuid(entry.entryId),
+                    this.address,
+                    undefined,
+                    false
+                );
+            }
+        }
+        if (!skipProperties) {
+            await this.database.resetContainerProperties(this, toTime, bundler);
+        }
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
     }
 
     private async findDest(dest: number): Promise<number> {
@@ -124,6 +265,14 @@ export class Sequence extends Container {
         purge?: boolean,
         bundlerOrComment?: Bundler | string
     ): Promise<Container | Value | undefined> {
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
         let returning: Container | Value;
         let muid: Muid;
         if (what && typeof what === "object") {
@@ -151,35 +300,11 @@ export class Sequence extends Container {
             returning = await interpret(entry, this.database);
             muid = muidTupleToMuid(entry.entryId);
         }
-        await this.movementHelper(muid, undefined, purge, bundlerOrComment);
-        return returning;
-    }
-
-    private async movementHelper(
-        muid: Muid,
-        dest?: number,
-        purge?: boolean,
-        bundlerOrComment?: string | Bundler
-    ) {
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
-        }
-        const movementBuilder = new MovementBuilder();
-        movementBuilder.setEntry(muidToBuilder(muid));
-        if (dest) movementBuilder.setDest(dest);
-        movementBuilder.setContainer(muidToBuilder(this.address));
-        if (purge) movementBuilder.setPurge(true);
-        const changeBuilder = new ChangeBuilder();
-        changeBuilder.setMovement(movementBuilder);
-        bundler.addChange(changeBuilder);
+        await movementHelper(bundler, muid, this.address, undefined, purge);
         if (immediate) {
             await this.database.addBundler(bundler);
         }
+        return returning;
     }
 
     /**
