@@ -215,6 +215,7 @@ it("edge property restoration", async function () {
         const vertex2 = await instance.createVertex();
         const edgeType = await instance.createEdgeType();
         const edge1 = await edgeType.createEdge(vertex1, vertex2);
+        const e1muid = (await vertex1.getEdgesFrom())[0].address;
         const prop1 = await instance.createProperty();
         const prop2 = await instance.createProperty();
         await prop1.set(edge1, "foo");
@@ -224,7 +225,26 @@ it("edge property restoration", async function () {
         await edgeType.reset({ toTime: beforeRemove });
         const edges = await vertex1.getEdgesFrom();
         ensure(edges.length === 1);
+        ensure(edges[0].address.timestamp !== e1muid.timestamp);
         ensure((await prop1.get(edges[0])) === "foo");
         ensure((await prop2.get(edges[0])) === "bar");
+
+        await prop1.set(edges[0], "baz");
+        ensure((await prop1.get(edges[0])) === "baz");
+
+        await edgeType.reset({ toTime: beforeRemove });
+        const edges2 = await vertex1.getEdgesFrom();
+        ensure(edges2.length === 1);
+        ensure((await prop1.get(edges2[0])) === "foo");
+        ensure((await prop2.get(edges2[0])) === "bar");
+
+        await prop2.delete(edges[0]);
+        ensure((await prop2.get(edges[0])) === undefined);
+
+        await edgeType.reset({ toTime: beforeRemove });
+        const edges3 = await vertex1.getEdgesFrom();
+        ensure(edges3.length === 1);
+        ensure((await prop1.get(edges3[0])) === "foo");
+        ensure((await prop2.get(edges3[0])) === "bar");
     }
 });
