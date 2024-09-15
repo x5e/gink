@@ -13,13 +13,9 @@ import {
     wrapValue,
 } from "./utils";
 import { construct, interpret, toJson } from "./factories";
-import {
-    Behavior,
-    ChangeBuilder,
-    MovementBuilder,
-    ContainerBuilder,
-} from "./builders";
+import { Behavior, ChangeBuilder, ContainerBuilder } from "./builders";
 import { EntryBuilder } from "./builders";
+import { movementHelper } from "./store_utils";
 
 /**
  * Kind of like the Gink version of a Javascript Array; supports push, pop, shift.
@@ -65,6 +61,14 @@ export class Sequence extends Container {
         purge?: boolean,
         bundlerOrComment?: Bundler | string
     ) {
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
         const store = this.database.store;
         // TODO: clarify what's going on here
         const muid =
@@ -81,12 +85,16 @@ export class Sequence extends Container {
                       ).pop().entryId
                   );
         ensure(muid.timestamp && muid.medallion && muid.offset);
-        return this.movementHelper(
+        await movementHelper(
+            bundler,
             muid,
+            this.address,
             await this.findDest(dest),
-            purge,
-            bundlerOrComment
+            purge
         );
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
     }
 
     async reset(args?: {
@@ -163,11 +171,12 @@ export class Sequence extends Container {
                     ) {
                         // This entry exists, but has been moved
                         // Need to move it back
-                        await this.movementHelper(
+                        await movementHelper(
+                            bundler,
                             muidTupleToMuid(entry.entryId),
+                            this.address,
                             placementTupleThen[0],
-                            false,
-                            bundler
+                            false
                         );
                     }
                     // Need to remove the current entry from entriesNow if
@@ -200,11 +209,12 @@ export class Sequence extends Container {
             // We will need to loop through the remaining entries in entriesNow
             // to delete them, since we know they weren't in the sequence at toTime
             for (const [key, entry] of entriesNow) {
-                await this.movementHelper(
+                await movementHelper(
+                    bundler,
                     muidTupleToMuid(entry.entryId),
+                    this.address,
                     undefined,
-                    false,
-                    bundler
+                    false
                 );
             }
         }
@@ -255,6 +265,14 @@ export class Sequence extends Container {
         purge?: boolean,
         bundlerOrComment?: Bundler | string
     ): Promise<Container | Value | undefined> {
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
         let returning: Container | Value;
         let muid: Muid;
         if (what && typeof what === "object") {
@@ -282,35 +300,11 @@ export class Sequence extends Container {
             returning = await interpret(entry, this.database);
             muid = muidTupleToMuid(entry.entryId);
         }
-        await this.movementHelper(muid, undefined, purge, bundlerOrComment);
-        return returning;
-    }
-
-    private async movementHelper(
-        muid: Muid,
-        dest?: number,
-        purge?: boolean,
-        bundlerOrComment?: string | Bundler
-    ) {
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
-        }
-        const movementBuilder = new MovementBuilder();
-        movementBuilder.setEntry(muidToBuilder(muid));
-        if (dest) movementBuilder.setDest(dest);
-        movementBuilder.setContainer(muidToBuilder(this.address));
-        if (purge) movementBuilder.setPurge(true);
-        const changeBuilder = new ChangeBuilder();
-        changeBuilder.setMovement(movementBuilder);
-        bundler.addChange(changeBuilder);
+        await movementHelper(bundler, muid, this.address, undefined, purge);
         if (immediate) {
             await this.database.addBundler(bundler);
         }
+        return returning;
     }
 
     /**

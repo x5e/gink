@@ -3,9 +3,9 @@ import { Database } from "./Database";
 import { AsOf, EdgeData, Muid, Value, Timestamp } from "./typedefs";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
-import { muidToBuilder, entryToEdgeData } from "./utils";
+import { entryToEdgeData } from "./utils";
 import { Bundler } from "./Bundler";
-import { ChangeBuilder, MovementBuilder } from "./builders";
+import { movementHelper } from "./store_utils";
 
 export class Edge extends Addressable {
     private source: Muid;
@@ -56,6 +56,11 @@ export class Edge extends Addressable {
         return this.value;
     }
 
+    /**
+     * NOTE: If this edge has been removed, or if its edgeType has been reset, this method will ALWAYS return false.
+     * If its edgeType has been reset, it has been replaced with a new edge that has the exact same source, target, value,
+     * and properties. Check getEdgesTo and getEdgesFrom on the source and target vertices to find replaced edges.
+     */
     async isAlive(asOf?: AsOf): Promise<boolean> {
         return 0 !== (await this.getEffective(asOf));
     }
@@ -77,6 +82,7 @@ export class Edge extends Addressable {
         purge?: boolean,
         bundlerOrComment?: string | Bundler
     ) {
+        if (!(await this.isAlive())) throw new Error("this edge is not alive.");
         let immediate = false;
         let bundler: Bundler;
         if (bundlerOrComment instanceof Bundler) {
@@ -85,14 +91,7 @@ export class Edge extends Addressable {
             immediate = true;
             bundler = new Bundler(bundlerOrComment);
         }
-        const movementBuilder = new MovementBuilder();
-        movementBuilder.setEntry(muidToBuilder(this.address));
-        if (dest) movementBuilder.setDest(dest);
-        movementBuilder.setContainer(muidToBuilder(this.action));
-        if (purge) movementBuilder.setPurge(true);
-        const changeBuilder = new ChangeBuilder();
-        changeBuilder.setMovement(movementBuilder);
-        bundler.addChange(changeBuilder);
+        await movementHelper(bundler, this.address, this.action, dest, purge);
         if (immediate) {
             await this.database.addBundler(bundler);
         }

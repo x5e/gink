@@ -1038,7 +1038,7 @@ export class IndexedDbStore implements Store {
             [entryId, [asOfTs]]
         );
         const trxn = this.wrapped.transaction(
-            ["entries", "removals"],
+            ["entries", "removals", "clearances"],
             "readonly"
         );
         const entryCursor = await trxn
@@ -1049,17 +1049,26 @@ export class IndexedDbStore implements Store {
             return undefined;
         }
         const entry: Entry = entryCursor.value;
-        const removalRange = IDBKeyRange.bound(
-            [entry.placementId],
-            [entry.placementId, [asOfTs]]
+        const lastClear = await this.getClearanceTime(
+            trxn,
+            entry.containerId,
+            asOfTs
         );
-        const removalCursor = await trxn
-            .objectStore("removals")
-            .openCursor(removalRange);
-        if (removalCursor) {
-            return undefined;
+        if (entry.placementId[0] >= lastClear) {
+            const removalRange = IDBKeyRange.bound(
+                [entry.placementId],
+                [entry.placementId, [asOfTs]]
+            );
+            const removalCursor = await trxn
+                .objectStore("removals")
+                .index("by-removing")
+                .openCursor(removalRange);
+
+            if (!removalCursor) {
+                return entry;
+            }
         }
-        return entry;
+        return undefined;
     }
 
     async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
