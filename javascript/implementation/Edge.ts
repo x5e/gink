@@ -77,6 +77,15 @@ export class Edge extends Addressable {
         }
     }
 
+    /**
+     * If dest is not provided (or 0), the edge will be removed. This edge exact edge
+     * with the same Muid will never exist again. The only way to "revive" it is to reset
+     * the database or its edgeType. In that case, a new edge will be created with the same
+     * source, target, value, and properties.
+     * @param dest a timestamp to move the edge to. If 0 or not specified, the edge will be removed.
+     * @param purge completely remove the edge's entry from the datastore?
+     * @param bundlerOrComment a Bundler object or a string comment to add to the movement entry.
+     */
     async remove(
         dest?: number,
         purge?: boolean,

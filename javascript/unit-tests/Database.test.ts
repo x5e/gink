@@ -4,7 +4,11 @@ import {
     Bundler,
     MemoryStore,
 } from "../implementation";
-import { ensure, generateTimestamp } from "../implementation/utils";
+import {
+    ensure,
+    generateTimestamp,
+    muidToString,
+} from "../implementation/utils";
 
 it("test bundle", async () => {
     for (const store of [
@@ -341,6 +345,62 @@ it("test full database reset", async function () {
         ensure((await ks.getName()) === "ks");
         ensure((await ps.getName()) === "ps");
         ensure((await group.getName()) === "group");
+
+        // Test resetting graph
+        const prop2 = await db.createProperty();
+        const v1 = await db.createVertex();
+        const v2 = await db.createVertex();
+        const et = await db.createEdgeType();
+        const e1 = await et.createEdge(v1, v2);
+        const e2 = await et.createEdge(v2, v1);
+        const e3 = await et.createEdge(v1, v2);
+
+        await v1.setName("v1");
+        await v2.setName("v2");
+        await et.setName("et");
+        await prop.set(e1, "p1e1");
+        await prop.set(e2, "p1e2");
+        await prop2.set(e1, "p2e1");
+        await prop2.set(e2, "p2e2");
+
+        const graphResetTo = generateTimestamp();
+
+        await v1.setName("v1changed");
+        await v2.setName("v2changed");
+        await et.setName("etchanged");
+        await prop.set(e1, "foo2");
+        await prop.set(e2, "foo2");
+        await prop2.set(e1, "bar2");
+        await prop2.set(e2, "bar2");
+
+        ensure((await v1.getEdgesFrom()).length === 2);
+        ensure((await v1.getEdgesTo()).length === 1);
+        ensure((await v2.getEdgesFrom()).length === 1);
+        ensure((await v2.getEdgesTo()).length === 2);
+
+        await e1.remove();
+        await e2.remove();
+
+        ensure((await v1.getEdgesFrom()).length === 1);
+        ensure((await v1.getEdgesTo()).length === 0);
+        ensure((await v2.getEdgesFrom()).length === 0);
+        ensure((await v2.getEdgesTo()).length === 1);
+
+        await db.reset(graphResetTo);
+
+        const v1From1 = await v1.getEdgesFrom();
+        ensure(v1From1.length === 2);
+        ensure((await v1.getEdgesTo()).length === 1);
+        ensure((await v2.getEdgesFrom()).length === 1);
+        ensure((await v2.getEdgesTo()).length === 2);
+
+        ensure((await v1.getName()) === "v1");
+        ensure((await v2.getName()) === "v2");
+        ensure((await et.getName()) === "et");
+        // make sure properties were reconstructed on
+        // previously deleted edges
+        ensure((await prop.get(v1From1[0])) === "p1e1");
+        ensure((await prop.get(v1From1[1])) === "p1e2");
     }
 });
 

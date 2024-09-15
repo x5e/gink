@@ -103,6 +103,7 @@ export class EntryBuilder extends ImplementedMessage {
     getDeletion(): boolean;
     hasContainer(): boolean;
     getContainer(): MuidBuilder;
+    setEffective(number);
     hasEffective(): boolean;
     getEffective(): number;
     getExpiry(): number;

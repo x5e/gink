@@ -1,5 +1,9 @@
 import { Database, IndexedDbStore, MemoryStore } from "../implementation";
-import { ensure, generateTimestamp } from "../implementation/utils";
+import {
+    ensure,
+    generateTimestamp,
+    muidToString,
+} from "../implementation/utils";
 
 it("isAlive and remove", async function () {
     for (const store of [
@@ -41,8 +45,8 @@ it("edge_type.createEdge", async function () {
 
 it("from_to", async function () {
     for (const store of [
-        new MemoryStore(true),
         new IndexedDbStore("from_to", true),
+        new MemoryStore(true),
     ]) {
         const instance = new Database(store);
         await instance.ready;
@@ -50,6 +54,7 @@ it("from_to", async function () {
         const vertex2 = await instance.createVertex();
         const vertex3 = await instance.createVertex();
         const edge_type = await instance.createEdgeType();
+        const beforeEdge12 = generateTimestamp();
         const edge12 = await edge_type.createEdge(vertex1, vertex2);
         const edge13 = await edge_type.createEdge(vertex1, vertex3);
         const edge11 = await edge_type.createEdge(vertex1, vertex1);
@@ -74,6 +79,13 @@ it("from_to", async function () {
         ensure(edgesFrom1.length === 2);
         ensure(edgesFrom1[0].equals(edge12));
         ensure(edgesFrom1[1].equals(edge13));
+
+        // move edge13 to the front
+        await edge13.remove(beforeEdge12);
+        const edgesFrom1b = await vertex1.getEdgesFrom();
+        ensure(edgesFrom1b.length === 2);
+        ensure(edgesFrom1b[0].equals(edge13));
+        ensure(edgesFrom1b[1].equals(edge12));
     }
 });
 
@@ -214,17 +226,33 @@ it("edge property restoration", async function () {
         const vertex1 = await instance.createVertex();
         const vertex2 = await instance.createVertex();
         const edgeType = await instance.createEdgeType();
+        const beforeEdges = generateTimestamp();
         const edge1 = await edgeType.createEdge(vertex1, vertex2);
+        const edge2 = await edgeType.createEdge(vertex1, vertex2);
         const prop1 = await instance.createProperty();
         const prop2 = await instance.createProperty();
-        await prop1.set(edge1, "foo");
-        await prop2.set(edge1, "bar");
+        await prop1.set(edge1, "p1e1");
+        await prop2.set(edge1, "p2e1");
+        await prop1.set(edge2, "p1e2");
+        await prop2.set(edge2, "p2e2");
         const beforeRemove = generateTimestamp();
         await edge1.remove();
+
         await edgeType.reset({ toTime: beforeRemove });
+
         const edges = await vertex1.getEdgesFrom();
-        ensure(edges.length === 1);
-        ensure((await prop1.get(edges[0])) === "foo");
-        ensure((await prop2.get(edges[0])) === "bar");
+        ensure(edges.length === 2);
+        ensure((await prop1.get(edges[0])) === "p1e1");
+        ensure((await prop2.get(edges[0])) === "p2e1");
+        ensure((await prop1.get(edges[1])) === "p1e2");
+        ensure((await prop2.get(edges[1])) === "p2e2");
+
+        // Move edge2 to the front
+        await edge2.remove(beforeEdges);
+        const edges2 = await vertex1.getEdgesFrom();
+
+        ensure(edges2.length === 2);
+        ensure((await prop1.get(edges2[0])) === "p1e2");
+        ensure((await prop2.get(edges2[0])) === "p2e2");
     }
 });

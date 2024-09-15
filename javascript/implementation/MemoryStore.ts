@@ -392,12 +392,7 @@ export class MemoryStore implements Store {
     }
 
     async getContainerBytes(address: Muid): Promise<Bytes | undefined> {
-        const addressTuple: [number, number, number] = [
-            address.timestamp,
-            address.medallion,
-            address.offset,
-        ];
-        return this.containers.get(muidTupleToString(addressTuple));
+        return this.containers.get(muidToString(address));
     }
 
     private asOfToTimestamp(asOf: AsOf): Timestamp {
