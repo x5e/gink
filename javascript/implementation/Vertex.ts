@@ -45,6 +45,43 @@ export class Vertex extends Container {
         return this.addEntry(undefined, Container.INCLUSION, change);
     }
 
+    async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        skipProperties?: boolean;
+    }): Promise<void> {
+        const toTime = args?.toTime;
+        const bundlerOrComment = args?.bundlerOrComment;
+        const skipProperties = args?.skipProperties;
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
+        if (!toTime) {
+            await this.remove(bundlerOrComment);
+        } else {
+            const aliveThen = await this.isAlive(toTime);
+            const aliveNow = await this.isAlive();
+            if (aliveThen !== aliveNow) {
+                if (aliveThen) {
+                    await this.revive(bundlerOrComment);
+                } else {
+                    await this.remove(bundlerOrComment);
+                }
+            }
+        }
+        if (!skipProperties) {
+            await this.database.resetContainerProperties(this, toTime, bundler);
+        }
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
+    }
+
     async getEdgesFrom(asOf?: AsOf) {
         return this.getEdges(true, asOf);
     }

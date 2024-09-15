@@ -425,6 +425,15 @@ export function muidTupleToString(muidTuple: MuidTuple): string {
     return `${timestamp}-${medallion}-${offset}`;
 }
 
+export function strToMuidTuple(value: string): MuidTuple {
+    const nums = value.split("-");
+    return [
+        muidHexToInt(nums[0]),
+        muidHexToInt(nums[1]),
+        muidHexToInt(nums[2]),
+    ];
+}
+
 export function strToMuid(value: string): Muid {
     const nums = value.split("-");
     return {
