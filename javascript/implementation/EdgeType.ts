@@ -238,6 +238,7 @@ export class EdgeType extends Container {
             edge.address
         );
         if (!toTime) {
+            // Resetting to epoch, so just delete all properties
             for (const [key, _] of propertiesNow.entries()) {
                 const property = <Property>(
                     await construct(this.database, strToMuid(key))
@@ -267,7 +268,7 @@ export class EdgeType extends Container {
                 // after this iteration
                 propertiesNow.delete(key);
             }
-            // Now loop through the remaining propertiesNow and delete them
+            // Now loop through the remaining entries in propertiesNow and delete them
             for (const [key, _] of propertiesNow.entries()) {
                 const property = <Property>(
                     await construct(this.database, strToMuid(key))

@@ -78,7 +78,7 @@ export class Edge extends Addressable {
     }
 
     /**
-     * If dest is not provided (or 0), the edge will be removed. This edge exact edge
+     * If dest is not provided (or 0), the edge will be removed. This exact edge
      * with the same Muid will never exist again. The only way to "revive" it is to reset
      * the database or its edgeType. In that case, a new edge will be created with the same
      * source, target, value, and properties.

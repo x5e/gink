@@ -4,11 +4,7 @@ import {
     Bundler,
     MemoryStore,
 } from "../implementation";
-import {
-    ensure,
-    generateTimestamp,
-    muidToString,
-} from "../implementation/utils";
+import { ensure, generateTimestamp } from "../implementation/utils";
 
 it("test bundle", async () => {
     for (const store of [
