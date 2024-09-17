@@ -232,6 +232,10 @@ it("edge property restoration", async function () {
         await prop1.set(edge2, "p1e2");
         await prop2.set(edge2, "p2e2");
         const beforeRemove = generateTimestamp();
+        await prop1.set(edge1, "changed");
+        await prop2.set(edge1, "changed");
+        await prop1.set(edge2, "changed");
+        await prop2.set(edge2, "changed");
         await edge1.remove();
 
         await edgeType.reset({ toTime: beforeRemove });
@@ -250,5 +254,15 @@ it("edge property restoration", async function () {
         ensure(edges2.length === 2);
         ensure((await prop1.get(edges2[0])) === "p1e2");
         ensure((await prop2.get(edges2[0])) === "p2e2");
+
+        const beforePropDel = generateTimestamp();
+        await prop2.delete(edges[0]); // delete e2 from prop2
+        ensure((await prop2.get(edges[0])) === undefined);
+
+        await edgeType.reset({ toTime: beforePropDel });
+        const edges3 = await vertex1.getEdgesFrom();
+        ensure(edges3.length === 2);
+        ensure((await prop1.get(edges3[0])) === "p1e2");
+        ensure((await prop2.get(edges3[0])) === "p2e2");
     }
 });
