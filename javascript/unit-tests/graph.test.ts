@@ -1,9 +1,5 @@
 import { Database, IndexedDbStore, MemoryStore } from "../implementation";
-import {
-    ensure,
-    generateTimestamp,
-    muidToString,
-} from "../implementation/utils";
+import { ensure, generateTimestamp } from "../implementation/utils";
 
 it("isAlive and remove", async function () {
     for (const store of [

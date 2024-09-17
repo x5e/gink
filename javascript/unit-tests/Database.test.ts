@@ -354,14 +354,21 @@ it("test full database reset", async function () {
         const e1 = await et.createEdge(v1, v2);
         const e2 = await et.createEdge(v2, v1);
         const e3 = await et.createEdge(v1, v2);
+        const baselineEdges = await v1.getEdgesFrom();
+        const originalE1 = baselineEdges[0];
+        const originalE3 = baselineEdges[1];
+        const e1Effective = await e1.getEffective();
+        const e3Effective = await e3.getEffective();
 
         await v1.setName("v1");
         await v2.setName("v2");
         await et.setName("et");
         await prop.set(e1, "p1e1");
         await prop.set(e2, "p1e2");
+        await prop.set(e3, "p1e3");
         await prop2.set(e1, "p2e1");
         await prop2.set(e2, "p2e2");
+        await prop2.set(e3, "p2e3");
 
         const graphResetTo = generateTimestamp();
 
@@ -370,16 +377,21 @@ it("test full database reset", async function () {
         await et.setName("etchanged");
         await prop.set(e1, "foo2");
         await prop.set(e2, "foo2");
+        await prop.set(e3, "foo2");
         await prop2.set(e1, "bar2");
         await prop2.set(e2, "bar2");
+        await prop2.set(e3, "bar2");
 
-        ensure((await v1.getEdgesFrom()).length === 2);
+        const edgesFrom = await v1.getEdgesFrom();
+
+        ensure(edgesFrom.length === 2);
         ensure((await v1.getEdgesTo()).length === 1);
         ensure((await v2.getEdgesFrom()).length === 1);
         ensure((await v2.getEdgesTo()).length === 2);
 
         await e1.remove();
         await e2.remove();
+        // Not removing e3
 
         ensure((await v1.getEdgesFrom()).length === 1);
         ensure((await v1.getEdgesTo()).length === 0);
@@ -397,10 +409,19 @@ it("test full database reset", async function () {
         ensure((await v1.getName()) === "v1");
         ensure((await v2.getName()) === "v2");
         ensure((await et.getName()) === "et");
+        // Ensure edges are not the same as baseline
+        ensure(v1From1[0].timestamp !== originalE1.timestamp);
+        ensure((await v1From1[0].getEffective()) === e1Effective);
+        // e3 was not removed, so it should have the same timestamp
+        ensure(v1From1[1].timestamp === originalE3.timestamp);
+        ensure((await v1From1[1].getEffective()) === e3Effective);
         // make sure properties were reconstructed on
         // previously deleted edges
         ensure((await prop.get(v1From1[0])) === "p1e1");
-        ensure((await prop.get(v1From1[1])) === "p1e2");
+        ensure((await prop.get(v1From1[1])) === "p1e3");
+
+        ensure((await prop2.get(v1From1[0])) === "p2e1");
+        ensure((await prop2.get(v1From1[1])) === "p2e3");
     }
 });
 
