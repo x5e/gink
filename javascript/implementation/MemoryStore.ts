@@ -14,6 +14,7 @@ import {
     verifyBundle,
     librariesReady,
     emptyBytes,
+    shorterHash,
 } from "./utils";
 import {
     AsOf,
@@ -73,6 +74,7 @@ export class MemoryStore implements Store {
     private byTarget: TreeMap<string, Entry> = new TreeMap();
     private verifyKeys: Map<string, Bytes> = new Map();
     private secretKeys: Map<string, KeyPair> = new Map();
+    private symmetricKeys: Map<number, Bytes> = new Map(); // keyId => symmetricKey
     constructor(private keepingHistory = true) {
         this.ready = librariesReady;
     }
@@ -83,6 +85,21 @@ export class MemoryStore implements Store {
 
     pullKeyPair(publicKey: Bytes): Promise<KeyPair> {
         return Promise.resolve(this.secretKeys.get(bytesToHex(publicKey)));
+    }
+
+    async saveSymmetricKey(symmetricKey: Bytes): Promise<number> {
+        if (symmetricKey.length !== 32) {
+            throw new Error("symmetric key must be 32 bytes");
+        }
+        await this.ready;
+        const keyId = shorterHash(symmetricKey);
+        this.symmetricKeys.set(keyId, symmetricKey);
+        return keyId;
+    }
+
+    async getSymmetricKey(keyId: number): Promise<Bytes> {
+        await this.ready;
+        return this.symmetricKeys.get(keyId);
     }
 
     dropHistory(container?: Muid, before?: AsOf): void {

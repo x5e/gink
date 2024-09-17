@@ -1,3 +1,4 @@
+import { isEqual } from 'lodash';
 import { BundleBytes, Entry, BundleView } from "../implementation/typedefs";
 import { ChainTracker } from "../implementation/ChainTracker";
 import { Store } from "../implementation/Store";
@@ -31,6 +32,7 @@ import {
     signBundle,
 } from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
+import { randombytes_buf } from "libsodium-wrappers";
 
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
@@ -315,5 +317,14 @@ export function testStore(
             errored2 = true;
         }
         ensure(errored2, "chain extension bundle allowed with identity?");
+    });
+
+    it (`${implName} save and pull symmetric keys`, async () => {
+        const symKey = randombytes_buf(32);
+        const id = await store.saveSymmetricKey(symKey);
+        const pulled = await store.getSymmetricKey(id);
+        ensure(isEqual(symKey, pulled));
+
+
     });
 }
