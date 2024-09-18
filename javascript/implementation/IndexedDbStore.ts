@@ -256,9 +256,9 @@ export class IndexedDbStore implements Store {
         return keyId;
     }
 
-    async getSymmetricKey(keyId: number): Promise<Bytes> {
+    async getSymmetricKey(keyId: number, trxn?: Transaction): Promise<Bytes> {
         await this.ready;
-        const trxn = this.getTransaction();
+        trxn = trxn ?? this.getTransaction();
         return await trxn.objectStore("symmetricKeys").get(keyId);
     }
 
@@ -536,7 +536,7 @@ export class IndexedDbStore implements Store {
                 throw new Error("expected keyId with encrypted bundle");
             }
             const symmetricKey = ensure(
-                await this.getSymmetricKey(keyId),
+                await this.getSymmetricKey(keyId, trxn),
                 "could not find symmetric key referenced in bundle"
             );
             const decrypted = decryptMessage(encrypted, symmetricKey);
