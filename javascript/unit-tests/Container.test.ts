@@ -6,7 +6,7 @@ import {
     MemoryStore,
 } from "../implementation";
 
-it("test resetContainerProperties", async function () {
+it("test resetProperties", async function () {
     for (const store of [
         new IndexedDbStore("Database.propertyReset.test", true),
         new MemoryStore(true),

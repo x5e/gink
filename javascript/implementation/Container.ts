@@ -192,7 +192,7 @@ export class Container extends Addressable {
     }
 
     /**
-     * Reset the properties associated with a container to a previous time.
+     * Reset the properties associated with this container to a previous time.
      * @param toTime optional timestamp to reset to. If not provided, the properties will be deleted.
      * @param bundlerOrComment optional bundler to add this change to, or a string to add a comment to a new bundle.
      */
