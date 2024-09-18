@@ -66,6 +66,24 @@ export async function extendChain(
     );
 }
 
+export function extendChainWithoutSign(
+    comment: string,
+    previous: BundleView,
+    timestamp: Timestamp
+): BundleBuilder {
+    const bundleBuilder = new BundleBuilder();
+    const parsedPrevious = previous.builder;
+    bundleBuilder.setMedallion(parsedPrevious.getMedallion());
+    bundleBuilder.setPrevious(parsedPrevious.getTimestamp());
+    bundleBuilder.setChainStart(parsedPrevious.getChainStart());
+    bundleBuilder.setTimestamp(timestamp); // one millisecond later
+    bundleBuilder.setComment(comment);
+    const priorHash = previous.info.hashCode;
+    ensure(priorHash && priorHash.length === 32);
+    bundleBuilder.setPriorHash(priorHash);
+    return bundleBuilder;
+}
+
 export async function addTrxns(store: Store) {
     const start1 = await makeChainStart(
         "chain1,tx1",

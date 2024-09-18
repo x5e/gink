@@ -402,7 +402,6 @@ def generic_test_drop_history(store_maker: StoreMaker):
         assert new_dir["foo"] == "baz"
 
 def generic_test_negative_offsets(store_maker: StoreMaker):
-    """ makes sure that the get_ordered_entries works """
     textproto1 = """
         medallion: 789
         chain_start: 122
@@ -457,8 +456,6 @@ def generic_test_negative_offsets(store_maker: StoreMaker):
 
 
 def generic_test_encryption(store_maker: StoreMaker):
-    """ makes sure that the get_ordered_entries works """
-
     outside_textproto = """
         medallion: 789
         chain_start: 122

@@ -62,6 +62,11 @@ export class BundleBuilder extends ImplementedMessage {
     setPriorHash(Bytes);
     getPriorHash(): Bytes;
 
+    setEncrypted(Bytes);
+    getEncrypted(): Bytes;
+    setKeyId(number);
+    getKeyId(): number;
+
     setTimestamp(number);
     setPrevious(number);
     setChainStart(number);

@@ -13,6 +13,7 @@ import {
     verifyBundle,
     librariesReady,
     shorterHash,
+    decryptMessage,
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from "idb";
 import {
@@ -52,7 +53,12 @@ import {
 } from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import { Behavior, ChangeBuilder, EntryBuilder } from "./builders";
+import {
+    Behavior,
+    ChangeBuilder,
+    EntryBuilder,
+    BundleBuilder,
+} from "./builders";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { Retrieval } from "./Retrieval";
 
@@ -455,7 +461,7 @@ export class IndexedDbStore implements Store {
         claimChain?: boolean
     ): Promise<boolean> {
         const bundleInfo = bundleView.info;
-        const bundleBuilder = bundleView.builder;
+        const bundleBuilder: BundleBuilder = bundleView.builder;
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const oldChainInfo: BundleInfo = await trxn
             .objectStore("chainInfos")
@@ -517,6 +523,28 @@ export class IndexedDbStore implements Store {
         // the getNeededTransactions faster by not requiring parsing again.
         const bundleKey: BundleInfoTuple = bundleInfoToKey(bundleInfo);
         await trxn.objectStore("trxns").add(bundleView.bytes, bundleKey);
+        // Decrypt bundle
+        const encrypted = bundleBuilder.getEncrypted();
+        if (encrypted) {
+            const keyId = bundleBuilder.getKeyId();
+            if (bundleBuilder.getChangesList().length > 0) {
+                throw new Error(
+                    "did not expect plain changes when using encryption"
+                );
+            }
+            if (!keyId) {
+                throw new Error("expected keyId with encrypted bundle");
+            }
+            const symmetricKey = ensure(
+                await this.getSymmetricKey(keyId),
+                "could not find symmetric key referenced in bundle"
+            );
+            const decrypted = decryptMessage(encrypted, symmetricKey);
+            const changeBuilder = <ChangeBuilder>(
+                ChangeBuilder.deserializeBinary(decrypted)
+            );
+            bundleBuilder.getChangesList().push(changeBuilder);
+        }
         const changesList: Array<ChangeBuilder> =
             bundleBuilder.getChangesList();
         for (let index = 0; index < changesList.length; index++) {
