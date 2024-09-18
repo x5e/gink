@@ -739,7 +739,10 @@ export function encryptMessage(message: string | Bytes, key: Bytes): Bytes {
 }
 
 export function decryptMessage(message: Bytes, key: Bytes): Bytes {
-    if (message.length < crypto_secretbox_NONCEBYTES + crypto_secretbox_MACBYTES) {
+    if (
+        message.length <
+        crypto_secretbox_NONCEBYTES + crypto_secretbox_MACBYTES
+    ) {
         throw new Error("Message length shorter than nonce + MAC");
     }
     let nonce = message.slice(0, crypto_secretbox_NONCEBYTES),

@@ -40,7 +40,12 @@ import {
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import { Behavior, BundleBuilder, ChangeBuilder, EntryBuilder } from "./builders";
+import {
+    Behavior,
+    BundleBuilder,
+    ChangeBuilder,
+    EntryBuilder,
+} from "./builders";
 import { MapIterator, TreeMap } from "jstreemap";
 import {
     getStorageKey as getStorageKey,
