@@ -9,6 +9,8 @@ import {
     BroadcastFunc,
     BundleView,
     KeyPair,
+    Value,
+    Placement,
 } from "./typedefs";
 import { BundleInfo, Muid, Entry } from "./typedefs";
 import { MemoryStore } from "./MemoryStore";
@@ -193,6 +195,14 @@ export class LogBackedStore extends LockableLog implements Store {
         }
     }
 
+    async getContainerProperties(
+        containerMuid: Muid,
+        asOf?: AsOf
+    ): Promise<Map<string, Value>> {
+        await this.ready;
+        return this.internalStore.getContainerProperties(containerMuid, asOf);
+    }
+
     async getOrderedEntries(
         container: Muid,
         through = Infinity,
@@ -218,6 +228,11 @@ export class LogBackedStore extends LockableLog implements Store {
     async getBundlesProcessed() {
         await this.ready;
         return this.bundlesProcessed;
+    }
+
+    async getLocation(entry: Muid, asOf?: AsOf): Promise<Placement> {
+        await this.ready;
+        return await this.internalStore.getLocation(entry, asOf);
     }
 
     async addBundle(

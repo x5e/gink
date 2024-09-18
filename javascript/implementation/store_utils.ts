@@ -24,8 +24,10 @@ import {
     dehydrate,
     intToHex,
     muidTupleToString,
+    muidToBuilder,
 } from "./utils";
 import { Container } from "./Container";
+import { Bundler } from "./Bundler";
 
 /**
  *
@@ -112,6 +114,32 @@ export function extractMovement(
         dest: movementBuilder.getDest(),
         purge: movementBuilder.getPurge(),
     };
+}
+
+/**
+ * Bundles a movement change into the provided bundler
+ * @param bundler The bundler to add the change to
+ * @param entryMuid The muid of the entry to move
+ * @param containerMuid The muid of the container that holds this entry
+ * @param dest Destination to move the entry to. If omitted, the entry is removed.
+ * @param purge Purge the entry from the internal store?
+ */
+export async function movementHelper(
+    bundler: Bundler,
+    entryMuid: Muid,
+    containerMuid: Muid,
+    dest?: number,
+    purge?: boolean
+): Promise<void> {
+    ensure(bundler instanceof Bundler);
+    const movementBuilder = new MovementBuilder();
+    movementBuilder.setEntry(muidToBuilder(entryMuid));
+    if (dest) movementBuilder.setDest(dest);
+    movementBuilder.setContainer(muidToBuilder(containerMuid));
+    if (purge) movementBuilder.setPurge(true);
+    const changeBuilder = new ChangeBuilder();
+    changeBuilder.setMovement(movementBuilder);
+    bundler.addChange(changeBuilder);
 }
 
 export function extractContainerMuid(

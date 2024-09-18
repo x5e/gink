@@ -37,6 +37,11 @@ export type Cookies = Map<string, string>;
 export type Indexable = MuidTuple;
 export type ActorId = number; // process ID on the server side, something more complex in the browser
 export type StorageKey = ScalarKey | MuidTuple | [MuidTuple, MuidTuple] | [];
+export type Placement = {
+    container: MuidTuple;
+    key: StorageKey;
+    placement: MuidTuple;
+};
 
 export interface BundleListener {
     (bundle: BundleView): Promise<void>;
@@ -182,6 +187,7 @@ export interface IndexedDbStoreSchema extends DBSchema {
                 MuidTuple,
             ];
             "by-container-name": [MuidTuple, string]; // for use with global property and container names
+            "by-key-placement": [StorageKey, MuidTuple]; // for use with properties and the containers they describe
             pointees: Indexable;
             locations: [MuidTuple, MuidTuple];
             sources: Indexable;

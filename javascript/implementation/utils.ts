@@ -15,6 +15,7 @@ import {
     Timestamp,
     Bytes,
     KeyPair,
+    StorageKey,
 } from "./typedefs";
 import {
     MuidBuilder,
@@ -108,6 +109,33 @@ export function generateTimestamp() {
     }
     lastTime = current;
     return current;
+}
+
+/**
+ * Converts a storage key (which is the key used in EntryBuilders) to a
+ * key usable by addEntry, etc.
+ * @param storageKey
+ * @returns
+ */
+export function fromStorageKey(
+    storageKey: StorageKey
+): ScalarKey | Muid | [Muid, Muid] {
+    let newKey: ScalarKey | Muid | [Muid, Muid];
+    if (Array.isArray(storageKey)) {
+        if (storageKey.length === 3) {
+            newKey = muidTupleToMuid(storageKey);
+        } else if (storageKey.length === 2) {
+            newKey = [
+                muidTupleToMuid(storageKey[0]),
+                muidTupleToMuid(storageKey[1]),
+            ];
+        } else {
+            throw new Error("Invalid key length?");
+        }
+    } else {
+        newKey = storageKey;
+    }
+    return newKey;
 }
 
 /**
@@ -400,6 +428,15 @@ export function muidTupleToString(muidTuple: MuidTuple): string {
     let medallion = intToHex(muidTuple[1], 13);
     let offset = intToHex(muidTuple[2], 5);
     return `${timestamp}-${medallion}-${offset}`;
+}
+
+export function strToMuidTuple(value: string): MuidTuple {
+    const nums = value.split("-");
+    return [
+        muidHexToInt(nums[0]),
+        muidHexToInt(nums[1]),
+        muidHexToInt(nums[2]),
+    ];
 }
 
 export function strToMuid(value: string): Muid {

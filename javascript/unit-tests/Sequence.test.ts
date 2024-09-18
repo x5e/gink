@@ -7,6 +7,7 @@ import {
     Sequence,
     Muid,
     Value,
+    Directory,
 } from "../implementation";
 import { ensure, matches, generateTimestamp } from "../implementation/utils";
 
@@ -359,5 +360,103 @@ it("extend", async function () {
         await instance.addBundler(bundler);
         ensure((await seq.at(7)) === 7);
         ensure((await seq.at(10)) === 10);
+    }
+});
+
+it("List.reset", async function () {
+    for (const store of [
+        new IndexedDbStore("list-reset", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+
+        const seq = await instance.createSequence();
+        const prop1 = await instance.createProperty();
+        const prop2 = await instance.createProperty();
+        await prop1.set(seq, "foo");
+        await prop2.set(seq, "bar");
+        const array = [0, 1, 2, 3, 4, 5, 6];
+        await seq.extend(array);
+        ensure((await seq.at(0)) === 0);
+        ensure((await seq.at(6)) === 6);
+        const afterExtend = generateTimestamp();
+
+        const array2 = [7, 8, 9];
+        await seq.extend(array2);
+        await prop1.set(seq, "foo2");
+        await prop2.set(seq, "bar2");
+        ensure((await seq.size()) === 10);
+        const afterSecond = generateTimestamp();
+
+        await seq.reset({ toTime: afterExtend });
+        ensure((await seq.size()) === 7);
+        ensure((await seq.at(0)) === 0);
+        ensure((await seq.at(6)) === 6);
+        ensure((await prop1.get(seq)) === "foo");
+        ensure((await prop2.get(seq)) === "bar");
+
+        await seq.reset();
+        ensure((await seq.size()) === 0);
+        ensure((await prop1.get(seq)) === undefined);
+        ensure((await prop2.get(seq)) === undefined);
+
+        await seq.reset({ toTime: afterSecond, skipProperties: true });
+        ensure((await seq.size()) === 10, (await seq.size()).toString());
+        ensure((await seq.at(0)) === 0);
+        ensure((await seq.at(9)) === 9);
+        ensure((await prop1.get(seq)) === undefined);
+        ensure((await prop2.get(seq)) === undefined);
+
+        await seq.push(10);
+        await seq.push(11);
+        await seq.move(10, 0);
+
+        await seq.reset({ toTime: afterSecond, skipProperties: true });
+        ensure((await seq.size()) === 10);
+        ensure((await seq.at(0)) === 0);
+        ensure((await seq.at(9)) === 9);
+        ensure((await prop1.get(seq)) === undefined);
+        ensure((await prop2.get(seq)) === undefined);
+
+        await seq.pop(0);
+        ensure((await seq.size()) === 9);
+        await seq.reset({ toTime: afterSecond, skipProperties: true });
+        ensure((await seq.size()) === 10);
+        ensure((await seq.at(0)) === 0);
+        ensure((await seq.at(9)) === 9);
+
+        // Test recursive reset
+        await seq.clear();
+        const box = await instance.createBox();
+        const dir = await instance.createDirectory();
+        await box.set(dir);
+        await dir.set("foo", "bar");
+        await seq.push(box);
+        const afterBox = generateTimestamp();
+        await dir.set("foo", "baz");
+        await box.set("changed!");
+        await seq.push(1);
+        const beforeReset = generateTimestamp();
+        await seq.reset({ toTime: afterBox, recurse: true });
+        ensure((await seq.size()) === 1);
+        ensure((await box.get()) instanceof Directory);
+        ensure((await dir.get("foo")) === "bar");
+
+        // Reset back
+        await seq.reset({ toTime: beforeReset, recurse: true });
+        ensure((await seq.size()) === 2);
+        ensure((await seq.at(1)) === 1);
+        ensure((await box.get()) === "changed!");
+        // This will not have been reset, since the directory was not held
+        // in the box at the time of the reset
+        ensure((await dir.get("foo")) === "bar");
+
+        await seq.shift(); // Remove the box
+
+        await seq.reset({ toTime: beforeReset, recurse: true });
+        ensure((await seq.size()) === 2);
+        ensure((await seq.at(1)) === 1);
+        ensure((await box.get()) === "changed!");
     }
 });

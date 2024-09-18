@@ -31,6 +31,8 @@ import {
     matches,
     wrapKey,
     signBundle,
+    generateTimestamp,
+    muidToString,
     encryptMessage,
 } from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
@@ -175,7 +177,7 @@ export function testStore(
                 (await keyPair).secretKey
             )
         );
-        const added = await store.addBundle(decomposition);
+        await store.addBundle(decomposition);
         ensure(decomposition.info.medallion === MEDALLION1);
         ensure(decomposition.info.timestamp === START_MICROS1);
         const containerBytes = await store.getContainerBytes({
@@ -319,6 +321,50 @@ export function testStore(
             errored2 = true;
         }
         ensure(errored2, "chain extension bundle allowed with identity?");
+    });
+
+    it(`${implName} getContainerProperties`, async () => {
+        await store.ready;
+        const database = new Database(store);
+        await database.ready;
+
+        const dir = database.getGlobalDirectory();
+        await dir.set("foo", "bar");
+
+        const prop = await database.createProperty();
+        await prop.set(dir, "bar");
+
+        const prop2 = await database.createProperty();
+        await prop2.set(dir, "baz");
+
+        const box = await database.createBox();
+        await prop.set(box, "box");
+        const after = generateTimestamp();
+
+        const properties = await store.getContainerProperties(dir.address);
+        ensure(properties.size === 2);
+        ensure(properties.get(muidToString(prop.address)) === "bar");
+        ensure(properties.get(muidToString(prop2.address)) === "baz");
+
+        // Test asOf
+        prop.set(dir, "bar2");
+        prop2.set(dir, "baz2");
+        const prop3 = await database.createProperty();
+        await prop3.set(dir, "baz3");
+        const properties2 = await store.getContainerProperties(dir.address);
+
+        ensure(properties2.size === 3);
+        ensure(properties2.get(muidToString(prop.address)) === "bar2");
+        ensure(properties2.get(muidToString(prop2.address)) === "baz2");
+        ensure(properties2.get(muidToString(prop3.address)) === "baz3");
+
+        const asOfProperties = await store.getContainerProperties(
+            dir.address,
+            after
+        );
+        ensure(asOfProperties.size === 2);
+        ensure(asOfProperties.get(muidToString(prop.address)) === "bar");
+        ensure(asOfProperties.get(muidToString(prop2.address)) === "baz");
     });
 
     it(`${implName} encryption and decryption`, async () => {

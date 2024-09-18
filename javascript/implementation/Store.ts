@@ -11,6 +11,8 @@ import {
     BundleView,
     BroadcastFunc,
     KeyPair,
+    Value,
+    Placement,
 } from "./typedefs";
 
 export interface Store {
@@ -79,7 +81,18 @@ export interface Store {
     // TODO maybe return an actual data structure ?
     getContainerBytes: (address: Muid) => Promise<Bytes | undefined>;
 
+    /**
+     * In ordered container types (Sequence and EdgeType), entries may be moved around.
+     * This method returns information about the current effective time, which may
+     * be different from the timestamp of the entry itself.
+     * @param entry the muid of the entry
+     * @param asOf optional timestamp to look back to
+     * @returns an object with the container muid, key, and the placement id.
+     */
+    getLocation: (entry: Muid, asOf?: AsOf) => Promise<Placement | undefined>;
+
     getEntryById(entryMuid: Muid, asOf?: AsOf): Promise<Entry | undefined>;
+
     getEntryByKey(
         container: Muid,
         key?: ScalarKey | Muid | [Muid, Muid],
@@ -96,6 +109,7 @@ export interface Store {
         through: number,
         asOf?: AsOf
     ): Promise<Map<string, Entry>>;
+
     getEntriesBySourceOrTarget(
         vertex: Muid,
         source: boolean,
@@ -109,6 +123,17 @@ export interface Store {
      * @param asOf optional timestamp to look back to
      */
     getContainersByName(name: string, asOf?: AsOf): Promise<Array<Muid>>;
+
+    /**
+     * Get the properties corresponding to a container.
+     * @param containerMuid the Muid of the container to get the properties of
+     * @param asOf optional timestamp to look back to
+     * @returns a Map of string Muid (of the Property Container) to Value
+     */
+    getContainerProperties(
+        containerMuid: Muid,
+        asOf?: AsOf
+    ): Promise<Map<string, Value>>;
 
     /**
      * Adds a callback to be called when a bundle was added by a

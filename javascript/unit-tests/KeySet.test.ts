@@ -5,7 +5,7 @@ import {
     IndexedDbStore,
     MemoryStore,
 } from "../implementation";
-import { ensure, matches } from "../implementation/utils";
+import { ensure, generateTimestamp, matches } from "../implementation/utils";
 import { KeySet } from "../implementation";
 
 it("add and has basic data", async function () {
@@ -201,5 +201,48 @@ it("KeySet.clear(purge)", async function () {
         await ks.clear(true);
         const found = await instance.store.getKeyedEntries(ks.address, middle);
         ensure(!found.size);
+    }
+});
+
+it("KeySet.reset", async function () {
+    for (const store of [
+        new IndexedDbStore("ks-test10", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database(store);
+        await instance.ready;
+        const ks = await instance.createKeySet();
+        await ks.add("key1");
+        const prop1 = await instance.createProperty();
+        const prop2 = await instance.createProperty();
+        await prop1.set(ks, "foo");
+        await prop2.set(ks, "bar");
+        const afterOne = generateTimestamp();
+        await ks.add("key2");
+        await prop1.set(ks, "foo2");
+        await prop2.set(ks, "bar2");
+        ensure(await ks.has("key2"));
+        await ks.reset({ toTime: afterOne });
+        ensure(!(await ks.has("key2")));
+        ensure(await ks.has("key1"));
+        ensure((await prop1.get(ks)) === "foo");
+        ensure((await prop2.get(ks)) === "bar");
+        await ks.reset();
+        ensure(!(await ks.has("key1")));
+        ensure((await ks.size()) === 0);
+        ensure((await prop1.get(ks)) === undefined);
+        ensure((await prop2.get(ks)) === undefined);
+        await ks.add("key3");
+        const after3 = generateTimestamp();
+        await ks.add("key4");
+        ensure((await ks.size()) === 2);
+        await ks.delete("key3");
+        ensure((await ks.size()) === 1);
+        await ks.reset({ toTime: after3, skipProperties: true });
+        ensure((await ks.size()) === 1);
+        ensure(await ks.has("key3"));
+        ensure(!(await ks.has("key4")));
+        ensure((await prop1.get(ks)) === undefined);
+        ensure((await prop2.get(ks)) === undefined);
     }
 });

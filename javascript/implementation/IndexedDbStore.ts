@@ -1,3 +1,4 @@
+import { isEqual } from "lodash";
 import {
     builderToMuid,
     ensure,
@@ -38,6 +39,8 @@ import {
     Timestamp,
     BundleView,
     KeyPair,
+    Value,
+    Placement,
 } from "./typedefs";
 import {
     extractContainerMuid,
@@ -77,7 +80,7 @@ type Transaction = IDBPTransaction<
         | "secretKeys"
         | "symmetricKeys"
     )[],
-    "readwrite"
+    "readwrite" | "readonly"
 >;
 
 if (eval("typeof indexedDB") === "undefined") {
@@ -202,6 +205,12 @@ export class IndexedDbStore implements Store {
                     "containerId",
                     "value",
                 ]); // Useful for quickly looking up a container by its name
+
+                // This index is used to find all properties that describe a particular container.
+                entries.createIndex("by-key-placement", [
+                    "storageKey",
+                    "placementId",
+                ]);
 
                 // ideally the next three indexes would be partial indexes, covering only sequences and edges
                 // it might be worth pulling them out into separate lookup tables.
@@ -346,6 +355,56 @@ export class IndexedDbStore implements Store {
                 this.wrapped.close();
             }
         }
+    }
+
+    async getLocation(
+        entry: Muid,
+        asOf?: AsOf
+    ): Promise<Placement | undefined> {
+        const asOfTs: Timestamp = asOf
+            ? await this.asOfToTimestamp(asOf)
+            : generateTimestamp();
+        const trxn = this.wrapped.transaction(
+            ["entries", "clearances", "removals"],
+            "readonly"
+        );
+        const range = IDBKeyRange.bound(
+            [muidToTuple(entry), [0]],
+            [muidToTuple(entry), [Infinity]]
+        );
+        let cursor = await trxn
+            .objectStore("entries")
+            .index("locations")
+            .openCursor(range, "prev");
+        if (cursor && cursor.value) {
+            const containerId = cursor.value.containerId;
+            const placementId = cursor.value.placementId;
+            const entryId = cursor.value.entryId;
+            const lastClear = await this.getClearanceTime(
+                trxn,
+                containerId,
+                asOfTs
+            );
+            const removalLower = [entryId];
+            const removalUpper = [entryId, [asOfTs]];
+            const removalCursor = await trxn
+                .objectStore("removals")
+                .index("by-removing")
+                .openCursor(
+                    IDBKeyRange.bound(removalLower, removalUpper),
+                    "prev"
+                );
+            const foundRemoval = removalCursor && removalCursor.value;
+
+            if (lastClear > placementId[0] || foundRemoval) return undefined;
+
+            return {
+                container: containerId,
+                key: cursor.value.storageKey,
+                placement: placementId,
+            };
+        }
+        return undefined;
     }
 
     private async asOfToTimestamp(asOf: AsOf): Promise<Timestamp> {
@@ -855,7 +914,7 @@ export class IndexedDbStore implements Store {
             desiredSrc,
             asOfTs
         );
-        const lower = [desiredSrc, Behavior.DIRECTORY];
+        const lower = [desiredSrc];
         const searchRange = IDBKeyRange.lowerBound(lower);
         let cursor = await trxn
             .objectStore("entries")
@@ -1028,7 +1087,7 @@ export class IndexedDbStore implements Store {
             [entryId, [asOfTs]]
         );
         const trxn = this.wrapped.transaction(
-            ["entries", "removals"],
+            ["entries", "removals", "clearances"],
             "readonly"
         );
         const entryCursor = await trxn
@@ -1039,17 +1098,26 @@ export class IndexedDbStore implements Store {
             return undefined;
         }
         const entry: Entry = entryCursor.value;
-        const removalRange = IDBKeyRange.bound(
-            [entry.placementId],
-            [entry.placementId, [asOfTs]]
+        const lastClear = await this.getClearanceTime(
+            trxn,
+            entry.containerId,
+            asOfTs
         );
-        const removalCursor = await trxn
-            .objectStore("removals")
-            .openCursor(removalRange);
-        if (removalCursor) {
-            return undefined;
+        if (entry.placementId[0] >= lastClear) {
+            const removalRange = IDBKeyRange.bound(
+                [entry.placementId],
+                [entry.placementId, [asOfTs]]
+            );
+            const removalCursor = await trxn
+                .objectStore("removals")
+                .index("by-removing")
+                .openCursor(removalRange);
+
+            if (!removalCursor) {
+                return entry;
+            }
         }
-        return entry;
+        return undefined;
     }
 
     async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
@@ -1110,6 +1178,70 @@ export class IndexedDbStore implements Store {
                 !entry.deletion
             ) {
                 result.push(muidTupleToMuid(key));
+            }
+        }
+        return result;
+    }
+
+    async getContainerProperties(
+        containerMuid: Muid,
+        asOf?: AsOf
+    ): Promise<Map<string, Value>> {
+        const asOfTs: Timestamp = asOf
+            ? await this.asOfToTimestamp(asOf)
+            : generateTimestamp();
+        const containerTuple = muidToTuple(containerMuid);
+
+        const txn = this.wrapped.transaction(
+            ["entries", "clearances"],
+            "readonly"
+        );
+        const range = IDBKeyRange.bound(
+            [containerTuple],
+            [containerTuple, [asOfTs]]
+        );
+        let cursor = await txn
+            .objectStore("entries")
+            .index("by-key-placement")
+            .openCursor(range);
+        const result: Map<string, Value> = new Map();
+        for (
+            ;
+            cursor &&
+            Array.isArray(cursor.key[0]) &&
+            isEqual(cursor.key[0], containerTuple);
+            cursor = await cursor.continue()
+        ) {
+            const entry = <Entry>cursor.value;
+            ensure(entry.behavior === Behavior.PROPERTY);
+            ensure(isEqual(entry.storageKey, containerTuple));
+            if (
+                !(
+                    Array.isArray(entry.storageKey) &&
+                    entry.storageKey.length === 3
+                )
+            ) {
+                // This is also kinda just to keep typescript happy.
+                // If storageKey is equal to containerMuid, this will never run.
+                throw new Error("Unexpected storageKey for property");
+            }
+            const clearanceTime = await this.getClearanceTime(
+                txn,
+                muidToTuple(muidTupleToMuid(entry.containerId)),
+                asOfTs
+            );
+            if (
+                entry.entryId[0] < asOfTs &&
+                entry.entryId[0] >= clearanceTime
+            ) {
+                if (entry.deletion) {
+                    result.delete(muidTupleToString(entry.containerId));
+                } else {
+                    result.set(
+                        muidTupleToString(entry.containerId),
+                        entry.value
+                    );
+                }
             }
         }
         return result;

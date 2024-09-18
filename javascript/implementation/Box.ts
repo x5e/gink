@@ -2,7 +2,7 @@ import { Database } from "./Database";
 import { Container } from "./Container";
 import { Value, Muid, AsOf } from "./typedefs";
 import { Bundler } from "./Bundler";
-import { ensure } from "./utils";
+import { ensure, muidToString } from "./utils";
 import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
@@ -65,6 +65,60 @@ export class Box extends Container {
             asOf
         );
         return +!(entry === undefined || entry.deletion);
+    }
+
+    async reset(args?: {
+        toTime?: AsOf;
+        bundlerOrComment?: Bundler | string;
+        skipProperties?: boolean;
+        recurse?: boolean;
+        seen?: Set<string>;
+    }): Promise<void> {
+        const toTime = args?.toTime;
+        const bundlerOrComment = args?.bundlerOrComment;
+        const skipProperties = args?.skipProperties;
+        const recurse = args?.recurse;
+        const seen = recurse ? (args?.seen ?? new Set()) : undefined;
+        if (seen) {
+            seen.add(muidToString(this.address));
+        }
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
+        if (!toTime) {
+            // If no time is specified, we are resetting to epoch, which is just a clear
+            this.clear(false, bundler);
+        } else {
+            const thereNow = await this.get();
+            const thereThen = await this.get(toTime);
+            if (thereThen !== thereNow) {
+                await this.set(thereThen, bundler);
+            }
+            if (
+                seen &&
+                thereThen instanceof Container &&
+                !seen.has(muidToString(thereThen.address))
+            ) {
+                await thereThen.reset({
+                    toTime,
+                    bundlerOrComment: bundler,
+                    skipProperties,
+                    recurse,
+                    seen,
+                });
+            }
+        }
+        if (!skipProperties) {
+            await this.database.resetContainerProperties(this, toTime, bundler);
+        }
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
     }
 
     /**
