@@ -15,6 +15,7 @@ import {
     Indexable,
     BundleInfoTuple,
     Movement,
+    Value,
 } from "./typedefs";
 import {
     ensure,
@@ -25,6 +26,7 @@ import {
     intToHex,
     muidTupleToString,
     muidToBuilder,
+    wrapValue,
 } from "./utils";
 import { Container } from "./Container";
 import { Bundler } from "./Bundler";
@@ -242,4 +244,28 @@ export function bundleInfoToKey(bundleInfo: BundleInfo): BundleInfoTuple {
         bundleInfo.priorTime || 0,
         bundleInfo.comment || "",
     ];
+}
+
+/**
+ * Utility function to add a property entry change to a bundler without reconstructing the property.
+ * @param bundler required bundler to add this change to
+ * @param propertyMuid the Muid of the property to add this entry to
+ * @param containerMuid the Muid of the container this value is describing
+ * @param value the property value associated with the container. If omitted, the property is deleted.
+ */
+export function bundlePropertyEntry(
+    bundler: Bundler,
+    propertyMuid: Muid,
+    containerMuid: Muid,
+    value?: Value
+): void {
+    const entryBuilder = new EntryBuilder();
+    entryBuilder.setDescribing(muidToBuilder(containerMuid));
+    entryBuilder.setBehavior(Behavior.PROPERTY);
+    entryBuilder.setContainer(muidToBuilder(propertyMuid));
+    if (value) entryBuilder.setValue(wrapValue(value));
+    else entryBuilder.setDeletion(true);
+    const changeBuilder = new ChangeBuilder();
+    changeBuilder.setEntry(entryBuilder);
+    bundler.addChange(changeBuilder);
 }

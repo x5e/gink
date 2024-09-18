@@ -75,7 +75,7 @@ export class Vertex extends Container {
             }
         }
         if (!skipProperties) {
-            await this.database.resetContainerProperties(this, toTime, bundler);
+            await this.resetProperties(toTime, bundler);
         }
         if (immediate) {
             await this.database.addBundler(bundler);
