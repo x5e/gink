@@ -87,27 +87,41 @@ export class EdgeType extends Container {
                 Infinity,
                 toTime
             );
-            // Need something subscriptable to compare by position
             const entriesNow = await this.database.store.getOrderedEntries(
                 this.address,
                 Infinity
             );
             for (const [key, entry] of entriesThen) {
-                const placementTupleThen = entry.placementId;
+                ensure(
+                    isEqual(muidToTuple(this.address), entry.containerId),
+                    "entry's containerId doesn't match this edgeType's address"
+                );
+                const edgeData = entryToEdgeData(entry);
+                const effectiveThen = entry.storageKey as number;
                 const placementNow = await this.database.store.getLocation(
                     muidTupleToMuid(entry.entryId)
                 );
-                const placementTupleNow = placementNow
-                    ? placementNow.placement
+                const effectiveNow = placementNow
+                    ? (placementNow.key as number)
                     : undefined;
 
-                if (!placementNow) {
+                if (!effectiveNow) {
                     // This entry existed then, but has since been deleted
                     // Need to re-add it to the previous location
-                    const edgeData = entryToEdgeData(entry);
                     const entryBuilder = new EntryBuilder();
                     entryBuilder.setContainer(muidToBuilder(this.address));
-                    entryBuilder.setKey(wrapKey(placementTupleThen[0]));
+                    /*
+                        This confused me while writing this, so hopefully it helps
+                        whoever is reading this:
+
+                        The effective timestamp is set here, but it will also later
+                        be the storageKey when the entry is converted from EntryBuilder
+                        to Entry.
+
+                        Setting the key here directly will get overwritten by setPair
+                        since they are oneof in the proto definition.
+                    */
+                    entryBuilder.setEffective(effectiveThen);
                     entryBuilder.setBehavior(entry.behavior);
                     if (entry.value) {
                         entryBuilder.setValue(wrapValue(entry.value));
@@ -125,10 +139,9 @@ export class EdgeType extends Container {
                             muidTupleToMuid(entry.entryId),
                             toTime
                         );
-                    ensure(
-                        isEqual(muidToTuple(this.address), entry.containerId),
-                        "entry's containerId doesn't match this edgeType's address"
-                    );
+                    // Not using this.createEdge because we already added the
+                    // entry to the bundler. this.createEdge does not allow
+                    // us to adjust the position of the edge.
                     const newEdge = new Edge(
                         this.database,
                         changeMuid,
@@ -142,35 +155,32 @@ export class EdgeType extends Container {
                             property.behavior === Behavior.PROPERTY,
                             "constructed container isn't a property?"
                         );
-
                         await property.set(newEdge, value, bundler);
                     }
                 } else {
-                    if (
-                        placementTupleNow &&
-                        placementTupleThen[0] !== placementTupleNow[0]
-                    ) {
+                    if (effectiveNow && effectiveNow !== effectiveThen) {
                         // This entry exists, but has been moved
                         // Need to move it back
                         await movementHelper(
                             bundler,
                             muidTupleToMuid(entry.entryId),
                             this.address,
-                            placementTupleThen[0],
+                            effectiveThen,
                             false
                         );
-                        // reset the properties of this edge
-                        await this.database.resetContainerProperties(
-                            muidTupleToMuid(entry.entryId),
-                            toTime,
-                            bundler
-                        );
                     }
+                    // reset the properties of this edge
+                    await this.resetEdgeProperties(
+                        muidTupleToMuid(entry.entryId),
+                        edgeData,
+                        toTime,
+                        bundler
+                    );
                     // Need to remove the current entry from entriesNow if
                     // 1) the entry exists but was moved, or 2) the entry is untouched
                     ensure(
                         entriesNow.delete(
-                            `${placementTupleNow[0]},${muidTupleToString(entry.entryId)}`
+                            `${effectiveNow},${muidTupleToString(placementNow.placement)}`
                         ),
                         "entry not found in entriesNow"
                     );
@@ -191,6 +201,84 @@ export class EdgeType extends Container {
         if (!skipProperties) {
             // Reset the properties of this edgeType
             await this.database.resetContainerProperties(this, toTime, bundler);
+        }
+        if (immediate) {
+            await this.database.addBundler(bundler);
+        }
+    }
+
+    /**
+     * Specific property reset method to reset the properties of an edge. Resets the properties
+     * associated with the edge to toTime.
+     *
+     * This is separated from the container reset method due to Edges being handled differently from
+     * containers (edges are not stored in the internal container database like other containers).
+     * @param edgeMuid the muid of the edge to reset
+     * @param edgeData the data of the edge to reset
+     * @param toTime optional timestamp to reset the properties to
+     * @param bundlerOrComment optional bundler or comment
+     */
+    private async resetEdgeProperties(
+        edgeMuid: Muid,
+        edgeData: EdgeData,
+        toTime?: AsOf,
+        bundlerOrComment?: Bundler | string
+    ) {
+        let immediate = false;
+        let bundler: Bundler;
+        if (bundlerOrComment instanceof Bundler) {
+            bundler = bundlerOrComment;
+        } else {
+            immediate = true;
+            bundler = new Bundler(bundlerOrComment);
+        }
+        const edge = new Edge(this.database, edgeMuid, edgeData);
+
+        const propertiesNow = await this.database.store.getContainerProperties(
+            edge.address
+        );
+        if (!toTime) {
+            // Resetting to epoch, so just delete all properties
+            for (const [key, _] of propertiesNow.entries()) {
+                const property = <Property>(
+                    await construct(this.database, strToMuid(key))
+                );
+                ensure(
+                    property.behavior === Behavior.PROPERTY,
+                    "constructed container isn't a property?"
+                );
+                await property.delete(edge, bundler);
+            }
+        } else {
+            const propertiesThen =
+                await this.database.store.getContainerProperties(edge, toTime);
+
+            for (const [key, value] of propertiesThen.entries()) {
+                if (value !== propertiesNow.get(key)) {
+                    const property = <Property>(
+                        await construct(this.database, strToMuid(key))
+                    );
+                    ensure(
+                        property.behavior === Behavior.PROPERTY,
+                        "constructed container isn't a property?"
+                    );
+                    await property.set(edge, value, bundler);
+                }
+                // Remove from propertiesNow so we can delete the rest
+                // after this iteration
+                propertiesNow.delete(key);
+            }
+            // Now loop through the remaining entries in propertiesNow and delete them
+            for (const [key, _] of propertiesNow.entries()) {
+                const property = <Property>(
+                    await construct(this.database, strToMuid(key))
+                );
+                ensure(
+                    property.behavior === Behavior.PROPERTY,
+                    "constructed container isn't a property?"
+                );
+                await property.delete(edge, bundler);
+            }
         }
         if (immediate) {
             await this.database.addBundler(bundler);

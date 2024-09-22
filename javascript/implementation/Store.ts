@@ -13,6 +13,7 @@ import {
     KeyPair,
     Value,
     Placement,
+    MuidTuple,
 } from "./typedefs";
 
 export interface Store {
@@ -98,6 +99,7 @@ export interface Store {
         key?: ScalarKey | Muid | [Muid, Muid],
         asOf?: AsOf
     ): Promise<Entry | undefined>;
+
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<string, Entry>>;
 
     /**
@@ -134,6 +136,11 @@ export interface Store {
         containerMuid: Muid,
         asOf?: AsOf
     ): Promise<Map<string, Value>>;
+
+    /**
+     * Get every container in the store.
+     */
+    getAllContainerTuples(): Promise<MuidTuple[]>;
 
     /**
      * Adds a callback to be called when a bundle was added by a

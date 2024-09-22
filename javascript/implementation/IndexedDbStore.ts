@@ -1164,7 +1164,10 @@ export class IndexedDbStore implements Store {
             cursor = await cursor.continue()
         ) {
             const entry = <Entry>cursor.value;
-            ensure(entry.behavior === Behavior.PROPERTY);
+            // TODO: think about a better way to do this. If there is a group that includes
+            // this container, it may show up here. Though there could only be one entry per group,
+            // so maybe not that big of a deal.
+            if (!(entry.behavior === Behavior.PROPERTY)) continue;
             ensure(isEqual(entry.storageKey, containerTuple));
             if (
                 !(
@@ -1198,6 +1201,13 @@ export class IndexedDbStore implements Store {
         return result;
     }
 
+    async getAllContainerTuples() {
+        return await this.wrapped
+            .transaction("containers", "readonly")
+            .objectStore("containers")
+            .getAllKeys();
+    }
+
     // for debugging, not part of the api/interface
     async getAllEntryKeys() {
         return await this.wrapped
@@ -1220,14 +1230,6 @@ export class IndexedDbStore implements Store {
             .transaction("removals", "readonly")
             .objectStore("removals")
             .getAll();
-    }
-
-    // for debugging, not part of the api/interface
-    async getAllContainerTuples() {
-        return await this.wrapped
-            .transaction("containers", "readonly")
-            .objectStore("containers")
-            .getAllKeys();
     }
 
     // Note the IndexedDB has problems when await is called on anything unrelated

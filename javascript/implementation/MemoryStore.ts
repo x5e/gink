@@ -392,12 +392,7 @@ export class MemoryStore implements Store {
     }
 
     async getContainerBytes(address: Muid): Promise<Bytes | undefined> {
-        const addressTuple: [number, number, number] = [
-            address.timestamp,
-            address.medallion,
-            address.offset,
-        ];
-        return this.containers.get(muidTupleToString(addressTuple));
+        return this.containers.get(muidToString(address));
     }
 
     private asOfToTimestamp(asOf: AsOf): Timestamp {
@@ -586,6 +581,7 @@ export class MemoryStore implements Store {
             const parts = iterator.key.split(",");
             if (parts[0] !== strMuid) break;
             const entry = iterator.value;
+            if (!(entry.behavior === Behavior.PROPERTY)) continue;
             const entryMuid = strToMuid(parts[1]);
             if (
                 entryMuid.timestamp < clearTime ||
@@ -899,6 +895,15 @@ export class MemoryStore implements Store {
         return entries;
     }
 
+    getAllContainerTuples(): Promise<MuidTuple[]> {
+        const arr = [];
+        arr.push([-1, -1, 4], [-1, -1, 10]);
+        for (const containerIdStr of this.containers.keys()) {
+            arr.push(strToMuidTuple(containerIdStr));
+        }
+        return Promise.resolve(arr);
+    }
+
     isSoftDeleted(entry: Entry, asOfTs: Timestamp): boolean {
         const placementIdStr = muidTupleToString(entry.placementId);
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
@@ -938,16 +943,6 @@ export class MemoryStore implements Store {
     // for debugging, not part of the api/interface
     getAllRemovals(): TreeMap<string, string> {
         return this.removals;
-    }
-
-    // for debugging, not part of the api/interface
-    getAllContainerTuples(): Array<MuidTuple> {
-        const arr = [];
-        arr.push([-1, -1, 4], [-1, -1, 10]);
-        for (const containerIdStr of this.containers.keys()) {
-            arr.push(muidToTuple(strToMuid(containerIdStr)));
-        }
-        return arr;
     }
 
     addFoundBundleCallBack(callback: BroadcastFunc): void {
