@@ -221,7 +221,21 @@ export class Database {
             immediate = true;
             bundler = new Bundler(bundlerOrComment);
         }
-        const globalContainers: MuidTuple[] = [[-1, -1, Behavior.DIRECTORY]];
+        // Leaving off Behavior.PROPERTY since each individual property will get reset
+        // with the other container reset calls
+        const globalBehaviors = [
+            Behavior.BOX,
+            Behavior.SEQUENCE,
+            Behavior.PAIR_MAP,
+            Behavior.DIRECTORY,
+            Behavior.KEY_SET,
+            Behavior.GROUP,
+            Behavior.PAIR_SET,
+        ];
+        const globalContainers: MuidTuple[] = [];
+        for (const behavior of globalBehaviors) {
+            globalContainers.push([-1, -1, behavior]);
+        }
         const containers = await this.store.getAllContainerTuples();
 
         for (const muidTuple of containers) {
