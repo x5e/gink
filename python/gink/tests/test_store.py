@@ -473,6 +473,18 @@ def generic_test_encryption(store_maker: StoreMaker):
                 }
             }
         }
+        changes {
+            entry {
+                behavior: DIRECTORY
+                container { timestamp: -1, medallion: -1, offset: 4 }
+                key {
+                    characters: "key"
+                }
+                value {
+                    characters: "top secret"
+                }
+            }
+        }
     """
 
     with closing(store_maker()) as store:
@@ -493,6 +505,12 @@ def generic_test_encryption(store_maker: StoreMaker):
         store.apply_bundle(signing_key.sign(outside_serialized))
         global_box_id = Muid(-1, -1, 1)
         result = store.get_entry_by_key(global_box_id, None, -1)
+        assert result is not None
+        secret = result.builder.value.characters
+        assert secret == "top secret"
+
+        global_dir_id = Muid(-1, -1, 4)
+        result = store.get_entry_by_key(global_dir_id, "key", -1)
         assert result is not None
         secret = result.builder.value.characters
         assert secret == "top secret"
