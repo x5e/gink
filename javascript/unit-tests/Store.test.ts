@@ -1,3 +1,4 @@
+import { isEqual } from "lodash";
 import { BundleBytes, Entry, BundleView } from "../implementation/typedefs";
 import { ChainTracker } from "../implementation/ChainTracker";
 import { Store } from "../implementation/Store";
@@ -21,6 +22,7 @@ import {
     START_MICROS2,
     NEXT_TS2,
     keyPair,
+    extendChainWithoutSign,
 } from "./test_utils";
 import {
     muidToBuilder,
@@ -31,8 +33,10 @@ import {
     signBundle,
     generateTimestamp,
     muidToString,
+    encryptMessage,
 } from "../implementation/utils";
 import { Bundler, Database } from "../implementation";
+import { randombytes_buf } from "libsodium-wrappers";
 
 // makes an empty Store for testing purposes
 export type StoreMaker = () => Promise<Store>;
@@ -361,5 +365,57 @@ export function testStore(
         ensure(asOfProperties.size === 2);
         ensure(asOfProperties.get(muidToString(prop.address)) === "bar");
         ensure(asOfProperties.get(muidToString(prop2.address)) === "baz");
+    });
+
+    it(`${implName} encryption and decryption`, async () => {
+        // Test explicitly saving and pulling a symmetric key
+        const symKey = randombytes_buf(32);
+        const id = await store.saveSymmetricKey(symKey);
+        const pulled = await store.getSymmetricKey(id);
+        ensure(isEqual(symKey, pulled));
+
+        // Test encryption and decryption
+        const chainStart = await makeChainStart(
+            "Hello, World!",
+            MEDALLION1,
+            START_MICROS1
+        );
+        await store.addBundle(chainStart);
+        // Can't find a way to test this without a real bundle
+        // (we used a string formatter in python, which is way easier)
+        const bundleBuilder = extendChainWithoutSign(
+            "Hello, again!",
+            chainStart,
+            NEXT_TS1
+        );
+        const changeBuilder = new ChangeBuilder();
+        const entryBuilder = new EntryBuilder();
+        entryBuilder.setBehavior(Behavior.BOX);
+        entryBuilder.setContainer(
+            muidToBuilder({ medallion: -1, timestamp: -1, offset: 1 })
+        );
+        entryBuilder.setValue(wrapValue("top secret"));
+        changeBuilder.setEntry(entryBuilder);
+        const encrypted = encryptMessage(
+            changeBuilder.serializeBinary(),
+            symKey
+        );
+        bundleBuilder.setKeyId(id);
+        bundleBuilder.setEncrypted(encrypted);
+        const decomp = new Decomposition(
+            signBundle(
+                bundleBuilder.serializeBinary(),
+                (await keyPair).secretKey
+            )
+        );
+        await store.addBundle(decomp);
+
+        const result = await store.getEntryByKey({
+            medallion: -1,
+            timestamp: -1,
+            offset: 1,
+        });
+        ensure(result !== undefined);
+        ensure(result.value === "top secret");
     });
 }

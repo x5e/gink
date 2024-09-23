@@ -208,4 +208,9 @@ export interface IndexedDbStoreSchema extends DBSchema {
         value: Bytes;
         key: Bytes;
     };
+
+    symmetricKeys: {
+        value: Bytes;
+        key: number;
+    };
 }

@@ -96,6 +96,14 @@ export class LogBackedStore extends LockableLog implements Store {
         return await this.internalStore.pullKeyPair(publicKey);
     }
 
+    async saveSymmetricKey(symmetricKey: Bytes): Promise<number> {
+        return await this.internalStore.saveSymmetricKey(symmetricKey);
+    }
+
+    async getSymmetricKey(keyId: number): Promise<Bytes> {
+        return await this.internalStore.getSymmetricKey(keyId);
+    }
+
     get ready() {
         return this.logBackedStoreReady;
     }

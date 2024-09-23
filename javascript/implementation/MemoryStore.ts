@@ -15,6 +15,8 @@ import {
     librariesReady,
     emptyBytes,
     strToMuidTuple,
+    shorterHash,
+    decryptMessage,
 } from "./utils";
 import {
     AsOf,
@@ -41,7 +43,12 @@ import {
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import { Behavior, ChangeBuilder, EntryBuilder } from "./builders";
+import {
+    Behavior,
+    BundleBuilder,
+    ChangeBuilder,
+    EntryBuilder,
+} from "./builders";
 import { MapIterator, TreeMap } from "jstreemap";
 import {
     getStorageKey as getStorageKey,
@@ -78,6 +85,7 @@ export class MemoryStore implements Store {
     private byTarget: TreeMap<string, Entry> = new TreeMap();
     private verifyKeys: Map<string, Bytes> = new Map();
     private secretKeys: Map<string, KeyPair> = new Map();
+    private symmetricKeys: Map<number, Bytes> = new Map(); // keyId => symmetricKey
     constructor(private keepingHistory = true) {
         this.ready = librariesReady;
     }
@@ -88,6 +96,21 @@ export class MemoryStore implements Store {
 
     pullKeyPair(publicKey: Bytes): Promise<KeyPair> {
         return Promise.resolve(this.secretKeys.get(bytesToHex(publicKey)));
+    }
+
+    async saveSymmetricKey(symmetricKey: Bytes): Promise<number> {
+        if (symmetricKey.length !== 32) {
+            throw new Error("symmetric key must be 32 bytes");
+        }
+        await this.ready;
+        const keyId = shorterHash(symmetricKey);
+        this.symmetricKeys.set(keyId, symmetricKey);
+        return keyId;
+    }
+
+    async getSymmetricKey(keyId: number): Promise<Bytes> {
+        await this.ready;
+        return this.symmetricKeys.get(keyId);
     }
 
     dropHistory(container?: Muid, before?: AsOf): void {
@@ -157,7 +180,7 @@ export class MemoryStore implements Store {
         claimChain?: boolean
     ): Promise<boolean> {
         await this.ready;
-        const bundleBuilder = bundle.builder;
+        const bundleBuilder: BundleBuilder = bundle.builder;
         const bundleInfo = bundle.info;
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const oldChainInfo = this.chainInfos.get(
@@ -215,6 +238,28 @@ export class MemoryStore implements Store {
         const bundleKey: BundleInfoTuple =
             MemoryStore.bundleInfoToKey(bundleInfo);
         this.trxns.set(bundleKey, bundle.bytes);
+        // Decrypt bundle
+        const encrypted = bundleBuilder.getEncrypted();
+        if (encrypted) {
+            const keyId = bundleBuilder.getKeyId();
+            if (bundleBuilder.getChangesList().length > 0) {
+                throw new Error(
+                    "did not expect plain changes when using encryption"
+                );
+            }
+            if (!keyId) {
+                throw new Error("expected keyId with encrypted bundle");
+            }
+            const symmetricKey = ensure(
+                await this.getSymmetricKey(keyId),
+                "could not find symmetric key referenced in bundle"
+            );
+            const decrypted = decryptMessage(encrypted, symmetricKey);
+            const changeBuilder = <ChangeBuilder>(
+                ChangeBuilder.deserializeBinary(decrypted)
+            );
+            bundleBuilder.getChangesList().push(changeBuilder);
+        }
         const changesList: Array<ChangeBuilder> =
             bundleBuilder.getChangesList();
         for (let index = 0; index < changesList.length; index++) {

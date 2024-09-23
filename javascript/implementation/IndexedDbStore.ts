@@ -13,6 +13,8 @@ import {
     muidTupleToMuid,
     verifyBundle,
     librariesReady,
+    shorterHash,
+    decryptMessage,
 } from "./utils";
 import { deleteDB, IDBPDatabase, openDB, IDBPTransaction } from "idb";
 import {
@@ -54,7 +56,12 @@ import {
 } from "./store_utils";
 import { ChainTracker } from "./ChainTracker";
 import { Store } from "./Store";
-import { Behavior, ChangeBuilder, EntryBuilder } from "./builders";
+import {
+    Behavior,
+    ChangeBuilder,
+    EntryBuilder,
+    BundleBuilder,
+} from "./builders";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { Retrieval } from "./Retrieval";
 
@@ -71,6 +78,7 @@ type Transaction = IDBPTransaction<
         | "identities"
         | "verifyKeys"
         | "secretKeys"
+        | "symmetricKeys"
     )[],
     "readwrite" | "readonly"
 >;
@@ -166,6 +174,7 @@ export class IndexedDbStore implements Store {
                 db.createObjectStore("identities");
                 db.createObjectStore("verifyKeys");
                 db.createObjectStore("secretKeys");
+                db.createObjectStore("symmetricKeys");
 
                 db.createObjectStore("clearances", {
                     keyPath: ["containerId", "clearanceId"],
@@ -245,6 +254,23 @@ export class IndexedDbStore implements Store {
         return { secretKey, publicKey };
     }
 
+    async saveSymmetricKey(symmetricKey: Bytes): Promise<number> {
+        if (symmetricKey.length !== 32) {
+            throw new Error("symmetric key must be 32 bytes");
+        }
+        await this.ready;
+        const keyId = shorterHash(symmetricKey);
+        const trxn = this.getTransaction();
+        await trxn.objectStore("symmetricKeys").put(symmetricKey, keyId);
+        return keyId;
+    }
+
+    async getSymmetricKey(keyId: number, trxn?: Transaction): Promise<Bytes> {
+        await this.ready;
+        trxn = trxn ?? this.getTransaction();
+        return await trxn.objectStore("symmetricKeys").get(keyId);
+    }
+
     private clearTransaction() {
         this.transaction = null;
     }
@@ -267,6 +293,7 @@ export class IndexedDbStore implements Store {
                     "identities",
                     "verifyKeys",
                     "secretKeys",
+                    "symmetricKeys",
                 ],
                 "readwrite"
             );
@@ -493,7 +520,7 @@ export class IndexedDbStore implements Store {
         claimChain?: boolean
     ): Promise<boolean> {
         const bundleInfo = bundleView.info;
-        const bundleBuilder = bundleView.builder;
+        const bundleBuilder: BundleBuilder = bundleView.builder;
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const oldChainInfo: BundleInfo = await trxn
             .objectStore("chainInfos")
@@ -555,6 +582,28 @@ export class IndexedDbStore implements Store {
         // the getNeededTransactions faster by not requiring parsing again.
         const bundleKey: BundleInfoTuple = bundleInfoToKey(bundleInfo);
         await trxn.objectStore("trxns").add(bundleView.bytes, bundleKey);
+        // Decrypt bundle
+        const encrypted = bundleBuilder.getEncrypted();
+        if (encrypted) {
+            const keyId = bundleBuilder.getKeyId();
+            if (bundleBuilder.getChangesList().length > 0) {
+                throw new Error(
+                    "did not expect plain changes when using encryption"
+                );
+            }
+            if (!keyId) {
+                throw new Error("expected keyId with encrypted bundle");
+            }
+            const symmetricKey = ensure(
+                await this.getSymmetricKey(keyId, trxn),
+                "could not find symmetric key referenced in bundle"
+            );
+            const decrypted = decryptMessage(encrypted, symmetricKey);
+            const changeBuilder = <ChangeBuilder>(
+                ChangeBuilder.deserializeBinary(decrypted)
+            );
+            bundleBuilder.getChangesList().push(changeBuilder);
+        }
         const changesList: Array<ChangeBuilder> =
             bundleBuilder.getChangesList();
         for (let index = 0; index < changesList.length; index++) {
