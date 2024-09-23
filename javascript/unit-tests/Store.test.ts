@@ -383,28 +383,43 @@ export function testStore(
         await store.addBundle(chainStart);
         // Can't find a way to test this without a real bundle
         // (we used a string formatter in python, which is way easier)
-        const bundleBuilder = extendChainWithoutSign(
-            "Hello, again!",
-            chainStart,
-            NEXT_TS1
-        );
+        const innerBundleBuilder = new BundleBuilder();
         const changeBuilder = new ChangeBuilder();
         const entryBuilder = new EntryBuilder();
-        entryBuilder.setBehavior(Behavior.BOX);
         entryBuilder.setContainer(
             muidToBuilder({ medallion: -1, timestamp: -1, offset: 1 })
         );
+        entryBuilder.setBehavior(Behavior.BOX);
         entryBuilder.setValue(wrapValue("top secret"));
         changeBuilder.setEntry(entryBuilder);
+        innerBundleBuilder.getChangesList().push(changeBuilder);
+
+        const changeBuilder2 = new ChangeBuilder();
+        const entryBuilder2 = new EntryBuilder();
+        entryBuilder2.setBehavior(Behavior.DIRECTORY);
+        entryBuilder2.setContainer(
+            muidToBuilder({ medallion: -1, timestamp: -1, offset: 4 })
+        );
+        entryBuilder2.setKey(wrapKey("key"));
+        entryBuilder2.setValue(wrapValue("top secret"));
+        changeBuilder2.setEntry(entryBuilder2);
+        innerBundleBuilder.getChangesList().push(changeBuilder2);
+
         const encrypted = encryptMessage(
-            changeBuilder.serializeBinary(),
+            innerBundleBuilder.serializeBinary(),
             symKey
         );
-        bundleBuilder.setKeyId(id);
-        bundleBuilder.setEncrypted(encrypted);
+
+        const outerBundleBuilder = extendChainWithoutSign(
+            "Outer",
+            chainStart,
+            NEXT_TS1
+        );
+        outerBundleBuilder.setKeyId(id);
+        outerBundleBuilder.setEncrypted(encrypted);
         const decomp = new Decomposition(
             signBundle(
-                bundleBuilder.serializeBinary(),
+                outerBundleBuilder.serializeBinary(),
                 (await keyPair).secretKey
             )
         );
@@ -417,5 +432,16 @@ export function testStore(
         });
         ensure(result !== undefined);
         ensure(result.value === "top secret");
+
+        const result2 = await store.getEntryByKey(
+            {
+                medallion: -1,
+                timestamp: -1,
+                offset: 4,
+            },
+            "key"
+        );
+        ensure(result2 !== undefined);
+        ensure(result2.value === "top secret");
     });
 }

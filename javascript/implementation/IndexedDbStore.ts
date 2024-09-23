@@ -584,6 +584,7 @@ export class IndexedDbStore implements Store {
         await trxn.objectStore("trxns").add(bundleView.bytes, bundleKey);
         // Decrypt bundle
         const encrypted = bundleBuilder.getEncrypted();
+        let changesList: Array<ChangeBuilder>;
         if (encrypted) {
             const keyId = bundleBuilder.getKeyId();
             if (bundleBuilder.getChangesList().length > 0) {
@@ -599,13 +600,14 @@ export class IndexedDbStore implements Store {
                 "could not find symmetric key referenced in bundle"
             );
             const decrypted = decryptMessage(encrypted, symmetricKey);
-            const changeBuilder = <ChangeBuilder>(
-                ChangeBuilder.deserializeBinary(decrypted)
+            const innerBundleBuilder = <BundleBuilder>(
+                BundleBuilder.deserializeBinary(decrypted)
             );
-            bundleBuilder.getChangesList().push(changeBuilder);
+            changesList = innerBundleBuilder.getChangesList();
         }
-        const changesList: Array<ChangeBuilder> =
-            bundleBuilder.getChangesList();
+        // Changes list will either come from getChangesList in an unencrypted bundle, or
+        // getChangesList from the decrypted inner bundle.
+        if (!changesList) changesList = bundleBuilder.getChangesList();
         for (let index = 0; index < changesList.length; index++) {
             const offset = index + 1;
             const changeBuilder = changesList[index];

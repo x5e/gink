@@ -43,10 +43,10 @@ def install_tests(into_where, from_place, store_maker):
     """ Installs the generic tests as applied to a specific store. """
     if hasattr(from_place, "keys"):
         keys = list(from_place.keys())
-        get = lambda key: from_place[key]
+        def get(key): return from_place[key]
     else:
         keys = dir(from_place)
-        get = lambda key: getattr(from_place, key)
+        def get(key): return getattr(from_place, key)
     for name in keys:
         if name.startswith("generic_test"):
             new_name = name.replace("generic_", "")
@@ -76,7 +76,8 @@ def generic_test_accepts_only_once(store_maker: StoreMaker):
     # with closing(store_maker()) as store:
     store = store_maker()
     try:
-        start_info = BundleInfo(medallion=123, chain_start=456, timestamp=456, comment="start")
+        start_info = BundleInfo(
+            medallion=123, chain_start=456, timestamp=456, comment="start")
         start_bytes = make_empty_bundle(start_info)
 
         result_starting_first = store.apply_bundle(start_bytes)
@@ -101,20 +102,24 @@ def generic_test_accepts_only_once(store_maker: StoreMaker):
 def generic_limit_to(store_maker: StoreMaker):
     """ Ensures that chains with missing links throw exceptions. """
     with closing(store_maker()) as store:
-        a1 = make_empty_bundle(BundleInfo(medallion=123, chain_start=456, timestamp=456, comment="a1"))
+        a1 = make_empty_bundle(BundleInfo(
+            medallion=123, chain_start=456, timestamp=456, comment="a1"))
         store.apply_bundle(a1)
         a2 = make_empty_bundle(
-            BundleInfo(medallion=123, chain_start=456, timestamp=456, previous=456, comment="a2"),
+            BundleInfo(medallion=123, chain_start=456,
+                       timestamp=456, previous=456, comment="a2"),
             a1)
         store.apply_bundle(a2)
 
-        b1 = make_empty_bundle(BundleInfo(medallion=775, chain_start=456, timestamp=456, comment="b1"))
+        b1 = make_empty_bundle(BundleInfo(
+            medallion=775, chain_start=456, timestamp=456, comment="b1"))
         store.apply_bundle(b1)
         b2 = make_empty_bundle(
             BundleInfo(medallion=775, chain_start=456, timestamp=456, previous=456, comment="b2"), b1)
         store.apply_bundle(b2)
 
-        c1 = make_empty_bundle(BundleInfo(medallion=137, chain_start=456, timestamp=456, comment="c1"))
+        c1 = make_empty_bundle(BundleInfo(
+            medallion=137, chain_start=456, timestamp=456, comment="c1"))
         store.apply_bundle(c1)
         c2 = make_empty_bundle(
             BundleInfo(medallion=137, chain_start=456, timestamp=456, previous=456, comment="c2"), c1)
@@ -134,7 +139,8 @@ def generic_limit_to(store_maker: StoreMaker):
 def generic_test_rejects_gap(store_maker: StoreMaker):
     """ Ensures that chains with missing links throw exceptions. """
     with closing(store_maker()) as store:
-        start_info = BundleInfo(medallion=123, chain_start=456, timestamp=456, comment="start")
+        start_info = BundleInfo(
+            medallion=123, chain_start=456, timestamp=456, comment="start")
         start_bytes = make_empty_bundle(start_info)
         store.apply_bundle(start_bytes)
 
@@ -166,7 +172,8 @@ def generic_test_rejects_missing_start(store_maker: StoreMaker):
 def generic_test_rejects_bad_bundle(store_maker: StoreMaker):
     """ Ensures that chains with missing links throw exceptions. """
     with closing(store_maker()) as store:
-        gap_info = BundleInfo(medallion=123, chain_start=456, timestamp=789, comment="bad")
+        gap_info = BundleInfo(medallion=123, chain_start=456,
+                              timestamp=789, comment="bad")
         gap_bytes = make_empty_bundle(gap_info)
         thrown = None
         try:
@@ -181,13 +188,15 @@ def generic_test_orders_bundles(store_maker: StoreMaker):
     info1 = BundleInfo(medallion=123, chain_start=456, timestamp=456)
     cs1 = make_empty_bundle(info1)
 
-    info2 = BundleInfo(medallion=123, chain_start=456, timestamp=777, previous=456)
+    info2 = BundleInfo(medallion=123, chain_start=456,
+                       timestamp=777, previous=456)
     cs2 = make_empty_bundle(info2, cs1)
 
     info3 = BundleInfo(medallion=789, chain_start=555, timestamp=555)
     cs3 = make_empty_bundle(info3)
 
-    info4 = BundleInfo(medallion=789, chain_start=555, timestamp=999, previous=555)
+    info4 = BundleInfo(medallion=789, chain_start=555,
+                       timestamp=999, previous=555)
     cs4 = make_empty_bundle(info4, cs3)
 
     with closing(store_maker()) as store:
@@ -208,6 +217,7 @@ def generic_test_orders_bundles(store_maker: StoreMaker):
         assert ordered[2] == (cs2, info2) or ordered[2] == (cs3, info3)
         assert ordered[3] == (cs4, info4)
 
+
 def generic_test_symmetric_keys(store_maker: StoreMaker):
     with closing(store_maker()) as store:
         key1 = random(32)
@@ -220,21 +230,25 @@ def generic_test_symmetric_keys(store_maker: StoreMaker):
         result2 = store.get_symmetric_key(id2)
         assert result2 == key2
 
+
 def generic_test_tracks(store_maker: StoreMaker):
     """ Ensures that the store orders change sets correctly. """
     info1 = BundleInfo(medallion=123, chain_start=456, timestamp=456)
     cs1 = make_empty_bundle(info1)
 
-    info2 = BundleInfo(medallion=123, chain_start=456, timestamp=777, previous=456)
+    info2 = BundleInfo(medallion=123, chain_start=456,
+                       timestamp=777, previous=456)
     cs2 = make_empty_bundle(info2, cs1)
 
     info3 = BundleInfo(medallion=789, chain_start=555, timestamp=555)
     cs3 = make_empty_bundle(info3)
 
-    info4 = BundleInfo(medallion=789, chain_start=555, timestamp=999, previous=555)
+    info4 = BundleInfo(medallion=789, chain_start=555,
+                       timestamp=999, previous=555)
     cs4 = make_empty_bundle(info4, cs3)
 
-    info5 = BundleInfo(medallion=789, chain_start=555, timestamp=1000, previous=999)
+    info5 = BundleInfo(medallion=789, chain_start=555,
+                       timestamp=1000, previous=999)
     with closing(store_maker()) as store:
         store.apply_bundle(cs1)
         store.apply_bundle(cs2)
@@ -312,7 +326,8 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         }
     """
     with closing(store_maker()) as store:
-        first = make_empty_bundle(BundleInfo(medallion=789, chain_start=122, timestamp=122))
+        first = make_empty_bundle(BundleInfo(
+            medallion=789, chain_start=122, timestamp=122))
         store.apply_bundle(first)
         bundle_builder = BundleBuilder()
         Parse(textproto1, bundle_builder)  # type: ignore
@@ -321,7 +336,8 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         second = signing_key.sign(serialized)
         store.apply_bundle(second)
         sequence = Muid(123, 789, 1)
-        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124)]
+        found = [_ for _ in store.get_ordered_entries(
+            container=sequence, as_of=124)]
         assert found[0].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
         assert found[2].entry_muid == Muid(123, 789, 4)
@@ -337,26 +353,31 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         bundle_builder2.prior_hash = digest(second)
         serialized2 = bundle_builder2.SerializeToString()  # type: ignore
         store.apply_bundle(signing_key.sign(serialized2))
-        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124)]
+        found = [_ for _ in store.get_ordered_entries(
+            container=sequence, as_of=124)]
         assert len(found) == 3
         assert found[0].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
         assert found[2].entry_muid == Muid(123, 789, 4)
-        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=235)]
+        found = [_ for _ in store.get_ordered_entries(
+            container=sequence, as_of=235)]
         assert len(found) == 2
         assert found[0].entry_muid == Muid(123, 789, 4)
         assert found[1].entry_muid == Muid(123, 789, 3), found
 
-        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124, desc=True)]
+        found = [_ for _ in store.get_ordered_entries(
+            container=sequence, as_of=124, desc=True)]
         assert len(found) == 3
         assert found[2].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
         assert found[0].entry_muid == Muid(123, 789, 4)
 
-        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=235, desc=True)]
+        found = [_ for _ in store.get_ordered_entries(
+            container=sequence, as_of=235, desc=True)]
         assert len(found) == 2
         assert found[0].entry_muid == Muid(123, 789, 3)
         assert found[1].entry_muid == Muid(123, 789, 4)
+
 
 def generic_test_drop_history(store_maker: StoreMaker):
     with closing(store_maker()) as store:
@@ -377,8 +398,10 @@ def generic_test_drop_history(store_maker: StoreMaker):
 
         store.stop_history()
 
-        assert seq.size(as_of=after_setting) == 0, seq.dumps(as_of=after_setting)
-        assert gdi.get("foo", as_of=after_setting) == None, gdi.get("foo", as_of=after_setting)
+        assert seq.size(as_of=after_setting) == 0, seq.dumps(
+            as_of=after_setting)
+        assert gdi.get("foo", as_of=after_setting) == None, gdi.get(
+            "foo", as_of=after_setting)
 
         store.start_history()
 
@@ -400,6 +423,7 @@ def generic_test_drop_history(store_maker: StoreMaker):
         assert seq.size() == 0
         assert "foo" not in gdi
         assert new_dir["foo"] == "baz"
+
 
 def generic_test_negative_offsets(store_maker: StoreMaker):
     textproto1 = """
@@ -440,7 +464,8 @@ def generic_test_negative_offsets(store_maker: StoreMaker):
         }
     """
     with closing(store_maker()) as store:
-        first = make_empty_bundle(BundleInfo(medallion=789, chain_start=122, timestamp=122))
+        first = make_empty_bundle(BundleInfo(
+            medallion=789, chain_start=122, timestamp=122))
         store.apply_bundle(first)
         bundle_builder = BundleBuilder()
         Parse(textproto1, bundle_builder)  # type: ignore
@@ -448,7 +473,8 @@ def generic_test_negative_offsets(store_maker: StoreMaker):
         serialized = bundle_builder.SerializeToString()  # type: ignore
         store.apply_bundle(signing_key.sign(serialized))
         sequence = Muid(123, 789, 1)
-        found = [_ for _ in store.get_ordered_entries(container=sequence, as_of=124)]
+        found = [_ for _ in store.get_ordered_entries(
+            container=sequence, as_of=124)]
         assert len(found) == 3, found
         assert found[0].entry_muid == Muid(123, 789, 2)
         assert found[1].entry_muid == Muid(123, 789, 3)
@@ -473,19 +499,32 @@ def generic_test_encryption(store_maker: StoreMaker):
                 }
             }
         }
+        changes {
+            entry {
+                behavior: DIRECTORY
+                container { timestamp: -1, medallion: -1, offset: 4 }
+                key {
+                    characters: "key"
+                }
+                value {
+                    characters: "top secret"
+                }
+            }
+        }
     """
 
     with closing(store_maker()) as store:
         symmetric_key = random(32)
         secret_box = SecretBox(symmetric_key)
         key_id = store.save_symmetric_key(symmetric_key)
-        first = make_empty_bundle(BundleInfo(medallion=789, chain_start=122, timestamp=122))
+        first = make_empty_bundle(BundleInfo(
+            medallion=789, chain_start=122, timestamp=122))
         store.apply_bundle(first)
         bundle_builder = BundleBuilder()
         Parse(inside_textproto, bundle_builder)  # type: ignore
         inside_serialized = bundle_builder.SerializeToString()
         bundle_builder.Clear()
-        Parse(outside_textproto, bundle_builder) # type: ignore
+        Parse(outside_textproto, bundle_builder)  # type: ignore
         bundle_builder.key_id = key_id
         bundle_builder.encrypted = secret_box.encrypt(inside_serialized)
         bundle_builder.prior_hash = digest(first)
@@ -493,6 +532,12 @@ def generic_test_encryption(store_maker: StoreMaker):
         store.apply_bundle(signing_key.sign(outside_serialized))
         global_box_id = Muid(-1, -1, 1)
         result = store.get_entry_by_key(global_box_id, None, -1)
+        assert result is not None
+        secret = result.builder.value.characters
+        assert secret == "top secret"
+
+        global_dir_id = Muid(-1, -1, 4)
+        result = store.get_entry_by_key(global_dir_id, "key", -1)
         assert result is not None
         secret = result.builder.value.characters
         assert secret == "top secret"

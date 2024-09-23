@@ -165,7 +165,7 @@ export interface Store {
      * Returns the keyId (a 52 bit digest of the key).
      * @param symmetricKey the symmetric key to store
      */
-    saveSymmetricKey(symmetricKey: Bytes): Promise<Number>;
+    saveSymmetricKey(symmetricKey: Bytes): Promise<number>;
 
     /**
      * Retrieves a previously stored symmetric key.
