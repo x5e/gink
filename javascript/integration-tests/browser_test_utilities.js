@@ -1,4 +1,12 @@
 const { existsSync } = require("fs");
+const { BundleBuilder } = require("../tsc.out/implementation/builders.js");
+const { Decomposition } = require("../tsc.out/implementation/Decomposition.js");
+const {
+    createKeyPair,
+    signBundle,
+    librariesReady,
+    ensure,
+} = require("../tsc.out/implementation/utils.js");
 
 function getLaunchOptions(headless = true) {
     if (headless === true) {
@@ -39,7 +47,39 @@ async function sleep(ms) {
     return new Promise((r) => setTimeout(r, ms));
 }
 
+async function makeChainStart(comment, medallion, chainStart) {
+    const bundleBuilder = new BundleBuilder();
+    bundleBuilder.setChainStart(chainStart);
+    bundleBuilder.setTimestamp(chainStart);
+    bundleBuilder.setMedallion(medallion);
+    bundleBuilder.setComment(comment);
+    bundleBuilder.setIdentity("test-chain-start");
+    bundleBuilder.setVerifyKey((await keyPair).publicKey);
+    return new Decomposition(
+        signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey)
+    );
+}
+
+function extendChainWithoutSign(comment, previous, timestamp) {
+    const bundleBuilder = new BundleBuilder();
+    const parsedPrevious = previous.builder;
+    bundleBuilder.setMedallion(parsedPrevious.getMedallion());
+    bundleBuilder.setPrevious(parsedPrevious.getTimestamp());
+    bundleBuilder.setChainStart(parsedPrevious.getChainStart());
+    bundleBuilder.setTimestamp(timestamp); // one millisecond later
+    bundleBuilder.setComment(comment);
+    const priorHash = previous.info.hashCode;
+    ensure(priorHash && priorHash.length === 32);
+    bundleBuilder.setPriorHash(priorHash);
+    return bundleBuilder;
+}
+
+const keyPair = librariesReady.then(() => createKeyPair());
+
 module.exports = {
     getLaunchOptions: getLaunchOptions,
     sleep: sleep,
+    makeChainStart: makeChainStart,
+    extendChainWithoutSign: extendChainWithoutSign,
+    keyPair: keyPair,
 };
