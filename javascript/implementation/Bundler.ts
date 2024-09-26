@@ -79,8 +79,8 @@ export class Bundler implements BundleView {
     /**
      *
      * @param changeBuilder a protobuf Change ready to be serialized
-     * @param encrypted if true, the change will be added to the inner bundle to be encrypted
-     * upon sealing the bundle and adding to the database, the changes will be encrypted.
+     * @param encrypted If true, the change will be added to the inner bundle to be encrypted.
+     * Upon sealing the bundle and adding to the database, the changes will be encrypted.
      * @returns an Address who's offset is immediately available and whose medallion and
      * timestamp become defined when this Bundle is sealed.
      */
