@@ -48,7 +48,6 @@ import { EdgeType } from "./EdgeType";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
 import { construct } from "./factories";
-import { randombytes_buf } from "libsodium-wrappers";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -68,6 +67,7 @@ export class Database {
     private chainGetter?: Promise<BundleInfo> = undefined;
     protected iHave: ChainTracker;
     readonly symKey: Bytes;
+    symKeyId: number;
 
     //TODO: centralize platform dependent code
     private static W3cWebSocket =
@@ -79,11 +79,11 @@ export class Database {
         readonly store: Store = new MemoryStore(true),
         identity: string = getIdentity(),
         readonly logger: CallBack = noOp,
-        encrypted: boolean = false
+        symKey?: Bytes
     ) {
         this.identity = identity;
         this.ready = this.initialize();
-        this.symKey = encrypted ? randombytes_buf(32) : undefined;
+        this.symKey = symKey;
     }
 
     private async initialize(): Promise<void> {
@@ -107,7 +107,7 @@ export class Database {
         this.store.addFoundBundleCallBack(callback);
 
         if (this.symKey) {
-            await this.store.saveSymmetricKey(this.symKey);
+            this.symKeyId = await this.store.saveSymmetricKey(this.symKey);
         }
     }
 
@@ -270,6 +270,14 @@ export class Database {
             timestamp: -1,
             medallion: -1,
             offset: Behavior.DIRECTORY,
+        });
+    }
+
+    getGlobalBox(): Box {
+        return new Box(this, {
+            timestamp: -1,
+            medallion: -1,
+            offset: Behavior.BOX,
         });
     }
 

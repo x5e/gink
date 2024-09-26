@@ -1,6 +1,12 @@
 import { Bundler } from "./Bundler";
 import { Value, ScalarKey, Muid, AsOf } from "./typedefs";
-import { muidToBuilder, wrapValue, wrapKey, strToMuid } from "./utils";
+import {
+    muidToBuilder,
+    wrapValue,
+    wrapKey,
+    strToMuid,
+    encryptMessage,
+} from "./utils";
 import { Deletion } from "./Deletion";
 import { Inclusion } from "./Inclusion";
 import { Database } from "./Database";
@@ -13,6 +19,7 @@ import {
 import { PairBuilder } from "./builders";
 import { Addressable } from "./Addressable";
 import { bundlePropertyEntry } from "./store_utils";
+import { BundleBuilder } from "./builders";
 
 export class Container extends Addressable {
     protected static readonly DELETION = new Deletion();
@@ -184,7 +191,22 @@ export class Container extends Addressable {
         }
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setEntry(entryBuilder);
-        const address = bundler.addChange(changeBuilder);
+        let address: Muid;
+        if (this.database.symKey) {
+            const innerBundleBuilder = new BundleBuilder();
+            innerBundleBuilder.getChangesList().push(changeBuilder);
+            const encrypted = encryptMessage(
+                innerBundleBuilder.serializeBinary(),
+                this.database.symKey
+            );
+            address = bundler.addEncryptedBundle(
+                encrypted,
+                this.database.symKeyId
+            );
+        } else {
+            address = bundler.addChange(changeBuilder);
+        }
+
         if (immediate) {
             return this.database.addBundler(bundler).then((_) => address);
         }

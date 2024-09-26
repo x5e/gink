@@ -83,41 +83,15 @@ export class Bundler implements BundleView {
         this.requireNotSealed();
         const offset = ++this.countItems;
         this.bundleBuilder.getChangesList().push(changeBuilder);
-        // Using an anonymous class here because I only need the interface of Address,
-        // but I need some non-trivial behavior: the timestamp and possibly medallion
-        // are undefined until the associated bundle is finalized, then all the
-        // components of the address become well-defined.
-        return new (class {
-            constructor(
-                private bundler: Bundler,
-                readonly offset: number
-            ) {}
-            get medallion() {
-                return this.bundler.medallion;
-            }
-            get timestamp() {
-                return this.bundler.timestamp;
-            }
-        })(this, offset);
+        return this.createDeferredMuid(offset);
     }
 
-    addEncryptedBundle(bundle: Bytes, keyId: number): Muid {
+    addEncryptedBundle(bundleBuilderBytes: Bytes, keyId: number): Muid {
         this.requireNotSealed();
         const offset = ++this.countItems;
-        this.bundleBuilder.setEncrypted(bundle);
+        this.bundleBuilder.setEncrypted(bundleBuilderBytes);
         this.bundleBuilder.setKeyId(keyId);
-        return new (class {
-            constructor(
-                private bundler: Bundler,
-                readonly offset: number
-            ) {}
-            get medallion() {
-                return this.bundler.medallion;
-            }
-            get timestamp() {
-                return this.bundler.timestamp;
-            }
-        })(this, offset);
+        return this.createDeferredMuid(offset);
     }
 
     /**
@@ -166,5 +140,24 @@ export class Bundler implements BundleView {
             keyPair.secretKey
         );
         this.bundleInfo.hashCode = digest(this.bundleBytes);
+    }
+
+    private createDeferredMuid(offset: number): Muid {
+        // Using an anonymous class here because I only need the interface of Address,
+        // but I need some non-trivial behavior: the timestamp and possibly medallion
+        // are undefined until the associated bundle is finalized, then all the
+        // components of the address become well-defined.
+        return new (class {
+            constructor(
+                private bundler: Bundler,
+                readonly offset: number
+            ) {}
+            get medallion() {
+                return this.bundler.medallion;
+            }
+            get timestamp() {
+                return this.bundler.timestamp;
+            }
+        })(this, offset);
     }
 }
