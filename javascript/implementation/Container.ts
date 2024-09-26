@@ -191,22 +191,11 @@ export class Container extends Addressable {
         }
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setEntry(entryBuilder);
-        let address: Muid;
-        if (this.database.symKey) {
-            const innerBundleBuilder = new BundleBuilder();
-            innerBundleBuilder.getChangesList().push(changeBuilder);
-            const encrypted = encryptMessage(
-                innerBundleBuilder.serializeBinary(),
-                this.database.symKey
-            );
-            address = bundler.addEncryptedBundle(
-                encrypted,
-                this.database.symKeyId
-            );
-        } else {
-            address = bundler.addChange(changeBuilder);
-        }
-
+        // This change should be encrypted if the database has a symKey
+        const address = bundler.addChange(
+            changeBuilder,
+            !!this.database.symKey
+        );
         if (immediate) {
             return this.database.addBundler(bundler).then((_) => address);
         }

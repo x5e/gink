@@ -11,6 +11,7 @@ import {
     getIdentity,
     createKeyPair,
     muidTupleToMuid,
+    encryptMessage,
 } from "./utils";
 import {
     BundleBytes,
@@ -500,6 +501,16 @@ export class Database {
                 const newTimestamp =
                     nowMicros > seenThrough ? nowMicros : seenThrough + 10;
                 ensure(seenThrough > 0 && seenThrough < nowMicros);
+
+                // Encrypt any changes that need to be encrypted.
+                if (bundler.innerBundleToEncrypt !== undefined) {
+                    const encrypted = encryptMessage(
+                        bundler.innerBundleToEncrypt.serializeBinary(),
+                        this.symKey
+                    );
+                    bundler.setEncryptedBytes(encrypted, this.symKeyId);
+                }
+
                 const bundleInfo: BundleInfo = {
                     medallion: this.lastLinkToExtend.medallion,
                     chainStart: this.lastLinkToExtend.chainStart,

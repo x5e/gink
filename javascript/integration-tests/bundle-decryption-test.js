@@ -3,6 +3,7 @@ const Expector = require("./Expector.js");
 const { sleep } = require("./browser_test_utilities.js");
 const { MemoryStore } = require("../tsc.out/implementation/MemoryStore.js");
 const { SimpleServer } = require("../tsc.out/implementation/SimpleServer.js");
+const { Bundler } = require("../tsc.out/implementation/Bundler.js");
 
 process.chdir(__dirname + "/..");
 
@@ -39,11 +40,23 @@ process.chdir(__dirname + "/..");
     client.send(`store.save_symmetric_key(${symKeyPythonFormat})\n`);
     await sleep(100);
 
+    const root = server.getGlobalDirectory();
+    const box = server.getGlobalBox();
     // Since the store was initialized with a symmetric key,
     // this entry will be encrypted
-    await server.getGlobalBox().set("top secret");
+    // Also note this tests multiple changes in one encrypted bundle
+    const bundler = new Bundler("test-encryption");
+    await root.set("key1", "value1", bundler);
+    await root.set("key2", "value2", bundler);
+    await box.set("top secret", bundler);
+    await server.addBundler(bundler);
+
     client.send("Box.get_global_instance().get()\n");
     await client.expect(`'top secret'`);
+    client.send("root.get('key1')\n");
+    await client.expect(`'value1'`);
+    client.send("root.get('key2')\n");
+    await client.expect(`'value2'`);
     await client.close();
     await server.close();
     console.log("finished!");

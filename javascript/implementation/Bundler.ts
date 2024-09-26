@@ -22,6 +22,9 @@ export class Bundler implements BundleView {
     private bundleBytes?: BundleBytes = undefined;
     private bundleBuilder = new BundleBuilder();
     private countItems = 0;
+    // Making this public so Database can see whether it
+    // needs to encrypt the inner bundle before sealing.
+    innerBundleToEncrypt?: BundleBuilder;
 
     constructor(
         private pendingComment?: string,
@@ -76,22 +79,37 @@ export class Bundler implements BundleView {
     /**
      *
      * @param changeBuilder a protobuf Change ready to be serialized
+     * @param encrypted if true, the change will be added to the inner bundle to be encrypted
+     * upon sealing the bundle and adding to the database, the changes will be encrypted.
      * @returns an Address who's offset is immediately available and whose medallion and
      * timestamp become defined when this Bundle is sealed.
      */
-    addChange(changeBuilder: ChangeBuilder): Muid {
+    addChange(changeBuilder: ChangeBuilder, encrypted: Boolean = false): Muid {
         this.requireNotSealed();
         const offset = ++this.countItems;
-        this.bundleBuilder.getChangesList().push(changeBuilder);
+        if (encrypted && !this.innerBundleToEncrypt) {
+            this.innerBundleToEncrypt = new BundleBuilder();
+        }
+        const bundleBuilder = encrypted
+            ? this.innerBundleToEncrypt
+            : this.bundleBuilder;
+
+        bundleBuilder.getChangesList().push(changeBuilder);
         return this.createDeferredMuid(offset);
     }
 
-    addEncryptedBundle(bundleBuilderBytes: Bytes, keyId: number): Muid {
+    /**
+     * Set the encrypted bundle bytes of the inner bundle to be encrypted.
+     * Note that this should be done last, as calling this function twice will
+     * overwrite the previous encrypted bytes. To add more than one encrypted
+     * change, use addChange with the encrypted flag set to true.
+     * @param encryptedBytes the serialized and encrypted bytes of the inner bundle
+     * @param keyId the keyId of the symmetric key
+     */
+    setEncryptedBytes(encryptedBytes: BundleBytes, keyId: number): void {
         this.requireNotSealed();
-        const offset = ++this.countItems;
-        this.bundleBuilder.setEncrypted(bundleBuilderBytes);
+        this.bundleBuilder.setEncrypted(encryptedBytes);
         this.bundleBuilder.setKeyId(keyId);
-        return this.createDeferredMuid(offset);
     }
 
     /**
