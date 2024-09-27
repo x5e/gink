@@ -261,7 +261,7 @@ class Container(Addressable, ABC):
             pass
         else:
             raise ValueError(f"don't know how to add this value to gink: {value}")
-        muid = bundler.add_change(change_builder)
+        muid = bundler.add_change(change_builder, encrypted=bool(self._database._symmetric_key))
         if immediate:
             self._database.bundle(bundler)
         return muid

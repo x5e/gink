@@ -39,8 +39,14 @@ class Database(Relay):
     _last_link: Optional[BundleInfo]
     _container_types: dict = {}
     _signing_key: Optional[SigningKey]
+    _symmetric_key: Optional[bytes]
+    _symmetric_key_id: Optional[int]
 
-    def __init__(self, store: Union[AbstractStore, str, None] = None, identity=get_identity()):
+    def __init__(self,
+            store: Union[AbstractStore, str, None] = None,
+            identity=get_identity(),
+            symmetric_key: Optional[bytes] = None,
+            ):
         super().__init__(store=store)
         setattr(Database, "_last", self)
         self._last_link = None
@@ -49,6 +55,10 @@ class Database(Relay):
         self._logger = getLogger(self.__class__.__name__)
         self._lock = Lock()
         self._signing_key = None
+        self._symmetric_key = symmetric_key
+        self._symmetric_key_id = None
+        if symmetric_key:
+            self._symmetric_key_id = self._store.save_symmetric_key(symmetric_key)
 
     def get_store(self) -> AbstractStore:
         """ returns the store managed by this database """
@@ -147,6 +157,8 @@ class Database(Relay):
                 previous=seen_to,
                 signing_key=self._signing_key,
                 prior_hash=self._last_link.hex_hash,
+                symmetric_key=self._symmetric_key,
+                key_id=self._symmetric_key_id,
             )
             wrap = BundleWrapper(bundle_bytes)
             added = self.receive(wrap)
