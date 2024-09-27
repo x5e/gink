@@ -40,12 +40,11 @@ export class SimpleServer extends Database {
             symmetricKey?: Bytes;
         }
     ) {
-        super(
-            store,
-            args.identity,
-            args.logger || (() => null),
-            args.symmetricKey
-        );
+        super(store, {
+            identity: args.identity,
+            logger: args.logger || (() => null),
+            symmetricKey: args.symmetricKey,
+        });
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this),
             requestListener: this.requestListener.bind(this),

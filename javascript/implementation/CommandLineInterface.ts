@@ -99,7 +99,7 @@ export class CommandLineInterface {
             }
         } else {
             // port not set so don't listen for incoming connections
-            this.instance = new Database(this.store, identity, logger);
+            this.instance = new Database(this.store, { identity, logger });
         }
     }
 
