@@ -220,7 +220,7 @@ export function testStore(
     });
 
     it(`${implName} getChainIdentity works`, async () => {
-        const db = new Database(store, "test@identity");
+        const db = new Database(store, { identity: "test@identity" });
         await db.ready;
         ensure((await store.getClaimedChains()).size === 0);
         await db.getGlobalDirectory().set(3, 4);
@@ -233,7 +233,7 @@ export function testStore(
     });
 
     it(`${implName} getContainersByName`, async () => {
-        const db = new Database(store, "test@byName");
+        const db = new Database(store, { identity: "test@byName" });
         await db.ready;
         const gd = db.getGlobalDirectory();
         await gd.setName("foo");
@@ -369,10 +369,10 @@ export function testStore(
 
     it(`${implName} encryption and decryption`, async () => {
         // Test explicitly saving and pulling a symmetric key
-        const symKey = randombytes_buf(32);
-        const id = await store.saveSymmetricKey(symKey);
+        const symmetricKey = randombytes_buf(32);
+        const id = await store.saveSymmetricKey(symmetricKey);
         const pulled = await store.getSymmetricKey(id);
-        ensure(isEqual(symKey, pulled));
+        ensure(isEqual(symmetricKey, pulled));
 
         // Test encryption and decryption
         const chainStart = await makeChainStart(
@@ -407,7 +407,7 @@ export function testStore(
 
         const encrypted = encryptMessage(
             innerBundleBuilder.serializeBinary(),
-            symKey
+            symmetricKey
         );
 
         const outerBundleBuilder = extendChainWithoutSign(

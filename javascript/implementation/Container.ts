@@ -184,7 +184,11 @@ export class Container extends Addressable {
         }
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setEntry(entryBuilder);
-        const address = bundler.addChange(changeBuilder);
+        // This change should be encrypted if the database has a symmetricKey
+        const address = bundler.addChange(
+            changeBuilder,
+            !!this.database.symmetricKey
+        );
         if (immediate) {
             return this.database.addBundler(bundler).then((_) => address);
         }

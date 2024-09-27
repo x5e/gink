@@ -11,6 +11,7 @@ import {
     getIdentity,
     createKeyPair,
     muidTupleToMuid,
+    encryptMessage,
 } from "./utils";
 import {
     BundleBytes,
@@ -23,6 +24,7 @@ import {
     AsOf,
     KeyPair,
     MuidTuple,
+    Bytes,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
 import { Bundler } from "./Bundler";
@@ -65,6 +67,9 @@ export class Database {
     private identity: string;
     private chainGetter?: Promise<BundleInfo> = undefined;
     protected iHave: ChainTracker;
+    readonly logger: CallBack;
+    readonly symmetricKey: Bytes;
+    symmetricKeyId: number;
 
     //TODO: centralize platform dependent code
     private static W3cWebSocket =
@@ -74,10 +79,15 @@ export class Database {
 
     constructor(
         readonly store: Store = new MemoryStore(true),
-        identity: string = getIdentity(),
-        readonly logger: CallBack = noOp
+        args?: {
+            identity?: string;
+            logger?: CallBack;
+            symmetricKey?: Bytes;
+        }
     ) {
-        this.identity = identity;
+        this.identity = args?.identity ?? getIdentity();
+        this.logger = args?.logger ?? noOp;
+        this.symmetricKey = args?.symmetricKey;
         this.ready = this.initialize();
     }
 
@@ -100,6 +110,12 @@ export class Database {
             }
         };
         this.store.addFoundBundleCallBack(callback);
+
+        if (this.symmetricKey) {
+            this.symmetricKeyId = await this.store.saveSymmetricKey(
+                this.symmetricKey
+            );
+        }
     }
 
     /**
@@ -261,6 +277,14 @@ export class Database {
             timestamp: -1,
             medallion: -1,
             offset: Behavior.DIRECTORY,
+        });
+    }
+
+    getGlobalBox(): Box {
+        return new Box(this, {
+            timestamp: -1,
+            medallion: -1,
+            offset: Behavior.BOX,
         });
     }
 
@@ -483,6 +507,16 @@ export class Database {
                 const newTimestamp =
                     nowMicros > seenThrough ? nowMicros : seenThrough + 10;
                 ensure(seenThrough > 0 && seenThrough < nowMicros);
+
+                // Encrypt any changes that need to be encrypted.
+                if (bundler.innerBundleToEncrypt !== undefined) {
+                    const encrypted = encryptMessage(
+                        bundler.innerBundleToEncrypt.serializeBinary(),
+                        this.symmetricKey
+                    );
+                    bundler.setEncryptedBytes(encrypted, this.symmetricKeyId);
+                }
+
                 const bundleInfo: BundleInfo = {
                     medallion: this.lastLinkToExtend.medallion,
                     chainStart: this.lastLinkToExtend.chainStart,

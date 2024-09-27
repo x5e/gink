@@ -13,6 +13,7 @@ import {
     FilePath,
     DirPath,
     AuthFunction,
+    Bytes,
 } from "./typedefs";
 import { Listener } from "./Listener";
 import { decodeToken } from "./utils";
@@ -36,9 +37,14 @@ export class SimpleServer extends Database {
             logger?: CallBack;
             identity?: string;
             authFunc?: AuthFunction;
+            symmetricKey?: Bytes;
         }
     ) {
-        super(store, args.identity, args.logger || (() => null));
+        super(store, {
+            identity: args.identity,
+            logger: args.logger || (() => null),
+            symmetricKey: args.symmetricKey,
+        });
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this),
             requestListener: this.requestListener.bind(this),
