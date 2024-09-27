@@ -61,7 +61,7 @@ process.chdir(__dirname + "/..");
     console.log("client correctly errored");
 
     const store2 = new MemoryStore();
-    const client2 = new Database(store2, undefined, undefined, symKey);
+    const client2 = new Database(store2, { symmetricKey: symKey });
     await client2.connectTo(`ws://0.0.0.0:${port}`);
     await server.expect("connection established!", 2000);
     // wait for bundles to sync
