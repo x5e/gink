@@ -323,7 +323,7 @@ class MemoryStore(AbstractStore):
                     raise ValueError("did not expect plain changes when using encryption")
                 if not bundle_builder.key_id:
                     raise ValueError("expected to have a key_id when encrypted is present")
-                symmetric_key = self._symmetric_keys[bundle_builder.key_id]
+                symmetric_key = self._symmetric_keys.get(bundle_builder.key_id)
                 if not symmetric_key:
                     raise KeyError("could not find symmetric key referenced in bundle")
                 secret_box = SecretBox(symmetric_key)

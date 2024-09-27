@@ -22,23 +22,19 @@ process.chdir(__dirname + "/..");
         symmetricKey: symKey,
     });
 
-    const client = new Expector("python3", [
+    const client1 = new Expector("python3", [
         "-u",
         "-m",
         "gink",
         "-c",
         `ws://localhost:${port}`,
     ]);
-    await client.expect("connect");
+    await client1.expect("connect");
     const symKeyHex = Buffer.from(symKey).toString("hex");
     const symKeyPythonFormat = `b'${symKeyHex
         .match(/.{1,2}/g)
         .map((byte) => "\\x" + byte)
         .join("")}'`;
-
-    // Assuming both parties have the symmetric key saved
-    client.send(`store.save_symmetric_key(${symKeyPythonFormat})\n`);
-    await sleep(100);
 
     const root = server.getGlobalDirectory();
     const box = server.getGlobalBox();
@@ -51,13 +47,33 @@ process.chdir(__dirname + "/..");
     await box.set("top secret", bundler);
     await server.addBundler(bundler);
 
-    client.send("Box.get_global_instance().get()\n");
-    await client.expect(`'top secret'`);
-    client.send("root.get('key1')\n");
-    await client.expect(`'value1'`);
-    client.send("root.get('key2')\n");
-    await client.expect(`'value2'`);
-    await client.close();
+    // Make sure the server cannot decrypt the data without the symmetric key
+    // This will crash client1 with a KeyError
+    client1.send("Box.get_global_instance().get()\n");
+    await client1.expect(`KeyError`);
+
+    const client2 = new Expector("python3", [
+        "-u",
+        "-m",
+        "gink",
+        "-c",
+        `ws://localhost:${port}`,
+    ]);
+    await client2.expect("connect");
+
+    // Assuming both parties have the symmetric key saved
+    client2.send(`store.save_symmetric_key(${symKeyPythonFormat})\n`);
+    await sleep(100);
+
+    client2.send("Box.get_global_instance().get()\n");
+    await client2.expect(`'top secret'`);
+    client2.send("root.get('key1')\n");
+    await client2.expect(`'value1'`);
+    client2.send("root.get('key2')\n");
+    await client2.expect(`'value2'`);
+
+    // client1 has already crashed, so no need to close
+    await client2.close();
     await server.close();
     console.log("finished!");
     process.exit(0);
