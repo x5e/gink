@@ -8,6 +8,7 @@ import {
     DirPath,
     NumberStr,
     FilePath,
+    Bytes,
 } from "./typedefs";
 import { Database } from "./Database";
 import { RoutingServerInstance } from "./RoutingServerInstance";
@@ -30,6 +31,7 @@ export class RoutingServer {
     readonly authFunc: AuthFunction;
     private listener: Listener;
     private identity: string;
+    readonly symmetricKey: Bytes;
 
     private instances: Map<string, RoutingServerInstance> = new Map();
 
@@ -42,10 +44,12 @@ export class RoutingServer {
         identity?: string;
         logger?: CallBack;
         authFunc?: AuthFunction;
+        symmetricKey?: Bytes;
     }) {
         const logger = (this.logger = args.logger || (() => null));
         this.authFunc = args.authFunc || (() => true);
         this.identity = args.identity;
+        this.symmetricKey = args.symmetricKey;
         this.dataFilesRoot = args.dataFilesRoot;
         ensure(existsSync(this.dataFilesRoot), "data root not there");
         this.listener = new Listener({
@@ -67,11 +71,11 @@ export class RoutingServer {
         // Note: can't afford to await for the instance to be ready, or you'll miss the greeting.
         let instance = this.instances.get(path);
         if (!instance) {
-            instance = new RoutingServerInstance(
-                path,
-                this.identity,
-                this.logger
-            );
+            instance = new RoutingServerInstance(path, {
+                identity: this.identity,
+                logger: this.logger,
+                symmetricKey: this.symmetricKey,
+            });
             this.instances.set(path, instance);
         }
         return instance;

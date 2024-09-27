@@ -4,18 +4,27 @@ import {
     connection as WebSocketConnection,
     Message as WebSocketMessage,
 } from "websocket";
-import { CallBack, FilePath } from "./typedefs";
+import { Bytes, CallBack, FilePath } from "./typedefs";
 import { Peer } from "./Peer";
 import { Buffer } from "buffer";
 import { ensure } from "./utils";
 
 export class RoutingServerInstance extends Database {
+    readonly logger: CallBack;
+    readonly symmetricKey: Bytes;
     constructor(
         readonly filePath: FilePath,
-        identity: string,
-        readonly logger: CallBack = console.log
+        args?: {
+            identity?: string;
+            logger?: CallBack;
+            symmetricKey?: Bytes;
+        }
     ) {
-        super(new LogBackedStore(filePath, false), identity, logger);
+        super(new LogBackedStore(filePath, false), {
+            identity: args?.identity,
+            logger: args?.logger || console.log,
+            symmetricKey: args?.symmetricKey,
+        });
     }
 
     async onConnection(connection: WebSocketConnection) {

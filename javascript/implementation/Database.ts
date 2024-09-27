@@ -67,8 +67,9 @@ export class Database {
     private identity: string;
     private chainGetter?: Promise<BundleInfo> = undefined;
     protected iHave: ChainTracker;
-    readonly symKey: Bytes;
-    symKeyId: number;
+    readonly logger: CallBack;
+    readonly symmetricKey: Bytes;
+    symmetricKeyId: number;
 
     //TODO: centralize platform dependent code
     private static W3cWebSocket =
@@ -78,13 +79,16 @@ export class Database {
 
     constructor(
         readonly store: Store = new MemoryStore(true),
-        identity: string = getIdentity(),
-        readonly logger: CallBack = noOp,
-        symKey?: Bytes
+        args?: {
+            identity?: string;
+            logger?: CallBack;
+            symmetricKey?: Bytes;
+        }
     ) {
-        this.identity = identity;
+        this.identity = args?.identity ?? getIdentity();
+        this.logger = args?.logger ?? noOp;
+        this.symmetricKey = args?.symmetricKey;
         this.ready = this.initialize();
-        this.symKey = symKey;
     }
 
     private async initialize(): Promise<void> {
@@ -107,8 +111,10 @@ export class Database {
         };
         this.store.addFoundBundleCallBack(callback);
 
-        if (this.symKey) {
-            this.symKeyId = await this.store.saveSymmetricKey(this.symKey);
+        if (this.symmetricKey) {
+            this.symmetricKeyId = await this.store.saveSymmetricKey(
+                this.symmetricKey
+            );
         }
     }
 
@@ -506,9 +512,9 @@ export class Database {
                 if (bundler.innerBundleToEncrypt !== undefined) {
                     const encrypted = encryptMessage(
                         bundler.innerBundleToEncrypt.serializeBinary(),
-                        this.symKey
+                        this.symmetricKey
                     );
-                    bundler.setEncryptedBytes(encrypted, this.symKeyId);
+                    bundler.setEncryptedBytes(encrypted, this.symmetricKeyId);
                 }
 
                 const bundleInfo: BundleInfo = {
