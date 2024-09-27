@@ -1,6 +1,7 @@
 """ the ChangeSet class """
 from typing import Optional, Union, Any, List
 from nacl.signing import SigningKey
+from nacl.secret import SecretBox
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
 from .typedefs import MuTimestamp, Medallion
@@ -19,6 +20,7 @@ class Bundler:
         self._medallion: Optional[Medallion] = None
         self._timestamp: Optional[MuTimestamp] = None
         self._changes: List[ChangeBuilder] = []
+        self._inner_bundle_to_encrypt: Optional[BundleBuilder] = None
 
     def __str__(self):
         return str(self._bundle_builder)
@@ -45,7 +47,11 @@ class Bundler:
             return self._sealed
         return object.__getattribute__(self, name)
 
-    def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Muid:
+    def add_change(
+            self,
+            builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder],
+            encrypted: bool = False,
+            ) -> Muid:
         """ adds a single change (in the form of the proto builder) """
         if self._sealed:
             raise AssertionError("already sealed")
@@ -56,7 +62,12 @@ class Bundler:
             builder = ChangeBuilder()
             builder.entry.CopyFrom(entry_builder)  # type: ignore # pylint: disable=maybe-no-member
         assert isinstance(builder, ChangeBuilder)
-        self._changes.append(builder)
+        if encrypted:
+            if not self._inner_bundle_to_encrypt:
+                self._inner_bundle_to_encrypt = BundleBuilder()
+            self._inner_bundle_to_encrypt.changes.append(builder)
+        else:
+            self._changes.append(builder)
         return muid
 
     def seal(
@@ -67,6 +78,8 @@ class Bundler:
             signing_key: SigningKey,
             previous: Optional[MuTimestamp] = None,
             prior_hash: Union[bytes, str, None] = None,
+            symmetric_key: Optional[bytes] = None,
+            key_id: Optional[int] = None,
             ) -> bytes:
         """ Finalizes a bundle and serializes it.
             Identity is required if this is the first bundle in a chain.
@@ -91,7 +104,15 @@ class Bundler:
                 prior_hash = bytes.fromhex(prior_hash)
             assert isinstance(prior_hash, bytes) and len(prior_hash) == 32
             self._bundle_builder.prior_hash = prior_hash
-        self._bundle_builder.changes.extend(self._changes)
+
+        if self._inner_bundle_to_encrypt:
+            assert symmetric_key and key_id, "Symmetric key and key ID are required for encryption."
+            secret_box = SecretBox(symmetric_key)
+            encrypted = secret_box.encrypt(self._inner_bundle_to_encrypt.SerializeToString())
+            self._bundle_builder.encrypted = encrypted
+            self._bundle_builder.key_id = key_id
+        else:
+            self._bundle_builder.changes.extend(self._changes)
         serialized = self._bundle_builder.SerializeToString()
         signed = signing_key.sign(serialized)
         self._sealed = signed

@@ -4,6 +4,7 @@ from contextlib import closing
 from pathlib import Path
 from platform import system
 from io import StringIO
+from nacl.utils import random
 
 from ..impl.database import Database
 from ..impl.memory_store import MemoryStore
@@ -229,3 +230,21 @@ def test_dump():
             assert group.contains(box_muid)
             assert group.contains(ps_muid)
             assert group.dumps() == group_dump
+
+def test_encryption():
+    """
+    Tests bundle encryption through the database
+    """
+    symmetric_key = random(32)
+    for store in [
+        LmdbStore(),
+        MemoryStore(),
+    ]:
+        with closing(store):
+            database = Database(store=store, symmetric_key=symmetric_key)
+            root = Directory(arche=True, database=database)
+            root["foo"] = "bar"
+            root["bar"] = "baz"
+
+            assert root.get("foo") == "bar"
+            assert root.get("bar") == "baz"
