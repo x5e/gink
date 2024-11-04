@@ -38,7 +38,7 @@ class Box(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
 
         Container.__init__(
             self,
@@ -54,7 +54,7 @@ class Box(Container):
             self.set(contents, bundler=bundler)
 
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def set(self, value: Union[UserValue, Container], *, bundler=None, comment=None):

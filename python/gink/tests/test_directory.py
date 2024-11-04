@@ -31,9 +31,9 @@ def test_set_get():
             database = Database(store=store)
             global_directory = Directory.get_global_instance(database=database)
 
-            bundler = Bundler("testing")
+            bundler = database.create_bundler("testing")
             global_directory.set("foo", "bar", bundler=bundler)
-            database.bundle(bundler)
+            bundler.commit()
             infos = store.get_bundle_infos()
             assert len(infos) == 2, infos
             result = global_directory["foo"]

@@ -49,7 +49,7 @@ class Directory(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
 
         Container.__init__(
             self,
@@ -65,7 +65,7 @@ class Directory(Container):
             self.update(contents, bundler=bundler)
 
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this directory to a string.
@@ -157,7 +157,8 @@ class Directory(Container):
         just_created = False
         store = self._database.get_store()
         immediate = bundler is None
-        bundler = Bundler(comment=comment) if bundler is None else bundler
+        if bundler is None:
+            bundler = self._database.create_bundler(comment)
         for key in keys:
             found = store.get_entry_by_key(current._muid, key=key, as_of=timestamp) if not just_created else None
             if found is None or found.builder.deletion:  # type: ignore
@@ -176,7 +177,7 @@ class Directory(Container):
                     raise ValueError(f"cannot set in a non directory: {type(current)}")
         muid = current._add_entry(key=final_key, value=value, bundler=bundler)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
         return muid
 
     @typechecked
@@ -317,7 +318,7 @@ class Directory(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore
@@ -325,7 +326,7 @@ class Directory(Container):
             for key, val in from_what:
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def blame(self, key: Optional[UserKey] = None, as_of: GenericTimestamp = None

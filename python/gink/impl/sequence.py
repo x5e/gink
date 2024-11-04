@@ -41,7 +41,7 @@ class Sequence(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
 
         Container.__init__(
                 self,
@@ -55,7 +55,7 @@ class Sequence(Container):
             self.clear(bundler=bundler)
             self.extend(contents, bundler=bundler)
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     def __iter__(self):
         for thing in self.values():
@@ -135,7 +135,7 @@ class Sequence(Container):
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
         items = list(iterable)
         if hasattr(expiries, "__iter__"):
             expiries = list(expiries)  # type: ignore
@@ -147,7 +147,7 @@ class Sequence(Container):
             expiry = self._database.resolve_timestamp(expiry) if expiry else None  # type: ignore
             self._add_entry(value=items[i], bundler=bundler, expiry=expiry)
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
         return bundler
 
     @typechecked
@@ -165,7 +165,7 @@ class Sequence(Container):
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
         change_builder = ChangeBuilder()
         movement_builder = change_builder.movement  # type: ignore
         self._muid.put_into(movement_builder.container)
@@ -182,7 +182,7 @@ class Sequence(Container):
         movement_builder.dest = dest
         muid = bundler.add_change(change_builder)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
         return muid
 
     @typechecked

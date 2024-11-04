@@ -31,15 +31,15 @@ def test_to_from():
     for store in [LmdbStore()]:
         with closing(store):
             db = Database(store=store)
-            bundler = Bundler()
+            bundler = db.create_bundler()
             vertex1 = Vertex(bundler=bundler)
             vertex2 = Vertex(bundler=bundler)
-            db.bundle(bundler=bundler)
+            bundler.commit()
             edge_type = EdgeType()
-            bundler = Bundler()
+            bundler = db.create_bundler()
             edge12 = edge_type.create_edge(vertex1, vertex2, bundler=bundler)
             edge21 = edge_type.create_edge(vertex2, vertex1, bundler=bundler)
-            db.bundle(bundler=bundler)
+            bundler.commit()
             edges_from1 = set(vertex1.get_edges_from())
             assert edges_from1 == {edge12}, edges_from1
             edges_to = set(vertex1.get_edges_to())
@@ -80,9 +80,9 @@ def test_reissue_properties():
             edge1.remove()
             after_removed = list(vertex1.get_edges_from())
             assert len(after_removed) == 0, after_removed
-            bundler = Bundler()
+            bundler = db.create_bundler()
             db.reset(to_time=timestamp, bundler=bundler)
-            db.bundle(bundler)
+            bundler.commit()
             after_reset = list(vertex1.get_edges_from())
             assert len(after_reset) == 1, after_reset
             edge2 = after_reset[0]
@@ -102,9 +102,9 @@ def test_reset_vertex():
             timestamp = generate_timestamp()
             vertex1.remove()
             assert not vertex1.is_alive()
-            bundler = Bundler()
+            bundler = db.create_bundler()
             vertex1.reset(timestamp, bundler=bundler)
-            db.bundle(bundler)
+            bundler.commit()
             assert vertex1.is_alive()
 
 def test_reset_edge():

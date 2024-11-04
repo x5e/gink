@@ -43,7 +43,7 @@ class PairMap(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
 
         Container.__init__(
                 self,
@@ -58,7 +58,7 @@ class PairMap(Container):
             for key_pair, value in contents.items():
                 self.set(key_pair, value, bundler)
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def set(self,

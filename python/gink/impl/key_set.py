@@ -41,7 +41,7 @@ class KeySet(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
 
         Container.__init__(
                 self,
@@ -56,7 +56,7 @@ class KeySet(Container):
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def add(self, key: UserKey, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
@@ -69,11 +69,11 @@ class KeySet(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
         for key in keys:
             self._add_entry(key=key, value=inclusion, bundler=bundler)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def contains(self, key: UserKey, as_of: GenericTimestamp=None):
@@ -177,18 +177,23 @@ class KeySet(Container):
     @typechecked
     def difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, removing elements found in the specified iterables. """
+        immediate = False
         if bundler is None:
-            bundler = Bundler()
+            immediate = True
+            bundler = self._database.create_bundler()
         for element in s:
             if self.contains(element):
                 self.remove(element, bundler=bundler, comment=comment)
-        self._database.bundle(bundler)
+        if immediate:
+            bundler.commit()
 
     @typechecked
     def intersection_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, keeping only elements found in the key set and the specified iterables. """
+        immedate = False
         if bundler is None:
-            bundler = Bundler()
+            bundler = self._database.create_bundler(comment)
+            immedate = True
         intersection = self.intersection(s)
         iterable = self._database.get_store().get_keyed_entries(
             container=self.get_muid(), behavior=self.BEHAVIOR, as_of=generate_timestamp())
@@ -199,7 +204,8 @@ class KeySet(Container):
             key = decode_key(entry_pair.builder)
             if key and not key in intersection:
                 self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
-        self._database.bundle(bundler)
+        if immedate:
+            bundler.commit()
 
     @typechecked
     def symmetric_difference_update(

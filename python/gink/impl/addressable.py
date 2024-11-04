@@ -74,7 +74,7 @@ class Addressable:
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
         store = self._database.get_store()
         hits = [fc for fc in store.get_by_name(name) if fc.builder.behavior == Behavior.PROPERTY]
         if len(hits) > 1:
@@ -101,7 +101,7 @@ class Addressable:
         encode_value(value, setting_change.entry.value)
         muid = bundler.add_change(setting_change)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
         return muid
 
     @abstractmethod

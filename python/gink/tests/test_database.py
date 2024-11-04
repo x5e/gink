@@ -40,8 +40,8 @@ def test_add_bundle() -> None:
     store = MemoryStore()
     database = Database(store=store)
     started = generate_timestamp()
-    bundler = Bundler("just a test")
-    database.bundle(bundler)
+    bundler = database.create_bundler("just a test")
+    bundler.commit()
     bundles: List[BundleInfo] = []
     store.get_bundles(lambda _: bundles.append(_.get_info()))
     assert len(bundles) == 2
@@ -56,9 +56,9 @@ def test_negative_as_of():
     ]:
         with closing(store):
             database = Database(store=store)
-            bundler = Bundler("hello world")
+            bundler = database.create_bundler("hello world")
             assert bundler._timestamp is None
-            database.bundle(bundler)
+            bundler.commit()
             assert bundler._timestamp is not None
             recent = store.get_one(BundleInfo)
             assert recent.timestamp == bundler._timestamp
@@ -71,10 +71,10 @@ def test_bundle_two():
     ]:
         with closing(store):
             database = Database(store=store)
-            first = Bundler("hello world")
-            database.bundle(first)
-            second = Bundler("goodbye, world")
-            database.bundle(second)
+            first = database.create_bundler("hello world")
+            first.commit()
+            second = database.create_bundler("goodbye, world")
+            second.commit()
 
 
 def test_reset_everything():

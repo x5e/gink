@@ -38,7 +38,7 @@ class Braid(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
 
         Container.__init__(
             self,
@@ -53,7 +53,7 @@ class Braid(Container):
             self.update(contents, bundler=bundler)
 
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
@@ -111,7 +111,7 @@ class Braid(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler)
@@ -119,7 +119,7 @@ class Braid(Container):
             for key, val in from_what:
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def delete(self, describing: Chain, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:

@@ -36,7 +36,7 @@ class Group(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
 
         Container.__init__(
                 self,
@@ -61,7 +61,7 @@ class Group(Container):
                 self.exclude(container, bundler=bundler)
 
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def include(self, what: Union[Muid, Container], *,

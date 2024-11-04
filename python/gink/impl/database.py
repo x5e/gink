@@ -128,6 +128,10 @@ class Database(Relay):
         self._store.apply_bundle(wrapper, self._on_bundle, claim_chain=True)
         return wrapper.get_info()
 
+    def create_bundler(self, comment: Optional[str] = None) -> Bundler:
+        from .basic_bundler import BasicBundler
+        return BasicBundler(self, comment)
+
     def bundle(self, bundler: Bundler) -> BundleInfo:
         """ seals bundler and adds the resulting bundle to the local store """
         assert not bundler.sealed

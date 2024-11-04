@@ -42,7 +42,7 @@ class PairSet(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
 
         Container.__init__(
                 self,
@@ -69,7 +69,7 @@ class PairSet(Container):
                 self.exclude(pair, bundler=bundler) # type: ignore
 
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def include(self, pair: Pair, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):

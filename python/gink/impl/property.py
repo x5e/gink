@@ -39,7 +39,7 @@ class Property(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
 
         Container.__init__(
                 self,
@@ -53,7 +53,7 @@ class Property(Container):
             self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this property to a string. """
@@ -117,7 +117,7 @@ class Property(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore
@@ -125,7 +125,7 @@ class Property(Container):
             for key, val in from_what:
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def delete(self, describing: Union[Addressable, Muid], *, bundler=None, comment=None) -> Muid:

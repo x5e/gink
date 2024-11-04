@@ -162,14 +162,14 @@ class Container(Addressable, ABC):
         """
         immediate = False
         if bundler is None:
-            bundler = Bundler()
+            bundler = database.create_bundler(None)
             immediate = True
         change_builder = ChangeBuilder()
         container_builder = change_builder.container  # type: ignore # pylint: disable=maybe-no-member
         container_builder.behavior = behavior  # type: ignore
         muid = bundler.add_change(change_builder)
         if immediate:
-            database.bundle(bundler)  # type: ignore
+            bundler.commit()
         return muid
 
     def clear(self, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
@@ -181,13 +181,13 @@ class Container(Addressable, ABC):
         # pylint: disable=maybe-no-member
         immediate = False
         if not isinstance(bundler, Bundler):
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
             immediate = True
         change_builder = ChangeBuilder()
         self._muid.put_into(change_builder.clearance.container)  # type: ignore
         change_muid = bundler.add_change(change_builder)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
         return change_muid
 
     @typechecked
@@ -211,7 +211,7 @@ class Container(Addressable, ABC):
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
         change_builder = ChangeBuilder()
         # pylint: disable=maybe-no-member
         entry_builder: EntryBuilder = change_builder.entry  # type: ignore
@@ -263,7 +263,7 @@ class Container(Addressable, ABC):
             raise ValueError(f"don't know how to add this value to gink: {value}")
         muid = bundler.add_change(change_builder)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
         return muid
 
     def reset(
@@ -291,7 +291,7 @@ class Container(Addressable, ABC):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
         assert isinstance(bundler, Bundler)
         to_time = self._database.resolve_timestamp(to_time)
         for change in self._database.get_store().get_reset_changes(to_time=to_time,
@@ -299,7 +299,7 @@ class Container(Addressable, ABC):
                                                                    recursive=recursive):
             bundler.add_change(change)
         if immediate and len(bundler):
-            self._database.bundle(bundler=bundler)
+            bundler.commit()
         return bundler
 
     @abstractmethod

@@ -40,7 +40,7 @@ class Vertex(Container):
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
 
         Container.__init__(
                 self,
@@ -52,7 +52,7 @@ class Vertex(Container):
         )
 
         if len(bundler) and immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         _ = as_of
@@ -94,7 +94,7 @@ class Vertex(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment=comment)
+            bundler = self._database.create_bundler(comment)
         change_builder = ChangeBuilder()
         entry_builder: EntryBuilder = change_builder.entry
         entry_builder.behavior = VERTEX
@@ -104,7 +104,7 @@ class Vertex(Container):
             entry_builder.purge = True
         result = bundler.add_change(change_builder)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
         return result
 
 Database.register_container_type(Vertex)
@@ -138,7 +138,7 @@ class EdgeType(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
 
         Container.__init__(
                 self,
@@ -153,7 +153,7 @@ class EdgeType(Container):
             pass  # This is intentional! The edge constructors will restore them!
 
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def create_edge(
@@ -167,7 +167,7 @@ class EdgeType(Container):
         bundler: Optional[Bundler] = None) -> 'Edge':
         immediate = False
         if bundler is None:
-            bundler = Bundler(comment)
+            bundler = self._database.create_bundler(comment)
             immediate = True
         return Edge(
             action=self,
@@ -257,7 +257,7 @@ class Edge(Addressable):
             self._action = action if isinstance(action, Muid) else action._muid
             if bundler is None:
                 _immediate = True
-                bundler = Bundler()
+                bundler = self._database.create_bundler()
             change_builder = ChangeBuilder()
             entry_builder: EntryBuilder = change_builder.entry
             entry_builder.behavior = EDGE_TYPE
@@ -330,7 +330,7 @@ class Edge(Addressable):
         """
         immediate = False
         if not isinstance(bundler, Bundler):
-            bundler = Bundler(comment=comment)
+            bundler = self._database.create_bundler(comment)
             immediate = True
         change_builder = ChangeBuilder()
         movement_builder = change_builder.movement

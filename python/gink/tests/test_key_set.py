@@ -31,9 +31,9 @@ def test_add_update_contains():
             database = Database(store=store)
             gks = KeySet.get_global_instance(database=database)
 
-            bundler = Bundler("testing")
+            bundler = database.create_bundler("testing")
             gks.add("value1", bundler=bundler)
-            database.bundle(bundler)
+            bundler.commit()
             infos = store.get_bundle_infos()
             assert len(infos) == 2, infos
             assert gks.contains("value1")
