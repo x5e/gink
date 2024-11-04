@@ -271,7 +271,7 @@ class Edge(Addressable):
                 entry_builder.effective = self._effective = effective
             muid = bundler.add_change(change_builder)
             if _immediate:
-                self._database.bundle(bundler)
+                bundler.commit()
         super().__init__(database=self._database, muid=muid)
 
     def dumps(self, indent=1) -> str:
@@ -343,5 +343,5 @@ class Edge(Addressable):
             movement_builder.purge = purge
         change_muid = bundler.add_change(change_builder)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
         return change_muid

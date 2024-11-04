@@ -129,8 +129,8 @@ class Database(Relay):
         return wrapper.get_info()
 
     def create_bundler(self, comment: Optional[str] = None) -> Bundler:
-        from .basic_bundler import BasicBundler
-        return BasicBundler(self, comment)
+        from .bound_bundler import BoundBundler
+        return BoundBundler(self, comment)
 
     def bundle(self, bundler: Bundler) -> BundleInfo:
         """ seals bundler and adds the resulting bundle to the local store """
@@ -160,7 +160,7 @@ class Database(Relay):
             self._logger.debug("locally committed bundle: %r", info)
             return info
 
-    def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):
+    def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None) -> None:
         """ Resets the database to a specific point in time.
 
             Note that it literally just "re"-sets everything in one big
@@ -170,14 +170,13 @@ class Database(Relay):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self.create_bundler(comment)
         assert isinstance(bundler, Bundler)
         to_time = self.resolve_timestamp(to_time)
         for change in self._store.get_reset_changes(to_time=to_time, container=None, user_key=None):
             bundler.add_change(change)
-        if immediate and len(bundler):
-            self.bundle(bundler=bundler)
-        return bundler
+        if immediate:
+            bundler.commit()
 
     def get_container(
             self,

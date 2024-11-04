@@ -2,10 +2,9 @@
 """
 from datetime import datetime as DateTime
 
-from ..impl.builders import ChangeBuilder, EntryBuilder
+from ..impl.builders import ChangeBuilder
 from ..impl.coding import encode_value, decode_value, Placement, QueueMiddleKey, SEQUENCE, DIRECTORY, PAIR_SET, VERTEX
 from ..impl.muid import Muid
-from ..impl.bundler import Bundler
 
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
@@ -101,7 +100,7 @@ def test_entry_to_from_builder():
     for store in [LmdbStore(), MemoryStore()]:
         database = Database(store)
 
-        bundler = Bundler()
+        bundler = database.create_bundler()
         change_builder = ChangeBuilder()
         entry_builder = change_builder.entry
         entry_builder.behavior = PAIR_SET
@@ -115,7 +114,7 @@ def test_entry_to_from_builder():
         noun2.put_into(entry_builder.pair.rite)
 
         bundler.add_change(change_builder)
-        info = database.bundle(bundler)
+        info = bundler.commit()
 
         # From builder
         assert Placement.from_builder(

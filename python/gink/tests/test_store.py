@@ -7,7 +7,6 @@ from nacl.signing import SigningKey, VerifyKey
 from nacl.utils import random
 from nacl.secret import SecretBox
 
-
 # gink generated proto modules
 from ..impl.builders import BundleBuilder
 from google.protobuf.text_format import Parse  # type: ignore
@@ -19,16 +18,12 @@ from ..impl.bundle_wrapper import BundleWrapper
 from ..impl.muid import Muid
 from ..impl.tuples import Chain
 from ..impl.utilities import digest
-from ..impl.database import Database
-from ..impl.directory import Directory
-from ..impl.sequence import Sequence
-from ..impl.utilities import generate_timestamp
+from ..impl.utilities import generate_timestamp, generate_medallion
 
 StoreMaker = Callable[[], AbstractStore]
 
 signing_key = SigningKey.generate()
 verify_key: VerifyKey = signing_key.verify_key
-
 
 def curried(a_function, some_data) -> Callable[[], None]:
     """ returns a function with the first argument applied to the second """
@@ -55,20 +50,64 @@ def install_tests(into_where, from_place, store_maker):
             into_where[new_name] = new_func
 
 
-def make_empty_bundle(bundle_info: BundleInfo, prior: Optional[bytes] = None) -> bytes:
+def make_empty_bundle(
+        bundle_info: BundleInfo,
+        prior: Optional[bytes] = None,
+        identity: Optional[str] = None,
+    ) -> bytes:
     """ Makes an empty change set that matches the given metadata. """
+    if bundle_info.chain_start != bundle_info.timestamp and not bundle_info.previous:
+        pass
     builder = BundleBuilder()
-    builder.medallion = bundle_info.medallion  # type: ignore
-    builder.chain_start = bundle_info.chain_start  # type: ignore
-    builder.timestamp = bundle_info.timestamp  # type: ignore
-    builder.previous = bundle_info.previous  # type: ignore
+    builder.medallion = bundle_info.medallion
+    builder.chain_start = bundle_info.chain_start
+    builder.timestamp = bundle_info.timestamp
+    if bundle_info.previous:
+        builder.previous = bundle_info.previous
+    if identity:
+        builder.identity = identity
     if bundle_info.comment:
-        builder.comment = bundle_info.comment  # type: ignore
+        builder.comment = bundle_info.comment
     if bundle_info.timestamp == bundle_info.chain_start:
         builder.verify_key = bytes(verify_key)
     if prior:
         builder.prior_hash = digest(prior)
-    return signing_key.sign(builder.SerializeToString())  # type: ignore
+    return signing_key.sign(builder.SerializeToString())
+
+def generic_test_identity(store_maker: StoreMaker):
+    """ Tests that identity is properly set in first bundle
+        and rejected in subsequent bundles.
+    """
+    store = store_maker()
+
+    medallion = generate_medallion()
+    timestamp1 = generate_timestamp()
+    bi1 = BundleInfo(
+        medallion=medallion,
+        timestamp=timestamp1,
+        chain_start=timestamp1
+    )
+
+    bundle_bytes = make_empty_bundle(
+        bi1, identity="first name"
+    )
+    bundle_wrapper = BundleWrapper(bundle_bytes)
+    applied = store.apply_bundle(bundle_wrapper)
+    assert applied
+
+    bi2 = BundleInfo(
+        timestamp=timestamp1+1,
+        chain_start=timestamp1,
+        previous=timestamp1,
+        medallion=medallion,
+    )
+    # Should not be able to set identity in bundle that doesnt start the chain
+    second_bundle = make_empty_bundle(bi2, bundle_bytes, identity="second name")
+    store.apply_bundle(second_bundle)
+
+    identity = store.get_identity(bi1.get_chain())
+    assert identity == "first name", identity
+
 
 
 def generic_test_accepts_only_once(store_maker: StoreMaker):
@@ -358,48 +397,6 @@ def generic_test_get_ordered_entries(store_maker: StoreMaker):
         assert found[0].entry_muid == Muid(123, 789, 3)
         assert found[1].entry_muid == Muid(123, 789, 4)
 
-def generic_test_drop_history(store_maker: StoreMaker):
-    with closing(store_maker()) as store:
-        database = Database(store=store)
-        gdi = Directory.get_global_instance(database=database)
-        seq = Sequence(database=database)
-        seq.append("foo")
-        gdi.set("foo", "bar")
-        after_setting = generate_timestamp()
-        assert seq.size() == 1
-        assert gdi["foo"] == "bar"
-        seq.remove("foo")
-        gdi.delete("foo")
-        assert seq.size() == 0
-        assert "foo" not in gdi
-        assert seq.size(as_of=after_setting) == 1
-        assert gdi.get("foo", as_of=after_setting) == "bar"
-
-        store.stop_history()
-
-        assert seq.size(as_of=after_setting) == 0, seq.dumps(as_of=after_setting)
-        assert gdi.get("foo", as_of=after_setting) == None, gdi.get("foo", as_of=after_setting)
-
-        store.start_history()
-
-        new_dir = Directory(database=database)
-        seq.append("foo")
-        gdi.set("foo", "bar")
-        before_new = generate_timestamp()
-        new_dir.set("foo", "baz")
-        assert seq.size() == 1
-        assert gdi["foo"] == "bar"
-        assert new_dir["foo"] == "baz"
-        seq.pop()
-        gdi.delete("foo")
-
-        assert new_dir.get("foo", as_of=before_new) == None
-
-        store.drop_history(as_of=before_new)
-
-        assert seq.size() == 0
-        assert "foo" not in gdi
-        assert new_dir["foo"] == "baz"
 
 def generic_test_negative_offsets(store_maker: StoreMaker):
     textproto1 = """

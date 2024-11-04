@@ -8,7 +8,6 @@ from ..impl.box import Box
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
-from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
 from ..impl.utilities import generate_timestamp
 

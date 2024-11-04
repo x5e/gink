@@ -1,5 +1,7 @@
-from typing import Optional, Union, Any, List
+from typing import Optional, Union, Any, List, Type
+from types import TracebackType
 from nacl.signing import SigningKey
+from logging import getLogger
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
 from .typedefs import MuTimestamp, Medallion
@@ -9,7 +11,7 @@ from .database import Database
 from .bundler import Bundler
 
 
-class BasicBundler(Bundler):
+class BoundBundler(Bundler):
 
     def __init__(self, database: Database, comment: Optional[str] = None):
         self._database = database
@@ -20,6 +22,7 @@ class BasicBundler(Bundler):
         self._medallion: Optional[Medallion] = None
         self._timestamp: Optional[MuTimestamp] = None
         self._changes: List[ChangeBuilder] = []
+        self._logger = getLogger(self.__class__.__name__)
 
     def __str__(self):
         return str(self._bundle_builder)
@@ -46,7 +49,6 @@ class BasicBundler(Bundler):
             return self._sealed
         return object.__getattribute__(self, name)
 
-
     def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Muid:
         """ adds a single change (in the form of the proto builder) """
         if self._sealed:
@@ -61,6 +63,16 @@ class BasicBundler(Bundler):
         self._changes.append(builder)
         return muid
 
+    def __exit__(
+        self, /,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType]
+    ) -> Optional[bool]:
+        if exc_type is None:
+            self.commit()
+        else:
+            self._logger.exception("bundler abandoning bundle: ", exc_info=(exc_type, exc_value, traceback))
 
     def seal(
             self, *,

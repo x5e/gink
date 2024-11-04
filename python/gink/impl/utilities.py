@@ -18,6 +18,7 @@ from random import choice
 from nacl.hash import blake2b, shorthash, SIPHASH_KEYBYTES
 from nacl.encoding import RawEncoder
 from struct import unpack
+from nacl.signing import SigningKey
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
@@ -351,7 +352,7 @@ def is_needed(new_info: BundleInfo, old_info: Optional[BundleInfo]) -> bool:
     if new_info.timestamp != new_info.chain_start and not new_info.previous:
         raise ValueError("Bundle isn't the start but has no prior.")
     if (new_info.previous or seen_through) and new_info.previous != seen_through:
-        raise ValueError("Bundle received without prior link in chain!")
+        raise ValueError(f"Bundle received without prior link in chain! new:{new_info} old:{old_info} ")
     return True
 
 

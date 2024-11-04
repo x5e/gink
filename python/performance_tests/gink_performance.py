@@ -48,7 +48,7 @@ def test_write_big_bundle(db_file_path: Path, count: int) -> dict:
         before_time = datetime.now()
         for i in range(0, count):
             directory.set(f"test{i}", "test data to be inserted", bundler=bundler)
-        db.bundle(bundler)
+        bundler.commit()
         after_time = datetime.now()
 
     total_time = round((after_time - before_time).total_seconds(), 4)

@@ -229,3 +229,47 @@ def test_dump():
             assert group.contains(box_muid)
             assert group.contains(ps_muid)
             assert group.dumps() == group_dump
+
+
+def generic_test_drop_history(store_maker: StoreMaker):
+    with closing(store_maker()) as store:
+        database = Database(store=store)
+        gdi = Directory.get_global_instance(database=database)
+        seq = Sequence(database=database)
+        seq.append("foo")
+        gdi.set("foo", "bar")
+        after_setting = generate_timestamp()
+        assert seq.size() == 1
+        assert gdi["foo"] == "bar"
+        seq.remove("foo")
+        gdi.delete("foo")
+        assert seq.size() == 0
+        assert "foo" not in gdi
+        assert seq.size(as_of=after_setting) == 1
+        assert gdi.get("foo", as_of=after_setting) == "bar"
+
+        store.stop_history()
+
+        assert seq.size(as_of=after_setting) == 0, seq.dumps(as_of=after_setting)
+        assert gdi.get("foo", as_of=after_setting) == None, gdi.get("foo", as_of=after_setting)
+
+        store.start_history()
+
+        new_dir = Directory(database=database)
+        seq.append("foo")
+        gdi.set("foo", "bar")
+        before_new = generate_timestamp()
+        new_dir.set("foo", "baz")
+        assert seq.size() == 1
+        assert gdi["foo"] == "bar"
+        assert new_dir["foo"] == "baz"
+        seq.pop()
+        gdi.delete("foo")
+
+        assert new_dir.get("foo", as_of=before_new) == None
+
+        store.drop_history(as_of=before_new)
+
+        assert seq.size() == 0
+        assert "foo" not in gdi
+        assert new_dir["foo"] == "baz"
