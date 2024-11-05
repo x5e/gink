@@ -7,6 +7,8 @@ from sys import stdout
 from logging import getLogger
 from re import fullmatch
 from nacl.signing import SigningKey
+from nacl.utils import random
+from nacl.secret import SecretBox
 
 # builders
 from .builders import ContainerBuilder
@@ -39,8 +41,17 @@ class Database(Relay):
     _last_link: Optional[BundleInfo]
     _container_types: dict = {}
     _signing_key: Optional[SigningKey]
+    _lock: Lock
+    _locked: bool
+    _symmetric_key: Optional[bytes]
+    _encryption: Union[bool, bytes]
 
-    def __init__(self, store: Union[AbstractStore, str, None] = None, identity=get_identity()):
+    def __init__(
+            self,
+            store: Union[AbstractStore, str, None] = None,
+            identity: str = get_identity(),
+            encryption: Union[bytes, bool, None] = None,
+            ):
         super().__init__(store=store)
         setattr(Database, "_last", self)
         self._last_link = None
@@ -48,7 +59,19 @@ class Database(Relay):
         self._identity = identity
         self._logger = getLogger(self.__class__.__name__)
         self._lock = Lock()
+        self._locked = False
         self._signing_key = None
+        self._encryption = encryption
+        self._symmetric_key = None
+
+    def __enter__(self):
+        self._lock.acquire()
+        self._locked = True
+
+    def __exit__(self, *_):
+        assert self._locked
+        self._locked = False
+        self._lock.release()
 
     def get_store(self) -> AbstractStore:
         """ returns the store managed by this database """
@@ -103,21 +126,41 @@ class Database(Relay):
             return bundle_info.timestamp
         return resolve_timestamp(timestamp)
 
+    def _on_bundle(self, bundle_wrapper: BundleWrapper) -> None:
+        info = bundle_wrapper.get_info()
+        if self._last_link and info.get_chain() == self._last_link.get_chain():
+            assert self._locked
+            self._last_link = info
+        super()._on_bundle(bundle_wrapper)
+
     def _acquire_appendable_chain(self) -> BundleInfo:
         """ Either starts a chain or finds one to reuse, then returns the last link in it.
         """
         assert self._signing_key is None
+        assert self._symmetric_key is None
         reused = self._store.maybe_reuse_chain(self._identity)
         if reused:
-            verify_key = self._store.get_verify_key(reused.get_chain())
-            self._signing_key = self._store.get_signing_key(verify_key)
-            return reused
+            symmetric_key = self._store.get_symmetric_key(reused.get_chain())
+            if symmetric_key is None or self._encryption is not False:
+                verify_key = self._store.get_verify_key(reused.get_chain())
+                self._signing_key = self._store.get_signing_key(verify_key)
+                self._symmetric_key = symmetric_key
+                return reused
         self._signing_key = SigningKey.generate()
         self._store.save_signing_key(self._signing_key)
+        if self._encryption is True or self._encryption is None:
+            symmetric_key = self._store.get_symmetric_key()
+            if symmetric_key is None and self._encryption is True:
+                symmetric_key = random(32)
+                self._store.save_symmetric_key(symmetric_key)
         medallion = generate_medallion()
         chain_start = generate_timestamp()
         chain = Chain(medallion=medallion, chain_start=chain_start)
-        bundler = Bundler()
+        from .bound_bundler import BoundBundler
+        bundler = BoundBundler(
+            database=self,
+
+        )
         bundle_bytes = bundler.seal(
             chain=chain,
             identity=self._identity,
@@ -128,16 +171,26 @@ class Database(Relay):
         self._store.apply_bundle(wrapper, self._on_bundle, claim_chain=True)
         return wrapper.get_info()
 
+    def get_last_link(self) -> Optional[BundleInfo]:
+        return self._last_link
+
     def create_bundler(self, comment: Optional[str] = None) -> Bundler:
         from .bound_bundler import BoundBundler
-        return BoundBundler(self, comment)
+        with self._lock:
+            if self._last_link is None:
+                self._last_link = self._acquire_appendable_chain()
+            return BoundBundler(
+                database=self,
+                comment=comment,
+                signing_key=self._signing_key,
+            )
 
     def bundle(self, bundler: Bundler) -> BundleInfo:
         """ seals bundler and adds the resulting bundle to the local store """
         assert not bundler.sealed
         with self._lock:  # using an exclusive lock to ensure that we don't fork a chain
             if not self._last_link:
-                self._last_link = self._acquire_appendable_chain()
+                self._last_link = self.acquire_appendable_chain()
             chain = self._last_link.get_chain()
             seen_to = self._last_link.timestamp
             assert seen_to is not None

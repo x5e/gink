@@ -1,6 +1,7 @@
 from typing import Optional, Union, Any, List, Type
 from types import TracebackType
 from nacl.signing import SigningKey
+from nacl.secret import SecretBox
 from logging import getLogger
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
@@ -8,19 +9,26 @@ from .typedefs import MuTimestamp, Medallion
 from .tuples import Chain
 from .muid import Muid
 from .database import Database
-from .bundler import Bundler
-
+from .bundler import Bundler, BundleInfo
+from .utilities import generate_timestamp
+from .bundle_wrapper import BundleWrapper
 
 class BoundBundler(Bundler):
 
-    def __init__(self, database: Database, comment: Optional[str] = None):
+    def __init__(
+            self,
+            database: Database,
+            symmetric_key: Optional[bytes] = None,
+            signing_key: Optional[SigningKey] = None,
+            comment: Optional[str] = None,
+        ):
+        self._symmetric_key = symmetric_key
+        self._signing_key = signing_key
         self._database = database
         self._sealed: Optional[bytes] = None
         self._bundle_builder = BundleBuilder()
         self._count_items = 0
         self._comment = comment
-        self._medallion: Optional[Medallion] = None
-        self._timestamp: Optional[MuTimestamp] = None
         self._changes: List[ChangeBuilder] = []
         self._logger = getLogger(self.__class__.__name__)
 
@@ -30,27 +38,9 @@ class BoundBundler(Bundler):
     def __len__(self):
         return self._count_items
 
-    def __setattr__(self, __name: str, __value: Any) -> None:
-        if hasattr(self, "_sealed") and self._sealed is not None:
-            raise AttributeError("can't change a sealed change set")
-        if __name == "comment":
-            self._comment = __value
-            return
-        object.__setattr__(self, __name, __value)
-
-    def __getattr__(self, name):
-        if name == "medallion":
-            return self._medallion
-        if name == "timestamp":
-            return self._timestamp
-        if name == "comment":
-            return self._comment
-        if name == "sealed":
-            return self._sealed
-        return object.__getattribute__(self, name)
-
     def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Muid:
         """ adds a single change (in the form of the proto builder) """
+        # TODO: remove medallion from references when they're within the current chain
         if self._sealed:
             raise AssertionError("already sealed")
         self._count_items += 1
@@ -74,7 +64,33 @@ class BoundBundler(Bundler):
         else:
             self._logger.exception("bundler abandoning bundle: ", exc_info=(exc_type, exc_value, traceback))
 
-    def seal(
+    def commit(self) -> BundleInfo:
+        assert not self._sealed, "already committed"
+        with self._database:
+            last_link = self.get_last_link()
+            chain = last_link.get_chain()
+            seen_to = last_link.timestamp
+            assert seen_to is not None
+            timestamp = generate_timestamp()
+            assert timestamp > seen_to
+            signing_key = self._database.get_signing_key()
+            assert signing_key is not None
+            assert self._last_link.hex_hash is not None
+            bundle_bytes = self._seal(
+                chain=chain,
+                timestamp=timestamp,
+                previous=seen_to,
+                signing_key=self._signing_key,
+                prior_hash=self._last_link.hex_hash,
+            )
+            wrap = BundleWrapper(bundle_bytes)
+            added = self.receive(wrap)
+            assert added
+            info = wrap.get_info()
+            self._logger.debug("locally committed bundle: %r", info)
+            return info
+
+    def _seal(
             self, *,
             chain: Chain,
             identity: Optional[str] = None,
@@ -97,8 +113,8 @@ class BoundBundler(Bundler):
             assert identity is None, "Identity is only used in first bundle in a chain."
             self._bundle_builder.previous = previous  # type: ignore
         self._bundle_builder.chain_start = chain.chain_start  # type: ignore
-        self._medallion = self._bundle_builder.medallion = chain.medallion  # type: ignore
-        self._timestamp = self._bundle_builder.timestamp = timestamp  # type: ignore
+        self._bundle_builder.medallion = chain.medallion  # type: ignore
+        self._bundle_builder.timestamp = timestamp  # type: ignore
         if self._comment:
             self._bundle_builder.comment = self.comment  # type: ignore
         if prior_hash:

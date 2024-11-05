@@ -97,7 +97,12 @@ class MemoryStore(AbstractStore):
         self._symmetric_keys[key_id] = symmetric_key
         return key_id
 
-    def get_symmetric_key(self, key_id: int) -> bytes:
+    def get_symmetric_key(self, key_id: Optional[int]) -> Optional[bytes]:
+        if key_id is None:
+            for val in self._symmetric_keys.values():
+                return val
+            else:
+                return None
         return self._symmetric_keys[key_id]
 
     def save_signing_key(self, signing_key: SigningKey):

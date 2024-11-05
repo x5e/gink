@@ -132,8 +132,12 @@ class LmdbStore(AbstractStore):
             trxn.put(encode_muts(key_id), symmetric_key, db=self._symmetric_keys)
         return key_id
 
-    def get_symmetric_key(self, key_id) -> bytes:
+    def get_symmetric_key(self, key_id: Optional[int]) -> Optional[bytes]:
         with self._handle.begin(write=False) as trxn:
+            if key_id is None:
+                cursor = trxn.cursor(db=self._symmetric_keys)
+                return cursor.value() if cursor.first() else None
+            assert key_id is not None
             found = trxn.get(encode_muts(key_id), db=self._symmetric_keys)
             if found is None:
                 raise KeyError("could not find a symmetric key for that key id")

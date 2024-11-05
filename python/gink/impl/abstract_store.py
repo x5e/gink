@@ -272,5 +272,5 @@ class AbstractStore(BundleStore, Generic[Lock]):
         """
 
     @abstractmethod
-    def get_symmetric_key(self, key_id: int) -> bytes:
+    def get_symmetric_key(self, key_id: Optional[int|Chain]) -> Optional[bytes]:
         """ Retrieves a previously stored symmetric key. """
