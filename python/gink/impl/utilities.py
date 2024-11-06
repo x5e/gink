@@ -13,7 +13,7 @@ from requests import get
 from authlib.jose import jwt, JsonWebKey, KeySet
 from authlib.jose.errors import JoseError
 from time import time as get_time
-from typing import Optional, Tuple
+from typing import *
 from random import choice
 from nacl.hash import blake2b, shorthash, SIPHASH_KEYBYTES
 from nacl.encoding import RawEncoder
@@ -368,3 +368,46 @@ def shorter_hash(data: bytes, _key = b"\x5e"*SIPHASH_KEYBYTES, _mask = 2**52 - 1
     shorthash_int = unpack("<q", short_hash_result)[0]
     truncated = shorthash_int & _mask
     return truncated
+
+
+def combine(
+        *,
+        chain: Chain,
+        timestamp: MuTimestamp,
+        signing_key: SigningKey,
+        changes: Optional[List[ChangeBuilder]] = None,
+        comment: Optional[str] = None,
+        identity: Optional[str] = None,
+        previous: Optional[MuTimestamp] = None,
+        prior_hash: Union[bytes, str, None] = None,
+        ) -> bytes:
+    """ Combines the components of a bundle into its binary form.
+
+        This is only intended for internal use inside of the Gink Library.
+        It should not be considered as part of the external interface.
+    """
+    bundle_builder = BundleBuilder()
+    if previous is None:
+        assert timestamp == chain.chain_start
+        assert identity is not None, "Identity is required for first bundle in a chain."
+        bundle_builder.identity = identity
+        bundle_builder.verify_key = signing_key.verify_key.encode()
+    else:
+        assert chain.chain_start <= previous < timestamp
+        assert identity is None, "Identity is only used in first bundle in a chain."
+        bundle_builder.previous = previous
+    bundle_builder.chain_start = chain.chain_start
+    bundle_builder.medallion = chain.medallion
+    bundle_builder.timestamp = timestamp
+    if comment:
+        bundle_builder.comment = comment
+    if prior_hash:
+        if isinstance(prior_hash, str):
+            prior_hash = bytes.fromhex(prior_hash)
+        assert isinstance(prior_hash, bytes) and len(prior_hash) == 32
+        bundle_builder.prior_hash = prior_hash
+    if changes:
+        bundle_builder.changes.extend(changes)
+    serialized = bundle_builder.SerializeToString()
+    signed = signing_key.sign(serialized)
+    return signed

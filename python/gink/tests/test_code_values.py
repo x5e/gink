@@ -114,7 +114,9 @@ def test_entry_to_from_builder():
         noun2.put_into(entry_builder.pair.rite)
 
         bundler.add_change(change_builder)
-        info = bundler.commit()
+        bundler.commit()
+        wrap = bundler.get_wrap()
+        info = wrap.get_info()
 
         # From builder
         assert Placement.from_builder(

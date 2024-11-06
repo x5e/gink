@@ -17,11 +17,13 @@ def test_creation():
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
-            box1 = Box(muid=Muid(1, 2, 3), database=database)
-            assert len(store.get_bundle_infos()) == 0
+            with database.create_bundler() as bundler:
+                box1 = Box(muid=Muid(1, 2, 3), database=database, bundler=bundler)
+                assert len(bundler) == 0  # no actual changes
 
-            box2 = Box()
-            assert len(store.get_bundle_infos()) != 0
+            with database.create_bundler() as bundler:
+                box2 = Box(bundler=bundler)
+                assert len(bundler)
             assert box1 != box2
 
 def test_set_get():

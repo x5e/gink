@@ -35,10 +35,11 @@ class Box(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
+        database = database or Database.get_last()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self._database.create_bundler(comment)
+            bundler = database.create_bundler(comment)
 
         Container.__init__(
             self,

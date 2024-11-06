@@ -2,17 +2,13 @@ from abc import ABC, abstractmethod
 from typing import *
 from .builders import ChangeBuilder, EntryBuilder, ContainerBuilder
 from .muid import Muid
-from .bundle_info import BundleInfo
+from .bundle_wrapper import BundleWrapper
 from types import TracebackType
 
 __all__ = ["Bundler"]
 
 class Bundler(ABC):
     """ Manages construction and finalization of a bundle. """
-
-    def __init__(self, comment: Optional[str]= None):
-        pass
-        self.medallion = comment
 
     def __enter__(self):
         return self
@@ -31,5 +27,9 @@ class Bundler(ABC):
         """ adds a single change (in the form of the proto builder) """
 
     @abstractmethod
-    def commit(self) -> BundleInfo:
+    def commit(self):
         """ Finishes the bundle and adds it to the database. """
+
+    @abstractmethod
+    def get_wrap(self) -> Optional[BundleWrapper]:
+        """ Returns the wrapped up bundle if it's been completed, otherwise None. """
