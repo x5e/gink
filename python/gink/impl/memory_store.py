@@ -50,7 +50,6 @@ class MemoryStore(AbstractStore):
 
     def __init__(self, retain_entries = True) -> None:
         # TODO: add a "no retention" capability for bundles?
-        self._seen_containers: Set[Muid] = set()
         self._bundles = SortedDict()
         self._chain_infos = SortedDict()
         self._claims = SortedDict()
@@ -348,12 +347,10 @@ class MemoryStore(AbstractStore):
                     if change.HasField("entry"):
                         container = change.entry.container
                         muid = Muid(container.timestamp, container.medallion, container.offset)
-                        if not muid in self._seen_containers:
-                            if not self.get_container(muid):
-                                container_builder = ContainerBuilder()
-                                container_builder.behavior = change.entry.behavior
-                                self._containers[muid] = container_builder
-                                self._seen_containers.add(muid)
+                        if muid.timestamp != -1 and muid not in self._containers:
+                            container_builder = ContainerBuilder()
+                            container_builder.behavior = change.entry.behavior
+                            self._containers[muid] = container_builder
                         self._add_entry(new_info=new_info, offset=offset, entry_builder=change.entry)
                         continue
                     if change.HasField("movement"):

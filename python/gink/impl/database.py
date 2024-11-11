@@ -33,7 +33,6 @@ class Database(Relay):
     _last_time: Optional[MuTimestamp]
     _store: AbstractStore
     _last_link: Optional[BundleInfo]
-    _container_types: dict = {}
     _signing_key: Optional[SigningKey]
     _lock: Lock
     _symmetric_key: Optional[bytes]
@@ -164,15 +163,15 @@ class Database(Relay):
              ):
         """ writes the contents of the database to file """
         from .container import Container
-        from .get_container import get_container
+        from .get_container import get_container, container_classes
         for muid, container_builder in self._store.list_containers():
             container = get_container(muid=muid, behavior=container_builder.behavior, database=self)
             assert isinstance(container, Container)
             if container.size(as_of=as_of):
                 container.dump(as_of=as_of, file=file)
         if include_global_containers:
-            for cls in self._container_types.values():
-                container = cls.get_global_instance(self)
+            for cls in container_classes.values():
+                container = cls(arche=True, database=self)
                 assert isinstance(container, Container)
                 if container.size(as_of=as_of):
                     container.dump(as_of=as_of, file=file)

@@ -15,9 +15,9 @@ from .pair_set import PairSet
 from .property import Property
 from .braid import Braid
 
-__all__ = ["get_container"]
+__all__ = ["get_container", "container_classes"]
 
-_classes: dict = {
+container_classes: dict = {
     Behavior.BOX: Box,
     Behavior.SEQUENCE: Sequence,
     Behavior.PAIR_MAP: PairMap,
@@ -48,7 +48,7 @@ def get_container(
 			raise ValueError(f"could not find definition for {muid}")
 		behavior = container_builder.behavior
 	assert behavior is not None
-	container_class = _classes.get(behavior)
+	container_class = container_classes.get(behavior)
 	if container_class is None:
 		raise ValueError(f"don't know how to create a container with behavior: {behavior}")
 	return container_class(muid=muid, database=database)
