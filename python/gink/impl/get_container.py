@@ -13,6 +13,7 @@ from .graph import EdgeType, Vertex
 from .group import Group
 from .pair_set import PairSet
 from .property import Property
+from .braid import Braid
 
 __all__ = ["get_container"]
 
@@ -27,16 +28,26 @@ _classes: dict = {
     Behavior.PAIR_SET: PairSet,
 	Behavior.EDGE_TYPE: EdgeType,
     Behavior.PROPERTY: Property,
+    Behavior.BRAID: Braid,
 }
 
 
 def get_container(
 		*,
 		muid: Muid,
-		behavior: int,
 		database: Database,
+		behavior: Optional[int] = None,
 ) -> Container:
 	""" Gets a pre-existing container associated with a particular muid """
+	if muid.timestamp == -1 and behavior is None:
+		behavior = muid.offset
+	if behavior is None:
+		store = database.get_store()
+		container_builder = store.get_container(muid)
+		if container_builder is None:
+			raise ValueError(f"could not find definition for {muid}")
+		behavior = container_builder.behavior
+	assert behavior is not None
 	container_class = _classes.get(behavior)
 	if container_class is None:
 		raise ValueError(f"don't know how to create a container with behavior: {behavior}")

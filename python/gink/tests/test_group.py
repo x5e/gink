@@ -18,7 +18,7 @@ def test_basics():
             assert len(group) == 2
             assert group.size(as_of=-1) == 1
             members = set(group.get_members())
-            assert members == {ad, gd}
+            assert members == {ad, gd}, members
             group.exclude(gd)
             assert group.get_members() == {ad}
             group.reset(mark)

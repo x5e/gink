@@ -56,11 +56,11 @@ def test_negative_as_of():
         with closing(store):
             database = Database(store=store)
             bundler = database.start_bundle("hello world")
-            assert bundler._timestamp is None
+            assert bundler.timestamp is None
             bundler.commit()
-            assert bundler._timestamp is not None
+            assert bundler.timestamp is not None
             recent = store.get_one(BundleInfo)
-            assert recent.timestamp == bundler._timestamp
+            assert recent.timestamp == bundler.timestamp
 
 
 def test_bundle_two():

@@ -106,38 +106,6 @@ class Vertex(Container):
             bundler.commit()
         return result
 
-    @typechecked
-    def set_name(self, name: str, *,
-                 bundler: Optional[Bundler] = None,
-                 comment: Optional[str] = None,
-        ) -> Muid:
-        """ Sets the name of the container, overwriting any previous name for this container.
-
-            Giving multiple things the same name is not recommended.
-        """
-        name_property = Muid(-1, -1, Behavior.PROPERTY)
-        assert isinstance(name, str), "names must be strings"
-        already_named = self.get_name()
-        if already_named:
-            self._add_entry(
-                key=self._muid, value=deletion, on_muid=name_property,
-                behavior=Behavior.PROPERTY, bundler=bundler, comment=comment
-            )
-        return self._add_entry(
-            key=self._muid, value=name, on_muid=name_property, behavior=Behavior.PROPERTY,
-            bundler=bundler, comment=comment)
-
-    def get_name(self, as_of: GenericTimestamp = None) -> Optional[str]:
-        """ Returns the name of this container, if it has one. """
-        as_of = self._database.resolve_timestamp(as_of)
-        name_property = Muid(-1, -1, Behavior.PROPERTY)
-        found = self._database.get_store().get_entry_by_key(name_property, key=self._muid, as_of=as_of)
-        if found is None or found.builder.deletion:  # type: ignore
-            return None
-        name = self._get_occupant(found.builder)
-        assert isinstance(name, str)
-        return name
-
 
 @experimental
 class EdgeType(Container):

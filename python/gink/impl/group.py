@@ -10,8 +10,9 @@ from .database import Database
 from .bundler import Bundler
 from .builders import Behavior
 from .graph import Vertex
+from .utilities import experimental
 
-
+@experimental
 class Group(Container):
     BEHAVIOR = Behavior.GROUP
 
@@ -69,7 +70,7 @@ class Group(Container):
             bundler.commit()
 
     @typechecked
-    def include(self, what: Union[Muid, Vertex], *,
+    def include(self, what: Union[Muid, Container], *,
                 bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         """ Include a muid or container into the group. """
         if isinstance(what, Container):
@@ -79,7 +80,7 @@ class Group(Container):
         return self._add_entry(key=what, value=inclusion, bundler=bundler, comment=comment)
 
     @typechecked
-    def exclude(self, what: Union[Muid, Vertex], *,
+    def exclude(self, what: Union[Muid, Container], *,
                 bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         """ Exclude a muid or container from the group.
             Note: you can exclude a container that has never been included.
@@ -129,12 +130,12 @@ class Group(Container):
     def __len__(self) -> int:
         return self.size()
 
-    def __iter__(self) -> Iterable[Vertex]:
+    def __iter__(self) -> Iterable[Container]:
         for thing in self.get_members():
             yield thing
 
     @typechecked
-    def __contains__(self, what: Union[Muid, Vertex]) -> bool:
+    def __contains__(self, what: Union[Muid, Container]) -> bool:
         return self.contains(what)
 
     def get_member_ids(self, *, excluded: bool = False, as_of: GenericTimestamp = None) -> Iterable[Muid]:
@@ -148,12 +149,16 @@ class Group(Container):
             if excluded == entry_pair.builder.deletion:  # type: ignore
                 yield Muid.create(builder=entry_pair.builder.describing, context=entry_pair.address)
 
-    def get_members(self, *, excluded: bool = False, as_of: GenericTimestamp = None) -> Set[Vertex]:
+    def get_members(self, *, excluded: bool = False, as_of: GenericTimestamp = None) -> Set[Container]:
         """ Returns a set of containers included/excluded in the group at the given time. """
-        return {Vertex(muid, database=self._database) for muid in self.get_member_ids(excluded=excluded, as_of=as_of)}
+        from .get_container import get_container
+        result = set()
+        for muid in self.get_member_ids(excluded=excluded, as_of=as_of):
+            result.add(get_container(muid=muid, database=self._database))
+        return result
 
     @typechecked
-    def contains(self, what: Union[Muid, Vertex], *, as_of: GenericTimestamp = None) -> bool:
+    def contains(self, what: Union[Muid, Container], *, as_of: GenericTimestamp = None) -> bool:
         """ Returns a boolean stating whether the container is included in the group at the given time. """
         ts = self._database.resolve_timestamp(as_of)
         if not isinstance(what, Muid):
