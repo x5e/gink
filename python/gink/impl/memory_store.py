@@ -17,7 +17,7 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, Decomposition, Lock
 from .chain_tracker import ChainTracker
 from .muid import Muid
-from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
+from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey, PAIR_MAP, PAIR_SET,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change, deletion,
                      Placement, decode_entry_occupant, EDGE_TYPE,
                      PROPERTY, decode_value, new_entries_replace, BOX, GROUP,
@@ -554,9 +554,14 @@ class MemoryStore(AbstractStore):
         if container is None:
             recursive = False  # don't need to recurse if we're going to do everything anyway
         seen: Optional[Set] = set() if recursive else None
+        from .get_container import container_classes
         if container is None:
             # we're resetting everything, so loop over the container definitions
             for muid in self._containers.keys():
+                for change in self._container_reset_changes(to_time, muid, seen):
+                    yield change
+            for behavior in container_classes.keys():
+                muid = Muid(-1, -1, behavior)
                 for change in self._container_reset_changes(to_time, muid, seen):
                     yield change
         else:
@@ -581,13 +586,15 @@ class MemoryStore(AbstractStore):
             for change in self._get_vertex_reset_changes(container, to_time):
                 yield change
             return
-        if behavior in (DIRECTORY, BOX, GROUP, KEY_SET, PROPERTY):
+        if behavior in (DIRECTORY, BOX, GROUP, KEY_SET, PROPERTY, PAIR_MAP, PAIR_SET,):
             for change in self._get_keyed_reset_changes(container, to_time, seen, None, behavior):
                 yield change
             return
         if behavior in (SEQUENCE, EDGE_TYPE):
             for change in self._get_ordered_reset_changes(container, to_time, seen, behavior):
                 yield change
+            return
+        if behavior == 13:
             return
         else:
             raise NotImplementedError(f"don't know how to reset container of type {behavior}")

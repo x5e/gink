@@ -103,7 +103,8 @@ def test_reset_everything():
             assert len(globalks) == 1
             database.reset()
             after_first = generate_timestamp()
-            assert len(root) == 0
+            if len(root) != 0:
+                raise AssertionError(f"root: {root.dumps()}")
             assert len(queue) == 0
             assert len(misc) == 0
             assert len(ks) == 0
