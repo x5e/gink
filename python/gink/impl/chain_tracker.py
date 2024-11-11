@@ -60,6 +60,7 @@ class ChainTracker:
         if isinstance(what, BundleInfo):
             return what.timestamp <= self._data.get(what.get_chain(), 0)
         elif isinstance(what, Muid):
+            assert what.medallion is not None and what.timestamp is not None
             iterator = self._data.irange(
                 minimum=Chain(medallion=Medallion(what.medallion), chain_start=0),
                 maximum=Chain(medallion=Medallion(what.medallion), chain_start=what.timestamp))

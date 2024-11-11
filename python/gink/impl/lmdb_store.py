@@ -523,6 +523,7 @@ class LmdbStore(AbstractStore):
         placement_cursor = trxn.cursor(db=self._placements)
         suffix = bytes(Muid(to_time, 0, 0))
         previous_change = to_last_with_prefix(placement_cursor, bytes(container), suffix=suffix)
+        assert container.timestamp is not None
         was_deleted = container.timestamp > to_time
         if previous_change:
             entry_builder = EntryBuilder()
@@ -570,6 +571,7 @@ class LmdbStore(AbstractStore):
             # does one pass through this loop for each distinct user key needed to process
             current = self._parse_entry(cursor, behavior, trxn)
             key = current.placement.get_key()
+            assert current.placement.placer.timestamp is not None
             if current.placement.placer.timestamp < to_time and last_clear_time < to_time:
                 # no updates to this key specifically or clears have happened since to_time
                 recurse_on = decode_entry_occupant(current.placement.placer, current.builder)
@@ -588,7 +590,7 @@ class LmdbStore(AbstractStore):
                 assert bytes(limit)[:-24] == through_middle
                 found = to_last_with_prefix(cursor, through_middle, boundary=bytes(limit))
                 data_then = self._parse_entry(cursor, behavior, trxn) if found else None
-                if data_then and data_then.placement.placer.timestamp > last_clear_before_to_time:
+                if data_then and data_then.placement.placer.timestamp > last_clear_before_to_time:  # type: ignore
                     contained_then = decode_entry_occupant(data_then.placement.placer, data_then.builder)
                 else:
                     contained_then = deletion

@@ -744,6 +744,7 @@ class MemoryStore(AbstractStore):
         for placement_key_bytes in prev_iterator:
             previous_change = placement_key_bytes
             break
+        assert container.timestamp is not None
         was_deleted = container.timestamp > to_time
         if previous_change:
             entry_builder = self._entries[self._placements[previous_change]]

@@ -248,7 +248,9 @@ class Placement(NamedTuple):
             though we know now where we want the entry to be, we still need to know
             when it was placed there in order to let users ask what the order previously was.
         """
-        return self.get_positioner().timestamp
+        result = self.get_positioner().timestamp
+        assert result is not None
+        return result
 
     def __lt__(self, other):
         # I'm override sort here because I want the same sort order of the binary representation,

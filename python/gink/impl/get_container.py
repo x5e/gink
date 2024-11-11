@@ -26,7 +26,7 @@ _classes: dict = {
     Behavior.GROUP: Group,
     Behavior.VERTEX: Vertex,
     Behavior.PAIR_SET: PairSet,
-	Behavior.EDGE_TYPE: EdgeType,
+    Behavior.EDGE_TYPE: EdgeType,
     Behavior.PROPERTY: Property,
     Behavior.BRAID: Braid,
 }
