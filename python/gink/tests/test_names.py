@@ -7,6 +7,7 @@ from ..impl.property import Property
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
+from ..impl.graph import Vertex
 
 
 def test_set_get():
@@ -14,7 +15,7 @@ def test_set_get():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            global_directory = Directory.get_global_instance(database=database)
+            global_directory = Directory._get_global_instance(database=database)
             for directory in [global_directory, Directory()]:
                 assert directory.get_name() is None
                 directory.set_name("fred")
@@ -24,18 +25,18 @@ def test_get_by_name():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            d = Directory()
+            d = Vertex()
             d.set_name("fred")
-            s = Sequence()
+            s = Vertex()
             s.set_name("bob")
-            b = Box()
+            b = Vertex()
             b.set_name("bob")
             freds = database.get_by_name("fred")
             assert len(freds) == 1 and freds[0] == d
             bobs = database.get_by_name("bob")
             assert len(bobs) == 2 and b in bobs and s in bobs
 
-            prop = Property.get_global_instance()
+            prop = Property._get_global_instance()
             prop.set(Directory(arche=True), "root")
             new_dir = Directory(database=database)
             prop.set(new_dir, "new_dir")
@@ -50,7 +51,7 @@ def test_properties_on_containers():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            d = Directory()
+            d = Vertex()
             d.set_property_value_by_name("foo", 33)
             there = d.get_property_value_by_name("foo")
             assert there == 33
@@ -61,7 +62,7 @@ def test_properties_on_containers():
             assert after_rename == 33
             d.set_property_value_by_name("foo", 99)
             assert d.get_property_value_by_name("foo") == 99
-            properties_names = {p.get_name() for p in d.get_describing()}
+            properties_names = {p.get_name() for p in d._get_describing()}
             assert properties_names == {"foo", "bar"}, properties_names
-            properties_values = {p.get(d) for p in d.get_describing()}
+            properties_values = {p.get(d) for p in d._get_describing()}
             assert properties_values == {33, 99}

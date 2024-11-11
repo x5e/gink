@@ -12,7 +12,6 @@ from .coding import BOX
 
 
 class Box(Container):
-    BEHAVIOR = BOX
 
     @typechecked
     def __init__(
@@ -35,23 +34,22 @@ class Box(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
-        database = database or Database.get_last()
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = database.create_bundler(comment)
+            bundler = database.start_bundle(comment)
 
-        Container.__init__(
-            self,
-            behavior=BOX,
-            muid=muid,
-            arche=arche,
-            database=database,
-            bundler=bundler,
-        )
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, BOX)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(BOX, bundler=bundler)
+        Container.__init__(self, behavior=BOX, muid=muid, database=database)
 
         if contents is not None:
-            self.clear(bundler=bundler)
             self.set(contents, bundler=bundler)
 
         if immediate and len(bundler):
@@ -106,6 +104,3 @@ class Box(Container):
 
     def is_empty(self, *, as_of: GenericTimestamp = None) -> bool:
         return True if self.size(as_of=as_of) == 0 else False
-
-
-Database.register_container_type(Box)

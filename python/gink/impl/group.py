@@ -9,6 +9,7 @@ from .muid import Muid
 from .database import Database
 from .bundler import Bundler
 from .builders import Behavior
+from .graph import Vertex
 
 
 class Group(Container):
@@ -19,10 +20,11 @@ class Group(Container):
                 self,
                 muid: Optional[Union[Muid, str]] = None,
                 *,
-                contents: Optional[Dict[str, Iterable[Union[Muid, Container]]]] = None,
+                contents: Optional[Dict[str, Iterable[Union[Muid, Vertex]]]] = None,
                 database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
+                arche: Optional[bool] = None,
             ):
         """
         Constructor for a group definition.
@@ -33,23 +35,26 @@ class Group(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self._database.create_bundler(comment)
+            bundler = database.start_bundle(comment)
 
-        Container.__init__(
-                self,
-                behavior=GROUP,
-                muid=muid,
-                arche=False,
-                database=database,
-                bundler=bundler,
-            )
-
+        created = False
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, GROUP)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(GROUP, bundler=bundler)
+            created = True
+        Container.__init__(self, behavior=GROUP, muid=muid, database=database)
         if contents:
-            assert contents.keys() <= {"include", "exclude"}, "expecting only 'include' and 'exclude' keys in contents"
-            self.clear(bundler=bundler)
+            assert contents.keys() <= {"include", "exclude"}
+            if not created:
+                self.clear(bundler=bundler)
             included = contents.get("include", set())
             assert isinstance(included, Iterable)
             for container in included:
@@ -64,7 +69,7 @@ class Group(Container):
             bundler.commit()
 
     @typechecked
-    def include(self, what: Union[Muid, Container], *,
+    def include(self, what: Union[Muid, Vertex], *,
                 bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         """ Include a muid or container into the group. """
         if isinstance(what, Container):
@@ -74,7 +79,7 @@ class Group(Container):
         return self._add_entry(key=what, value=inclusion, bundler=bundler, comment=comment)
 
     @typechecked
-    def exclude(self, what: Union[Muid, Container], *,
+    def exclude(self, what: Union[Muid, Vertex], *,
                 bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         """ Exclude a muid or container from the group.
             Note: you can exclude a container that has never been included.
@@ -124,12 +129,12 @@ class Group(Container):
     def __len__(self) -> int:
         return self.size()
 
-    def __iter__(self) -> Iterable[Container]:
+    def __iter__(self) -> Iterable[Vertex]:
         for thing in self.get_members():
             yield thing
 
     @typechecked
-    def __contains__(self, what: Union[Muid, Container]) -> bool:
+    def __contains__(self, what: Union[Muid, Vertex]) -> bool:
         return self.contains(what)
 
     def get_member_ids(self, *, excluded: bool = False, as_of: GenericTimestamp = None) -> Iterable[Muid]:
@@ -143,21 +148,19 @@ class Group(Container):
             if excluded == entry_pair.builder.deletion:  # type: ignore
                 yield Muid.create(builder=entry_pair.builder.describing, context=entry_pair.address)
 
-    def get_members(self, *, excluded: bool = False, as_of: GenericTimestamp = None) -> Set[Container]:
+    def get_members(self, *, excluded: bool = False, as_of: GenericTimestamp = None) -> Set[Vertex]:
         """ Returns a set of containers included/excluded in the group at the given time. """
-        return {self._database.get_container(muid) for muid in self.get_member_ids(excluded=excluded, as_of=as_of)}
+        return {Vertex(muid, database=self._database) for muid in self.get_member_ids(excluded=excluded, as_of=as_of)}
 
     @typechecked
-    def contains(self, what: Union[Muid, Container], *, as_of: GenericTimestamp = None) -> bool:
+    def contains(self, what: Union[Muid, Vertex], *, as_of: GenericTimestamp = None) -> bool:
         """ Returns a boolean stating whether the container is included in the group at the given time. """
         ts = self._database.resolve_timestamp(as_of)
-        if isinstance(what, Container):
-            what = what._muid
-            assert what.timestamp, "this container has not been bundled" # type: ignore
+        if not isinstance(what, Muid):
+            what = what.get_muid()
+            assert isinstance(what, Muid)
+            assert what.timestamp, "this container has not been bundled"
         muid = self.get_muid()
         assert muid.timestamp, "this group has not been bundled"
-        found = self._database.get_store().get_entry_by_key(muid, key=what, as_of=ts) # type: ignore
+        found = self._database.get_store().get_entry_by_key(muid, key=what, as_of=ts)
         return bool(found and not found.builder.deletion)
-
-
-Database.register_container_type(Group)

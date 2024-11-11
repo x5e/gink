@@ -101,7 +101,10 @@ def get_identity() -> str:
 def experimental(thing):
     """ Decorator to mark a function or class as experimental. """
     warned = [False]
-    name = f"{thing.__module__}.{thing.__name__}"
+    if hasattr(thing, "__module__"):
+        name = f"{thing.__module__}.{thing.__name__}"
+    else:
+        name = str(thing)
     the_class = None
     if isinstance(thing, type):
         the_class = thing
@@ -380,6 +383,7 @@ def combine(
         identity: Optional[str] = None,
         previous: Optional[MuTimestamp] = None,
         prior_hash: Union[bytes, str, None] = None,
+        check_assumptions: bool = True,
         ) -> bytes:
     """ Combines the components of a bundle into its binary form.
 
@@ -388,13 +392,16 @@ def combine(
     """
     bundle_builder = BundleBuilder()
     if previous is None:
-        assert timestamp == chain.chain_start
-        assert identity is not None, "Identity is required for first bundle in a chain."
-        bundle_builder.identity = identity
+        if check_assumptions:
+            assert timestamp == chain.chain_start, f"timestamp={timestamp}, chain={chain}"
+            assert identity is not None, "Identity is required for first bundle in a chain."
+        if identity:
+            bundle_builder.identity = identity
         bundle_builder.verify_key = signing_key.verify_key.encode()
     else:
-        assert chain.chain_start <= previous < timestamp
-        assert identity is None, "Identity is only used in first bundle in a chain."
+        if check_assumptions:
+            assert chain.chain_start <= previous < timestamp
+            assert identity is None, "Identity is only used in first bundle in a chain."
         bundle_builder.previous = previous
     bundle_builder.chain_start = chain.chain_start
     bundle_builder.medallion = chain.medallion

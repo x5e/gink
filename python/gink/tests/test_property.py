@@ -17,7 +17,7 @@ def test_property_set_get():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            namer = Property.get_global_instance(database=database)
+            namer = Property._get_global_instance(database=database)
             directory = Directory()
             namer.set(directory, "my favorite directory")
             named = namer.get(directory)
@@ -33,8 +33,8 @@ def test_property_dump():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            namer = Property.get_global_instance(database=database)
-            directory = Directory.get_global_instance()
+            namer = Property._get_global_instance(database=database)
+            directory = Directory._get_global_instance()
             namer.set(directory, "fred")
             named = namer.get(directory)
             assert named == "fred", named
@@ -53,7 +53,7 @@ def test_property_from_contents():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            directory1 = Directory.get_global_instance()
+            directory1 = Directory._get_global_instance()
             directory2 = Directory()
 
             p1 = Property(database=database, contents={directory1: 5, directory2: 2})
@@ -69,8 +69,8 @@ def test_property_reset():
     for store in [LmdbStore(),]:
         with closing(store):
             database = Database(store=store)
-            namer = Property.get_global_instance(database=database)
-            directory = Directory.get_global_instance()
+            namer = Property._get_global_instance(database=database)
+            directory = Directory._get_global_instance()
             namer.set(directory, "fred")
             mark = generate_timestamp()
             namer.set(directory, "joe")
@@ -82,7 +82,7 @@ def test_property_ref():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            directory = Directory.get_global_instance(database=database)
+            directory = Directory._get_global_instance(database=database)
             property = Property()
             property.set(directory, directory)
             val = property.get(directory)

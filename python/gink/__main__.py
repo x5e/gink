@@ -10,6 +10,7 @@ from importlib import import_module
 from os import environ
 from json import dumps
 import datetime # allows setting of datetime objects from CLI
+assert datetime
 # TODO: don't import all of datetime
 
 from . import *
@@ -70,7 +71,7 @@ else:
     store = LogBackedStore(args.db_path)
 
 database = Database(store, identity=args.identity or get_identity())
-root = Directory.get_global_instance(database=database)
+root = Directory._get_global_instance(database=database)
 
 if args.dump:
     if args.dump is True:

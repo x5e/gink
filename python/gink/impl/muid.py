@@ -27,7 +27,7 @@ class Muid:
         self._bundler = bundler
 
     @property
-    def timestamp(self) -> MuTimestamp:
+    def timestamp(self) -> Optional[MuTimestamp]:
         if self._timestamp is not None:
             return self._timestamp
         if self._bundler:
@@ -35,7 +35,7 @@ class Muid:
         raise ValueError("timestamp not defined?")
 
     @property
-    def medallion(self) -> Medallion:
+    def medallion(self) -> Optional[Medallion]:
         if self._medallion is not None:
             return self._medallion
         if self._bundler:

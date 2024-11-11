@@ -1,6 +1,5 @@
 from typing import Optional, Union, List, Type
 from types import TracebackType
-from nacl.signing import SigningKey
 from logging import getLogger
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
@@ -8,7 +7,8 @@ from .muid import Muid
 from .database import Database
 from .bundler import Bundler
 from .utilities import generate_timestamp, combine
-from .bundle_wrapper import BundleWrapper
+from .decomposition import Decomposition
+from .typedefs import MuTimestamp, Medallion
 
 class BoundBundler(Bundler):
 
@@ -16,13 +16,11 @@ class BoundBundler(Bundler):
             self,
             database: Optional[Database] = None,
             symmetric_key: Optional[bytes] = None,
-            signing_key: Optional[SigningKey] = None,
             comment: Optional[str] = None,
         ):
         self._symmetric_key = symmetric_key
-        self._signing_key = signing_key
         self._database = database
-        self._bundle_wrapper: Optional[BundleWrapper] = None
+        self._decomposition: Optional[Decomposition] = None
         self._bundle_builder = BundleBuilder()
         self._count_items = 0
         self._comment = comment
@@ -35,7 +33,7 @@ class BoundBundler(Bundler):
     def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Muid:
         """ adds a single change (in the form of the proto builder) """
         # TODO: remove medallion from references when they're within the current chain
-        if self._bundle_wrapper:
+        if self._decomposition:
             raise AssertionError("already completed")
         self._count_items += 1
         muid = Muid(offset=self._count_items, bundler=self)
@@ -56,14 +54,16 @@ class BoundBundler(Bundler):
         if exc_type is None:
             self.commit()
         else:
-            self._logger.exception("bundler abandoning bundle: ", exc_info=(exc_type, exc_value, traceback))
+            assert exc_value is not None and traceback is not None
+            self._logger.exception("abandoning bundle: ", exc_info=(exc_type, exc_value, traceback))
+        return None
 
     def commit(self):
-        if self._bundle_wrapper:
+        if self._decomposition:
             raise ValueError("already committed")
         assert self._database is not None, "cannot commit without a database"
-        with self._database:
-            last_link = self._database.get_last_link(force=True)
+        with self._database as needed:
+            last_link, signing_key = needed
             chain = last_link.get_chain()
             seen_to = last_link.timestamp
             assert seen_to is not None
@@ -75,15 +75,24 @@ class BoundBundler(Bundler):
                 timestamp=timestamp,
                 previous=seen_to,
                 prior_hash=last_link.hex_hash,
-                signing_key=self._signing_key,
+                signing_key=signing_key,
                 changes=self._changes,
+                comment=self._comment,
             )
-            wrap = BundleWrapper(bundle_bytes)
+            wrap = Decomposition(bundle_bytes)
             added = self._database.receive(wrap)
             assert added
-            self._bundle_wrapper = wrap
+            self._decomposition = wrap
             info = wrap.get_info()
             self._logger.debug("locally committed bundle: %r", info)
 
-    def get_wrap(self) -> Optional[BundleWrapper]:
-        return self._bundle_wrapper
+    def get_decomposition(self) -> Optional[Decomposition]:
+        return self._decomposition
+
+    @property
+    def timestamp(self) -> Optional[MuTimestamp]:
+        return self._decomposition.get_info().timestamp if self._decomposition else None
+
+    @property
+    def medallion(self) -> Optional[Medallion]:
+        return self._decomposition.get_info().medallion if self._decomposition else None

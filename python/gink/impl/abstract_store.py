@@ -13,7 +13,7 @@ from .chain_tracker import ChainTracker
 from .typedefs import UserKey, MuTimestamp, Medallion, Limit
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
-from .bundle_wrapper import BundleWrapper
+from .decomposition import Decomposition
 from .utilities import is_certainly_gone
 from .bundle_store import BundleStore
 Lock = TypeVar('Lock')
@@ -100,13 +100,13 @@ class AbstractStore(BundleStore, Generic[Lock]):
         return False
 
     @abstractmethod
-    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[BundleWrapper], None]]=None, /) -> int:
+    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[Decomposition], None]]=None, /) -> int:
         """ Do a refresh using a lock/transaction """
 
     def maybe_reuse_chain(
             self,
             identity: str,
-            callback: Optional[Callable[[BundleWrapper], None]]=None) -> Optional[BundleInfo]:
+            callback: Optional[Callable[[Decomposition], None]]=None) -> Optional[BundleInfo]:
         """ Tries to find a chain for reuse. The callback is used for refresh. """
         lock: Lock = self._acquire_lock()
         try:
@@ -141,8 +141,8 @@ class AbstractStore(BundleStore, Generic[Lock]):
     @abstractmethod
     def apply_bundle(
             self,
-            bundle: Union[BundleWrapper, bytes],
-            callback: Optional[Callable[[BundleWrapper], None]]=None,
+            bundle: Union[Decomposition, bytes],
+            callback: Optional[Callable[[Decomposition], None]]=None,
             claim_chain: bool=False) -> bool:
         """ Tries to add data from a particular bundle to this store.
 
@@ -150,7 +150,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
             and will throw an exception in the case of an invalid extension.
         """
 
-    def refresh(self, callback: Optional[Callable[[BundleWrapper], None]]=None) -> int:
+    def refresh(self, callback: Optional[Callable[[Decomposition], None]]=None) -> int:
         """ Checks the source file for bundles that haven't come from this process and calls the callback.
 
             Intended to allow the process to send bundles to peers and otherwise get the model in line with the file.
@@ -167,7 +167,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
         """ Gets a list of bundle infos; mostly for testing. """
         result = []
 
-        def callback(bundle_wrapper: BundleWrapper):
+        def callback(bundle_wrapper: Decomposition):
             result.append(bundle_wrapper.get_info())
 
         self.get_bundles(callback, limit_to=limit_to)
@@ -272,5 +272,5 @@ class AbstractStore(BundleStore, Generic[Lock]):
         """
 
     @abstractmethod
-    def get_symmetric_key(self, key_id: Optional[int|Chain]) -> Optional[bytes]:
+    def get_symmetric_key(self, key_id: Union[int, Chain, None]) -> Optional[bytes]:
         """ Retrieves a previously stored symmetric key. """

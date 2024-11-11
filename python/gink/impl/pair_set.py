@@ -25,6 +25,7 @@ class PairSet(Container):
                 database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
+                arche: Optional[bool] = None,
             ):
         """
         Constructor for a pair set proxy.
@@ -36,26 +37,26 @@ class PairSet(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
-        # if muid and muid.timestamp > 0 and contents:
-        # TODO [P3] check the store to make sure that the container is defined and compatible
-
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self._database.create_bundler(comment)
-
-        Container.__init__(
-                self,
-                behavior=PAIR_SET,
-                muid=muid,
-                arche=False,
-                database=database,
-                bundler=bundler,
-            )
+            bundler = database.start_bundle(comment)
+        created = False
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, PAIR_SET)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(PAIR_SET, bundler=bundler)
+            created = True
+        Container.__init__(self, behavior=PAIR_SET, muid=muid, database=database)
         if contents:
             assert isinstance(contents, dict)
             assert contents.keys() <= {"include", "exclude"}, "expecting only 'include' and 'exclude' keys in contents"
-            self.clear(bundler=bundler)
+            if not created:
+                self.clear(bundler=bundler)
             included = contents.get("include", set())
             assert isinstance(included, Iterable)
             for pair in included:
@@ -144,5 +145,3 @@ class PairSet(Container):
 
         result += "})"
         return result
-
-Database.register_container_type(PairSet)

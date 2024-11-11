@@ -38,20 +38,19 @@ class Sequence(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
-        database = database or Database.get_last()
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = database.create_bundler(comment)
-
-        Container.__init__(
-                self,
-                behavior=SEQUENCE,
-                muid=muid,
-                arche=arche,
-                database=database,
-                bundler=bundler,
-        )
+            bundler = database.start_bundle(comment)
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, SEQUENCE)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(SEQUENCE, bundler=bundler)
+        Container.__init__(self, behavior=SEQUENCE, muid=muid, database=database)
         if contents is not None:
             self.clear(bundler=bundler)
             self.extend(contents, bundler=bundler)
@@ -136,7 +135,7 @@ class Sequence(Container):
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = self._database.create_bundler(comment)
+            bundler = self._database.start_bundle(comment)
         items = list(iterable)
         if hasattr(expiries, "__iter__"):
             expiries = list(expiries)  # type: ignore
@@ -166,7 +165,7 @@ class Sequence(Container):
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = self._database.create_bundler(comment)
+            bundler = self._database.start_bundle(comment)
         change_builder = ChangeBuilder()
         movement_builder = change_builder.movement  # type: ignore
         self._muid.put_into(movement_builder.container)
@@ -339,6 +338,3 @@ class Sequence(Container):
         if p2 - p1 < 2:
             raise ValueError("not enough space between them")
         return randint(p1 + 1, p2 - 1)
-
-
-Database.register_container_type(Sequence)

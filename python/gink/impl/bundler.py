@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import *
 from .builders import ChangeBuilder, EntryBuilder, ContainerBuilder
 from .muid import Muid
-from .bundle_wrapper import BundleWrapper
 from types import TracebackType
 
 __all__ = ["Bundler"]
@@ -23,13 +22,13 @@ class Bundler(ABC):
         """ exit context management """
 
     @abstractmethod
+    def __len__(self) -> int:
+        """ return the number of changes in this bundle """
+
+    @abstractmethod
     def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Muid:
         """ adds a single change (in the form of the proto builder) """
 
     @abstractmethod
     def commit(self):
         """ Finishes the bundle and adds it to the database. """
-
-    @abstractmethod
-    def get_wrap(self) -> Optional[BundleWrapper]:
-        """ Returns the wrapped up bundle if it's been completed, otherwise None. """

@@ -14,7 +14,7 @@ from .listener import Listener
 from .chain_tracker import ChainTracker
 from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
-from .bundle_wrapper import BundleWrapper
+from .decomposition import Decomposition
 from .looping import Selectable, Finished
 from .bundle_store import BundleStore
 from .server import Server
@@ -40,14 +40,14 @@ class Relay(Server):
         assert isinstance(store, AbstractStore)
         self._store = store
         self._logger = getLogger(self.__class__.__name__)
-        self._callbacks: List[Callable[[BundleWrapper], None]] = list()
+        self._callbacks: List[Callable[[Decomposition], None]] = list()
         self._connections: Set[Connection] = set()
         self._not_acked = set()
         if self._store.is_selectable():
             self._store.on_ready = self._on_store_ready
             self._add_selectable(self._store)
 
-    def add_callback(self, callback: Callable[[BundleWrapper], None]):
+    def add_callback(self, callback: Callable[[Decomposition], None]):
         """ Add a callback to be called when a bundle is received. """
         self._callbacks.append(callback)
 
@@ -100,7 +100,7 @@ class Relay(Server):
         self._store.close()
         super().close()
 
-    def _on_bundle(self, bundle_wrapper: BundleWrapper) -> None:
+    def _on_bundle(self, bundle_wrapper: Decomposition) -> None:
         """ Sends a bundle either created locally or received from a peer to other peers.
 
             Should only be called when a bundle has been successfully added to the local store.
@@ -111,7 +111,7 @@ class Relay(Server):
         for callback in self._callbacks:
             callback(bundle_wrapper)
 
-    def receive(self, bundle_wrapper: BundleWrapper) -> bool:
+    def receive(self, bundle_wrapper: Decomposition) -> bool:
         """ Receive a bundle, either created locally or from a peer.
 
             Returns true if the bundle is novel.
@@ -131,7 +131,7 @@ class Relay(Server):
         if connection in self._connections:
             try:
                 for thing in connection.receive_objects():
-                    if isinstance(thing, BundleWrapper):  # some data
+                    if isinstance(thing, Decomposition):  # some data
                         self.receive(thing)
                         connection.send(thing.get_info().as_acknowledgement())
                     elif isinstance(thing, ChainTracker):  # greeting message

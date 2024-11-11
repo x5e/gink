@@ -15,7 +15,7 @@ from .braid import Braid
 from .directory import Directory
 from .box import Box
 from .looping import Finished
-from .bundle_wrapper import BundleWrapper
+from .decomposition import Decomposition
 from .chain_tracker import ChainTracker
 from .bundle_info import BundleInfo
 from .utilities import decode_and_verify_jwt, generate_random_token
@@ -80,7 +80,7 @@ class BraidServer(Server):
             if isinstance(selectable, Connection):
                 yield selectable
 
-    def _after_relay_recieves_bundle(self, bundle_wrapper: BundleWrapper) -> None:
+    def _after_relay_recieves_bundle(self, bundle_wrapper: Decomposition) -> None:
         """ Internal callback that distributes a bundle to all connections when
             the relay receives a bundle.
         """
@@ -204,7 +204,7 @@ class BraidServer(Server):
         try:
             for thing in connection.receive_objects():
                 braid = braid or self._braids.get(connection)
-                if isinstance(thing, BundleWrapper):  # some data
+                if isinstance(thing, Decomposition):  # some data
                     if not connection.get_permissions() & AUTH_RITE:
                         self._logger.debug("ignoring bundle from connection without write perms")
                         continue

@@ -9,10 +9,11 @@ from .coding import BRAID, deletion
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
+from .utilities import experimental
 
 
+@experimental
 class Braid(Container):
-    BEHAVIOR = BRAID
 
     @typechecked
     def __init__(
@@ -35,25 +36,28 @@ class Braid(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self._database.create_bundler(comment)
-
-        Container.__init__(
-            self,
-            behavior=BRAID,
-            muid=muid,
-            arche=arche,
-            database=database,
-            bundler=bundler,
-        )
+            bundler = database.start_bundle(comment)
+        created = False
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, BRAID)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(BRAID, bundler=bundler)
+            created = True
+        Container.__init__(self, behavior=BRAID, muid=muid, database=database)
         if contents:
-            self.clear(bundler=bundler)
+            if not created:
+                self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
-
         if immediate and len(bundler):
             bundler.commit()
+
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
@@ -73,7 +77,7 @@ class Braid(Container):
     def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[Chain, Limit]]:
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self._muid, as_of=as_of, behavior=self.__class__.BEHAVIOR)
+            container=self._muid, as_of=as_of, behavior=BRAID)
         for entry_pair in iterable:
             if entry_pair.builder.deletion:  # type: ignore
                 continue
@@ -85,7 +89,7 @@ class Braid(Container):
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self._muid, as_of=as_of, behavior=self.__class__.BEHAVIOR)
+            container=self._muid, as_of=as_of, behavior=BRAID)
         count = 0
         for thing in iterable:
             if not thing.builder.deletion:
@@ -111,7 +115,7 @@ class Braid(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self._database.create_bundler(comment)
+            bundler = self._database.start_bundle(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler)
@@ -141,6 +145,3 @@ class Braid(Container):
         value = self._get_occupant(found.builder, found.address)
         assert isinstance(value, (int, float))
         return value
-
-
-Database.register_container_type(Braid)

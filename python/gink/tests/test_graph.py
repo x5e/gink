@@ -31,12 +31,12 @@ def test_to_from():
     for store in [LmdbStore()]:
         with closing(store):
             db = Database(store=store)
-            bundler = db.create_bundler()
+            bundler = db.start_bundle()
             vertex1 = Vertex(bundler=bundler)
             vertex2 = Vertex(bundler=bundler)
             bundler.commit()
             edge_type = EdgeType()
-            bundler = db.create_bundler()
+            bundler = db.start_bundle()
             edge12 = edge_type.create_edge(vertex1, vertex2, bundler=bundler)
             edge21 = edge_type.create_edge(vertex2, vertex1, bundler=bundler)
             bundler.commit()
@@ -80,7 +80,7 @@ def test_reissue_properties():
             edge1.remove()
             after_removed = list(vertex1.get_edges_from())
             assert len(after_removed) == 0, after_removed
-            bundler = db.create_bundler()
+            bundler = db.start_bundle()
             db.reset(to_time=timestamp, bundler=bundler)
             bundler.commit()
             after_reset = list(vertex1.get_edges_from())
@@ -102,7 +102,7 @@ def test_reset_vertex():
             timestamp = generate_timestamp()
             vertex1.remove()
             assert not vertex1.is_alive()
-            bundler = db.create_bundler()
+            bundler = db.start_bundle()
             vertex1.reset(timestamp, bundler=bundler)
             bundler.commit()
             assert vertex1.is_alive()
@@ -149,4 +149,3 @@ def test_graph_dump_load():
             assert "valued='edge2'" in after_load
             assert "edge1 property" in after_load
             assert "edge2 property" in after_load
-

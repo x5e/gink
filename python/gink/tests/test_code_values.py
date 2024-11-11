@@ -3,8 +3,10 @@
 from datetime import datetime as DateTime
 
 from ..impl.builders import ChangeBuilder
-from ..impl.coding import encode_value, decode_value, Placement, QueueMiddleKey, SEQUENCE, DIRECTORY, PAIR_SET, VERTEX
+from ..impl.coding import (
+    encode_value, decode_value, Placement, QueueMiddleKey, SEQUENCE, DIRECTORY, PAIR_SET, VERTEX)
 from ..impl.muid import Muid
+from ..impl.bound_bundler import BoundBundler
 
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
@@ -100,7 +102,7 @@ def test_entry_to_from_builder():
     for store in [LmdbStore(), MemoryStore()]:
         database = Database(store)
 
-        bundler = database.create_bundler()
+        bundler = database.start_bundle()
         change_builder = ChangeBuilder()
         entry_builder = change_builder.entry
         entry_builder.behavior = PAIR_SET
@@ -115,7 +117,8 @@ def test_entry_to_from_builder():
 
         bundler.add_change(change_builder)
         bundler.commit()
-        wrap = bundler.get_wrap()
+        assert isinstance(bundler, BoundBundler)
+        wrap = bundler.get_decomposition()
         info = wrap.get_info()
 
         # From builder

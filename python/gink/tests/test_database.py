@@ -8,7 +8,6 @@ from io import StringIO
 from ..impl.database import Database
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
-from ..impl.bundler import Bundler
 from ..impl.bundle_info import BundleInfo
 from ..impl.directory import Directory
 from ..impl.sequence import Sequence
@@ -31,7 +30,7 @@ def test_database():
     """ tests that the last() thing works """
     store = MemoryStore()
     database = Database(store=store)
-    last = Database.get_last()
+    last = Database.get_most_recently_created_database()
     assert last == database
 
 
@@ -40,7 +39,7 @@ def test_add_bundle() -> None:
     store = MemoryStore()
     database = Database(store=store)
     started = generate_timestamp()
-    bundler = database.create_bundler("just a test")
+    bundler = database.start_bundle("just a test")
     bundler.commit()
     bundles: List[BundleInfo] = []
     store.get_bundles(lambda _: bundles.append(_.get_info()))
@@ -56,7 +55,7 @@ def test_negative_as_of():
     ]:
         with closing(store):
             database = Database(store=store)
-            bundler = database.create_bundler("hello world")
+            bundler = database.start_bundle("hello world")
             assert bundler._timestamp is None
             bundler.commit()
             assert bundler._timestamp is not None
@@ -71,9 +70,9 @@ def test_bundle_two():
     ]:
         with closing(store):
             database = Database(store=store)
-            first = database.create_bundler("hello world")
+            first = database.start_bundle("hello world")
             first.commit()
-            second = database.create_bundler("goodbye, world")
+            second = database.start_bundle("goodbye, world")
             second.commit()
 
 
@@ -85,10 +84,10 @@ def test_reset_everything():
     ]:
         with closing(store):
             database = Database(store=store)
-            root = Directory.get_global_instance(database=database)
-            queue = Sequence.get_global_instance(database=database)
+            root = Directory._get_global_instance(database=database)
+            queue = Sequence._get_global_instance(database=database)
             ks = KeySet(database=database)
-            globalks = KeySet.get_global_instance(database=database)
+            globalks = KeySet._get_global_instance(database=database)
             misc = Directory()
 
             misc[b"yes"] = False
@@ -231,10 +230,10 @@ def test_dump():
             assert group.dumps() == group_dump
 
 
-def generic_test_drop_history(store_maker: StoreMaker):
+def generic_test_drop_history(store_maker):
     with closing(store_maker()) as store:
         database = Database(store=store)
-        gdi = Directory.get_global_instance(database=database)
+        gdi = Directory._get_global_instance(database=database)
         seq = Sequence(database=database)
         seq.append("foo")
         gdi.set("foo", "bar")

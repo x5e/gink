@@ -29,9 +29,9 @@ def test_add_update_contains():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            gks = KeySet.get_global_instance(database=database)
+            gks = KeySet._get_global_instance(database=database)
 
-            bundler = database.create_bundler("testing")
+            bundler = database.start_bundle("testing")
             gks.add("value1", bundler=bundler)
             bundler.commit()
             infos = store.get_bundle_infos()
@@ -58,7 +58,7 @@ def test_discard_remove_pop():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            gks = KeySet.get_global_instance(database=database)
+            gks = KeySet._get_global_instance(database=database)
 
             # Tests discard correctly removes element from set
             gks.update(["value1", "value2"])
@@ -86,7 +86,7 @@ def test_super_subset_disjoint():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            gks = KeySet.get_global_instance(database=database)
+            gks = KeySet._get_global_instance(database=database)
 
             gks.update(["value1", "value2", "value3"])
             assert gks.issuperset(["value2", "value3"])
@@ -99,7 +99,7 @@ def test_diff_inter_symdiff_union():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            gks = KeySet.get_global_instance(database=database)
+            gks = KeySet._get_global_instance(database=database)
 
             gks.update(["value1", "value2", "value3"])
             assert set(gks.difference(["value2", "value3"])) == {"value1"}
@@ -113,7 +113,7 @@ def test_diff_inter_symdiff_updates():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            gks = KeySet.get_global_instance(database=database)
+            gks = KeySet._get_global_instance(database=database)
 
             gks.update(["value1", "value2", "value3"])
 
@@ -135,7 +135,7 @@ def test_asof():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            gks = KeySet.get_global_instance(database=database)
+            gks = KeySet._get_global_instance(database=database)
             gks.update(["value1", "value2", "value3"])
             gks.add("value4")
             after4 = generate_timestamp()
@@ -166,7 +166,7 @@ def test_size():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            gks = KeySet.get_global_instance(database=database)
+            gks = KeySet._get_global_instance(database=database)
             gks.update(["value1", "value2", "value3"])
 
             assert gks.size() == 3

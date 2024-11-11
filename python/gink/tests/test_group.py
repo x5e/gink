@@ -5,9 +5,8 @@ def test_basics():
     """ Test the basic include/exclude functionality of groups works as expected. """
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
-            store = LmdbStore()
             database = Database(store=store)
-            gd = Directory.get_global_instance(database=database)
+            gd = Directory._get_global_instance(database=database)
             ad = Directory()
             group = Group()
             assert gd not in group

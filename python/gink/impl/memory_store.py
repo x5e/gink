@@ -14,7 +14,7 @@ from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBu
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper, Lock
+from .abstract_store import AbstractStore, Decomposition, Lock
 from .chain_tracker import ChainTracker
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
@@ -97,7 +97,9 @@ class MemoryStore(AbstractStore):
         self._symmetric_keys[key_id] = symmetric_key
         return key_id
 
-    def get_symmetric_key(self, key_id: Optional[int]) -> Optional[bytes]:
+    def get_symmetric_key(self, key_id: Union[Chain, int, None]) -> Optional[bytes]:
+        if isinstance(key_id, Chain):
+            raise NotImplementedError()
         if key_id is None:
             for val in self._symmetric_keys.values():
                 return val
@@ -249,7 +251,7 @@ class MemoryStore(AbstractStore):
     def _get_claims(self, _: Lock, /) -> Mapping[Medallion, ClaimBuilder]:
         return self._claims
 
-    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[BundleWrapper], None]]=None, /) -> int:
+    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[Decomposition], None]]=None, /) -> int:
         return 0
 
     def get_ordered_entries(
@@ -295,13 +297,13 @@ class MemoryStore(AbstractStore):
 
     def apply_bundle(
             self,
-            bundle: Union[BundleWrapper, bytes],
-            callback: Optional[Callable[[BundleWrapper], None]]=None,
+            bundle: Union[Decomposition, bytes],
+            callback: Optional[Callable[[Decomposition], None]]=None,
             claim_chain: bool=False,
             ) -> bool:
         if isinstance(bundle, bytes):
-            bundle = BundleWrapper(bundle)
-        assert isinstance(bundle, BundleWrapper)
+            bundle = Decomposition(bundle)
+        assert isinstance(bundle, Decomposition)
         bundle_builder = bundle.get_builder()
         new_info = bundle.get_info()
         chain_key = new_info.get_chain()
@@ -505,7 +507,7 @@ class MemoryStore(AbstractStore):
 
     def get_bundles(
         self,
-        callback: Callable[[BundleWrapper], None], *,
+        callback: Callable[[Decomposition], None], *,
         limit_to: Optional[Mapping[Chain, Limit]] = None,
         **_
     ):

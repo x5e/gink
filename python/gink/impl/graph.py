@@ -4,11 +4,11 @@ from typeguard import typechecked
 
 from .typedefs import GenericTimestamp, UserValue, Inclusion, MuTimestamp
 from .container import Container
-from .coding import EDGE_TYPE, VERTEX, inclusion, encode_value, decode_value
+from .coding import EDGE_TYPE, VERTEX, inclusion, encode_value, decode_value, deletion
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
-from .builders import EntryBuilder, ChangeBuilder
+from .builders import EntryBuilder, ChangeBuilder, Behavior
 from .addressable import Addressable
 from .utilities import experimental
 
@@ -36,20 +36,19 @@ class Vertex(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
-        database = database or Database.get_last()
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = self._database.create_bundler(comment)
-
-        Container.__init__(
-                self,
-                behavior=VERTEX,
-                muid=muid,
-                arche=arche,
-                database=database,
-                bundler=bundler,
-        )
+            bundler = database.start_bundle(comment)
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, VERTEX)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(VERTEX, bundler=bundler)
+        Container.__init__(self, behavior=VERTEX, muid=muid, database=database)
 
         if len(bundler) and immediate:
             bundler.commit()
@@ -94,7 +93,7 @@ class Vertex(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self._database.create_bundler(comment)
+            bundler = self._database.start_bundle(comment)
         change_builder = ChangeBuilder()
         entry_builder: EntryBuilder = change_builder.entry
         entry_builder.behavior = VERTEX
@@ -107,7 +106,37 @@ class Vertex(Container):
             bundler.commit()
         return result
 
-Database.register_container_type(Vertex)
+    @typechecked
+    def set_name(self, name: str, *,
+                 bundler: Optional[Bundler] = None,
+                 comment: Optional[str] = None,
+        ) -> Muid:
+        """ Sets the name of the container, overwriting any previous name for this container.
+
+            Giving multiple things the same name is not recommended.
+        """
+        name_property = Muid(-1, -1, Behavior.PROPERTY)
+        assert isinstance(name, str), "names must be strings"
+        already_named = self.get_name()
+        if already_named:
+            self._add_entry(
+                key=self._muid, value=deletion, on_muid=name_property,
+                behavior=Behavior.PROPERTY, bundler=bundler, comment=comment
+            )
+        return self._add_entry(
+            key=self._muid, value=name, on_muid=name_property, behavior=Behavior.PROPERTY,
+            bundler=bundler, comment=comment)
+
+    def get_name(self, as_of: GenericTimestamp = None) -> Optional[str]:
+        """ Returns the name of this container, if it has one. """
+        as_of = self._database.resolve_timestamp(as_of)
+        name_property = Muid(-1, -1, Behavior.PROPERTY)
+        found = self._database.get_store().get_entry_by_key(name_property, key=self._muid, as_of=as_of)
+        if found is None or found.builder.deletion:  # type: ignore
+            return None
+        name = self._get_occupant(found.builder)
+        assert isinstance(name, str)
+        return name
 
 
 @experimental
@@ -135,19 +164,20 @@ class EdgeType(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self._database.create_bundler(comment)
+            bundler = database.start_bundle(comment)
 
-        Container.__init__(
-                self,
-                behavior=EDGE_TYPE,
-                muid=muid,
-                arche=arche,
-                database=database,
-                bundler=bundler,
-        )
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, EDGE_TYPE)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(EDGE_TYPE, bundler=bundler)
+        Container.__init__(self, behavior=EDGE_TYPE, muid=muid, database=database)
 
         if contents:
             pass  # This is intentional! The edge constructors will restore them!
@@ -167,7 +197,7 @@ class EdgeType(Container):
         bundler: Optional[Bundler] = None) -> 'Edge':
         immediate = False
         if bundler is None:
-            bundler = self._database.create_bundler(comment)
+            bundler = self._database.start_bundle(comment)
             immediate = True
         return Edge(
             action=self,
@@ -212,9 +242,6 @@ class EdgeType(Container):
         result += ",\n\n".join(stuffing) + ",\n\n])"
         return result
 
-Database.register_container_type(EdgeType)
-
-
 @experimental
 class Edge(Addressable):
 
@@ -230,7 +257,7 @@ class Edge(Addressable):
                  database: Optional[Database] = None,
                  _builder: Optional[EntryBuilder] = None,
                  _immediate=False):
-        self._database = database or Database.get_last()
+        self._database = database or Database.get_most_recently_created_database()
         self._valued: Union[UserValue, Inclusion]
         self._effective: Optional[MuTimestamp] = None
         if action is None or source is None or target is None:
@@ -257,7 +284,7 @@ class Edge(Addressable):
             self._action = action if isinstance(action, Muid) else action._muid
             if bundler is None:
                 _immediate = True
-                bundler = self._database.create_bundler()
+                bundler = self._database.start_bundle()
             change_builder = ChangeBuilder()
             entry_builder: EntryBuilder = change_builder.entry
             entry_builder.behavior = EDGE_TYPE
@@ -300,16 +327,13 @@ class Edge(Addressable):
         """ Return the target vertex of this edge. """
         return Vertex(muid=self._target, database=self._database)
 
-    def _get_container(self) -> Muid:
-        return self._action
-
     def get_value(self) -> Union[Inclusion, UserValue]:
         return self._valued
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}('{self._muid}')"
 
-    def get_effective(self) -> MuTimestamp:
+    def get_effective(self) -> Optional[MuTimestamp]:
         """ Return the effective timestamp of this edge. """
         effective = self._effective or self._muid.timestamp
         return effective
@@ -330,7 +354,7 @@ class Edge(Addressable):
         """
         immediate = False
         if not isinstance(bundler, Bundler):
-            bundler = self._database.create_bundler(comment)
+            bundler = self._database.start_bundle(comment)
             immediate = True
         change_builder = ChangeBuilder()
         movement_builder = change_builder.movement

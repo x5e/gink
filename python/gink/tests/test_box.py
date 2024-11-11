@@ -17,11 +17,11 @@ def test_creation():
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
-            with database.create_bundler() as bundler:
+            with database.start_bundle() as bundler:
                 box1 = Box(muid=Muid(1, 2, 3), database=database, bundler=bundler)
                 assert len(bundler) == 0  # no actual changes
 
-            with database.create_bundler() as bundler:
+            with database.start_bundle() as bundler:
                 box2 = Box(bundler=bundler)
                 assert len(bundler)
             assert box1 != box2
@@ -31,9 +31,9 @@ def test_set_get():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            global_box = Box.get_global_instance(database=database)
+            global_box = Box._get_global_instance(database=database)
 
-            bundler = database.create_bundler("testing")
+            bundler = database.start_bundle("testing")
             global_box.set("test value", bundler=bundler)
             bundler.commit()
             infos = store.get_bundle_infos()
@@ -64,7 +64,7 @@ def test_reset():
     with closing(store):
         assert isinstance(store, AbstractStore)
         database = Database(store=store)
-        global_box = Box.get_global_instance(database=database)
+        global_box = Box._get_global_instance(database=database)
 
         global_box.set("first value")
         global_box.set("second value")
@@ -88,7 +88,7 @@ def test_dumps():
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
-            global_box = Box.get_global_instance(database=database)
+            global_box = Box._get_global_instance(database=database)
 
             global_box.set("test value")
             result = global_box.dumps()
@@ -108,7 +108,7 @@ def test_size():
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
-            global_box = Box.get_global_instance(database=database)
+            global_box = Box._get_global_instance(database=database)
 
             result = global_box.size()
             assert result == 0
@@ -123,7 +123,7 @@ def test_isEmpty():
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
-            global_box = Box.get_global_instance(database=database)
+            global_box = Box._get_global_instance(database=database)
 
             result = global_box.is_empty()
             assert result == True
@@ -137,7 +137,7 @@ def test_as_of():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            box1 = Box.get_global_instance(database)
+            box1 = Box._get_global_instance(database)
 
             box1.set("first")
             time.sleep(.001)

@@ -19,7 +19,7 @@ from .typedefs import MuTimestamp, UserKey, Medallion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper
+from .abstract_store import AbstractStore, Decomposition
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .utilities import generate_timestamp, create_claim, is_needed, shorter_hash, resolve_timestamp
@@ -132,7 +132,9 @@ class LmdbStore(AbstractStore):
             trxn.put(encode_muts(key_id), symmetric_key, db=self._symmetric_keys)
         return key_id
 
-    def get_symmetric_key(self, key_id: Optional[int]) -> Optional[bytes]:
+    def get_symmetric_key(self, key_id: Union[int, Chain, None]) -> Optional[bytes]:
+        if isinstance(key_id, Chain):
+            raise Exception("not implemented")
         with self._handle.begin(write=False) as trxn:
             if key_id is None:
                 cursor = trxn.cursor(db=self._symmetric_keys)
@@ -143,7 +145,6 @@ class LmdbStore(AbstractStore):
                 raise KeyError("could not find a symmetric key for that key id")
             assert len(found) == 32, "I thought we were only storing 32 byte symmetric keys!"
             return found
-
 
     def drop_history(self, as_of: Optional[MuTimestamp] = None):
         if as_of is None:
@@ -812,19 +813,19 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=placement_key.placer, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def refresh(self, callback: Optional[Callable[[BundleWrapper], None]]=None) -> int:
+    def refresh(self, callback: Optional[Callable[[Decomposition], None]]=None) -> int:
         with self._handle.begin(write=False) as trxn:
             count = self._refresh_helper(trxn=trxn, callback=callback)
         if count:
             self._clear_notifications()
         return count
 
-    def _refresh_helper(self, trxn: Trxn, callback: Optional[Callable[[BundleWrapper], None]]=None) -> int:
+    def _refresh_helper(self, trxn: Trxn, callback: Optional[Callable[[Decomposition], None]]=None) -> int:
         cursor = trxn.cursor(self._bundles)
         count = 0
         while cursor.set_range(encode_muts(self._seen_through + 1)):
             byte_key = cursor.key()
-            wrapper = BundleWrapper(cursor.value())
+            wrapper = Decomposition(cursor.value())
             if callback is not None:
                 callback(wrapper)
                 count += 1
@@ -833,11 +834,11 @@ class LmdbStore(AbstractStore):
 
     def apply_bundle(
             self,
-            bundle: Union[BundleWrapper, bytes],
-            callback: Optional[Callable[[BundleWrapper], None]]=None,
+            bundle: Union[Decomposition, bytes],
+            callback: Optional[Callable[[Decomposition], None]]=None,
             claim_chain: bool=False
             ) -> bool:
-        wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
+        wrapper = Decomposition(bundle) if isinstance(bundle, bytes) else bundle
         builder = wrapper.get_builder()
         new_info = wrapper.get_info()
         chain_key = bytes(new_info.get_chain())
@@ -1120,7 +1121,7 @@ class LmdbStore(AbstractStore):
 
     def get_bundles(
         self,
-        callback: Callable[[BundleWrapper], None], *,
+        callback: Callable[[Decomposition], None], *,
         limit_to: Optional[Mapping[Chain, Limit]] = None,
         **_
     ):
@@ -1137,7 +1138,7 @@ class LmdbStore(AbstractStore):
                 bundle_info = BundleInfo(encoded=bundle_infos_cursor.key())
                 if limit_to is None or bundle_info.timestamp <= limit_to.get(bundle_info.get_chain(), 0):
                     bundle_bytes = txn.get(bundle_infos_cursor.value(), db=self._bundles)
-                    bundle_wrapper = BundleWrapper(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
+                    bundle_wrapper = Decomposition(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
                     callback(bundle_wrapper)
                 data_remaining = bundle_infos_cursor.next()
 

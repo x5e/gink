@@ -7,9 +7,22 @@ from ..impl.directory import Directory
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
-from ..impl.bundler import Bundler
 from ..impl.abstract_store import AbstractStore
 from ..impl.utilities import generate_timestamp
+
+def test_create_and_set():
+    for store in [MemoryStore(), LmdbStore()]:
+        with closing(store):
+            assert isinstance(store, AbstractStore)
+            database = Database(store=store)
+            with database.start_bundle() as bundler:
+                directory1 = Directory(bundler=bundler)
+                set_muid = directory1.set("foo", "bar", bundler=bundler)
+            after = directory1.get("foo")
+            assert after == "bar", after
+            assert set_muid.timestamp == directory1.get_muid().timestamp
+            assert set_muid.medallion == directory1.get_muid().medallion
+
 
 def test_creation():
     """ test that I can create new directories as well as proxies for existing ones """
@@ -29,9 +42,9 @@ def test_set_get():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            global_directory = Directory.get_global_instance(database=database)
+            global_directory = Directory._get_global_instance(database=database)
 
-            bundler = database.create_bundler("testing")
+            bundler = database.start_bundle("testing")
             global_directory.set("foo", "bar", bundler=bundler)
             bundler.commit()
             infos = store.get_bundle_infos()
@@ -56,7 +69,7 @@ def test_delete():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            gdi = Directory.get_global_instance(database=database)
+            gdi = Directory._get_global_instance(database=database)
             gdi["foo"] = "bar"
             assert gdi.has("foo") and gdi["foo"] == "bar"
             a_time = generate_timestamp()
@@ -69,7 +82,7 @@ def test_setdefault():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            gdi = Directory.get_global_instance(database=database)
+            gdi = Directory._get_global_instance(database=database)
             gdi.setdefault("foo", "bar")
             assert gdi["foo"] == "bar"
             result = gdi.setdefault("foo", "baz")
@@ -88,7 +101,7 @@ def test_pop():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            gdi = Directory.get_global_instance(database=database)
+            gdi = Directory._get_global_instance(database=database)
             gdi["foo"] = "bar"
             val = gdi.pop("foo", 3)
             assert val == "bar", val
@@ -101,7 +114,7 @@ def test_items_and_keys():
     for store in [LmdbStore(), MemoryStore(), ]:
         with store:
             database = Database(store=store)
-            gdi = Directory.get_global_instance(database=database)
+            gdi = Directory._get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi["bar"] = "zoo"
             gdi["zoo"] = 3
@@ -123,7 +136,7 @@ def test_popitem_and_len():
     for store in [MemoryStore(), LmdbStore(),  ]:
         with store:
             database = Database(store=store)
-            gdi = Directory.get_global_instance(database=database)
+            gdi = Directory._get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi["bar"] = "zoo"
             assert len(gdi) == 2
@@ -142,7 +155,7 @@ def test_update():
     for store in [LmdbStore(), MemoryStore(), ]:
         with store:
             database = Database(store=store)
-            gdi = Directory.get_global_instance(database=database)
+            gdi = Directory._get_global_instance(database=database)
             gdi.update({"foo": "bar", 99: 100})
             gdi.update([("zoo", "bear"), (99, 101)])
             as_dict = dict(gdi.items())
@@ -153,7 +166,7 @@ def test_reset():
     for store in [LmdbStore(), MemoryStore()]:
         with store:
             database = Database(store=store)
-            gdi = Directory.get_global_instance(database=database)
+            gdi = Directory._get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi["bar"] = "foo"
             gdi[7] = {"cheese": "wiz", "foo": [True, False, None]}
@@ -180,7 +193,7 @@ def test_clearance():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            gdi = Directory.get_global_instance(database=database)
+            gdi = Directory._get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi[99] = "foo"
             assert gdi["foo"] == "bar"
@@ -197,7 +210,7 @@ def test_reset_over_clear():
     for store in [LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            gdi = Directory.get_global_instance(database=database)
+            gdi = Directory._get_global_instance(database=database)
             gdi["foo"] = "bar"
             gdi["bar"] = "baz"
             set_timestamp = generate_timestamp()
@@ -215,7 +228,7 @@ def test_bytes_keys():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            root = Directory.get_global_instance(database=database)
+            root = Directory._get_global_instance(database=database)
             a_bytestring = b"\x00\xff\x94"
             root[a_bytestring] = 42
             keys = list(root.keys())
@@ -227,11 +240,12 @@ def test_blame_and_log():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            for directory in [Directory.get_global_instance(database=database), Directory()]:
+            for directory in [Directory._get_global_instance(database=database), Directory()]:
                 directory.set("foo", "bar", comment="first")
                 directory.set("foo", 123, comment="second")
                 attr1 = directory.blame()["foo"]
-                assert attr1.abstract == "second", attr1
+                if attr1.abstract != "second":
+                    raise AssertionError(f"problem with abstract {attr1}")
                 attr2 = directory.blame(as_of=-1)["foo"]
                 assert attr2.abstract == "first", attr2
 
@@ -244,7 +258,7 @@ def test_float_int():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            for directory in [Directory.get_global_instance(database=database), Directory()]:
+            for directory in [Directory._get_global_instance(database=database), Directory()]:
                 directory["foo"] = 1
                 directory[0] = 1.0
                 assert isinstance(directory["foo"], int)

@@ -30,7 +30,7 @@ def test_repr():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            sequence = Sequence.get_global_instance(database)
+            sequence = Sequence._get_global_instance(database)
             sequence.append("Hello, World!")
             assert list(sequence) == ["Hello, World!"]
             assert repr(sequence) == "Sequence(arche=True)"
@@ -43,7 +43,7 @@ def test_basics():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
+            for seq in [Sequence._get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
                 assert not list(seq)
                 seq.append("Hello, World!")
                 assert list(seq) == ["Hello, World!"]
@@ -71,7 +71,7 @@ def test_reordering():
     for store in [MemoryStore(), LmdbStore(), ]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
+            for seq in [Sequence._get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
                 for letter in "abcxyz":
                     seq.append(letter)
                     time.sleep(.01)
@@ -104,7 +104,7 @@ def test_expiry():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.get_global_instance(database)]:
+            for seq in [Sequence._get_global_instance(database)]:
                 start = generate_timestamp()
                 seq.append("first", expiry=0.1)
                 assert list(seq) == ["first"], list(seq)
@@ -136,7 +136,7 @@ def test_as_of():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.get_global_instance(database)]:
+            for seq in [Sequence._get_global_instance(database)]:
                 seq.append("foo")
                 time.sleep(.001)
                 bar_append_change = seq.append("bar")
@@ -170,7 +170,7 @@ def test_insert():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
+            for seq in [Sequence._get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
                 for letter in "abc":
                     seq.append(letter, comment=letter)
                     time.sleep(.01)
@@ -186,7 +186,7 @@ def test_clear():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            for seq in [Sequence.get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
+            for seq in [Sequence._get_global_instance(database), Sequence(muid=Muid(1, 2, 3))]:
                 assert len(seq) == 0, store
                 seq.append(3.7)
                 seq.append(9)
@@ -207,7 +207,7 @@ def test_reset():
     for store in [LmdbStore(), MemoryStore()]:
         with closing(store):
             database = Database(store=store)
-            seq1 = Sequence.get_global_instance(database)
+            seq1 = Sequence._get_global_instance(database)
             seq2 = Sequence()
             seq1.append("foo")
             seq2.append("bar")
@@ -232,7 +232,7 @@ def test_simple_reset():
     for store in [LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            queue = Sequence.get_global_instance(database)
+            queue = Sequence._get_global_instance(database)
             change_muid = queue.append("something")
             assert database.resolve_timestamp(-1) == change_muid.timestamp
             assert queue.dumps() == "Sequence(arche=True, contents=['something'])"

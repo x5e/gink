@@ -14,11 +14,10 @@ from google.protobuf.text_format import Parse  # type: ignore
 # gink stuff
 from ..impl.abstract_store import AbstractStore
 from ..impl.bundle_info import BundleInfo
-from ..impl.bundle_wrapper import BundleWrapper
+from ..impl.decomposition import Decomposition
 from ..impl.muid import Muid
 from ..impl.tuples import Chain
-from ..impl.utilities import digest
-from ..impl.utilities import generate_timestamp, generate_medallion
+from ..impl.utilities import digest, generate_timestamp, generate_medallion, combine
 
 StoreMaker = Callable[[], AbstractStore]
 
@@ -49,30 +48,31 @@ def install_tests(into_where, from_place, store_maker):
             new_func.__name__ = new_name
             into_where[new_name] = new_func
 
-
 def make_empty_bundle(
         bundle_info: BundleInfo,
-        prior: Optional[bytes] = None,
+        prior_bundle_bytes: Optional[bytes] = None,
         identity: Optional[str] = None,
     ) -> bytes:
     """ Makes an empty change set that matches the given metadata. """
-    if bundle_info.chain_start != bundle_info.timestamp and not bundle_info.previous:
-        pass
-    builder = BundleBuilder()
-    builder.medallion = bundle_info.medallion
-    builder.chain_start = bundle_info.chain_start
-    builder.timestamp = bundle_info.timestamp
-    if bundle_info.previous:
-        builder.previous = bundle_info.previous
-    if identity:
-        builder.identity = identity
-    if bundle_info.comment:
-        builder.comment = bundle_info.comment
-    if bundle_info.timestamp == bundle_info.chain_start:
-        builder.verify_key = bytes(verify_key)
-    if prior:
-        builder.prior_hash = digest(prior)
-    return signing_key.sign(builder.SerializeToString())
+    if prior_bundle_bytes:
+        decomposition = Decomposition(prior_bundle_bytes)
+        prior_info = decomposition.get_info()
+        prior_hash = prior_info.hex_hash
+        prior_timestamp = prior_info.timestamp
+    else:
+        prior_hash = None
+        prior_timestamp = None
+        identity = identity or "misc"
+    timestamp = bundle_info.timestamp
+    return combine(
+        chain=bundle_info.get_chain(),
+        prior_hash=prior_hash,
+        timestamp=timestamp,
+        signing_key=signing_key,
+        identity=identity,
+        previous=prior_timestamp,
+        check_assumptions=False,
+    )
 
 def generic_test_identity(store_maker: StoreMaker):
     """ Tests that identity is properly set in first bundle
@@ -91,7 +91,7 @@ def generic_test_identity(store_maker: StoreMaker):
     bundle_bytes = make_empty_bundle(
         bi1, identity="first name"
     )
-    bundle_wrapper = BundleWrapper(bundle_bytes)
+    bundle_wrapper = Decomposition(bundle_bytes)
     applied = store.apply_bundle(bundle_wrapper)
     assert applied
 
@@ -106,7 +106,7 @@ def generic_test_identity(store_maker: StoreMaker):
     store.apply_bundle(second_bundle)
 
     identity = store.get_identity(bi1.get_chain())
-    assert identity == "first name", identity
+    assert identity == "first name", f"identity={identity} store={store}"
 
 
 
@@ -237,7 +237,7 @@ def generic_test_orders_bundles(store_maker: StoreMaker):
 
         ordered = []
 
-        def appender(wrapper: BundleWrapper):
+        def appender(wrapper: Decomposition):
             ordered.append((wrapper.get_bytes(), wrapper.get_info()))
 
         store.get_bundles(appender)
