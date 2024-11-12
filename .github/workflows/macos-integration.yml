@@ -18,6 +18,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: browser-actions/setup-chrome@v1
+    - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.6"
     - name: Install protobuf-compiler
       run: brew install protobuf && npm install -g protoc-gen-js
     - name: install npm packages
