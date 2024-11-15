@@ -6,9 +6,7 @@ env:
   PYTHONPATH: /Users/runner/work/gink/gink/python
 
 jobs:
-
   build:
-
     runs-on: macos-latest
     timeout-minutes: 15
     defaults:
@@ -16,25 +14,28 @@ jobs:
         working-directory: ./javascript
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: browser-actions/setup-chrome@v1
-    - name: Install protobuf-compiler
-      run: brew install protobuf && npm install -g protoc-gen-js
-    - name: install npm packages
-      run: npm ci && npm rebuild
-    - name: Compile protos and install packages for both implementations.
-      run: cd .. && make
-    - name: Update Python Version to install packages
-      run: cd ../python && export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "" "s/\${VERSION}/${VERSION}/g" setup.py
-    - name: Install Python packages
-      run: cd ../python && pip3 install .[test] --break-system-packages
-    - name: Run Python unit tests
-      run: cd ../python && nose2
-    - name: Run JS unit tests
-      run: npm run test
-    - name: Run JS integration tests
-      run: ./integration-tests/run_integration_tests.sh
-    - name: Run JS browser unit tests
-      run: npm run browser-unit
-    - name: Run JS browser integration tests
-      run: npm run browser-integration
+      - uses: actions/checkout@v4
+      - uses: browser-actions/setup-chrome@v1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.6"
+      - name: Install protobuf-compiler
+        run: brew install protobuf && npm install -g protoc-gen-js
+      - name: install npm packages
+        run: npm ci && npm rebuild
+      - name: Compile protos and install packages for both implementations.
+        run: cd .. && make
+      - name: Update Python Version to install packages
+        run: cd ../python && export VERSION=`date -u +0.%Y%m%d.%s` && sed -i "" "s/\${VERSION}/${VERSION}/g" setup.py
+      - name: Install Python packages
+        run: cd ../python && pip3 install .[test] --break-system-packages
+      - name: Run Python unit tests
+        run: cd ../python && nose2
+      - name: Run JS unit tests
+        run: npm run test
+      - name: Run JS integration tests
+        run: ./integration-tests/run_integration_tests.sh
+      - name: Run JS browser unit tests
+        run: npm run browser-unit
+      - name: Run JS browser integration tests
+        run: npm run browser-integration
