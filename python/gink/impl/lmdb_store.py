@@ -19,7 +19,7 @@ from .typedefs import MuTimestamp, UserKey, Medallion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper
+from .abstract_store import AbstractStore, Decomposition
 from .chain_tracker import ChainTracker
 from .lmdb_utilities import to_last_with_prefix
 from .utilities import generate_timestamp, create_claim, is_needed, shorter_hash, resolve_timestamp
@@ -132,14 +132,19 @@ class LmdbStore(AbstractStore):
             trxn.put(encode_muts(key_id), symmetric_key, db=self._symmetric_keys)
         return key_id
 
-    def get_symmetric_key(self, key_id) -> bytes:
+    def get_symmetric_key(self, key_id: Union[int, Chain, None]) -> Optional[bytes]:
+        if isinstance(key_id, Chain):
+            raise Exception("not implemented")
         with self._handle.begin(write=False) as trxn:
+            if key_id is None:
+                cursor = trxn.cursor(db=self._symmetric_keys)
+                return cursor.value() if cursor.first() else None
+            assert key_id is not None
             found = trxn.get(encode_muts(key_id), db=self._symmetric_keys)
             if found is None:
                 raise KeyError("could not find a symmetric key for that key id")
             assert len(found) == 32, "I thought we were only storing 32 byte symmetric keys!"
             return found
-
 
     def drop_history(self, as_of: Optional[MuTimestamp] = None):
         if as_of is None:
@@ -518,6 +523,7 @@ class LmdbStore(AbstractStore):
         placement_cursor = trxn.cursor(db=self._placements)
         suffix = bytes(Muid(to_time, 0, 0))
         previous_change = to_last_with_prefix(placement_cursor, bytes(container), suffix=suffix)
+        assert container.timestamp is not None
         was_deleted = container.timestamp > to_time
         if previous_change:
             entry_builder = EntryBuilder()
@@ -565,6 +571,7 @@ class LmdbStore(AbstractStore):
             # does one pass through this loop for each distinct user key needed to process
             current = self._parse_entry(cursor, behavior, trxn)
             key = current.placement.get_key()
+            assert current.placement.placer.timestamp is not None
             if current.placement.placer.timestamp < to_time and last_clear_time < to_time:
                 # no updates to this key specifically or clears have happened since to_time
                 recurse_on = decode_entry_occupant(current.placement.placer, current.builder)
@@ -583,7 +590,7 @@ class LmdbStore(AbstractStore):
                 assert bytes(limit)[:-24] == through_middle
                 found = to_last_with_prefix(cursor, through_middle, boundary=bytes(limit))
                 data_then = self._parse_entry(cursor, behavior, trxn) if found else None
-                if data_then and data_then.placement.placer.timestamp > last_clear_before_to_time:
+                if data_then and data_then.placement.placer.timestamp > last_clear_before_to_time:  # type: ignore
                     contained_then = decode_entry_occupant(data_then.placement.placer, data_then.builder)
                 else:
                     contained_then = deletion
@@ -808,19 +815,19 @@ class LmdbStore(AbstractStore):
                 yield FoundEntry(address=placement_key.placer, builder=entry_builder)
                 ckey = to_last_with_prefix(cursor, container_prefix, ckey[16:-24])
 
-    def refresh(self, callback: Optional[Callable[[BundleWrapper], None]]=None) -> int:
+    def refresh(self, callback: Optional[Callable[[Decomposition], None]]=None) -> int:
         with self._handle.begin(write=False) as trxn:
             count = self._refresh_helper(trxn=trxn, callback=callback)
         if count:
             self._clear_notifications()
         return count
 
-    def _refresh_helper(self, trxn: Trxn, callback: Optional[Callable[[BundleWrapper], None]]=None) -> int:
+    def _refresh_helper(self, trxn: Trxn, callback: Optional[Callable[[Decomposition], None]]=None) -> int:
         cursor = trxn.cursor(self._bundles)
         count = 0
         while cursor.set_range(encode_muts(self._seen_through + 1)):
             byte_key = cursor.key()
-            wrapper = BundleWrapper(cursor.value())
+            wrapper = Decomposition(cursor.value())
             if callback is not None:
                 callback(wrapper)
                 count += 1
@@ -829,11 +836,11 @@ class LmdbStore(AbstractStore):
 
     def apply_bundle(
             self,
-            bundle: Union[BundleWrapper, bytes],
-            callback: Optional[Callable[[BundleWrapper], None]]=None,
+            bundle: Union[Decomposition, bytes],
+            callback: Optional[Callable[[Decomposition], None]]=None,
             claim_chain: bool=False
             ) -> bool:
-        wrapper = BundleWrapper(bundle) if isinstance(bundle, bytes) else bundle
+        wrapper = Decomposition(bundle) if isinstance(bundle, bytes) else bundle
         builder = wrapper.get_builder()
         new_info = wrapper.get_info()
         chain_key = bytes(new_info.get_chain())
@@ -1116,7 +1123,7 @@ class LmdbStore(AbstractStore):
 
     def get_bundles(
         self,
-        callback: Callable[[BundleWrapper], None], *,
+        callback: Callable[[Decomposition], None], *,
         limit_to: Optional[Mapping[Chain, Limit]] = None,
         **_
     ):
@@ -1133,7 +1140,7 @@ class LmdbStore(AbstractStore):
                 bundle_info = BundleInfo(encoded=bundle_infos_cursor.key())
                 if limit_to is None or bundle_info.timestamp <= limit_to.get(bundle_info.get_chain(), 0):
                     bundle_bytes = txn.get(bundle_infos_cursor.value(), db=self._bundles)
-                    bundle_wrapper = BundleWrapper(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
+                    bundle_wrapper = Decomposition(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
                     callback(bundle_wrapper)
                 data_remaining = bundle_infos_cursor.next()
 

@@ -18,7 +18,6 @@ from .utilities import generate_timestamp
 class Directory(Container):
     """ the Gink mutable mapping object """
     _missing = object()
-    BEHAVIOR = DIRECTORY
 
     @typechecked
     def __init__(
@@ -42,30 +41,27 @@ class Directory(Container):
         comment: optional comment to add to the bundler
         """
         self._logger = getLogger(self.__class__.__name__)
-
-        # if muid and muid.timestamp > 0 and contents:
-        # TODO [P3] check the store to make sure that the container is defined and compatible
-
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
-
-        Container.__init__(
-            self,
-            behavior=DIRECTORY,
-            muid=muid,
-            arche=arche,
-            database=database,
-            bundler=bundler,
-        )
-
+            bundler = database.start_bundle(comment)
+        created = False
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, DIRECTORY)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(DIRECTORY, bundler=bundler)
+            created = True
+        Container.__init__(self, behavior=DIRECTORY, muid=muid, database=database)
         if contents:
-            self.clear(bundler=bundler)
+            if not created:
+                self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
-
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this directory to a string.
@@ -157,7 +153,8 @@ class Directory(Container):
         just_created = False
         store = self._database.get_store()
         immediate = bundler is None
-        bundler = Bundler(comment=comment) if bundler is None else bundler
+        if bundler is None:
+            bundler = self._database.start_bundle(comment)
         for key in keys:
             found = store.get_entry_by_key(current._muid, key=key, as_of=timestamp) if not just_created else None
             if found is None or found.builder.deletion:  # type: ignore
@@ -176,7 +173,7 @@ class Directory(Container):
                     raise ValueError(f"cannot set in a non directory: {type(current)}")
         muid = current._add_entry(key=final_key, value=value, bundler=bundler)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
         return muid
 
     @typechecked
@@ -317,7 +314,7 @@ class Directory(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.start_bundle(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore
@@ -325,7 +322,7 @@ class Directory(Container):
             for key, val in from_what:
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def blame(self, key: Optional[UserKey] = None, as_of: GenericTimestamp = None
@@ -340,8 +337,10 @@ class Directory(Container):
             found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
             if found is None or not key:
                 continue
+            muid = found.address
+            assert muid.timestamp is not None and muid.medallion is not None
             result[key] = self._database.get_attribution(
-                medallion=found.address.medallion, timestamp=found.address.timestamp)
+                medallion=muid.medallion, timestamp=muid.timestamp)
         return result
 
     def show_blame(self, as_of: GenericTimestamp = None, file=stdout):
@@ -358,8 +357,9 @@ class Directory(Container):
             if not found:
                 break
             muid = found.address
+            assert muid.timestamp is not None and muid.medallion is not None
             yield self._database.get_attribution(muid.timestamp, muid.medallion)
-            as_of = found.address.timestamp
+            as_of = muid.timestamp
 
     @typechecked
     def show_log(self, key: UserKey, /, *, file=stdout, limit=10):
@@ -370,6 +370,3 @@ class Directory(Container):
             print(str(att), file=file)
             if isinstance(limit, int):
                 limit -= 1
-
-
-Database.register_container_type(Directory)

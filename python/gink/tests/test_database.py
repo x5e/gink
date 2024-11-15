@@ -8,7 +8,6 @@ from io import StringIO
 from ..impl.database import Database
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
-from ..impl.bundler import Bundler
 from ..impl.bundle_info import BundleInfo
 from ..impl.directory import Directory
 from ..impl.sequence import Sequence
@@ -31,7 +30,7 @@ def test_database():
     """ tests that the last() thing works """
     store = MemoryStore()
     database = Database(store=store)
-    last = Database.get_last()
+    last = Database.get_most_recently_created_database()
     assert last == database
 
 
@@ -40,8 +39,8 @@ def test_add_bundle() -> None:
     store = MemoryStore()
     database = Database(store=store)
     started = generate_timestamp()
-    bundler = Bundler("just a test")
-    database.bundle(bundler)
+    bundler = database.start_bundle("just a test")
+    bundler.commit()
     bundles: List[BundleInfo] = []
     store.get_bundles(lambda _: bundles.append(_.get_info()))
     assert len(bundles) == 2
@@ -56,12 +55,12 @@ def test_negative_as_of():
     ]:
         with closing(store):
             database = Database(store=store)
-            bundler = Bundler("hello world")
-            assert bundler._timestamp is None
-            database.bundle(bundler)
-            assert bundler._timestamp is not None
+            bundler = database.start_bundle("hello world")
+            assert bundler.timestamp is None
+            bundler.commit()
+            assert bundler.timestamp is not None
             recent = store.get_one(BundleInfo)
-            assert recent.timestamp == bundler._timestamp
+            assert recent.timestamp == bundler.timestamp
 
 
 def test_bundle_two():
@@ -71,10 +70,10 @@ def test_bundle_two():
     ]:
         with closing(store):
             database = Database(store=store)
-            first = Bundler("hello world")
-            database.bundle(first)
-            second = Bundler("goodbye, world")
-            database.bundle(second)
+            first = database.start_bundle("hello world")
+            first.commit()
+            second = database.start_bundle("goodbye, world")
+            second.commit()
 
 
 def test_reset_everything():
@@ -85,10 +84,10 @@ def test_reset_everything():
     ]:
         with closing(store):
             database = Database(store=store)
-            root = Directory.get_global_instance(database=database)
-            queue = Sequence.get_global_instance(database=database)
+            root = Directory._get_global_instance(database=database)
+            queue = Sequence._get_global_instance(database=database)
             ks = KeySet(database=database)
-            globalks = KeySet.get_global_instance(database=database)
+            globalks = KeySet._get_global_instance(database=database)
             misc = Directory()
 
             misc[b"yes"] = False
@@ -104,7 +103,8 @@ def test_reset_everything():
             assert len(globalks) == 1
             database.reset()
             after_first = generate_timestamp()
-            assert len(root) == 0
+            if len(root) != 0:
+                raise AssertionError(f"root: {root.dumps()}")
             assert len(queue) == 0
             assert len(misc) == 0
             assert len(ks) == 0
@@ -229,3 +229,47 @@ def test_dump():
             assert group.contains(box_muid)
             assert group.contains(ps_muid)
             assert group.dumps() == group_dump
+
+
+def generic_test_drop_history(store_maker):
+    with closing(store_maker()) as store:
+        database = Database(store=store)
+        gdi = Directory._get_global_instance(database=database)
+        seq = Sequence(database=database)
+        seq.append("foo")
+        gdi.set("foo", "bar")
+        after_setting = generate_timestamp()
+        assert seq.size() == 1
+        assert gdi["foo"] == "bar"
+        seq.remove("foo")
+        gdi.delete("foo")
+        assert seq.size() == 0
+        assert "foo" not in gdi
+        assert seq.size(as_of=after_setting) == 1
+        assert gdi.get("foo", as_of=after_setting) == "bar"
+
+        store.stop_history()
+
+        assert seq.size(as_of=after_setting) == 0, seq.dumps(as_of=after_setting)
+        assert gdi.get("foo", as_of=after_setting) == None, gdi.get("foo", as_of=after_setting)
+
+        store.start_history()
+
+        new_dir = Directory(database=database)
+        seq.append("foo")
+        gdi.set("foo", "bar")
+        before_new = generate_timestamp()
+        new_dir.set("foo", "baz")
+        assert seq.size() == 1
+        assert gdi["foo"] == "bar"
+        assert new_dir["foo"] == "baz"
+        seq.pop()
+        gdi.delete("foo")
+
+        assert new_dir.get("foo", as_of=before_new) == None
+
+        store.drop_history(as_of=before_new)
+
+        assert seq.size() == 0
+        assert "foo" not in gdi
+        assert new_dir["foo"] == "baz"

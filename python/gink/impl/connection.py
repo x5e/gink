@@ -39,7 +39,7 @@ from .looping import Finished
 from .typedefs import AuthFunc, AUTH_FULL, AUTH_RITE
 from .sync_func import SyncFunc
 from .bundle_info import BundleInfo
-from .bundle_wrapper import BundleWrapper
+from .decomposition import Decomposition
 from .chain_tracker import ChainTracker
 from .utilities import decode_from_hex, encode_to_hex, dedent
 
@@ -376,7 +376,7 @@ class Connection:
             self._socket.close()
             self._closed = True
 
-    def send_bundle(self, bundle_wrapper: BundleWrapper) -> None:
+    def send_bundle(self, bundle_wrapper: Decomposition) -> None:
         info = bundle_wrapper.get_info()
         self._logger.debug("(%s) send_bundle %s", self._name, info)
         if self._tracker is None:  # haven't received greeting
@@ -393,12 +393,12 @@ class Connection:
         self.send(sync_message)
         self._tracker.mark_as_having(info)
 
-    def receive_objects(self) -> Iterable[Union[BundleInfo, BundleWrapper, ChainTracker]]:
+    def receive_objects(self) -> Iterable[Union[BundleInfo, Decomposition, ChainTracker]]:
         """ Receive BundleWrappers, BundleInfos, and/or ChainTrackers from a peer. """
         for sync_message in self.receive():
             if sync_message.HasField("bundle"):
                 bundle_bytes = sync_message.bundle
-                wrap = BundleWrapper(bundle_bytes)
+                wrap = Decomposition(bundle_bytes)
                 info = wrap.get_info()
                 if self._tracker is not None:
                     self._tracker.mark_as_having(info)

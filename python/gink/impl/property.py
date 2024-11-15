@@ -12,7 +12,6 @@ from .bundler import Bundler
 
 
 class Property(Container):
-    BEHAVIOR = PROPERTY
 
     @typechecked
     def __init__(
@@ -36,24 +35,27 @@ class Property(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
-
-        Container.__init__(
-                self,
-                behavior=PROPERTY,
-                muid=muid,
-                arche=arche,
-                database=database,
-                bundler=bundler,
-        )
+            bundler = database.start_bundle(comment)
+        created = False
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, PROPERTY)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(PROPERTY, bundler=bundler)
+            created = True
+        Container.__init__(self, behavior=PROPERTY, muid=muid, database=database)
         if contents:
-            self.clear(bundler=bundler)
+            if not created:
+                self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this property to a string. """
@@ -117,7 +119,7 @@ class Property(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.start_bundle(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore
@@ -125,7 +127,7 @@ class Property(Container):
             for key, val in from_what:
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def delete(self, describing: Union[Addressable, Muid], *, bundler=None, comment=None) -> Muid:
@@ -146,5 +148,3 @@ class Property(Container):
             return default
         value = self._get_occupant(found.builder, found.address)
         return value
-
-Database.register_container_type(Property)

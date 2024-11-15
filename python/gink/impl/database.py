@@ -2,14 +2,11 @@
 """ contains the Database class """
 
 # standard python modules
-from typing import Optional, Union, Iterable, List
+from typing import Optional, Union, Iterable, List, Tuple
 from sys import stdout
 from logging import getLogger
 from re import fullmatch
 from nacl.signing import SigningKey
-
-# builders
-from .builders import ContainerBuilder
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -17,16 +14,15 @@ from .bundler import Bundler
 from .bundle_info import BundleInfo
 from .typedefs import Medallion, MuTimestamp, GenericTimestamp, EPOCH
 from .tuples import Chain
-from .muid import Muid
 from .attribution import Attribution
-from .bundle_wrapper import BundleWrapper
+from .decomposition import Decomposition
 from threading import Lock
 from .utilities import (
     generate_timestamp,
-    experimental,
     get_identity,
     generate_medallion,
     resolve_timestamp,
+    combine,
 )
 from .relay import Relay
 
@@ -37,10 +33,15 @@ class Database(Relay):
     _last_time: Optional[MuTimestamp]
     _store: AbstractStore
     _last_link: Optional[BundleInfo]
-    _container_types: dict = {}
     _signing_key: Optional[SigningKey]
+    _lock: Lock
+    _symmetric_key: Optional[bytes]
 
-    def __init__(self, store: Union[AbstractStore, str, None] = None, identity=get_identity()):
+    def __init__(
+            self,
+            store: Union[AbstractStore, str, None] = None,
+            identity: str = get_identity(),
+            ):
         super().__init__(store=store)
         setattr(Database, "_last", self)
         self._last_link = None
@@ -49,34 +50,25 @@ class Database(Relay):
         self._logger = getLogger(self.__class__.__name__)
         self._lock = Lock()
         self._signing_key = None
+        self._symmetric_key = None
+
+    def __enter__(self) -> Tuple[BundleInfo, SigningKey]:
+        self._lock.acquire()
+        return self._acquire_appendable_link()
+
+    def __exit__(self, *_):
+        self._lock.release()
 
     def get_store(self) -> AbstractStore:
         """ returns the store managed by this database """
         return self._store
 
     @staticmethod
-    def get_last():
+    def get_most_recently_created_database():
         """ Gets the last database created """
         last = getattr(Database, "_last")
         assert isinstance(last, Database)
         return last
-
-    @classmethod
-    def register_container_type(cls, container_cls: type):
-        assert hasattr(container_cls, "BEHAVIOR")
-        behavior = getattr(container_cls, "BEHAVIOR")
-        cls._container_types[behavior] = container_cls
-
-    @experimental
-    def get_chain(self) -> Optional[Chain]:
-        """ gets the chain this database is appending to (or None if it hasn't started writing yet) """
-        if self._last_link is not None:
-            return self._last_link.get_chain()
-        return None
-
-    @experimental
-    def get_now(self):
-        return generate_timestamp()
 
     def resolve_timestamp(self, timestamp: GenericTimestamp = None) -> MuTimestamp:
         """ translates an abstract time into a real timestamp
@@ -103,60 +95,50 @@ class Database(Relay):
             return bundle_info.timestamp
         return resolve_timestamp(timestamp)
 
-    def _acquire_appendable_chain(self) -> BundleInfo:
-        """ Either starts a chain or finds one to reuse, then returns the last link in it.
+    def _on_bundle(self, bundle_wrapper: Decomposition) -> None:
+        info = bundle_wrapper.get_info()
+        if self._last_link and info.get_chain() == self._last_link.get_chain():
+            self._last_link = info
+        super()._on_bundle(bundle_wrapper)
+
+    def _acquire_appendable_link(self) -> Tuple[BundleInfo, SigningKey]:
+        """ Sets up the internal structures to allow the database to add additional data.
+
+            Either starts a chain or finds one to reuse, then returns the last link in it.
         """
+        if self._last_link is not None:
+            return self._last_link, self._signing_key
         assert self._signing_key is None
-        reused = self._store.maybe_reuse_chain(self._identity)
+        assert self._symmetric_key is None
+        self._last_link = reused = self._store.maybe_reuse_chain(self._identity)
         if reused:
+            self._symmetric_key = self._store.get_symmetric_key(reused.get_chain())
             verify_key = self._store.get_verify_key(reused.get_chain())
             self._signing_key = self._store.get_signing_key(verify_key)
-            return reused
+            return reused, self._signing_key
         self._signing_key = SigningKey.generate()
         self._store.save_signing_key(self._signing_key)
+        self._symmetric_key = self._store.get_symmetric_key(None)
         medallion = generate_medallion()
         chain_start = generate_timestamp()
         chain = Chain(medallion=medallion, chain_start=chain_start)
-        bundler = Bundler()
-        bundle_bytes = bundler.seal(
+        bundle_bytes = combine(
             chain=chain,
             identity=self._identity,
             timestamp=chain_start,
-            signing_key=self._signing_key
+            signing_key=self._signing_key,
         )
-        wrapper = BundleWrapper(bundle_bytes=bundle_bytes)
+        wrapper = Decomposition(bundle_bytes=bundle_bytes)
         self._store.apply_bundle(wrapper, self._on_bundle, claim_chain=True)
-        return wrapper.get_info()
+        self._last_link = wrapper.get_info()
+        return self._last_link, self._signing_key
 
-    def bundle(self, bundler: Bundler) -> BundleInfo:
-        """ seals bundler and adds the resulting bundle to the local store """
-        assert not bundler.sealed
-        with self._lock:  # using an exclusive lock to ensure that we don't fork a chain
-            if not self._last_link:
-                self._last_link = self._acquire_appendable_chain()
-            chain = self._last_link.get_chain()
-            seen_to = self._last_link.timestamp
-            assert seen_to is not None
-            timestamp = generate_timestamp()
-            assert timestamp > seen_to
-            assert self._signing_key is not None
-            assert self._last_link.hex_hash is not None
-            bundle_bytes = bundler.seal(
-                chain=chain,
-                timestamp=timestamp,
-                previous=seen_to,
-                signing_key=self._signing_key,
-                prior_hash=self._last_link.hex_hash,
-            )
-            wrap = BundleWrapper(bundle_bytes)
-            added = self.receive(wrap)
-            assert added
-            info = wrap.get_info()
-            self._last_link = info
-            self._logger.debug("locally committed bundle: %r", info)
-            return info
+    def start_bundle(self, comment: Optional[str] = None) -> Bundler:
+        from .bound_bundler import BoundBundler
+        symmetric_key = self._store.get_symmetric_key(None)
+        return BoundBundler(database=self, comment=comment, symmetric_key=symmetric_key)
 
-    def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None):
+    def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None) -> None:
         """ Resets the database to a specific point in time.
 
             Note that it literally just "re"-sets everything in one big
@@ -166,32 +148,13 @@ class Database(Relay):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self.start_bundle(comment)
         assert isinstance(bundler, Bundler)
         to_time = self.resolve_timestamp(to_time)
         for change in self._store.get_reset_changes(to_time=to_time, container=None, user_key=None):
             bundler.add_change(change)
-        if immediate and len(bundler):
-            self.bundle(bundler=bundler)
-        return bundler
-
-    def get_container(
-            self,
-            muid: Muid, *,
-            container_builder: Optional[ContainerBuilder] = None,
-            behavior: Optional[int] = None,
-    ):
-        """ Gets a pre-existing container associated with a particular muid """
-        if muid.timestamp == -1:
-            behavior = muid.offset
-        elif behavior is None:
-            container_builder = container_builder or self._store.get_container(muid)
-            assert container_builder is not None, f"no container found for muid: {muid}"
-            behavior = getattr(container_builder, "behavior")
-        cls = self._container_types.get(behavior)
-        if not cls:
-            raise AssertionError(f"behavior not recognized: {behavior}")
-        return cls(muid=muid, database=self)
+        if immediate:
+            bundler.commit()
 
     def dump(self, *,
              include_global_containers=True,
@@ -200,14 +163,15 @@ class Database(Relay):
              ):
         """ writes the contents of the database to file """
         from .container import Container
+        from .get_container import get_container, container_classes
         for muid, container_builder in self._store.list_containers():
-            container = self.get_container(muid, container_builder=container_builder)
+            container = get_container(muid=muid, behavior=container_builder.behavior, database=self)
             assert isinstance(container, Container)
             if container.size(as_of=as_of):
                 container.dump(as_of=as_of, file=file)
         if include_global_containers:
-            for cls in self._container_types.values():
-                container = cls.get_global_instance(self)
+            for cls in container_classes.values():
+                container = cls(arche=True, database=self)
                 assert isinstance(container, Container)
                 if container.size(as_of=as_of):
                     container.dump(as_of=as_of, file=file)
@@ -244,8 +208,10 @@ class Database(Relay):
     def get_by_name(self, name: str, as_of: GenericTimestamp = None) -> List:
         """ Returns all containers of the given type with the given name.
         """
+        from .get_container import get_container
         returning = list()
         as_of_ts = self.resolve_timestamp(as_of)
-        for found_container in self._store.get_by_name(name, as_of=as_of_ts):
-            returning.append(self.get_container(found_container.address))
+        for address, builder in self._store.get_by_name(name, as_of=as_of_ts):
+            container = get_container(muid=address, behavior=builder.behavior, database=self)
+            returning.append(container)
         return returning

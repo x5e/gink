@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Dict
 
 from .database import Database
 from .muid import Muid
@@ -6,12 +7,10 @@ from .bundler import Bundler
 from .typedefs import UserValue, GenericTimestamp
 from .builders import Behavior, ChangeBuilder
 from .coding import encode_value, decode_value
-from typing import Dict
-
 
 class Addressable:
     def __init__(self, database: Database, muid: Muid):
-        self._database: Database = database or Database.get_last()
+        self._database = database
         self._muid: Muid = muid
 
     def get_muid(self) -> Muid:
@@ -22,27 +21,6 @@ class Addressable:
 
     def __hash__(self):
         return hash(self._muid)
-
-    def get_properties_values_by_name_as_dict(self, as_of: GenericTimestamp = None):
-        """ Returns a dictionary of the properties of this container,
-            with a mapping from property name to value for this container.
-        """
-        as_of = self._database.resolve_timestamp(as_of)
-        result: Dict[str, UserValue] = dict()
-        for found in self._database.get_store().get_by_describing(self._muid, as_of):
-            if found.builder.behavior != Behavior.PROPERTY:
-                continue
-            if found.builder.deletion:
-                continue
-            if not found.builder.HasField("value"):
-                continue  # TODO: support pointee properties
-            property_muid = Muid.create(found.address, found.builder.container)
-            property = self._database.get_container(property_muid, behavior=found.builder.behavior)
-            name = property.get_name()
-            if name is None:
-                continue
-            result[name] = decode_value(found.builder.value)
-        return result
 
     def get_property_value_by_name(self, name: str, *,
                                    default=None,
@@ -74,7 +52,7 @@ class Addressable:
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.start_bundle(comment)
         store = self._database.get_store()
         hits = [fc for fc in store.get_by_name(name) if fc.builder.behavior == Behavior.PROPERTY]
         if len(hits) > 1:
@@ -101,9 +79,5 @@ class Addressable:
         encode_value(value, setting_change.entry.value)
         muid = bundler.add_change(setting_change)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
         return muid
-
-    @abstractmethod
-    def _get_container(self) -> Muid:
-        """ Gets the container associated with this addressable thing, either itself or the EdgeType. """

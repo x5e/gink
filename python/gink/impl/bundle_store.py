@@ -6,7 +6,7 @@ from pathlib import Path
 from .tuples import Chain
 from .typedefs import Limit
 from .chain_tracker import ChainTracker
-from .bundle_wrapper import BundleWrapper
+from .decomposition import Decomposition
 from .watcher import Watcher
 
 
@@ -18,8 +18,8 @@ class BundleStore(ABC):
     @abstractmethod
     def apply_bundle(
             self,
-            bundle: Union[BundleWrapper, bytes],
-            callback: Optional[Callable[[BundleWrapper], None]]=None,
+            bundle: Union[Decomposition, bytes],
+            callback: Optional[Callable[[Decomposition], None]]=None,
             claim_chain: bool=False) -> bool:
         """ Tries to add data from a particular bundle to this store.
 
@@ -30,7 +30,7 @@ class BundleStore(ABC):
     @abstractmethod
     def get_bundles(
         self,
-        callback: Callable[[BundleWrapper], None], *,
+        callback: Callable[[Decomposition], None], *,
         peer_has: Optional[ChainTracker] = None,
         limit_to: Optional[Mapping[Chain, Limit]] = None,
     ):

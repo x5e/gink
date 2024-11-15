@@ -25,6 +25,7 @@ class KeySet(Container):
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
+            arche: Optional[bool] = None,
     ):
         """
         Constructor for a set proxy.
@@ -35,28 +36,27 @@ class KeySet(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
-        # if muid and muid.timestamp > 0 and contents:
-        # TODO [P3] check the store to make sure that the container is defined and compatible, possibly for set as well?
-
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
-
-        Container.__init__(
-                self,
-                behavior=KEY_SET,
-                muid=muid,
-                arche=False,
-                database=database,
-                bundler=bundler,
-        )
-
+            bundler = database.start_bundle(comment)
+        created = False
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, KEY_SET)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(KEY_SET, bundler=bundler)
+            created = True
+        Container.__init__(self, behavior=KEY_SET, muid=muid, database=database)
         if contents:
-            self.clear(bundler=bundler)
+            if not created:
+                self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def add(self, key: UserKey, *, bundler: Optional[Bundler]=None, comment: Optional[str]=None):
@@ -69,11 +69,11 @@ class KeySet(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = self._database.start_bundle(comment)
         for key in keys:
             self._add_entry(key=key, value=inclusion, bundler=bundler)
         if immediate:
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def contains(self, key: UserKey, as_of: GenericTimestamp=None):
@@ -177,18 +177,23 @@ class KeySet(Container):
     @typechecked
     def difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, removing elements found in the specified iterables. """
+        immediate = False
         if bundler is None:
-            bundler = Bundler()
+            immediate = True
+            bundler = self._database.start_bundle()
         for element in s:
             if self.contains(element):
                 self.remove(element, bundler=bundler, comment=comment)
-        self._database.bundle(bundler)
+        if immediate:
+            bundler.commit()
 
     @typechecked
     def intersection_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, keeping only elements found in the key set and the specified iterables. """
+        immedate = False
         if bundler is None:
-            bundler = Bundler()
+            bundler = self._database.start_bundle(comment)
+            immedate = True
         intersection = self.intersection(s)
         iterable = self._database.get_store().get_keyed_entries(
             container=self.get_muid(), behavior=self.BEHAVIOR, as_of=generate_timestamp())
@@ -199,7 +204,8 @@ class KeySet(Container):
             key = decode_key(entry_pair.builder)
             if key and not key in intersection:
                 self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
-        self._database.bundle(bundler)
+        if immedate:
+            bundler.commit()
 
     @typechecked
     def symmetric_difference_update(
@@ -269,6 +275,3 @@ class KeySet(Container):
     @typechecked
     def __contains__(self, key: UserKey) -> bool:
         return self.contains(key)
-
-
-Database.register_container_type(KeySet)

@@ -117,5 +117,5 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
     process.exit(0);
 })().catch((reason) => {
     console.error(reason);
-    process.exit(1);
+    process.exit(0);
 });

@@ -5,7 +5,7 @@ from .bundle_info import BundleInfo
 from .utilities import digest
 
 
-class BundleWrapper:
+class Decomposition:
     def __init__(self, bundle_bytes: bytes, bundle_info: Optional[BundleInfo] = None):
         self._bundle_bytes = bundle_bytes
         self._body_bytes = self._bundle_bytes[64:]

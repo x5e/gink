@@ -42,14 +42,14 @@ def test_write_big_bundle(db_file_path: Path, count: int) -> dict:
     with LmdbStore(db_file_path, True) as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
-        bundler = Bundler('test')
+        bundler = db.start_bundle("test")
         print("Testing Gink Python writing performance to fresh database in one bundle.")
         print("Writing", count, "key, value entries...")
-        before_time = datetime.utcnow()
+        before_time = datetime.now()
         for i in range(0, count):
             directory.set(f"test{i}", "test data to be inserted", bundler=bundler)
-        db.bundle(bundler)
-        after_time = datetime.utcnow()
+        bundler.commit()
+        after_time = datetime.now()
 
     total_time = round((after_time - before_time).total_seconds(), 4)
     writes_per_second = count/total_time

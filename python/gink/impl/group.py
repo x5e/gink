@@ -9,8 +9,10 @@ from .muid import Muid
 from .database import Database
 from .bundler import Bundler
 from .builders import Behavior
+from .graph import Vertex
+from .utilities import experimental
 
-
+@experimental
 class Group(Container):
     BEHAVIOR = Behavior.GROUP
 
@@ -19,10 +21,11 @@ class Group(Container):
                 self,
                 muid: Optional[Union[Muid, str]] = None,
                 *,
-                contents: Optional[Dict[str, Iterable[Union[Muid, Container]]]] = None,
+                contents: Optional[Dict[str, Iterable[Union[Muid, Vertex]]]] = None,
                 database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
+                arche: Optional[bool] = None,
             ):
         """
         Constructor for a group definition.
@@ -33,23 +36,26 @@ class Group(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
+            bundler = database.start_bundle(comment)
 
-        Container.__init__(
-                self,
-                behavior=GROUP,
-                muid=muid,
-                arche=False,
-                database=database,
-                bundler=bundler,
-            )
-
+        created = False
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, GROUP)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(GROUP, bundler=bundler)
+            created = True
+        Container.__init__(self, behavior=GROUP, muid=muid, database=database)
         if contents:
-            assert contents.keys() <= {"include", "exclude"}, "expecting only 'include' and 'exclude' keys in contents"
-            self.clear(bundler=bundler)
+            assert contents.keys() <= {"include", "exclude"}
+            if not created:
+                self.clear(bundler=bundler)
             included = contents.get("include", set())
             assert isinstance(included, Iterable)
             for container in included:
@@ -61,7 +67,7 @@ class Group(Container):
                 self.exclude(container, bundler=bundler)
 
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def include(self, what: Union[Muid, Container], *,
@@ -145,19 +151,21 @@ class Group(Container):
 
     def get_members(self, *, excluded: bool = False, as_of: GenericTimestamp = None) -> Set[Container]:
         """ Returns a set of containers included/excluded in the group at the given time. """
-        return {self._database.get_container(muid) for muid in self.get_member_ids(excluded=excluded, as_of=as_of)}
+        from .get_container import get_container
+        result = set()
+        for muid in self.get_member_ids(excluded=excluded, as_of=as_of):
+            result.add(get_container(muid=muid, database=self._database))
+        return result
 
     @typechecked
     def contains(self, what: Union[Muid, Container], *, as_of: GenericTimestamp = None) -> bool:
         """ Returns a boolean stating whether the container is included in the group at the given time. """
         ts = self._database.resolve_timestamp(as_of)
-        if isinstance(what, Container):
-            what = what._muid
-            assert what.timestamp, "this container has not been bundled" # type: ignore
+        if not isinstance(what, Muid):
+            what = what.get_muid()
+            assert isinstance(what, Muid)
+            assert what.timestamp, "this container has not been bundled"
         muid = self.get_muid()
         assert muid.timestamp, "this group has not been bundled"
-        found = self._database.get_store().get_entry_by_key(muid, key=what, as_of=ts) # type: ignore
+        found = self._database.get_store().get_entry_by_key(muid, key=what, as_of=ts)
         return bool(found and not found.builder.deletion)
-
-
-Database.register_container_type(Group)

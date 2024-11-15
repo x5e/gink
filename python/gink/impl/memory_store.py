@@ -14,10 +14,10 @@ from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBu
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .bundle_info import BundleInfo
-from .abstract_store import AbstractStore, BundleWrapper, Lock
+from .abstract_store import AbstractStore, Decomposition, Lock
 from .chain_tracker import ChainTracker
 from .muid import Muid
-from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey,
+from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey, PAIR_MAP, PAIR_SET,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change, deletion,
                      Placement, decode_entry_occupant, EDGE_TYPE,
                      PROPERTY, decode_value, new_entries_replace, BOX, GROUP,
@@ -50,7 +50,6 @@ class MemoryStore(AbstractStore):
 
     def __init__(self, retain_entries = True) -> None:
         # TODO: add a "no retention" capability for bundles?
-        self._seen_containers: Set[Muid] = set()
         self._bundles = SortedDict()
         self._chain_infos = SortedDict()
         self._claims = SortedDict()
@@ -97,7 +96,14 @@ class MemoryStore(AbstractStore):
         self._symmetric_keys[key_id] = symmetric_key
         return key_id
 
-    def get_symmetric_key(self, key_id: int) -> bytes:
+    def get_symmetric_key(self, key_id: Union[Chain, int, None]) -> Optional[bytes]:
+        if isinstance(key_id, Chain):
+            raise NotImplementedError()
+        if key_id is None:
+            for val in self._symmetric_keys.values():
+                return val
+            else:
+                return None
         return self._symmetric_keys[key_id]
 
     def save_signing_key(self, signing_key: SigningKey):
@@ -244,7 +250,7 @@ class MemoryStore(AbstractStore):
     def _get_claims(self, _: Lock, /) -> Mapping[Medallion, ClaimBuilder]:
         return self._claims
 
-    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[BundleWrapper], None]]=None, /) -> int:
+    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[Decomposition], None]]=None, /) -> int:
         return 0
 
     def get_ordered_entries(
@@ -290,13 +296,13 @@ class MemoryStore(AbstractStore):
 
     def apply_bundle(
             self,
-            bundle: Union[BundleWrapper, bytes],
-            callback: Optional[Callable[[BundleWrapper], None]]=None,
+            bundle: Union[Decomposition, bytes],
+            callback: Optional[Callable[[Decomposition], None]]=None,
             claim_chain: bool=False,
             ) -> bool:
         if isinstance(bundle, bytes):
-            bundle = BundleWrapper(bundle)
-        assert isinstance(bundle, BundleWrapper)
+            bundle = Decomposition(bundle)
+        assert isinstance(bundle, Decomposition)
         bundle_builder = bundle.get_builder()
         new_info = bundle.get_info()
         chain_key = new_info.get_chain()
@@ -341,12 +347,10 @@ class MemoryStore(AbstractStore):
                     if change.HasField("entry"):
                         container = change.entry.container
                         muid = Muid(container.timestamp, container.medallion, container.offset)
-                        if not muid in self._seen_containers:
-                            if not self.get_container(muid):
-                                container_builder = ContainerBuilder()
-                                container_builder.behavior = change.entry.behavior
-                                self._containers[muid] = container_builder
-                                self._seen_containers.add(muid)
+                        if muid.timestamp != -1 and muid not in self._containers:
+                            container_builder = ContainerBuilder()
+                            container_builder.behavior = change.entry.behavior
+                            self._containers[muid] = container_builder
                         self._add_entry(new_info=new_info, offset=offset, entry_builder=change.entry)
                         continue
                     if change.HasField("movement"):
@@ -500,7 +504,7 @@ class MemoryStore(AbstractStore):
 
     def get_bundles(
         self,
-        callback: Callable[[BundleWrapper], None], *,
+        callback: Callable[[Decomposition], None], *,
         limit_to: Optional[Mapping[Chain, Limit]] = None,
         **_
     ):
@@ -550,9 +554,14 @@ class MemoryStore(AbstractStore):
         if container is None:
             recursive = False  # don't need to recurse if we're going to do everything anyway
         seen: Optional[Set] = set() if recursive else None
+        from .get_container import container_classes
         if container is None:
             # we're resetting everything, so loop over the container definitions
             for muid in self._containers.keys():
+                for change in self._container_reset_changes(to_time, muid, seen):
+                    yield change
+            for behavior in container_classes.keys():
+                muid = Muid(-1, -1, behavior)
                 for change in self._container_reset_changes(to_time, muid, seen):
                     yield change
         else:
@@ -577,13 +586,15 @@ class MemoryStore(AbstractStore):
             for change in self._get_vertex_reset_changes(container, to_time):
                 yield change
             return
-        if behavior in (DIRECTORY, BOX, GROUP, KEY_SET, PROPERTY):
+        if behavior in (DIRECTORY, BOX, GROUP, KEY_SET, PROPERTY, PAIR_MAP, PAIR_SET,):
             for change in self._get_keyed_reset_changes(container, to_time, seen, None, behavior):
                 yield change
             return
         if behavior in (SEQUENCE, EDGE_TYPE):
             for change in self._get_ordered_reset_changes(container, to_time, seen, behavior):
                 yield change
+            return
+        if behavior == 13:
             return
         else:
             raise NotImplementedError(f"don't know how to reset container of type {behavior}")
@@ -737,6 +748,7 @@ class MemoryStore(AbstractStore):
         for placement_key_bytes in prev_iterator:
             previous_change = placement_key_bytes
             break
+        assert container.timestamp is not None
         was_deleted = container.timestamp > to_time
         if previous_change:
             entry_builder = self._entries[self._placements[previous_change]]

@@ -37,28 +37,25 @@ class PairMap(Container):
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
         """
-        # if muid and muid.timestamp > 0 and contents:
-        # TODO [P3] check the store to make sure that the container is defined and compatible
-
+        database = database or Database.get_most_recently_created_database()
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = Bundler(comment)
-
-        Container.__init__(
-                self,
-                behavior=PAIR_MAP,
-                muid=muid,
-                arche=arche,
-                database=database,
-                bundler=bundler,
-            )
+            bundler = database.start_bundle(comment)
+        if arche:
+            assert muid is None
+            muid = Muid(-1, -1, PAIR_MAP)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
+        elif muid is None:
+            muid = Container._create(PAIR_MAP, bundler=bundler)
+        Container.__init__(self, behavior=PAIR_MAP, muid=muid, database=database)
         if contents:
             self.clear(bundler=bundler)
             for key_pair, value in contents.items():
                 self.set(key_pair, value, bundler)
         if immediate and len(bundler):
-            self._database.bundle(bundler)
+            bundler.commit()
 
     @typechecked
     def set(self,
@@ -170,5 +167,3 @@ class PairMap(Container):
                 continue
             count += 1
         return count
-
-Database.register_container_type(PairMap)

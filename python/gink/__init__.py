@@ -20,7 +20,7 @@ from .impl.utilities import generate_timestamp
 from .impl.builders import ClaimBuilder
 from .impl.tuples import Chain
 from .impl.braid import Braid
-from .impl.typedefs import inf
+from .impl.typedefs import inf, GenericTimestamp
 
 
 __all__ = [
@@ -49,4 +49,5 @@ __all__ = [
     "ClaimBuilder",
     "Braid",
     "inf",
+    "GenericTimestamp",
 ]
