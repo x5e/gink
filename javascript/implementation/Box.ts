@@ -69,13 +69,13 @@ export class Box extends Container {
 
     async reset(args?: {
         toTime?: AsOf;
-        bundlerOrComment?: Bundler | string;
+        bundler?: Bundler;
+        comment?: string;
         skipProperties?: boolean;
         recurse?: boolean;
         seen?: Set<string>;
     }): Promise<void> {
         const toTime = args?.toTime;
-        const bundlerOrComment = args?.bundlerOrComment;
         const skipProperties = args?.skipProperties;
         const recurse = args?.recurse;
         const seen = recurse ? (args?.seen ?? new Set()) : undefined;
@@ -84,11 +84,11 @@ export class Box extends Container {
         }
         let immediate = false;
         let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
+        if (args.bundler) {
+            bundler = args.bundler;
         } else {
             immediate = true;
-            bundler = new Bundler(bundlerOrComment);
+            bundler = await this.database.startBundle(args?.comment);
         }
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
@@ -106,7 +106,7 @@ export class Box extends Container {
             ) {
                 await thereThen.reset({
                     toTime,
-                    bundlerOrComment: bundler,
+                    bundler,
                     skipProperties,
                     recurse,
                     seen,
@@ -117,7 +117,7 @@ export class Box extends Container {
             await this.resetProperties(toTime, bundler);
         }
         if (immediate) {
-            await this.database.addBundler(bundler);
+            await bundler.commit();
         }
     }
 

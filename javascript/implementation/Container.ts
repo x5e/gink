@@ -63,11 +63,11 @@ export class Container extends Addressable {
         }
         let immediate = false;
         let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
+        if (typeof(bundlerOrComment) == "string" || ! bundlerOrComment ) {
             immediate = true;
-            bundler = new Bundler(bundlerOrComment);
+            bundler = await this.database.startBundle(<string>bundlerOrComment);
+        } else {
+            bundler = bundlerOrComment;
         }
         const clearanceBuilder = new ClearanceBuilder();
         clearanceBuilder.setPurge(purge || false);
@@ -78,7 +78,7 @@ export class Container extends Addressable {
         changeBuilder.setClearance(clearanceBuilder);
         const address = bundler.addChange(changeBuilder);
         if (immediate) {
-            await this.database.addBundler(bundler);
+            await bundler.commit();
         }
         return address;
     }
@@ -98,7 +98,8 @@ export class Container extends Addressable {
      */
     public async reset(args?: {
         toTime?: AsOf;
-        bundlerOrComment?: Bundler | string;
+        bundler?: Bundler;
+        comment?: string;
         skipProperties?: boolean;
         recurse?: boolean;
         seen?: Set<string>;
@@ -117,7 +118,7 @@ export class Container extends Addressable {
      * @param bundlerOrComment Bundler to add this change to, or empty to apply immediately.
      * @returns a promise the resolves to the muid of the change
      */
-    protected addEntry(
+    protected async addEntry(
         key?:
             | ScalarKey
             | Addressable
@@ -129,23 +130,19 @@ export class Container extends Addressable {
     ): Promise<Muid> {
         let immediate = false;
         let bundler: Bundler;
-
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
+        if (typeof(bundlerOrComment) == "string" || ! bundlerOrComment ) {
             immediate = true;
-            bundler = new Bundler(bundlerOrComment);
+            bundler = await this.database.startBundle(<string>bundlerOrComment);
+        } else {
+            bundler = bundlerOrComment;
         }
-
         const entryBuilder = new EntryBuilder();
         if (this.address) {
             entryBuilder.setContainer(
                 muidToBuilder(this.address, bundler.medallion)
             );
         }
-
         entryBuilder.setBehavior(this.behavior);
-
         if (
             typeof key === "number" ||
             typeof key === "string" ||
@@ -186,9 +183,9 @@ export class Container extends Addressable {
         changeBuilder.setEntry(entryBuilder);
         const address = bundler.addChange(changeBuilder);
         if (immediate) {
-            return this.database.addBundler(bundler).then((_) => address);
+            return bundler.commit().then((_) => address);
         }
-        return Promise.resolve(address);
+        return address;
     }
 
     /**
@@ -202,13 +199,12 @@ export class Container extends Addressable {
     ): Promise<void> {
         let immediate = false;
         let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
+        if (typeof(bundlerOrComment) == "string" || ! bundlerOrComment ) {
             immediate = true;
-            bundler = new Bundler(bundlerOrComment);
+            bundler = await this.database.startBundle(<string>bundlerOrComment);
+        } else {
+            bundler = bundlerOrComment;
         }
-
         const propertiesNow =
             await this.database.store.getContainerProperties(this);
         if (!toTime) {
@@ -243,7 +239,7 @@ export class Container extends Addressable {
             }
         }
         if (immediate) {
-            await this.database.addBundler(bundler);
+            await bundler.commit();
         }
     }
 }

@@ -47,6 +47,8 @@ import { EdgeType } from "./EdgeType";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
 import { construct } from "./factories";
+import { BoundBundler } from "./BoundBundler";
+import { BundleBuilder } from "./builders";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -100,6 +102,10 @@ export class Database {
             }
         };
         this.store.addFoundBundleCallBack(callback);
+    }
+
+    public startBundle(comment?: string): Promise<Bundler> {
+        return Promise.resolve(new BoundBundler(this, comment));
     }
 
     /**
@@ -163,7 +169,7 @@ export class Database {
             const keyPair = createKeyPair();
             await this.store.saveKeyPair(keyPair);
             this.keyPair = keyPair;
-            const bundler = new Bundler(undefined, medallion);
+            const bundler = new BoundBundler(this, undefined, medallion);
             // Starting a new chain, so don't have/need a prior_hash.
             bundler.seal(
                 {
@@ -213,11 +219,11 @@ export class Database {
     ): Promise<void> {
         let immediate = false;
         let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
+        if (bundlerOrComment instanceof BoundBundler) {
             bundler = bundlerOrComment;
         } else {
             immediate = true;
-            bundler = new Bundler(bundlerOrComment);
+            bundler = await this.startBundle(<string>bundlerOrComment);
         }
         // Leaving off Behavior.PROPERTY since each individual property will get reset
         // with the other container reset calls
@@ -248,7 +254,7 @@ export class Database {
         }
 
         if (immediate) {
-            await this.addBundler(bundler);
+            await bundler.commit();
         }
     }
 
@@ -403,15 +409,18 @@ export class Database {
         change?: Bundler | string
     ): Promise<[Muid, ContainerBuilder]> {
         let immediate = false;
-        if (!(change instanceof Bundler)) {
+        let bundler: Bundler;
+        if (change instanceof BoundBundler) {
+            bundler = change;
+        } else {
             immediate = true;
-            change = new Bundler(change);
+            bundler = await this.startBundle(<string>change);
         }
         const containerBuilder = new ContainerBuilder();
         containerBuilder.setBehavior(behavior);
-        const address = change.addContainer(containerBuilder);
+        const address = bundler.addChange(new ChangeBuilder().setContainer(containerBuilder));
         if (immediate) {
-            await this.addBundler(change);
+            await bundler.commit();
         }
         return [address, containerBuilder];
     }
@@ -475,7 +484,7 @@ export class Database {
      * @param bundler a PendingBundle ready to be sealed
      * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
      */
-    public addBundler(bundler: Bundler): Promise<BundleInfo> {
+    public addBundler(bundler: BoundBundler): Promise<BundleInfo> {
         return this.ready.then(() =>
             this.getChain().then(() => {
                 const nowMicros = generateTimestamp();
