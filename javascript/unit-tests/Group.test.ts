@@ -1,4 +1,4 @@
-import { Database, IndexedDbStore, MemoryStore } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore, Box } from "../implementation";
 import {
     ensure,
     generateTimestamp,
@@ -11,12 +11,12 @@ it("include and exclude work as intended", async function () {
         new IndexedDbStore("Group.test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const group1 = await instance.createGroup();
 
-        const box1 = await instance.createBox();
-        const box2 = await instance.createBox();
+        const box1 = await Box.create(instance);
+        const box2 = await Box.create(instance);
         await group1.include(box1);
         ensure(await group1.isIncluded(box1), `Doesn't contain box1`);
         ensure(await group1.isIncluded(box1.address));
@@ -53,13 +53,13 @@ it("contains, toArray, and getMembers work properly", async function () {
         new IndexedDbStore("Group.test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const group1 = await instance.createGroup();
 
-        const box1 = await instance.createBox();
-        const box2 = await instance.createBox();
-        const box3 = await instance.createBox();
+        const box1 = await Box.create(instance);
+        const box2 = await Box.create(instance);
+        const box3 = await Box.create(instance);
         await group1.include(box1);
         await group1.include(box2);
         ensure(await group1.isIncluded(box1));
@@ -81,10 +81,10 @@ it("Group.reset", async function () {
         new IndexedDbStore("Group.test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
-        const box1 = await instance.createBox();
-        const box2 = await instance.createBox();
+        const box1 = await Box.create(instance);
+        const box2 = await Box.create(instance);
         const group = await instance.createGroup();
         const prop1 = await instance.createProperty();
         const prop2 = await instance.createProperty();

@@ -54,7 +54,7 @@ async function testWriteBigBundle(count, keepHistory) {
     for (let i = 0; i < count; i++) {
         await directory.set(`test${i}`, "test data to be inserted", bundler);
     }
-    await instance.addBundler(bundler);
+    await bundler.commit();
     const afterTime = Date.now();
     const totalTime = (afterTime - beforeTime) / 1000;
     const writesPerSecond = count / totalTime;

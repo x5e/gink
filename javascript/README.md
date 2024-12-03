@@ -58,7 +58,7 @@ A `Box` is a very simple data structure that can hold only one value at a time; 
 \
 Create the box:
 ```ts
-const aBox: Box = await instance.createBox();
+const aBox: Box = await Box.create(instance);
 ```
 
 Set and get its value, and check the size

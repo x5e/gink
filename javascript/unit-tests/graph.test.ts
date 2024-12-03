@@ -6,7 +6,7 @@ it("isAlive and remove", async function () {
         new IndexedDbStore("graph.test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const vertex = await instance.createVertex();
         const aliveTime = generateTimestamp();
@@ -26,7 +26,7 @@ it("edge_type.createEdge", async function () {
         new IndexedDbStore("edge_type.createEdge", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const vertex1 = await instance.createVertex();
         const vertex2 = await instance.createVertex();
@@ -44,7 +44,7 @@ it("from_to", async function () {
         new IndexedDbStore("from_to", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const vertex1 = await instance.createVertex();
         const vertex2 = await instance.createVertex();
@@ -90,7 +90,7 @@ it("edge_reorder", async function () {
         new IndexedDbStore("edge_reorder", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
 
         const a = await instance.createVertex();
@@ -142,7 +142,7 @@ it("vertex reset", async function () {
         new IndexedDbStore("vertex reset", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const vertex = await instance.createVertex();
         const prop1 = await instance.createProperty();
@@ -172,7 +172,7 @@ it("edge_type reset", async function () {
         new IndexedDbStore("edgetype reset", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
 
         const vertex1 = await instance.createVertex();
@@ -216,7 +216,7 @@ it("edge property restoration", async function () {
         new IndexedDbStore("edge property restore", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
 
         const vertex1 = await instance.createVertex();

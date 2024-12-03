@@ -133,7 +133,7 @@ const database = new Database(store);
 A `Box` is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.
 ```ts
 // Create a Box
-const box = await database.createBox();
+const box = await Box.create(database);
 
 // Set the value in the box
 await box.set("example value");
@@ -265,9 +265,9 @@ A `PairSet` is a data structure that resembles a Set, but has very specific item
 const ps = await database.createPairSet();
 
 // create a few other containers to add as pairs
-const box1 = await database.createBox();
-const box2 = await database.createBox();
-const box3 = await database.createBox();
+const box1 = await Box.create(database);
+const box2 = await Box.create(database);
+const box3 = await Box.create(database);
 
 // Include box1 and box2 in the PairSet
 await ps.include([box1, box2]);
@@ -289,9 +289,9 @@ A `PairMap` is similar to a `PairSet`, in that its keys may only contain pairs o
 ```ts
 const pm = await database.createPairMap();
 
-const box1 = await database.createBox();
-const box2 = await database.createBox();
-const box3 = await database.createBox();
+const box1 = await Box.create(database);
+const box2 = await Box.create(database);
+const box3 = await Box.create(database);
 
 // now looks like {[Box, Box]: "box1 -> box2"}
 await pm.set([box1, box2], "box1 -> box2");
@@ -322,8 +322,8 @@ A `Group` acts as a collection of containers that all have something in common. 
 const group = await database.createGroup();
 
 // create some containers to include
-const box1 = await database.createBox();
-const box2 = await database.createBox();
+const box1 = await Box.create(database);
+const box2 = await Box.create(database);
 const directory1 = await database.createDirectory();
 
 // include by Container instance
@@ -462,18 +462,15 @@ const{ Bundler } = require("@x5e/gink");
 
 const directory = await database.createDirectory();
 
-const bundler = new Bundler();
+const bundler = await database.startBundle();
 
 // pass the bundler into each operation
 await directory.set("key1", "value1", bundler);
 await directory.set("key2", 2, bundler);
 // at this point, these changes have not been committed.
 
-// Update the bundle comment
-bundler.comment = "Testing bundles";
-
 // bundle this bundle to the database
-await database.addBundler(bundler);
+await bundler.commit("comment");
 ```
 
 ### Connecting to other databases

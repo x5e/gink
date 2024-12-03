@@ -12,7 +12,7 @@ it("test resetProperties", async function () {
         new MemoryStore(true),
     ]) {
         await store.ready;
-        const db = new Database(store);
+        const db = new Database({store});
         await db.ready;
 
         const root = db.getGlobalDirectory();

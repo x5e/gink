@@ -46,7 +46,7 @@ export class Peer {
     /**
      * The Message proto contains an embedded one-of.  Essentially this will wrap
      * the bundle bytes payload in a wrapper by prefixing a few bytes to it.
-     * In theory the "Message" proto could be expanded with some extra metadata
+     * In theory the "Message" proto could be expanded with some extra meta
      * (e.g. send time) in the future.
      * Note that the bundle is always passed around as bytes and then
      * parsed as needed to avoid losing unknown fields.
@@ -64,7 +64,7 @@ export class Peer {
      * that the peer could use this particular bundle (but ensures that we're not sending
      * bundles that would cause gaps in the peer's chain.)
      * @param bundleBytes The bundle to be sent.
-     * @param bundleInfo Metadata about the bundle.
+     * @param bundleInfo Meta about the bundle.
      */
     _sendIfNeeded(bundle: BundleView) {
         if (this.hasMap?.markAsHaving(bundle.info, true)) {

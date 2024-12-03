@@ -1,4 +1,4 @@
-import { Database, IndexedDbStore, MemoryStore } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore, Box } from "../implementation";
 import { ensure } from "../implementation/utils";
 import { sleep } from "./test_utils";
 
@@ -7,12 +7,12 @@ it("set, get, delete, and size work as intended", async function () {
         new IndexedDbStore("PM.test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const pm1 = await instance.createPairMap();
-        const box1 = await instance.createBox();
-        const box2 = await instance.createBox();
-        const box3 = await instance.createBox();
+        const box1 = await Box.create(instance);
+        const box2 = await Box.create(instance);
+        const box3 = await Box.create(instance);
 
         ensure((await pm1.size()) === 0);
 
@@ -38,12 +38,12 @@ it("asOf and items work as intended", async function () {
         new IndexedDbStore("PM.test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const pm1 = await instance.createPairMap();
-        const box1 = await instance.createBox();
-        const box2 = await instance.createBox();
-        const box3 = await instance.createBox();
+        const box1 = await Box.create(instance);
+        const box2 = await Box.create(instance);
+        const box3 = await Box.create(instance);
 
         await pm1.set([box1, box2], "box1 -> box2");
         await sleep(10);

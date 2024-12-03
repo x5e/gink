@@ -1,7 +1,6 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
-import { Muid, AsOf, MuidTuple } from "./typedefs";
-import { Bundler } from "./Bundler";
+import { Muid, AsOf, MuidTuple, Meta, Bundler } from "./typedefs";
 import { ensure, muidToString, fromStorageKey } from "./utils";
 import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
@@ -26,8 +25,8 @@ export class Group extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the inclusion
      */
-    async include(key: Container, change?: Bundler | string): Promise<Muid> {
-        return await this.addEntry(key, Container.INCLUSION, change);
+    async include(key: Container, meta?: Meta): Promise<Muid> {
+        return await this.addEntry(key, Container.INCLUSION, meta);
     }
 
     /**
@@ -36,8 +35,8 @@ export class Group extends Container {
      * @param change an optional bundler to put this in
      * @returns a promise that resolves to the Muid for the exclusion
      */
-    async exclude(key: Container, change?: Bundler | string): Promise<Muid> {
-        return await this.addEntry(key, Container.DELETION, change);
+    async exclude(key: Container, meta?: Meta): Promise<Muid> {
+        return await this.addEntry(key, Container.DELETION, meta);
     }
 
     /**
@@ -118,41 +117,17 @@ export class Group extends Container {
         return toArray;
     }
 
-    /**
-     *
-     * @param args Optional arguments, including:
-     * @argument toTime Optional time to reset to. If absent, the container will be cleared.
-     * @argument bundlerOrComment Optional bundler or comment to add this change to
-     * @argument skipProperties If true, do not reset properties of this container. By default,
-     * all properties associated with this container will be reset to the time specified in toTime.
-     * @argument recurse NOTE: THIS FLAG IS IGNORED. Recursive reset for Inclusion-based containers
-     * is not yet implemented, but this arg needs to be accepted for other containers recursively
-     * resetting this one.
-     * @argument seen NOTE: THIS FLAG IS IGNORED. Recursive reset for Inclusion-based containers is
-     * not yet implemented, but this arg needs to be accepted for other containers recursively
-     * resetting this one.
-     */
-    async reset(args?: {
-        toTime?: AsOf;
-        bundlerOrComment?: Bundler | string;
-        skipProperties?: boolean;
-        recurse?: boolean;
-        seen?: Set<string>;
-    }): Promise<void> {
-        const toTime = args?.toTime;
-        const bundlerOrComment = args?.bundlerOrComment;
-        const skipProperties = args?.skipProperties;
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
-        }
+    async reset(
+        toTime?: AsOf,
+        recurse?,
+        meta?: Meta,
+    ): Promise<void> {
+        if (recurse)
+            throw new Error("recurse not implemented for Group");
+        const bundler: Bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, bundler);
+            this.clear(false, {bundler});
         } else {
             const union = new Set<MuidTuple>();
             const entriesThen = await this.database.store.getKeyedEntries(
@@ -186,14 +161,14 @@ export class Group extends Container {
                 if (!nowEntry) {
                     // This key was present then, but not now, so we need to add it back
                     ensure(thenEntry, "missing then entry?");
-                    await this.addEntry(genericKey, thenEntry.value, bundler);
+                    await this.addEntry(genericKey, thenEntry.value, {bundler});
                 } else if (!thenEntry) {
                     // This key is present now, but not then, so we need to delete it
                     ensure(nowEntry, "missing now entry?");
                     await this.addEntry(
                         genericKey,
                         Container.DELETION,
-                        bundler
+                        {bundler}
                     );
                 } else if (nowEntry.deletion !== thenEntry.deletion) {
                     if (nowEntry.deletion) {
@@ -201,14 +176,14 @@ export class Group extends Container {
                         await this.addEntry(
                             genericKey,
                             Container.INCLUSION,
-                            bundler
+                            {bundler}
                         );
                     } else if (thenEntry.deletion) {
                         // Present now, deleted then. Need to delete.
                         await this.addEntry(
                             genericKey,
                             Container.DELETION,
-                            bundler
+                            {bundler}
                         );
                     }
                 } else {
@@ -219,11 +194,8 @@ export class Group extends Container {
                 }
             }
         }
-        if (!skipProperties) {
-            await this.resetProperties(toTime, bundler);
-        }
-        if (immediate) {
-            await this.database.addBundler(bundler);
+        if (! meta?.bundler) {
+            await bundler.commit();
         }
     }
 

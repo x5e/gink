@@ -1,7 +1,6 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
-import { AsOf, Entry, Muid, Value } from "./typedefs";
-import { Bundler } from "./Bundler";
+import { AsOf, Entry, Muid, Value, Bundler, Meta } from "./typedefs";
 import {
     ensure,
     generateTimestamp,
@@ -22,24 +21,23 @@ import { movementHelper } from "./store_utils";
  * Doesn't support unshift because order is defined by insertion order.
  */
 export class Sequence extends Container {
-    constructor(
+    private constructor(
         database: Database,
         address?: Muid,
-        containerBuilder?: ContainerBuilder
     ) {
         super(database, address, Behavior.SEQUENCE);
-        if (this.address.timestamp < 0) {
-            //TODO(https://github.com/google/gink/issues/64): document default magic containers
-            ensure(
-                address.offset === Behavior.SEQUENCE,
-                "magic tag not SEQUENCE"
-            );
-        } else {
-            ensure(
-                containerBuilder.getBehavior() === Behavior.SEQUENCE,
-                "container not sequence"
-            );
-        }
+    }
+
+    static get(database?: Database, muid?: Muid): Sequence {
+        database = database || Database.recent;
+        muid = muid ?? {timestamp: -1, medallion: -1, offset: Behavior.SEQUENCE};
+        return new Sequence(database, muid);
+    }
+
+    static async create(database?: Database, meta?: Meta): Promise<Sequence> {
+        database = database || Database.recent;
+        const muid = await Container.addContainer({behavior: Behavior.SEQUENCE, database, meta});
+        return new Sequence(database, muid);
     }
 
     /**
@@ -50,36 +48,36 @@ export class Sequence extends Container {
      */
     async push(
         value: Value | Container,
-        change?: Bundler | string
+        meta?: Meta,
     ): Promise<Muid> {
-        return await this.addEntry(undefined, value, change);
+        return await this.addEntry(undefined, value, meta);
     }
 
-    async move(
-        muidOrPosition: Muid | number,
-        dest: number,
-        purge?: boolean,
-        bundlerOrComment?: Bundler | string
+    async move(args?: {
+        muid?: Muid;
+        position?: number;
+        dest: number;
+        purge?: boolean;
+        bundler?: Bundler;
+        comment?: string;
+    }
     ) {
         let immediate = false;
         let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
+        if (! args?.bundler) {
             immediate = true;
-            bundler = new Bundler(bundlerOrComment);
+            bundler = await this.database.startBundle();
+        } else {
+            bundler = args.bundler;
         }
         const store = this.database.store;
         // TODO: clarify what's going on here
-        const muid =
-            typeof muidOrPosition === "object"
-                ? muidOrPosition
-                : muidTupleToMuid(
+        const muid = args?.muid ?? muidTupleToMuid(
                       Array.from(
                           (
                               await store.getOrderedEntries(
                                   this.address,
-                                  muidOrPosition
+                                  args?.position
                               )
                           ).values()
                       ).pop().entryId
@@ -89,40 +87,24 @@ export class Sequence extends Container {
             bundler,
             muid,
             this.address,
-            await this.findDest(dest),
-            purge
+            await this.findDest(args?.dest),
+            args?.purge
         );
         if (immediate) {
-            await this.database.addBundler(bundler);
+            await bundler.commit();
         }
     }
 
-    async reset(args?: {
-        toTime?: AsOf;
-        bundlerOrComment?: Bundler | string;
-        skipProperties?: boolean;
-        recurse?: boolean;
-        seen?: Set<string>;
-    }): Promise<void> {
-        const toTime = args?.toTime;
-        const bundlerOrComment = args?.bundlerOrComment;
-        const skipProperties = args?.skipProperties;
-        const recurse = args?.recurse;
-        const seen = recurse ? (args?.seen ?? new Set()) : undefined;
-        if (seen) {
-            seen.add(muidToString(this.address));
+    async reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void> {
+        if (recurse === true)
+            recurse = new Set();
+        if (recurse instanceof Set) {
+            recurse.add(muidToString(this.address));
         }
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
-        }
+        const bundler: Bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, bundler);
+            this.clear(false, {bundler});
         } else {
             const entriesThen = await this.database.store.getOrderedEntries(
                 this.address,
@@ -189,20 +171,17 @@ export class Sequence extends Container {
                     );
                 }
                 // Finally, if the previous entry was a container, recusively reset it
-                if (seen && entry.pointeeList.length > 0) {
+                if (recurse && entry.pointeeList.length > 0) {
                     const pointeeMuid = muidTupleToMuid(entry.pointeeList[0]);
-                    if (!seen.has(muidToString(pointeeMuid))) {
+                    if (!recurse.has(muidToString(pointeeMuid))) {
                         const container = await construct(
                             this.database,
                             pointeeMuid
                         );
-                        await container.reset({
+                        await container.reset(
                             toTime,
-                            bundlerOrComment: bundler,
-                            skipProperties,
                             recurse,
-                            seen,
-                        });
+                            {bundler});
                     }
                 }
             }
@@ -218,11 +197,8 @@ export class Sequence extends Container {
                 );
             }
         }
-        if (!skipProperties) {
-            await this.resetProperties(toTime, bundler);
-        }
-        if (immediate) {
-            await this.database.addBundler(bundler);
+        if (! meta?.bundler) {
+            await bundler.commit();
         }
     }
 
@@ -252,31 +228,17 @@ export class Sequence extends Container {
         return Math.floor((aTs + bTs) / 2);
     }
 
-    /**
-     * Removes and returns the specified entry of the list (default last),
-     * in the provided change set or immediately if no CS is supplied.
-     * Returns undefined when called on an empty list (and no changes are made).
-     * @param what - position or Muid, defaults to last
-     * @param purge - If true, removes so data cannot be recovered with "asOf" query
-     * @param bundlerOrComment
-     */
-    async pop(
-        what?: Muid | number,
+
+    async pop(args?: {
+        muid?: Muid,
+        position?: number,
         purge?: boolean,
-        bundlerOrComment?: Bundler | string
-    ): Promise<Container | Value | undefined> {
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
-        }
+    }, meta?: Meta): Promise<Container | Value | undefined> {
+        let bundler: Bundler = await this.database.startBundle(meta);
         let returning: Container | Value;
         let muid: Muid;
-        if (what && typeof what === "object") {
-            muid = what;
+        if (args?.muid) {
+            muid = args?.muid;
             const entry = await this.database.store.getEntryById(muid);
             if (!entry) return undefined;
             ensure(
@@ -285,13 +247,13 @@ export class Sequence extends Container {
             );
             returning = await interpret(entry, this.database);
         } else {
-            what = typeof what === "number" ? what : -1;
+            const position = args?.position === undefined ? -1 : args.position;
             // Should probably change the implementation to not copy all intermediate entries into memory.
             const entries = Array.from(
                 (
                     await this.database.store.getOrderedEntries(
                         this.address,
-                        what
+                        position
                     )
                 ).values()
             );
@@ -300,21 +262,22 @@ export class Sequence extends Container {
             returning = await interpret(entry, this.database);
             muid = muidTupleToMuid(entry.entryId);
         }
-        await movementHelper(bundler, muid, this.address, undefined, purge);
-        if (immediate) {
-            await this.database.addBundler(bundler);
+        await movementHelper(bundler, muid, this.address, undefined, args?.purge);
+        if (!meta?.bundler) {
+            await bundler.commit();
         }
         return returning;
     }
 
     /**
-     * Alias for this.pop(0, purge, bundlerOrComment)
+     * Alias for this.pop with position of 0
      */
-    async shift(
+    async shift(args?: {
         purge?: boolean,
-        bundlerOrComment?: Bundler | string
-    ): Promise<Container | Value | undefined> {
-        return await this.pop(0, purge, bundlerOrComment);
+        bundler?: Bundler,
+        comment?: string,
+    }): Promise<Container | Value | undefined> {
+        return await this.pop({position: 0, ...args});
     }
 
     /**
@@ -324,15 +287,18 @@ export class Sequence extends Container {
      * Without a bundler, each item from the iterable will be committed separately, which will be costly,
      * but there won't be the same restrictions on moving.
      * @param iterable An iterable of stuff to add to the sequence.
-     * @param bundlerOrComment A bundler or comment for these changes
+     * @param meta optional place to pass in a comment or bundler
      */
     async extend(
         iterable: Iterable<Value | Container>,
-        bundlerOrComment?: Bundler | string
+        meta?: Meta,
     ): Promise<void> {
+        const bundler = await this.database.startBundle(meta);
         for (const value of iterable) {
-            await this.push(value, bundlerOrComment);
+            await this.push(value, {bundler});
         }
+        if (! meta?.bundler)
+            await bundler.commit();
     }
 
     private async getEntryAt(

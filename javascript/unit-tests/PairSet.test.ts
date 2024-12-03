@@ -1,4 +1,4 @@
-import { Database, IndexedDbStore, MemoryStore } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore, Box } from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 import { sleep } from "./test_utils";
 
@@ -7,12 +7,12 @@ it("include, exclude, and contains work as intended", async function () {
         new IndexedDbStore("PS.test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const ps1 = await instance.createPairSet();
-        const box1 = await instance.createBox();
-        const box2 = await instance.createBox();
-        const box3 = await instance.createBox();
+        const box1 = await Box.create(instance);
+        const box2 = await Box.create(instance);
+        const box3 = await Box.create(instance);
 
         await ps1.include([box1, box2]);
         ensure((await ps1.size()) === 1, `${await ps1.size()}`);
@@ -38,12 +38,12 @@ it("asOf and getPairs work properly", async function () {
         new IndexedDbStore("PS.test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const ps1 = await instance.createPairSet();
-        const box1 = await instance.createBox();
-        const box2 = await instance.createBox();
-        const box3 = await instance.createBox();
+        const box1 = await Box.create(instance);
+        const box2 = await Box.create(instance);
+        const box3 = await Box.create(instance);
 
         await ps1.include([box1, box2]);
         await sleep(10);
@@ -74,10 +74,10 @@ it("PairSet.reset", async function () {
         new IndexedDbStore("ps-test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
-        const box1 = await instance.createBox();
-        const box2 = await instance.createBox();
+        const box1 = await Box.create(instance);
+        const box2 = await Box.create(instance);
         const ps = await instance.createPairSet();
         await ps.include([box1, box2]);
         const prop1 = await instance.createProperty();

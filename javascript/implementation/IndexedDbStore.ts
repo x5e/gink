@@ -115,6 +115,10 @@ export class IndexedDbStore implements Store {
         this.ready = this.initialize(indexedDbName, reset);
     }
 
+    acquireChain(identity: string): Promise<BundleInfo | null> {
+        return Promise.resolve(null);
+    }
+
     private async initialize(
         indexedDbName: string,
         reset: boolean

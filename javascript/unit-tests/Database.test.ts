@@ -1,7 +1,7 @@
 import {
     Database,
     IndexedDbStore,
-    Bundler,
+    Box,
     MemoryStore,
 } from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
@@ -11,11 +11,9 @@ it("test bundle", async () => {
         new IndexedDbStore("Database.bundle", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
-        const bundleInfo = await instance.addBundler(
-            new Bundler("hello world")
-        );
+        const bundleInfo = await (await instance.startBundle("hello world")).commit();
         ensure(bundleInfo.comment === "hello world");
         const chainTracker = await store.getChainTracker();
         const allChains = chainTracker.getChains();
@@ -31,12 +29,12 @@ it("test listeners", async () => {
         new MemoryStore(true),
     ]) {
         await store.ready;
-        const db = new Database(store);
+        const db = new Database({store});
         await db.ready;
 
         const root = db.getGlobalDirectory();
         const sequence = await db.createSequence();
-        const box = await db.createBox();
+        const box = await Box.create(db);
 
         const rootListener = async () => {
             rootListener.calledTimes++;
@@ -69,7 +67,7 @@ it("test container naming", async function () {
         new MemoryStore(true),
     ]) {
         await store.ready;
-        const db = new Database(store);
+        const db = new Database({store});
         await db.ready;
 
         const root = db.getGlobalDirectory();
@@ -109,13 +107,13 @@ it("test full database reset", async function () {
         new MemoryStore(true),
     ]) {
         await store.ready;
-        const db = new Database(store);
+        const db = new Database({store});
         await db.ready;
         const prop = await db.createProperty();
 
         const root = db.getGlobalDirectory();
         const seq = await db.createSequence();
-        const box = await db.createBox();
+        const box = await Box.create(db);
         const ks = await db.createKeySet();
         const ps = await db.createPairSet();
         const group = await db.createGroup();

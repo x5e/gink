@@ -1,6 +1,5 @@
 import { Container } from "./Container";
-import { Value, Muid, ScalarKey, AsOf, StorageKey } from "./typedefs";
-import { Bundler } from "./Bundler";
+import { Value, Muid, ScalarKey, AsOf, StorageKey, Meta, Bundler } from "./typedefs";
 import {
     ensure,
     muidToString,
@@ -32,9 +31,9 @@ export class Keyed<
     set(
         key: GenericType,
         value: Value | Container,
-        change?: Bundler | string
+        meta?: Meta,
     ): Promise<Muid> {
-        return this.addEntry(key, value, change);
+        return this.addEntry(key, value, meta);
     }
 
     /**
@@ -44,8 +43,8 @@ export class Keyed<
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
-    async delete(key: GenericType, change?: Bundler | string): Promise<Muid> {
-        return await this.addEntry(key, Container.DELETION, change);
+    async delete(key: GenericType, meta?: Meta): Promise<Muid> {
+        return await this.addEntry(key, Container.DELETION, meta);
     }
 
     /**
@@ -86,38 +85,23 @@ export class Keyed<
         return result !== undefined;
     }
 
-    async reset(args?: {
-        toTime?: AsOf;
-        bundlerOrComment?: Bundler | string;
-        skipProperties?: boolean;
-        recurse?: boolean;
-        seen?: Set<string>;
-    }): Promise<void> {
+    async reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void> {
         if (this.behavior === Behavior.PROPERTY) {
             throw new Error(
                 "Cannot directly reset a property. " +
                     "Calling reset on a Container will reset its properties."
             );
         }
-        const toTime = args?.toTime;
-        const bundlerOrComment = args?.bundlerOrComment;
-        const skipProperties = args?.skipProperties;
-        const recurse = args?.recurse;
-        const seen = recurse ? (args?.seen ?? new Set()) : undefined;
-        if (seen) {
-            seen.add(muidToString(this.address));
+        if (recurse === true) {
+            recurse = new Set();
         }
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
+        if (recurse instanceof Set) {
+            recurse.add(muidToString(this.address));
         }
+        const bundler: Bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, bundler);
+            this.clear(false, {bundler});
         } else {
             const keys: Set<StorageKey> = new Set();
             const thenEntries = await this.database.store.getKeyedEntries(
@@ -165,14 +149,14 @@ export class Keyed<
                 if (!nowEntry) {
                     // This key was present then, but not now, so we need to add it back
                     ensure(thenEntry && thenValue, "missing value?");
-                    await this.addEntry(genericKey, thenValue, bundler);
+                    await this.addEntry(genericKey, thenValue, {bundler});
                 } else if (!thenEntry) {
                     // This key is present now, but not then, so we need to delete it
                     ensure(nowEntry && nowValue, "missing value?");
                     await this.addEntry(
                         genericKey,
                         Container.DELETION,
-                        bundler
+                        {bundler}
                     );
                 } else {
                     // Present both then and now. Check if the values are different
@@ -187,30 +171,21 @@ export class Keyed<
                             )
                         ) {
                             // Update the entry
-                            await this.addEntry(genericKey, thenValue, bundler);
+                            await this.addEntry(genericKey, thenValue, {bundler});
                         }
                     }
                 }
                 if (
-                    seen &&
+                    recurse &&
                     thenValue instanceof Container &&
-                    !seen.has(muidToString(thenValue.address))
+                    !recurse.has(muidToString(thenValue.address))
                 ) {
-                    await thenValue.reset({
-                        toTime,
-                        bundlerOrComment: bundler,
-                        skipProperties,
-                        recurse,
-                        seen,
-                    });
+                    await thenValue.reset(toTime, recurse, {bundler});
                 }
             }
         }
-        if (!skipProperties) {
-            await this.resetProperties(toTime, bundler);
-        }
-        if (immediate) {
-            await this.database.addBundler(bundler);
+        if (! meta?.bundler) {
+            await bundler.commit();
         }
     }
 

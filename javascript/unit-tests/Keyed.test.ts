@@ -14,9 +14,9 @@ it("test reset", async function () {
         new IndexedDbStore("Keyed.reset", true),
         new MemoryStore(true),
     ]) {
-        const database = new Database(store);
+        const database = new Database({store});
         await database.ready;
-        const box = await database.createBox();
+        const box = await Box.create(database);
         const pairMap = await database.createPairMap();
         const schema = await database.createDirectory();
         await schema.set("a key", "a value");
@@ -140,12 +140,12 @@ it("test reset", async function () {
         await schema.set(2, arr);
         const afterNumbers = generateTimestamp();
         await schema.set("hmm", 20);
-        const bundler = new Bundler();
+        const bundler = await database.startBundle();
 
         await schema.reset({ toTime: afterNumbers, bundlerOrComment: bundler });
         ensure((await schema.get("hmm")) === 20);
         ensure(isEqual(await schema.get(2), arr));
-        await database.addBundler(bundler);
+        await bundler.commit();
         ensure((await schema.get("hmm")) === 2, await schema.toJson());
         ensure(isEqual(await schema.get(2), arr));
 

@@ -7,10 +7,11 @@ import {
     muidToString,
     builderToMuid,
     encodeToken,
-    isAlive,
     getIdentity,
     createKeyPair,
     muidTupleToMuid,
+    signBundle,
+
 } from "./utils";
 import {
     BundleBytes,
@@ -18,37 +19,30 @@ import {
     CallBack,
     BundleInfo,
     Muid,
-    ClaimedChain,
     BundleView,
     AsOf,
     KeyPair,
     MuidTuple,
+    SealerArgs,
+    Medallion,
+    Meta,
+    Bundler,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
-import { Bundler } from "./Bundler";
 
-import { PairSet } from "./PairSet";
-import { PairMap } from "./PairMap";
-import { KeySet } from "./KeySet";
-import { Directory } from "./Directory";
-import { Box } from "./Box";
-import { Sequence } from "./Sequence";
-import { Group } from "./Group";
 import { Store } from "./Store";
 import {
     Behavior,
     ChangeBuilder,
-    ContainerBuilder,
     SyncMessageBuilder,
+    BundleBuilder,
 } from "./builders";
-import { Property } from "./Property";
-import { Vertex } from "./Vertex";
-import { EdgeType } from "./EdgeType";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
 import { construct } from "./factories";
 import { BoundBundler } from "./BoundBundler";
-import { BundleBuilder } from "./builders";
+import { PromiseChainLock } from "./PromiseChainLock";
+import { Property } from "./Property";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -62,11 +56,15 @@ export class Database {
 
     private listeners: Map<string, Map<string, BundleListener[]>> = new Map();
     private countConnections = 0; // Includes disconnected clients.
-    private lastLinkToExtend: BundleInfo;
-    private keyPair: KeyPair;
-    private identity: string;
-    private chainGetter?: Promise<BundleInfo> = undefined;
+    private identity?: string;
     protected iHave: ChainTracker;
+    private static lastCreated?: Database;
+    readonly store: Store;
+    protected logger: CallBack;
+    protected promiseChainLock = new PromiseChainLock();
+    protected medallion?: Medallion;
+    protected keyPair?: KeyPair;
+    protected lastLink?: BundleInfo;
 
     //TODO: centralize platform dependent code
     private static W3cWebSocket =
@@ -74,13 +72,20 @@ export class Database {
             ? WebSocket
             : eval("require('websocket').w3cwebsocket");
 
-    constructor(
-        readonly store: Store = new MemoryStore(true),
-        identity: string = getIdentity(),
-        readonly logger: CallBack = noOp
-    ) {
-        this.identity = identity;
+    constructor(args?: {
+        store?: Store;
+        logger?: CallBack;
+        identity?: string;
+    }) {
+        this.store = args?.store ?? new MemoryStore(true);
+        this.logger = args?.logger ?? noOp;
         this.ready = this.initialize();
+        this.identity = args?.identity;
+        Database.lastCreated = this;
+    }
+
+    public static get recent(): Database {
+        return ensure(Database.lastCreated, "no database created");
     }
 
     private async initialize(): Promise<void> {
@@ -104,53 +109,53 @@ export class Database {
         this.store.addFoundBundleCallBack(callback);
     }
 
-    public startBundle(comment?: string): Promise<Bundler> {
-        return Promise.resolve(new BoundBundler(this, comment));
-    }
-
-    /**
-     * Starts a chain or finds one to reuse, then sets myChain.
-     */
-    public getChain(): Promise<BundleInfo> {
-        if (!this.chainGetter) this.chainGetter = this.getChainHelper();
-        return this.chainGetter;
-    }
-
-    private async getChainHelper(): Promise<BundleInfo> {
-        if (this.lastLinkToExtend) return this.lastLinkToExtend;
-        this.logger("calling getChain()");
-        const claimedChains = await this.store.getClaimedChains();
-        let toReuse: ClaimedChain;
-        for (let value of claimedChains.values()) {
-            const chainId = await this.store.getChainIdentity([
-                value.medallion,
-                value.chainStart,
-            ]);
-            this.logger(`considering chain: ${JSON.stringify(value)}`);
-            if (chainId !== this.identity) {
-                this.logger(
-                    `identities don't match: ${chainId} ${this.identity}`
-                );
-                continue;
+    private async completeBundle(args: SealerArgs): Promise<BundleInfo> {
+        // I'm acquiring a lock here to ensure that the chain doesn't get forked.
+        const unlockingFunction = await this.promiseChainLock.acquireLock();
+        try {
+            const bundleBuilder = new BundleBuilder();
+            if (args.comment)
+                bundleBuilder.setComment(args.comment);
+            if (this.medallion !== args.medallion || ! this.medallion) {
+                throw new Error("unexpected medallion problem");
             }
-            if (await isAlive(value.actorId)) {
-                this.logger(`actor is still alive`);
-                continue;
+            bundleBuilder.setMedallion(this.medallion);
+            const timestamp = generateTimestamp();
+            bundleBuilder.setTimestamp(timestamp);
+            if (this.lastLink) {
+                bundleBuilder.setPrevious(this.lastLink.timestamp);
+                bundleBuilder.setChainStart(this.lastLink.chainStart);
+                bundleBuilder.setPriorHash(this.lastLink.hashCode);
+            } else {
+                bundleBuilder.setChainStart(timestamp);
+                bundleBuilder.setIdentity(this.identity);
+                bundleBuilder.setVerifyKey(this.keyPair.publicKey);
             }
-            // TODO: check to see if meta-data matches, and overwrite if not
-            toReuse = value;
-            if (typeof window !== "undefined") {
-                // If we are running in a browser and take over a chain,
-                // start a new heartbeat.
-                setInterval(() => {
-                    window.localStorage.setItem(
-                        `gink-${value.actorId}`,
-                        `${Date.now()}`
-                    );
-                }, 1000);
-            }
-            break;
+            bundleBuilder.setChangesList(args.changes);
+            const bundleBytes = signBundle(bundleBuilder.serializeBinary(), this.keyPair.secretKey);
+            const decomposition = new Decomposition(bundleBytes);
+            await this.receiveBundle(decomposition);
+            return decomposition.info;
+        } finally {
+            unlockingFunction();
         }
+    }
+
+    public async startBundle(meta?: Meta): Promise<Bundler> {
+        if (meta?.bundler) return meta.bundler;
+        if (! this.medallion) {
+            const unlockingFunction = await this.promiseChainLock.acquireLock();
+            try {
+                await this.obtainMedallion(meta?.identity ?? this.identity ?? getIdentity());
+            } finally {
+                unlockingFunction();
+            }
+        }
+        return new BoundBundler(this.medallion, this.completeBundle.bind(this), meta?.comment);
+    }
+
+    private async obtainMedallion(identity: string): Promise<void> {
+        const toReuse = await this.store.acquireChain(identity);
         if (toReuse) {
             ensure(toReuse.medallion > 0);
             const publicKey = await this.store.getVerifyKey([
@@ -159,72 +164,16 @@ export class Database {
             ]);
             ensure(publicKey);
             this.keyPair = ensure(await this.store.pullKeyPair(publicKey));
-            this.lastLinkToExtend = this.iHave.getBundleInfo([
-                toReuse.medallion,
-                toReuse.chainStart,
-            ]);
+            this.lastLink = toReuse;
         } else {
-            const medallion = makeMedallion();
-            const chainStart = generateTimestamp();
-            const keyPair = createKeyPair();
-            await this.store.saveKeyPair(keyPair);
-            this.keyPair = keyPair;
-            const bundler = new BoundBundler(this, undefined, medallion);
-            // Starting a new chain, so don't have/need a prior_hash.
-            bundler.seal(
-                {
-                    medallion,
-                    timestamp: chainStart,
-                    chainStart,
-                },
-                keyPair,
-                undefined,
-                this.identity
-            );
-            ensure(bundler.builder.getIdentity() === this.identity);
-            await this.store.addBundle(bundler, true);
-            this.lastLinkToExtend = bundler.info;
-            ensure(
-                this.lastLinkToExtend.hashCode &&
-                    this.lastLinkToExtend.hashCode.length == 32
-            );
-            this.iHave.markAsHaving(bundler.info);
-            this.logger(
-                `started chain with ${JSON.stringify(bundler.info, ["medallion", "chainStart"])}`
-            );
-            // If there is already a connection before we claim a chain, ensure the
-            // peers get this bundle as well so future bundles will be valid extensions.
-            for (const peer of this.peers.values()) {
-                peer._sendIfNeeded(bundler);
-            }
+            this.keyPair = createKeyPair();
+            await this.store.saveKeyPair(this.keyPair);
+            this.medallion = makeMedallion();
         }
-        ensure(this.lastLinkToExtend, "myChain wasn't set.");
-        ensure(
-            this.lastLinkToExtend.hashCode &&
-                this.lastLinkToExtend.hashCode.length == 32
-        );
-        return this.lastLinkToExtend;
     }
 
-    /**
-     * Reset all containers in the database to a previous time.
-     * @param toTime optional timestamp to reset to. If not provided, each container
-     * will be cleared.
-     * @param bundlerOrComment optional bundler to add this change to, or a string to
-     * add a comment to a new bundle.
-     */
-    async reset(
-        toTime?: AsOf,
-        bundlerOrComment?: Bundler | string
-    ): Promise<void> {
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof BoundBundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = await this.startBundle(<string>bundlerOrComment);
-        }
+    async reset(toTime?: AsOf, meta?: Meta): Promise<void> {
+        let bundler: Bundler = await this.startBundle(meta);
         // Leaving off Behavior.PROPERTY since each individual property will get reset
         // with the other container reset calls
         const globalBehaviors = [
@@ -238,204 +187,21 @@ export class Database {
         ];
         const globalContainers: MuidTuple[] = [];
         for (const behavior of globalBehaviors) {
-            globalContainers.push([-1, -1, behavior]);
+            const address = {timestamp: -1, medallion: -1, offset: behavior}
+            const container = await construct(this, address);
+            await container.reset(toTime, false, {bundler});
         }
         const containers = await this.store.getAllContainerTuples();
 
         for (const muidTuple of containers) {
             const container = await construct(this, muidTupleToMuid(muidTuple));
             if (container instanceof Property) continue;
-            await container.reset({ toTime, bundlerOrComment: bundler });
+            await container.reset(toTime, false, {bundler});
         }
 
-        for (const muidTuple of globalContainers) {
-            const container = await construct(this, muidTupleToMuid(muidTuple));
-            await container.reset({ toTime, bundlerOrComment: bundler });
-        }
-
-        if (immediate) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
-    }
-
-    /*
-     * Returns a handle to the magic global directory.  Primarily intended for testing.
-     * @returns a "magic" global directory that always exists and is accessible by all instances
-     */
-    getGlobalDirectory(): Directory {
-        return new Directory(this, {
-            timestamp: -1,
-            medallion: -1,
-            offset: Behavior.DIRECTORY,
-        });
-    }
-
-    getGlobalProperty(): Property {
-        return new Property(this, {
-            timestamp: -1,
-            medallion: -1,
-            offset: Behavior.PROPERTY,
-        });
-    }
-
-    getMedallionDirectory(): Directory {
-        return new Directory(this, {
-            timestamp: -1,
-            medallion: this.lastLinkToExtend[0],
-            offset: Behavior.DIRECTORY,
-        });
-    }
-
-    /**
-     * Creates a new box container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Box container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createBox(change?: Bundler | string): Promise<Box> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.BOX,
-            change
-        );
-        return new Box(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new List container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createSequence(change?: Bundler | string): Promise<Sequence> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.SEQUENCE,
-            change
-        );
-        return new Sequence(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new Key Set container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Key Set container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createKeySet(change?: Bundler | string): Promise<KeySet> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.KEY_SET,
-            change
-        );
-        return new KeySet(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new Group container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Group container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createGroup(change?: Bundler | string): Promise<Group> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.GROUP,
-            change
-        );
-        return new Group(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new PairSet container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the PairSet container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createPairSet(change?: Bundler | string): Promise<PairSet> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.PAIR_SET,
-            change
-        );
-        return new PairSet(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new PairMap container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the PairMap container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createPairMap(change?: Bundler | string): Promise<PairMap> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.PAIR_MAP,
-            change
-        );
-        return new PairMap(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new Directory container (like a javascript map or a python dict).
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Directory container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    // TODO: allow user to specify the types allowed for keys and values
-    async createDirectory(change?: Bundler | string): Promise<Directory> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.DIRECTORY,
-            change
-        );
-        return new Directory(this, muid, containerBuilder);
-    }
-
-    async createVertex(change?: Bundler | string): Promise<Vertex> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.VERTEX,
-            change
-        );
-        return new Vertex(this, muid, containerBuilder);
-    }
-
-    async createEdgeType(change?: Bundler | string): Promise<EdgeType> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.EDGE_TYPE,
-            change
-        );
-        return new EdgeType(this, muid, containerBuilder);
-    }
-
-    async createProperty(
-        bundlerOrComment?: Bundler | string
-    ): Promise<Property> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.PROPERTY,
-            bundlerOrComment
-        );
-        return new Property(this, muid, containerBuilder);
-    }
-
-    protected async createContainer(
-        behavior: Behavior,
-        change?: Bundler | string
-    ): Promise<[Muid, ContainerBuilder]> {
-        let immediate = false;
-        let bundler: Bundler;
-        if (change instanceof BoundBundler) {
-            bundler = change;
-        } else {
-            immediate = true;
-            bundler = await this.startBundle(<string>change);
-        }
-        const containerBuilder = new ContainerBuilder();
-        containerBuilder.setBehavior(behavior);
-        const address = bundler.addChange(new ChangeBuilder().setContainer(containerBuilder));
-        if (immediate) {
-            await bundler.commit();
-        }
-        return [address, containerBuilder];
-    }
-
-    /**
-     * Returns an array of Muids of containers that have the provided name.
-     * @param name
-     * @param asOf optional timestamp to look back to.
-     * @returns an array of Muids.
-     */
-    public async getContainersWithName(
-        name: string,
-        asOf?: AsOf
-    ): Promise<Muid[]> {
-        return await this.store.getContainersByName(name, asOf);
     }
 
     /**
@@ -476,39 +242,6 @@ export class Database {
             ? containerMap.get("remote_only")
             : containerMap.get("all_bundles");
         return innerMap || [];
-    }
-
-    /**
-     * Adds a bundle to a chain, setting the medallion and timestamps on the bundle in the process.
-     *
-     * @param bundler a PendingBundle ready to be sealed
-     * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
-     */
-    public addBundler(bundler: BoundBundler): Promise<BundleInfo> {
-        return this.ready.then(() =>
-            this.getChain().then(() => {
-                const nowMicros = generateTimestamp();
-                const seenThrough = this.lastLinkToExtend.timestamp;
-                const newTimestamp =
-                    nowMicros > seenThrough ? nowMicros : seenThrough + 10;
-                ensure(seenThrough > 0 && seenThrough < nowMicros);
-                const bundleInfo: BundleInfo = {
-                    medallion: this.lastLinkToExtend.medallion,
-                    chainStart: this.lastLinkToExtend.chainStart,
-                    timestamp: newTimestamp,
-                    priorTime: seenThrough,
-                };
-                bundler.seal(
-                    bundleInfo,
-                    this.keyPair,
-                    this.lastLinkToExtend.hashCode
-                );
-                // The bundle is seralized then deserialized to catch problems before broadcasting.
-                const decomposition = new Decomposition(bundler.bytes);
-                this.lastLinkToExtend = decomposition.info;
-                return this.receiveBundle(decomposition);
-            })
-        );
     }
 
     /**

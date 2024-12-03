@@ -1,4 +1,3 @@
-import { RoutingServer } from "./RoutingServer";
 import { LogBackedStore } from "./LogBackedStore";
 import { Store } from "./Store";
 import { Database } from "./Database";
@@ -7,6 +6,7 @@ import { SimpleServer } from "./SimpleServer";
 import { ensure, generateTimestamp, getIdentity, logToStdErr } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { start, REPLServer } from "node:repl";
+import { Directory } from "./Directory";
 
 /**
     Intended to manage server side running of Gink.
@@ -19,7 +19,6 @@ export class CommandLineInterface {
     targets: string[];
     store?: Store;
     instance?: Database;
-    routingServer?: RoutingServer;
     replServer?: REPLServer;
     authToken?: string;
     retryOnDisconnect: boolean;
@@ -85,21 +84,14 @@ export class CommandLineInterface {
                 logger: logger,
                 authFunc: authFunc,
             };
-            if (args.data_root) {
-                this.routingServer = new RoutingServer({
-                    identity: identity,
-                    dataFilesRoot: args.data_root,
-                    ...common,
-                });
-            } else {
-                this.instance = new SimpleServer(this.store, {
-                    identity: identity,
-                    ...common,
-                });
-            }
+            this.instance = new SimpleServer({
+                store: this.store,
+                identity: identity,
+                ...common,
+            });
         } else {
             // port not set so don't listen for incoming connections
-            this.instance = new Database(this.store, identity, logger);
+            this.instance = new Database({store: this.store, identity, logger});
         }
     }
 
@@ -107,7 +99,7 @@ export class CommandLineInterface {
         if (this.instance) {
             await this.instance.ready;
             globalThis.database = this.instance;
-            globalThis.root = this.instance.getGlobalDirectory();
+            globalThis.root = Directory.get(this.instance);
             this.instance.addListener(async (bundle: BundleView) =>
                 logToStdErr(
                     `received bundle: ${JSON.stringify(bundle.info, ["medallion", "timestamp", "comment"])}`
@@ -128,8 +120,6 @@ export class CommandLineInterface {
                     );
                 }
             }
-        } else {
-            await this.routingServer?.ready;
         }
         this.replServer = start({ prompt: "node+gink> ", useGlobal: true });
     }

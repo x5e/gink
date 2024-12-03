@@ -16,6 +16,7 @@ import {
     BundleInfoTuple,
     Movement,
     Value,
+    Bundler,
 } from "./typedefs";
 import {
     ensure,
@@ -29,7 +30,6 @@ import {
     wrapValue,
 } from "./utils";
 import { Container } from "./Container";
-import { Bundler } from "./Bundler";
 
 /**
  *
@@ -133,7 +133,6 @@ export async function movementHelper(
     dest?: number,
     purge?: boolean
 ): Promise<void> {
-    ensure(bundler instanceof Bundler);
     const movementBuilder = new MovementBuilder();
     movementBuilder.setEntry(muidToBuilder(entryMuid));
     if (dest) movementBuilder.setDest(dest);

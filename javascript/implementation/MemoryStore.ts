@@ -98,6 +98,10 @@ export class MemoryStore implements Store {
         return Promise.resolve(this.secretKeys.get(bytesToHex(publicKey)));
     }
 
+    acquireChain(identity: string): Promise<BundleInfo | null> {
+        return Promise.resolve(null);
+    }
+
     async saveSymmetricKey(symmetricKey: Bytes): Promise<number> {
         if (symmetricKey.length !== 32) {
             throw new Error("symmetric key must be 32 bytes");

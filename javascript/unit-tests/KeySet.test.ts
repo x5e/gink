@@ -14,7 +14,7 @@ it("add and has basic data", async function () {
         new IndexedDbStore("ks-test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const ks = await instance.createKeySet();
 
@@ -38,7 +38,7 @@ it("delete, and size work as intended", async function () {
         new IndexedDbStore("ks-test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const ks = await instance.createKeySet();
 
@@ -64,7 +64,7 @@ it("entries works as intended", async function () {
         new IndexedDbStore("ks-test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const ks: KeySet = await instance.createKeySet();
         await ks.update(["key1", "key2", "key3"]);
@@ -83,16 +83,15 @@ it("add multiple keys within a bundler", async function () {
         new IndexedDbStore("ks-test4", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const ks = await instance.createKeySet();
 
         // make multiple changes in a change set
-        const bundler = new Bundler();
+        const bundler = await instance.startBundle();
         await ks.add("key1", bundler);
         await ks.add("key2", bundler);
-        bundler.comment = "My first bundle!";
-        await instance.addBundler(bundler);
+        await bundler.commit("My first bundle!");
 
         // verify the result
         ensure(await ks.has("key1"));
@@ -106,7 +105,7 @@ it("KeySet.toJson", async function () {
         new IndexedDbStore("ks-test6", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const ks = await instance.createKeySet();
 
@@ -123,7 +122,7 @@ it("KeySet.asOf", async function () {
         new IndexedDbStore("ks-test7", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const ks = await instance.createKeySet();
 
@@ -168,12 +167,12 @@ it("KeySet.clear", async function () {
         new IndexedDbStore("ks-test8", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const ks = await instance.createKeySet();
         await ks.update(["key1", "key2"]);
         const clearMuid = await ks.clear();
-        ensure((await ks.update(["key3", "key4"])) instanceof Bundler);
+        await ks.update(["key3", "key4"]);
         const asSet = await ks.toSet();
         ensure(asSet.has("key4") && !asSet.has("key1"), "did not clear");
         const asSetBeforeClear = await ks.toSet(clearMuid.timestamp);
@@ -189,7 +188,7 @@ it("KeySet.clear(purge)", async function () {
         new IndexedDbStore("ks-test9", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const ks = await instance.createKeySet();
         await ks.add("key1");
@@ -209,7 +208,7 @@ it("KeySet.reset", async function () {
         new IndexedDbStore("ks-test10", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const ks = await instance.createKeySet();
         await ks.add("key1");

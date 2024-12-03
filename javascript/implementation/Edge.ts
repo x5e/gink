@@ -1,10 +1,9 @@
 import { Addressable } from "./Addressable";
 import { Database } from "./Database";
-import { AsOf, EdgeData, Muid, Value, Timestamp } from "./typedefs";
+import { AsOf, EdgeData, Muid, Value, Timestamp, Bundler, Meta } from "./typedefs";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { entryToEdgeData } from "./utils";
-import { Bundler } from "./Bundler";
 import { movementHelper } from "./store_utils";
 
 export class Edge extends Addressable {
@@ -84,25 +83,18 @@ export class Edge extends Addressable {
      * source, target, value, and properties.
      * @param dest a timestamp to move the edge to. If 0 or not specified, the edge will be removed.
      * @param purge completely remove the edge's entry from the datastore?
-     * @param bundlerOrComment a Bundler object or a string comment to add to the movement entry.
+     * @param meta optional metadata (may contain: comment, identity, or bundler)
      */
     async remove(
         dest?: number,
         purge?: boolean,
-        bundlerOrComment?: string | Bundler
+        meta?: Meta,
     ) {
         if (!(await this.isAlive())) throw new Error("this edge is not alive.");
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
-        }
+        const bundler: Bundler = await this.database.startBundle(meta);
         await movementHelper(bundler, this.address, this.action, dest, purge);
-        if (immediate) {
-            await this.database.addBundler(bundler);
+        if (! meta?.bundler) {
+            await bundler.commit();
         }
     }
 }

@@ -27,8 +27,8 @@ export class SimpleServer extends Database {
     public connections: Map<number, WebSocketConnection>;
 
     constructor(
-        store: Store,
-        args: {
+        args?: {
+            store?: Store,
             port?: NumberStr;
             sslKeyFilePath?: FilePath;
             sslCertFilePath?: FilePath;
@@ -38,7 +38,7 @@ export class SimpleServer extends Database {
             authFunc?: AuthFunction;
         }
     ) {
-        super(store, args.identity, args.logger || (() => null));
+        super(args);
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this),
             requestListener: this.requestListener.bind(this),

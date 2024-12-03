@@ -1,6 +1,5 @@
-import { Bundler } from "./Bundler";
-import { Value, ScalarKey, Muid, AsOf } from "./typedefs";
-import { muidToBuilder, wrapValue, wrapKey, strToMuid } from "./utils";
+import { Value, ScalarKey, Muid, AsOf, Meta, Bundler } from "./typedefs";
+import { muidToBuilder, wrapValue, wrapKey } from "./utils";
 import { Deletion } from "./Deletion";
 import { Inclusion } from "./Inclusion";
 import { Database } from "./Database";
@@ -9,14 +8,20 @@ import {
     ChangeBuilder,
     Behavior,
     ClearanceBuilder,
+    ContainerBuilder,
 } from "./builders";
 import { PairBuilder } from "./builders";
 import { Addressable } from "./Addressable";
-import { bundlePropertyEntry } from "./store_utils";
+import { interpret } from "./factories";
 
-export class Container extends Addressable {
+export abstract class Container extends Addressable {
     protected static readonly DELETION = new Deletion();
     protected static readonly INCLUSION = new Inclusion();
+    protected static globalPropertyMuid = {
+        medallion: -1,
+        timestamp: -1,
+        offset: Behavior.PROPERTY,
+    }
 
     protected constructor(
         readonly database: Database,
@@ -26,49 +31,40 @@ export class Container extends Addressable {
         super(address);
     }
 
-    public toString(): string {
-        const address = this.address;
-        return `Container(${address.timestamp},${address.medallion},${address.offset})`;
+    protected static async addContainer({database, behavior, meta}:
+        {database: Database, behavior: Behavior, meta?: Meta}): Promise<Muid> {
+            const bundler = await database.startBundle(meta);
+            const containerBuilder = new ContainerBuilder();
+            containerBuilder.setBehavior(behavior);
+            const muid = bundler.addChange(new ChangeBuilder().setContainer(containerBuilder));
+            if (!meta?.bundler) {
+                await bundler.commit();
+            }
+            return muid;
     }
 
-    async toJson(
-        indent: number | boolean = false,
+    abstract toJson(
+        indent: number | boolean,
         asOf?: AsOf,
         seen?: Set<string>
-    ): Promise<string> {
-        return Promise.resolve(`"${this.toString()}"`);
+    ): Promise<string>;
+
+    public async setName(name: string, meta?: Meta): Promise<Muid> {
+        return await this.addEntry(this, name, meta, Container.globalPropertyMuid)
     }
 
-    public async setName(
-        name: string,
-        bundlerOrComment?: Bundler | string
-    ): Promise<Muid> {
-        return await this.database
-            .getGlobalProperty()
-            .set(this, name, bundlerOrComment);
+    public async getName(asOf?: AsOf): Promise<string|undefined> {
+        const entry = await this.database.store.getEntryByKey(
+            Container.globalPropertyMuid,
+            this.address,
+            asOf
+        );
+        const result = await interpret(entry, this.database);
+        return <string|undefined> result;
     }
 
-    public async getName(asOf?: AsOf) {
-        return await this.database.getGlobalProperty().get(this, asOf);
-    }
-
-    public async clear(
-        purge?: boolean,
-        bundlerOrComment?: Bundler | string
-    ): Promise<Muid> {
-        if (!(purge === undefined || purge === true || purge === false)) {
-            throw new Error(
-                "first parameter to clear must be boolean (true => purge)"
-            );
-        }
-        let immediate = false;
-        let bundler: Bundler;
-        if (typeof(bundlerOrComment) == "string" || ! bundlerOrComment ) {
-            immediate = true;
-            bundler = await this.database.startBundle(<string>bundlerOrComment);
-        } else {
-            bundler = bundlerOrComment;
-        }
+    public async clear(purge?: boolean, meta?: Meta): Promise<Muid> {
+        const bundler = await this.database.startBundle(meta);
         const clearanceBuilder = new ClearanceBuilder();
         clearanceBuilder.setPurge(purge || false);
         clearanceBuilder.setContainer(
@@ -77,7 +73,7 @@ export class Container extends Addressable {
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setClearance(clearanceBuilder);
         const address = bundler.addChange(changeBuilder);
-        if (immediate) {
+        if (! meta?.bundler) {
             await bundler.commit();
         }
         return address;
@@ -86,38 +82,15 @@ export class Container extends Addressable {
     /**
      * Reset this Container to a previous time. If no time is specified, the container will
      * be cleared.
-     * @param args Optional arguments, including:
      * @argument toTime Optional time to reset to. If absent, the container will be cleared.
-     * @argument bundlerOrComment Bundler to add this change to, string to add a comment to a
-     * new bundle, or empty to apply immediately.
-     * @argument skipProperties If true, do not reset properties of this container. By default,
-     * all properties associated with this container will be reset to the time specified in toTime.
      * @argument recurse Recursively reset all child containers held by this container at reset time?
-     * @argument seen A Set of seen container muids (in string form) to prevent infinite recursion.
-     * Primarily for internal use, but could be used to prevent specific containers from being reset.
+     * @argument meta Metadata to be used in the reset.
      */
-    public async reset(args?: {
-        toTime?: AsOf;
-        bundler?: Bundler;
-        comment?: string;
-        skipProperties?: boolean;
-        recurse?: boolean;
-        seen?: Set<string>;
-    }): Promise<void> {
-        throw new Error("Child class should have implemented this method.");
-    }
+    public abstract reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void>;
 
-    public async size(): Promise<number> {
-        throw new Error("Child class should have implemented this method.");
-    }
+    public abstract size(asOf?: AsOf): Promise<number>;
 
-    /**
-     *
-     * @param key If absent, create a boxed entry, if KeyType, set a key in entry, if true, create a list entry
-     * @param value What the container ought to contain (an immediate Value, a reference, or a deletion)
-     * @param bundlerOrComment Bundler to add this change to, or empty to apply immediately.
-     * @returns a promise the resolves to the muid of the change
-     */
+
     protected async addEntry(
         key?:
             | ScalarKey
@@ -126,22 +99,15 @@ export class Container extends Addressable {
             | Muid
             | [Muid, Muid],
         value?: Value | Deletion | Inclusion,
-        bundlerOrComment?: Bundler | string
+        meta?: Meta,
+        onContainer?: Muid,
     ): Promise<Muid> {
-        let immediate = false;
-        let bundler: Bundler;
-        if (typeof(bundlerOrComment) == "string" || ! bundlerOrComment ) {
-            immediate = true;
-            bundler = await this.database.startBundle(<string>bundlerOrComment);
-        } else {
-            bundler = bundlerOrComment;
-        }
+        let bundler: Bundler = await this.database.startBundle(meta);
         const entryBuilder = new EntryBuilder();
-        if (this.address) {
-            entryBuilder.setContainer(
-                muidToBuilder(this.address, bundler.medallion)
-            );
-        }
+        if (!this.address) throw new Error("unexpected");
+        entryBuilder.setContainer(
+            muidToBuilder(onContainer ?? this.address, bundler.medallion)
+        );
         entryBuilder.setBehavior(this.behavior);
         if (
             typeof key === "number" ||
@@ -182,64 +148,11 @@ export class Container extends Addressable {
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setEntry(entryBuilder);
         const address = bundler.addChange(changeBuilder);
-        if (immediate) {
-            return bundler.commit().then((_) => address);
+        if (! meta?.bundler) {
+            await bundler.commit();
         }
         return address;
     }
 
-    /**
-     * Reset the properties associated with this container to a previous time.
-     * @param toTime optional timestamp to reset to. If not provided, the properties will be deleted.
-     * @param bundlerOrComment optional bundler to add this change to, or a string to add a comment to a new bundle.
-     */
-    public async resetProperties(
-        toTime?: AsOf,
-        bundlerOrComment?: Bundler | string
-    ): Promise<void> {
-        let immediate = false;
-        let bundler: Bundler;
-        if (typeof(bundlerOrComment) == "string" || ! bundlerOrComment ) {
-            immediate = true;
-            bundler = await this.database.startBundle(<string>bundlerOrComment);
-        } else {
-            bundler = bundlerOrComment;
-        }
-        const propertiesNow =
-            await this.database.store.getContainerProperties(this);
-        if (!toTime) {
-            for (const [key, _] of propertiesNow.entries()) {
-                const propertyMuid = strToMuid(key);
-                // Omitting value parameter creates a deleting entry
-                bundlePropertyEntry(bundler, propertyMuid, this.address);
-            }
-        } else {
-            const propertiesThen =
-                await this.database.store.getContainerProperties(this, toTime);
 
-            for (const [key, value] of propertiesThen.entries()) {
-                if (value !== propertiesNow.get(key)) {
-                    const propertyMuid = strToMuid(key);
-                    bundlePropertyEntry(
-                        bundler,
-                        propertyMuid,
-                        this.address,
-                        value
-                    );
-                }
-                // Remove from propertiesNow so we can delete the rest
-                // after this iteration
-                propertiesNow.delete(key);
-            }
-            // Now loop through the remaining propertiesNow and delete them
-            for (const [key, _] of propertiesNow.entries()) {
-                const propertyMuid = strToMuid(key);
-                // Omitting value parameter creates a deleting entry
-                bundlePropertyEntry(bundler, propertyMuid, this.address);
-            }
-        }
-        if (immediate) {
-            await bundler.commit();
-        }
-    }
 }

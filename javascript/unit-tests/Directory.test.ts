@@ -13,7 +13,7 @@ it("set and get basic data", async function () {
         new IndexedDbStore("Directory.test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const schema = await instance.createDirectory();
 
@@ -44,7 +44,7 @@ it("set and get data in two directories", async function () {
         new IndexedDbStore("two.directories", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const dir1 = await instance.createDirectory();
         const dir2 = await instance.createDirectory();
@@ -76,16 +76,15 @@ it("set multiple key/value pairs in one change-set", async function () {
         new IndexedDbStore("Directory.test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const schema = await instance.createDirectory();
 
         // make multiple changes in a change set
-        const bundler = new Bundler();
+        const bundler = await instance.startBundle();
         await schema.set("cheese", "fries", bundler);
         await schema.set("foo", "bar", bundler);
-        bundler.comment = "Hear me roar!";
-        await instance.addBundler(bundler);
+        await bundler.commit("Hear me roar!");
 
         // verify the result
         const result = await schema.get("cheese");
@@ -101,7 +100,7 @@ it("use a sub-schema", async function () {
         new IndexedDbStore("Directory.test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const schema = await instance.createDirectory();
 
@@ -123,7 +122,7 @@ it("purge one directory leaving other untouched", async function () {
         new IndexedDbStore("purge etc.", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const d1 = await instance.createDirectory();
         const d2 = await instance.createDirectory();
@@ -144,7 +143,7 @@ it("convert to standard Map", async function () {
         new IndexedDbStore("Directory.convert", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const directory = await instance.createDirectory();
 
@@ -178,7 +177,7 @@ it("Directory.toJSON", async function () {
         new IndexedDbStore("Directory.toJSON", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const directory = await instance.createDirectory();
 
@@ -225,7 +224,7 @@ it("Directory.asOf", async function () {
         new IndexedDbStore("Directory.asOf", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const directory = await instance.createDirectory();
 
@@ -267,7 +266,7 @@ it("Directory.purge", async function () {
         new IndexedDbStore("Directory.purge", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const directory = await instance.createDirectory();
 
@@ -297,7 +296,7 @@ it(
             new IndexedDbStore("Directory.clear", true),
             new MemoryStore(true),
         ]) {
-            const instance = new Database(store);
+            const instance = new Database({store});
             await instance.ready;
             const directory = await instance.createDirectory();
             await directory.set("A", 99);

@@ -5,7 +5,6 @@ import {
     Muid,
     Bytes,
     ScalarKey,
-    ClaimedChain,
     Entry,
     AsOf,
     BundleView,
@@ -14,6 +13,7 @@ import {
     Value,
     Placement,
     MuidTuple,
+    BundleInfo,
 } from "./typedefs";
 
 export interface Store {
@@ -31,14 +31,8 @@ export interface Store {
      */
     getChainTracker: () => Promise<ChainTracker>;
 
-    /**
-     * Returns a set of chains that may be appended to.
-     * You'll need to getChainTracker to figure out the last
-     * bundle for any chain you want to add to though.
-     *
-     * Implicitly awaits on this.ready;
-     */
-    getClaimedChains: () => Promise<Map<Medallion, ClaimedChain>>;
+
+    acquireChain: (identity: string) => Promise<BundleInfo|null>;
 
     /**
      * Attempts to get the identity of the user who started the chain.

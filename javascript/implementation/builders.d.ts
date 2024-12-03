@@ -57,6 +57,7 @@ export class ChangeBuilder extends ImplementedMessage {
 
 export class BundleBuilder extends ImplementedMessage {
     getChangesList(): List<ChangeBuilder>;
+    setChangesList(changes: ChangeBuilder[]);
     getVerifyKey(): Bytes;
     setVerifyKey(Bytes);
     setPriorHash(Bytes);

@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
  */
 async function test(instance) {
     const globalDir = instance.getGlobalDirectory();
-    const box = await instance.createBox();
+    const box = await Box.create(instance);
     await globalDir.set("box", box);
     aJSArray = [1, 5, 6, 14, 14, 41, "hmmmm", "buncha data"];
     await box.set(aJSArray);

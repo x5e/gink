@@ -3,7 +3,7 @@ import { BundleInfo, BundleView, BundleBytes, Bytes } from "./typedefs";
 import { signingBundles, getSig, generateTimestamp, ensure } from "./utils";
 
 /**
- * Creates a bundle view from the encoded bytes and metadata info, only parsing
+ * Creates a bundle view from the encoded bytes and meta info, only parsing
  * the bytes to create the builder if actually needed.
  */
 export class Retrieval implements BundleView {

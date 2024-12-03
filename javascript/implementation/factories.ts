@@ -27,14 +27,15 @@ export async function construct(
 ): Promise<Container> {
     if (address.timestamp === -1) {
         if (address.offset === Behavior.DIRECTORY)
-            return new Directory(database, address);
+            return Directory.get(database, address);
         if (address.offset === Behavior.SEQUENCE)
-            return new Sequence(database, address);
-        if (address.offset === Behavior.BOX) return new Box(database, address);
+            return Sequence.get(database, address);
+        if (address.offset === Behavior.BOX)
+            return Box.get(database, address);
         if (address.offset === Behavior.PAIR_MAP)
-            return new PairMap(database, address);
+            return PairMap.get(database, address);
         if (address.offset === Behavior.PAIR_SET)
-            return new PairSet(database, address);
+            return PairSet.get(database, address);
         if (address.offset === Behavior.KEY_SET)
             return new KeySet(database, address);
         if (address.offset === Behavior.GROUP)
@@ -55,17 +56,17 @@ export async function construct(
     }
 
     if (containerBuilder.getBehavior() === Behavior.BOX)
-        return new Box(database, address, containerBuilder);
+        return Box.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.SEQUENCE)
-        return new Sequence(database, address, containerBuilder);
+        return Sequence.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.KEY_SET)
         return new KeySet(database, address, containerBuilder);
     if (containerBuilder.getBehavior() === Behavior.DIRECTORY)
-        return new Directory(database, address, containerBuilder);
+        return Directory.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.PAIR_SET)
-        return new PairSet(database, address, containerBuilder);
+        return PairSet.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.PAIR_MAP)
-        return new PairMap(database, address, containerBuilder);
+        return PairMap.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.VERTEX)
         return new Vertex(database, address, containerBuilder);
     if (containerBuilder.getBehavior() === Behavior.EDGE_TYPE)

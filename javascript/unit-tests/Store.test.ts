@@ -35,7 +35,7 @@ import {
     muidToString,
     encryptMessage,
 } from "../implementation/utils";
-import { Bundler, Database } from "../implementation";
+import { Box, Database } from "../implementation";
 import { randombytes_buf } from "libsodium-wrappers";
 
 // makes an empty Store for testing purposes
@@ -193,7 +193,7 @@ export function testStore(
     });
 
     it(`${implName} create / view Entry`, async () => {
-        const bundler = new Bundler();
+        const bundleBuilder = new BundleBuilder();
         const sourceAddress = { medallion: 1, timestamp: 2, offset: 3 };
         const entryBuilder = new EntryBuilder();
         entryBuilder
@@ -201,16 +201,16 @@ export function testStore(
             .setContainer(muidToBuilder(sourceAddress))
             .setKey(wrapKey("abc"))
             .setValue(wrapValue("xyz"));
-        const address = bundler.addEntry(entryBuilder);
-        bundler.seal(
-            { medallion: 4, chainStart: 5, timestamp: 5 },
-            await keyPair,
-            undefined,
-            "test"
-        );
-        await store.addBundle(bundler);
-        ensure(address.medallion === 4);
-        ensure(address.timestamp === 5);
+        const changeBuilder: ChangeBuilder = new ChangeBuilder();
+        changeBuilder.setEntry(entryBuilder);
+        bundleBuilder.getChangesList().push(changeBuilder);
+        bundleBuilder.setChainStart(5);
+        bundleBuilder.setTimestamp(5);
+        bundleBuilder.setMedallion(101);
+        const asBytes = bundleBuilder.serializeBinary();
+        const signed = signBundle(asBytes, (await keyPair).secretKey)
+        const view = new Decomposition(signed);
+        await store.addBundle(view);
         const entry = <Entry>await store.getEntryByKey(sourceAddress, "abc");
         ensure(entry);
         ensure(matches(entry.containerId, [2, 1, 3]));
@@ -325,7 +325,7 @@ export function testStore(
 
     it(`${implName} getContainerProperties`, async () => {
         await store.ready;
-        const database = new Database(store);
+        const database = new Database({store});
         await database.ready;
 
         const dir = database.getGlobalDirectory();
@@ -337,7 +337,7 @@ export function testStore(
         const prop2 = await database.createProperty();
         await prop2.set(dir, "baz");
 
-        const box = await database.createBox();
+        const box = await Box.create(database);
         await prop.set(box, "box");
         const after = generateTimestamp();
 

@@ -72,6 +72,10 @@ export class LogBackedStore extends LockableLog implements Store {
         );
     }
 
+    acquireChain(identity: string): Promise<BundleInfo | null> {
+        return Promise.resolve(null);
+    }
+
     getVerifyKey(chainInfo: [Medallion, ChainStart]): Promise<Bytes> {
         return this.internalStore.getVerifyKey(chainInfo);
     }

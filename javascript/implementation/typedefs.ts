@@ -1,4 +1,4 @@
-import { Behavior, BundleBuilder } from "./builders";
+import { Behavior, BundleBuilder, ChangeBuilder } from "./builders";
 import { DBSchema } from "idb";
 
 export type Bytes = Uint8Array;
@@ -45,6 +45,16 @@ export type Placement = {
 
 export interface BundleListener {
     (bundle: BundleView): Promise<void>;
+}
+
+export interface SealerArgs {
+    changes: ChangeBuilder[];
+    comment?: string;
+    medallion: Medallion;
+}
+
+export interface Sealer {
+    (args: SealerArgs): Promise<BundleInfo>;
 }
 
 export interface ClaimedChain {
@@ -146,6 +156,18 @@ export interface EdgeData {
 export interface KeyPair {
     publicKey: Bytes;
     secretKey: Bytes;
+}
+
+export interface Bundler {
+    addChange(changeBuilder: ChangeBuilder): Muid;
+    commit(comment?: string): Promise<BundleInfo>;
+    medallion: number;
+}
+
+export interface Meta {
+    bundler?: Bundler;
+    comment?: string;
+    identity?: string;
 }
 
 export interface IndexedDbStoreSchema extends DBSchema {

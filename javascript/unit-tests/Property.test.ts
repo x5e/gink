@@ -6,7 +6,7 @@ it("Property.basics", async function () {
         new IndexedDbStore("Property.basics", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const gd = instance.getGlobalDirectory();
         const property = await instance.createProperty();
@@ -31,7 +31,7 @@ it("Property.toMap", async function () {
         new IndexedDbStore("Property.toMap", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const gd = instance.getGlobalDirectory();
         const property = instance.getGlobalProperty();
@@ -56,7 +56,7 @@ it("Global property sets and gets names", async function () {
         new IndexedDbStore("Global property sets and gets names", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const gd = instance.getGlobalDirectory();
         const d2 = await instance.createDirectory();

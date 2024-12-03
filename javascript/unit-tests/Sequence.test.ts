@@ -2,7 +2,7 @@ import { sleep } from "./test_utils";
 import {
     Database,
     MemoryStore,
-    Bundler,
+    Box,
     IndexedDbStore,
     Sequence,
     Muid,
@@ -17,7 +17,7 @@ it("push to a queue and peek", async function () {
         new IndexedDbStore("list-test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const queue: Sequence = await instance.createSequence();
         await queue.push("dummy");
@@ -35,7 +35,7 @@ it("push and pop", async function () {
         new IndexedDbStore("list-test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
 
         const list: Sequence = await instance.createSequence();
@@ -82,7 +82,7 @@ it("size and at", async function () {
         new IndexedDbStore("list-test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
 
         const list: Sequence = await instance.createSequence();
@@ -123,7 +123,7 @@ it("entries", async function () {
         new IndexedDbStore("list-test4", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
 
         const list: Sequence = await instance.createSequence();
@@ -146,27 +146,27 @@ it("list-changeset", async function () {
         new IndexedDbStore("list-test5", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
 
-        const bundler = new Bundler();
+        const bundler = await instance.startBundle();
         const list: Sequence = await instance.createSequence(bundler);
         await list.push("A", bundler);
         await list.push("B", bundler);
         await list.push("C", bundler);
-        await instance.addBundler(bundler);
+        const info = await bundler.commit();
 
-        ensure(bundler.timestamp !== undefined && bundler.timestamp > 0);
-        ensure(list.address.timestamp === bundler.timestamp);
+        ensure(info.timestamp !== undefined && info.timestamp > 0);
+        ensure(list.address.timestamp === info.timestamp);
         for await (const [muid, _] of list.entries()) {
-            ensure(muid.timestamp === bundler.timestamp);
+            ensure(muid.timestamp === info.timestamp);
         }
 
-        const bundler2 = new Bundler();
+        const bundler2 = await instance.startBundle();
         await list.shift(false, bundler2);
         await list.push("D", bundler2);
         ensure(matches(await list.toArray(), ["A", "B", "C"]));
-        await instance.addBundler(bundler2);
+        await bundler2.commit();
         const result = await list.toArray();
         ensure(matches(result, ["B", "C", "D"]));
     }
@@ -178,7 +178,7 @@ it("List.toJSON", async function () {
         new IndexedDbStore("list-toJSON", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
 
         const list: Sequence = await instance.createSequence();
@@ -215,7 +215,7 @@ it("List.asOf", async function () {
         new IndexedDbStore("list-asOf", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const list: Sequence = await instance.createSequence();
         const time0 = Date.now() * 1000;
@@ -250,7 +250,7 @@ it("List.clear", async function () {
         new IndexedDbStore("list-clear", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const list: Sequence = await instance.createSequence();
         await list.push("hello");
@@ -276,7 +276,7 @@ it("List.purge_pop", async function () {
         new IndexedDbStore("list-purgePop", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const seq = await instance.createSequence();
         await seq.push("foo");
@@ -305,7 +305,7 @@ it("List.move", async function () {
         new IndexedDbStore("list-move", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
 
         const seq = await instance.createSequence();
@@ -345,7 +345,7 @@ it("extend", async function () {
         new IndexedDbStore("list-extend", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
 
         const seq = await instance.createSequence();
@@ -354,10 +354,10 @@ it("extend", async function () {
         ensure((await seq.at(0)) === 0);
         ensure((await seq.at(6)) === 6);
 
-        const bundler = new Bundler();
+        const bundler = await instance.startBundle();
         const array2 = [7, 8, 9, 10];
         await seq.extend(array2, bundler);
-        await instance.addBundler(bundler);
+        await bundler.commit();
         ensure((await seq.at(7)) === 7);
         ensure((await seq.at(10)) === 10);
     }
@@ -368,7 +368,7 @@ it("List.reset", async function () {
         new IndexedDbStore("list-reset", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
 
         const seq = await instance.createSequence();
@@ -428,7 +428,7 @@ it("List.reset", async function () {
 
         // Test recursive reset
         await seq.clear();
-        const box = await instance.createBox();
+        const box = await Box.create(instance);
         const dir = await instance.createDirectory();
         await box.set(dir);
         await dir.set("foo", "bar");

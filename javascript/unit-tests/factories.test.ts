@@ -1,4 +1,4 @@
-import { Database, IndexedDbStore, MemoryStore } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore, Box } from "../implementation";
 import { ensure } from "../implementation/utils";
 
 it("complex.toJSON", async function () {
@@ -6,7 +6,7 @@ it("complex.toJSON", async function () {
         new IndexedDbStore("toJSON", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
         const directory = await instance.createDirectory();
 
@@ -64,9 +64,9 @@ it("various.contents", async function () {
         new IndexedDbStore("contents", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({store});
         await instance.ready;
-        const box = await instance.createBox();
+        const box = await Box.create(instance);
         const property = await instance.createProperty();
 
         await box.set(property);

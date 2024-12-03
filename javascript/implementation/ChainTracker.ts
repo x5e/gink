@@ -12,7 +12,6 @@ import {
     GreetingBuilder,
     GreetingEntryBuilder,
 } from "./builders";
-import { ensure } from "./utils";
 
 /**
  * A class to keep track of what data a given instance (self or peer) has for each
@@ -76,7 +75,7 @@ export class ChainTracker {
      * then second, mark the data in the data structure (possibly checking that it's a sensible extension).
      * Note that checkValidExtension is used here as a safeguard to make sure we don't
      * send broken chains to the peer; the store should have its own check for receiving.
-     * @param bundleInfo Metadata about a particular bundle.
+     * @param bundleInfo Meta about a particular bundle.
      * @param checkValidExtension If true then barfs if this bundle isn't a valid extension.
      * @returns true if the bundle represents data not seen before
      */

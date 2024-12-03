@@ -1,8 +1,7 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
-import { Muid, AsOf } from "./typedefs";
+import { Muid, AsOf, Meta, Bundler } from "./typedefs";
 import { Behavior, ContainerBuilder } from "./builders";
-import { Bundler } from "./Bundler";
 import { ensure, entryToEdgeData, muidTupleToMuid } from "./utils";
 import { Edge } from "./Edge";
 
@@ -20,6 +19,10 @@ export class Vertex extends Container {
         }
     }
 
+    toJson(indent: number | boolean, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+        throw new Error("toJson not implemented for Vertex");
+    }
+
     /**
      * Returns a promise that resolves to true showing if this placeholder is/was visible at the
      * specified time (default now), or false if it was softly deleted.
@@ -34,51 +37,38 @@ export class Vertex extends Container {
         return entry === undefined || !entry.deletion;
     }
 
+    public async size(asOf?: AsOf): Promise<number> {
+        return await this.isAlive(asOf) ? 1 : 0;
+    }
+
     /**
      * Performs a soft delete of this graph node.
      */
-    async remove(change?: Bundler | string): Promise<Muid> {
-        return this.addEntry(undefined, Container.DELETION, change);
+    async remove(meta?: Meta): Promise<Muid> {
+        return this.addEntry(undefined, Container.DELETION, meta);
     }
 
-    async revive(change?: Bundler | string): Promise<Muid> {
-        return this.addEntry(undefined, Container.INCLUSION, change);
+    async revive(meta?: Meta): Promise<Muid> {
+        return this.addEntry(undefined, Container.INCLUSION, meta);
     }
 
-    async reset(args?: {
-        toTime?: AsOf;
-        bundlerOrComment?: Bundler | string;
-        skipProperties?: boolean;
-    }): Promise<void> {
-        const toTime = args?.toTime;
-        const bundlerOrComment = args?.bundlerOrComment;
-        const skipProperties = args?.skipProperties;
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
-        }
+    async reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void> {
+        const bundler: Bundler = await this.database.startBundle(meta);
         if (!toTime) {
-            await this.remove(bundlerOrComment);
+            await this.remove(meta);
         } else {
             const aliveThen = await this.isAlive(toTime);
             const aliveNow = await this.isAlive();
             if (aliveThen !== aliveNow) {
                 if (aliveThen) {
-                    await this.revive(bundlerOrComment);
+                    await this.revive({bundler});
                 } else {
-                    await this.remove(bundlerOrComment);
+                    await this.remove({bundler});
                 }
             }
         }
-        if (!skipProperties) {
-            await this.resetProperties(toTime, bundler);
-        }
-        if (immediate) {
-            await this.database.addBundler(bundler);
+        if (! meta?.bundler) {
+            await bundler.commit();
         }
     }
 
