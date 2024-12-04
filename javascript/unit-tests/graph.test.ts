@@ -1,4 +1,11 @@
-import { Database, IndexedDbStore, MemoryStore } from "../implementation";
+import {
+    Database,
+    IndexedDbStore,
+    MemoryStore,
+    Vertex,
+    EdgeType,
+    Property,
+} from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 
 it("isAlive and remove", async function () {
@@ -8,7 +15,7 @@ it("isAlive and remove", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const vertex = await instance.createVertex();
+        const vertex = await Vertex.create(instance);
         const aliveTime = generateTimestamp();
         ensure(await vertex.isAlive());
         await vertex.remove();
@@ -21,17 +28,17 @@ it("isAlive and remove", async function () {
     }
 });
 
-it("edge_type.createEdge", async function () {
+it("edge_type.create", async function () {
     for (const store of [
-        new IndexedDbStore("edge_type.createEdge", true),
+        new IndexedDbStore("edge_type.create", true),
         new MemoryStore(true),
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const vertex1 = await instance.createVertex();
-        const vertex2 = await instance.createVertex();
-        const verb1 = await instance.createEdgeType();
-        const edge1 = await verb1.createEdge(vertex1, vertex2);
+        const vertex1 = await Vertex.create(instance);
+        const vertex2 = await Vertex.create(instance);
+        const verb1 = await EdgeType.create(instance);
+        const edge1 = await verb1.create(vertex1, vertex2);
         ensure(edge1.getSourceVertex().equals(vertex1));
         ensure(edge1.getTargetVertex().equals(vertex2));
         ensure(!edge1.getSourceVertex().equals(vertex2));
@@ -46,17 +53,17 @@ it("from_to", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const vertex1 = await instance.createVertex();
-        const vertex2 = await instance.createVertex();
-        const vertex3 = await instance.createVertex();
-        const edge_type = await instance.createEdgeType();
+        const vertex1 = await Vertex.create(instance);
+        const vertex2 = await Vertex.create(instance);
+        const vertex3 = await Vertex.create(instance);
+        const edge_type = await EdgeType.create(instance);
         const beforeEdge12 = generateTimestamp();
-        const edge12 = await edge_type.createEdge(vertex1, vertex2);
-        const edge13 = await edge_type.createEdge(vertex1, vertex3);
-        const edge11 = await edge_type.createEdge(vertex1, vertex1);
-        const edge21 = await edge_type.createEdge(vertex2, vertex1);
-        const edge22 = await edge_type.createEdge(vertex2, vertex2);
-        const edge23 = await edge_type.createEdge(vertex2, vertex3);
+        const edge12 = await edge_type.create(vertex1, vertex2);
+        const edge13 = await edge_type.create(vertex1, vertex3);
+        const edge11 = await edge_type.create(vertex1, vertex1);
+        const edge21 = await edge_type.create(vertex2, vertex1);
+        const edge22 = await edge_type.create(vertex2, vertex2);
+        const edge23 = await edge_type.create(vertex2, vertex3);
 
         const edgesTo2 = await vertex2.getEdgesTo();
         ensure(edgesTo2.length === 2, `wtf: ${edgesTo2.length}`);
@@ -93,15 +100,15 @@ it("edge_reorder", async function () {
         const instance = new Database({store});
         await instance.ready;
 
-        const a = await instance.createVertex();
-        const b = await instance.createVertex();
+        const a = await Vertex.create(instance);
+        const b = await Vertex.create(instance);
 
-        const p = await instance.createEdgeType();
-        const prop = await instance.createProperty();
+        const p = await EdgeType.create(instance);
+        const prop = await Property.create(instance);
 
         const beforeX = generateTimestamp();
-        const x = await p.createEdge(a, b);
-        const y = await p.createEdge(a, b);
+        const x = await p.create(a, b);
+        const y = await p.create(a, b);
         await prop.set(y, "foo");
         const afterX = generateTimestamp();
         const entries = await store.getAllEntries();
@@ -144,9 +151,9 @@ it("vertex reset", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const vertex = await instance.createVertex();
-        const prop1 = await instance.createProperty();
-        const prop2 = await instance.createProperty();
+        const vertex = await Vertex.create(instance);
+        const prop1 = await Property.create(instance);
+        const prop2 = await Property.create(instance);
         await prop1.set(vertex, "foo");
         await prop2.set(vertex, "bar");
         const afterSet = generateTimestamp();
@@ -154,12 +161,12 @@ it("vertex reset", async function () {
         await prop1.set(vertex, "foo2");
         await prop2.set(vertex, "bar2");
         const afterSecond = generateTimestamp();
-        await vertex.reset({ toTime: afterSet });
+        await vertex.reset(afterSet);
         // Vertex should be alive again, and properties should be reset
         ensure(await vertex.isAlive());
         ensure((await prop1.get(vertex)) === "foo");
         ensure((await prop2.get(vertex)) === "bar");
-        await vertex.reset({ toTime: afterSecond, skipProperties: true });
+        await vertex.reset(afterSecond);
         // Vertex should be removed and properties should not have changed.
         ensure(!(await vertex.isAlive()));
         ensure((await prop1.get(vertex)) === "foo");
@@ -175,23 +182,23 @@ it("edge_type reset", async function () {
         const instance = new Database({store});
         await instance.ready;
 
-        const vertex1 = await instance.createVertex();
-        const vertex2 = await instance.createVertex();
-        const vertex3 = await instance.createVertex();
-        const edgeType = await instance.createEdgeType();
-        const edge1 = await edgeType.createEdge(vertex1, vertex2);
-        const edge2 = await edgeType.createEdge(vertex2, vertex1);
-        const prop1 = await instance.createProperty();
-        const prop2 = await instance.createProperty();
+        const vertex1 = await Vertex.create(instance);
+        const vertex2 = await Vertex.create(instance);
+        const vertex3 = await Vertex.create(instance);
+        const edgeType = await EdgeType.create(instance);
+        const edge1 = await edgeType.create(vertex1, vertex2);
+        const edge2 = await edgeType.create(vertex2, vertex1);
+        const prop1 = await Property.create(instance);
+        const prop2 = await Property.create(instance);
         await prop1.set(edgeType, "foo");
         await prop2.set(edgeType, "bar");
         const afterInit = generateTimestamp();
-        const edge3 = await edgeType.createEdge(vertex1, vertex3);
+        const edge3 = await edgeType.create(vertex1, vertex3);
         await prop1.set(edgeType, "foo");
         await prop2.set(edgeType, "baz");
         const afterSecond = generateTimestamp();
 
-        await edgeType.reset({ toTime: afterInit });
+        await edgeType.reset(afterInit);
         const edgesFrom1 = await vertex1.getEdgesFrom();
         const edgesFrom2 = await vertex2.getEdgesFrom();
         ensure(edgesFrom1.length === 1);
@@ -202,7 +209,7 @@ it("edge_type reset", async function () {
         await edge1.remove();
         ensure((await vertex1.getEdgesFrom()).length === 0);
 
-        await edgeType.reset({ toTime: afterSecond, skipProperties: true });
+        await edgeType.reset(afterSecond);
         ensure((await vertex1.getEdgesFrom()).length === 2);
         ensure((await vertex2.getEdgesFrom()).length === 1);
         ensure((await vertex3.getEdgesTo()).length === 1);
@@ -219,14 +226,14 @@ it("edge property restoration", async function () {
         const instance = new Database({store});
         await instance.ready;
 
-        const vertex1 = await instance.createVertex();
-        const vertex2 = await instance.createVertex();
-        const edgeType = await instance.createEdgeType();
+        const vertex1 = await Vertex.create(instance);
+        const vertex2 = await Vertex.create(instance);
+        const edgeType = await EdgeType.create(instance);
         const beforeEdges = generateTimestamp();
-        const edge1 = await edgeType.createEdge(vertex1, vertex2);
-        const edge2 = await edgeType.createEdge(vertex1, vertex2);
-        const prop1 = await instance.createProperty();
-        const prop2 = await instance.createProperty();
+        const edge1 = await edgeType.create(vertex1, vertex2);
+        const edge2 = await edgeType.create(vertex1, vertex2);
+        const prop1 = await Property.create(instance);
+        const prop2 = await Property.create(instance);
         await prop1.set(edge1, "p1e1");
         await prop2.set(edge1, "p2e1");
         await prop1.set(edge2, "p1e2");
@@ -238,7 +245,7 @@ it("edge property restoration", async function () {
         await prop2.set(edge2, "changed");
         await edge1.remove();
 
-        await edgeType.reset({ toTime: beforeRemove });
+        await edgeType.reset(beforeRemove);
 
         const edges = await vertex1.getEdgesFrom();
         ensure(edges.length === 2);
@@ -259,7 +266,7 @@ it("edge property restoration", async function () {
         await prop2.delete(edges[0]); // delete e2 from prop2
         ensure((await prop2.get(edges[0])) === undefined);
 
-        await edgeType.reset({ toTime: beforePropDel });
+        await edgeType.reset(beforePropDel);
         const edges3 = await vertex1.getEdgesFrom();
         ensure(edges3.length === 2);
         ensure((await prop1.get(edges3[0])) === "p1e2");

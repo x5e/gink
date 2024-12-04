@@ -1,23 +1,32 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
 import { Muid, AsOf, Meta, Bundler } from "./typedefs";
-import { Behavior, ContainerBuilder } from "./builders";
-import { ensure, entryToEdgeData, muidTupleToMuid } from "./utils";
+import { Behavior, } from "./builders";
+import { entryToEdgeData, muidTupleToMuid } from "./utils";
 import { Edge } from "./Edge";
 
 export class Vertex extends Container {
-    constructor(
+    private constructor(
         database: Database,
         address: Muid,
-        containerBuilder?: ContainerBuilder
     ) {
         super(database, address, Behavior.VERTEX);
-        if (this.address.timestamp < 0) {
-            ensure(address.offset === Behavior.VERTEX);
-        } else if (containerBuilder) {
-            ensure(containerBuilder.getBehavior() === Behavior.VERTEX);
-        }
     }
+
+    static get(database?: Database, muid?: Muid): Vertex {
+        database = database || Database.recent;
+        if (! muid) {
+            muid = {timestamp: -1, medallion: -1, offset: Behavior.VERTEX}
+        }
+        return new Vertex(database, muid);
+    }
+
+    static async create(database?: Database, meta?: Meta): Promise<Vertex> {
+        database = database || Database.recent;
+        const muid = await Container.addContainer({behavior: Behavior.VERTEX, database, meta});
+        return new Vertex(database, muid);
+    }
+
 
     toJson(indent: number | boolean, asOf?: AsOf, seen?: Set<string>): Promise<string> {
         throw new Error("toJson not implemented for Vertex");
@@ -90,7 +99,7 @@ export class Vertex extends Container {
         for (let i = 0; i < entries.length; i++) {
             const entry = entries[i];
             if (entry.behavior !== Behavior.EDGE_TYPE) continue;
-            const edge = new Edge(
+            const edge = Edge.get(
                 this.database,
                 muidTupleToMuid(entry.entryId),
                 entryToEdgeData(entry)

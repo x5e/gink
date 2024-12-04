@@ -37,13 +37,13 @@ export async function construct(
         if (address.offset === Behavior.PAIR_SET)
             return PairSet.get(database, address);
         if (address.offset === Behavior.KEY_SET)
-            return new KeySet(database, address);
+            return KeySet.get(database, address);
         if (address.offset === Behavior.GROUP)
-            return new Group(database, address);
+            return Group.get(database, address);
         if (address.offset === Behavior.PROPERTY)
-            return new Property(database, address);
+            return Property.get(database, address);
         if (address.offset === Behavior.VERTEX)
-            return new Vertex(database, address);
+            return Vertex.get(database, address);
     }
 
     if (containerBuilder === undefined) {
@@ -60,7 +60,7 @@ export async function construct(
     if (containerBuilder.getBehavior() === Behavior.SEQUENCE)
         return Sequence.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.KEY_SET)
-        return new KeySet(database, address, containerBuilder);
+        return KeySet.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.DIRECTORY)
         return Directory.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.PAIR_SET)
@@ -68,13 +68,13 @@ export async function construct(
     if (containerBuilder.getBehavior() === Behavior.PAIR_MAP)
         return PairMap.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.VERTEX)
-        return new Vertex(database, address, containerBuilder);
+        return Vertex.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.EDGE_TYPE)
-        return new EdgeType(database, address, containerBuilder);
+        return EdgeType.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.PROPERTY)
-        return new Property(database, address, containerBuilder);
+        return Property.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.GROUP)
-        return new Group(database, address, containerBuilder);
+        return Group.get(database, address);
 
     throw new Error(
         `container type not recognized/implemented: ${containerBuilder.getBehavior()}`

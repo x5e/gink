@@ -6,7 +6,7 @@ import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class Group extends Container {
-    constructor(
+    private constructor(
         database: Database,
         address: Muid,
         containerBuilder?: ContainerBuilder
@@ -18,6 +18,21 @@ export class Group extends Container {
             ensure(containerBuilder.getBehavior() === Behavior.GROUP);
         }
     }
+
+    static get(database?: Database, muid?: Muid): Group {
+        database = database || Database.recent;
+        if (! muid) {
+            muid = {timestamp: -1, medallion: -1, offset: Behavior.GROUP}
+        }
+        return new Group(database, muid);
+    }
+
+    static async create(database?: Database, meta?: Meta): Promise<Group> {
+        database = database || Database.recent;
+        const muid = await Container.addContainer({behavior: Behavior.GROUP, database, meta});
+        return new Group(database, muid);
+    }
+
 
     /**
      * Includes a Muid or Container in the group.

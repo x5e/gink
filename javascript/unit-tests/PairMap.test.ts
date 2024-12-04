@@ -1,4 +1,4 @@
-import { Database, IndexedDbStore, MemoryStore, Box } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore, Box, PairMap } from "../implementation";
 import { ensure } from "../implementation/utils";
 import { sleep } from "./test_utils";
 
@@ -9,7 +9,7 @@ it("set, get, delete, and size work as intended", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const pm1 = await instance.createPairMap();
+        const pm1 = await PairMap.create(instance);
         const box1 = await Box.create(instance);
         const box2 = await Box.create(instance);
         const box3 = await Box.create(instance);
@@ -40,7 +40,7 @@ it("asOf and items work as intended", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const pm1 = await instance.createPairMap();
+        const pm1 = await PairMap.create(instance);
         const box1 = await Box.create(instance);
         const box2 = await Box.create(instance);
         const box3 = await Box.create(instance);

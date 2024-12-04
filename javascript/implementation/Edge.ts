@@ -5,6 +5,7 @@ import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { entryToEdgeData } from "./utils";
 import { movementHelper } from "./store_utils";
+import { Behavior } from "./builders";
 
 export class Edge extends Addressable {
     private source: Muid;
@@ -12,19 +13,23 @@ export class Edge extends Addressable {
     private action: Muid;
     private value?: Value;
 
-    constructor(
+    private constructor(
         readonly database: Database,
         address: Muid,
-        data: EdgeData
     ) {
         super(address);
-        this.setFromEdgeData(data);
+    }
+
+    static get(database: Database, muid: Muid, data: EdgeData) {
+        const edge = new Edge(database, muid);
+        edge.setFromEdgeData(data)
+        return edge;
     }
 
     private setFromEdgeData(data: EdgeData) {
         this.source = data.source;
         this.target = data.target;
-        this.action = data.action;
+        this.action = data.etype ?? {timestamp: -1, medallion: -1, offset: Behavior.EDGE_TYPE};
         this.value = data.value;
     }
 
@@ -36,19 +41,21 @@ export class Edge extends Addressable {
         if (!entry) {
             throw new Error("edge not found");
         }
-        return new Edge(database, address, entryToEdgeData(entry));
+        const edge = new Edge(database, address);
+        edge.setFromEdgeData(entryToEdgeData(entry));
+        return edge;
     }
 
     getSourceVertex(): Vertex {
-        return new Vertex(this.database, this.source);
+        return Vertex.get(this.database, this.source);
     }
 
     getTargetVertex(): Vertex {
-        return new Vertex(this.database, this.target);
+        return Vertex.get(this.database, this.target);
     }
 
     getEdgeType(): EdgeType {
-        return new EdgeType(this.database, this.action);
+        return EdgeType.get(this.database, this.action);
     }
 
     getValue(): Value | undefined {

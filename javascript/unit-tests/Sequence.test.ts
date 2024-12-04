@@ -8,6 +8,7 @@ import {
     Muid,
     Value,
     Directory,
+    Property,
 } from "../implementation";
 import { ensure, matches, generateTimestamp } from "../implementation/utils";
 
@@ -19,7 +20,7 @@ it("push to a queue and peek", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const queue: Sequence = await instance.createSequence();
+        const queue: Sequence = await Sequence.create(instance);
         await queue.push("dummy");
         const muid: Muid = await queue.push("Hello, World!");
         ensure(muid.timestamp! > 0);
@@ -38,7 +39,7 @@ it("push and pop", async function () {
         const instance = new Database({store});
         await instance.ready;
 
-        const list: Sequence = await instance.createSequence();
+        const list: Sequence = await Sequence.create(instance);
         await list.push("A");
         await list.push("B");
         await list.push("C");
@@ -85,7 +86,7 @@ it("size and at", async function () {
         const instance = new Database({store});
         await instance.ready;
 
-        const list: Sequence = await instance.createSequence();
+        const list: Sequence = await Sequence.create(instance);
         await list.push("A");
         await list.push("B");
         await list.push("C");
@@ -126,7 +127,7 @@ it("entries", async function () {
         const instance = new Database({store});
         await instance.ready;
 
-        const list: Sequence = await instance.createSequence();
+        const list: Sequence = await Sequence.create(instance);
         await list.push("A");
         await list.push("B");
         await list.push("C");
@@ -149,11 +150,11 @@ it("list-changeset", async function () {
         const instance = new Database({store});
         await instance.ready;
 
-        const bundler = await instance.startBundle();
-        const list: Sequence = await instance.createSequence(bundler);
-        await list.push("A", bundler);
-        await list.push("B", bundler);
-        await list.push("C", bundler);
+        let bundler = await instance.startBundle();
+        const list: Sequence = await Sequence.create(instance, {bundler});
+        await list.push("A", {bundler});
+        await list.push("B", {bundler});
+        await list.push("C", {bundler});
         const info = await bundler.commit();
 
         ensure(info.timestamp !== undefined && info.timestamp > 0);
@@ -162,11 +163,11 @@ it("list-changeset", async function () {
             ensure(muid.timestamp === info.timestamp);
         }
 
-        const bundler2 = await instance.startBundle();
-        await list.shift(false, bundler2);
-        await list.push("D", bundler2);
+        bundler = await instance.startBundle();
+        await list.shift(false, {bundler});
+        await list.push("D", {bundler});
         ensure(matches(await list.toArray(), ["A", "B", "C"]));
-        await bundler2.commit();
+        await bundler.commit();
         const result = await list.toArray();
         ensure(matches(result, ["B", "C", "D"]));
     }
@@ -181,16 +182,16 @@ it("List.toJSON", async function () {
         const instance = new Database({store});
         await instance.ready;
 
-        const list: Sequence = await instance.createSequence();
+        const list: Sequence = await Sequence.create(instance);
         await list.push("A");
         await list.push(true);
         await list.push(false);
 
-        const subList = await instance.createSequence();
+        const subList = await Sequence.create(instance);
         await subList.push(33);
         await list.push(subList);
 
-        const subDir = await instance.createDirectory();
+        const subDir = await Directory.create(instance);
         await subDir.set("cheese", "fries");
         await list.push(subDir);
 
@@ -217,7 +218,7 @@ it("List.asOf", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const list: Sequence = await instance.createSequence();
+        const list: Sequence = await Sequence.create(instance);
         const time0 = Date.now() * 1000;
         await sleep(10);
         await list.push("A");
@@ -252,7 +253,7 @@ it("List.clear", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const list: Sequence = await instance.createSequence();
+        const list: Sequence = await Sequence.create(instance);
         await list.push("hello");
         await list.push("world");
         let size = await list.size();
@@ -278,7 +279,7 @@ it("List.purge_pop", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const seq = await instance.createSequence();
+        const seq = await Sequence.create(instance);
         await seq.push("foo");
         await seq.push("bar");
         const beforeFirstPop = generateTimestamp();
@@ -308,7 +309,7 @@ it("List.move", async function () {
         const instance = new Database({store});
         await instance.ready;
 
-        const seq = await instance.createSequence();
+        const seq = await Sequence.create(instance);
 
         await seq.push("A");
         await sleep(100);
@@ -348,7 +349,7 @@ it("extend", async function () {
         const instance = new Database({store});
         await instance.ready;
 
-        const seq = await instance.createSequence();
+        const seq = await Sequence.create(instance);
         const array = [0, 1, 2, 3, 4, 5, 6];
         await seq.extend(array);
         ensure((await seq.at(0)) === 0);
@@ -356,7 +357,7 @@ it("extend", async function () {
 
         const bundler = await instance.startBundle();
         const array2 = [7, 8, 9, 10];
-        await seq.extend(array2, bundler);
+        await seq.extend(array2, {bundler});
         await bundler.commit();
         ensure((await seq.at(7)) === 7);
         ensure((await seq.at(10)) === 10);
@@ -371,11 +372,7 @@ it("List.reset", async function () {
         const instance = new Database({store});
         await instance.ready;
 
-        const seq = await instance.createSequence();
-        const prop1 = await instance.createProperty();
-        const prop2 = await instance.createProperty();
-        await prop1.set(seq, "foo");
-        await prop2.set(seq, "bar");
+        const seq = await Sequence.create(instance);
         const array = [0, 1, 2, 3, 4, 5, 6];
         await seq.extend(array);
         ensure((await seq.at(0)) === 0);
@@ -384,44 +381,35 @@ it("List.reset", async function () {
 
         const array2 = [7, 8, 9];
         await seq.extend(array2);
-        await prop1.set(seq, "foo2");
-        await prop2.set(seq, "bar2");
         ensure((await seq.size()) === 10);
         const afterSecond = generateTimestamp();
 
-        await seq.reset({ toTime: afterExtend });
+        await seq.reset(afterExtend);
         ensure((await seq.size()) === 7);
         ensure((await seq.at(0)) === 0);
         ensure((await seq.at(6)) === 6);
-        ensure((await prop1.get(seq)) === "foo");
-        ensure((await prop2.get(seq)) === "bar");
 
         await seq.reset();
         ensure((await seq.size()) === 0);
-        ensure((await prop1.get(seq)) === undefined);
-        ensure((await prop2.get(seq)) === undefined);
 
-        await seq.reset({ toTime: afterSecond, skipProperties: true });
+
+        await seq.reset(afterSecond);
         ensure((await seq.size()) === 10, (await seq.size()).toString());
         ensure((await seq.at(0)) === 0);
         ensure((await seq.at(9)) === 9);
-        ensure((await prop1.get(seq)) === undefined);
-        ensure((await prop2.get(seq)) === undefined);
 
         await seq.push(10);
         await seq.push(11);
         await seq.move(10, 0);
 
-        await seq.reset({ toTime: afterSecond, skipProperties: true });
+        await seq.reset(afterSecond);
         ensure((await seq.size()) === 10);
         ensure((await seq.at(0)) === 0);
         ensure((await seq.at(9)) === 9);
-        ensure((await prop1.get(seq)) === undefined);
-        ensure((await prop2.get(seq)) === undefined);
 
         await seq.pop(0);
         ensure((await seq.size()) === 9);
-        await seq.reset({ toTime: afterSecond, skipProperties: true });
+        await seq.reset(afterSecond);
         ensure((await seq.size()) === 10);
         ensure((await seq.at(0)) === 0);
         ensure((await seq.at(9)) === 9);
@@ -429,7 +417,7 @@ it("List.reset", async function () {
         // Test recursive reset
         await seq.clear();
         const box = await Box.create(instance);
-        const dir = await instance.createDirectory();
+        const dir = await Directory.create(instance);
         await box.set(dir);
         await dir.set("foo", "bar");
         await seq.push(box);
@@ -438,13 +426,13 @@ it("List.reset", async function () {
         await box.set("changed!");
         await seq.push(1);
         const beforeReset = generateTimestamp();
-        await seq.reset({ toTime: afterBox, recurse: true });
+        await seq.reset(afterBox, true);
         ensure((await seq.size()) === 1);
         ensure((await box.get()) instanceof Directory);
         ensure((await dir.get("foo")) === "bar");
 
         // Reset back
-        await seq.reset({ toTime: beforeReset, recurse: true });
+        await seq.reset(beforeReset, true);
         ensure((await seq.size()) === 2);
         ensure((await seq.at(1)) === 1);
         ensure((await box.get()) === "changed!");
@@ -454,7 +442,7 @@ it("List.reset", async function () {
 
         await seq.shift(); // Remove the box
 
-        await seq.reset({ toTime: beforeReset, recurse: true });
+        await seq.reset(beforeReset, true);
         ensure((await seq.size()) === 2);
         ensure((await seq.at(1)) === 1);
         ensure((await box.get()) === "changed!");

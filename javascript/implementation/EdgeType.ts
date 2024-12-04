@@ -24,17 +24,25 @@ import { Property } from "./Property";
 import { movementHelper } from "./store_utils";
 
 export class EdgeType extends Container {
-    constructor(
+    private constructor(
         database: Database,
         address: Muid,
-        containerBuilder?: ContainerBuilder
     ) {
         super(database, address, Behavior.EDGE_TYPE);
-        if (this.address.timestamp < 0) {
-            ensure(address.offset === Behavior.EDGE_TYPE);
-        } else if (containerBuilder) {
-            ensure(containerBuilder.getBehavior() === Behavior.EDGE_TYPE);
+    }
+
+    static get(database?: Database, muid?: Muid): EdgeType {
+        database = database || Database.recent;
+        if (! muid) {
+            muid = {timestamp: -1, medallion: -1, offset: Behavior.EDGE_TYPE}
         }
+        return new EdgeType(database, muid);
+    }
+
+    static async create(database?: Database, meta?: Meta): Promise<EdgeType> {
+        database = database || Database.recent;
+        const muid = await Container.addContainer({behavior: Behavior.EDGE_TYPE, database, meta});
+        return new EdgeType(database, muid);
     }
 
     public size(): Promise<number> {
@@ -45,7 +53,7 @@ export class EdgeType extends Container {
         throw new Error("not implemented");
     }
 
-    async createEdge(
+    async create(
         source: Vertex,
         target: Vertex,
         value?: Value,
@@ -55,10 +63,10 @@ export class EdgeType extends Container {
         const edgeData: EdgeData = {
             source: source.address,
             target: target.address,
-            action: this.address,
+            etype: this.address,
             value,
         };
-        return new Edge(this.database, muid, edgeData);
+        return Edge.get(this.database, muid, edgeData);
     }
 
     async reset(
@@ -137,7 +145,7 @@ export class EdgeType extends Container {
                     // Not using this.createEdge because we already added the
                     // entry to the bundler. this.createEdge does not allow
                     // us to adjust the position of the edge.
-                    const newEdge = new Edge(
+                    const newEdge = Edge.get(
                         this.database,
                         changeMuid,
                         edgeData
@@ -217,7 +225,7 @@ export class EdgeType extends Container {
     ) {
         let immediate = false;
         const bundler: Bundler = await this.database.startBundle(meta);
-        const edge = new Edge(this.database, edgeMuid, edgeData);
+        const edge = Edge.get(this.database, edgeMuid, edgeData);
 
         const propertiesNow = await this.database.store.getContainerProperties(
             edge.address

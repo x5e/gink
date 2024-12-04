@@ -11,7 +11,7 @@ it("test basic operations", async () => {
     const memStore = new MemoryStore(true);
     const instance = new Database(memStore);
     await instance.ready;
-    const dir = instance.getGlobalDirectory();
+    const dir = Directory.get(instance);
     await dir.set("foo", "bar");
     const beforeSecondSet = generateTimestamp();
     await dir.set("foo", "baz");
@@ -34,7 +34,7 @@ it("tests getEntryByKey and getKeyedEntries", async () => {
     const memStore = new MemoryStore(true);
     const instance = new Database(memStore);
     await instance.ready;
-    const dir = instance.getGlobalDirectory();
+    const dir = Directory.get(instance);
     const id = await dir.set("foo", "bar");
     await dir.set("bar", "foo");
     ensure((await memStore.getKeyedEntries(dir.address)).size === 2);

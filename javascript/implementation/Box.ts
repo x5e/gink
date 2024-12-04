@@ -135,7 +135,7 @@ export class Box extends Container {
     ): Promise<string> {
         if (seen === undefined) seen = new Set();
         const contents = await this.get(asOf);
-        if (contents === undefined) return "null";
-        return await toJson(contents, indent, asOf, seen);
+        if (contents === undefined) return "[null]";
+        return "[" + await toJson(contents, indent, asOf, seen) + "]";
     }
 }

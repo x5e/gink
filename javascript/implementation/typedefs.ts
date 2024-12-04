@@ -148,7 +148,7 @@ export interface Clearance {
 export interface EdgeData {
     source: Muid;
     target: Muid;
-    action: Muid;
+    etype?: Muid;
     value?: Value;
     effective?: number;
 }

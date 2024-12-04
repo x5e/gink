@@ -1,4 +1,4 @@
-import { Database, IndexedDbStore, MemoryStore } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore, Directory, Property } from "../implementation";
 import { ensure, sameData } from "../implementation/utils";
 
 it("Property.basics", async function () {
@@ -8,12 +8,12 @@ it("Property.basics", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const gd = instance.getGlobalDirectory();
-        const property = await instance.createProperty();
+        const gd = Directory.get(instance);
+        const property = await Property.create(instance);
         await property.set(gd, "foobar");
         const gotten = await property.get(gd);
         ensure(gotten === "foobar", `gotten=${gotten}`);
-        const gp = instance.getGlobalProperty();
+        const gp = Property.get(instance);
         await property.set(gp, [1, 2, 3]);
         const gotten2 = await property.get(gp);
         ensure(sameData(gotten2, [1, 2, 3]));
@@ -33,8 +33,8 @@ it("Property.toMap", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const gd = instance.getGlobalDirectory();
-        const property = instance.getGlobalProperty();
+        const gd = Directory.get(instance);
+        const property = Property.get(instance);
         await property.set(gd, "foobar");
         await property.set(property, true);
         const asMap = await property.toMap();
@@ -58,8 +58,8 @@ it("Global property sets and gets names", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const gd = instance.getGlobalDirectory();
-        const d2 = await instance.createDirectory();
+        const gd = Directory.get(instance);
+        const d2 = await Directory.create(instance);
         await gd.setName("foo");
         await d2.setName("bar");
         const name = await gd.getName();

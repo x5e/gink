@@ -6,18 +6,28 @@ import { toJson } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class KeySet extends Container {
-    constructor(
+    private constructor(
         database: Database,
         address: Muid,
         containerBuilder?: ContainerBuilder
     ) {
         super(database, address, Behavior.KEY_SET);
-        if (this.address.timestamp < 0) {
-            ensure(address.offset === Behavior.KEY_SET);
-        } else {
-            ensure(containerBuilder.getBehavior() === Behavior.KEY_SET);
-        }
     }
+
+    static get(database?: Database, muid?: Muid): KeySet {
+        database = database || Database.recent;
+        if (! muid) {
+            muid = {timestamp: -1, medallion: -1, offset: Behavior.KEY_SET}
+        }
+        return new KeySet(database, muid);
+    }
+
+    static async create(database?: Database, meta?: Meta): Promise<KeySet> {
+        database = database || Database.recent;
+        const muid = await Container.addContainer({behavior: Behavior.KEY_SET, database, meta});
+        return new KeySet(database, muid);
+    }
+
 
     /**
      * Adds a key to the keyset.

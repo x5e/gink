@@ -17,7 +17,7 @@ function getWebsocketTarget() {
         { software: "browser instance" }
     );
     await instance.ready;
-    globalThis.root = instance.getGlobalDirectory();
+    globalThis.root = Directory.get(instance);
     instance.addListener(async function (changeSetInfo) {
         console.log(changeSetInfo);
         if (document === null) {

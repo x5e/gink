@@ -53,42 +53,33 @@ export class Sequence extends Container {
         return await this.addEntry(undefined, value, meta);
     }
 
-    async move(args?: {
-        muid?: Muid;
-        position?: number;
-        dest: number;
-        purge?: boolean;
-        bundler?: Bundler;
-        comment?: string;
-    }
-    ) {
+    async move(what: number|Muid, dest: number, purge?: boolean, meta?: Meta) {
         let immediate = false;
-        let bundler: Bundler;
-        if (! args?.bundler) {
-            immediate = true;
-            bundler = await this.database.startBundle();
-        } else {
-            bundler = args.bundler;
-        }
+        let bundler: Bundler = await this.database.startBundle(meta);
         const store = this.database.store;
-        // TODO: clarify what's going on here
-        const muid = args?.muid ?? muidTupleToMuid(
+        let muid: Muid;
+        if (typeof what === "number") {
+            muid = muidTupleToMuid(
                       Array.from(
                           (
                               await store.getOrderedEntries(
                                   this.address,
-                                  args?.position
+                                  what
                               )
                           ).values()
                       ).pop().entryId
                   );
+        } else {
+            muid = what;
+        }
+
         ensure(muid.timestamp && muid.medallion && muid.offset);
         await movementHelper(
             bundler,
             muid,
             this.address,
-            await this.findDest(args?.dest),
-            args?.purge
+            await this.findDest(dest),
+            purge
         );
         if (immediate) {
             await bundler.commit();
@@ -229,16 +220,12 @@ export class Sequence extends Container {
     }
 
 
-    async pop(args?: {
-        muid?: Muid,
-        position?: number,
-        purge?: boolean,
-    }, meta?: Meta): Promise<Container | Value | undefined> {
+    async pop(what?: Muid|number, purge?: boolean, meta?: Meta): Promise<Container | Value | undefined> {
         let bundler: Bundler = await this.database.startBundle(meta);
         let returning: Container | Value;
         let muid: Muid;
-        if (args?.muid) {
-            muid = args?.muid;
+        if (what && typeof(what) != "number" && what.offset) {
+            muid = what;
             const entry = await this.database.store.getEntryById(muid);
             if (!entry) return undefined;
             ensure(
@@ -247,7 +234,7 @@ export class Sequence extends Container {
             );
             returning = await interpret(entry, this.database);
         } else {
-            const position = args?.position === undefined ? -1 : args.position;
+            const position = what === undefined ? -1 : <number>what;
             // Should probably change the implementation to not copy all intermediate entries into memory.
             const entries = Array.from(
                 (
@@ -262,7 +249,7 @@ export class Sequence extends Container {
             returning = await interpret(entry, this.database);
             muid = muidTupleToMuid(entry.entryId);
         }
-        await movementHelper(bundler, muid, this.address, undefined, args?.purge);
+        await movementHelper(bundler, muid, this.address, undefined, purge);
         if (!meta?.bundler) {
             await bundler.commit();
         }
@@ -272,12 +259,8 @@ export class Sequence extends Container {
     /**
      * Alias for this.pop with position of 0
      */
-    async shift(args?: {
-        purge?: boolean,
-        bundler?: Bundler,
-        comment?: string,
-    }): Promise<Container | Value | undefined> {
-        return await this.pop({position: 0, ...args});
+    async shift(purge?: boolean, meta?: Meta): Promise<Container | Value | undefined> {
+        return await this.pop(0, purge, meta);
     }
 
     /**

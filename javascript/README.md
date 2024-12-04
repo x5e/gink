@@ -77,7 +77,7 @@ The `Directory` aims to mimic the functionality of a TypeScript object. If you k
 \
 Create the directory:
 ```ts
-const directory = await instance.createDirectory();
+const directory = await Directory.create(instance);
 ```
 
 Setting {Key: Value} pairs and getting them:
@@ -94,7 +94,7 @@ const asMap = await directory.toMap();
 
 Storing sub-Directories:
 ```ts
-const subdir = await instance.createDirectory();
+const subdir = await Directory.create(instance);
 await directory.set("new dir", subdir);
 ```
 
@@ -196,7 +196,7 @@ const fooMap = directory.toMap(-1);
 ##### Clear
 All containers may be completely cleared out by using `Container.clear()`. By default, clearing out a container does not mean the data is gone, just that the container will now be empty. If the purge parameter is set to true, the data will be completely purged from the instance.
 ```ts
-const directory = await instance.createDirectory();
+const directory = await Directory.create(instance);
 
 await directory.set('A', 'B');
 

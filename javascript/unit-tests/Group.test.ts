@@ -1,4 +1,4 @@
-import { Database, IndexedDbStore, MemoryStore, Box } from "../implementation";
+import { Database, IndexedDbStore, MemoryStore, Box, Group, Property } from "../implementation";
 import {
     ensure,
     generateTimestamp,
@@ -13,7 +13,7 @@ it("include and exclude work as intended", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const group1 = await instance.createGroup();
+        const group1 = await Group.create(instance);
 
         const box1 = await Box.create(instance);
         const box2 = await Box.create(instance);
@@ -55,7 +55,7 @@ it("contains, toArray, and getMembers work properly", async function () {
     ]) {
         const instance = new Database({store});
         await instance.ready;
-        const group1 = await instance.createGroup();
+        const group1 = await Group.create(instance);
 
         const box1 = await Box.create(instance);
         const box2 = await Box.create(instance);
@@ -85,9 +85,9 @@ it("Group.reset", async function () {
         await instance.ready;
         const box1 = await Box.create(instance);
         const box2 = await Box.create(instance);
-        const group = await instance.createGroup();
-        const prop1 = await instance.createProperty();
-        const prop2 = await instance.createProperty();
+        const group = await Group.create(instance);
+        const prop1 = await Property.create(instance);
+        const prop2 = await Property.create(instance);
         await prop1.set(group, "foo");
         await prop2.set(group, "bar");
         await group.include(box1);
@@ -96,7 +96,7 @@ it("Group.reset", async function () {
         await prop1.set(group, "foo2");
         await prop2.set(group, "bar2");
         ensure(await group.isIncluded(box2));
-        await group.reset({ toTime: afterOne });
+        await group.reset(afterOne);
         ensure((await prop1.get(group)) === "foo");
         ensure((await prop2.get(group)) === "bar");
         ensure(!(await group.isIncluded(box2)));
@@ -109,7 +109,7 @@ it("Group.reset", async function () {
         await group.include(box2);
         const beforeExclude = generateTimestamp();
         await group.exclude(box1);
-        await group.reset({ toTime: beforeExclude, skipProperties: true });
+        await group.reset(beforeExclude);
         ensure(await group.isIncluded(box1));
         ensure(await group.isIncluded(box2));
         ensure((await prop1.get(group)) === undefined);

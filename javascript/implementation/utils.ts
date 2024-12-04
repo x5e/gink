@@ -616,7 +616,7 @@ export function entryToEdgeData(entry: Entry): EdgeData {
         source: muidTupleToMuid(entry.sourceList[0]),
         target: muidTupleToMuid(entry.targetList[0]),
         value: entry.value,
-        action: muidTupleToMuid(entry.containerId),
+        etype: muidTupleToMuid(entry.containerId),
         effective: <number>entry.storageKey,
     };
 }

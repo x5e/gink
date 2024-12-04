@@ -15,7 +15,7 @@ class Database {
      * @returns the first container for the view to display.
      */
     getRootContainer() {
-        return this.instance.getGlobalDirectory();
+        return this.Directory.get(instance);
     }
 
     /**
@@ -33,7 +33,7 @@ class Database {
      * @returns a string of the name if found, otherwise undefined.
      */
     async getContainerName(container) {
-        const names = this.instance.getGlobalProperty();
+        const names = this.Property.get(instance);
         return await names.get(container);
     }
 
@@ -43,7 +43,7 @@ class Database {
      * @param {*} name the new name for the container.
      */
     async setContainerName(container, name) {
-        const names = this.instance.getGlobalProperty();
+        const names = this.Property.get(instance);
         await names.set(container, name);
     }
 
@@ -66,7 +66,7 @@ class Database {
      */
     async getAllContainers() {
         // Fill an object of strMuid -> Container entries
-        const globalDir = this.instance.getGlobalDirectory();
+        const globalDir = this.Directory.get(instance);
         const allContainers = {
             [`${gink.muidToString(globalDir.address)}`]: globalDir,
         };
