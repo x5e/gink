@@ -124,15 +124,12 @@ it("Box.toJson", async function () {
         await instance.ready;
         // put a value into the box
         const box = await Box.create(instance);
-;
 
-        const box2 = await Box.create(instance);
-
-        await box2.set("fries");
+        await box.set("fries");
 
         const asJson = await box.toJson();
 
-        ensure(asJson === `["fries"]`);
+        ensure(asJson === `["fries"]`, `asJson="${asJson}"`);
     }
 });
 

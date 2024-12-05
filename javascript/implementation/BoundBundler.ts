@@ -24,7 +24,10 @@ export class BoundBundler implements Bundler {
 
     public async commit(comment?: string): Promise<BundleInfo> {
         this.requireNotSealed();
-        this.bundleInfo = await this.sealer(this.changes, {...this.meta, comment});
+        const meta = {... this.meta};
+        if (comment)
+            meta.comment = comment;
+        this.bundleInfo = await this.sealer(this.changes, meta);
         return this.bundleInfo;
     }
 

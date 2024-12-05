@@ -230,7 +230,8 @@ export function testStore(
             lastLink.medallion,
             lastLink.chainStart,
         ]);
-        ensure(identity === "test@identity");
+        ensure(identity === "test@identity",
+            `m=${lastLink.medallion} cs=${lastLink.chainStart} identity=${identity}`);
     });
 
     it(`${implName} getContainersByName`, async () => {

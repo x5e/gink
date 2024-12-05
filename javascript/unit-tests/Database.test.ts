@@ -23,7 +23,24 @@ it("test bundle", async () => {
         const instance = new Database({store});
         await instance.ready;
         const bundleInfo = await (await instance.startBundle({comment:"hello world"})).commit();
-        ensure(bundleInfo.comment === "hello world");
+        ensure(bundleInfo.comment === "hello world", `comment="${bundleInfo.comment}"`);
+        const chainTracker = await store.getChainTracker();
+        const allChains = chainTracker.getChains();
+        ensure(allChains.length === 1);
+        ensure(allChains[0][0] === bundleInfo.medallion);
+        ensure(allChains[0][1] === bundleInfo.chainStart);
+    }
+});
+
+it("test commit", async () => {
+    for (const store of [
+        new IndexedDbStore("Database.bundle", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database({store});
+        await instance.ready;
+        const bundleInfo = await (await instance.startBundle()).commit("hello world");
+        ensure(bundleInfo.comment === "hello world", `comment="${bundleInfo.comment}"`);
         const chainTracker = await store.getChainTracker();
         const allChains = chainTracker.getChains();
         ensure(allChains.length === 1);

@@ -255,6 +255,12 @@ export class LogBackedStore extends LockableLog implements Store {
             const info: BundleInfo = bundle.info;
             added = await this.internalStore.addBundle(bundle);
             const identity = bundle.builder.getIdentity();
+            if (identity) {
+                this.identities.set(
+                    `${info.medallion},${info.chainStart}`,
+                    bundle.builder.getIdentity()
+                );
+            }
             if (claimChain) {
                 if (!added) throw new Error("can't claim chain on old bundle");
                 await this.claimChain(
@@ -262,15 +268,6 @@ export class LogBackedStore extends LockableLog implements Store {
                     info.chainStart,
                     getActorId()
                 );
-                if (info.timestamp === info.chainStart && !info.priorTime) {
-                    ensure(identity, "chain start bundle has no identity");
-                    this.identities.set(
-                        `${info.medallion},${info.chainStart}`,
-                        bundle.builder.getIdentity()
-                    );
-                } else {
-                    ensure(!identity, "non-chain-start bundle has identity");
-                }
             }
             this.chainTracker.markAsHaving(info);
             if (added) {
