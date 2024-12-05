@@ -96,7 +96,8 @@ const findProcess =
     typeof window === "undefined" ? eval("require('find-process')") : undefined;
 
 export function ensure(x: any, msg?: string) {
-    if (!x) throw new Error(msg ?? "assert failed");
+    if (!x)
+        throw new Error(msg ?? "assert failed");
     return x;
 }
 

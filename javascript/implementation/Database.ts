@@ -284,19 +284,12 @@ export class Database {
     ): Promise<BundleInfo> {
         return this.store.addBundle(bundle).then((added) => {
             if (!added) return;
-            let summary;
+            if (! fromConnectionId) this.lastLink = bundle.info;
+            let summary: string;
             if (bundle.info.chainStart === bundle.info.timestamp) {
-                summary = JSON.stringify(bundle.info, [
-                    "medallion",
-                    "timestamp",
-                    "chainStart",
-                ]);
+                summary = JSON.stringify(bundle.info,["medallion", "timestamp", "chainStart",]);
             } else {
-                summary = JSON.stringify(bundle.info, [
-                    "medallion",
-                    "timestamp",
-                    "priorTime",
-                ]);
+                summary = JSON.stringify(bundle.info, ["medallion", "timestamp","priorTime",]);
             }
             this.logger(`added bundle from ${fromConnectionId}: ${summary}`);
             this.iHave.markAsHaving(bundle.info);

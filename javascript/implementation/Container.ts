@@ -108,7 +108,13 @@ export abstract class Container extends Addressable {
         entryBuilder.setContainer(
             muidToBuilder(onContainer ?? this.address, bundler.medallion)
         );
-        entryBuilder.setBehavior(this.behavior);
+        let behavior = this.behavior;
+        if (onContainer) {
+            if (onContainer.timestamp !== -1)
+                throw new Error("unexpected");
+            behavior = onContainer.offset;
+        }
+        entryBuilder.setBehavior(behavior);
         if (
             typeof key === "number" ||
             typeof key === "string" ||

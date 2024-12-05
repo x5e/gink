@@ -207,6 +207,8 @@ export function testStore(
         bundleBuilder.setChainStart(5);
         bundleBuilder.setTimestamp(5);
         bundleBuilder.setMedallion(101);
+        bundleBuilder.setIdentity("Fred");
+        bundleBuilder.setVerifyKey((await keyPair).publicKey);
         const asBytes = bundleBuilder.serializeBinary();
         const signed = signBundle(asBytes, (await keyPair).secretKey)
         const view = new Decomposition(signed);
@@ -214,7 +216,7 @@ export function testStore(
         const entry = <Entry>await store.getEntryByKey(sourceAddress, "abc");
         ensure(entry);
         ensure(matches(entry.containerId, [2, 1, 3]));
-        ensure(matches(entry.entryId, [5, 4, 1]));
+        ensure(matches(entry.entryId, [5, 101, 1]));
         ensure(entry.value === "xyz");
         ensure(entry.storageKey === "abc");
     });
