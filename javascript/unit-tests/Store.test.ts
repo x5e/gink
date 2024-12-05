@@ -35,7 +35,7 @@ import {
     muidToString,
     encryptMessage,
 } from "../implementation/utils";
-import { Box, Database } from "../implementation";
+import { Box, Database, Directory, Property, Sequence } from "../implementation";
 import { randombytes_buf } from "libsodium-wrappers";
 
 // makes an empty Store for testing purposes
@@ -220,26 +220,25 @@ export function testStore(
     });
 
     it(`${implName} getChainIdentity works`, async () => {
-        const db = new Database(store, "test@identity");
+        const db = new Database({store, identity: "test@identity"});
         await db.ready;
-        ensure((await store.getClaimedChains()).size === 0);
-        await db.getGlobalDirectory().set(3, 4);
-        const chain = [...(await store.getClaimedChains()).entries()][0][1];
+        await (Directory.get(db)).set(3, 4);
+        const lastLink = db.getLastLink();
         const identity = await store.getChainIdentity([
-            chain.medallion,
-            chain.chainStart,
+            lastLink.medallion,
+            lastLink.chainStart,
         ]);
         ensure(identity === "test@identity");
     });
 
     it(`${implName} getContainersByName`, async () => {
-        const db = new Database(store, "test@byName");
+        const db = new Database({store, identity: "test@byName"});
         await db.ready;
-        const gd = db.getGlobalDirectory();
+        const gd = Directory.get(db);
         await gd.setName("foo");
-        const d2 = await db.createDirectory();
+        const d2 = await Directory.create(db);
         await d2.setName("bar");
-        const seq = await db.createSequence();
+        const seq = await Sequence.create(db);
         await seq.setName("bar");
         const fooContainers = await store.getContainersByName("foo");
         ensure(fooContainers.length === 1);
@@ -328,13 +327,13 @@ export function testStore(
         const database = new Database({store});
         await database.ready;
 
-        const dir = database.getGlobalDirectory();
+        const dir = Directory.get(database);
         await dir.set("foo", "bar");
 
-        const prop = await database.createProperty();
+        const prop = await Property.create(database);
         await prop.set(dir, "bar");
 
-        const prop2 = await database.createProperty();
+        const prop2 = await Property.create(database);
         await prop2.set(dir, "baz");
 
         const box = await Box.create(database);
@@ -349,7 +348,7 @@ export function testStore(
         // Test asOf
         prop.set(dir, "bar2");
         prop2.set(dir, "baz2");
-        const prop3 = await database.createProperty();
+        const prop3 = await Property.create(database);
         await prop3.set(dir, "baz3");
         const properties2 = await store.getContainerProperties(dir.address);
 

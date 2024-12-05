@@ -47,16 +47,6 @@ export interface BundleListener {
     (bundle: BundleView): Promise<void>;
 }
 
-export interface SealerArgs {
-    changes: ChangeBuilder[];
-    comment?: string;
-    medallion: Medallion;
-}
-
-export interface Sealer {
-    (args: SealerArgs): Promise<BundleInfo>;
-}
-
 export interface ClaimedChain {
     medallion: Medallion;
     chainStart: ChainStart;
@@ -158,17 +148,24 @@ export interface KeyPair {
     secretKey: Bytes;
 }
 
-export interface Bundler {
-    addChange(changeBuilder: ChangeBuilder): Muid;
-    commit(comment?: string): Promise<BundleInfo>;
-    medallion: number;
-}
 
 export interface Meta {
     bundler?: Bundler;
     comment?: string;
     identity?: string;
 }
+
+export interface Bundler {
+    addChange(changeBuilder: ChangeBuilder): Muid;
+    commit(comment?: string): Promise<BundleInfo>;
+    medallion: number;
+}
+
+export interface Sealer {
+    (changes: ChangeBuilder[], meta?: Meta): Promise<BundleInfo>;
+}
+
+
 
 export interface IndexedDbStoreSchema extends DBSchema {
     trxns: {

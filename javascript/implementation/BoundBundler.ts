@@ -3,6 +3,7 @@ import {
     BundleInfo,
     Sealer,
     Bundler,
+    Meta,
 } from "./typedefs";
 import {
     ChangeBuilder,
@@ -18,16 +19,12 @@ export class BoundBundler implements Bundler {
     constructor(
         readonly medallion: number,
         readonly sealer: Sealer,
-        readonly comment?: string,
+        readonly meta?: Meta,
     ) {}
 
     public async commit(comment?: string): Promise<BundleInfo> {
         this.requireNotSealed();
-        this.bundleInfo = await this.sealer({
-            changes: this.changes,
-            medallion: this.medallion,
-            comment: comment ?? this.comment,
-        });
+        this.bundleInfo = await this.sealer(this.changes, {...this.meta, comment});
         return this.bundleInfo;
     }
 

@@ -23,7 +23,6 @@ import {
     AsOf,
     KeyPair,
     MuidTuple,
-    SealerArgs,
     Medallion,
     Meta,
     Bundler,
@@ -84,6 +83,10 @@ export class Database {
         Database.lastCreated = this;
     }
 
+    public getLastLink(): BundleInfo|undefined {
+        return this.lastLink;
+    }
+
     public static get recent(): Database {
         return ensure(Database.lastCreated, "no database created");
     }
@@ -109,16 +112,14 @@ export class Database {
         this.store.addFoundBundleCallBack(callback);
     }
 
-    private async completeBundle(args: SealerArgs): Promise<BundleInfo> {
+    private async completeBundle(changes: ChangeBuilder[], meta?: Meta): Promise<BundleInfo> {
         // I'm acquiring a lock here to ensure that the chain doesn't get forked.
         const unlockingFunction = await this.promiseChainLock.acquireLock();
         try {
             const bundleBuilder = new BundleBuilder();
-            if (args.comment)
-                bundleBuilder.setComment(args.comment);
-            if (this.medallion !== args.medallion || ! this.medallion) {
-                throw new Error("unexpected medallion problem");
-            }
+            if (meta.comment)
+                bundleBuilder.setComment(meta.comment);
+            if (! this.medallion) throw new Error("missing medallion!");
             bundleBuilder.setMedallion(this.medallion);
             const timestamp = generateTimestamp();
             bundleBuilder.setTimestamp(timestamp);
@@ -131,7 +132,7 @@ export class Database {
                 bundleBuilder.setIdentity(this.identity);
                 bundleBuilder.setVerifyKey(this.keyPair.publicKey);
             }
-            bundleBuilder.setChangesList(args.changes);
+            bundleBuilder.setChangesList(changes);
             const bundleBytes = signBundle(bundleBuilder.serializeBinary(), this.keyPair.secretKey);
             const decomposition = new Decomposition(bundleBytes);
             await this.receiveBundle(decomposition);
@@ -151,7 +152,7 @@ export class Database {
                 unlockingFunction();
             }
         }
-        return new BoundBundler(this.medallion, this.completeBundle.bind(this), meta?.comment);
+        return new BoundBundler(this.medallion, this.completeBundle.bind(this), meta);
     }
 
     private async obtainMedallion(identity: string): Promise<void> {
@@ -170,6 +171,7 @@ export class Database {
             await this.store.saveKeyPair(this.keyPair);
             this.medallion = makeMedallion();
         }
+        this.identity = identity;
     }
 
     async reset(toTime?: AsOf, meta?: Meta): Promise<void> {
