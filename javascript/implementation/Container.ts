@@ -1,5 +1,6 @@
 import { Value, ScalarKey, Muid, AsOf, Meta, Bundler } from "./typedefs";
-import { muidToBuilder, wrapValue, wrapKey } from "./utils";
+import { muidToBuilder, wrapValue, wrapKey, strToMuid } from "./utils";
+import { bundlePropertyEntry } from "./store_utils";
 import { Deletion } from "./Deletion";
 import { Inclusion } from "./Inclusion";
 import { Database } from "./Database";
@@ -159,5 +160,53 @@ export abstract class Container extends Addressable {
             }
             return address;
         });
+    }
+
+
+
+
+    /**
+     * Reset the properties associated with this container to a previous time.
+     * @param toTime optional timestamp to reset to. If not provided, the properties will be deleted.
+     * @param bundlerOrComment optional bundler to add this change to, or a string to add a comment to a new bundle.
+     */
+    public async resetProperties(toTime?: AsOf, meta?: Meta): Promise<void> {
+        const bundler: Bundler = await this.database.startBundle(meta);
+        const propertiesNow =
+            await this.database.store.getContainerProperties(this);
+        if (!toTime) {
+            for (const [key, _] of propertiesNow.entries()) {
+                const propertyMuid = strToMuid(key);
+                // Omitting value parameter creates a deleting entry
+                bundlePropertyEntry(bundler, propertyMuid, this.address);
+            }
+        } else {
+            const propertiesThen =
+                await this.database.store.getContainerProperties(this, toTime);
+
+            for (const [key, value] of propertiesThen.entries()) {
+                if (value !== propertiesNow.get(key)) {
+                    const propertyMuid = strToMuid(key);
+                    bundlePropertyEntry(
+                        bundler,
+                        propertyMuid,
+                        this.address,
+                        value
+                    );
+                }
+                // Remove from propertiesNow so we can delete the rest
+                // after this iteration
+                propertiesNow.delete(key);
+            }
+            // Now loop through the remaining propertiesNow and delete them
+            for (const [key, _] of propertiesNow.entries()) {
+                const propertyMuid = strToMuid(key);
+                // Omitting value parameter creates a deleting entry
+                bundlePropertyEntry(bundler, propertyMuid, this.address);
+            }
+        }
+        if (! meta?.bundler) {
+            await bundler.commit();
+        }
     }
 }

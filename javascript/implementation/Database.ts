@@ -196,11 +196,11 @@ export class Database {
             Behavior.GROUP,
             Behavior.PAIR_SET,
         ];
-        const globalContainers: MuidTuple[] = [];
         for (const behavior of globalBehaviors) {
             const address = {timestamp: -1, medallion: -1, offset: behavior}
             const container = await construct(this, address);
             await container.reset(toTime, false, {bundler});
+            await container.resetProperties(toTime, {bundler});
         }
         const containers = await this.store.getAllContainerTuples();
 
@@ -208,6 +208,7 @@ export class Database {
             const container = await construct(this, muidTupleToMuid(muidTuple));
             if (container instanceof Property) continue;
             await container.reset(toTime, false, {bundler});
+            await container.resetProperties(toTime, {bundler});
         }
 
         if (!meta?.bundler) {

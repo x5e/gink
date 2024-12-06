@@ -34,7 +34,7 @@ it("test bundle", async () => {
 
 it("test commit", async () => {
     for (const store of [
-        new IndexedDbStore("Database.bundle", true),
+        new IndexedDbStore("test commit", true),
         new MemoryStore(true),
     ]) {
         const instance = new Database({store});
@@ -151,6 +151,7 @@ it("test full database reset", async function () {
         await box.set("foo");
         await ks.add("foo");
         await ps.include([root, seq]);
+        ensure(await ps.contains([root, seq]));
         await group.include(root);
 
         await prop.set(root, "foo");

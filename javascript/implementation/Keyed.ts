@@ -148,8 +148,10 @@ export class Keyed<
 
                 if (!nowEntry) {
                     // This key was present then, but not now, so we need to add it back
-                    ensure(thenEntry && thenValue, "missing value?");
-                    await this.addEntry(genericKey, thenValue, {bundler});
+                    if (thenEntry && ! thenEntry.deletion) {
+                        ensure(thenValue, `missing for key: ${key}, ${JSON.stringify(genericKey)}`);
+                        await this.addEntry(genericKey, thenValue, {bundler});
+                    }
                 } else if (!thenEntry) {
                     // This key is present now, but not then, so we need to delete it
                     ensure(nowEntry && nowValue, "missing value?");
@@ -184,6 +186,7 @@ export class Keyed<
                 }
             }
         }
+
         if (! meta?.bundler) {
             await bundler.commit();
         }

@@ -23,7 +23,7 @@ export class PairSet extends Container {
 
     static async create(database?: Database, meta?: Meta): Promise<PairSet> {
         database = database || Database.recent;
-        const muid = await Container.addContainer({behavior: Behavior.PAIR_MAP, database, meta});
+        const muid = await Container.addContainer({behavior: Behavior.PAIR_SET, database, meta});
         return new PairSet(database, muid);
     }
 
