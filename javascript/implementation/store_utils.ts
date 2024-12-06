@@ -257,7 +257,7 @@ export function bundlePropertyEntry(
     propertyMuid: Muid,
     containerMuid: Muid,
     value?: Value
-): void {
+): Muid {
     const entryBuilder = new EntryBuilder();
     entryBuilder.setDescribing(muidToBuilder(containerMuid));
     entryBuilder.setBehavior(Behavior.PROPERTY);
@@ -266,5 +266,5 @@ export function bundlePropertyEntry(
     else entryBuilder.setDeletion(true);
     const changeBuilder = new ChangeBuilder();
     changeBuilder.setEntry(entryBuilder);
-    bundler.addChange(changeBuilder);
+    return bundler.addChange(changeBuilder);
 }

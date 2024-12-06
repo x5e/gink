@@ -172,8 +172,7 @@ export abstract class Container extends Addressable {
      */
     public async resetProperties(toTime?: AsOf, meta?: Meta): Promise<void> {
         const bundler: Bundler = await this.database.startBundle(meta);
-        const propertiesNow =
-            await this.database.store.getContainerProperties(this);
+        const propertiesNow = await this.database.store.getContainerProperties(this);
         if (!toTime) {
             for (const [key, _] of propertiesNow.entries()) {
                 const propertyMuid = strToMuid(key);
