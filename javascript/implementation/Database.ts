@@ -135,8 +135,17 @@ export class Database {
             bundleBuilder.setChangesList(changes);
             const bundleBytes = signBundle(bundleBuilder.serializeBinary(), this.keyPair.secretKey);
             const decomposition = new Decomposition(bundleBytes);
-            await this.receiveBundle(decomposition);
-            return decomposition.info;
+            /*
+                I need to set the lastLink before the transaction to add it is completed,
+                because if I don't then it can't do the transaction combining
+                (allowing multiple gink transactions to exist in an indexed db transaction).
+                Transactions headed to the store are still serialized due the promiseChainLock,
+                but there's a potential problem where a transaction fails at the store level
+                but then not unrolled at the database level.  This can't be solved simply
+                by using a catch clause because we could have several transactions queued.
+            */
+            this.lastLink = decomposition.info;
+            return this.receiveBundle(decomposition);
         } finally {
             unlockingFunction();
         }
@@ -284,7 +293,6 @@ export class Database {
     ): Promise<BundleInfo> {
         return this.store.addBundle(bundle).then((added) => {
             if (!added) return;
-            if (! fromConnectionId) this.lastLink = bundle.info;
             let summary: string;
             if (bundle.info.chainStart === bundle.info.timestamp) {
                 summary = JSON.stringify(bundle.info,["medallion", "timestamp", "chainStart",]);

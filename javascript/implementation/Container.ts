@@ -91,7 +91,7 @@ export abstract class Container extends Addressable {
     public abstract size(asOf?: AsOf): Promise<number>;
 
 
-    protected async addEntry(
+    protected addEntry(
         key?:
             | ScalarKey
             | Addressable
@@ -102,63 +102,62 @@ export abstract class Container extends Addressable {
         meta?: Meta,
         onContainer?: Muid,
     ): Promise<Muid> {
-        let bundler: Bundler = await this.database.startBundle(meta);
-        const entryBuilder = new EntryBuilder();
-        if (!this.address) throw new Error("unexpected");
-        entryBuilder.setContainer(
-            muidToBuilder(onContainer ?? this.address, bundler.medallion)
-        );
-        let behavior = this.behavior;
-        if (onContainer) {
-            if (onContainer.timestamp !== -1)
-                throw new Error("unexpected");
-            behavior = onContainer.offset;
-        }
-        entryBuilder.setBehavior(behavior);
-        if (
-            typeof key === "number" ||
-            typeof key === "string" ||
-            key instanceof Uint8Array
-        ) {
-            entryBuilder.setKey(wrapKey(key));
-        } else if (Array.isArray(key)) {
-            const pair = new PairBuilder();
-            let key1 = key[0];
-            let key2 = key[1];
-            if ("address" in key[0] && "address" in key[1]) {
-                key1 = key[0].address;
-                key2 = key[1].address;
+        return this.database.startBundle(meta).then(bundler => {
+            const entryBuilder = new EntryBuilder();
+            if (!this.address) throw new Error("unexpected");
+            entryBuilder.setContainer(
+                muidToBuilder(onContainer ?? this.address, bundler.medallion)
+            );
+            let behavior = this.behavior;
+            if (onContainer) {
+                if (onContainer.timestamp !== -1)
+                    throw new Error("unexpected");
+                behavior = onContainer.offset;
             }
-            pair.setLeft(muidToBuilder(key1));
-            pair.setRite(muidToBuilder(key2));
-            entryBuilder.setPair(pair);
-        } else if (key instanceof Addressable) {
-            entryBuilder.setDescribing(muidToBuilder(key.address));
-        } else if (key && "timestamp" in key) {
-            entryBuilder.setDescribing(muidToBuilder(key));
-        }
+            entryBuilder.setBehavior(behavior);
+            if (
+                typeof key === "number" ||
+                typeof key === "string" ||
+                key instanceof Uint8Array
+            ) {
+                entryBuilder.setKey(wrapKey(key));
+            } else if (Array.isArray(key)) {
+                const pair = new PairBuilder();
+                let key1 = key[0];
+                let key2 = key[1];
+                if ("address" in key[0] && "address" in key[1]) {
+                    key1 = key[0].address;
+                    key2 = key[1].address;
+                }
+                pair.setLeft(muidToBuilder(key1));
+                pair.setRite(muidToBuilder(key2));
+                entryBuilder.setPair(pair);
+            } else if (key instanceof Addressable) {
+                entryBuilder.setDescribing(muidToBuilder(key.address));
+            } else if (key && "timestamp" in key) {
+                entryBuilder.setDescribing(muidToBuilder(key));
+            }
 
-        // TODO: check that the destination/value is compatible with Container
-        if (value !== undefined) {
-            if (value instanceof Addressable) {
-                entryBuilder.setPointee(
-                    muidToBuilder(value.address, bundler.medallion)
-                );
-            } else if (value instanceof Deletion) {
-                entryBuilder.setDeletion(true);
-            } else if (value instanceof Inclusion) {
-            } else {
-                entryBuilder.setValue(wrapValue(value));
+            // TODO: check that the destination/value is compatible with Container
+            if (value !== undefined) {
+                if (value instanceof Addressable) {
+                    entryBuilder.setPointee(
+                        muidToBuilder(value.address, bundler.medallion)
+                    );
+                } else if (value instanceof Deletion) {
+                    entryBuilder.setDeletion(true);
+                } else if (value instanceof Inclusion) {
+                } else {
+                    entryBuilder.setValue(wrapValue(value));
+                }
             }
-        }
-        const changeBuilder = new ChangeBuilder();
-        changeBuilder.setEntry(entryBuilder);
-        const address = bundler.addChange(changeBuilder);
-        if (! meta?.bundler) {
-            await bundler.commit();
-        }
-        return address;
+            const changeBuilder = new ChangeBuilder();
+            changeBuilder.setEntry(entryBuilder);
+            const address = bundler.addChange(changeBuilder);
+            if (! meta?.bundler) {
+                return bundler.commit().then(() => address);
+            }
+            return address;
+        });
     }
-
-
 }

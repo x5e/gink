@@ -44,7 +44,7 @@ export class Keyed<
      * @returns a promise that resolves to the address of the newly created deletion entry
      */
     async delete(key: GenericType, meta?: Meta): Promise<Muid> {
-        return await this.addEntry(key, Container.DELETION, meta);
+        return this.addEntry(key, Container.DELETION, meta);
     }
 
     /**

@@ -100,6 +100,7 @@ export class IndexedDbStore implements Store {
     private wrapped: IDBPDatabase<IndexedDbStoreSchema>;
     private transaction: Transaction | null = null;
     private countTrxns: number = 0;
+    private trxnId: number = 0;
     private initialized = false;
     private processingLock = new PromiseChainLock();
     private lastCaller: string = "";
@@ -275,8 +276,13 @@ export class IndexedDbStore implements Store {
         return await trxn.objectStore("symmetricKeys").get(keyId);
     }
 
-    private clearTransaction() {
-        this.transaction = null;
+    private clearTransaction(id: number) {
+        if (id == this.trxnId) {
+            // console.log(`clearing transaction number ${id}`);
+            this.transaction = null;
+        } else {
+            // console.log(`already passed trxn: ${id}`);
+        }
     }
 
     private getTransaction(): Transaction {
@@ -285,6 +291,8 @@ export class IndexedDbStore implements Store {
         if (this.transaction === null || this.lastCaller !== callerLine) {
             this.lastCaller = callerLine;
             this.countTrxns += 1;
+            const id = this.trxnId = this.countTrxns;
+            // console.log(`starting transaction ${id}`)
             this.transaction = this.wrapped.transaction(
                 [
                     "entries",
@@ -301,7 +309,7 @@ export class IndexedDbStore implements Store {
                 ],
                 "readwrite"
             );
-            this.transaction.done.finally(() => this.clearTransaction());
+            this.transaction.done.then(() => this.clearTransaction(id));
         }
         return this.transaction;
     }
@@ -500,7 +508,7 @@ export class IndexedDbStore implements Store {
             .acquireLock()
             .then(async (unlock) => {
                 const trxn = this.getTransaction();
-                let added = false;
+                let added: boolean;
                 try {
                     added = await this.addBundleHelper(
                         trxn,
@@ -510,8 +518,7 @@ export class IndexedDbStore implements Store {
                 } finally {
                     unlock();
                 }
-                await trxn.done;
-                return added;
+                return trxn.done.then(() => added);
             })
             .catch((e) => {
                 throw e;

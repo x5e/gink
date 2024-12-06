@@ -5,7 +5,8 @@ it("bundle.combining", async function () {
     const store = new IndexedDbStore("bundle combining test", true);
     const instance = new Database({store});
     await instance.ready;
-    const schema = await Directory.create();
+    const schema = Directory.get();
+
 
     // make two changes
     const changesBeforeTwo = store.getTransactionCount();
@@ -17,9 +18,10 @@ it("bundle.combining", async function () {
         `two:${changesBeforeTwo} => ${changesAfterTwo} `
     );
 
+
     const changeBeforeCombo = store.getTransactionCount();
-    const _ = schema.set("first1", "v1");
-    const promise2 = schema.set("second2", "v2");
+    const _ = schema.set("first1", "v1", {comment: "first comment"});
+    const promise2 = schema.set("second2", "v2", {comment: "second comment"});
     await promise2;
     const changesAfterCombo = store.getTransactionCount();
     ensure(
