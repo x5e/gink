@@ -54,7 +54,6 @@ export class Sequence extends Container {
     }
 
     async move(what: number|Muid, dest: number, purge?: boolean, meta?: Meta) {
-        let immediate = false;
         let bundler: Bundler = await this.database.startBundle(meta);
         const store = this.database.store;
         let muid: Muid;
@@ -81,7 +80,7 @@ export class Sequence extends Container {
             await this.findDest(dest),
             purge
         );
-        if (immediate) {
+        if (! meta?.bundler) {
             await bundler.commit();
         }
     }
