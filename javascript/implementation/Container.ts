@@ -174,7 +174,6 @@ export abstract class Container extends Addressable {
         const bundler: Bundler = await this.database.startBundle(meta);
         const propertiesNow = await this.database.store.getContainerProperties(this);
         if (!toTime) {
-            console.log("here");
             for (const [key, _] of propertiesNow.entries()) {
                 const propertyMuid = strToMuid(key);
                 // Omitting value parameter creates a deleting entry

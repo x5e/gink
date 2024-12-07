@@ -130,7 +130,7 @@ it("test reset", async function () {
         await schema.set("hmm", 20);
         const bundler = await database.startBundle();
 
-        await schema.reset(afterNumbers, {bundler});
+        await schema.reset(afterNumbers, false, {bundler});
         ensure((await schema.get("hmm")) === 20);
         ensure(isEqual(await schema.get(2), arr));
         await bundler.commit();
