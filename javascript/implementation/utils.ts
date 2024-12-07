@@ -27,7 +27,7 @@ import {
 } from "./builders";
 
 import { hostname, userInfo } from "os";
-import { TreeMap, MapIterator } from "jstreemap";
+import { TreeMap, MapIterator, Tree } from "jstreemap";
 
 import {
     ready as sodium_ready,
@@ -87,6 +87,14 @@ export function toLastWithPrefixBeforeSuffix<V>(
     if (!iterator.key) return undefined;
     if (!iterator.key.startsWith(prefix)) return undefined;
     return iterator;
+}
+
+export function dumpTree<V>(map: TreeMap<string, V>) {
+    let it = map.begin();
+    while (it.key) {
+        console.log(JSON.stringify(it.value));
+        it.next();
+    }
 }
 
 // Since find-process uses child-process, we can't load this if gink

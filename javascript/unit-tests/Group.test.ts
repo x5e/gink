@@ -106,6 +106,9 @@ it("Group.reset", async function () {
         await group.resetProperties();
         ensure((await group.size()) === 0);
         let val = (await prop1.get(group));
+        if (val !== undefined) {
+            (<MemoryStore>store).dumpEntries();
+        }
         ensure(val === undefined, val ? val.toString() : "no val");
         ensure((await prop2.get(group)) === undefined);
         await group.include(box1);

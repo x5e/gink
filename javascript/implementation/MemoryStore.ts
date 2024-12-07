@@ -9,7 +9,6 @@ import {
     getActorId,
     toLastWithPrefixBeforeSuffix,
     strToMuid,
-    muidToTuple,
     bytesToHex,
     verifyBundle,
     librariesReady,
@@ -17,6 +16,7 @@ import {
     strToMuidTuple,
     shorterHash,
     decryptMessage,
+    dumpTree,
 } from "./utils";
 import {
     AsOf,
@@ -100,6 +100,10 @@ export class MemoryStore implements Store {
 
     acquireChain(identity: string): Promise<BundleInfo | null> {
         return Promise.resolve(null);
+    }
+
+    dumpEntries() {
+        dumpTree(this.placements);
     }
 
     async saveSymmetricKey(symmetricKey: Bytes): Promise<number> {
@@ -620,7 +624,7 @@ export class MemoryStore implements Store {
         const resultMap = new Map<string, Value>();
         const asOfTs = asOf ? this.asOfToTimestamp(asOf) : generateTimestamp();
         const strMuid = muidToString(containerMuid);
-        const clearTime = this.getLastClearanceTime(strMuid, asOfTs);
+
         const iterator = this.byKeyPlacement.lowerBound(strMuid);
         for (
             ;
@@ -630,9 +634,13 @@ export class MemoryStore implements Store {
             iterator.next()
         ) {
             const parts = iterator.key.split(",");
-            if (parts[0] !== strMuid) break;
+            if (parts[0] !== strMuid)
+                break;
             const entry = iterator.value;
-            if (!(entry.behavior === Behavior.PROPERTY)) continue;
+            if (!(entry.behavior === Behavior.PROPERTY))
+                continue;
+            const propertyMuid = muidTupleToString(entry.containerId);
+            const clearTime = this.getLastClearanceTime(propertyMuid, asOfTs);
             const entryMuid = strToMuid(parts[1]);
             if (
                 entryMuid.timestamp < clearTime ||
