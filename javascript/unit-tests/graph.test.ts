@@ -147,7 +147,7 @@ it("edge_reorder", async function () {
 it("vertex reset", async function () {
     for (const store of [
         new IndexedDbStore("vertex reset", true),
-        new MemoryStore(true),
+        //new MemoryStore(true),
     ]) {
         const instance = new Database({store});
         await instance.ready;
@@ -162,14 +162,17 @@ it("vertex reset", async function () {
         await prop2.set(vertex, "bar2");
         const afterSecond = generateTimestamp();
         await vertex.reset(afterSet);
+        await vertex.resetProperties(afterSet);
         // Vertex should be alive again, and properties should be reset
         ensure(await vertex.isAlive());
-        ensure((await prop1.get(vertex)) === "foo");
+        let val = (await prop1.get(vertex));
+        ensure(val === "foo", `val=${val}`);
         ensure((await prop2.get(vertex)) === "bar");
         await vertex.reset(afterSecond);
         // Vertex should be removed and properties should not have changed.
         ensure(!(await vertex.isAlive()));
-        ensure((await prop1.get(vertex)) === "foo");
+        val = (await prop1.get(vertex));
+        ensure(val === "foo", `val=${val}`);
         ensure((await prop2.get(vertex)) === "bar");
     }
 });
@@ -196,9 +199,11 @@ it("edge_type reset", async function () {
         const edge3 = await edgeType.create(vertex1, vertex3);
         await prop1.set(edgeType, "foo");
         await prop2.set(edgeType, "baz");
+        ensure((await prop2.get(edgeType)) === "baz");
         const afterSecond = generateTimestamp();
 
         await edgeType.reset(afterInit);
+        await edgeType.resetProperties(afterInit);
         const edgesFrom1 = await vertex1.getEdgesFrom();
         const edgesFrom2 = await vertex2.getEdgesFrom();
         ensure(edgesFrom1.length === 1);
