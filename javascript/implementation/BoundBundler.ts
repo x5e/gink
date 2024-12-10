@@ -1,13 +1,5 @@
-import {
-    Muid,
-    BundleInfo,
-    Sealer,
-    Bundler,
-    Meta,
-} from "./typedefs";
-import {
-    ChangeBuilder,
-} from "./builders";
+import { Muid, BundleInfo, Sealer, Bundler, Meta } from "./typedefs";
+import { ChangeBuilder } from "./builders";
 
 /**
  * This class is considered part of the internal interface of Gink and is not part of the API
@@ -24,9 +16,10 @@ export class BoundBundler implements Bundler {
 
     public async commit(comment?: string): Promise<BundleInfo> {
         this.requireNotSealed();
-        const meta = {... this.meta};
-        if (comment)
+        const meta = { ...this.meta };
+        if (comment) {
             meta.comment = comment;
+        }
         this.bundleInfo = await this.sealer(this.changes, meta);
         return this.bundleInfo;
     }
@@ -53,7 +46,7 @@ export class BoundBundler implements Bundler {
         return new (class {
             constructor(
                 private bundler: BoundBundler,
-                readonly offset: number
+                readonly offset: number,
             ) {}
             get medallion() {
                 return this.bundler.medallion;

@@ -7,7 +7,7 @@ async function test_gink_browser_performance() {
     const server = new Expector(
         "node",
         ["javascript/tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: "8081", GINK_STATIC_PATH: ".", ...process.env } }
+        { env: { GINK_PORT: "8081", GINK_STATIC_PATH: ".", ...process.env } },
     );
     await server.expect("ready");
     const all_results = {};
@@ -19,11 +19,11 @@ async function test_gink_browser_performance() {
         });
         let page = await browser.newPage();
         page.on("console", (message) =>
-            console.log(`gink ${product}: ${message.text()}`)
+            console.log(`gink ${product}: ${message.text()}`),
         );
 
         await page.goto(
-            "http://127.0.0.1:8081/javascript/performance-tests/gink_performance.html"
+            "http://127.0.0.1:8081/javascript/performance-tests/gink_performance.html",
         );
         await page.waitForSelector("#done", { timeout: 0 });
 
@@ -44,7 +44,7 @@ async function test_idb_browser_performance() {
     const server = new Expector(
         "node",
         ["javascript/tsc.out/implementation/main.js"],
-        { env: { GINK_PORT: "8081", GINK_STATIC_PATH: ".", ...process.env } }
+        { env: { GINK_PORT: "8081", GINK_STATIC_PATH: ".", ...process.env } },
     );
     await server.expect("ready");
     const all_results = {};
@@ -56,11 +56,11 @@ async function test_idb_browser_performance() {
         });
         let page = await browser.newPage();
         page.on("console", (message) =>
-            console.log(`idb ${product}: ${message.text()}`)
+            console.log(`idb ${product}: ${message.text()}`),
         );
 
         await page.goto(
-            "http://127.0.0.1:8081/javascript/performance-tests/idb_performance.html"
+            "http://127.0.0.1:8081/javascript/performance-tests/idb_performance.html",
         );
         await page.waitForSelector("#done", { timeout: 0 });
 

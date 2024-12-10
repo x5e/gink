@@ -1,34 +1,38 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
 import { Muid, AsOf, Meta, Bundler } from "./typedefs";
-import { Behavior, } from "./builders";
+import { Behavior } from "./builders";
 import { entryToEdgeData, muidTupleToMuid } from "./utils";
 import { Edge } from "./Edge";
 
 export class Vertex extends Container {
-    private constructor(
-        database: Database,
-        address: Muid,
-    ) {
+    private constructor(database: Database, address: Muid) {
         super(database, address, Behavior.VERTEX);
     }
 
     static get(database?: Database, muid?: Muid): Vertex {
         database = database || Database.recent;
-        if (! muid) {
-            muid = {timestamp: -1, medallion: -1, offset: Behavior.VERTEX}
+        if (!muid) {
+            muid = { timestamp: -1, medallion: -1, offset: Behavior.VERTEX };
         }
         return new Vertex(database, muid);
     }
 
     static async create(database?: Database, meta?: Meta): Promise<Vertex> {
         database = database || Database.recent;
-        const muid = await Container.addContainer({behavior: Behavior.VERTEX, database, meta});
+        const muid = await Container.addContainer({
+            behavior: Behavior.VERTEX,
+            database,
+            meta,
+        });
         return new Vertex(database, muid);
     }
 
-
-    toJson(indent: number | boolean, asOf?: AsOf, seen?: Set<string>): Promise<string> {
+    toJson(
+        indent: number | boolean,
+        asOf?: AsOf,
+        seen?: Set<string>,
+    ): Promise<string> {
         throw new Error("toJson not implemented for Vertex");
     }
 
@@ -41,13 +45,13 @@ export class Vertex extends Container {
         const entry = await this.database.store.getEntryByKey(
             this.address,
             undefined,
-            asOf
+            asOf,
         );
         return entry === undefined || !entry.deletion;
     }
 
     public async size(asOf?: AsOf): Promise<number> {
-        return await this.isAlive(asOf) ? 1 : 0;
+        return (await this.isAlive(asOf)) ? 1 : 0;
     }
 
     /**
@@ -70,13 +74,13 @@ export class Vertex extends Container {
             const aliveNow = await this.isAlive();
             if (aliveThen !== aliveNow) {
                 if (aliveThen) {
-                    await this.revive({bundler});
+                    await this.revive({ bundler });
                 } else {
-                    await this.remove({bundler});
+                    await this.remove({ bundler });
                 }
             }
         }
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
     }
@@ -93,7 +97,7 @@ export class Vertex extends Container {
         const entries = await this.database.store.getEntriesBySourceOrTarget(
             this.address,
             source,
-            asOf
+            asOf,
         );
         const edges: Edge[] = [];
         for (let i = 0; i < entries.length; i++) {
@@ -102,7 +106,7 @@ export class Vertex extends Container {
             const edge = Edge.get(
                 this.database,
                 muidTupleToMuid(entry.entryId),
-                entryToEdgeData(entry)
+                entryToEdgeData(entry),
             );
             edges.push(edge);
         }

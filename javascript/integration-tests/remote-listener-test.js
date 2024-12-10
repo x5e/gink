@@ -11,7 +11,7 @@ process.chdir(__dirname + "/..");
         "./tsc.out/implementation/main.js",
         ["-l", port],
         { env: { ...process.env } },
-        false
+        false,
     );
     await server.expect("ready", 2000);
 

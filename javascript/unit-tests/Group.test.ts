@@ -1,4 +1,11 @@
-import { Database, IndexedDbStore, MemoryStore, Box, Group, Property } from "../implementation";
+import {
+    Database,
+    IndexedDbStore,
+    MemoryStore,
+    Box,
+    Group,
+    Property,
+} from "../implementation";
 import {
     ensure,
     generateTimestamp,
@@ -11,7 +18,7 @@ it("include and exclude work as intended", async function () {
         new IndexedDbStore("Group.test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const group1 = await Group.create(instance);
 
@@ -24,7 +31,7 @@ it("include and exclude work as intended", async function () {
         await group1.exclude(box1);
         ensure(
             !(await group1.isIncluded(box1)),
-            `Still contains box1 after exclude`
+            `Still contains box1 after exclude`,
         );
 
         // Testing a container can be excluded before it was included.
@@ -53,7 +60,7 @@ it("contains, toArray, and getMembers work properly", async function () {
         new IndexedDbStore("Group.test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const group1 = await Group.create(instance);
 
@@ -81,7 +88,7 @@ it("Group.reset", async function () {
         new IndexedDbStore("Group.test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const box1 = await Box.create(instance);
         const box2 = await Box.create(instance);
@@ -105,7 +112,7 @@ it("Group.reset", async function () {
         await group.reset();
         await group.resetProperties();
         ensure((await group.size()) === 0);
-        let val = (await prop1.get(group));
+        let val = await prop1.get(group);
         if (val !== undefined) {
             (<MemoryStore>store).dumpEntries();
         }

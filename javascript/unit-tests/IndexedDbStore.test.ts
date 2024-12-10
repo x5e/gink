@@ -12,7 +12,7 @@ export const result = 1;
 
 it("use methods", async () => {
     const store = new IndexedDbStore("IndexedDbStore.test.1");
-    const database = new Database({store});
+    const database = new Database({ store });
     await database.ready;
     const dir = Directory.get(database);
     await dir.set("foo", "bar");

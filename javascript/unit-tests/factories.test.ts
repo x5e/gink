@@ -14,7 +14,7 @@ it("complex.toJSON", async function () {
         new IndexedDbStore("toJSON", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const directory = await Directory.create(instance);
 
@@ -43,20 +43,20 @@ it("complex.toJSON", async function () {
         ensure(fromJson.bar === 3, fromJson.bar);
         ensure(
             fromJson.document["a date"] === "2022-10-16T03:50:49.196Z",
-            fromJson.document
+            fromJson.document,
         );
         // null won't be included in array.toString()
         ensure(
             fromJson.document["an array"].toString() === "1,3,true,false,",
-            fromJson.document["an array"].toString()
+            fromJson.document["an array"].toString(),
         );
         ensure(
             fromJson.document["some bytes"].toString() === "5E20",
-            fromJson.document
+            fromJson.document,
         );
         ensure(
             fromJson.document["sub object"].key === "value",
-            fromJson.document
+            fromJson.document,
         );
         ensure(fromJson.tuple.toString() === "yes", fromJson.tuple);
 
@@ -72,7 +72,7 @@ it("various.contents", async function () {
         new IndexedDbStore("contents", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const box = await Box.create(instance);
         const property = await Property.create(instance);

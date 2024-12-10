@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Connect to server
     await instance.connectTo(
-        `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`
+        `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`,
     );
 
     const refreshContainer = async () => {

@@ -3,10 +3,9 @@ import { ensure } from "../implementation/utils";
 
 it("bundle.combining", async function () {
     const store = new IndexedDbStore("bundle combining test", true);
-    const instance = new Database({store});
+    const instance = new Database({ store });
     await instance.ready;
     const schema = Directory.get();
-
 
     // make two changes
     const changesBeforeTwo = store.getTransactionCount();
@@ -15,17 +14,16 @@ it("bundle.combining", async function () {
     const changesAfterTwo = store.getTransactionCount();
     ensure(
         changesAfterTwo - changesBeforeTwo >= 2,
-        `two:${changesBeforeTwo} => ${changesAfterTwo} `
+        `two:${changesBeforeTwo} => ${changesAfterTwo} `,
     );
 
-
     const changeBeforeCombo = store.getTransactionCount();
-    const _ = schema.set("first1", "v1", {comment: "first comment"});
-    const promise2 = schema.set("second2", "v2", {comment: "second comment"});
+    const _ = schema.set("first1", "v1", { comment: "first comment" });
+    const promise2 = schema.set("second2", "v2", { comment: "second comment" });
     await promise2;
     const changesAfterCombo = store.getTransactionCount();
     ensure(
         changesAfterCombo - changeBeforeCombo === 1,
-        `combo ${changeBeforeCombo} => ${changesAfterCombo}`
+        `combo ${changeBeforeCombo} => ${changesAfterCombo}`,
     );
 });

@@ -70,7 +70,7 @@ module.exports = class Expector {
      */
     send(what) {
         this.proc.stdin.write(
-            what
+            what,
             // () => console.error("flushed")
         );
     }

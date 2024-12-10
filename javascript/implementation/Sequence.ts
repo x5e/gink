@@ -21,22 +21,27 @@ import { movementHelper } from "./store_utils";
  * Doesn't support unshift because order is defined by insertion order.
  */
 export class Sequence extends Container {
-    private constructor(
-        database: Database,
-        address?: Muid,
-    ) {
+    private constructor(database: Database, address?: Muid) {
         super(database, address, Behavior.SEQUENCE);
     }
 
     static get(database?: Database, muid?: Muid): Sequence {
         database = database || Database.recent;
-        muid = muid ?? {timestamp: -1, medallion: -1, offset: Behavior.SEQUENCE};
+        muid = muid ?? {
+            timestamp: -1,
+            medallion: -1,
+            offset: Behavior.SEQUENCE,
+        };
         return new Sequence(database, muid);
     }
 
     static async create(database?: Database, meta?: Meta): Promise<Sequence> {
         database = database || Database.recent;
-        const muid = await Container.addContainer({behavior: Behavior.SEQUENCE, database, meta});
+        const muid = await Container.addContainer({
+            behavior: Behavior.SEQUENCE,
+            database,
+            meta,
+        });
         return new Sequence(database, muid);
     }
 
@@ -46,28 +51,27 @@ export class Sequence extends Container {
      * @param change change set to apply the change to or comment to put in
      * @returns
      */
-    async push(
-        value: Value | Container,
-        meta?: Meta,
-    ): Promise<Muid> {
+    async push(value: Value | Container, meta?: Meta): Promise<Muid> {
         return await this.addEntry(undefined, value, meta);
     }
 
-    async move(what: number|Muid, dest: number, purge?: boolean, meta?: Meta) {
+    async move(
+        what: number | Muid,
+        dest: number,
+        purge?: boolean,
+        meta?: Meta,
+    ) {
         let bundler: Bundler = await this.database.startBundle(meta);
         const store = this.database.store;
         let muid: Muid;
         if (typeof what === "number") {
             muid = muidTupleToMuid(
-                      Array.from(
-                          (
-                              await store.getOrderedEntries(
-                                  this.address,
-                                  what
-                              )
-                          ).values()
-                      ).pop().entryId
-                  );
+                Array.from(
+                    (
+                        await store.getOrderedEntries(this.address, what)
+                    ).values(),
+                ).pop().entryId,
+            );
         } else {
             muid = what;
         }
@@ -78,39 +82,38 @@ export class Sequence extends Container {
             muid,
             this.address,
             await this.findDest(dest),
-            purge
+            purge,
         );
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
     }
 
     async reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void> {
-        if (recurse === true)
-            recurse = new Set();
+        if (recurse === true) recurse = new Set();
         if (recurse instanceof Set) {
             recurse.add(muidToString(this.address));
         }
         const bundler: Bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, {bundler});
+            this.clear(false, { bundler });
         } else {
             const entriesThen = await this.database.store.getOrderedEntries(
                 this.address,
                 Infinity,
-                toTime
+                toTime,
             );
             // Need something subscriptable to compare by position
             const entriesNow = await this.database.store.getOrderedEntries(
                 this.address,
-                Infinity
+                Infinity,
             );
 
             for (const [key, entry] of entriesThen) {
                 const placementTupleThen = entry.placementId;
                 const placementNow = await this.database.store.getLocation(
-                    muidTupleToMuid(entry.entryId)
+                    muidTupleToMuid(entry.entryId),
                 );
                 const placementTupleNow = placementNow
                     ? placementNow.placement
@@ -129,7 +132,7 @@ export class Sequence extends Container {
 
                     if (entry.pointeeList.length > 0) {
                         const pointeeMuid = muidTupleToMuid(
-                            entry.pointeeList[0]
+                            entry.pointeeList[0],
                         );
                         entryBuilder.setPointee(muidToBuilder(pointeeMuid));
                     }
@@ -148,16 +151,16 @@ export class Sequence extends Container {
                             muidTupleToMuid(entry.entryId),
                             this.address,
                             placementTupleThen[0],
-                            false
+                            false,
                         );
                     }
                     // Need to remove the current entry from entriesNow if
                     // 1) the entry exists but was moved, or 2) the entry is untouched
                     ensure(
                         entriesNow.delete(
-                            `${placementTupleNow[0]},${muidTupleToString(entry.entryId)}`
+                            `${placementTupleNow[0]},${muidTupleToString(entry.entryId)}`,
                         ),
-                        "entry not found in entriesNow"
+                        "entry not found in entriesNow",
                     );
                 }
                 // Finally, if the previous entry was a container, recusively reset it
@@ -166,12 +169,9 @@ export class Sequence extends Container {
                     if (!recurse.has(muidToString(pointeeMuid))) {
                         const container = await construct(
                             this.database,
-                            pointeeMuid
+                            pointeeMuid,
                         );
-                        await container.reset(
-                            toTime,
-                            recurse,
-                            {bundler});
+                        await container.reset(toTime, recurse, { bundler });
                     }
                 }
             }
@@ -183,11 +183,11 @@ export class Sequence extends Container {
                     muidTupleToMuid(entry.entryId),
                     this.address,
                     undefined,
-                    false
+                    false,
                 );
             }
         }
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
     }
@@ -206,7 +206,7 @@ export class Sequence extends Container {
         if (dest < -1e6) return generateTimestamp() + dest;
         const entryMap = await this.database.store.getOrderedEntries(
             this.address,
-            dest
+            dest,
         );
         const entryArray = Array.from(entryMap.entries());
         const a = entryArray[entryArray.length - 2];
@@ -218,18 +218,21 @@ export class Sequence extends Container {
         return Math.floor((aTs + bTs) / 2);
     }
 
-
-    async pop(what?: Muid|number, purge?: boolean, meta?: Meta): Promise<Container | Value | undefined> {
+    async pop(
+        what?: Muid | number,
+        purge?: boolean,
+        meta?: Meta,
+    ): Promise<Container | Value | undefined> {
         let bundler: Bundler = await this.database.startBundle(meta);
         let returning: Container | Value;
         let muid: Muid;
-        if (what && typeof(what) != "number" && what.offset) {
+        if (what && typeof what != "number" && what.offset) {
             muid = what;
             const entry = await this.database.store.getEntryById(muid);
             if (!entry) return undefined;
             ensure(
                 entry.entryId[0] === muid.timestamp &&
-                    entry.entryId[2] === muid.offset
+                    entry.entryId[2] === muid.offset,
             );
             returning = await interpret(entry, this.database);
         } else {
@@ -239,9 +242,9 @@ export class Sequence extends Container {
                 (
                     await this.database.store.getOrderedEntries(
                         this.address,
-                        position
+                        position,
                     )
-                ).values()
+                ).values(),
             );
             if (entries.length === 0) return undefined;
             const entry = entries[entries.length - 1];
@@ -258,7 +261,10 @@ export class Sequence extends Container {
     /**
      * Alias for this.pop with position of 0
      */
-    async shift(purge?: boolean, meta?: Meta): Promise<Container | Value | undefined> {
+    async shift(
+        purge?: boolean,
+        meta?: Meta,
+    ): Promise<Container | Value | undefined> {
         return await this.pop(0, purge, meta);
     }
 
@@ -277,21 +283,20 @@ export class Sequence extends Container {
     ): Promise<void> {
         const bundler = await this.database.startBundle(meta);
         for (const value of iterable) {
-            await this.push(value, {bundler});
+            await this.push(value, { bundler });
         }
-        if (! meta?.bundler)
-            await bundler.commit();
+        if (!meta?.bundler) await bundler.commit();
     }
 
     private async getEntryAt(
         position: number,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Entry | undefined> {
         //TODO add a store method to only return the entry at a given location
         const entries = await this.database.store.getOrderedEntries(
             this.address,
             position,
-            asOf
+            asOf,
         );
         if (entries.size === 0) return undefined;
         if (position >= 0 && position >= entries.size) return undefined;
@@ -311,7 +316,7 @@ export class Sequence extends Container {
      */
     async at(
         position: number,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Container | Value | undefined> {
         if (typeof position === "number") {
             const entry = await this.getEntryAt(position, asOf);
@@ -329,21 +334,21 @@ export class Sequence extends Container {
      */
     async toArray(
         through = Infinity,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<(Container | Value)[]> {
         const thisList = this;
         const entries = await thisList.database.store.getOrderedEntries(
             thisList.address,
             through,
-            asOf
+            asOf,
         );
         const applied = Array.from(entries.values());
         return await Promise.all(
             applied.map(async function (
-                entry: Entry
+                entry: Entry,
             ): Promise<Container | Value> {
                 return await interpret(entry, thisList.database);
-            })
+            }),
         );
     }
 
@@ -351,7 +356,7 @@ export class Sequence extends Container {
         const entries = await this.database.store.getOrderedEntries(
             this.address,
             Infinity,
-            asOf
+            asOf,
         );
         return entries.size;
     }
@@ -364,7 +369,7 @@ export class Sequence extends Container {
      */
     entries(
         through = Infinity,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): AsyncGenerator<[Muid, Value | Container], void, unknown> {
         const thisList = this;
         return (async function* () {
@@ -374,7 +379,7 @@ export class Sequence extends Container {
             const entries = await thisList.database.store.getOrderedEntries(
                 thisList.address,
                 through,
-                asOf
+                asOf,
             );
             for (const entry of entries) {
                 const hydrated = await interpret(entry[1], thisList.database);
@@ -394,7 +399,7 @@ export class Sequence extends Container {
     async toJson(
         indent: number | boolean = false,
         asOf?: AsOf,
-        seen?: Set<string>
+        seen?: Set<string>,
     ): Promise<string> {
         if (seen === undefined) seen = new Set();
         ensure(indent === false, "indent not implemented");
@@ -414,7 +419,7 @@ export class Sequence extends Container {
                 value,
                 indent === false ? false : +indent + 1,
                 asOf,
-                seen
+                seen,
             );
         }
         returning += "]";

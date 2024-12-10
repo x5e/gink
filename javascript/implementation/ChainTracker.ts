@@ -50,7 +50,7 @@ export class ChainTracker {
      */
     waitTillHas(
         { medallion, timestamp }: BundleInfo | Muid,
-        timeoutMs?: number
+        timeoutMs?: number,
     ): Promise<void> {
         const innerMap = this.data.get(medallion);
         if (innerMap) {
@@ -81,7 +81,7 @@ export class ChainTracker {
      */
     markAsHaving(
         bundleInfo: BundleInfo,
-        checkValidExtension?: boolean
+        checkValidExtension?: boolean,
     ): boolean {
         if (!this.data.has(bundleInfo.medallion))
             this.data.set(bundleInfo.medallion, new Map());
@@ -94,11 +94,11 @@ export class ChainTracker {
                     !bundleInfo.priorTime
                 )
                     throw new Error(
-                        `bundleInfo appears to be invalid: ${JSON.stringify(bundleInfo)}`
+                        `bundleInfo appears to be invalid: ${JSON.stringify(bundleInfo)}`,
                     );
                 if ((bundleInfo.priorTime ?? 0) !== seenThrough)
                     throw new Error(
-                        `proposed bundle would be an invalid extension ${JSON.stringify(bundleInfo)}`
+                        `proposed bundle would be an invalid extension ${JSON.stringify(bundleInfo)}`,
                     );
             }
             innerMap.set(bundleInfo.chainStart, bundleInfo);

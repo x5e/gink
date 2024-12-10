@@ -1,4 +1,9 @@
-import { Database, Directory, LogBackedStore, ensure } from "../implementation/main";
+import {
+    Database,
+    Directory,
+    LogBackedStore,
+    ensure,
+} from "../implementation/main";
 import { testStore } from "./Store.test";
 import { existsSync, unlinkSync, readFileSync } from "fs";
 
@@ -53,12 +58,12 @@ it("test automatic data pulling & callbacks", async () => {
     cb.calledTimes = 0;
     store2.addFoundBundleCallBack(cb);
 
-    const instance1 = new Database({store: store1});
+    const instance1 = new Database({ store: store1 });
     await instance1.ready;
 
     const globalDir1 = Directory.get(instance1);
 
-    await globalDir1.set("key", "value", {comment: "test bundle"});
+    await globalDir1.set("key", "value", { comment: "test bundle" });
 
     await new Promise((r) => setTimeout(r, 100));
 
@@ -73,7 +78,7 @@ it("test magic", async () => {
     const fn = "/tmp/testMagic.bin";
     const store = await createMaker(true, fn)();
 
-    const instance1 = new Database({store});
+    const instance1 = new Database({ store });
     await instance1.ready;
 
     const globalDir1 = Directory.get(instance1);

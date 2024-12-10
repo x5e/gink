@@ -6,24 +6,25 @@ import { toJson } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class PairSet extends Container {
-    private constructor(
-        database: Database,
-        address: Muid,
-    ) {
+    private constructor(database: Database, address: Muid) {
         super(database, address, Behavior.PAIR_SET);
     }
 
     static get(database?: Database, muid?: Muid): PairSet {
         database = database || Database.recent;
-        if (! muid) {
-            muid = {timestamp: -1, medallion: -1, offset: Behavior.PAIR_SET}
+        if (!muid) {
+            muid = { timestamp: -1, medallion: -1, offset: Behavior.PAIR_SET };
         }
         return new PairSet(database, muid);
     }
 
     static async create(database?: Database, meta?: Meta): Promise<PairSet> {
         database = database || Database.recent;
-        const muid = await Container.addContainer({behavior: Behavior.PAIR_SET, database, meta});
+        const muid = await Container.addContainer({
+            behavior: Behavior.PAIR_SET,
+            database,
+            meta,
+        });
         return new PairSet(database, muid);
     }
 
@@ -33,10 +34,7 @@ export class PairSet extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the inclusion
      */
-    async include(
-        key: [Container, Container],
-        meta?: Meta,
-    ): Promise<Muid> {
+    async include(key: [Container, Container], meta?: Meta): Promise<Muid> {
         return await this.addEntry(key, Container.INCLUSION, meta);
     }
 
@@ -46,10 +44,7 @@ export class PairSet extends Container {
      * @param change an optional bundler to put this change into
      * @returns a promise that resolves to the Muid for the exclusion
      */
-    async exclude(
-        key: [Container, Container],
-        meta?: Meta,
-    ): Promise<Muid> {
+    async exclude(key: [Container, Container], meta?: Meta): Promise<Muid> {
         return await this.addEntry(key, Container.DELETION, meta);
     }
 
@@ -61,7 +56,7 @@ export class PairSet extends Container {
      */
     async contains(
         key: [Muid | Container, Muid | Container],
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<boolean> {
         const aKey: [Muid, Muid] = [
             key[0] instanceof Container ? key[0].address : key[0],
@@ -70,26 +65,25 @@ export class PairSet extends Container {
         const found = await this.database.store.getEntryByKey(
             this.address,
             aKey,
-            asOf
+            asOf,
         );
         if (found && found.deletion) return false;
         return Boolean(found);
     }
 
-
     async reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void> {
         const bundler: Bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, {bundler});
+            this.clear(false, { bundler });
         } else {
             const union = new Set<[MuidTuple, MuidTuple]>();
             const entriesThen = await this.database.store.getKeyedEntries(
                 this.address,
-                toTime
+                toTime,
             );
             const entriesNow = await this.database.store.getKeyedEntries(
-                this.address
+                this.address,
             );
 
             for (const [key, entry] of entriesThen) {
@@ -105,50 +99,46 @@ export class PairSet extends Container {
                 const thenEntry = await this.database.store.getEntryByKey(
                     this.address,
                     genericKey,
-                    toTime
+                    toTime,
                 );
                 const nowEntry = await this.database.store.getEntryByKey(
                     this.address,
-                    genericKey
+                    genericKey,
                 );
                 ensure(nowEntry || thenEntry, "both then and now undefined?");
                 if (!nowEntry) {
                     // This key was present then, but not now, so we need to add it back
                     ensure(thenEntry, "missing then entry?");
-                    await this.addEntry(genericKey, thenEntry.value, {bundler});
+                    await this.addEntry(genericKey, thenEntry.value, {
+                        bundler,
+                    });
                 } else if (!thenEntry) {
                     // This key is present now, but not then, so we need to delete it
                     ensure(nowEntry, "missing now entry?");
-                    await this.addEntry(
-                        genericKey,
-                        Container.DELETION,
-                        {bundler}
-                    );
+                    await this.addEntry(genericKey, Container.DELETION, {
+                        bundler,
+                    });
                 } else if (nowEntry.deletion !== thenEntry.deletion) {
                     if (nowEntry.deletion) {
                         // Present then, deleted now. Need to revive.
-                        await this.addEntry(
-                            genericKey,
-                            Container.INCLUSION,
-                            {bundler}
-                        );
+                        await this.addEntry(genericKey, Container.INCLUSION, {
+                            bundler,
+                        });
                     } else if (thenEntry.deletion) {
                         // Present now, deleted then. Need to delete.
-                        await this.addEntry(
-                            genericKey,
-                            Container.DELETION,
-                            {bundler}
-                        );
+                        await this.addEntry(genericKey, Container.DELETION, {
+                            bundler,
+                        });
                     }
                 } else {
                     ensure(
                         nowEntry.deletion === thenEntry.deletion,
-                        "last case should be same entry"
+                        "last case should be same entry",
                     );
                 }
             }
         }
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
     }
@@ -161,7 +151,7 @@ export class PairSet extends Container {
     async size(asOf?: AsOf): Promise<number> {
         const entries = await this.database.store.getKeyedEntries(
             this.address,
-            asOf
+            asOf,
         );
         return entries.size;
     }
@@ -174,7 +164,7 @@ export class PairSet extends Container {
     async getPairs(asOf?: AsOf): Promise<Set<Array<Muid>>> {
         const entries = await this.database.store.getKeyedEntries(
             this.address,
-            asOf
+            asOf,
         );
         const toSet = new Set<Array<Muid>>();
         for (const [key, entry] of entries) {
@@ -196,7 +186,7 @@ export class PairSet extends Container {
     async toJson(
         indent: number | boolean = false,
         asOf?: AsOf,
-        seen?: Set<string>
+        seen?: Set<string>,
     ): Promise<string> {
         //TODO(https://github.com/google/gink/issues/62): add indentation
         ensure(indent === false, "indent not implemented");
@@ -217,7 +207,7 @@ export class PairSet extends Container {
                 `[${muidToString(key[0])}, ${muidToString(key[1])}]`,
                 indent === false ? false : +indent + 1,
                 asOf,
-                seen
+                seen,
             );
         }
         returning += "]";

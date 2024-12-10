@@ -10,7 +10,7 @@ import {
 testStore("MemoryStore", async () => new MemoryStore(true));
 it("test basic operations", async () => {
     const store = new MemoryStore(true);
-    const instance = new Database({store});
+    const instance = new Database({ store });
     await instance.ready;
     const dir = Directory.get(instance);
     await dir.set("foo", "bar");
@@ -21,7 +21,7 @@ it("test basic operations", async () => {
     const removals = store.getAllRemovals();
     ensure(
         removals.size === 1,
-        `removals.size is ${removals.size}, expected 1`
+        `removals.size is ${removals.size}, expected 1`,
     );
     /*
     await memStore.dropHistory();
@@ -33,7 +33,7 @@ it("test basic operations", async () => {
 
 it("tests getEntryByKey and getKeyedEntries", async () => {
     const store = new MemoryStore(true);
-    const instance = new Database({store});
+    const instance = new Database({ store });
     await instance.ready;
     const dir = Directory.get(instance);
     const id = await dir.set("foo", "bar");

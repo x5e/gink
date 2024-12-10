@@ -31,8 +31,7 @@ export interface Store {
      */
     getChainTracker: () => Promise<ChainTracker>;
 
-
-    acquireChain: (identity: string) => Promise<BundleInfo|null>;
+    acquireChain: (identity: string) => Promise<BundleInfo | null>;
 
     /**
      * Attempts to get the identity of the user who started the chain.
@@ -91,7 +90,7 @@ export interface Store {
     getEntryByKey(
         container: Muid,
         key?: ScalarKey | Muid | [Muid, Muid],
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Entry | undefined>;
 
     getKeyedEntries(source: Muid, asOf?: AsOf): Promise<Map<string, Entry>>;
@@ -103,13 +102,13 @@ export interface Store {
     getOrderedEntries(
         source: Muid,
         through: number,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Map<string, Entry>>;
 
     getEntriesBySourceOrTarget(
         vertex: Muid,
         source: boolean,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Entry[]>;
 
     /**
@@ -128,7 +127,7 @@ export interface Store {
      */
     getContainerProperties(
         containerMuid: Muid,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Map<string, Value>>;
 
     /**

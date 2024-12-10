@@ -22,46 +22,60 @@ export abstract class Container extends Addressable {
         medallion: -1,
         timestamp: -1,
         offset: Behavior.PROPERTY,
-    }
+    };
 
     protected constructor(
         readonly database: Database,
         address: Muid,
-        readonly behavior: Behavior
+        readonly behavior: Behavior,
     ) {
         super(address);
     }
 
-    protected static async addContainer({database, behavior, meta}:
-        {database: Database, behavior: Behavior, meta?: Meta}): Promise<Muid> {
-            const bundler = await database.startBundle(meta);
-            const containerBuilder = new ContainerBuilder();
-            containerBuilder.setBehavior(behavior);
-            const muid = bundler.addChange(new ChangeBuilder().setContainer(containerBuilder));
-            if (!meta?.bundler) {
-                await bundler.commit();
-            }
-            return muid;
+    protected static async addContainer({
+        database,
+        behavior,
+        meta,
+    }: {
+        database: Database;
+        behavior: Behavior;
+        meta?: Meta;
+    }): Promise<Muid> {
+        const bundler = await database.startBundle(meta);
+        const containerBuilder = new ContainerBuilder();
+        containerBuilder.setBehavior(behavior);
+        const muid = bundler.addChange(
+            new ChangeBuilder().setContainer(containerBuilder),
+        );
+        if (!meta?.bundler) {
+            await bundler.commit();
+        }
+        return muid;
     }
 
     abstract toJson(
         indent: number | boolean,
         asOf?: AsOf,
-        seen?: Set<string>
+        seen?: Set<string>,
     ): Promise<string>;
 
     public async setName(name: string, meta?: Meta): Promise<Muid> {
-        return await this.addEntry(this, name, meta, Container.globalPropertyMuid)
+        return await this.addEntry(
+            this,
+            name,
+            meta,
+            Container.globalPropertyMuid,
+        );
     }
 
-    public async getName(asOf?: AsOf): Promise<string|undefined> {
+    public async getName(asOf?: AsOf): Promise<string | undefined> {
         const entry = await this.database.store.getEntryByKey(
             Container.globalPropertyMuid,
             this.address,
-            asOf
+            asOf,
         );
         const result = await interpret(entry, this.database);
-        return <string|undefined> result;
+        return <string | undefined>result;
     }
 
     public async clear(purge?: boolean, meta?: Meta): Promise<Muid> {
@@ -69,12 +83,12 @@ export abstract class Container extends Addressable {
         const clearanceBuilder = new ClearanceBuilder();
         clearanceBuilder.setPurge(purge || false);
         clearanceBuilder.setContainer(
-            muidToBuilder(this.address, bundler.medallion)
+            muidToBuilder(this.address, bundler.medallion),
         );
         const changeBuilder = new ChangeBuilder();
         changeBuilder.setClearance(clearanceBuilder);
         const address = bundler.addChange(changeBuilder);
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
         return address;
@@ -91,7 +105,6 @@ export abstract class Container extends Addressable {
 
     public abstract size(asOf?: AsOf): Promise<number>;
 
-
     protected addEntry(
         key?:
             | ScalarKey
@@ -103,16 +116,15 @@ export abstract class Container extends Addressable {
         meta?: Meta,
         onContainer?: Muid,
     ): Promise<Muid> {
-        return this.database.startBundle(meta).then(bundler => {
+        return this.database.startBundle(meta).then((bundler) => {
             const entryBuilder = new EntryBuilder();
             if (!this.address) throw new Error("unexpected");
             entryBuilder.setContainer(
-                muidToBuilder(onContainer ?? this.address, bundler.medallion)
+                muidToBuilder(onContainer ?? this.address, bundler.medallion),
             );
             let behavior = this.behavior;
             if (onContainer) {
-                if (onContainer.timestamp !== -1)
-                    throw new Error("unexpected");
+                if (onContainer.timestamp !== -1) throw new Error("unexpected");
                 behavior = onContainer.offset;
             }
             entryBuilder.setBehavior(behavior);
@@ -143,7 +155,7 @@ export abstract class Container extends Addressable {
             if (value !== undefined) {
                 if (value instanceof Addressable) {
                     entryBuilder.setPointee(
-                        muidToBuilder(value.address, bundler.medallion)
+                        muidToBuilder(value.address, bundler.medallion),
                     );
                 } else if (value instanceof Deletion) {
                     entryBuilder.setDeletion(true);
@@ -155,15 +167,12 @@ export abstract class Container extends Addressable {
             const changeBuilder = new ChangeBuilder();
             changeBuilder.setEntry(entryBuilder);
             const address = bundler.addChange(changeBuilder);
-            if (! meta?.bundler) {
+            if (!meta?.bundler) {
                 return bundler.commit().then(() => address);
             }
             return address;
         });
     }
-
-
-
 
     /**
      * Reset the properties associated with this container to a previous time.
@@ -172,7 +181,8 @@ export abstract class Container extends Addressable {
      */
     public async resetProperties(toTime?: AsOf, meta?: Meta): Promise<void> {
         const bundler: Bundler = await this.database.startBundle(meta);
-        const propertiesNow = await this.database.store.getContainerProperties(this);
+        const propertiesNow =
+            await this.database.store.getContainerProperties(this);
         if (!toTime) {
             for (const [key, _] of propertiesNow.entries()) {
                 const propertyMuid = strToMuid(key);
@@ -190,7 +200,7 @@ export abstract class Container extends Addressable {
                         bundler,
                         propertyMuid,
                         this.address,
-                        value
+                        value,
                     );
                 }
                 // Remove from propertiesNow so we can delete the rest
@@ -204,7 +214,7 @@ export abstract class Container extends Addressable {
                 bundlePropertyEntry(bundler, propertyMuid, this.address);
             }
         }
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
     }

@@ -12,7 +12,7 @@ process.chdir(__dirname + "/..");
         server = new Expector(
             "./tsc.out/implementation/main.js",
             ["-l", port, "--data-root", "/tmp/routing-server-test"],
-            { env: { ...process.env } }
+            { env: { ...process.env } },
         );
 
         await server.expect("RoutingServer ready", 2000);
@@ -23,10 +23,10 @@ process.chdir(__dirname + "/..");
 
     const firstAbcStore = new IndexedDbStore("firstAbc");
     const firstAbcInstance = new Database(firstAbcStore, undefined, (msg) =>
-        console.log("firstAbc: " + msg)
+        console.log("firstAbc: " + msg),
     );
     const firstAbcPeer = await firstAbcInstance.connectTo(
-        `ws://127.0.0.1:${port}/abc`
+        `ws://127.0.0.1:${port}/abc`,
     );
     const firstAbcDir = firstAbcInstance.getGlobalDirectory();
     const change = await firstAbcDir.set("abc", 123, "firstAbc");
@@ -39,10 +39,10 @@ process.chdir(__dirname + "/..");
     const firstXyzInstance = new Database(
         new IndexedDbStore("firstXyz"),
         "firstXyz@identity",
-        (msg) => console.log("firstXyz: " + msg)
+        (msg) => console.log("firstXyz: " + msg),
     );
     const firstXyzPeer = await firstXyzInstance.connectTo(
-        `ws://127.0.0.1:${port}/xyz`
+        `ws://127.0.0.1:${port}/xyz`,
     );
     const firstXyzDir = firstXyzInstance.getGlobalDirectory();
     console.log(await firstXyzInstance.store.getClaimedChains());
@@ -53,7 +53,7 @@ process.chdir(__dirname + "/..");
     const secondAbcInstance = new Database(
         new IndexedDbStore("secondAbc"),
         undefined,
-        (msg) => console.log("secondAbc: " + msg)
+        (msg) => console.log("secondAbc: " + msg),
     );
     await secondAbcInstance.connectTo(`ws://127.0.0.1:${port}/abc`);
     // TODO: Add a way to ask to wait until instances are caught up with each other.
@@ -69,7 +69,7 @@ process.chdir(__dirname + "/..");
     const secondXyzInstance = new Database(
         secondXyzStore,
         "secondXyz@identity",
-        (msg) => console.log("secondXyz: " + msg)
+        (msg) => console.log("secondXyz: " + msg),
     );
     await secondXyzInstance.connectTo(`ws://127.0.0.1:${port}/xyz`);
     await new Promise((resolve) => setTimeout(resolve, 100));

@@ -18,7 +18,7 @@ it("push to a queue and peek", async function () {
         new IndexedDbStore("list-test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const queue: Sequence = await Sequence.create(instance);
         await queue.push("dummy");
@@ -36,7 +36,7 @@ it("push and pop", async function () {
         new IndexedDbStore("list-test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
 
         const list: Sequence = await Sequence.create(instance);
@@ -83,7 +83,7 @@ it("size and at", async function () {
         new IndexedDbStore("list-test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
 
         const list: Sequence = await Sequence.create(instance);
@@ -124,7 +124,7 @@ it("entries", async function () {
         new IndexedDbStore("list-test4", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
 
         const list: Sequence = await Sequence.create(instance);
@@ -147,14 +147,14 @@ it("list-changeset", async function () {
         new IndexedDbStore("list-test5", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
 
         let bundler = await instance.startBundle();
-        const list: Sequence = await Sequence.create(instance, {bundler});
-        await list.push("A", {bundler});
-        await list.push("B", {bundler});
-        await list.push("C", {bundler});
+        const list: Sequence = await Sequence.create(instance, { bundler });
+        await list.push("A", { bundler });
+        await list.push("B", { bundler });
+        await list.push("C", { bundler });
         const info = await bundler.commit();
 
         ensure(info.timestamp !== undefined && info.timestamp > 0);
@@ -164,8 +164,8 @@ it("list-changeset", async function () {
         }
 
         bundler = await instance.startBundle();
-        await list.shift(false, {bundler});
-        await list.push("D", {bundler});
+        await list.shift(false, { bundler });
+        await list.push("D", { bundler });
         ensure(matches(await list.toArray(), ["A", "B", "C"]));
         await bundler.commit();
         const result = await list.toArray();
@@ -179,7 +179,7 @@ it("List.toJSON", async function () {
         new IndexedDbStore("list-toJSON", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
 
         const list: Sequence = await Sequence.create(instance);
@@ -205,7 +205,7 @@ it("List.toJSON", async function () {
 
         ensure(
             asJson === `["A",true,false,[33],{"cheese":"fries"},"FF5E20"]`,
-            asJson
+            asJson,
         );
     }
 });
@@ -216,7 +216,7 @@ it("List.asOf", async function () {
         new IndexedDbStore("list-asOf", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const list: Sequence = await Sequence.create(instance);
         const time0 = Date.now() * 1000;
@@ -234,7 +234,7 @@ it("List.asOf", async function () {
         const time3 = Date.now() * 1000;
 
         ensure(
-            matches(await list.toArray(Infinity, time3), ["A", true, false])
+            matches(await list.toArray(Infinity, time3), ["A", true, false]),
         );
         ensure(matches(await list.toArray(Infinity, time2), ["A", true]));
         ensure(matches(await list.toArray(Infinity, time1), ["A"]));
@@ -251,7 +251,7 @@ it("List.clear", async function () {
         new IndexedDbStore("list-clear", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const list: Sequence = await Sequence.create(instance);
         await list.push("hello");
@@ -277,7 +277,7 @@ it("List.purge_pop", async function () {
         new IndexedDbStore("list-purgePop", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const seq = await Sequence.create(instance);
         await seq.push("foo");
@@ -287,13 +287,13 @@ it("List.purge_pop", async function () {
         ensure(popped === "bar", `popped=${popped}`);
         ensure(
             matches(["foo"], await seq.toArray()),
-            (await seq.toArray()).toString()
+            (await seq.toArray()).toString(),
         );
         const previous = await seq.toArray(Infinity, beforeFirstPop);
 
         ensure(
             matches(["foo", "bar"], previous),
-            "previous=" + previous.toString()
+            "previous=" + previous.toString(),
         );
         const shifted = await seq.shift(true);
         ensure(shifted === "foo");
@@ -306,7 +306,7 @@ it("List.move", async function () {
         new IndexedDbStore("list-move", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
 
         const seq = await Sequence.create(instance);
@@ -324,19 +324,19 @@ it("List.move", async function () {
         await seq.move(0, -1);
         ensure(
             (await seq.toArray()).toString() === "B,C,D,A",
-            (await seq.toArray()).toString()
+            (await seq.toArray()).toString(),
         );
 
         await seq.move(2, 0);
         ensure(
             (await seq.toArray()).toString() === "D,B,C,A",
-            (await seq.toArray()).toString()
+            (await seq.toArray()).toString(),
         );
 
         await seq.move(cMuid, 1);
         ensure(
             (await seq.toArray()).toString() === "D,C,B,A",
-            (await seq.toArray()).toString()
+            (await seq.toArray()).toString(),
         );
     }
 });
@@ -346,7 +346,7 @@ it("extend", async function () {
         new IndexedDbStore("list-extend", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
 
         const seq = await Sequence.create(instance);
@@ -357,7 +357,7 @@ it("extend", async function () {
 
         const bundler = await instance.startBundle();
         const array2 = [7, 8, 9, 10];
-        await seq.extend(array2, {bundler});
+        await seq.extend(array2, { bundler });
         await bundler.commit();
         ensure((await seq.at(7)) === 7);
         ensure((await seq.at(10)) === 10);
@@ -369,7 +369,7 @@ it("List.reset", async function () {
         new IndexedDbStore("list-reset", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
 
         const seq = await Sequence.create(instance);
@@ -391,7 +391,6 @@ it("List.reset", async function () {
 
         await seq.reset();
         ensure((await seq.size()) === 0);
-
 
         await seq.reset(afterSecond);
         ensure((await seq.size()) === 10, (await seq.size()).toString());

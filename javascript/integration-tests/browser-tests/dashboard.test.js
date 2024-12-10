@@ -19,7 +19,7 @@ it("share bundles between two pages", async () => {
             "node",
             ["./tsc.out/implementation/main.js", "-l", port],
             { env: { ...process.env } },
-            false
+            false,
         );
         browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
         await sleep(1000);
@@ -31,7 +31,7 @@ it("share bundles between two pages", async () => {
         for (const page of [page1, page2]) {
             page.on("console", async (e) => {
                 const args = await Promise.all(
-                    e.args().map((a) => a.jsonValue())
+                    e.args().map((a) => a.jsonValue()),
                 );
             });
             page.on("dialog", async (dialog) => {
@@ -58,7 +58,7 @@ it("share bundles between two pages", async () => {
         await page1.bringToFront();
         // Add an entry of key1, a value
         (await page1.waitForSelector("#add-entry-button")).evaluate((e) =>
-            e.click()
+            e.click(),
         );
         await sleep(500);
         await page1.type("#key-input-1", `key0`);
@@ -68,27 +68,27 @@ it("share bundles between two pages", async () => {
         await page1.type("#comment-input", `setting key0`);
         await sleep(500);
         (await page1.waitForSelector("#bundle-button")).evaluate((e) =>
-            e.click()
+            e.click(),
         );
         await sleep(500);
 
         await page2.bringToFront();
         const element1 = await page2.waitForSelector(
-            `::-p-xpath(//td[contains(., 'key0')])`
+            `::-p-xpath(//td[contains(., 'key0')])`,
         );
         await element1.click();
         (await page2.waitForSelector("#update-button")).evaluate((e) =>
-            e.click()
+            e.click(),
         );
         await page2.type("#value-input", `changed value`);
         (await page2.waitForSelector("#bundle-button")).evaluate((e) =>
-            e.click()
+            e.click(),
         );
         await sleep(1000);
 
         await page1.bringToFront();
         const element2 = await page1.waitForSelector(
-            `::-p-xpath(//td[contains(., 'changed value')])`
+            `::-p-xpath(//td[contains(., 'changed value')])`,
         );
         await element2.evaluate((e) => e.click());
         const deleteBtn = await page1.waitForSelector("#delete-button");

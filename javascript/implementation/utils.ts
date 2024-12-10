@@ -52,7 +52,7 @@ let shorthashKey: Uint8Array = emptyBytes;
 export function getShortHashKey(): Bytes {
     if (shorthashKey.length === 0)
         shorthashKey = new Uint8Array(
-            Array(crypto_shorthash_KEYBYTES).fill(0x5e)
+            Array(crypto_shorthash_KEYBYTES).fill(0x5e),
         );
     return shorthashKey;
 }
@@ -80,7 +80,7 @@ export function noOp(_?: any) {
 export function toLastWithPrefixBeforeSuffix<V>(
     map: TreeMap<string, V>,
     prefix: string,
-    suffix: string = "~"
+    suffix: string = "~",
 ): MapIterator<string, V> | undefined {
     const iterator = map.upperBound(prefix + suffix);
     iterator.prev();
@@ -104,8 +104,7 @@ const findProcess =
     typeof window === "undefined" ? eval("require('find-process')") : undefined;
 
 export function ensure(x: any, msg?: string) {
-    if (!x)
-        throw new Error(msg ?? "assert failed");
+    if (!x) throw new Error(msg ?? "assert failed");
     return x;
 }
 
@@ -127,7 +126,7 @@ export function generateTimestamp() {
  * @returns
  */
 export function fromStorageKey(
-    storageKey: StorageKey
+    storageKey: StorageKey,
 ): ScalarKey | Muid | [Muid, Muid] {
     let newKey: ScalarKey | Muid | [Muid, Muid];
     if (Array.isArray(storageKey)) {
@@ -175,7 +174,7 @@ export function makeMedallion() {
 
 export function muidToBuilder(
     address: Muid,
-    relativeTo?: Medallion
+    relativeTo?: Medallion,
 ): MuidBuilder {
     const muid = new MuidBuilder();
     if (address.medallion && address.medallion !== relativeTo)
@@ -189,7 +188,7 @@ export function muidToBuilder(
 
 export function builderToMuid(
     muidBuilder: MuidBuilder,
-    relativeTo?: Muid
+    relativeTo?: Muid,
 ): Muid {
     // If a MuidBuilder in a message has a zero medallion and/or timestamp, it should be
     // interpreted that those values are the same as the trxn it comes from.
@@ -307,7 +306,7 @@ export function decodeToken(hex: string): string {
     }
     ensure(
         token.includes("token "),
-        `Token '${token}' does not begin with 'token '`
+        `Token '${token}' does not begin with 'token '`,
     );
     return token;
 }
@@ -641,14 +640,14 @@ export function getActorId(): ActorId {
             window.localStorage.setItem(`gink-current-window`, "1");
         }
         let currentWindow = Number(
-            window.localStorage.getItem(`gink-current-window`)
+            window.localStorage.getItem(`gink-current-window`),
         );
         // Using 2^22 since that is the max pid for any process on a 64 bit machine.
         const aId = 2 ** 22 + currentWindow;
         currentWindow++;
         window.localStorage.setItem(
             `gink-current-window`,
-            String(currentWindow)
+            String(currentWindow),
         );
 
         window.localStorage.setItem(`gink-${aId}`, `${Date.now()}`);
@@ -680,7 +679,7 @@ export function getIdentity(): string {
                     +c ^
                     (crypto.getRandomValues(new Uint8Array(1))[0] &
                         (15 >> (+c / 4)))
-                ).toString(16)
+                ).toString(16),
             )
         );
     }

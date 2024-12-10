@@ -12,7 +12,7 @@ it("set and get basic data", async function () {
         new IndexedDbStore("Directory.test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const schema = await Directory.create();
 
@@ -43,7 +43,7 @@ it("set and get data in two directories", async function () {
         new IndexedDbStore("two.directories", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const dir1 = await Directory.create();
         const dir2 = await Directory.create();
@@ -75,14 +75,14 @@ it("set multiple key/value pairs in one change-set", async function () {
         new IndexedDbStore("Directory.test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const schema = await Directory.create();
 
         // make multiple changes in a change set
         const bundler = await instance.startBundle();
-        await schema.set("cheese", "fries", {bundler});
-        await schema.set("foo", "bar", {bundler});
+        await schema.set("cheese", "fries", { bundler });
+        await schema.set("foo", "bar", { bundler });
         await bundler.commit("Hear me roar!");
 
         // verify the result
@@ -99,7 +99,7 @@ it("use a sub-schema", async function () {
         new IndexedDbStore("Directory.test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const schema = await Directory.create();
 
@@ -121,7 +121,7 @@ it("purge one directory leaving other untouched", async function () {
         new IndexedDbStore("purge etc.", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const d1 = await Directory.create();
         const d2 = await Directory.create();
@@ -142,7 +142,7 @@ it("convert to standard Map", async function () {
         new IndexedDbStore("Directory.convert", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const directory = await Directory.create(instance);
 
@@ -155,7 +155,7 @@ it("convert to standard Map", async function () {
         const asMap = await directory.toMap();
         ensure(
             asMap.size === 2,
-            `expected to be 2: ${asMap.size} ${JSON.stringify(asMap)}`
+            `expected to be 2: ${asMap.size} ${JSON.stringify(asMap)}`,
         );
         ensure(!asMap.has("foo"));
         ensure(asMap.get("bar") === "iron");
@@ -176,7 +176,7 @@ it("Directory.toJSON", async function () {
         new IndexedDbStore("Directory.toJSON", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const directory = await Directory.create(instance);
 
@@ -211,7 +211,7 @@ it("Directory.toJSON", async function () {
                 parsed["3"] === "baz" &&
                 parsed["4"] === "aaa" &&
                 parsed["123103"] === "woo",
-            JSON.stringify(parsed)
+            JSON.stringify(parsed),
         );
 
         await store.close();
@@ -223,7 +223,7 @@ it("Directory.asOf", async function () {
         new IndexedDbStore("Directory.asOf", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const directory = await Directory.create(instance);
 
@@ -265,7 +265,7 @@ it("Directory.purge", async function () {
         new IndexedDbStore("Directory.purge", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const directory = await Directory.create(instance);
 
@@ -280,7 +280,7 @@ it("Directory.purge", async function () {
 
         const found = await instance.store.getKeyedEntries(
             directory.address,
-            middle
+            middle,
         );
         ensure(!found.size);
         ensure(!(await directory.size()));
@@ -295,7 +295,7 @@ it(
             new IndexedDbStore("Directory.clear", true),
             new MemoryStore(true),
         ]) {
-            const instance = new Database({store});
+            const instance = new Database({ store });
             await instance.ready;
             const directory = await Directory.create(instance);
             await directory.set("A", 99);
@@ -313,5 +313,5 @@ it(
             await store.close();
         }
     },
-    1000 * 1000 * 1000
+    1000 * 1000 * 1000,
 );

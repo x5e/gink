@@ -9,7 +9,7 @@ process.chdir(__dirname + "/..");
     const server = new Expector(
         "./tsc.out/implementation/main.js",
         ["-l", port],
-        { env: { ...process.env } }
+        { env: { ...process.env } },
     );
     await server.expect("ready", 2000);
 

@@ -67,6 +67,6 @@ process.on("unhandledRejection", (reason: string, promise) => {
     if (reason) throw new Error(reason);
     else
         console.log(
-            "Unhandled Promise Rejection: Likely due to closed websocket connection."
+            "Unhandled Promise Rejection: Likely due to closed websocket connection.",
         );
 });

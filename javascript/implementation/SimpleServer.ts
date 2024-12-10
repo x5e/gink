@@ -26,18 +26,16 @@ export class SimpleServer extends Database {
     readonly authFunc: AuthFunction;
     public connections: Map<number, WebSocketConnection>;
 
-    constructor(
-        args?: {
-            store?: Store,
-            port?: NumberStr;
-            sslKeyFilePath?: FilePath;
-            sslCertFilePath?: FilePath;
-            staticContentRoot?: DirPath;
-            logger?: CallBack;
-            identity?: string;
-            authFunc?: AuthFunction;
-        }
-    ) {
+    constructor(args?: {
+        store?: Store;
+        port?: NumberStr;
+        sslKeyFilePath?: FilePath;
+        sslCertFilePath?: FilePath;
+        staticContentRoot?: DirPath;
+        logger?: CallBack;
+        identity?: string;
+        authFunc?: AuthFunction;
+    }) {
         super(args);
         this.listener = new Listener({
             requestHandler: this.onRequest.bind(this),
@@ -49,7 +47,7 @@ export class SimpleServer extends Database {
         this.connections = new Map();
         this.authFunc = args.authFunc || (() => true);
         this.ready = Promise.all([this.ready, this.listener.ready]).then(() =>
-            args.logger(`SimpleServer.ready`)
+            args.logger(`SimpleServer.ready`),
         );
     }
 
@@ -75,7 +73,7 @@ export class SimpleServer extends Database {
 
         const connection: WebSocketConnection = request.accept(
             protocol,
-            request.origin
+            request.origin,
         );
         this.logger(`Connection accepted.`);
         const sendFunc = (data: Uint8Array) => {
@@ -92,7 +90,7 @@ export class SimpleServer extends Database {
             thisServer.peers.delete(connectionId);
             thisServer.connections.delete(connectionId);
             thisServer.logger(
-                " Peer " + connection.remoteAddress + " disconnected."
+                " Peer " + connection.remoteAddress + " disconnected.",
             );
         });
         connection.on("message", this.onMessage.bind(this, connectionId));
@@ -101,7 +99,7 @@ export class SimpleServer extends Database {
 
     private onMessage(
         connectionId: number,
-        webSocketMessage: WebSocketMessage
+        webSocketMessage: WebSocketMessage,
     ) {
         if (webSocketMessage.type === "utf8") {
             this.logger("Received Text Message: " + webSocketMessage.utf8Data);
@@ -109,18 +107,18 @@ export class SimpleServer extends Database {
             this.logger(
                 "Server received binary message of " +
                     webSocketMessage.binaryData.length +
-                    " bytes."
+                    " bytes.",
             );
             this.receiveMessage(
                 webSocketMessage.binaryData,
-                connectionId
+                connectionId,
             ).catch((reason) => this.logger(reason));
         }
     }
 
     private requestListener(
         request: IncomingMessage,
-        response: ServerResponse
+        response: ServerResponse,
     ) {
         const connectTo = this.connectTo.bind(this);
         if (request.url.startsWith("/api/connections")) {

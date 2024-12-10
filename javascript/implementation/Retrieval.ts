@@ -25,7 +25,7 @@ export class Retrieval implements BundleView {
             let body: Bytes = this.bundleBytes;
             if (signingBundles) body = body.subarray(64);
             console.log(
-                `length: ${body.length}, sig: ${getSig(body)}, ${generateTimestamp()}`
+                `length: ${body.length}, sig: ${getSig(body)}, ${generateTimestamp()}`,
             );
             this.bundleBuilder = <BundleBuilder>(
                 BundleBuilder.deserializeBinary(body)

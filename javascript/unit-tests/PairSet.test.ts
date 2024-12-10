@@ -1,4 +1,10 @@
-import { Database, IndexedDbStore, MemoryStore, Box, PairSet } from "../implementation";
+import {
+    Database,
+    IndexedDbStore,
+    MemoryStore,
+    Box,
+    PairSet,
+} from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 import { sleep } from "./test_utils";
 
@@ -7,7 +13,7 @@ it("include, exclude, and contains work as intended", async function () {
         new IndexedDbStore("PS.test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const ps1 = await PairSet.create(instance);
         const box1 = await Box.create(instance);
@@ -38,7 +44,7 @@ it("asOf and getPairs work properly", async function () {
         new IndexedDbStore("PS.test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const ps1 = await PairSet.create(instance);
         const box1 = await Box.create(instance);
@@ -74,7 +80,7 @@ it("PairSet.reset", async function () {
         new IndexedDbStore("ps-test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const box1 = await Box.create(instance);
         const box2 = await Box.create(instance);

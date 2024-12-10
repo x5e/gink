@@ -148,7 +148,6 @@ export interface KeyPair {
     secretKey: Bytes;
 }
 
-
 export interface Meta {
     bundler?: Bundler;
     comment?: string;
@@ -164,8 +163,6 @@ export interface Bundler {
 export interface Sealer {
     (changes: ChangeBuilder[], meta?: Meta): Promise<BundleInfo>;
 }
-
-
 
 export interface IndexedDbStoreSchema extends DBSchema {
     trxns: {

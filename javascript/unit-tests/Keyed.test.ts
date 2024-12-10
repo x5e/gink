@@ -14,7 +14,7 @@ it("test reset", async function () {
         new IndexedDbStore("Keyed.reset", true),
         new MemoryStore(true),
     ]) {
-        const database = new Database({store});
+        const database = new Database({ store });
         await database.ready;
         const box = await Box.create(database);
         const pairMap = await PairMap.create(database);
@@ -40,7 +40,6 @@ it("test reset", async function () {
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
 
-
         // Reset to epoch
         await schema.reset();
 
@@ -49,13 +48,11 @@ it("test reset", async function () {
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
 
-
         await schema.reset(afterFirst);
         ensure((await schema.get("another key")) === undefined);
         ensure((await schema.get("a key")) === "a value");
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
-
 
         await pairMap.reset(afterFirst);
         ensure((await pairMap.get([box, schema])) === "a value");
@@ -130,7 +127,7 @@ it("test reset", async function () {
         await schema.set("hmm", 20);
         const bundler = await database.startBundle();
 
-        await schema.reset(afterNumbers, false, {bundler});
+        await schema.reset(afterNumbers, false, { bundler });
         ensure((await schema.get("hmm")) === 20);
         ensure(isEqual(await schema.get(2), arr));
         await bundler.commit();

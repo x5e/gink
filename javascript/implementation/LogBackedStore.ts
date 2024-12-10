@@ -64,11 +64,11 @@ export class LogBackedStore extends LockableLog implements Store {
     constructor(
         readonly filename: string,
         readonly exclusive: boolean = false,
-        private internalStore = new MemoryStore()
+        private internalStore = new MemoryStore(),
     ) {
         super(filename, exclusive);
         this.logBackedStoreReady = super.ready.then(() =>
-            this.initializeLogBackedStore()
+            this.initializeLogBackedStore(),
         );
     }
 
@@ -149,12 +149,12 @@ export class LogBackedStore extends LockableLog implements Store {
         if (this.redTo < totalSize) {
             const logFileBuilder = await this.getLogContents(
                 this.redTo,
-                totalSize
+                totalSize,
             );
             if (this.redTo === 0) {
                 ensure(
                     logFileBuilder.getMagicNumber() === 1263421767,
-                    "log file doesn't have magic number"
+                    "log file doesn't have magic number",
                 );
             }
             const bundles = logFileBuilder.getBundlesList();
@@ -170,7 +170,7 @@ export class LogBackedStore extends LockableLog implements Store {
                     ensure(identity, "chain start bundle has no identity");
                     this.identities.set(
                         `${info.medallion},${info.chainStart}`,
-                        identity
+                        identity,
                     );
                 } else {
                     ensure(!identity, "non-chain-start bundle has identity");
@@ -202,7 +202,7 @@ export class LogBackedStore extends LockableLog implements Store {
 
     async getContainerProperties(
         containerMuid: Muid,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Map<string, Value>> {
         await this.ready;
         return this.internalStore.getContainerProperties(containerMuid, asOf);
@@ -211,7 +211,7 @@ export class LogBackedStore extends LockableLog implements Store {
     async getOrderedEntries(
         container: Muid,
         through = Infinity,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Map<string, Entry>> {
         await this.ready;
         return this.internalStore.getOrderedEntries(container, through, asOf);
@@ -220,13 +220,13 @@ export class LogBackedStore extends LockableLog implements Store {
     async getEntriesBySourceOrTarget(
         vertex: Muid,
         source: boolean,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Entry[]> {
         await this.ready;
         return this.internalStore.getEntriesBySourceOrTarget(
             vertex,
             source,
-            asOf
+            asOf,
         );
     }
 
@@ -242,7 +242,7 @@ export class LogBackedStore extends LockableLog implements Store {
 
     async addBundle(
         bundle: BundleView,
-        claimChain?: boolean
+        claimChain?: boolean,
     ): Promise<Boolean> {
         // TODO(https://github.com/x5e/gink/issues/182): delay unlocking the file to give better throughput
         await this.ready;
@@ -258,7 +258,7 @@ export class LogBackedStore extends LockableLog implements Store {
             if (identity) {
                 this.identities.set(
                     `${info.medallion},${info.chainStart}`,
-                    bundle.builder.getIdentity()
+                    bundle.builder.getIdentity(),
                 );
             }
             if (claimChain) {
@@ -266,7 +266,7 @@ export class LogBackedStore extends LockableLog implements Store {
                 await this.claimChain(
                     info.medallion,
                     info.chainStart,
-                    getActorId()
+                    getActorId(),
                 );
             }
             this.chainTracker.markAsHaving(info);
@@ -296,7 +296,7 @@ export class LogBackedStore extends LockableLog implements Store {
     private async claimChain(
         medallion: Medallion,
         chainStart: ChainStart,
-        actorId?: ActorId
+        actorId?: ActorId,
     ): Promise<ClaimedChain> {
         await this.ready;
         await this.pullDataFromFile();
@@ -320,7 +320,7 @@ export class LogBackedStore extends LockableLog implements Store {
     }
 
     async getChainIdentity(
-        chainInfo: [Medallion, ChainStart]
+        chainInfo: [Medallion, ChainStart],
     ): Promise<string> {
         await this.ready;
         return this.identities.get(`${chainInfo[0]},${chainInfo[1]}`);
@@ -344,7 +344,7 @@ export class LogBackedStore extends LockableLog implements Store {
     async getEntryByKey(
         container?: Muid,
         key?: ScalarKey,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Entry | undefined> {
         await this.ready;
         return this.internalStore.getEntryByKey(container, key, asOf);
@@ -352,7 +352,7 @@ export class LogBackedStore extends LockableLog implements Store {
 
     async getKeyedEntries(
         container: Muid,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Map<string, Entry>> {
         await this.ready;
         return this.internalStore.getKeyedEntries(container, asOf);
@@ -360,7 +360,7 @@ export class LogBackedStore extends LockableLog implements Store {
 
     async getEntryById(
         entryMuid: Muid,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Entry | undefined> {
         await this.ready;
         return this.internalStore.getEntryById(entryMuid, asOf);

@@ -32,7 +32,7 @@ process.chdir(__dirname + "/..");
                 "<<<",
                 "bar",
             ],
-            { shell: shell }
+            { shell: shell },
         );
 
         if (result1.status !== 0) {
@@ -55,7 +55,7 @@ process.chdir(__dirname + "/..");
                 "<<<",
                 "baz",
             ],
-            { shell: shell }
+            { shell: shell },
         );
 
         if (result2.status !== 0) {
@@ -78,7 +78,7 @@ process.chdir(__dirname + "/..");
                 "<<<",
                 "zzz",
             ],
-            { shell: shell }
+            { shell: shell },
         );
 
         if (result3.status !== 0) {
@@ -91,7 +91,7 @@ process.chdir(__dirname + "/..");
                 "-c",
                 `"python3 -m gink ${TEST_DB_PATH} --log --format ${format} | cut -b 1-13 | sort -u | wc -l "`,
             ],
-            { shell: shell }
+            { shell: shell },
         );
 
         if (result4.status !== 0) {

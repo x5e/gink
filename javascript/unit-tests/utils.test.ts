@@ -87,15 +87,15 @@ it("canonical string representation of muids", async () => {
     const tupleFromString = strToMuid(muidTupleAsString);
     ensure(
         tupleFromString.timestamp === muidTuple[0],
-        `Timestamp: ${tupleFromString.timestamp} should be ${muidTuple[0]}`
+        `Timestamp: ${tupleFromString.timestamp} should be ${muidTuple[0]}`,
     );
     ensure(
         tupleFromString.medallion === muidTuple[1],
-        `Medallion: ${tupleFromString.medallion} should be ${muidTuple[1]}`
+        `Medallion: ${tupleFromString.medallion} should be ${muidTuple[1]}`,
     );
     ensure(
         tupleFromString.offset === muidTuple[2],
-        `Offset: ${tupleFromString.offset} should be ${muidTuple[2]}`
+        `Offset: ${tupleFromString.offset} should be ${muidTuple[2]}`,
     );
 
     const muid = {
@@ -108,15 +108,15 @@ it("canonical string representation of muids", async () => {
     const muid1FromString = strToMuid(muid1String);
     ensure(
         muid1FromString.timestamp === muid.timestamp,
-        `Timestamp: ${muid1FromString.timestamp} should be ${muid.timestamp}`
+        `Timestamp: ${muid1FromString.timestamp} should be ${muid.timestamp}`,
     );
     ensure(
         muid1FromString.medallion === muid.medallion,
-        `Medallion: ${muid1FromString.medallion} should be ${muid.medallion}`
+        `Medallion: ${muid1FromString.medallion} should be ${muid.medallion}`,
     );
     ensure(
         muid1FromString.offset === muid.offset,
-        `Offset: ${muid1FromString.offset} should be ${muid.offset}`
+        `Offset: ${muid1FromString.offset} should be ${muid.offset}`,
     );
 
     const muid2 = {
@@ -129,15 +129,15 @@ it("canonical string representation of muids", async () => {
     const muid2FromString = strToMuid(muid2String);
     ensure(
         muid2FromString.timestamp === muid2.timestamp,
-        `Timestamp: ${muid2FromString.timestamp} should be ${muid2.timestamp}`
+        `Timestamp: ${muid2FromString.timestamp} should be ${muid2.timestamp}`,
     );
     ensure(
         muid2FromString.medallion === muid2.medallion,
-        `Medallion: ${muid2FromString.medallion} should be ${muid2.medallion}`
+        `Medallion: ${muid2FromString.medallion} should be ${muid2.medallion}`,
     );
     ensure(
         muid2FromString.offset === muid2.offset,
-        `Offset: ${muid2FromString.offset} should be ${muid2.offset}`
+        `Offset: ${muid2FromString.offset} should be ${muid2.offset}`,
     );
 
     const muid3 = {
@@ -150,15 +150,15 @@ it("canonical string representation of muids", async () => {
     const muid3FromString = strToMuid(muid3String);
     ensure(
         muid3FromString.timestamp === muid3.timestamp,
-        `Timestamp: ${muid3FromString.timestamp} should be ${muid3.timestamp}`
+        `Timestamp: ${muid3FromString.timestamp} should be ${muid3.timestamp}`,
     );
     ensure(
         muid3FromString.medallion === muid3.medallion,
-        `Medallion: ${muid3FromString.medallion} should be ${muid3.medallion}`
+        `Medallion: ${muid3FromString.medallion} should be ${muid3.medallion}`,
     );
     ensure(
         muid3FromString.offset === muid3.offset,
-        `Offset: ${muid3FromString.offset} should be ${muid3.offset}`
+        `Offset: ${muid3FromString.offset} should be ${muid3.offset}`,
     );
 });
 
@@ -202,7 +202,7 @@ it("encodeToken and decodeToken", function () {
     ensure(backToToken.includes("token "));
     ensure(
         token === backToToken.substring(7),
-        `original: '${token}' | fromHex: '${backToToken.substring(7)}'`
+        `original: '${token}' | fromHex: '${backToToken.substring(7)}'`,
     );
 });
 

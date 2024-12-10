@@ -1,4 +1,10 @@
-import { Database, IndexedDbStore, MemoryStore, Directory, Property } from "../implementation";
+import {
+    Database,
+    IndexedDbStore,
+    MemoryStore,
+    Directory,
+    Property,
+} from "../implementation";
 import { ensure, sameData } from "../implementation/utils";
 
 it("Property.basics", async function () {
@@ -6,7 +12,7 @@ it("Property.basics", async function () {
         new IndexedDbStore("Property.basics", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const gd = Directory.get(instance);
         const property = await Property.create(instance);
@@ -31,7 +37,7 @@ it("Property.toMap", async function () {
         new IndexedDbStore("Property.toMap", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const gd = Directory.get(instance);
         const property = Property.get(instance);
@@ -42,11 +48,11 @@ it("Property.toMap", async function () {
         ensure(asMap.size === 2);
         ensure(
             asObject["-1,-1,4"] === "foobar",
-            Array.from(asMap.keys()).toString()
+            Array.from(asMap.keys()).toString(),
         );
         ensure(
             asObject["-1,-1,10"] === true,
-            Array.from(asMap.keys()).toString()
+            Array.from(asMap.keys()).toString(),
         );
     }
 });
@@ -56,7 +62,7 @@ it("Global property sets and gets names", async function () {
         new IndexedDbStore("Global property sets and gets names", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const gd = Directory.get(instance);
         const d2 = await Directory.create(instance);

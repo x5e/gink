@@ -6,27 +6,27 @@ import { toJson, interpret } from "./factories";
 import { Behavior, ContainerBuilder } from "./builders";
 
 export class Group extends Container {
-    private constructor(
-        database: Database,
-        address: Muid,
-    ) {
+    private constructor(database: Database, address: Muid) {
         super(database, address, Behavior.GROUP);
     }
 
     static get(database?: Database, muid?: Muid): Group {
         database = database || Database.recent;
-        if (! muid) {
-            muid = {timestamp: -1, medallion: -1, offset: Behavior.GROUP}
+        if (!muid) {
+            muid = { timestamp: -1, medallion: -1, offset: Behavior.GROUP };
         }
         return new Group(database, muid);
     }
 
     static async create(database?: Database, meta?: Meta): Promise<Group> {
         database = database || Database.recent;
-        const muid = await Container.addContainer({behavior: Behavior.GROUP, database, meta});
+        const muid = await Container.addContainer({
+            behavior: Behavior.GROUP,
+            database,
+            meta,
+        });
         return new Group(database, muid);
     }
-
 
     /**
      * Includes a Muid or Container in the group.
@@ -69,7 +69,7 @@ export class Group extends Container {
         const entry = await this.database.store.getEntryByKey(
             this.address,
             key,
-            asOf
+            asOf,
         );
         if (entry && !entry.deletion) {
             return true;
@@ -88,7 +88,7 @@ export class Group extends Container {
         return (async function* () {
             const entries = await thisGroup.database.store.getKeyedEntries(
                 thisGroup.address,
-                asOf
+                asOf,
             );
             for (const [key, entry] of entries) {
                 container = await interpret(entry, thisGroup.database);
@@ -111,7 +111,7 @@ export class Group extends Container {
         let container;
         const entries = await thisList.database.store.getKeyedEntries(
             thisList.address,
-            asOf
+            asOf,
         );
         for (const [key, entry] of entries) {
             container = await interpret(entry, thisList.database);
@@ -119,32 +119,27 @@ export class Group extends Container {
                 toArray.push(container);
             } else {
                 throw Error(
-                    "All entries should be containers - something is broken"
+                    "All entries should be containers - something is broken",
                 );
             }
         }
         return toArray;
     }
 
-    async reset(
-        toTime?: AsOf,
-        recurse?,
-        meta?: Meta,
-    ): Promise<void> {
-        if (recurse)
-            throw new Error("recurse not implemented for Group");
+    async reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void> {
+        if (recurse) throw new Error("recurse not implemented for Group");
         const bundler: Bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, {bundler});
+            this.clear(false, { bundler });
         } else {
             const union = new Set<MuidTuple>();
             const entriesThen = await this.database.store.getKeyedEntries(
                 this.address,
-                toTime
+                toTime,
             );
             const entriesNow = await this.database.store.getKeyedEntries(
-                this.address
+                this.address,
             );
 
             for (const [key, entry] of entriesThen) {
@@ -160,50 +155,46 @@ export class Group extends Container {
                 const thenEntry = await this.database.store.getEntryByKey(
                     this.address,
                     genericKey,
-                    toTime
+                    toTime,
                 );
                 const nowEntry = await this.database.store.getEntryByKey(
                     this.address,
-                    genericKey
+                    genericKey,
                 );
                 ensure(nowEntry || thenEntry, "both then and now undefined?");
                 if (!nowEntry) {
                     // This key was present then, but not now, so we need to add it back
                     ensure(thenEntry, "missing then entry?");
-                    await this.addEntry(genericKey, thenEntry.value, {bundler});
+                    await this.addEntry(genericKey, thenEntry.value, {
+                        bundler,
+                    });
                 } else if (!thenEntry) {
                     // This key is present now, but not then, so we need to delete it
                     ensure(nowEntry, "missing now entry?");
-                    await this.addEntry(
-                        genericKey,
-                        Container.DELETION,
-                        {bundler}
-                    );
+                    await this.addEntry(genericKey, Container.DELETION, {
+                        bundler,
+                    });
                 } else if (nowEntry.deletion !== thenEntry.deletion) {
                     if (nowEntry.deletion) {
                         // Present then, deleted now. Need to revive.
-                        await this.addEntry(
-                            genericKey,
-                            Container.INCLUSION,
-                            {bundler}
-                        );
+                        await this.addEntry(genericKey, Container.INCLUSION, {
+                            bundler,
+                        });
                     } else if (thenEntry.deletion) {
                         // Present now, deleted then. Need to delete.
-                        await this.addEntry(
-                            genericKey,
-                            Container.DELETION,
-                            {bundler}
-                        );
+                        await this.addEntry(genericKey, Container.DELETION, {
+                            bundler,
+                        });
                     }
                 } else {
                     ensure(
                         nowEntry.deletion === thenEntry.deletion,
-                        "last case should be same entry"
+                        "last case should be same entry",
                     );
                 }
             }
         }
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
     }
@@ -219,7 +210,7 @@ export class Group extends Container {
     async toJson(
         indent: number | boolean = false,
         asOf?: AsOf,
-        seen?: Set<string>
+        seen?: Set<string>,
     ): Promise<string> {
         //TODO(https://github.com/google/gink/issues/62): add indentation
         ensure(indent === false, "indent not implemented");
@@ -240,7 +231,7 @@ export class Group extends Container {
                 container,
                 indent === false ? false : +indent + 1,
                 asOf,
-                seen
+                seen,
             );
         }
         returning += "]";

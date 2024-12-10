@@ -13,7 +13,7 @@ it("create a box; set and get data in it", async function () {
         new IndexedDbStore("Box.test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const aBox: Box = await Box.create(instance);
 
@@ -49,13 +49,13 @@ it("set a box in a bundler", async function () {
         new IndexedDbStore("box.test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         const aBox: Box = await Box.create(instance);
 
         // set the value in a bundler
         const bundler = await instance.startBundle();
-        aBox.set("a value", {bundler});
+        aBox.set("a value", { bundler });
 
         // confirm that change isn't visible yet
         const size0 = await aBox.size();
@@ -74,12 +74,12 @@ it("create a box and set in same CS", async function () {
         new IndexedDbStore("box.test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         // create a box and set in on CL
         const bundler = await instance.startBundle();
-        const box: Box = await Box.create(instance, {bundler});
-        const change: Muid = await box.set("a value", {bundler});
+        const box: Box = await Box.create(instance, { bundler });
+        const change: Muid = await box.set("a value", { bundler });
         await bundler.commit();
 
         // make sure the change and the box have the same timestamp
@@ -96,7 +96,7 @@ it("set a value in a box then clear it", async function () {
         new IndexedDbStore("box.test4", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         // put a value into the box
         const box = await Box.create(instance);
@@ -120,7 +120,7 @@ it("Box.toJson", async function () {
         new IndexedDbStore("box.toJson", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         // put a value into the box
         const box = await Box.create(instance);
@@ -138,7 +138,7 @@ it("Box.Store", async function () {
         new IndexedDbStore("box.Store", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
         // put a value into the box
         const box = await Box.create(instance);

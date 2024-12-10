@@ -20,10 +20,15 @@ it("test bundle", async () => {
         new IndexedDbStore("Database.bundle", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
-        const bundleInfo = await (await instance.startBundle({comment:"hello world"})).commit();
-        ensure(bundleInfo.comment === "hello world", `comment="${bundleInfo.comment}"`);
+        const bundleInfo = await (
+            await instance.startBundle({ comment: "hello world" })
+        ).commit();
+        ensure(
+            bundleInfo.comment === "hello world",
+            `comment="${bundleInfo.comment}"`,
+        );
         const chainTracker = await store.getChainTracker();
         const allChains = chainTracker.getChains();
         ensure(allChains.length === 1);
@@ -37,10 +42,15 @@ it("test commit", async () => {
         new IndexedDbStore("test commit", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database({store});
+        const instance = new Database({ store });
         await instance.ready;
-        const bundleInfo = await (await instance.startBundle()).commit("hello world");
-        ensure(bundleInfo.comment === "hello world", `comment="${bundleInfo.comment}"`);
+        const bundleInfo = await (
+            await instance.startBundle()
+        ).commit("hello world");
+        ensure(
+            bundleInfo.comment === "hello world",
+            `comment="${bundleInfo.comment}"`,
+        );
         const chainTracker = await store.getChainTracker();
         const allChains = chainTracker.getChains();
         ensure(allChains.length === 1);
@@ -55,7 +65,7 @@ it("test listeners", async () => {
         new MemoryStore(true),
     ]) {
         await store.ready;
-        const db = new Database({store});
+        const db = new Database({ store });
         await db.ready;
 
         const root = Directory.get();
@@ -135,7 +145,7 @@ it("test full database reset", async function () {
         new MemoryStore(true),
     ]) {
         await store.ready;
-        const db = new Database({store});
+        const db = new Database({ store });
         await db.ready;
         const prop = await Property.create();
 
@@ -295,7 +305,7 @@ it("test full database reset", async function () {
         // Test resetting graph
         const prop2 = await Property.create();
         const v1 = await Vertex.create();
-        const v2 = await Vertex.create()
+        const v2 = await Vertex.create();
         const et = await EdgeType.create();
         const e1 = await et.create(v1, v2);
         const e2 = await et.create(v2, v1);

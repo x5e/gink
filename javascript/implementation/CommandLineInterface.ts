@@ -65,7 +65,7 @@ export class CommandLineInterface {
             logToStdErr(`using data root ${args.data_root}`);
             ensure(
                 args.listen_on,
-                "must provide port for routing server to listen on hint: -l [port]"
+                "must provide port for routing server to listen on hint: -l [port]",
             );
         } else if (args.data_file) {
             logToStdErr(`using data file=${args.data_file}`);
@@ -91,7 +91,11 @@ export class CommandLineInterface {
             });
         } else {
             // port not set so don't listen for incoming connections
-            this.instance = new Database({store: this.store, identity, logger});
+            this.instance = new Database({
+                store: this.store,
+                identity,
+                logger,
+            });
         }
     }
 
@@ -102,8 +106,8 @@ export class CommandLineInterface {
             globalThis.root = Directory.get(this.instance);
             this.instance.addListener(async (bundle: BundleView) =>
                 logToStdErr(
-                    `received bundle: ${JSON.stringify(bundle.info, ["medallion", "timestamp", "comment"])}`
-                )
+                    `received bundle: ${JSON.stringify(bundle.info, ["medallion", "timestamp", "comment"])}`,
+                ),
             );
             for (const target of this.targets) {
                 logToStdErr(`connecting to: ${target}`);
@@ -116,7 +120,7 @@ export class CommandLineInterface {
                     logToStdErr(`connected!`);
                 } catch (e) {
                     logToStdErr(
-                        `Failed connection to ${target}. Bad Auth token?\n` + e
+                        `Failed connection to ${target}. Bad Auth token?\n` + e,
                     );
                 }
             }

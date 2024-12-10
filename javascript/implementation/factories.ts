@@ -23,15 +23,14 @@ import { EdgeType } from "./EdgeType";
 export async function construct(
     database: Database,
     address: Muid,
-    containerBuilder?: ContainerBuilder
+    containerBuilder?: ContainerBuilder,
 ): Promise<Container> {
     if (address.timestamp === -1) {
         if (address.offset === Behavior.DIRECTORY)
             return Directory.get(database, address);
         if (address.offset === Behavior.SEQUENCE)
             return Sequence.get(database, address);
-        if (address.offset === Behavior.BOX)
-            return Box.get(database, address);
+        if (address.offset === Behavior.BOX) return Box.get(database, address);
         if (address.offset === Behavior.PAIR_MAP)
             return PairMap.get(database, address);
         if (address.offset === Behavior.PAIR_SET)
@@ -48,7 +47,7 @@ export async function construct(
 
     if (containerBuilder === undefined) {
         const containerBytes = ensure(
-            await database.store.getContainerBytes(address)
+            await database.store.getContainerBytes(address),
         );
         containerBuilder = <ContainerBuilder>(
             ContainerBuilder.deserializeBinary(containerBytes)
@@ -77,13 +76,13 @@ export async function construct(
         return Group.get(database, address);
 
     throw new Error(
-        `container type not recognized/implemented: ${containerBuilder.getBehavior()}`
+        `container type not recognized/implemented: ${containerBuilder.getBehavior()}`,
     );
 }
 
 export async function interpret(
     entry: Entry,
-    database: Database
+    database: Database,
 ): Promise<Container | Value | undefined> {
     if (entry === undefined || entry.deletion) {
         return undefined;
@@ -98,7 +97,7 @@ export async function interpret(
         return await construct(database, muidTupleToMuid(entry.storageKey));
     }
     throw new Error(
-        `don't know how to interpret entry: ${JSON.stringify(entry)}`
+        `don't know how to interpret entry: ${JSON.stringify(entry)}`,
     );
 }
 
@@ -106,7 +105,7 @@ export async function toJson(
     value: Value | Container,
     indent: number | boolean = false,
     asOf?: AsOf,
-    seen?: Set<string>
+    seen?: Set<string>,
 ): Promise<string> {
     return value instanceof Container
         ? await value.toJson(indent, asOf, seen)

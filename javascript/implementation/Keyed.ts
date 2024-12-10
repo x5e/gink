@@ -1,5 +1,13 @@
 import { Container } from "./Container";
-import { Value, Muid, ScalarKey, AsOf, StorageKey, Meta, Bundler } from "./typedefs";
+import {
+    Value,
+    Muid,
+    ScalarKey,
+    AsOf,
+    StorageKey,
+    Meta,
+    Bundler,
+} from "./typedefs";
 import {
     ensure,
     muidToString,
@@ -55,12 +63,12 @@ export class Keyed<
      */
     async get(
         key: GenericType,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Container | Value | undefined> {
         const entry = await this.database.store.getEntryByKey(
             this.address,
             key,
-            asOf
+            asOf,
         );
         return interpret(entry, this.database);
     }
@@ -68,7 +76,7 @@ export class Keyed<
     async size(asOf?: AsOf): Promise<number> {
         const entries = await this.database.store.getKeyedEntries(
             this.address,
-            asOf
+            asOf,
         );
         return entries.size;
     }
@@ -77,7 +85,7 @@ export class Keyed<
         const result = await this.database.store.getEntryByKey(
             this.address,
             key,
-            asOf
+            asOf,
         );
         if (result !== undefined && result.deletion) {
             return false;
@@ -89,7 +97,7 @@ export class Keyed<
         if (this.behavior === Behavior.PROPERTY) {
             throw new Error(
                 "Cannot directly reset a property. " +
-                    "Calling reset on a Container will reset its properties."
+                    "Calling reset on a Container will reset its properties.",
             );
         }
         if (recurse === true) {
@@ -101,19 +109,19 @@ export class Keyed<
         const bundler: Bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, {bundler});
+            this.clear(false, { bundler });
         } else {
             const keys: Set<StorageKey> = new Set();
             const thenEntries = await this.database.store.getKeyedEntries(
                 this.address,
-                toTime
+                toTime,
             );
             for (const [key, entry] of thenEntries) {
                 keys.add(entry.storageKey);
             }
 
             const nowEntries = await this.database.store.getKeyedEntries(
-                this.address
+                this.address,
             );
             for (const [key, entry] of nowEntries) {
                 keys.add(entry.storageKey);
@@ -124,42 +132,43 @@ export class Keyed<
                 const thenEntry = await this.database.store.getEntryByKey(
                     this.address,
                     genericKey,
-                    toTime
+                    toTime,
                 );
                 const thenValue: Value | Container =
                     thenEntry?.pointeeList.length > 0
                         ? await construct(
                               this.database,
-                              muidTupleToMuid(thenEntry.pointeeList[0])
+                              muidTupleToMuid(thenEntry.pointeeList[0]),
                           )
                         : thenEntry?.value;
 
                 const nowEntry = await this.database.store.getEntryByKey(
                     this.address,
-                    genericKey
+                    genericKey,
                 );
                 const nowValue: Value | Container =
                     nowEntry?.pointeeList.length > 0
                         ? await construct(
                               this.database,
-                              muidTupleToMuid(nowEntry.pointeeList[0])
+                              muidTupleToMuid(nowEntry.pointeeList[0]),
                           )
                         : nowEntry?.value;
 
                 if (!nowEntry) {
                     // This key was present then, but not now, so we need to add it back
-                    if (thenEntry && ! thenEntry.deletion) {
-                        ensure(thenValue, `missing for key: ${key}, ${JSON.stringify(genericKey)}`);
-                        await this.addEntry(genericKey, thenValue, {bundler});
+                    if (thenEntry && !thenEntry.deletion) {
+                        ensure(
+                            thenValue,
+                            `missing for key: ${key}, ${JSON.stringify(genericKey)}`,
+                        );
+                        await this.addEntry(genericKey, thenValue, { bundler });
                     }
                 } else if (!thenEntry) {
                     // This key is present now, but not then, so we need to delete it
                     ensure(nowEntry && nowValue, "missing value?");
-                    await this.addEntry(
-                        genericKey,
-                        Container.DELETION,
-                        {bundler}
-                    );
+                    await this.addEntry(genericKey, Container.DELETION, {
+                        bundler,
+                    });
                 } else {
                     // Present both then and now. Check if the values are different
                     if (nowValue !== thenValue) {
@@ -173,7 +182,9 @@ export class Keyed<
                             )
                         ) {
                             // Update the entry
-                            await this.addEntry(genericKey, thenValue, {bundler});
+                            await this.addEntry(genericKey, thenValue, {
+                                bundler,
+                            });
                         }
                     }
                 }
@@ -182,12 +193,12 @@ export class Keyed<
                     thenValue instanceof Container &&
                     !recurse.has(muidToString(thenValue.address))
                 ) {
-                    await thenValue.reset(toTime, recurse, {bundler});
+                    await thenValue.reset(toTime, recurse, { bundler });
                 }
             }
         }
 
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
     }
@@ -201,7 +212,7 @@ export class Keyed<
     async toMap(asOf?: AsOf): Promise<Map<StorageKey, Value | Container>> {
         const entries = await this.database.store.getKeyedEntries(
             this.address,
-            asOf
+            asOf,
         );
         const resultMap = new Map();
         for (const [key, entry] of entries) {
@@ -229,7 +240,7 @@ export class Keyed<
     async toJson(
         indent: number | boolean = false,
         asOf?: AsOf,
-        seen?: Set<string>
+        seen?: Set<string>,
     ): Promise<string> {
         ensure(indent === false, "indent not implemented");
         if (seen === undefined) seen = new Set();
@@ -263,7 +274,7 @@ export class Keyed<
                 returning += await (
                     await construct(
                         this.database,
-                        muidTupleToMuid(entry.pointeeList[0])
+                        muidTupleToMuid(entry.pointeeList[0]),
                     )
                 ).toJson(indent === false ? false : +indent + 1, asOf, seen);
             } else {

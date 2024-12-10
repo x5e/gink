@@ -6,10 +6,7 @@ import { toJson, interpret } from "./factories";
 import { Behavior } from "./builders";
 
 export class Box extends Container {
-    private constructor(
-        database: Database,
-        address: Muid
-    ) {
+    private constructor(database: Database, address: Muid) {
         super(database, address, Behavior.BOX);
         if (this.address.timestamp < 0) {
             ensure(address.offset === Behavior.BOX);
@@ -17,8 +14,8 @@ export class Box extends Container {
     }
 
     static get(database?: Database, muid?: Muid): Box {
-        if (! muid) {
-            muid = {timestamp: -1, medallion: -1, offset: Behavior.BOX}
+        if (!muid) {
+            muid = { timestamp: -1, medallion: -1, offset: Behavior.BOX };
         }
         database = database || Database.recent;
         return new Box(database, muid);
@@ -26,7 +23,11 @@ export class Box extends Container {
 
     static async create(database?: Database, meta?: Meta): Promise<Box> {
         database = database || Database.recent;
-        const muid = await Container.addContainer({behavior: Behavior.BOX, database, meta});
+        const muid = await Container.addContainer({
+            behavior: Behavior.BOX,
+            database,
+            meta,
+        });
         return new Box(database, muid);
     }
 
@@ -42,10 +43,7 @@ export class Box extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created entry
      */
-    async set(
-        value: Value | Container,
-        meta?: Meta
-    ): Promise<Muid> {
+    async set(value: Value | Container, meta?: Meta): Promise<Muid> {
         return this.addEntry(undefined, value, meta);
     }
 
@@ -57,7 +55,7 @@ export class Box extends Container {
         const entry = await this.database.store.getEntryByKey(
             this.address,
             undefined,
-            asOf
+            asOf,
         );
         return interpret(entry, this.database);
     }
@@ -71,7 +69,7 @@ export class Box extends Container {
         const entry = await this.database.store.getEntryByKey(
             this.address,
             undefined,
-            asOf
+            asOf,
         );
         return +!(entry === undefined || entry.deletion);
     }
@@ -86,22 +84,22 @@ export class Box extends Container {
         const bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, {bundler});
+            this.clear(false, { bundler });
         } else {
             const thereNow = await this.get();
             const thereThen = await this.get(toTime);
             if (thereThen !== thereNow) {
-                await this.set(thereThen, {bundler});
+                await this.set(thereThen, { bundler });
             }
             if (
                 recurse &&
                 thereThen instanceof Container &&
                 !recurse.has(muidToString(thereThen.address))
             ) {
-                await thereThen.reset(toTime, recurse,{bundler},);
+                await thereThen.reset(toTime, recurse, { bundler });
             }
         }
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
     }
@@ -115,7 +113,7 @@ export class Box extends Container {
         const entry = await this.database.store.getEntryByKey(
             this.address,
             undefined,
-            asOf
+            asOf,
         );
         return entry === undefined || entry.deletion;
     }
@@ -131,11 +129,11 @@ export class Box extends Container {
     async toJson(
         indent: number | boolean = false,
         asOf?: AsOf,
-        seen?: Set<string>
+        seen?: Set<string>,
     ): Promise<string> {
         if (seen === undefined) seen = new Set();
         const contents = await this.get(asOf);
         if (contents === undefined) return "[null]";
-        return "[" + await toJson(contents, indent, asOf, seen) + "]";
+        return "[" + (await toJson(contents, indent, asOf, seen)) + "]";
     }
 }

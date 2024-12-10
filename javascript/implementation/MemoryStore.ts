@@ -127,7 +127,7 @@ export class MemoryStore implements Store {
 
     getVerifyKey(chainInfo: [Medallion, ChainStart]): Promise<Bytes> {
         return Promise.resolve(
-            this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`)
+            this.verifyKeys.get(`${chainInfo[0]},${chainInfo[1]}`),
         );
     }
 
@@ -155,7 +155,7 @@ export class MemoryStore implements Store {
     private claimChain(
         medallion: Medallion,
         chainStart: ChainStart,
-        actorId?: ActorId
+        actorId?: ActorId,
     ): Promise<ClaimedChain> {
         const claim = {
             medallion,
@@ -169,7 +169,7 @@ export class MemoryStore implements Store {
 
     getChainIdentity(chainInfo: [Medallion, ChainStart]): Promise<string> {
         return Promise.resolve(
-            this.identities.get(`${chainInfo[0]},${chainInfo[1]}`)
+            this.identities.get(`${chainInfo[0]},${chainInfo[1]}`),
         );
     }
 
@@ -185,14 +185,14 @@ export class MemoryStore implements Store {
 
     async addBundle(
         bundle: BundleView,
-        claimChain?: boolean
+        claimChain?: boolean,
     ): Promise<boolean> {
         await this.ready;
         const bundleBuilder: BundleBuilder = bundle.builder;
         const bundleInfo = bundle.info;
         const { timestamp, medallion, chainStart, priorTime } = bundleInfo;
         const oldChainInfo = this.chainInfos.get(
-            medallionChainStartToString([medallion, chainStart])
+            medallionChainStartToString([medallion, chainStart]),
         );
         if (oldChainInfo || priorTime) {
             if (oldChainInfo?.timestamp >= timestamp) {
@@ -201,7 +201,7 @@ export class MemoryStore implements Store {
             if (oldChainInfo?.timestamp !== priorTime) {
                 throw new Error(
                     `missing prior chain entry for ${JSON.stringify(bundleInfo)}, ` +
-                        `have ${JSON.stringify(oldChainInfo)}`
+                        `have ${JSON.stringify(oldChainInfo)}`,
                 );
             }
             const priorHash: Bytes = bundleBuilder.getPriorHash();
@@ -235,13 +235,13 @@ export class MemoryStore implements Store {
             this.claimChain(
                 bundleInfo.medallion,
                 bundleInfo.chainStart,
-                getActorId()
+                getActorId(),
             );
         }
 
         this.chainInfos.set(
             medallionChainStartToString([medallion, chainStart]),
-            bundleInfo
+            bundleInfo,
         );
         const bundleKey: BundleInfoTuple =
             MemoryStore.bundleInfoToKey(bundleInfo);
@@ -253,7 +253,7 @@ export class MemoryStore implements Store {
             const keyId = bundleBuilder.getKeyId();
             if (bundleBuilder.getChangesList().length > 0) {
                 throw new Error(
-                    "did not expect plain changes when using encryption"
+                    "did not expect plain changes when using encryption",
                 );
             }
             if (!keyId) {
@@ -261,7 +261,7 @@ export class MemoryStore implements Store {
             }
             const symmetricKey = ensure(
                 await this.getSymmetricKey(keyId),
-                "could not find symmetric key referenced in bundle"
+                "could not find symmetric key referenced in bundle",
             );
             const decrypted = decryptMessage(encrypted, symmetricKey);
             const innerBundleBuilder = <BundleBuilder>(
@@ -288,7 +288,7 @@ export class MemoryStore implements Store {
                     .serializeBinary();
                 this.containers.set(
                     muidTupleToString(changeAddressTuple),
-                    containerBytes
+                    containerBytes,
                 );
                 continue;
             }
@@ -303,7 +303,7 @@ export class MemoryStore implements Store {
                 if (entryBuilder.hasPair()) {
                     [sourceList, targetList] = buildPairLists(
                         entryBuilder,
-                        bundleInfo
+                        bundleInfo,
                     );
                 }
                 const entry: Entry = {
@@ -327,7 +327,7 @@ export class MemoryStore implements Store {
             }
             if (changeBuilder.hasMovement()) {
                 this.applyMovement(
-                    extractMovement(changeBuilder, bundleInfo, offset)
+                    extractMovement(changeBuilder, bundleInfo, offset),
                 );
                 continue;
             }
@@ -335,7 +335,7 @@ export class MemoryStore implements Store {
                 const clearanceBuilder = changeBuilder.getClearance();
                 const container = builderToMuid(
                     clearanceBuilder.getContainer(),
-                    { timestamp, medallion, offset }
+                    { timestamp, medallion, offset },
                 );
                 const containerMuidTuple: MuidTuple = [
                     container.timestamp,
@@ -348,7 +348,7 @@ export class MemoryStore implements Store {
                     while (true) {
                         const it = this.placements.lowerBound(containerIdStr);
                         const to = this.placements.upperBound(
-                            `${containerIdStr},~,~`
+                            `${containerIdStr},~,~`,
                         );
                         if (it.equals(to) || !it.key) break;
                         this.placements.erase(it);
@@ -357,16 +357,16 @@ export class MemoryStore implements Store {
                     }
                     // When doing a purging clear, remove previous clearances for the container.
                     const lowerClearances = this.clearances.lowerBound(
-                        `${containerIdStr}`
+                        `${containerIdStr}`,
                     );
                     const upperClearances = this.clearances.upperBound(
-                        `${containerIdStr},~`
+                        `${containerIdStr},~`,
                     );
                     while (lowerClearances) {
                         if (lowerClearances.equals(upperClearances)) break;
                         if (
                             muidTupleToString(
-                                lowerClearances.value.containerId
+                                lowerClearances.value.containerId,
                             ) !== containerIdStr
                         )
                             break;
@@ -382,7 +382,7 @@ export class MemoryStore implements Store {
                 // TODO: have entries check to see if there's a purging clearance when accepting an entry
                 this.clearances.set(
                     `${containerIdStr},${muidTupleToString(clearance.clearanceId)}`,
-                    clearance
+                    clearance,
                 );
                 continue;
             }
@@ -424,11 +424,11 @@ export class MemoryStore implements Store {
         } else {
             const iterator = toLastWithPrefixBeforeSuffix(
                 this.locations,
-                entryIdStr
+                entryIdStr,
             );
             if (!iterator) {
                 console.error(
-                    `attempting to move something I don't have any record of: ${entryIdStr}`
+                    `attempting to move something I don't have any record of: ${entryIdStr}`,
                 );
                 return;
             }
@@ -474,11 +474,11 @@ export class MemoryStore implements Store {
     getEntryByKey(
         container?: Muid,
         key?: ScalarKey | Muid | [Muid, Muid],
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Entry | undefined> {
         try {
             return Promise.resolve(
-                this.getEntryByKeyHelper(container, key, asOf)
+                this.getEntryByKeyHelper(container, key, asOf),
             );
         } catch (error) {
             return Promise.reject(error);
@@ -488,7 +488,7 @@ export class MemoryStore implements Store {
     getEntryByKeyHelper(
         container?: Muid,
         key?: ScalarKey | Muid | [Muid, Muid],
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Entry | undefined {
         const asOfTs = asOf ? this.asOfToTimestamp(asOf) : generateTimestamp();
         const desiredSrc: [number, number, number] = [
@@ -499,7 +499,7 @@ export class MemoryStore implements Store {
         const srcAsStr = muidTupleToString(desiredSrc);
         let clearanceTime: Timestamp = this.getLastClearanceTime(
             srcAsStr,
-            asOfTs
+            asOfTs,
         );
         const semanticKey = toStorageKey(key);
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
@@ -507,7 +507,7 @@ export class MemoryStore implements Store {
         const iterator = toLastWithPrefixBeforeSuffix(
             this.placements,
             prefix,
-            asOfTsStr
+            asOfTsStr,
         );
         if (!iterator) return undefined;
         const entry: Entry = iterator.value;
@@ -539,7 +539,7 @@ export class MemoryStore implements Store {
 
     async getKeyedEntries(
         container: Muid,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Map<string, Entry>> {
         const asOfTs = asOf ? this.asOfToTimestamp(asOf) : generateTimestamp();
         const asOfTsStr = muidTupleToString([asOfTs, 0, 0]);
@@ -551,7 +551,7 @@ export class MemoryStore implements Store {
         const srcAsStr = muidTupleToString(desiredSrc);
         const clearanceTime: Timestamp = this.getLastClearanceTime(
             srcAsStr,
-            asOfTs
+            asOfTs,
         );
         const clearTimeStr = muidTupleToString([clearanceTime, 0, 0]);
         const iterator = this.placements.lowerBound(srcAsStr);
@@ -574,7 +574,7 @@ export class MemoryStore implements Store {
                     entry.behavior === Behavior.GROUP ||
                     entry.behavior === Behavior.PAIR_SET ||
                     entry.behavior === Behavior.PAIR_MAP ||
-                    entry.behavior === Behavior.PROPERTY
+                    entry.behavior === Behavior.PROPERTY,
             );
 
             const key = storageKeyToString(entry.storageKey);
@@ -595,7 +595,7 @@ export class MemoryStore implements Store {
         const srcAsStr = muidTupleToString(desiredSrc);
         const clearanceTime: Timestamp = this.getLastClearanceTime(
             srcAsStr,
-            asOfTs
+            asOfTs,
         );
         const clearTimeStr = muidTupleToString([clearanceTime, 0, 0]);
         const iterator = this.byName.lowerBound(name);
@@ -619,7 +619,7 @@ export class MemoryStore implements Store {
 
     async getContainerProperties(
         containerMuid: Muid,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Map<string, Value>> {
         const resultMap = new Map<string, Value>();
         const asOfTs = asOf ? this.asOfToTimestamp(asOf) : generateTimestamp();
@@ -634,11 +634,9 @@ export class MemoryStore implements Store {
             iterator.next()
         ) {
             const parts = iterator.key.split(",");
-            if (parts[0] !== strMuid)
-                break;
+            if (parts[0] !== strMuid) break;
             const entry = iterator.value;
-            if (!(entry.behavior === Behavior.PROPERTY))
-                continue;
+            if (!(entry.behavior === Behavior.PROPERTY)) continue;
             const propertyMuid = muidTupleToString(entry.containerId);
             const clearTime = this.getLastClearanceTime(propertyMuid, asOfTs);
             const entryMuid = strToMuid(parts[1]);
@@ -668,17 +666,17 @@ export class MemoryStore implements Store {
     async getOrderedEntries(
         container: Muid,
         through = Infinity,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Map<string, Entry>> {
         return Promise.resolve(
-            this.getOrderedEntriesSync(container, through, asOf)
+            this.getOrderedEntriesSync(container, through, asOf),
         );
     }
 
     getOrderedEntriesSync(
         container: Muid,
         through = Infinity,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Map<string, Entry> {
         const asOfTs: Timestamp = asOf
             ? this.asOfToTimestamp(asOf)
@@ -693,7 +691,7 @@ export class MemoryStore implements Store {
         const containerIdStr = muidTupleToString(containerId);
         let clearanceTime: Timestamp = this.getLastClearanceTime(
             containerIdStr,
-            asOfTs
+            asOfTs,
         );
         const clearanceTimeStr = muidTupleToString([clearanceTime, 0, 0]);
         // TODO: switch sequence key to be appropriately padded/encoded
@@ -724,7 +722,7 @@ export class MemoryStore implements Store {
                 toLastWithPrefixBeforeSuffix(
                     this.removals,
                     placementIdStr,
-                    commaAsOfTsStr
+                    commaAsOfTsStr,
                 )
             )
                 continue;
@@ -755,7 +753,7 @@ export class MemoryStore implements Store {
         const removal = toLastWithPrefixBeforeSuffix(
             this.removals,
             placementIdStr,
-            `${placementIdStr},${asOfTsStr}`
+            `${placementIdStr},${asOfTsStr}`,
         );
         if (lastClear > placementTuple[0] || removal) return undefined;
         return Promise.resolve({
@@ -780,7 +778,7 @@ export class MemoryStore implements Store {
             for (
                 let iterator = toLastWithPrefixBeforeSuffix(
                     this.placements,
-                    prefix
+                    prefix,
                 );
                 iterator && iterator.key && iterator.key.startsWith(prefix);
                 iterator.prev()
@@ -797,7 +795,7 @@ export class MemoryStore implements Store {
         this.placements.set(placementKey, entry);
         this.byKeyPlacement.set(
             `${storageKeyToString(entry.storageKey)},${placementIdStr}`,
-            entry
+            entry,
         );
         if (entry.sourceList.length) {
             // TODO: remove these on deletion/purge
@@ -808,13 +806,13 @@ export class MemoryStore implements Store {
             const sourceIdStr = muidTupleToString(entry.sourceList[0]);
             this.bySource.set(
                 `${sourceIdStr},${middle},${placementIdStr}`,
-                entry
+                entry,
             );
             ensure(entry.targetList.length);
             const targetIdStr = muidTupleToString(entry.targetList[0]);
             this.byTarget.set(
                 `${targetIdStr},${middle},${placementIdStr}`,
-                entry
+                entry,
             );
         }
 
@@ -825,7 +823,7 @@ export class MemoryStore implements Store {
             ) {
                 let globalPropIterator = toLastWithPrefixBeforeSuffix(
                     this.placements,
-                    containerIdStr
+                    containerIdStr,
                 );
                 for (
                     let iterator = globalPropIterator;
@@ -843,13 +841,13 @@ export class MemoryStore implements Store {
                         this.byName.delete(
                             foundEntry.value +
                                 "," +
-                                muidTupleToString(foundEntry.entryId)
+                                muidTupleToString(foundEntry.entryId),
                         );
                     }
                 }
                 this.byName.set(
                     entry.value + "," + muidTupleToString(entry.entryId),
-                    muidTupleToString(entry.storageKey)
+                    muidTupleToString(entry.storageKey),
                 );
             } else {
                 throw new Error("global property storage key isnt a tuple?");
@@ -863,7 +861,7 @@ export class MemoryStore implements Store {
             ) {
                 let globalPropIterator = toLastWithPrefixBeforeSuffix(
                     this.placements,
-                    containerIdStr
+                    containerIdStr,
                 );
                 for (
                     let iterator = globalPropIterator;
@@ -881,13 +879,13 @@ export class MemoryStore implements Store {
                         this.byName.delete(
                             foundEntry.value +
                                 "," +
-                                muidTupleToString(foundEntry.entryId)
+                                muidTupleToString(foundEntry.entryId),
                         );
                     }
                 }
                 this.byName.set(
                     entry.value + "," + muidTupleToString(entry.entryId),
-                    muidTupleToString(entry.storageKey)
+                    muidTupleToString(entry.storageKey),
                 );
             } else {
                 throw new Error("global property storage key isnt a tuple?");
@@ -904,7 +902,7 @@ export class MemoryStore implements Store {
     getLastClearanceTime(containerId: string, asOf?: Timestamp): number {
         const asOfStr = asOf ? muidTupleToString([asOf, 0, 0]) : "~";
         const upperClearance = this.clearances.upperBound(
-            `${containerId},${asOfStr}`
+            `${containerId},${asOfStr}`,
         );
         upperClearance.prev();
         let clearanceTime: number = 0;
@@ -912,7 +910,7 @@ export class MemoryStore implements Store {
             upperClearance.value &&
             sameData(
                 containerId,
-                muidTupleToString(upperClearance.value.containerId)
+                muidTupleToString(upperClearance.value.containerId),
             )
         ) {
             clearanceTime = upperClearance.value.clearanceId[0];
@@ -923,17 +921,17 @@ export class MemoryStore implements Store {
     getEntriesBySourceOrTarget(
         vertex: Muid,
         source: boolean,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Promise<Entry[]> {
         return Promise.resolve(
-            this.getEntriesBySourceOrTargetSync(vertex, source, asOf)
+            this.getEntriesBySourceOrTargetSync(vertex, source, asOf),
         );
     }
 
     getEntriesBySourceOrTargetSync(
         vertex: Muid,
         source: boolean,
-        asOf?: AsOf
+        asOf?: AsOf,
     ): Entry[] {
         const asOfTs: Timestamp = asOf
             ? this.asOfToTimestamp(asOf)

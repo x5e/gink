@@ -1,6 +1,14 @@
 import { Addressable } from "./Addressable";
 import { Database } from "./Database";
-import { AsOf, EdgeData, Muid, Value, Timestamp, Bundler, Meta } from "./typedefs";
+import {
+    AsOf,
+    EdgeData,
+    Muid,
+    Value,
+    Timestamp,
+    Bundler,
+    Meta,
+} from "./typedefs";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { entryToEdgeData } from "./utils";
@@ -22,21 +30,25 @@ export class Edge extends Addressable {
 
     static get(database: Database, muid: Muid, data: EdgeData) {
         const edge = new Edge(database, muid);
-        edge.setFromEdgeData(data)
+        edge.setFromEdgeData(data);
         return edge;
     }
 
     private setFromEdgeData(data: EdgeData) {
         this.source = data.source;
         this.target = data.target;
-        this.action = data.etype ?? {timestamp: -1, medallion: -1, offset: Behavior.EDGE_TYPE};
+        this.action = data.etype ?? {
+            timestamp: -1,
+            medallion: -1,
+            offset: Behavior.EDGE_TYPE,
+        };
         this.value = data.value;
     }
 
     static async load(database: Database, address: Muid): Promise<Edge> {
         const entry = await database.store.getEntryById(
             address,
-            address.timestamp + 1
+            address.timestamp + 1,
         );
         if (!entry) {
             throw new Error("edge not found");
@@ -74,7 +86,7 @@ export class Edge extends Addressable {
     async getEffective(asOf?: AsOf): Promise<Timestamp> {
         const entry = await this.database.store.getEntryById(
             this.address,
-            asOf
+            asOf,
         );
         if (!entry) {
             return 0;
@@ -92,15 +104,11 @@ export class Edge extends Addressable {
      * @param purge completely remove the edge's entry from the datastore?
      * @param meta optional metadata (may contain: comment, identity, or bundler)
      */
-    async remove(
-        dest?: number,
-        purge?: boolean,
-        meta?: Meta,
-    ) {
+    async remove(dest?: number, purge?: boolean, meta?: Meta) {
         if (!(await this.isAlive())) throw new Error("this edge is not alive.");
         const bundler: Bundler = await this.database.startBundle(meta);
         await movementHelper(bundler, this.address, this.action, dest, purge);
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
     }

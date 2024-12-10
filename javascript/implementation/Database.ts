@@ -11,7 +11,6 @@ import {
     createKeyPair,
     muidTupleToMuid,
     signBundle,
-
 } from "./utils";
 import {
     BundleBytes,
@@ -83,7 +82,7 @@ export class Database {
         Database.lastCreated = this;
     }
 
-    public getLastLink(): BundleInfo|undefined {
+    public getLastLink(): BundleInfo | undefined {
         return this.lastLink;
     }
 
@@ -112,14 +111,16 @@ export class Database {
         this.store.addFoundBundleCallBack(callback);
     }
 
-    private async completeBundle(changes: ChangeBuilder[], meta?: Meta): Promise<BundleInfo> {
+    private async completeBundle(
+        changes: ChangeBuilder[],
+        meta?: Meta,
+    ): Promise<BundleInfo> {
         // I'm acquiring a lock here to ensure that the chain doesn't get forked.
         const unlockingFunction = await this.promiseChainLock.acquireLock();
         try {
             const bundleBuilder = new BundleBuilder();
-            if (meta.comment)
-                bundleBuilder.setComment(meta.comment);
-            if (! this.medallion) throw new Error("missing medallion!");
+            if (meta.comment) bundleBuilder.setComment(meta.comment);
+            if (!this.medallion) throw new Error("missing medallion!");
             bundleBuilder.setMedallion(this.medallion);
             const timestamp = generateTimestamp();
             bundleBuilder.setTimestamp(timestamp);
@@ -133,7 +134,10 @@ export class Database {
                 bundleBuilder.setVerifyKey(this.keyPair.publicKey);
             }
             bundleBuilder.setChangesList(changes);
-            const bundleBytes = signBundle(bundleBuilder.serializeBinary(), this.keyPair.secretKey);
+            const bundleBytes = signBundle(
+                bundleBuilder.serializeBinary(),
+                this.keyPair.secretKey,
+            );
             const decomposition = new Decomposition(bundleBytes);
             /*
                 I need to set the lastLink before the transaction to add it is completed,
@@ -153,15 +157,21 @@ export class Database {
 
     public async startBundle(meta?: Meta): Promise<Bundler> {
         if (meta?.bundler) return meta.bundler;
-        if (! this.medallion) {
+        if (!this.medallion) {
             const unlockingFunction = await this.promiseChainLock.acquireLock();
             try {
-                await this.obtainMedallion(meta?.identity ?? this.identity ?? getIdentity());
+                await this.obtainMedallion(
+                    meta?.identity ?? this.identity ?? getIdentity(),
+                );
             } finally {
                 unlockingFunction();
             }
         }
-        return new BoundBundler(this.medallion, this.completeBundle.bind(this), meta);
+        return new BoundBundler(
+            this.medallion,
+            this.completeBundle.bind(this),
+            meta,
+        );
     }
 
     private async obtainMedallion(identity: string): Promise<void> {
@@ -197,18 +207,18 @@ export class Database {
             Behavior.PAIR_SET,
         ];
         for (const behavior of globalBehaviors) {
-            const address = {timestamp: -1, medallion: -1, offset: behavior}
+            const address = { timestamp: -1, medallion: -1, offset: behavior };
             const container = await construct(this, address);
-            await container.reset(toTime, false, {bundler});
-            await container.resetProperties(toTime, {bundler});
+            await container.reset(toTime, false, { bundler });
+            await container.resetProperties(toTime, { bundler });
         }
         const containers = await this.store.getAllContainerTuples();
 
         for (const muidTuple of containers) {
             const container = await construct(this, muidTupleToMuid(muidTuple));
             if (container instanceof Property) continue;
-            await container.reset(toTime, false, {bundler});
-            await container.resetProperties(toTime, {bundler});
+            await container.reset(toTime, false, { bundler });
+            await container.resetProperties(toTime, { bundler });
         }
 
         if (!meta?.bundler) {
@@ -225,7 +235,7 @@ export class Database {
     public addListener(
         listener: BundleListener,
         containerMuid?: Muid,
-        remoteOnly: boolean = false
+        remoteOnly: boolean = false,
     ) {
         const key = containerMuid ? muidToString(containerMuid) : "all";
         if (!this.listeners.has(key)) {
@@ -245,7 +255,7 @@ export class Database {
      */
     private getListeners(
         remoteOnly: boolean = false,
-        containerMuid?: Muid
+        containerMuid?: Muid,
     ): BundleListener[] {
         const key = containerMuid ? muidToString(containerMuid) : "all";
         const containerMap = this.listeners.get(key);
@@ -290,15 +300,23 @@ export class Database {
      */
     private receiveBundle(
         bundle: BundleView,
-        fromConnectionId?: number
+        fromConnectionId?: number,
     ): Promise<BundleInfo> {
         return this.store.addBundle(bundle).then((added) => {
             if (!added) return;
             let summary: string;
             if (bundle.info.chainStart === bundle.info.timestamp) {
-                summary = JSON.stringify(bundle.info,["medallion", "timestamp", "chainStart",]);
+                summary = JSON.stringify(bundle.info, [
+                    "medallion",
+                    "timestamp",
+                    "chainStart",
+                ]);
             } else {
-                summary = JSON.stringify(bundle.info, ["medallion", "timestamp","priorTime",]);
+                summary = JSON.stringify(bundle.info, [
+                    "medallion",
+                    "timestamp",
+                    "priorTime",
+                ]);
             }
             this.logger(`added bundle from ${fromConnectionId}: ${summary}`);
             this.iHave.markAsHaving(bundle.info);
@@ -370,7 +388,7 @@ export class Database {
      */
     protected async receiveMessage(
         messageBytes: Uint8Array,
-        fromConnectionId: number
+        fromConnectionId: number,
     ) {
         await this.ready;
         const peer = this.peers.get(fromConnectionId);
@@ -401,7 +419,7 @@ export class Database {
                     chainStart: ack.getChainStart(),
                 };
                 this.logger(
-                    `got ack from ${fromConnectionId}: ${JSON.stringify(info)}`
+                    `got ack from ${fromConnectionId}: ${JSON.stringify(info)}`,
                 );
                 this.peers.get(fromConnectionId)?.hasMap?.markAsHaving(info);
             }
@@ -430,7 +448,7 @@ export class Database {
             resolveOnOpen?: boolean;
             retryOnDisconnect?: boolean;
             authToken?: string;
-        }
+        },
     ): Promise<Peer> {
         //TODO(https://github.com/google/gink/issues/69): have the default be to wait for databases to sync
         const onClose: CallBack =
@@ -451,18 +469,18 @@ export class Database {
             const connectionId = this.createConnectionId();
             let websocketClient: WebSocket = new Database.W3cWebSocket(
                 target,
-                protocols
+                protocols,
             );
             websocketClient.binaryType = "arraybuffer";
             const peer = new Peer(
                 websocketClient.send.bind(websocketClient),
-                websocketClient.close.bind(websocketClient)
+                websocketClient.close.bind(websocketClient),
             );
 
             websocketClient.onopen = function (_ev: Event) {
                 // called once the new connection has been established
                 websocketClient.send(
-                    thisClient.iHave.getGreetingMessageBytes()
+                    thisClient.iHave.getGreetingMessageBytes(),
                 );
                 thisClient.peers.set(connectionId, peer);
                 if (resolveOnOpen) resolve(peer);
@@ -471,7 +489,7 @@ export class Database {
             websocketClient.onerror = function (ev: Event) {
                 // if/when this is called depends on the details of the websocket implementation
                 console.error(
-                    `error on connection ${connectionId} to ${target}, ${ev}`
+                    `error on connection ${connectionId} to ${target}, ${ev}`,
                 );
                 reject(ev);
             };
@@ -492,7 +510,7 @@ export class Database {
                     let jitter = Math.floor(Math.random() * 1000);
                     while (!peer) {
                         await new Promise((resolve) =>
-                            setTimeout(resolve, retry_ms + jitter)
+                            setTimeout(resolve, retry_ms + jitter),
                         );
                         try {
                             console.log(`retrying connection to ${target}`);
@@ -509,7 +527,7 @@ export class Database {
                                 pow += 1;
                                 retry_ms = 1000 * Math.pow(2, pow);
                                 jitter = Math.floor(
-                                    Math.random() * 1000 * Math.pow(2, pow)
+                                    Math.random() * 1000 * Math.pow(2, pow),
                                 );
                             }
                         }

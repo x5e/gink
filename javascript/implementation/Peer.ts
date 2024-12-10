@@ -13,7 +13,7 @@ export class Peer {
 
     constructor(
         sendFunc: (msg: Uint8Array) => void,
-        closeFunc: () => void = noOp
+        closeFunc: () => void = noOp,
     ) {
         this.sendFunc = sendFunc;
         this.closeFunc = closeFunc;
@@ -37,7 +37,7 @@ export class Peer {
     _receiveHasMap(hasMap: ChainTracker) {
         ensure(
             !this.hasMap,
-            "Already received a HasMap/Greeting from this Peer!"
+            "Already received a HasMap/Greeting from this Peer!",
         );
         this.hasMap = hasMap;
         this.callWhenReady(this);

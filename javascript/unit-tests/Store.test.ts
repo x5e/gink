@@ -35,7 +35,13 @@ import {
     muidToString,
     encryptMessage,
 } from "../implementation/utils";
-import { Box, Database, Directory, Property, Sequence } from "../implementation";
+import {
+    Box,
+    Database,
+    Directory,
+    Property,
+    Sequence,
+} from "../implementation";
 import { randombytes_buf } from "libsodium-wrappers";
 
 // makes an empty Store for testing purposes
@@ -55,7 +61,7 @@ it("placeholder", () => {
 export function testStore(
     implName: string,
     storeMaker: StoreMaker,
-    replacer?: StoreMaker
+    replacer?: StoreMaker,
 ) {
     let store: Store;
 
@@ -82,12 +88,12 @@ export function testStore(
         const chainStart = await makeChainStart(
             "Hello, World!",
             MEDALLION1,
-            START_MICROS1
+            START_MICROS1,
         );
         const secondTrxn = await extendChain(
             "Hello, again!",
             chainStart,
-            NEXT_TS1
+            NEXT_TS1,
         );
         let added: boolean = false;
         let barfed = false;
@@ -105,17 +111,17 @@ export function testStore(
         const chainStart = await makeChainStart(
             "Hello, World!",
             MEDALLION1,
-            START_MICROS1
+            START_MICROS1,
         );
         const secondTrxn = await extendChain(
             "Hello, again!",
             chainStart,
-            NEXT_TS1
+            NEXT_TS1,
         );
         const thirdTrxn = await extendChain(
             "Hello, a third!",
             secondTrxn,
-            NEXT_TS1 + 1
+            NEXT_TS1 + 1,
         );
         await store.addBundle(chainStart);
         let added: boolean = false;
@@ -135,10 +141,10 @@ export function testStore(
         const hasMap = <ChainTracker>await store.getChainTracker();
 
         expect(
-            hasMap.getBundleInfo([MEDALLION1, START_MICROS1])!.timestamp
+            hasMap.getBundleInfo([MEDALLION1, START_MICROS1])!.timestamp,
         ).toBe(NEXT_TS1);
         expect(
-            hasMap.getBundleInfo([MEDALLION2, START_MICROS2])!.timestamp
+            hasMap.getBundleInfo([MEDALLION2, START_MICROS2])!.timestamp,
         ).toBe(NEXT_TS2);
     });
 
@@ -174,8 +180,8 @@ export function testStore(
         const decomposition = new Decomposition(
             signBundle(
                 bundleBuilder.serializeBinary(),
-                (await keyPair).secretKey
-            )
+                (await keyPair).secretKey,
+            ),
         );
         await store.addBundle(decomposition);
         ensure(decomposition.info.medallion === MEDALLION1);
@@ -210,7 +216,7 @@ export function testStore(
         bundleBuilder.setIdentity("Fred");
         bundleBuilder.setVerifyKey((await keyPair).publicKey);
         const asBytes = bundleBuilder.serializeBinary();
-        const signed = signBundle(asBytes, (await keyPair).secretKey)
+        const signed = signBundle(asBytes, (await keyPair).secretKey);
         const view = new Decomposition(signed);
         await store.addBundle(view);
         const entry = <Entry>await store.getEntryByKey(sourceAddress, "abc");
@@ -222,20 +228,22 @@ export function testStore(
     });
 
     it(`${implName} getChainIdentity works`, async () => {
-        const db = new Database({store, identity: "test@identity"});
+        const db = new Database({ store, identity: "test@identity" });
         await db.ready;
-        await (Directory.get(db)).set(3, 4);
+        await Directory.get(db).set(3, 4);
         const lastLink = db.getLastLink();
         const identity = await store.getChainIdentity([
             lastLink.medallion,
             lastLink.chainStart,
         ]);
-        ensure(identity === "test@identity",
-            `m=${lastLink.medallion} cs=${lastLink.chainStart} identity=${identity}`);
+        ensure(
+            identity === "test@identity",
+            `m=${lastLink.medallion} cs=${lastLink.chainStart} identity=${identity}`,
+        );
     });
 
     it(`${implName} getContainersByName`, async () => {
-        const db = new Database({store, identity: "test@byName"});
+        const db = new Database({ store, identity: "test@byName" });
         await db.ready;
         const gd = Directory.get(db);
         await gd.setName("foo");
@@ -282,7 +290,7 @@ export function testStore(
         bundleBuilder.setComment("should error");
         bundleBuilder.setVerifyKey(kp1.publicKey);
         const decomp = new Decomposition(
-            signBundle(bundleBuilder.serializeBinary(), kp1.secretKey)
+            signBundle(bundleBuilder.serializeBinary(), kp1.secretKey),
         );
         let errored = false;
         try {
@@ -295,7 +303,7 @@ export function testStore(
         const decomp2 = await makeChainStart(
             "should not error",
             MEDALLION2,
-            START_MICROS2
+            START_MICROS2,
         );
         const added = await store.addBundle(decomp2);
         ensure(added, "adding chain start bundle with identity failed");
@@ -314,7 +322,7 @@ export function testStore(
         ensure(priorHash && priorHash.length === 32);
         bundleBuilder3.setPriorHash(priorHash);
         const decomp3 = new Decomposition(
-            signBundle(bundleBuilder3.serializeBinary(), kp3.secretKey)
+            signBundle(bundleBuilder3.serializeBinary(), kp3.secretKey),
         );
         let errored2 = false;
         try {
@@ -327,7 +335,7 @@ export function testStore(
 
     it(`${implName} getContainerProperties`, async () => {
         await store.ready;
-        const database = new Database({store});
+        const database = new Database({ store });
         await database.ready;
 
         const dir = Directory.get(database);
@@ -362,7 +370,7 @@ export function testStore(
 
         const asOfProperties = await store.getContainerProperties(
             dir.address,
-            after
+            after,
         );
         ensure(asOfProperties.size === 2);
         ensure(asOfProperties.get(muidToString(prop.address)) === "bar");
@@ -380,7 +388,7 @@ export function testStore(
         const chainStart = await makeChainStart(
             "Hello, World!",
             MEDALLION1,
-            START_MICROS1
+            START_MICROS1,
         );
         await store.addBundle(chainStart);
         // Can't find a way to test this without a real bundle
@@ -389,7 +397,7 @@ export function testStore(
         const changeBuilder = new ChangeBuilder();
         const entryBuilder = new EntryBuilder();
         entryBuilder.setContainer(
-            muidToBuilder({ medallion: -1, timestamp: -1, offset: 1 })
+            muidToBuilder({ medallion: -1, timestamp: -1, offset: 1 }),
         );
         entryBuilder.setBehavior(Behavior.BOX);
         entryBuilder.setValue(wrapValue("top secret"));
@@ -400,7 +408,7 @@ export function testStore(
         const entryBuilder2 = new EntryBuilder();
         entryBuilder2.setBehavior(Behavior.DIRECTORY);
         entryBuilder2.setContainer(
-            muidToBuilder({ medallion: -1, timestamp: -1, offset: 4 })
+            muidToBuilder({ medallion: -1, timestamp: -1, offset: 4 }),
         );
         entryBuilder2.setKey(wrapKey("key"));
         entryBuilder2.setValue(wrapValue("top secret"));
@@ -409,21 +417,21 @@ export function testStore(
 
         const encrypted = encryptMessage(
             innerBundleBuilder.serializeBinary(),
-            symKey
+            symKey,
         );
 
         const outerBundleBuilder = extendChainWithoutSign(
             "Outer",
             chainStart,
-            NEXT_TS1
+            NEXT_TS1,
         );
         outerBundleBuilder.setKeyId(id);
         outerBundleBuilder.setEncrypted(encrypted);
         const decomp = new Decomposition(
             signBundle(
                 outerBundleBuilder.serializeBinary(),
-                (await keyPair).secretKey
-            )
+                (await keyPair).secretKey,
+            ),
         );
         await store.addBundle(decomp);
 
@@ -441,7 +449,7 @@ export function testStore(
                 timestamp: -1,
                 offset: 4,
             },
-            "key"
+            "key",
         );
         ensure(result2 !== undefined);
         ensure(result2.value === "top secret");

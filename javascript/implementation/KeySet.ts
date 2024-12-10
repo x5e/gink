@@ -9,25 +9,28 @@ export class KeySet extends Container {
     private constructor(
         database: Database,
         address: Muid,
-        containerBuilder?: ContainerBuilder
+        containerBuilder?: ContainerBuilder,
     ) {
         super(database, address, Behavior.KEY_SET);
     }
 
     static get(database?: Database, muid?: Muid): KeySet {
         database = database || Database.recent;
-        if (! muid) {
-            muid = {timestamp: -1, medallion: -1, offset: Behavior.KEY_SET}
+        if (!muid) {
+            muid = { timestamp: -1, medallion: -1, offset: Behavior.KEY_SET };
         }
         return new KeySet(database, muid);
     }
 
     static async create(database?: Database, meta?: Meta): Promise<KeySet> {
         database = database || Database.recent;
-        const muid = await Container.addContainer({behavior: Behavior.KEY_SET, database, meta});
+        const muid = await Container.addContainer({
+            behavior: Behavior.KEY_SET,
+            database,
+            meta,
+        });
         return new KeySet(database, muid);
     }
-
 
     /**
      * Adds a key to the keyset.
@@ -51,15 +54,12 @@ export class KeySet extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to a Bundler object for the created entries.
      */
-    async update(
-        keys: Iterable<ScalarKey>,
-        meta?: Meta,
-    ): Promise<void> {
+    async update(keys: Iterable<ScalarKey>, meta?: Meta): Promise<void> {
         let bundler: Bundler = await this.database.startBundle(meta);
         for (const key of keys) {
-            await this.addEntry(key, Container.INCLUSION, {bundler});
+            await this.addEntry(key, Container.INCLUSION, { bundler });
         }
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
     }
@@ -81,13 +81,13 @@ export class KeySet extends Container {
      * @returns an async iterator across everything in the key set, with values returned as pairs of Key, Key
      */
     entries(
-        asOf?: AsOf
+        asOf?: AsOf,
     ): AsyncGenerator<[ScalarKey, ScalarKey], void, unknown> {
         const thisSet = this;
         return (async function* () {
             const entries = await thisSet.database.store.getKeyedEntries(
                 thisSet.address,
-                asOf
+                asOf,
             );
             for (const [key, entry] of entries) {
                 const storageKey = <ScalarKey>entry.storageKey;
@@ -106,7 +106,7 @@ export class KeySet extends Container {
         const result = await this.database.store.getEntryByKey(
             this.address,
             key,
-            asOf
+            asOf,
         );
         if (result !== undefined && result.deletion) {
             return false;
@@ -114,20 +114,19 @@ export class KeySet extends Container {
         return result !== undefined;
     }
 
-
     async reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void> {
         let bundler: Bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, {bundler});
+            this.clear(false, { bundler });
         } else {
             const union = new Set<ScalarKey>();
             const entriesThen = await this.database.store.getKeyedEntries(
                 this.address,
-                toTime
+                toTime,
             );
             const entriesNow = await this.database.store.getKeyedEntries(
-                this.address
+                this.address,
             );
 
             for (const [key, entry] of entriesThen) {
@@ -143,50 +142,46 @@ export class KeySet extends Container {
                 const thenEntry = await this.database.store.getEntryByKey(
                     this.address,
                     genericKey,
-                    toTime
+                    toTime,
                 );
                 const nowEntry = await this.database.store.getEntryByKey(
                     this.address,
-                    genericKey
+                    genericKey,
                 );
                 ensure(nowEntry || thenEntry, "both then and now undefined?");
                 if (!nowEntry) {
                     // This key was present then, but not now, so we need to add it back
                     ensure(thenEntry, "missing then entry?");
-                    await this.addEntry(genericKey, thenEntry.value, {bundler});
+                    await this.addEntry(genericKey, thenEntry.value, {
+                        bundler,
+                    });
                 } else if (!thenEntry) {
                     // This key is present now, but not then, so we need to delete it
                     ensure(nowEntry, "missing now entry?");
-                    await this.addEntry(
-                        genericKey,
-                        Container.DELETION,
-                        {bundler}
-                    );
+                    await this.addEntry(genericKey, Container.DELETION, {
+                        bundler,
+                    });
                 } else if (nowEntry.deletion !== thenEntry.deletion) {
                     if (nowEntry.deletion) {
                         // Present then, deleted now. Need to revive.
-                        await this.addEntry(
-                            genericKey,
-                            Container.INCLUSION,
-                            {bundler}
-                        );
+                        await this.addEntry(genericKey, Container.INCLUSION, {
+                            bundler,
+                        });
                     } else if (thenEntry.deletion) {
                         // Present now, deleted then. Need to delete.
-                        await this.addEntry(
-                            genericKey,
-                            Container.DELETION,
-                            {bundler}
-                        );
+                        await this.addEntry(genericKey, Container.DELETION, {
+                            bundler,
+                        });
                     }
                 } else {
                     ensure(
                         nowEntry.deletion === thenEntry.deletion,
-                        "last case should be same entry"
+                        "last case should be same entry",
                     );
                 }
             }
         }
-        if (! meta?.bundler) {
+        if (!meta?.bundler) {
             await bundler.commit();
         }
     }
@@ -199,7 +194,7 @@ export class KeySet extends Container {
     async toSet(asOf?: AsOf): Promise<Set<ScalarKey>> {
         const entries = await this.database.store.getKeyedEntries(
             this.address,
-            asOf
+            asOf,
         );
         const resultSet = new Set<ScalarKey>();
         for (const [key, entry] of entries) {
@@ -217,7 +212,7 @@ export class KeySet extends Container {
     async size(asOf?: AsOf): Promise<number> {
         const entries = await this.database.store.getKeyedEntries(
             this.address,
-            asOf
+            asOf,
         );
         return entries.size;
     }
@@ -233,7 +228,7 @@ export class KeySet extends Container {
     async toJson(
         indent: number | boolean = false,
         asOf?: AsOf,
-        seen?: Set<string>
+        seen?: Set<string>,
     ): Promise<string> {
         //TODO(https://github.com/google/gink/issues/62): add indentation
         ensure(indent === false, "indent not implemented");
@@ -255,7 +250,7 @@ export class KeySet extends Container {
                 key,
                 indent === false ? false : +indent + 1,
                 asOf,
-                seen
+                seen,
             );
         }
         returning += "]";
