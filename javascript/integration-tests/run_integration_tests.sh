@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #set -o errexit
+cd "$(dirname "$0")"
 if [[ -z ${PYTHONPATH} ]]; then
     export PYTHONPATH=../../python;
 fi
 
 export CURRENT_SAFE_PORT=8080
-cd "$(dirname "$0")"
 
 for file in ./*-test.js; do
     if [[ "$OSTYPE" == darwin* ]] && [[ "$file" == ./ssl* ]]; then

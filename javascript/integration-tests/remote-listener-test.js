@@ -1,6 +1,6 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector.js");
-const { Database, ensure } = require("../tsc.out/implementation/index.js");
+const { Database, ensure, Directory } = require("../tsc.out/implementation/index.js");
 const { sleep } = require("./browser_test_utilities.js");
 process.chdir(__dirname + "/..");
 
@@ -32,8 +32,8 @@ process.chdir(__dirname + "/..");
     };
     remoteListener.calledTimes = 0;
 
-    const client1Root = client1.getGlobalDirectory();
-    const client2Root = client2.getGlobalDirectory();
+    const client1Root = Directory.get(client1);
+    const client2Root = Directory.get(client2);
 
     // Add a remote only listener
     client1.addListener(remoteListener, client1Root.address, true);

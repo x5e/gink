@@ -26,6 +26,6 @@ async function onBundle(changeSet) {
     );
     await instance.ready;
     instance.addListener(onBundle);
-    await instance.addBundler(new gink.Bundler("Hello, Universe!"));
+    await gink.Directory.get(instance).set("foo", "bar", {comment: "Hello, Universe!"});
     await instance.connectTo(getWebsocketTarget());
 })();

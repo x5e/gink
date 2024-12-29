@@ -20,10 +20,6 @@ if (require.main === module) {
         nargs: "?",
         const: 8080,
     });
-    parser.add_argument("--data-root", {
-        help: `path to a directory storing gink database files. this will cause gink to behave as a routing server`,
-        default: process.env["GINK_DATA_ROOT"],
-    });
     parser.add_argument("--data-file", {
         help: `path to a logbacked store database file.`,
         default: process.env["GINK_DATA_FILE"],

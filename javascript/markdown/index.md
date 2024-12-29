@@ -90,10 +90,6 @@ gink databases to connect to (e.g: wss://localhost:8080 wss://localhost:8081)
 Port to listen on. If flag is not included, gink does not listen for incoming connections. \
 Defaults to 8080. This may also be set using env GINK_PORT.
 
-### --data-root [path]
-The path to a directory storing Gink database files. Passing this will cause Gink to behave as a `RoutingServer`, meaning you will be able to connect to different databases by changing the path in the URL. (e.g wss://localhost:8080/abc accesses the abc database) \
-Defaults to env GINK_DATA_ROOT.
-
 ### --data-file [path]
 The path to a `LogBackedStore` data file. Setting this will cause the CLI to load the database from the provided file into a `LogBackedStore`. \
 Defaults to env GINK_DATA_FILE.

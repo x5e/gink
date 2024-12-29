@@ -61,13 +61,7 @@ export class CommandLineInterface {
             };
         }
 
-        if (args.data_root) {
-            logToStdErr(`using data root ${args.data_root}`);
-            ensure(
-                args.listen_on,
-                "must provide port for routing server to listen on hint: -l [port]",
-            );
-        } else if (args.data_file) {
+        if (args.data_file) {
             logToStdErr(`using data file=${args.data_file}`);
             this.store = new LogBackedStore(args.data_file);
         } else {
