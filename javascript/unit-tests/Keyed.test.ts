@@ -5,7 +5,7 @@ import {
     MemoryStore,
     Directory,
     Box,
-    Bundler,
+    PairMap,
 } from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 
@@ -14,24 +14,18 @@ it("test reset", async function () {
         new IndexedDbStore("Keyed.reset", true),
         new MemoryStore(true),
     ]) {
-        const database = new Database(store);
+        const database = new Database({ store });
         await database.ready;
-        const box = await database.createBox();
-        const pairMap = await database.createPairMap();
-        const schema = await database.createDirectory();
+        const box = await Box.create(database);
+        const pairMap = await PairMap.create(database);
+        const schema = await Directory.create(database);
         await schema.set("a key", "a value");
         await pairMap.set([box, schema], "a value");
-        const prop1 = await database.createProperty();
-        const prop2 = await database.createProperty();
-        await prop1.set(schema, "foo");
-        await prop2.set(schema, "bar");
 
         const afterFirst = generateTimestamp();
 
         await schema.set("another key", "another value");
         await pairMap.set([schema, box], "reversed");
-        await prop1.set(schema, "foo2");
-        await prop2.set(schema, "bar2");
         ensure((await schema.get("another key")) === "another value");
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
@@ -39,15 +33,12 @@ it("test reset", async function () {
         const afterbox = generateTimestamp();
 
         // Reset when first entry is still there
-        await schema.reset({ toTime: afterFirst });
+        await schema.reset(afterFirst);
 
         ensure((await schema.get("another key")) === undefined);
         ensure((await schema.get("a key")) === "a value");
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
-        // Properties should have also reset
-        ensure((await prop1.get(schema)) === "foo");
-        ensure((await prop2.get(schema)) === "bar");
 
         // Reset to epoch
         await schema.reset();
@@ -56,32 +47,26 @@ it("test reset", async function () {
         ensure((await schema.get("a key")) === undefined);
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
-        // Properties should have also reset
-        ensure((await prop1.get(schema)) === undefined);
-        ensure((await prop2.get(schema)) === undefined);
 
-        await schema.reset({ toTime: afterFirst, skipProperties: true });
+        await schema.reset(afterFirst);
         ensure((await schema.get("another key")) === undefined);
         ensure((await schema.get("a key")) === "a value");
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
-        // properties skipped, should still be undefined
-        ensure((await prop1.get(schema)) === undefined);
-        ensure((await prop2.get(schema)) === undefined);
 
-        await pairMap.reset({ toTime: afterFirst });
+        await pairMap.reset(afterFirst);
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === undefined);
 
-        await pairMap.reset({ toTime: afterbox });
+        await pairMap.reset(afterbox);
         ensure((await pairMap.get([box, schema])) === "a value");
         ensure((await pairMap.get([schema, box])) === "reversed");
         ensure((await schema.get("another key")) === undefined);
         ensure((await schema.get("a key")) === "a value");
 
         // Test recursive reset
-        const child = await database.createDirectory();
-        const childOfChild = await database.createDirectory();
+        const child = await Directory.create(database);
+        const childOfChild = await Directory.create(database);
         await child.set("childOfChild", childOfChild);
         await child.set("random key", "random");
         await childOfChild.set("key", "value");
@@ -92,7 +77,7 @@ it("test reset", async function () {
         await childOfChild.set("key", "changed");
         await child.set("random key", "changed");
         const afterChanged = generateTimestamp();
-        await schema.reset({ toTime: afterInit, recurse: true });
+        await schema.reset(afterInit, true);
         ensure((await childOfChild.get("key")) === "value");
         ensure((await child.get("random key")) === "random");
         ensure((await schema.get("child")) instanceof Directory);
@@ -100,13 +85,13 @@ it("test reset", async function () {
         await schema.clear();
         ensure((await schema.size()) === 0);
         // Reset after a clear
-        await schema.reset({ toTime: afterInit, recurse: true });
+        await schema.reset(afterInit, true);
         ensure((await childOfChild.get("key")) === "value");
         ensure((await child.get("random key")) === "random");
         ensure((await schema.get("child")) instanceof Directory);
 
         // Same reset again, should not change anything
-        await schema.reset({ toTime: afterInit, recurse: true });
+        await schema.reset(afterInit, true);
         ensure((await childOfChild.get("key")) === "value");
         ensure((await child.get("random key")) === "random");
         ensure((await schema.get("child")) instanceof Directory);
@@ -114,13 +99,13 @@ it("test reset", async function () {
         // Make sure a deletion doesn't cause problems
         await schema.delete("child");
         ensure((await schema.get("child")) === undefined);
-        await schema.reset({ toTime: afterInit, recurse: true });
+        await schema.reset(afterInit, true);
         ensure((await childOfChild.get("key")) === "value");
         ensure((await child.get("random key")) === "random");
         ensure((await schema.get("child")) instanceof Directory);
 
         // Recurse = false should not reset children
-        await schema.reset({ toTime: afterChanged });
+        await schema.reset(afterChanged);
         ensure((await childOfChild.get("key")) === "value");
         ensure((await child.get("random key")) === "random");
         ensure((await schema.get("child")) instanceof Directory);
@@ -130,7 +115,7 @@ it("test reset", async function () {
         await schema.set("circle", box);
         const resetTo = generateTimestamp();
         await schema.set("circle", "not a box");
-        await schema.reset({ toTime: resetTo, recurse: true });
+        await schema.reset(resetTo, true);
         ensure((await schema.get("circle")) instanceof Box);
         ensure((await box.get()) instanceof Directory);
 
@@ -140,12 +125,12 @@ it("test reset", async function () {
         await schema.set(2, arr);
         const afterNumbers = generateTimestamp();
         await schema.set("hmm", 20);
-        const bundler = new Bundler();
+        const bundler = await database.startBundle();
 
-        await schema.reset({ toTime: afterNumbers, bundlerOrComment: bundler });
+        await schema.reset(afterNumbers, false, { bundler });
         ensure((await schema.get("hmm")) === 20);
         ensure(isEqual(await schema.get(2), arr));
-        await database.addBundler(bundler);
+        await bundler.commit();
         ensure((await schema.get("hmm")) === 2, await schema.toJson());
         ensure(isEqual(await schema.get(2), arr));
 

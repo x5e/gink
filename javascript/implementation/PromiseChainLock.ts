@@ -15,9 +15,9 @@ export class PromiseChainLock {
      * }
      * @returns a promise that resolves when the lock has been acquired, resolving to a cb to unlock it.
      */
-    async acquireLock(): Promise<CallBack> {
-        let calledWhenLockAcquired: (cb: CallBack) => void = null;
-        let calledToReleaseLock: CallBack = null;
+    acquireLock(): Promise<CallBack> {
+        let calledWhenLockAcquired: (cb: CallBack) => void;
+        let calledToReleaseLock: CallBack;
         const resolvesWhenLockAcquired = new Promise<CallBack>((r) => {
             calledWhenLockAcquired = r;
         });

@@ -35,7 +35,7 @@ async function testWriteOccupied(count) {
         },
     });
     console.log(
-        `Testing IDB writing performance to occupied database with ${count} entries.`
+        `Testing IDB writing performance to occupied database with ${count} entries.`,
     );
     console.log(`Filling fresh database with ${count} entries.`);
     let txn = database.transaction("test-store", "readwrite");
@@ -143,7 +143,7 @@ async function testDelete(count) {
         },
     });
     console.log(
-        `Testing IDB deletion performance to database with ${count} entries.`
+        `Testing IDB deletion performance to database with ${count} entries.`,
     );
     console.log(`Filling fresh database with ${count} entries.`);
     let txn = database.transaction("test-store", "readwrite");
@@ -185,7 +185,7 @@ async function testRandomRead(count) {
     let txn = database.transaction("test-store", "readwrite");
     let readStore = txn.objectStore("test-store");
     console.log(
-        `Testing IDB reading performance to database with ${count} entries.`
+        `Testing IDB reading performance to database with ${count} entries.`,
     );
     console.log(`Filling fresh database with ${count} key, value entries...`);
     for (let i = 0; i < count; i++) {
@@ -224,11 +224,11 @@ async function testIncreasing(count, num_inc_tests = 5) {
     let results = {};
     let currentEntries = 0;
     console.log(
-        "Testing IDB writing and reading performance as database size increases."
+        "Testing IDB writing and reading performance as database size increases.",
     );
     for (let r = 1; r < num_inc_tests + 1; r++) {
         console.log(
-            `Testing Gink TypeScript writing performance to database with ${currentEntries} entries.`
+            `Testing Gink TypeScript writing performance to database with ${currentEntries} entries.`,
         );
         console.log("Writing", count, "new key, value entries...");
         let txn = database.transaction("test-store", "readwrite");
@@ -245,7 +245,7 @@ async function testIncreasing(count, num_inc_tests = 5) {
         console.log(
             "- Total write time:",
             writeTotalTime.toFixed(4),
-            "seconds"
+            "seconds",
         );
         console.log("- Writes per second:", writesPerSecond.toFixed(2));
         console.log();
@@ -253,7 +253,7 @@ async function testIncreasing(count, num_inc_tests = 5) {
         let read_txn = database.transaction("test-store", "readwrite");
         let readStore = read_txn.objectStore("test-store");
         console.log(
-            `Testing reading performance from database with ${currentEntries} entries.`
+            `Testing reading performance from database with ${currentEntries} entries.`,
         );
         readBeforeTime = Date.now();
         for (let i = 0; i < count; i++) {

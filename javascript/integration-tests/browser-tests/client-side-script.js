@@ -22,10 +22,10 @@ async function onBundle(changeSet) {
 
 (async () => {
     const instance = new gink.Database(
-        new gink.IndexedDbStore("browser-test", true)
+        new gink.IndexedDbStore("browser-test", true),
     );
     await instance.ready;
     instance.addListener(onBundle);
-    await instance.addBundler(new gink.Bundler("Hello, Universe!"));
+    await gink.Directory.get(instance).set("foo", "bar", {comment: "Hello, Universe!"});
     await instance.connectTo(getWebsocketTarget());
 })();

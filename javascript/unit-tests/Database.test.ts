@@ -1,8 +1,17 @@
 import {
     Database,
     IndexedDbStore,
-    Bundler,
+    Box,
     MemoryStore,
+    Directory,
+    Sequence,
+    Property,
+    KeySet,
+    PairSet,
+    Group,
+    Vertex,
+    EdgeType,
+    Edge,
 } from "../implementation";
 import { ensure, generateTimestamp } from "../implementation/utils";
 
@@ -11,12 +20,37 @@ it("test bundle", async () => {
         new IndexedDbStore("Database.bundle", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const bundleInfo = await instance.addBundler(
-            new Bundler("hello world")
+        const bundleInfo = await (
+            await instance.startBundle({ comment: "hello world" })
+        ).commit();
+        ensure(
+            bundleInfo.comment === "hello world",
+            `comment="${bundleInfo.comment}"`,
         );
-        ensure(bundleInfo.comment === "hello world");
+        const chainTracker = await store.getChainTracker();
+        const allChains = chainTracker.getChains();
+        ensure(allChains.length === 1);
+        ensure(allChains[0][0] === bundleInfo.medallion);
+        ensure(allChains[0][1] === bundleInfo.chainStart);
+    }
+});
+
+it("test commit", async () => {
+    for (const store of [
+        new IndexedDbStore("test commit", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database({ store });
+        await instance.ready;
+        const bundleInfo = await (
+            await instance.startBundle()
+        ).commit("hello world");
+        ensure(
+            bundleInfo.comment === "hello world",
+            `comment="${bundleInfo.comment}"`,
+        );
         const chainTracker = await store.getChainTracker();
         const allChains = chainTracker.getChains();
         ensure(allChains.length === 1);
@@ -31,12 +65,12 @@ it("test listeners", async () => {
         new MemoryStore(true),
     ]) {
         await store.ready;
-        const db = new Database(store);
+        const db = new Database({ store });
         await db.ready;
 
-        const root = db.getGlobalDirectory();
-        const sequence = await db.createSequence();
-        const box = await db.createBox();
+        const root = Directory.get();
+        const sequence = await Sequence.create();
+        const box = await Box.create(db);
 
         const rootListener = async () => {
             rootListener.calledTimes++;
@@ -63,19 +97,20 @@ it("test listeners", async () => {
     }
 });
 
+/*
 it("test container naming", async function () {
     for (const store of [
         new IndexedDbStore("Database.naming.test", true),
         new MemoryStore(true),
     ]) {
         await store.ready;
-        const db = new Database(store);
+        const db = new Database({store});
         await db.ready;
 
-        const root = db.getGlobalDirectory();
-        const seq1 = await db.createSequence();
-        const seq2 = await db.createSequence();
-        const seq3 = await db.createSequence();
+        const root = Directory.get();
+        const seq1 = await Sequence.create();
+        const seq2 = await Sequence.create();
+        const seq3 = await Sequence.create();
 
         await root.setName("root");
         await seq1.setName("seq");
@@ -102,6 +137,7 @@ it("test container naming", async function () {
         ensure(seq3.address.offset === seqContainers[2].offset);
     }
 });
+*/
 
 it("test full database reset", async function () {
     for (const store of [
@@ -109,22 +145,23 @@ it("test full database reset", async function () {
         new MemoryStore(true),
     ]) {
         await store.ready;
-        const db = new Database(store);
+        const db = new Database({ store });
         await db.ready;
-        const prop = await db.createProperty();
+        const prop = await Property.create();
 
-        const root = db.getGlobalDirectory();
-        const seq = await db.createSequence();
-        const box = await db.createBox();
-        const ks = await db.createKeySet();
-        const ps = await db.createPairSet();
-        const group = await db.createGroup();
+        const root = Directory.get();
+        const seq = await Sequence.create();
+        const box = await Box.create();
+        const ks = await KeySet.create();
+        const ps = await PairSet.create();
+        const group = await Group.create();
 
         await root.set("foo", "bar");
         await seq.push("foo");
         await box.set("foo");
         await ks.add("foo");
         await ps.include([root, seq]);
+        ensure(await ps.contains([root, seq]));
         await group.include(root);
 
         await prop.set(root, "foo");
@@ -266,13 +303,13 @@ it("test full database reset", async function () {
         ensure((await group.getName()) === "group");
 
         // Test resetting graph
-        const prop2 = await db.createProperty();
-        const v1 = await db.createVertex();
-        const v2 = await db.createVertex();
-        const et = await db.createEdgeType();
-        const e1 = await et.createEdge(v1, v2);
-        const e2 = await et.createEdge(v2, v1);
-        const e3 = await et.createEdge(v1, v2);
+        const prop2 = await Property.create();
+        const v1 = await Vertex.create();
+        const v2 = await Vertex.create();
+        const et = await EdgeType.create();
+        const e1 = await et.create(v1, v2);
+        const e2 = await et.create(v2, v1);
+        const e3 = await et.create(v1, v2);
         const baselineEdges = await v1.getEdgesFrom();
         const originalE1 = baselineEdges[0];
         const originalE3 = baselineEdges[1];

@@ -45,7 +45,7 @@ function determineContainerStorage(container) {
 
         default:
             throw new Error(
-                `Either invalid behavior or container is edge_type, or vertex, which don't have entries.`
+                `Either invalid behavior or container is edge_type, or vertex, which don't have entries.`,
             );
     }
     return [keyType, valueType];

@@ -3,8 +3,6 @@
 export * from "./index";
 export { LogBackedStore } from "./LogBackedStore";
 export { SimpleServer } from "./SimpleServer";
-export { RoutingServer } from "./RoutingServer";
-export { RoutingServerInstance } from "./RoutingServerInstance";
 import { CommandLineInterface } from "./CommandLineInterface";
 export { CommandLineInterface };
 import { ArgumentParser } from "argparse";
@@ -21,10 +19,6 @@ if (require.main === module) {
         default: process.env["GINK_PORT"],
         nargs: "?",
         const: 8080,
-    });
-    parser.add_argument("--data-root", {
-        help: `path to a directory storing gink database files. this will cause gink to behave as a routing server`,
-        default: process.env["GINK_DATA_ROOT"],
     });
     parser.add_argument("--data-file", {
         help: `path to a logbacked store database file.`,
@@ -69,6 +63,6 @@ process.on("unhandledRejection", (reason: string, promise) => {
     if (reason) throw new Error(reason);
     else
         console.log(
-            "Unhandled Promise Rejection: Likely due to closed websocket connection."
+            "Unhandled Promise Rejection: Likely due to closed websocket connection.",
         );
 });

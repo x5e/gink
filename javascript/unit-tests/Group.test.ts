@@ -1,4 +1,11 @@
-import { Database, IndexedDbStore, MemoryStore } from "../implementation";
+import {
+    Database,
+    IndexedDbStore,
+    MemoryStore,
+    Box,
+    Group,
+    Property,
+} from "../implementation";
 import {
     ensure,
     generateTimestamp,
@@ -11,12 +18,12 @@ it("include and exclude work as intended", async function () {
         new IndexedDbStore("Group.test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const group1 = await instance.createGroup();
+        const group1 = await Group.create(instance);
 
-        const box1 = await instance.createBox();
-        const box2 = await instance.createBox();
+        const box1 = await Box.create(instance);
+        const box2 = await Box.create(instance);
         await group1.include(box1);
         ensure(await group1.isIncluded(box1), `Doesn't contain box1`);
         ensure(await group1.isIncluded(box1.address));
@@ -24,7 +31,7 @@ it("include and exclude work as intended", async function () {
         await group1.exclude(box1);
         ensure(
             !(await group1.isIncluded(box1)),
-            `Still contains box1 after exclude`
+            `Still contains box1 after exclude`,
         );
 
         // Testing a container can be excluded before it was included.
@@ -53,13 +60,13 @@ it("contains, toArray, and getMembers work properly", async function () {
         new IndexedDbStore("Group.test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const group1 = await instance.createGroup();
+        const group1 = await Group.create(instance);
 
-        const box1 = await instance.createBox();
-        const box2 = await instance.createBox();
-        const box3 = await instance.createBox();
+        const box1 = await Box.create(instance);
+        const box2 = await Box.create(instance);
+        const box3 = await Box.create(instance);
         await group1.include(box1);
         await group1.include(box2);
         ensure(await group1.isIncluded(box1));
@@ -81,13 +88,13 @@ it("Group.reset", async function () {
         new IndexedDbStore("Group.test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const box1 = await instance.createBox();
-        const box2 = await instance.createBox();
-        const group = await instance.createGroup();
-        const prop1 = await instance.createProperty();
-        const prop2 = await instance.createProperty();
+        const box1 = await Box.create(instance);
+        const box2 = await Box.create(instance);
+        const group = await Group.create(instance);
+        const prop1 = await Property.create(instance);
+        const prop2 = await Property.create(instance);
         await prop1.set(group, "foo");
         await prop2.set(group, "bar");
         await group.include(box1);
@@ -96,20 +103,27 @@ it("Group.reset", async function () {
         await prop1.set(group, "foo2");
         await prop2.set(group, "bar2");
         ensure(await group.isIncluded(box2));
-        await group.reset({ toTime: afterOne });
+        await group.reset(afterOne);
+        await group.resetProperties(afterOne);
         ensure((await prop1.get(group)) === "foo");
         ensure((await prop2.get(group)) === "bar");
         ensure(!(await group.isIncluded(box2)));
         ensure(await group.isIncluded(box1));
         await group.reset();
+        await group.resetProperties();
         ensure((await group.size()) === 0);
-        ensure((await prop1.get(group)) === undefined);
+        let val = await prop1.get(group);
+        if (val !== undefined) {
+            (<MemoryStore>store).dumpEntries();
+        }
+        ensure(val === undefined, val ? val.toString() : "no val");
         ensure((await prop2.get(group)) === undefined);
         await group.include(box1);
         await group.include(box2);
         const beforeExclude = generateTimestamp();
         await group.exclude(box1);
-        await group.reset({ toTime: beforeExclude, skipProperties: true });
+        await group.reset(beforeExclude);
+        await group.resetProperties(beforeExclude);
         ensure(await group.isIncluded(box1));
         ensure(await group.isIncluded(box2));
         ensure((await prop1.get(group)) === undefined);

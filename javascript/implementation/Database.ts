@@ -7,10 +7,10 @@ import {
     muidToString,
     builderToMuid,
     encodeToken,
-    isAlive,
     getIdentity,
     createKeyPair,
     muidTupleToMuid,
+    signBundle,
 } from "./utils";
 import {
     BundleBytes,
@@ -18,35 +18,29 @@ import {
     CallBack,
     BundleInfo,
     Muid,
-    ClaimedChain,
     BundleView,
     AsOf,
     KeyPair,
     MuidTuple,
+    Medallion,
+    Meta,
+    Bundler,
 } from "./typedefs";
 import { ChainTracker } from "./ChainTracker";
-import { Bundler } from "./Bundler";
 
-import { PairSet } from "./PairSet";
-import { PairMap } from "./PairMap";
-import { KeySet } from "./KeySet";
-import { Directory } from "./Directory";
-import { Box } from "./Box";
-import { Sequence } from "./Sequence";
-import { Group } from "./Group";
 import { Store } from "./Store";
 import {
     Behavior,
     ChangeBuilder,
-    ContainerBuilder,
     SyncMessageBuilder,
+    BundleBuilder,
 } from "./builders";
-import { Property } from "./Property";
-import { Vertex } from "./Vertex";
-import { EdgeType } from "./EdgeType";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
 import { construct } from "./factories";
+import { BoundBundler } from "./BoundBundler";
+import { PromiseChainLock } from "./PromiseChainLock";
+import { Property } from "./Property";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -60,11 +54,15 @@ export class Database {
 
     private listeners: Map<string, Map<string, BundleListener[]>> = new Map();
     private countConnections = 0; // Includes disconnected clients.
-    private lastLinkToExtend: BundleInfo;
-    private keyPair: KeyPair;
-    private identity: string;
-    private chainGetter?: Promise<BundleInfo> = undefined;
+    private identity?: string;
     protected iHave: ChainTracker;
+    private static lastCreated?: Database;
+    readonly store: Store;
+    protected logger: CallBack;
+    protected promiseChainLock = new PromiseChainLock();
+    protected medallion?: Medallion;
+    protected keyPair?: KeyPair;
+    protected lastLink?: BundleInfo;
 
     //TODO: centralize platform dependent code
     private static W3cWebSocket =
@@ -72,13 +70,24 @@ export class Database {
             ? WebSocket
             : eval("require('websocket').w3cwebsocket");
 
-    constructor(
-        readonly store: Store = new MemoryStore(true),
-        identity: string = getIdentity(),
-        readonly logger: CallBack = noOp
-    ) {
-        this.identity = identity;
+    constructor(args?: {
+        store?: Store;
+        logger?: CallBack;
+        identity?: string;
+    }) {
+        this.store = args?.store ?? new MemoryStore(true);
+        this.logger = args?.logger ?? noOp;
         this.ready = this.initialize();
+        this.identity = args?.identity;
+        Database.lastCreated = this;
+    }
+
+    public getLastLink(): BundleInfo | undefined {
+        return this.lastLink;
+    }
+
+    public static get recent(): Database {
+        return ensure(Database.lastCreated, "no database created");
     }
 
     private async initialize(): Promise<void> {
@@ -102,49 +111,71 @@ export class Database {
         this.store.addFoundBundleCallBack(callback);
     }
 
-    /**
-     * Starts a chain or finds one to reuse, then sets myChain.
-     */
-    public getChain(): Promise<BundleInfo> {
-        if (!this.chainGetter) this.chainGetter = this.getChainHelper();
-        return this.chainGetter;
+    private async completeBundle(
+        changes: ChangeBuilder[],
+        meta?: Meta,
+    ): Promise<BundleInfo> {
+        // I'm acquiring a lock here to ensure that the chain doesn't get forked.
+        const unlockingFunction = await this.promiseChainLock.acquireLock();
+        try {
+            const bundleBuilder = new BundleBuilder();
+            if (meta.comment) bundleBuilder.setComment(meta.comment);
+            if (!this.medallion) throw new Error("missing medallion!");
+            bundleBuilder.setMedallion(this.medallion);
+            const timestamp = generateTimestamp();
+            bundleBuilder.setTimestamp(timestamp);
+            if (this.lastLink) {
+                bundleBuilder.setPrevious(this.lastLink.timestamp);
+                bundleBuilder.setChainStart(this.lastLink.chainStart);
+                bundleBuilder.setPriorHash(this.lastLink.hashCode);
+            } else {
+                bundleBuilder.setChainStart(timestamp);
+                bundleBuilder.setIdentity(this.identity);
+                bundleBuilder.setVerifyKey(this.keyPair.publicKey);
+            }
+            bundleBuilder.setChangesList(changes);
+            const bundleBytes = signBundle(
+                bundleBuilder.serializeBinary(),
+                this.keyPair.secretKey,
+            );
+            const decomposition = new Decomposition(bundleBytes);
+            /*
+                I need to set the lastLink before the transaction to add it is completed,
+                because if I don't then it can't do the transaction combining
+                (allowing multiple gink transactions to exist in an indexed db transaction).
+                Transactions headed to the store are still serialized due the promiseChainLock,
+                but there's a potential problem where a transaction fails at the store level
+                but then not unrolled at the database level.  This can't be solved simply
+                by using a catch clause because we could have several transactions queued.
+            */
+            this.lastLink = decomposition.info;
+            return this.receiveBundle(decomposition);
+        } finally {
+            unlockingFunction();
+        }
     }
 
-    private async getChainHelper(): Promise<BundleInfo> {
-        if (this.lastLinkToExtend) return this.lastLinkToExtend;
-        this.logger("calling getChain()");
-        const claimedChains = await this.store.getClaimedChains();
-        let toReuse: ClaimedChain;
-        for (let value of claimedChains.values()) {
-            const chainId = await this.store.getChainIdentity([
-                value.medallion,
-                value.chainStart,
-            ]);
-            this.logger(`considering chain: ${JSON.stringify(value)}`);
-            if (chainId !== this.identity) {
-                this.logger(
-                    `identities don't match: ${chainId} ${this.identity}`
+    public async startBundle(meta?: Meta): Promise<Bundler> {
+        if (meta?.bundler) return meta.bundler;
+        if (!this.medallion) {
+            const unlockingFunction = await this.promiseChainLock.acquireLock();
+            try {
+                await this.obtainMedallion(
+                    meta?.identity ?? this.identity ?? getIdentity(),
                 );
-                continue;
+            } finally {
+                unlockingFunction();
             }
-            if (await isAlive(value.actorId)) {
-                this.logger(`actor is still alive`);
-                continue;
-            }
-            // TODO: check to see if meta-data matches, and overwrite if not
-            toReuse = value;
-            if (typeof window !== "undefined") {
-                // If we are running in a browser and take over a chain,
-                // start a new heartbeat.
-                setInterval(() => {
-                    window.localStorage.setItem(
-                        `gink-${value.actorId}`,
-                        `${Date.now()}`
-                    );
-                }, 1000);
-            }
-            break;
         }
+        return new BoundBundler(
+            this.medallion,
+            this.completeBundle.bind(this),
+            meta,
+        );
+    }
+
+    private async obtainMedallion(identity: string): Promise<void> {
+        const toReuse = await this.store.acquireChain(identity);
         if (toReuse) {
             ensure(toReuse.medallion > 0);
             const publicKey = await this.store.getVerifyKey([
@@ -153,72 +184,17 @@ export class Database {
             ]);
             ensure(publicKey);
             this.keyPair = ensure(await this.store.pullKeyPair(publicKey));
-            this.lastLinkToExtend = this.iHave.getBundleInfo([
-                toReuse.medallion,
-                toReuse.chainStart,
-            ]);
+            this.lastLink = toReuse;
         } else {
-            const medallion = makeMedallion();
-            const chainStart = generateTimestamp();
-            const keyPair = createKeyPair();
-            await this.store.saveKeyPair(keyPair);
-            this.keyPair = keyPair;
-            const bundler = new Bundler(undefined, medallion);
-            // Starting a new chain, so don't have/need a prior_hash.
-            bundler.seal(
-                {
-                    medallion,
-                    timestamp: chainStart,
-                    chainStart,
-                },
-                keyPair,
-                undefined,
-                this.identity
-            );
-            ensure(bundler.builder.getIdentity() === this.identity);
-            await this.store.addBundle(bundler, true);
-            this.lastLinkToExtend = bundler.info;
-            ensure(
-                this.lastLinkToExtend.hashCode &&
-                    this.lastLinkToExtend.hashCode.length == 32
-            );
-            this.iHave.markAsHaving(bundler.info);
-            this.logger(
-                `started chain with ${JSON.stringify(bundler.info, ["medallion", "chainStart"])}`
-            );
-            // If there is already a connection before we claim a chain, ensure the
-            // peers get this bundle as well so future bundles will be valid extensions.
-            for (const peer of this.peers.values()) {
-                peer._sendIfNeeded(bundler);
-            }
+            this.keyPair = createKeyPair();
+            await this.store.saveKeyPair(this.keyPair);
+            this.medallion = makeMedallion();
         }
-        ensure(this.lastLinkToExtend, "myChain wasn't set.");
-        ensure(
-            this.lastLinkToExtend.hashCode &&
-                this.lastLinkToExtend.hashCode.length == 32
-        );
-        return this.lastLinkToExtend;
+        this.identity = identity;
     }
 
-    /**
-     * Reset all containers in the database to a previous time.
-     * @param toTime optional timestamp to reset to. If not provided, each container
-     * will be cleared.
-     * @param bundlerOrComment optional bundler to add this change to, or a string to
-     * add a comment to a new bundle.
-     */
-    async reset(
-        toTime?: AsOf,
-        bundlerOrComment?: Bundler | string
-    ): Promise<void> {
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
-        }
+    async reset(toTime?: AsOf, meta?: Meta): Promise<void> {
+        let bundler: Bundler = await this.startBundle(meta);
         // Leaving off Behavior.PROPERTY since each individual property will get reset
         // with the other container reset calls
         const globalBehaviors = [
@@ -230,203 +206,24 @@ export class Database {
             Behavior.GROUP,
             Behavior.PAIR_SET,
         ];
-        const globalContainers: MuidTuple[] = [];
         for (const behavior of globalBehaviors) {
-            globalContainers.push([-1, -1, behavior]);
+            const address = { timestamp: -1, medallion: -1, offset: behavior };
+            const container = await construct(this, address);
+            await container.reset(toTime, false, { bundler });
+            await container.resetProperties(toTime, { bundler });
         }
         const containers = await this.store.getAllContainerTuples();
 
         for (const muidTuple of containers) {
             const container = await construct(this, muidTupleToMuid(muidTuple));
             if (container instanceof Property) continue;
-            await container.reset({ toTime, bundlerOrComment: bundler });
+            await container.reset(toTime, false, { bundler });
+            await container.resetProperties(toTime, { bundler });
         }
 
-        for (const muidTuple of globalContainers) {
-            const container = await construct(this, muidTupleToMuid(muidTuple));
-            await container.reset({ toTime, bundlerOrComment: bundler });
+        if (!meta?.bundler) {
+            await bundler.commit();
         }
-
-        if (immediate) {
-            await this.addBundler(bundler);
-        }
-    }
-
-    /*
-     * Returns a handle to the magic global directory.  Primarily intended for testing.
-     * @returns a "magic" global directory that always exists and is accessible by all instances
-     */
-    getGlobalDirectory(): Directory {
-        return new Directory(this, {
-            timestamp: -1,
-            medallion: -1,
-            offset: Behavior.DIRECTORY,
-        });
-    }
-
-    getGlobalProperty(): Property {
-        return new Property(this, {
-            timestamp: -1,
-            medallion: -1,
-            offset: Behavior.PROPERTY,
-        });
-    }
-
-    getMedallionDirectory(): Directory {
-        return new Directory(this, {
-            timestamp: -1,
-            medallion: this.lastLinkToExtend[0],
-            offset: Behavior.DIRECTORY,
-        });
-    }
-
-    /**
-     * Creates a new box container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Box container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createBox(change?: Bundler | string): Promise<Box> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.BOX,
-            change
-        );
-        return new Box(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new List container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the List container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createSequence(change?: Bundler | string): Promise<Sequence> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.SEQUENCE,
-            change
-        );
-        return new Sequence(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new Key Set container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Key Set container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createKeySet(change?: Bundler | string): Promise<KeySet> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.KEY_SET,
-            change
-        );
-        return new KeySet(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new Group container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Group container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createGroup(change?: Bundler | string): Promise<Group> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.GROUP,
-            change
-        );
-        return new Group(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new PairSet container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the PairSet container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createPairSet(change?: Bundler | string): Promise<PairSet> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.PAIR_SET,
-            change
-        );
-        return new PairSet(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new PairMap container.
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the PairMap container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    async createPairMap(change?: Bundler | string): Promise<PairMap> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.PAIR_MAP,
-            change
-        );
-        return new PairMap(this, muid, containerBuilder);
-    }
-
-    /**
-     * Creates a new Directory container (like a javascript map or a python dict).
-     * @param change either the bundler to add this box creation to, or a comment for an immediate change
-     * @returns promise that resolves to the Directory container (immediately if a bundler is passed in, otherwise after the bundle)
-     */
-    // TODO: allow user to specify the types allowed for keys and values
-    async createDirectory(change?: Bundler | string): Promise<Directory> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.DIRECTORY,
-            change
-        );
-        return new Directory(this, muid, containerBuilder);
-    }
-
-    async createVertex(change?: Bundler | string): Promise<Vertex> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.VERTEX,
-            change
-        );
-        return new Vertex(this, muid, containerBuilder);
-    }
-
-    async createEdgeType(change?: Bundler | string): Promise<EdgeType> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.EDGE_TYPE,
-            change
-        );
-        return new EdgeType(this, muid, containerBuilder);
-    }
-
-    async createProperty(
-        bundlerOrComment?: Bundler | string
-    ): Promise<Property> {
-        const [muid, containerBuilder] = await this.createContainer(
-            Behavior.PROPERTY,
-            bundlerOrComment
-        );
-        return new Property(this, muid, containerBuilder);
-    }
-
-    protected async createContainer(
-        behavior: Behavior,
-        change?: Bundler | string
-    ): Promise<[Muid, ContainerBuilder]> {
-        let immediate = false;
-        if (!(change instanceof Bundler)) {
-            immediate = true;
-            change = new Bundler(change);
-        }
-        const containerBuilder = new ContainerBuilder();
-        containerBuilder.setBehavior(behavior);
-        const address = change.addContainer(containerBuilder);
-        if (immediate) {
-            await this.addBundler(change);
-        }
-        return [address, containerBuilder];
-    }
-
-    /**
-     * Returns an array of Muids of containers that have the provided name.
-     * @param name
-     * @param asOf optional timestamp to look back to.
-     * @returns an array of Muids.
-     */
-    public async getContainersWithName(
-        name: string,
-        asOf?: AsOf
-    ): Promise<Muid[]> {
-        return await this.store.getContainersByName(name, asOf);
     }
 
     /**
@@ -438,7 +235,7 @@ export class Database {
     public addListener(
         listener: BundleListener,
         containerMuid?: Muid,
-        remoteOnly: boolean = false
+        remoteOnly: boolean = false,
     ) {
         const key = containerMuid ? muidToString(containerMuid) : "all";
         if (!this.listeners.has(key)) {
@@ -458,7 +255,7 @@ export class Database {
      */
     private getListeners(
         remoteOnly: boolean = false,
-        containerMuid?: Muid
+        containerMuid?: Muid,
     ): BundleListener[] {
         const key = containerMuid ? muidToString(containerMuid) : "all";
         const containerMap = this.listeners.get(key);
@@ -467,39 +264,6 @@ export class Database {
             ? containerMap.get("remote_only")
             : containerMap.get("all_bundles");
         return innerMap || [];
-    }
-
-    /**
-     * Adds a bundle to a chain, setting the medallion and timestamps on the bundle in the process.
-     *
-     * @param bundler a PendingBundle ready to be sealed
-     * @returns A promise that will resolve to the bundle timestamp once it's persisted/sent.
-     */
-    public addBundler(bundler: Bundler): Promise<BundleInfo> {
-        return this.ready.then(() =>
-            this.getChain().then(() => {
-                const nowMicros = generateTimestamp();
-                const seenThrough = this.lastLinkToExtend.timestamp;
-                const newTimestamp =
-                    nowMicros > seenThrough ? nowMicros : seenThrough + 10;
-                ensure(seenThrough > 0 && seenThrough < nowMicros);
-                const bundleInfo: BundleInfo = {
-                    medallion: this.lastLinkToExtend.medallion,
-                    chainStart: this.lastLinkToExtend.chainStart,
-                    timestamp: newTimestamp,
-                    priorTime: seenThrough,
-                };
-                bundler.seal(
-                    bundleInfo,
-                    this.keyPair,
-                    this.lastLinkToExtend.hashCode
-                );
-                // The bundle is seralized then deserialized to catch problems before broadcasting.
-                const decomposition = new Decomposition(bundler.bytes);
-                this.lastLinkToExtend = decomposition.info;
-                return this.receiveBundle(decomposition);
-            })
-        );
     }
 
     /**
@@ -536,11 +300,11 @@ export class Database {
      */
     private receiveBundle(
         bundle: BundleView,
-        fromConnectionId?: number
+        fromConnectionId?: number,
     ): Promise<BundleInfo> {
         return this.store.addBundle(bundle).then((added) => {
             if (!added) return;
-            let summary;
+            let summary: string;
             if (bundle.info.chainStart === bundle.info.timestamp) {
                 summary = JSON.stringify(bundle.info, [
                     "medallion",
@@ -624,7 +388,7 @@ export class Database {
      */
     protected async receiveMessage(
         messageBytes: Uint8Array,
-        fromConnectionId: number
+        fromConnectionId: number,
     ) {
         await this.ready;
         const peer = this.peers.get(fromConnectionId);
@@ -655,7 +419,7 @@ export class Database {
                     chainStart: ack.getChainStart(),
                 };
                 this.logger(
-                    `got ack from ${fromConnectionId}: ${JSON.stringify(info)}`
+                    `got ack from ${fromConnectionId}: ${JSON.stringify(info)}`,
                 );
                 this.peers.get(fromConnectionId)?.hasMap?.markAsHaving(info);
             }
@@ -684,7 +448,7 @@ export class Database {
             resolveOnOpen?: boolean;
             retryOnDisconnect?: boolean;
             authToken?: string;
-        }
+        },
     ): Promise<Peer> {
         //TODO(https://github.com/google/gink/issues/69): have the default be to wait for databases to sync
         const onClose: CallBack =
@@ -705,18 +469,18 @@ export class Database {
             const connectionId = this.createConnectionId();
             let websocketClient: WebSocket = new Database.W3cWebSocket(
                 target,
-                protocols
+                protocols,
             );
             websocketClient.binaryType = "arraybuffer";
             const peer = new Peer(
                 websocketClient.send.bind(websocketClient),
-                websocketClient.close.bind(websocketClient)
+                websocketClient.close.bind(websocketClient),
             );
 
             websocketClient.onopen = function (_ev: Event) {
                 // called once the new connection has been established
                 websocketClient.send(
-                    thisClient.iHave.getGreetingMessageBytes()
+                    thisClient.iHave.getGreetingMessageBytes(),
                 );
                 thisClient.peers.set(connectionId, peer);
                 if (resolveOnOpen) resolve(peer);
@@ -725,7 +489,7 @@ export class Database {
             websocketClient.onerror = function (ev: Event) {
                 // if/when this is called depends on the details of the websocket implementation
                 console.error(
-                    `error on connection ${connectionId} to ${target}, ${ev}`
+                    `error on connection ${connectionId} to ${target}, ${ev}`,
                 );
                 reject(ev);
             };
@@ -746,7 +510,7 @@ export class Database {
                     let jitter = Math.floor(Math.random() * 1000);
                     while (!peer) {
                         await new Promise((resolve) =>
-                            setTimeout(resolve, retry_ms + jitter)
+                            setTimeout(resolve, retry_ms + jitter),
                         );
                         try {
                             console.log(`retrying connection to ${target}`);
@@ -763,7 +527,7 @@ export class Database {
                                 pow += 1;
                                 retry_ms = 1000 * Math.pow(2, pow);
                                 jitter = Math.floor(
-                                    Math.random() * 1000 * Math.pow(2, pow)
+                                    Math.random() * 1000 * Math.pow(2, pow),
                                 );
                             }
                         }

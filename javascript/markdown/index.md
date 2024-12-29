@@ -90,10 +90,6 @@ gink databases to connect to (e.g: wss://localhost:8080 wss://localhost:8081)
 Port to listen on. If flag is not included, gink does not listen for incoming connections. \
 Defaults to 8080. This may also be set using env GINK_PORT.
 
-### --data-root [path]
-The path to a directory storing Gink database files. Passing this will cause Gink to behave as a `RoutingServer`, meaning you will be able to connect to different databases by changing the path in the URL. (e.g wss://localhost:8080/abc accesses the abc database) \
-Defaults to env GINK_DATA_ROOT.
-
 ### --data-file [path]
 The path to a `LogBackedStore` data file. Setting this will cause the CLI to load the database from the provided file into a `LogBackedStore`. \
 Defaults to env GINK_DATA_FILE.
@@ -133,7 +129,7 @@ const database = new Database(store);
 A `Box` is the simplest data structure available on Gink. It can hold only one value at a time; you can set its value, or get its value.
 ```ts
 // Create a Box
-const box = await database.createBox();
+const box = await Box.create(database);
 
 // Set the value in the box
 await box.set("example value");
@@ -265,9 +261,9 @@ A `PairSet` is a data structure that resembles a Set, but has very specific item
 const ps = await database.createPairSet();
 
 // create a few other containers to add as pairs
-const box1 = await database.createBox();
-const box2 = await database.createBox();
-const box3 = await database.createBox();
+const box1 = await Box.create(database);
+const box2 = await Box.create(database);
+const box3 = await Box.create(database);
 
 // Include box1 and box2 in the PairSet
 await ps.include([box1, box2]);
@@ -289,9 +285,9 @@ A `PairMap` is similar to a `PairSet`, in that its keys may only contain pairs o
 ```ts
 const pm = await database.createPairMap();
 
-const box1 = await database.createBox();
-const box2 = await database.createBox();
-const box3 = await database.createBox();
+const box1 = await Box.create(database);
+const box2 = await Box.create(database);
+const box3 = await Box.create(database);
 
 // now looks like {[Box, Box]: "box1 -> box2"}
 await pm.set([box1, box2], "box1 -> box2");
@@ -322,8 +318,8 @@ A `Group` acts as a collection of containers that all have something in common. 
 const group = await database.createGroup();
 
 // create some containers to include
-const box1 = await database.createBox();
-const box2 = await database.createBox();
+const box1 = await Box.create(database);
+const box2 = await Box.create(database);
 const directory1 = await database.createDirectory();
 
 // include by Container instance
@@ -462,18 +458,15 @@ const{ Bundler } = require("@x5e/gink");
 
 const directory = await database.createDirectory();
 
-const bundler = new Bundler();
+const bundler = await database.startBundle();
 
 // pass the bundler into each operation
 await directory.set("key1", "value1", bundler);
 await directory.set("key2", 2, bundler);
 // at this point, these changes have not been committed.
 
-// Update the bundle comment
-bundler.comment = "Testing bundles";
-
 // bundle this bundle to the database
-await database.addBundler(bundler);
+await bundler.commit("comment");
 ```
 
 ### Connecting to other databases

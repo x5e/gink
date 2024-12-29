@@ -30,7 +30,7 @@ class Page {
         const addEntryButton = this.createElement(
             "button",
             this.root,
-            "add-entry-button"
+            "add-entry-button",
         );
         addEntryButton.innerText = "Add Entry";
         addEntryButton.onclick = async () => {
@@ -56,7 +56,7 @@ class Page {
                 if (Number(option) > totalEntries) break;
                 const currentOption = this.createElement(
                     "option",
-                    itemsPerPageSelect
+                    itemsPerPageSelect,
                 );
                 currentOption.innerText = option;
                 currentOption.value = option;
@@ -80,14 +80,14 @@ class Page {
         const pageButtonsDiv = this.createElement(
             "div",
             this.root,
-            "page-buttons-container"
+            "page-buttons-container",
         );
         pageButtonsDiv.style.fontWeight = "bold";
         const prevPage = this.createElement(
             "a",
             pageButtonsDiv,
             undefined,
-            "page-btn no-select"
+            "page-btn no-select",
         );
         prevPage.innerText = "<";
         if (!this.isFirstPage(currentPage)) {
@@ -102,14 +102,14 @@ class Page {
             "p",
             pageButtonsDiv,
             undefined,
-            "no-select"
+            "no-select",
         );
         thisPage.innerText = `Page ${currentPage}`;
         const nextPage = this.createElement(
             "a",
             pageButtonsDiv,
             undefined,
-            "page-btn no-select"
+            "page-btn no-select",
         );
         nextPage.innerText = ">";
         if (!this.isLastPage(currentPage, itemsPerPage, totalEntries)) {
@@ -124,14 +124,14 @@ class Page {
         const pageOfEntries = await this.database.getPageOfEntries(
             container,
             currentPage,
-            itemsPerPage
+            itemsPerPage,
         );
 
         // Create table based on page of entries.
         const containerTable = this.createElement(
             "table",
             this.root,
-            "container-table"
+            "container-table",
         );
         const headerRow = this.createElement("tr", containerTable);
         if (keyType !== "none") {
@@ -162,7 +162,7 @@ class Page {
                 "tr",
                 containerTable,
                 undefined,
-                "entry-row"
+                "entry-row",
             );
             row.dataset["position"] = position;
             row.onclick = async () => {
@@ -170,7 +170,7 @@ class Page {
                     key,
                     value,
                     Number(row.dataset["position"]),
-                    container
+                    container,
                 );
             };
             if (key !== undefined) {
@@ -201,7 +201,7 @@ class Page {
             "div",
             this.root,
             "add-entry-container",
-            "entry-container"
+            "entry-container",
         );
         let keyInput1, keyInput2, valueInput;
         // Key inputs - if container uses keys.
@@ -210,7 +210,7 @@ class Page {
                 "div",
                 entryFields,
                 undefined,
-                "input-container"
+                "input-container",
             );
             const keyH2 = this.createElement("h2", keyContainer);
             keyH2.innerText = "Key";
@@ -218,7 +218,7 @@ class Page {
                 "input",
                 keyContainer,
                 "key-input-1",
-                "bundle-input"
+                "bundle-input",
             );
             keyInput1.setAttribute("type", "text");
             keyInput1.setAttribute("placeholder", "Key");
@@ -228,21 +228,21 @@ class Page {
                 const datalist1 = this.createElement(
                     "datalist",
                     keyInput1,
-                    "datalist-1"
+                    "datalist-1",
                 );
                 await this.enableContainersAutofill(datalist1);
             } else {
                 keyContainer.appendChild(document.createElement("br"));
                 const sel = keyContainer.appendChild(
-                    document.createElement("select")
+                    document.createElement("select"),
                 );
                 sel.setAttribute("id", "key-type-select");
                 const strOption = sel.appendChild(
-                    document.createElement("option")
+                    document.createElement("option"),
                 );
                 strOption.value = strOption.innerText = "string";
                 const intOption = sel.appendChild(
-                    document.createElement("option")
+                    document.createElement("option"),
                 );
                 intOption.value = intOption.innerText = "int";
             }
@@ -251,7 +251,7 @@ class Page {
                     "input",
                     keyContainer,
                     "key-input-2",
-                    "bundle-input"
+                    "bundle-input",
                 );
                 keyInput2.setAttribute("type", "text");
                 keyInput2.setAttribute("placeholder", "Muid");
@@ -259,7 +259,7 @@ class Page {
                 const datalist2 = this.createElement(
                     "datalist",
                     keyInput2,
-                    "datalist-2"
+                    "datalist-2",
                 );
                 await this.enableContainersAutofill(datalist2);
             }
@@ -271,7 +271,7 @@ class Page {
                 "div",
                 entryFields,
                 undefined,
-                "input-container"
+                "input-container",
             );
             const valueH2 = this.createElement("h2", valueContainer);
             valueH2.innerText = "Value";
@@ -279,13 +279,13 @@ class Page {
                 "input",
                 valueContainer,
                 "value-input",
-                "bundle-input"
+                "bundle-input",
             );
             valueInput.setAttribute("type", "text");
             valueInput.setAttribute("placeholder", "Value");
             valueContainer.appendChild(document.createElement("br"));
             const sel = valueContainer.appendChild(
-                document.createElement("select")
+                document.createElement("select"),
             );
             sel.setAttribute("id", "value-type-select");
             const strOption = sel.appendChild(document.createElement("option"));
@@ -293,11 +293,11 @@ class Page {
             const intOption = sel.appendChild(document.createElement("option"));
             intOption.value = intOption.innerText = "int";
             const boolOption = sel.appendChild(
-                document.createElement("option")
+                document.createElement("option"),
             );
             boolOption.value = boolOption.innerText = "bool";
             const nullOption = sel.appendChild(
-                document.createElement("option")
+                document.createElement("option"),
             );
             nullOption.value = nullOption.innerText = "null";
         }
@@ -307,7 +307,7 @@ class Page {
             "div",
             entryFields,
             undefined,
-            "input-container"
+            "input-container",
         );
         const commentH2 = this.createElement("h2", commentContainer);
         commentH2.innerText = "Comment";
@@ -315,7 +315,7 @@ class Page {
             "input",
             commentContainer,
             "comment-input",
-            "bundle-input"
+            "bundle-input",
         );
         commentInput.setAttribute("type", "text");
         commentInput.setAttribute("placeholder", "Bundle message (optional)");
@@ -324,7 +324,7 @@ class Page {
         const submitButton = this.createElement(
             "button",
             entryFields,
-            "bundle-button"
+            "bundle-button",
         );
         submitButton.innerText = "Bundle Entry";
         submitButton.onclick = async () => {
@@ -358,7 +358,7 @@ class Page {
                     interpretKey(newKey, container),
                     newValue,
                     container,
-                    newComment
+                    newComment,
                 );
             }
             await this.displayPage(...this.unwrapHash(window.location.hash));
@@ -383,14 +383,14 @@ class Page {
             "div",
             this.root,
             "view-entry",
-            "entry-container"
+            "entry-container",
         );
         if (key !== undefined) {
             const keyContainer = this.createElement(
                 "div",
                 entryContainer,
                 undefined,
-                "input-container"
+                "input-container",
             );
             const keyH2 = this.createElement("h2", keyContainer);
             keyH2.innerText = "Key";
@@ -403,7 +403,7 @@ class Page {
                 "div",
                 entryContainer,
                 undefined,
-                "input-container"
+                "input-container",
             );
             const valueH2 = this.createElement("h2", valueContainer);
             valueH2.innerText = "Value";
@@ -415,12 +415,12 @@ class Page {
         const buttonContainer = this.createElement(
             "div",
             this.root,
-            "update-delete-container"
+            "update-delete-container",
         );
         const updateButton = this.createElement(
             "button",
             buttonContainer,
-            "update-button"
+            "update-button",
         );
         updateButton.innerText = "Update Entry";
         updateButton.onclick = async () => {
@@ -430,7 +430,7 @@ class Page {
         const deleteButton = this.createElement(
             "button",
             buttonContainer,
-            "delete-button"
+            "delete-button",
         );
         deleteButton.innerText = "Delete Entry";
         deleteButton.onclick = async () => {
@@ -438,7 +438,7 @@ class Page {
                 await this.database.deleteEntry(
                     interpretKey(key, container),
                     position,
-                    container
+                    container,
                 );
             }
             await this.displayPage(...this.unwrapHash(window.location.hash));
@@ -465,7 +465,7 @@ class Page {
             "div",
             this.root,
             "view-entry",
-            "entry-container"
+            "entry-container",
         );
         let keyInput1, keyInput2, valueInput;
         // Key - 2 inputs if container uses pairs, 1 input if container uses keys
@@ -476,29 +476,29 @@ class Page {
                 "input",
                 entryContainer,
                 "key-input-1",
-                "bundle-input"
+                "bundle-input",
             );
             if (keyType === "pair") {
                 keyInput2 = this.createElement(
                     "input",
                     entryContainer,
                     "key-input-2",
-                    "bundle-input"
+                    "bundle-input",
                 );
                 keyInput1.setAttribute(
                     "placeholder",
-                    gink.muidToString(oldKey[0])
+                    gink.muidToString(oldKey[0]),
                 );
                 keyInput2.setAttribute(
                     "placeholder",
-                    gink.muidToString(oldKey[1])
+                    gink.muidToString(oldKey[1]),
                 );
 
                 keyInput1.setAttribute("list", "datalist-1");
                 const datalist1 = this.createElement(
                     "datalist",
                     keyInput1,
-                    "datalist-1"
+                    "datalist-1",
                 );
                 await this.enableContainersAutofill(datalist1);
 
@@ -506,34 +506,34 @@ class Page {
                 const datalist2 = this.createElement(
                     "datalist",
                     keyInput2,
-                    "datalist-2"
+                    "datalist-2",
                 );
                 await this.enableContainersAutofill(datalist2);
             } else if (keyType === "muid") {
                 keyInput1.setAttribute(
                     "placeholder",
-                    gink.muidToString(oldKey.address)
+                    gink.muidToString(oldKey.address),
                 );
 
                 keyInput1.setAttribute("list", "datalist-1");
                 const datalist1 = this.createElement(
                     "datalist",
                     keyInput1,
-                    "datalist-1"
+                    "datalist-1",
                 );
                 await this.enableContainersAutofill(datalist1);
             } else {
                 keyInput1.setAttribute("placeholder", oldKey);
                 const sel = entryContainer.appendChild(
-                    document.createElement("select")
+                    document.createElement("select"),
                 );
                 sel.setAttribute("id", "key-type-select");
                 const strOption = sel.appendChild(
-                    document.createElement("option")
+                    document.createElement("option"),
                 );
                 strOption.value = strOption.innerText = "string";
                 const intOption = sel.appendChild(
-                    document.createElement("option")
+                    document.createElement("option"),
                 );
                 intOption.value = intOption.innerText = "int";
             }
@@ -546,12 +546,12 @@ class Page {
                 "input",
                 entryContainer,
                 "value-input",
-                "bundle-input"
+                "bundle-input",
             );
             valueInput.setAttribute("placeholder", oldValue);
 
             const sel = entryContainer.appendChild(
-                document.createElement("select")
+                document.createElement("select"),
             );
             sel.setAttribute("id", "value-type-select");
             const strOption = sel.appendChild(document.createElement("option"));
@@ -559,11 +559,11 @@ class Page {
             const intOption = sel.appendChild(document.createElement("option"));
             intOption.value = intOption.innerText = "int";
             const boolOption = sel.appendChild(
-                document.createElement("option")
+                document.createElement("option"),
             );
             boolOption.value = boolOption.innerText = "bool";
             const nullOption = sel.appendChild(
-                document.createElement("option")
+                document.createElement("option"),
             );
             nullOption.value = nullOption.innerText = "null";
         }
@@ -574,7 +574,7 @@ class Page {
             "input",
             entryContainer,
             "comment-input",
-            "bundle-input"
+            "bundle-input",
         );
         commentInput.setAttribute("placeholder", "Bundle Message (optional)");
 
@@ -582,12 +582,12 @@ class Page {
         const buttonContainer = this.createElement(
             "div",
             this.root,
-            "bundle-abort-container"
+            "bundle-abort-container",
         );
         const bundleButton = this.createElement(
             "button",
             buttonContainer,
-            "bundle-button"
+            "bundle-button",
         );
         bundleButton.innerText = "Bundle Entry";
         bundleButton.onclick = async () => {
@@ -631,13 +631,13 @@ class Page {
                     interpretKey(oldKey, container),
                     position,
                     container,
-                    newComment
+                    newComment,
                 );
                 await this.database.addEntry(
                     interpretKey(newKey, container),
                     newValue,
                     container,
-                    newComment
+                    newComment,
                 );
             }
             await this.displayPage(...this.unwrapHash(window.location.hash));
@@ -694,7 +694,7 @@ class Page {
         let itemsPerPage = 10;
         if (window.location.hash === "#self") {
             stringMuid = gink.muidToString(
-                this.database.getSelfContainer().address
+                this.database.getSelfContainer().address,
             );
         } else if (hash) {
             hash = hash.substring(1);
@@ -716,7 +716,7 @@ class Page {
     async enableContainersAutofill(htmlDatalistElement) {
         gink.ensure(
             htmlDatalistElement instanceof HTMLDataListElement,
-            "Can only fill datalist"
+            "Can only fill datalist",
         );
         const containers = await this.database.getAllContainers();
         for (const [strMuid, container] of containers) {
@@ -786,7 +786,7 @@ class Page {
             titleContainer = this.createElement(
                 "div",
                 this.root,
-                "title-container"
+                "title-container",
             );
         }
 
@@ -820,7 +820,7 @@ class Page {
         const containerNameInput = this.createElement(
             "input",
             titleContainer,
-            "title-input"
+            "title-input",
         );
         containerNameInput.setAttribute("type", "text");
         containerNameInput.setAttribute("placeholder", previousName);
@@ -829,7 +829,7 @@ class Page {
             "button",
             titleContainer,
             undefined,
-            "container-name-btn"
+            "container-name-btn",
         );
         submitButton.innerText = "✓";
         submitButton.onclick = async () => {
@@ -838,7 +838,7 @@ class Page {
             else {
                 await this.database.setContainerName(
                     container,
-                    containerNameInput.value
+                    containerNameInput.value,
                 );
             }
             await this.writeTitle(container);
@@ -848,7 +848,7 @@ class Page {
             "button",
             titleContainer,
             undefined,
-            "container-name-btn"
+            "container-name-btn",
         );
         cancelButton.innerText = "X";
         cancelButton.onclick = async () => {
@@ -863,7 +863,7 @@ class Page {
         const cancelButton = this.createElement(
             "button",
             this.root,
-            "cancel-button"
+            "cancel-button",
         );
         cancelButton.innerText = "X";
         cancelButton.onclick = async () => {

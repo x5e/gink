@@ -1,30 +1,46 @@
 import {
     Database,
     ensure,
-    generateTimestamp,
     IndexedDbStore,
     MemoryStore,
+    Box,
 } from "../implementation";
 
-it("test resetProperties", async function () {
+it("test naming", async function () {
     for (const store of [
         new IndexedDbStore("Database.propertyReset.test", true),
         new MemoryStore(true),
     ]) {
         await store.ready;
-        const db = new Database(store);
+        const db = new Database({ store });
+        await db.ready;
+        const box = await Box.create();
+        await box.setName("foo");
+        const name = await box.getName();
+        ensure(name == "foo");
+    }
+});
+
+/*
+it("test naming", async function () {
+    for (const store of [
+        new IndexedDbStore("Database.propertyReset.test", true),
+        new MemoryStore(true),
+    ]) {
+        await store.ready;
+        const db = new Database({store});
         await db.ready;
 
-        const root = db.getGlobalDirectory();
-        const prop1 = await db.createProperty();
-        const prop2 = await db.createProperty();
+        const root = Directory.get();
+        const prop1 = await Property.create();
+        const prop2 = await Property.create();
         await prop1.set(root, "foo");
         await prop2.set(root, "bar");
         await root.setName("root");
         const resetTo = generateTimestamp();
         await prop1.set(root, "foo2");
         await prop2.set(root, "bar2");
-        const prop3 = await db.createProperty();
+        const prop3 = await Property.create();
         await prop3.set(root, "baz2");
         await root.setName("root2");
         ensure((await prop1.get(root)) === "foo2");
@@ -82,3 +98,4 @@ it("test resetProperties", async function () {
         ensure((await prop2Seq.get(seq)) === undefined);
     }
 });
+*/

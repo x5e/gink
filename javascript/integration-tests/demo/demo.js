@@ -14,10 +14,10 @@ function getWebsocketTarget() {
 (async () => {
     const instance = new gink.Database(
         new gink.IndexedDbStore("browser-test", true),
-        { software: "browser instance" }
+        { software: "browser instance" },
     );
     await instance.ready;
-    globalThis.root = instance.getGlobalDirectory();
+    globalThis.root = Directory.get(instance);
     instance.addListener(async function (changeSetInfo) {
         console.log(changeSetInfo);
         if (document === null) {

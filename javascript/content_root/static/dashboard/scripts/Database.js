@@ -15,7 +15,7 @@ class Database {
      * @returns the first container for the view to display.
      */
     getRootContainer() {
-        return this.instance.getGlobalDirectory();
+        return this.Directory.get(instance);
     }
 
     /**
@@ -33,7 +33,7 @@ class Database {
      * @returns a string of the name if found, otherwise undefined.
      */
     async getContainerName(container) {
-        const names = this.instance.getGlobalProperty();
+        const names = this.Property.get(instance);
         return await names.get(container);
     }
 
@@ -43,7 +43,7 @@ class Database {
      * @param {*} name the new name for the container.
      */
     async setContainerName(container, name) {
-        const names = this.instance.getGlobalProperty();
+        const names = this.Property.get(instance);
         await names.set(container, name);
     }
 
@@ -66,7 +66,7 @@ class Database {
      */
     async getAllContainers() {
         // Fill an object of strMuid -> Container entries
-        const globalDir = this.instance.getGlobalDirectory();
+        const globalDir = this.Directory.get(instance);
         const allContainers = {
             [`${gink.muidToString(globalDir.address)}`]: globalDir,
         };
@@ -74,7 +74,7 @@ class Database {
         for (const tuple of containerTuples) {
             allContainers[gink.muidTupleToString(tuple)] = await gink.construct(
                 this.instance,
-                gink.muidTupleToMuid(tuple)
+                gink.muidTupleToMuid(tuple),
             );
         }
         return Object.entries(allContainers);
@@ -89,7 +89,7 @@ class Database {
         // Need to subtract 1 from the page to avoid errors.
         gink.ensure(container instanceof gink.Container);
         gink.ensure(
-            typeof page === "number" && typeof itemsPerPage === "number"
+            typeof page === "number" && typeof itemsPerPage === "number",
         );
         const entries = await this.containerAsArray(container);
 
@@ -164,7 +164,7 @@ class Database {
                 break;
             default:
                 throw new Error(
-                    `not sure how to get entries for ${container.constructor.name}`
+                    `not sure how to get entries for ${container.constructor.name}`,
                 );
         }
         return arr;
@@ -197,7 +197,7 @@ class Database {
                 gink.ensure(Array.isArray(key) && key.length === 2);
                 gink.ensure(
                     "timestamp" in key[0] && "timestamp" in key[1],
-                    "Expecting array of 2 muids for key."
+                    "Expecting array of 2 muids for key.",
                 );
                 await container.set(
                     [
@@ -205,7 +205,7 @@ class Database {
                         await gink.construct(this.instance, key[1]),
                     ],
                     val,
-                    comment
+                    comment,
                 );
                 break;
             case 4: // Directory
@@ -222,14 +222,14 @@ class Database {
                 gink.ensure(Array.isArray(key) && key.length === 2);
                 gink.ensure(
                     "timestamp" in key[0] && "timestamp" in key[1],
-                    "Expecting array of 2 muids for key."
+                    "Expecting array of 2 muids for key.",
                 );
                 await container.include(
                     [
                         await gink.construct(this.instance, key[0]),
                         await gink.construct(this.instance, key[1]),
                     ],
-                    comment
+                    comment,
                 );
                 break;
             case 10: // Property
@@ -238,7 +238,7 @@ class Database {
                 break;
             default:
                 throw new Error(
-                    `not sure how to add entry to ${container.constructor.name}`
+                    `not sure how to add entry to ${container.constructor.name}`,
                 );
         }
     }
@@ -260,7 +260,7 @@ class Database {
             case 2: // Sequence
                 gink.ensure(
                     typeof position === "number",
-                    "invalid position arg"
+                    "invalid position arg",
                 );
                 await container.pop(position, false, comment);
                 break;
@@ -292,7 +292,7 @@ class Database {
                 break;
             default:
                 throw new Error(
-                    `not sure how to delete entry from ${container.constructor.name}`
+                    `not sure how to delete entry from ${container.constructor.name}`,
                 );
         }
     }

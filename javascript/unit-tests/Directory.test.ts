@@ -1,7 +1,6 @@
 import { sleep } from "./test_utils";
 import {
     Database,
-    Bundler,
     IndexedDbStore,
     Directory,
     MemoryStore,
@@ -13,9 +12,9 @@ it("set and get basic data", async function () {
         new IndexedDbStore("Directory.test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const schema = await instance.createDirectory();
+        const schema = await Directory.create();
 
         // set a value
         await schema.set("a key", "a value");
@@ -44,10 +43,10 @@ it("set and get data in two directories", async function () {
         new IndexedDbStore("two.directories", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const dir1 = await instance.createDirectory();
-        const dir2 = await instance.createDirectory();
+        const dir1 = await Directory.create();
+        const dir2 = await Directory.create();
 
         // set a value
         await dir1.set("key-a", "value1");
@@ -76,16 +75,15 @@ it("set multiple key/value pairs in one change-set", async function () {
         new IndexedDbStore("Directory.test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const schema = await instance.createDirectory();
+        const schema = await Directory.create();
 
         // make multiple changes in a change set
-        const bundler = new Bundler();
-        await schema.set("cheese", "fries", bundler);
-        await schema.set("foo", "bar", bundler);
-        bundler.comment = "Hear me roar!";
-        await instance.addBundler(bundler);
+        const bundler = await instance.startBundle();
+        await schema.set("cheese", "fries", { bundler });
+        await schema.set("foo", "bar", { bundler });
+        await bundler.commit("Hear me roar!");
 
         // verify the result
         const result = await schema.get("cheese");
@@ -101,12 +99,12 @@ it("use a sub-schema", async function () {
         new IndexedDbStore("Directory.test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const schema = await instance.createDirectory();
+        const schema = await Directory.create();
 
         // set things up
-        const newSchema = await instance.createDirectory();
+        const newSchema = await Directory.create();
         await newSchema.set("xyz", "123");
         await schema.set("abc", newSchema);
 
@@ -123,10 +121,10 @@ it("purge one directory leaving other untouched", async function () {
         new IndexedDbStore("purge etc.", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const d1 = await instance.createDirectory();
-        const d2 = await instance.createDirectory();
+        const d1 = await Directory.create();
+        const d2 = await Directory.create();
 
         await d1.set("foo", "bar");
         await d2.set("abc", "xyz");
@@ -144,9 +142,9 @@ it("convert to standard Map", async function () {
         new IndexedDbStore("Directory.convert", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const directory = await instance.createDirectory();
+        const directory = await Directory.create(instance);
 
         await directory.set("foo", "bar");
         await directory.set("bar", "baz");
@@ -157,13 +155,13 @@ it("convert to standard Map", async function () {
         const asMap = await directory.toMap();
         ensure(
             asMap.size === 2,
-            `expected to be 2: ${asMap.size} ${JSON.stringify(asMap)}`
+            `expected to be 2: ${asMap.size} ${JSON.stringify(asMap)}`,
         );
         ensure(!asMap.has("foo"));
         ensure(asMap.get("bar") === "iron");
         ensure(asMap.get("cheese") === "fries");
 
-        const another = await instance.createDirectory();
+        const another = await Directory.create(instance);
         await another.set(new Uint8Array([94, 10]), "foo");
         const anotherAsMap = await another.toMap();
         ensure(anotherAsMap.size === 1);
@@ -178,14 +176,14 @@ it("Directory.toJSON", async function () {
         new IndexedDbStore("Directory.toJSON", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const directory = await instance.createDirectory();
+        const directory = await Directory.create(instance);
 
         await directory.set("foo", "bar");
         await directory.set("bar", 3);
         await directory.set("zoom", null);
-        const other = await instance.createDirectory();
+        const other = await Directory.create(instance);
         await other.set("xxx", "yyy");
         await directory.set("blue", other);
         await directory.set(new Uint8Array([94, 10]), "^\n");
@@ -213,7 +211,7 @@ it("Directory.toJSON", async function () {
                 parsed["3"] === "baz" &&
                 parsed["4"] === "aaa" &&
                 parsed["123103"] === "woo",
-            JSON.stringify(parsed)
+            JSON.stringify(parsed),
         );
 
         await store.close();
@@ -225,9 +223,9 @@ it("Directory.asOf", async function () {
         new IndexedDbStore("Directory.asOf", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const directory = await instance.createDirectory();
+        const directory = await Directory.create(instance);
 
         const time0 = generateTimestamp();
         await sleep(10);
@@ -267,9 +265,9 @@ it("Directory.purge", async function () {
         new IndexedDbStore("Directory.purge", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const directory = await instance.createDirectory();
+        const directory = await Directory.create(instance);
 
         await directory.set("A", 99);
         await sleep(10);
@@ -282,7 +280,7 @@ it("Directory.purge", async function () {
 
         const found = await instance.store.getKeyedEntries(
             directory.address,
-            middle
+            middle,
         );
         ensure(!found.size);
         ensure(!(await directory.size()));
@@ -297,9 +295,9 @@ it(
             new IndexedDbStore("Directory.clear", true),
             new MemoryStore(true),
         ]) {
-            const instance = new Database(store);
+            const instance = new Database({ store });
             await instance.ready;
-            const directory = await instance.createDirectory();
+            const directory = await Directory.create(instance);
             await directory.set("A", 99);
             const clearMuid = await directory.clear();
             await directory.set("B", false);
@@ -315,5 +313,5 @@ it(
             await store.close();
         }
     },
-    1000 * 1000 * 1000
+    1000 * 1000 * 1000,
 );

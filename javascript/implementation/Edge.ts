@@ -1,11 +1,19 @@
 import { Addressable } from "./Addressable";
 import { Database } from "./Database";
-import { AsOf, EdgeData, Muid, Value, Timestamp } from "./typedefs";
+import {
+    AsOf,
+    EdgeData,
+    Muid,
+    Value,
+    Timestamp,
+    Bundler,
+    Meta,
+} from "./typedefs";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { entryToEdgeData } from "./utils";
-import { Bundler } from "./Bundler";
 import { movementHelper } from "./store_utils";
+import { Behavior } from "./builders";
 
 export class Edge extends Addressable {
     private source: Muid;
@@ -13,43 +21,53 @@ export class Edge extends Addressable {
     private action: Muid;
     private value?: Value;
 
-    constructor(
+    private constructor(
         readonly database: Database,
         address: Muid,
-        data: EdgeData
     ) {
         super(address);
-        this.setFromEdgeData(data);
+    }
+
+    static get(database: Database, muid: Muid, data: EdgeData) {
+        const edge = new Edge(database, muid);
+        edge.setFromEdgeData(data);
+        return edge;
     }
 
     private setFromEdgeData(data: EdgeData) {
         this.source = data.source;
         this.target = data.target;
-        this.action = data.action;
+        this.action = data.etype ?? {
+            timestamp: -1,
+            medallion: -1,
+            offset: Behavior.EDGE_TYPE,
+        };
         this.value = data.value;
     }
 
     static async load(database: Database, address: Muid): Promise<Edge> {
         const entry = await database.store.getEntryById(
             address,
-            address.timestamp + 1
+            address.timestamp + 1,
         );
         if (!entry) {
             throw new Error("edge not found");
         }
-        return new Edge(database, address, entryToEdgeData(entry));
+        const edge = new Edge(database, address);
+        edge.setFromEdgeData(entryToEdgeData(entry));
+        return edge;
     }
 
     getSourceVertex(): Vertex {
-        return new Vertex(this.database, this.source);
+        return Vertex.get(this.database, this.source);
     }
 
     getTargetVertex(): Vertex {
-        return new Vertex(this.database, this.target);
+        return Vertex.get(this.database, this.target);
     }
 
     getEdgeType(): EdgeType {
-        return new EdgeType(this.database, this.action);
+        return EdgeType.get(this.database, this.action);
     }
 
     getValue(): Value | undefined {
@@ -68,7 +86,7 @@ export class Edge extends Addressable {
     async getEffective(asOf?: AsOf): Promise<Timestamp> {
         const entry = await this.database.store.getEntryById(
             this.address,
-            asOf
+            asOf,
         );
         if (!entry) {
             return 0;
@@ -84,25 +102,14 @@ export class Edge extends Addressable {
      * source, target, value, and properties.
      * @param dest a timestamp to move the edge to. If 0 or not specified, the edge will be removed.
      * @param purge completely remove the edge's entry from the datastore?
-     * @param bundlerOrComment a Bundler object or a string comment to add to the movement entry.
+     * @param meta optional metadata (may contain: comment, identity, or bundler)
      */
-    async remove(
-        dest?: number,
-        purge?: boolean,
-        bundlerOrComment?: string | Bundler
-    ) {
+    async remove(dest?: number, purge?: boolean, meta?: Meta) {
         if (!(await this.isAlive())) throw new Error("this edge is not alive.");
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
-        }
+        const bundler: Bundler = await this.database.startBundle(meta);
         await movementHelper(bundler, this.address, this.action, dest, purge);
-        if (immediate) {
-            await this.database.addBundler(bundler);
+        if (!meta?.bundler) {
+            await bundler.commit();
         }
     }
 }

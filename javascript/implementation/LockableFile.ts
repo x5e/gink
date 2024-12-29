@@ -9,7 +9,7 @@ export class LockableFile {
 
     constructor(
         readonly filename: string,
-        readonly exclusive: boolean = false
+        readonly exclusive: boolean = false,
     ) {
         this.lockableFileReady = this.initializeLockableFile();
     }

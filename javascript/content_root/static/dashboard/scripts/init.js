@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Connect to server
     await instance.connectTo(
-        `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`
+        `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`,
     );
 
     const refreshContainer = async () => {
@@ -36,8 +36,8 @@ document.addEventListener("DOMContentLoaded", async () => {
  * @param {gink.Database} instance
  */
 async function test(instance) {
-    const globalDir = instance.getGlobalDirectory();
-    const box = await instance.createBox();
+    const globalDir = Directory.get(instance);
+    const box = await Box.create(instance);
     await globalDir.set("box", box);
     aJSArray = [1, 5, 6, 14, 14, 41, "hmmmm", "buncha data"];
     await box.set(aJSArray);

@@ -18,7 +18,7 @@ process.chdir(__dirname + "/..");
     const client = new Expector(
         "node",
         ["./tsc.out/implementation/main.js", "-c", `ws://0.0.0.0:${port}`],
-        { env: { ...process.env } }
+        { env: { ...process.env } },
     );
     await python.expect("connection established!", 2000);
     await client.expect("connected!", 2000);

@@ -18,7 +18,7 @@ let instance2;
         ["--data-file", TEST_DB_PATH, "-i", "chain-test@test"],
         {
             env: { ...process.env },
-        }
+        },
     );
     await instance.expect("using", 10000);
     console.log("instance started");
@@ -26,7 +26,7 @@ let instance2;
     await sleep(100);
     console.log("set some data");
     instance.send(
-        `await root.set("chainStart", (await database.getChain()).chainStart);2;\n`
+        `await root.set("chainStart", (await database.getChain()).chainStart);2;\n`,
     );
     await sleep(100);
     instance.send(`await database.close();\n`);
@@ -38,23 +38,23 @@ let instance2;
         ["--data-file", TEST_DB_PATH, "-i", "chain-test@test"],
         {
             env: { ...process.env },
-        }
+        },
     );
     await instance2.expect("using", 10000);
     console.log("instance2 started");
     instance2.send("await root.set(4,5, 'test2');3;\n");
     await sleep(100);
     instance2.send(
-        "var currentChainStart = (await database.getChain()).chainStart; 4;\n"
+        "var currentChainStart = (await database.getChain()).chainStart; 4;\n",
     );
     await sleep(100);
     instance2.send('var priorChainStart = await root.get("chainStart"); 5;\n');
     await sleep(100);
     instance2.send(
-        "console.log(`current=${currentChainStart}, prior=${priorChainStart}`);6;\n"
+        "console.log(`current=${currentChainStart}, prior=${priorChainStart}`);6;\n",
     );
     instance2.send(
-        `console.log(currentChainStart == priorChainStart ? "GLiLcrbk" : 11);\n`
+        `console.log(currentChainStart == priorChainStart ? "GLiLcrbk" : 11);\n`,
     );
     await sleep(100);
     await instance2.expect("GLiLcrbk");

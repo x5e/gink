@@ -27,7 +27,7 @@ export const keyPair = librariesReady.then(() => createKeyPair());
 export async function makeChainStart(
     comment: string,
     medallion: Medallion,
-    chainStart: ChainStart
+    chainStart: ChainStart,
 ): Promise<BundleView> {
     const bundleBuilder = new BundleBuilder();
     bundleBuilder.setChainStart(chainStart);
@@ -37,7 +37,7 @@ export async function makeChainStart(
     bundleBuilder.setIdentity("test-chain-start");
     bundleBuilder.setVerifyKey((await keyPair).publicKey);
     return new Decomposition(
-        signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey)
+        signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey),
     );
 }
 
@@ -49,7 +49,7 @@ export function unbundle(signed: Uint8Array): BundleBuilder {
 export async function extendChain(
     comment: string,
     previous: BundleView,
-    timestamp: Timestamp
+    timestamp: Timestamp,
 ): Promise<BundleView> {
     const bundleBuilder = new BundleBuilder();
     const parsedPrevious = previous.builder;
@@ -62,14 +62,14 @@ export async function extendChain(
     ensure(priorHash && priorHash.length === 32);
     bundleBuilder.setPriorHash(priorHash);
     return new Decomposition(
-        signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey)
+        signBundle(bundleBuilder.serializeBinary(), (await keyPair).secretKey),
     );
 }
 
 export function extendChainWithoutSign(
     comment: string,
     previous: BundleView,
-    timestamp: Timestamp
+    timestamp: Timestamp,
 ): BundleBuilder {
     const bundleBuilder = new BundleBuilder();
     const parsedPrevious = previous.builder;
@@ -88,7 +88,7 @@ export async function addTrxns(store: Store) {
     const start1 = await makeChainStart(
         "chain1,tx1",
         MEDALLION1,
-        START_MICROS1
+        START_MICROS1,
     );
     await store.addBundle(start1);
     const next1 = await extendChain("chain1,tx2", start1, NEXT_TS1);
@@ -96,7 +96,7 @@ export async function addTrxns(store: Store) {
     const start2 = await makeChainStart(
         "chain2,tx1",
         MEDALLION2,
-        START_MICROS2
+        START_MICROS2,
     );
     await store.addBundle(start2);
     const next2 = await extendChain("chain2,2", start2, NEXT_TS2);

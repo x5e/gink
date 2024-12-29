@@ -23,31 +23,31 @@ import { EdgeType } from "./EdgeType";
 export async function construct(
     database: Database,
     address: Muid,
-    containerBuilder?: ContainerBuilder
+    containerBuilder?: ContainerBuilder,
 ): Promise<Container> {
     if (address.timestamp === -1) {
         if (address.offset === Behavior.DIRECTORY)
-            return new Directory(database, address);
+            return Directory.get(database, address);
         if (address.offset === Behavior.SEQUENCE)
-            return new Sequence(database, address);
-        if (address.offset === Behavior.BOX) return new Box(database, address);
+            return Sequence.get(database, address);
+        if (address.offset === Behavior.BOX) return Box.get(database, address);
         if (address.offset === Behavior.PAIR_MAP)
-            return new PairMap(database, address);
+            return PairMap.get(database, address);
         if (address.offset === Behavior.PAIR_SET)
-            return new PairSet(database, address);
+            return PairSet.get(database, address);
         if (address.offset === Behavior.KEY_SET)
-            return new KeySet(database, address);
+            return KeySet.get(database, address);
         if (address.offset === Behavior.GROUP)
-            return new Group(database, address);
+            return Group.get(database, address);
         if (address.offset === Behavior.PROPERTY)
-            return new Property(database, address);
+            return Property.get(database, address);
         if (address.offset === Behavior.VERTEX)
-            return new Vertex(database, address);
+            return Vertex.get(database, address);
     }
 
     if (containerBuilder === undefined) {
         const containerBytes = ensure(
-            await database.store.getContainerBytes(address)
+            await database.store.getContainerBytes(address),
         );
         containerBuilder = <ContainerBuilder>(
             ContainerBuilder.deserializeBinary(containerBytes)
@@ -55,34 +55,34 @@ export async function construct(
     }
 
     if (containerBuilder.getBehavior() === Behavior.BOX)
-        return new Box(database, address, containerBuilder);
+        return Box.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.SEQUENCE)
-        return new Sequence(database, address, containerBuilder);
+        return Sequence.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.KEY_SET)
-        return new KeySet(database, address, containerBuilder);
+        return KeySet.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.DIRECTORY)
-        return new Directory(database, address, containerBuilder);
+        return Directory.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.PAIR_SET)
-        return new PairSet(database, address, containerBuilder);
+        return PairSet.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.PAIR_MAP)
-        return new PairMap(database, address, containerBuilder);
+        return PairMap.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.VERTEX)
-        return new Vertex(database, address, containerBuilder);
+        return Vertex.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.EDGE_TYPE)
-        return new EdgeType(database, address, containerBuilder);
+        return EdgeType.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.PROPERTY)
-        return new Property(database, address, containerBuilder);
+        return Property.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.GROUP)
-        return new Group(database, address, containerBuilder);
+        return Group.get(database, address);
 
     throw new Error(
-        `container type not recognized/implemented: ${containerBuilder.getBehavior()}`
+        `container type not recognized/implemented: ${containerBuilder.getBehavior()}`,
     );
 }
 
 export async function interpret(
     entry: Entry,
-    database: Database
+    database: Database,
 ): Promise<Container | Value | undefined> {
     if (entry === undefined || entry.deletion) {
         return undefined;
@@ -97,7 +97,7 @@ export async function interpret(
         return await construct(database, muidTupleToMuid(entry.storageKey));
     }
     throw new Error(
-        `don't know how to interpret entry: ${JSON.stringify(entry)}`
+        `don't know how to interpret entry: ${JSON.stringify(entry)}`,
     );
 }
 
@@ -105,7 +105,7 @@ export async function toJson(
     value: Value | Container,
     indent: number | boolean = false,
     asOf?: AsOf,
-    seen?: Set<string>
+    seen?: Set<string>,
 ): Promise<string> {
     return value instanceof Container
         ? await value.toJson(indent, asOf, seen)

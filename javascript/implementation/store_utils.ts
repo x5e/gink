@@ -16,6 +16,7 @@ import {
     BundleInfoTuple,
     Movement,
     Value,
+    Bundler,
 } from "./typedefs";
 import {
     ensure,
@@ -29,7 +30,6 @@ import {
     wrapValue,
 } from "./utils";
 import { Container } from "./Container";
-import { Bundler } from "./Bundler";
 
 /**
  *
@@ -39,7 +39,7 @@ import { Bundler } from "./Bundler";
  */
 export function getStorageKey(
     entryBuilder: EntryBuilder,
-    entryMuid: Muid
+    entryMuid: Muid,
 ): StorageKey {
     const behavior: Behavior = entryBuilder.getBehavior();
     if (behavior === Behavior.DIRECTORY || behavior === Behavior.KEY_SET) {
@@ -57,7 +57,7 @@ export function getStorageKey(
     } else if (behavior === Behavior.PROPERTY || behavior === Behavior.GROUP) {
         ensure(entryBuilder.hasDescribing());
         return muidToTuple(
-            builderToMuid(entryBuilder.getDescribing(), entryMuid)
+            builderToMuid(entryBuilder.getDescribing(), entryMuid),
         );
     } else if (
         behavior === Behavior.PAIR_SET ||
@@ -88,7 +88,7 @@ export function storageKeyToString(storageKey: StorageKey): string {
 export function extractMovement(
     changeBuilder: ChangeBuilder,
     bundleInfo: BundleInfo,
-    offset: number
+    offset: number,
 ): Movement {
     const movementBuilder: MovementBuilder = changeBuilder.getMovement();
     const entryMuid = movementBuilder.getEntry();
@@ -131,9 +131,8 @@ export async function movementHelper(
     entryMuid: Muid,
     containerMuid: Muid,
     dest?: number,
-    purge?: boolean
+    purge?: boolean,
 ): Promise<void> {
-    ensure(bundler instanceof Bundler);
     const movementBuilder = new MovementBuilder();
     movementBuilder.setEntry(muidToBuilder(entryMuid));
     if (dest) movementBuilder.setDest(dest);
@@ -146,7 +145,7 @@ export async function movementHelper(
 
 export function extractContainerMuid(
     entryBuilder: EntryBuilder,
-    bundleInfo: BundleInfo
+    bundleInfo: BundleInfo,
 ): MuidTuple {
     const containerId: MuidTuple = [0, 0, 0];
     const srcMuid: MuidBuilder = entryBuilder.getContainer();
@@ -158,7 +157,7 @@ export function extractContainerMuid(
 
 export function buildPointeeList(
     entryBuilder: EntryBuilder,
-    bundleInfo: BundleInfo
+    bundleInfo: BundleInfo,
 ): Array<MuidTuple> {
     const pointeeList = <Indexable[]>[];
     const pointeeMuidBuilder: MuidBuilder = entryBuilder.getPointee();
@@ -173,7 +172,7 @@ export function buildPointeeList(
 
 export function buildPairLists(
     entryBuilder: EntryBuilder,
-    bundleInfo: BundleInfo
+    bundleInfo: BundleInfo,
 ): Array<Array<MuidTuple>> {
     const sourceList = <Indexable[]>[];
     const targetList = <Indexable[]>[];
@@ -200,7 +199,7 @@ export function medallionChainStartToString(tuple: [number, number]): string {
 }
 
 export function buildChainTracker(
-    chainInfos: Iterable<BundleInfo>
+    chainInfos: Iterable<BundleInfo>,
 ): ChainTracker {
     const hasMap: ChainTracker = new ChainTracker({});
     for (const value of chainInfos) {
@@ -210,7 +209,7 @@ export function buildChainTracker(
 }
 
 export function toStorageKey(
-    key: ScalarKey | Muid | [Muid | Container, Muid | Container]
+    key: ScalarKey | Muid | [Muid | Container, Muid | Container],
 ): StorageKey {
     if (key instanceof Uint8Array) return key;
     if (typeof key === "number" || typeof key === "string") {
@@ -257,8 +256,8 @@ export function bundlePropertyEntry(
     bundler: Bundler,
     propertyMuid: Muid,
     containerMuid: Muid,
-    value?: Value
-): void {
+    value?: Value,
+): Muid {
     const entryBuilder = new EntryBuilder();
     entryBuilder.setDescribing(muidToBuilder(containerMuid));
     entryBuilder.setBehavior(Behavior.PROPERTY);
@@ -267,5 +266,5 @@ export function bundlePropertyEntry(
     else entryBuilder.setDeletion(true);
     const changeBuilder = new ChangeBuilder();
     changeBuilder.setEntry(entryBuilder);
-    bundler.addChange(changeBuilder);
+    return bundler.addChange(changeBuilder);
 }

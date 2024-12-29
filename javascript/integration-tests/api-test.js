@@ -22,7 +22,7 @@ process.chdir(__dirname + "/..");
                 AUTH_TOKEN: "abcd",
                 ...process.env,
             },
-        }
+        },
     );
     await server.expect("listening", 2000);
     await sleep(1000);

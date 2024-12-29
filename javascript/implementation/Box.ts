@@ -1,24 +1,34 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
-import { Value, Muid, AsOf } from "./typedefs";
-import { Bundler } from "./Bundler";
+import { Value, Muid, AsOf, Meta } from "./typedefs";
 import { ensure, muidToString } from "./utils";
 import { toJson, interpret } from "./factories";
-import { Behavior, ContainerBuilder } from "./builders";
+import { Behavior } from "./builders";
 
 export class Box extends Container {
-    constructor(
-        database: Database,
-        address: Muid,
-        containerBuilder?: ContainerBuilder
-    ) {
+    private constructor(database: Database, address: Muid) {
         super(database, address, Behavior.BOX);
         if (this.address.timestamp < 0) {
-            //TODO(https://github.com/google/gink/issues/64): document default magic containers
             ensure(address.offset === Behavior.BOX);
-        } else {
-            ensure(containerBuilder.getBehavior() === Behavior.BOX);
         }
+    }
+
+    static get(database?: Database, muid?: Muid): Box {
+        if (!muid) {
+            muid = { timestamp: -1, medallion: -1, offset: Behavior.BOX };
+        }
+        database = database || Database.recent;
+        return new Box(database, muid);
+    }
+
+    static async create(database?: Database, meta?: Meta): Promise<Box> {
+        database = database || Database.recent;
+        const muid = await Container.addContainer({
+            behavior: Behavior.BOX,
+            database,
+            meta,
+        });
+        return new Box(database, muid);
     }
 
     /**
@@ -33,11 +43,8 @@ export class Box extends Container {
      * @param change an optional bundler to put this in.
      * @returns a promise that resolves to the address of the newly created entry
      */
-    async set(
-        value: Value | Container,
-        change?: Bundler | string
-    ): Promise<Muid> {
-        return this.addEntry(undefined, value, change);
+    async set(value: Value | Container, meta?: Meta): Promise<Muid> {
+        return this.addEntry(undefined, value, meta);
     }
 
     /**
@@ -48,7 +55,7 @@ export class Box extends Container {
         const entry = await this.database.store.getEntryByKey(
             this.address,
             undefined,
-            asOf
+            asOf,
         );
         return interpret(entry, this.database);
     }
@@ -62,62 +69,38 @@ export class Box extends Container {
         const entry = await this.database.store.getEntryByKey(
             this.address,
             undefined,
-            asOf
+            asOf,
         );
         return +!(entry === undefined || entry.deletion);
     }
 
-    async reset(args?: {
-        toTime?: AsOf;
-        bundlerOrComment?: Bundler | string;
-        skipProperties?: boolean;
-        recurse?: boolean;
-        seen?: Set<string>;
-    }): Promise<void> {
-        const toTime = args?.toTime;
-        const bundlerOrComment = args?.bundlerOrComment;
-        const skipProperties = args?.skipProperties;
-        const recurse = args?.recurse;
-        const seen = recurse ? (args?.seen ?? new Set()) : undefined;
-        if (seen) {
-            seen.add(muidToString(this.address));
+    async reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void> {
+        if (recurse === true) {
+            recurse = new Set();
         }
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
+        if (recurse instanceof Set) {
+            recurse.add(muidToString(this.address));
         }
+        const bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, bundler);
+            this.clear(false, { bundler });
         } else {
             const thereNow = await this.get();
             const thereThen = await this.get(toTime);
             if (thereThen !== thereNow) {
-                await this.set(thereThen, bundler);
+                await this.set(thereThen, { bundler });
             }
             if (
-                seen &&
+                recurse &&
                 thereThen instanceof Container &&
-                !seen.has(muidToString(thereThen.address))
+                !recurse.has(muidToString(thereThen.address))
             ) {
-                await thereThen.reset({
-                    toTime,
-                    bundlerOrComment: bundler,
-                    skipProperties,
-                    recurse,
-                    seen,
-                });
+                await thereThen.reset(toTime, recurse, { bundler });
             }
         }
-        if (!skipProperties) {
-            await this.resetProperties(toTime, bundler);
-        }
-        if (immediate) {
-            await this.database.addBundler(bundler);
+        if (!meta?.bundler) {
+            await bundler.commit();
         }
     }
 
@@ -130,7 +113,7 @@ export class Box extends Container {
         const entry = await this.database.store.getEntryByKey(
             this.address,
             undefined,
-            asOf
+            asOf,
         );
         return entry === undefined || entry.deletion;
     }
@@ -146,11 +129,11 @@ export class Box extends Container {
     async toJson(
         indent: number | boolean = false,
         asOf?: AsOf,
-        seen?: Set<string>
+        seen?: Set<string>,
     ): Promise<string> {
         if (seen === undefined) seen = new Set();
         const contents = await this.get(asOf);
-        if (contents === undefined) return "null";
-        return await toJson(contents, indent, asOf, seen);
+        if (contents === undefined) return "[null]";
+        return "[" + (await toJson(contents, indent, asOf, seen)) + "]";
     }
 }

@@ -18,7 +18,7 @@ process.chdir(__dirname + "/..");
         ],
         {
             env: { ...process.env },
-        }
+        },
     );
     await server.expect("Secure", 2000);
     await server.expect("ready", 2000);

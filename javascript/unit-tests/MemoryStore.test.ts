@@ -4,23 +4,24 @@ import {
     MemoryStore,
     generateTimestamp,
     ensure,
+    Directory,
 } from "../implementation";
 
 testStore("MemoryStore", async () => new MemoryStore(true));
 it("test basic operations", async () => {
-    const memStore = new MemoryStore(true);
-    const instance = new Database(memStore);
+    const store = new MemoryStore(true);
+    const instance = new Database({ store });
     await instance.ready;
-    const dir = instance.getGlobalDirectory();
+    const dir = Directory.get(instance);
     await dir.set("foo", "bar");
     const beforeSecondSet = generateTimestamp();
     await dir.set("foo", "baz");
-    const entries = memStore.getAllEntries();
+    const entries = store.getAllEntries();
     ensure(entries.length === 2);
-    const removals = memStore.getAllRemovals();
+    const removals = store.getAllRemovals();
     ensure(
         removals.size === 1,
-        `removals.size is ${removals.size}, expected 1`
+        `removals.size is ${removals.size}, expected 1`,
     );
     /*
     await memStore.dropHistory();
@@ -31,11 +32,11 @@ it("test basic operations", async () => {
 });
 
 it("tests getEntryByKey and getKeyedEntries", async () => {
-    const memStore = new MemoryStore(true);
-    const instance = new Database(memStore);
+    const store = new MemoryStore(true);
+    const instance = new Database({ store });
     await instance.ready;
-    const dir = instance.getGlobalDirectory();
+    const dir = Directory.get(instance);
     const id = await dir.set("foo", "bar");
     await dir.set("bar", "foo");
-    ensure((await memStore.getKeyedEntries(dir.address)).size === 2);
+    ensure((await store.getKeyedEntries(dir.address)).size === 2);
 });

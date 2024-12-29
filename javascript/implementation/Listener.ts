@@ -32,7 +32,7 @@ export class Listener {
         requestHandler: (request: WebSocketRequest) => void;
         requestListener?: (
             request: IncomingMessage,
-            response: ServerResponse
+            response: ServerResponse,
         ) => void;
         staticContentRoot?: DirPath;
         port?: NumberStr;
@@ -59,7 +59,7 @@ export class Listener {
             };
             this.httpServer = createHttpsServer(
                 options,
-                requestListener
+                requestListener,
             ).listen(port, () => {
                 args?.logger(`Secure server is listening on port ${port}`);
                 callWhenReady();
@@ -69,10 +69,10 @@ export class Listener {
                 port,
                 function () {
                     args?.logger(
-                        `Insecure server is listening on port ${port}`
+                        `Insecure server is listening on port ${port}`,
                     );
                     callWhenReady();
-                }
+                },
             );
         }
         this.websocketServer = new WebSocketServer({

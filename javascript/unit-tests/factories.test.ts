@@ -1,4 +1,12 @@
-import { Database, IndexedDbStore, MemoryStore } from "../implementation";
+import {
+    Database,
+    IndexedDbStore,
+    MemoryStore,
+    Box,
+    Directory,
+    Property,
+    PairSet,
+} from "../implementation";
 import { ensure } from "../implementation/utils";
 
 it("complex.toJSON", async function () {
@@ -6,9 +14,9 @@ it("complex.toJSON", async function () {
         new IndexedDbStore("toJSON", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const directory = await instance.createDirectory();
+        const directory = await Directory.create(instance);
 
         await directory.set("foo", "bar");
         await directory.set("bar", 3);
@@ -35,20 +43,20 @@ it("complex.toJSON", async function () {
         ensure(fromJson.bar === 3, fromJson.bar);
         ensure(
             fromJson.document["a date"] === "2022-10-16T03:50:49.196Z",
-            fromJson.document
+            fromJson.document,
         );
         // null won't be included in array.toString()
         ensure(
             fromJson.document["an array"].toString() === "1,3,true,false,",
-            fromJson.document["an array"].toString()
+            fromJson.document["an array"].toString(),
         );
         ensure(
             fromJson.document["some bytes"].toString() === "5E20",
-            fromJson.document
+            fromJson.document,
         );
         ensure(
             fromJson.document["sub object"].key === "value",
-            fromJson.document
+            fromJson.document,
         );
         ensure(fromJson.tuple.toString() === "yes", fromJson.tuple);
 
@@ -64,21 +72,21 @@ it("various.contents", async function () {
         new IndexedDbStore("contents", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const box = await instance.createBox();
-        const property = await instance.createProperty();
+        const box = await Box.create(instance);
+        const property = await Property.create(instance);
 
         await box.set(property);
         let found = await box.get();
         ensure(property.equals(found));
 
-        const pairSet = await instance.createPairSet();
+        const pairSet = await PairSet.create(instance);
         await box.set(pairSet);
         found = await box.get();
         ensure(pairSet.equals(found));
 
-        const directory = await instance.getGlobalDirectory();
+        const directory = Directory.get(instance);
         await box.set(directory);
         found = await box.get();
         ensure(directory.equals(found));

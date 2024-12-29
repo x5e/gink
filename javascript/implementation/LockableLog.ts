@@ -14,7 +14,7 @@ export class LockableLog extends LockableFile {
 
     protected async writeLogFragment(
         fragment: LogFileBuilder,
-        sync?: boolean
+        sync?: boolean,
     ): Promise<number> {
         ensure(this.fileLocked);
         const bytes: Uint8Array = fragment.serializeBinary();
@@ -25,7 +25,7 @@ export class LockableLog extends LockableFile {
 
     async getLogContents(
         start: number = 0,
-        finish?: number
+        finish?: number,
     ): Promise<LogFileBuilder> {
         // I could imagine replacing this with a async iterator that only reads fragments of the
         // file, though that would only be worth the trouble if the file gets large enough that

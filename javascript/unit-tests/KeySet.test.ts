@@ -1,10 +1,5 @@
 import { sleep } from "./test_utils";
-import {
-    Database,
-    Bundler,
-    IndexedDbStore,
-    MemoryStore,
-} from "../implementation";
+import { Database, IndexedDbStore, MemoryStore } from "../implementation";
 import { ensure, generateTimestamp, matches } from "../implementation/utils";
 import { KeySet } from "../implementation";
 
@@ -14,9 +9,9 @@ it("add and has basic data", async function () {
         new IndexedDbStore("ks-test1", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const ks = await instance.createKeySet();
+        const ks = await KeySet.create(instance);
 
         // add a value
         await ks.add("key1");
@@ -38,9 +33,9 @@ it("delete, and size work as intended", async function () {
         new IndexedDbStore("ks-test2", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const ks = await instance.createKeySet();
+        const ks = await KeySet.create(instance);
 
         await ks.add("key1");
         ensure(await ks.has("key1"));
@@ -64,9 +59,9 @@ it("entries works as intended", async function () {
         new IndexedDbStore("ks-test3", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const ks: KeySet = await instance.createKeySet();
+        const ks: KeySet = await KeySet.create(instance);
         await ks.update(["key1", "key2", "key3"]);
         const buffer = <KeyType[]>[];
 
@@ -83,16 +78,15 @@ it("add multiple keys within a bundler", async function () {
         new IndexedDbStore("ks-test4", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const ks = await instance.createKeySet();
+        const ks = await KeySet.create(instance);
 
         // make multiple changes in a change set
-        const bundler = new Bundler();
-        await ks.add("key1", bundler);
-        await ks.add("key2", bundler);
-        bundler.comment = "My first bundle!";
-        await instance.addBundler(bundler);
+        const bundler = await instance.startBundle();
+        await ks.add("key1", { bundler });
+        await ks.add("key2", { bundler });
+        await bundler.commit("My first bundle!");
 
         // verify the result
         ensure(await ks.has("key1"));
@@ -106,9 +100,9 @@ it("KeySet.toJson", async function () {
         new IndexedDbStore("ks-test6", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const ks = await instance.createKeySet();
+        const ks = await KeySet.create(instance);
 
         await ks.add("key1");
         await ks.update(["key2", "key3"]);
@@ -123,9 +117,9 @@ it("KeySet.asOf", async function () {
         new IndexedDbStore("ks-test7", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const ks = await instance.createKeySet();
+        const ks = await KeySet.create(instance);
 
         const time0 = Date.now() * 1000;
         await sleep(10);
@@ -168,12 +162,12 @@ it("KeySet.clear", async function () {
         new IndexedDbStore("ks-test8", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const ks = await instance.createKeySet();
+        const ks = await KeySet.create(instance);
         await ks.update(["key1", "key2"]);
         const clearMuid = await ks.clear();
-        ensure((await ks.update(["key3", "key4"])) instanceof Bundler);
+        await ks.update(["key3", "key4"]);
         const asSet = await ks.toSet();
         ensure(asSet.has("key4") && !asSet.has("key1"), "did not clear");
         const asSetBeforeClear = await ks.toSet(clearMuid.timestamp);
@@ -189,9 +183,9 @@ it("KeySet.clear(purge)", async function () {
         new IndexedDbStore("ks-test9", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const ks = await instance.createKeySet();
+        const ks = await KeySet.create(instance);
         await ks.add("key1");
         await sleep(10);
         const middle = Date.now() * 1000;
@@ -209,40 +203,29 @@ it("KeySet.reset", async function () {
         new IndexedDbStore("ks-test10", true),
         new MemoryStore(true),
     ]) {
-        const instance = new Database(store);
+        const instance = new Database({ store });
         await instance.ready;
-        const ks = await instance.createKeySet();
+        const ks = await KeySet.create(instance);
         await ks.add("key1");
-        const prop1 = await instance.createProperty();
-        const prop2 = await instance.createProperty();
-        await prop1.set(ks, "foo");
-        await prop2.set(ks, "bar");
+
         const afterOne = generateTimestamp();
         await ks.add("key2");
-        await prop1.set(ks, "foo2");
-        await prop2.set(ks, "bar2");
         ensure(await ks.has("key2"));
-        await ks.reset({ toTime: afterOne });
+        await ks.reset(afterOne);
         ensure(!(await ks.has("key2")));
         ensure(await ks.has("key1"));
-        ensure((await prop1.get(ks)) === "foo");
-        ensure((await prop2.get(ks)) === "bar");
         await ks.reset();
         ensure(!(await ks.has("key1")));
         ensure((await ks.size()) === 0);
-        ensure((await prop1.get(ks)) === undefined);
-        ensure((await prop2.get(ks)) === undefined);
         await ks.add("key3");
         const after3 = generateTimestamp();
         await ks.add("key4");
         ensure((await ks.size()) === 2);
         await ks.delete("key3");
         ensure((await ks.size()) === 1);
-        await ks.reset({ toTime: after3, skipProperties: true });
+        await ks.reset(after3);
         ensure((await ks.size()) === 1);
         ensure(await ks.has("key3"));
         ensure(!(await ks.has("key4")));
-        ensure((await prop1.get(ks)) === undefined);
-        ensure((await prop2.get(ks)) === undefined);
     }
 });

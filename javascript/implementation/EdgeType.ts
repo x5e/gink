@@ -1,9 +1,8 @@
 import { isEqual } from "lodash";
 import { Database } from "./Database";
 import { Container } from "./Container";
-import { AsOf, EdgeData, Muid, Value } from "./typedefs";
+import { AsOf, EdgeData, Muid, Value, Bundler, Meta } from "./typedefs";
 import { Behavior, ContainerBuilder } from "./builders";
-import { Bundler } from "./Bundler";
 import {
     ensure,
     entryToEdgeData,
@@ -13,7 +12,6 @@ import {
     muidTupleToMuid,
     muidTupleToString,
     strToMuid,
-    wrapKey,
     wrapValue,
 } from "./utils";
 import { Edge } from "./Edge";
@@ -26,80 +24,86 @@ import { Property } from "./Property";
 import { movementHelper } from "./store_utils";
 
 export class EdgeType extends Container {
-    constructor(
-        database: Database,
-        address: Muid,
-        containerBuilder?: ContainerBuilder
-    ) {
+    private constructor(database: Database, address: Muid) {
         super(database, address, Behavior.EDGE_TYPE);
-        if (this.address.timestamp < 0) {
-            ensure(address.offset === Behavior.EDGE_TYPE);
-        } else if (containerBuilder) {
-            ensure(containerBuilder.getBehavior() === Behavior.EDGE_TYPE);
-        }
     }
 
-    async createEdge(
+    static get(database?: Database, muid?: Muid): EdgeType {
+        database = database || Database.recent;
+        if (!muid) {
+            muid = { timestamp: -1, medallion: -1, offset: Behavior.EDGE_TYPE };
+        }
+        return new EdgeType(database, muid);
+    }
+
+    static async create(database?: Database, meta?: Meta): Promise<EdgeType> {
+        database = database || Database.recent;
+        const muid = await Container.addContainer({
+            behavior: Behavior.EDGE_TYPE,
+            database,
+            meta,
+        });
+        return new EdgeType(database, muid);
+    }
+
+    public size(): Promise<number> {
+        throw new Error("not implemented");
+    }
+
+    toJson(
+        indent: number | boolean,
+        asOf?: AsOf,
+        seen?: Set<string>,
+    ): Promise<string> {
+        throw new Error("not implemented");
+    }
+
+    async create(
         source: Vertex,
         target: Vertex,
         value?: Value,
-        change?: Bundler | string
+        meta?: Meta,
     ): Promise<Edge> {
-        const muid = await this.addEntry([source, target], value, change);
+        const muid = await this.addEntry([source, target], value, meta);
         const edgeData: EdgeData = {
             source: source.address,
             target: target.address,
-            action: this.address,
+            etype: this.address,
             value,
         };
-        return new Edge(this.database, muid, edgeData);
+        return Edge.get(this.database, muid, edgeData);
     }
 
-    async reset(args?: {
-        toTime?: AsOf;
-        bundlerOrComment?: Bundler | string;
-        skipProperties?: boolean;
-        recurse?: boolean;
-        seen?: Set<string>;
-    }): Promise<void> {
-        const toTime = args?.toTime;
-        const bundlerOrComment = args?.bundlerOrComment;
-        const skipProperties = args?.skipProperties;
-        const recurse = args?.recurse;
-        const seen = recurse ? (args?.seen ?? new Set()) : undefined;
-        if (seen) {
-            seen.add(muidToString(this.address));
+    async reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void> {
+        if (recurse === true) {
+            recurse = new Set();
         }
-        let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
+        if (recurse instanceof Set) {
+            recurse.add(muidToString(this.address));
         }
+        const bundler: Bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, bundler);
+            this.clear(false, { bundler });
         } else {
             const entriesThen = await this.database.store.getOrderedEntries(
                 this.address,
                 Infinity,
-                toTime
+                toTime,
             );
             const entriesNow = await this.database.store.getOrderedEntries(
                 this.address,
-                Infinity
+                Infinity,
             );
             for (const [key, entry] of entriesThen) {
                 ensure(
                     isEqual(muidToTuple(this.address), entry.containerId),
-                    "entry's containerId doesn't match this edgeType's address"
+                    "entry's containerId doesn't match this edgeType's address",
                 );
                 const edgeData = entryToEdgeData(entry);
                 const effectiveThen = entry.storageKey as number;
                 const placementNow = await this.database.store.getLocation(
-                    muidTupleToMuid(entry.entryId)
+                    muidTupleToMuid(entry.entryId),
                 );
                 const effectiveNow = placementNow
                     ? (placementNow.key as number)
@@ -137,15 +141,15 @@ export class EdgeType extends Container {
                     const propertiesThen =
                         await this.database.store.getContainerProperties(
                             muidTupleToMuid(entry.entryId),
-                            toTime
+                            toTime,
                         );
                     // Not using this.createEdge because we already added the
                     // entry to the bundler. this.createEdge does not allow
                     // us to adjust the position of the edge.
-                    const newEdge = new Edge(
+                    const newEdge = Edge.get(
                         this.database,
                         changeMuid,
-                        edgeData
+                        edgeData,
                     );
                     for (const [key, value] of propertiesThen.entries()) {
                         const property = <Property>(
@@ -153,9 +157,9 @@ export class EdgeType extends Container {
                         );
                         ensure(
                             property.behavior === Behavior.PROPERTY,
-                            "constructed container isn't a property?"
+                            "constructed container isn't a property?",
                         );
-                        await property.set(newEdge, value, bundler);
+                        await property.set(newEdge, value, { bundler });
                     }
                 } else {
                     if (effectiveNow && effectiveNow !== effectiveThen) {
@@ -166,7 +170,7 @@ export class EdgeType extends Container {
                             muidTupleToMuid(entry.entryId),
                             this.address,
                             effectiveThen,
-                            false
+                            false,
                         );
                     }
                     // reset the properties of this edge
@@ -174,15 +178,15 @@ export class EdgeType extends Container {
                         muidTupleToMuid(entry.entryId),
                         edgeData,
                         toTime,
-                        bundler
+                        { bundler },
                     );
                     // Need to remove the current entry from entriesNow if
                     // 1) the entry exists but was moved, or 2) the entry is untouched
                     ensure(
                         entriesNow.delete(
-                            `${effectiveNow},${muidTupleToString(placementNow.placement)}`
+                            `${effectiveNow},${muidTupleToString(placementNow.placement)}`,
                         ),
-                        "entry not found in entriesNow"
+                        "entry not found in entriesNow",
                     );
                 }
             }
@@ -194,16 +198,12 @@ export class EdgeType extends Container {
                     muidTupleToMuid(entry.entryId),
                     this.address,
                     undefined,
-                    false
+                    false,
                 );
             }
         }
-        if (!skipProperties) {
-            // Reset the properties of this edgeType
-            await this.resetProperties(toTime, bundler);
-        }
-        if (immediate) {
-            await this.database.addBundler(bundler);
+        if (!meta?.bundler) {
+            await bundler.commit();
         }
     }
 
@@ -216,26 +216,20 @@ export class EdgeType extends Container {
      * @param edgeMuid the muid of the edge to reset
      * @param edgeData the data of the edge to reset
      * @param toTime optional timestamp to reset the properties to
-     * @param bundlerOrComment optional bundler or comment
+     * @param meta optionally may contain a bundler or comment
      */
     private async resetEdgeProperties(
         edgeMuid: Muid,
         edgeData: EdgeData,
         toTime?: AsOf,
-        bundlerOrComment?: Bundler | string
+        meta?: Meta,
     ) {
         let immediate = false;
-        let bundler: Bundler;
-        if (bundlerOrComment instanceof Bundler) {
-            bundler = bundlerOrComment;
-        } else {
-            immediate = true;
-            bundler = new Bundler(bundlerOrComment);
-        }
-        const edge = new Edge(this.database, edgeMuid, edgeData);
+        const bundler: Bundler = await this.database.startBundle(meta);
+        const edge = Edge.get(this.database, edgeMuid, edgeData);
 
         const propertiesNow = await this.database.store.getContainerProperties(
-            edge.address
+            edge.address,
         );
         if (!toTime) {
             // Resetting to epoch, so just delete all properties
@@ -245,9 +239,9 @@ export class EdgeType extends Container {
                 );
                 ensure(
                     property.behavior === Behavior.PROPERTY,
-                    "constructed container isn't a property?"
+                    "constructed container isn't a property?",
                 );
-                await property.delete(edge, bundler);
+                await property.delete(edge, { bundler });
             }
         } else {
             const propertiesThen =
@@ -260,9 +254,9 @@ export class EdgeType extends Container {
                     );
                     ensure(
                         property.behavior === Behavior.PROPERTY,
-                        "constructed container isn't a property?"
+                        "constructed container isn't a property?",
                     );
-                    await property.set(edge, value, bundler);
+                    await property.set(edge, value, { bundler });
                 }
                 // Remove from propertiesNow so we can delete the rest
                 // after this iteration
@@ -275,13 +269,13 @@ export class EdgeType extends Container {
                 );
                 ensure(
                     property.behavior === Behavior.PROPERTY,
-                    "constructed container isn't a property?"
+                    "constructed container isn't a property?",
                 );
-                await property.delete(edge, bundler);
+                await property.delete(edge, { bundler });
             }
         }
         if (immediate) {
-            await this.database.addBundler(bundler);
+            await bundler.commit();
         }
     }
 }

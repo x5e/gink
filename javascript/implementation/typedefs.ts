@@ -1,4 +1,4 @@
-import { Behavior, BundleBuilder } from "./builders";
+import { Behavior, BundleBuilder, ChangeBuilder } from "./builders";
 import { DBSchema } from "idb";
 
 export type Bytes = Uint8Array;
@@ -138,7 +138,7 @@ export interface Clearance {
 export interface EdgeData {
     source: Muid;
     target: Muid;
-    action: Muid;
+    etype?: Muid;
     value?: Value;
     effective?: number;
 }
@@ -146,6 +146,22 @@ export interface EdgeData {
 export interface KeyPair {
     publicKey: Bytes;
     secretKey: Bytes;
+}
+
+export interface Meta {
+    bundler?: Bundler;
+    comment?: string;
+    identity?: string;
+}
+
+export interface Bundler {
+    addChange(changeBuilder: ChangeBuilder): Muid;
+    commit(comment?: string): Promise<BundleInfo>;
+    medallion: number;
+}
+
+export interface Sealer {
+    (changes: ChangeBuilder[], meta?: Meta): Promise<BundleInfo>;
 }
 
 export interface IndexedDbStoreSchema extends DBSchema {

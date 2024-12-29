@@ -39,7 +39,7 @@ module.exports = function (config) {
                 filename: "packed-tests.js",
                 path: path.resolve(
                     __dirname,
-                    "content_root/generated/unit-tests"
+                    "content_root/generated/unit-tests",
                 ),
             },
             externals: {

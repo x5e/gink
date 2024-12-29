@@ -12,7 +12,6 @@ import {
     GreetingBuilder,
     GreetingEntryBuilder,
 } from "./builders";
-import { ensure } from "./utils";
 
 /**
  * A class to keep track of what data a given instance (self or peer) has for each
@@ -51,7 +50,7 @@ export class ChainTracker {
      */
     waitTillHas(
         { medallion, timestamp }: BundleInfo | Muid,
-        timeoutMs?: number
+        timeoutMs?: number,
     ): Promise<void> {
         const innerMap = this.data.get(medallion);
         if (innerMap) {
@@ -76,13 +75,13 @@ export class ChainTracker {
      * then second, mark the data in the data structure (possibly checking that it's a sensible extension).
      * Note that checkValidExtension is used here as a safeguard to make sure we don't
      * send broken chains to the peer; the store should have its own check for receiving.
-     * @param bundleInfo Metadata about a particular bundle.
+     * @param bundleInfo Meta about a particular bundle.
      * @param checkValidExtension If true then barfs if this bundle isn't a valid extension.
      * @returns true if the bundle represents data not seen before
      */
     markAsHaving(
         bundleInfo: BundleInfo,
-        checkValidExtension?: boolean
+        checkValidExtension?: boolean,
     ): boolean {
         if (!this.data.has(bundleInfo.medallion))
             this.data.set(bundleInfo.medallion, new Map());
@@ -95,11 +94,11 @@ export class ChainTracker {
                     !bundleInfo.priorTime
                 )
                     throw new Error(
-                        `bundleInfo appears to be invalid: ${JSON.stringify(bundleInfo)}`
+                        `bundleInfo appears to be invalid: ${JSON.stringify(bundleInfo)}`,
                     );
                 if ((bundleInfo.priorTime ?? 0) !== seenThrough)
                     throw new Error(
-                        `proposed bundle would be an invalid extension ${JSON.stringify(bundleInfo)}`
+                        `proposed bundle would be an invalid extension ${JSON.stringify(bundleInfo)}`,
                     );
             }
             innerMap.set(bundleInfo.chainStart, bundleInfo);

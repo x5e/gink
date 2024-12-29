@@ -21,7 +21,7 @@ it("connect to server and display bundles", async () => {
                 ".",
             ],
             { env: { ...process.env } },
-            false
+            false,
         );
         browser = await puppeteer.launch(getLaunchOptions());
         await sleep(1000);
@@ -36,7 +36,7 @@ it("connect to server and display bundles", async () => {
             const args = await Promise.all(e.args().map((a) => a.jsonValue()));
         });
         await page.goto(
-            `http://localhost:${port}/integration-tests/browser-tests/index.html`
+            `http://localhost:${port}/integration-tests/browser-tests/index.html`,
         );
         await page.waitForSelector("#messages", { timeout: 5000 });
 

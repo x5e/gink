@@ -21,7 +21,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
             env: {
                 ...process.env,
             },
-        }
+        },
     );
     db1.send("root.set('foo', 'bar');\n");
     await db1.expect("Muid", 2000);
@@ -32,17 +32,17 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
     db1.send("box = Box(contents='box contents', database=database);\n");
     await db1.expect("locally", 2000);
     db1.send(
-        "ps = PairSet(contents={'include': [(box, ks)], 'exclude': [(seq, ks)]}, database=database);\n"
+        "ps = PairSet(contents={'include': [(box, ks)], 'exclude': [(seq, ks)]}, database=database);\n",
     );
     await db1.expect("locally", 2000);
     db1.send(
-        "pm = PairMap(contents={(box, ks): 'value', (box, ps): 3}, database=database);\n"
+        "pm = PairMap(contents={(box, ks): 'value', (box, ps): 3}, database=database);\n",
     );
     await db1.expect("locally", 2000);
     db1.send("prop = Property(contents={root: 'value'}, database=database);\n");
     await db1.expect("locally", 2000);
     db1.send(
-        "Group(contents={'include': {box, ps}, 'exclude': {pm}}, database=database);\n"
+        "Group(contents={'include': {box, ps}, 'exclude': {pm}}, database=database);\n",
     );
     await db1.expect("Group", 2000);
     await db1.close();
@@ -63,7 +63,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
             env: {
                 ...process.env,
             },
-        }
+        },
     );
     await dumped.expect(/\bDumped\b/, 2000);
     await dumped.close();
@@ -84,7 +84,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
             env: {
                 ...process.env,
             },
-        }
+        },
     );
     await loaded.expect(/\bLoaded\b/, 2000);
     await loaded.close();
@@ -95,7 +95,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
             env: {
                 ...process.env,
             },
-        }
+        },
     );
     await sleep(1000);
 
@@ -107,7 +107,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
             `PairMap\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
             `Property\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
             `Group\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
-            `Directory\\(arche=True, contents=\\{'foo': 'bar'\\}\\)`
+            `Directory\\(arche=True, contents=\\{'foo': 'bar'\\}\\)`,
     );
     gink.send("database.dump();\n");
     await gink.expect(regex, 2000);
@@ -117,5 +117,5 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
     process.exit(0);
 })().catch((reason) => {
     console.error(reason);
-    process.exit(0);
+    process.exit(0);  // TODO: FIXME
 });
