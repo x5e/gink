@@ -10,6 +10,7 @@ from .container import Container
 from .coding import ACCUMULATOR
 from .bundler import Bundler
 from .typedefs import GenericTimestamp
+from .addressable import Addressable
 
 
 class Accumulator(Container):
@@ -86,3 +87,13 @@ class Accumulator(Container):
 
     def __isub__(self, value: Union[Decimal, int, float], /):
         self.increment(-1 * value)
+
+    def __eq__(self, other):
+        if isinstance(other, (int, float, Decimal)):
+            return Decimal(other) == self.get()
+        if isinstance(other, Addressable):
+            return other.get_muid() == self._muid
+        return False
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
