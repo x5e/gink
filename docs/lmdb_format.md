@@ -33,7 +33,7 @@
                 * In the case of a DIRECTORY, the middle-key will be binaryproto of the key.
                 * In the case of a SEQUENCE or EDGE_TYPE the middle-key will be effective-time
                 * In the case of a PROPERTY/LABEL/REGISTRY the middle key will be subject muid
-                * In the case of a BOX or VERTEX the middle key will be a zero-length byte sequence.
+                * In the case of a BOX, VERTEX, or ACCUMULATOR there's no middle key.
 
         removals - Used to soft-delete items from the entries table.
             key: (container-muid, placement-muid you're removing, removing-muid)

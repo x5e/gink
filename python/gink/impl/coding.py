@@ -167,7 +167,7 @@ class Placement(NamedTuple):
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None, Tuple[Muid, Muid]]
         if behavior in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(builder)
-        elif behavior in (BOX, VERTEX):
+        elif behavior in (BOX, VERTEX, ACCUMULATOR):
             middle_key = None
         elif behavior in (SEQUENCE, EDGE_TYPE):
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)

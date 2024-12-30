@@ -83,9 +83,11 @@ class Accumulator(Container):
 
     def __iadd__(self, value: Union[Decimal, int, float], /):
         self.increment(+1 * value)
+        return self
 
     def __isub__(self, value: Union[Decimal, int, float], /):
         self.increment(-1 * value)
+        return self
 
     def __eq__(self, other):
         if isinstance(other, (int, float, Decimal)):

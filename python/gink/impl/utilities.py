@@ -336,6 +336,11 @@ def validate_bundle(bundle_builder: BundleBuilder) -> None:
                 if not change.entry.HasField("pair"):
                     raise ValueError("Bundle validation failed.")
 
+            elif change.entry.behavior == Behavior.ACCUMULATOR:
+                if not (change.entry.HasField("value") and change.entry.value.HasField("integer")):
+                    raise ValueError("Bundle validation failed.")
+                if not fullmatch(r"-?\d+", change.entry.value.integer):
+                    raise ValueError("Bundle validation failed.")
             else:
                 raise ValueError(f"unknown behavior: {change.entry.behavior}")
 
