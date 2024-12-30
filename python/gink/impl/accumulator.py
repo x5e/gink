@@ -78,8 +78,7 @@ class Accumulator(Container):
 
     def get(self, /, *, as_of: GenericTimestamp = None) -> Decimal:
         """ Returns the effective value as of the given time (or as of right now). """
-        resolved = -1 if as_of is None else self._database.resolve_timestamp(as_of)
-        billionths = self._database.get_store().get_billionths(self._muid, resolved)
+        billionths = self.size(as_of=as_of)
         return Decimal(billionths) / int(1e9)
 
     def __iadd__(self, value: Union[Decimal, int, float], /):
@@ -97,3 +96,8 @@ class Accumulator(Container):
 
     def __ne__(self, value):
         return not self.__eq__(value)
+
+    def size(self, *, as_of: GenericTimestamp = None) -> int:
+        """ Returns the number of billionths. """
+        resolved = -1 if as_of is None else self._database.resolve_timestamp(as_of)
+        return self._database.get_store().get_billionths(self._muid, resolved)

@@ -124,6 +124,9 @@ class LmdbStore(AbstractStore):
             # TODO: add expiries table to keep track of when things need to be removed
         self._seen_through: MuTimestamp = 0
 
+    def get_billionths(self, accumulator, as_of = -1):
+        raise NotImplementedError("work in progress")
+
     def save_symmetric_key(self, symmetric_key: bytes) -> int:
         if len(symmetric_key) != 32:
             raise ValueError("expecting 32 byte symmetric keys")

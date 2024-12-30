@@ -68,6 +68,9 @@ class MemoryStore(AbstractStore):
         self._logger = getLogger(self.__class__.__name__)
         self._retaining_entries = retain_entries
 
+    def get_billionths(self, accumulator, as_of = -1):
+        raise NotImplementedError()
+
     def drop_history(self, as_of: Optional[MuTimestamp] = None):
         if as_of is None:
             as_of = generate_timestamp()
