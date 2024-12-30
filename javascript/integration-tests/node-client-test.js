@@ -4,7 +4,6 @@ process.chdir(__dirname + "/..");
 let server = null;
 let client = null;
 let result = 1;
-// process.exit(0); // TODO: FIXME
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
