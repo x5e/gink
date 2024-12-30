@@ -22,6 +22,7 @@ DIRECTORY: int = Behavior.DIRECTORY
 PROPERTY: int = Behavior.PROPERTY
 BOX: int = Behavior.BOX
 VERTEX: int = Behavior.VERTEX
+ACCUMULATOR: int = Behavior.ACCUMULATOR
 GROUP: int = Behavior.GROUP
 EDGE_TYPE: int = Behavior.EDGE_TYPE
 KEY_SET: int = Behavior.KEY_SET

@@ -274,3 +274,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
     @abstractmethod
     def get_symmetric_key(self, key_id: Union[int, Chain, None]) -> Optional[bytes]:
         """ Retrieves a previously stored symmetric key. """
+
+    @abstractmethod
+    def get_sum(self, accumulator: Muid, vertex: Muid, as_of: MuTimestamp = -1) -> int:
+        """ Returns the number of billionths in an accumulator as of a time. """
