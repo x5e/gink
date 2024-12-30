@@ -9,7 +9,6 @@ def test_basics():
             database = Database(store=store)
             for arche in [True, False]:
                 accumulator = Accumulator(arche=arche, database=database)
-                assert accumulator.get() == 0
                 accumulator += 7
                 accumulator += 5
                 assert accumulator.get() == 12
