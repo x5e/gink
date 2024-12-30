@@ -4,7 +4,7 @@ process.chdir(__dirname + "/..");
 let server = null;
 let client = null;
 let result = 1;
-process.exit(0); // TODO: FIXME
+// process.exit(0); // TODO: FIXME
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
@@ -19,11 +19,11 @@ process.exit(0); // TODO: FIXME
     await client.expect("using", 10000);
     console.log("all ready");
 
-    server.send("var misc = await root.set('x', 'y', 'hello'); \r\n");
+    server.send("var misc = await root.set('x', 'y', {comment:'hello'}); \r\n");
     console.log("sent");
     await client.expect(/received bundle:.*hello/);
     console.log("received");
-    client.send("var misc = await root.set('a', 'b', 'world'); \r\n");
+    client.send("var misc = await root.set('a', 'b', {comment:'world'}); \r\n");
     await server.expect(/received bundle:.*world/);
 
     console.log("closing...");
