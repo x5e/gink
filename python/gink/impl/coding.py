@@ -206,7 +206,7 @@ class Placement(NamedTuple):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using in (PAIR_SET, PAIR_MAP):
             middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
-        elif using in (BOX, VERTEX):
+        elif using in (BOX, VERTEX, ACCUMULATOR):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")

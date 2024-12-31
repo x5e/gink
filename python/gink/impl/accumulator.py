@@ -91,7 +91,9 @@ class Accumulator(Container):
 
     def __eq__(self, other):
         if isinstance(other, (int, float, Decimal)):
-            return Decimal(other) == self.get()
+            my_value = self.get()
+            other_decimal = Decimal(str(other)) if isinstance(other, float) else other
+            return other_decimal == my_value
         if isinstance(other, Addressable):
             return other.get_muid() == self._muid
         return False

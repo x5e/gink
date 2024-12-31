@@ -124,8 +124,22 @@ class LmdbStore(AbstractStore):
             # TODO: add expiries table to keep track of when things need to be removed
         self._seen_through: MuTimestamp = 0
 
-    def get_billionths(self, accumulator, as_of = -1):
-        raise NotImplementedError("work in progress")
+    def get_billionths(self, accumulator: Muid, as_of = -1):
+        with self._handle.begin() as trxn:
+            placement_cursor = trxn.cursor(self._placements)
+            prefix = bytes(accumulator)
+            placed = placement_cursor.set_range(prefix)
+            total = 0
+            while placed and placement_cursor.key().startswith(prefix):
+                placement = Placement.from_bytes(placement_cursor.key(), Behavior.ACCUMULATOR)
+                if as_of > 0 and placement.placer.timestamp > as_of:
+                    break
+                entry_bytes = trxn.get(placement_cursor.value(), db=self._entries)
+                entry_builder = EntryBuilder.FromString(entry_bytes)
+                assert entry_builder and entry_builder.behavior == Behavior.ACCUMULATOR
+                total += int(entry_builder.value.integer)
+                placement_cursor.next()
+        return total
 
     def save_symmetric_key(self, symmetric_key: bytes) -> int:
         if len(symmetric_key) != 32:
