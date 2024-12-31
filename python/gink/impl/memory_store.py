@@ -47,6 +47,7 @@ class MemoryStore(AbstractStore):
     _verify_keys: Dict[Chain, VerifyKey]
     _signing_keys: Dict[VerifyKey, SigningKey]
     _symmetric_keys: Dict[int, bytes]
+    _totals: Dict[bytes, int]  # (muid as bytes plus key to total)
 
     def __init__(self, retain_entries = True) -> None:
         # TODO: add a "no retention" capability for bundles?
@@ -67,8 +68,11 @@ class MemoryStore(AbstractStore):
         self._symmetric_keys = dict()
         self._logger = getLogger(self.__class__.__name__)
         self._retaining_entries = retain_entries
+        self._totals = dict()
 
     def get_billionths(self, accumulator: Muid, *, as_of = -1):
+        if as_of == -1:
+            return self._totals.get(bytes(accumulator), 0)
         minimum = bytes(Placement(accumulator, None, Muid(+0, +0, +0), None))
         maximum = bytes(Placement(accumulator, None, Muid(as_of, -1, -1), None))
         total = 0
@@ -449,6 +453,13 @@ class MemoryStore(AbstractStore):
         placement = Placement.from_builder(entry_builder, new_info, offset)
         entry_muid = placement.placer
         container_muid = placement.container
+        if entry_builder.behavior == ACCUMULATOR:
+            container_muid_bytes = bytes(container_muid)
+            total = self._totals.get(container_muid_bytes, 0)
+            total += int(entry_builder.value.integer)
+            self._totals[container_muid_bytes] = total
+            if not self._retaining_entries:
+                return
         encoded_placement_key = bytes(placement)
         if new_entries_replace(entry_builder.behavior):
             found_entry = self.get_entry_by_key(container_muid, placement.middle, as_of=generate_timestamp())
