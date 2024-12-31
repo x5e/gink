@@ -14,6 +14,7 @@ from .group import Group
 from .pair_set import PairSet
 from .property import Property
 from .braid import Braid
+from .accumulator import Accumulator
 
 __all__ = ["get_container", "container_classes"]
 
@@ -29,6 +30,7 @@ container_classes: dict = {
     Behavior.EDGE_TYPE: EdgeType,
     Behavior.PROPERTY: Property,
     Behavior.BRAID: Braid,
+	Behavior.ACCUMULATOR: Accumulator,
 }
 
 

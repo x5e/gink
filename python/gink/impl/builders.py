@@ -94,6 +94,7 @@ if TYPE_CHECKING:
         EDGE_TYPE = 11
         TABLE = 12
         BRAID = 13
+        ACCUMULATOR = 14
 else:
     from ..builders.bundle_pb2 import Bundle as BundleBuilder
     from ..builders.sync_message_pb2 import SyncMessage

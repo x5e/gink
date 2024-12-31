@@ -22,6 +22,7 @@ DIRECTORY: int = Behavior.DIRECTORY
 PROPERTY: int = Behavior.PROPERTY
 BOX: int = Behavior.BOX
 VERTEX: int = Behavior.VERTEX
+ACCUMULATOR: int = Behavior.ACCUMULATOR
 GROUP: int = Behavior.GROUP
 EDGE_TYPE: int = Behavior.EDGE_TYPE
 KEY_SET: int = Behavior.KEY_SET
@@ -166,7 +167,7 @@ class Placement(NamedTuple):
         middle_key: Union[QueueMiddleKey, Muid, UserKey, None, Tuple[Muid, Muid]]
         if behavior in [DIRECTORY, KEY_SET]:
             middle_key = decode_key(builder)
-        elif behavior in (BOX, VERTEX):
+        elif behavior in (BOX, VERTEX, ACCUMULATOR):
             middle_key = None
         elif behavior in (SEQUENCE, EDGE_TYPE):
             middle_key = QueueMiddleKey(position or entry_muid.timestamp)
@@ -205,7 +206,7 @@ class Placement(NamedTuple):
             middle_key = Muid.from_bytes(middle_key_bytes)
         elif using in (PAIR_SET, PAIR_MAP):
             middle_key = (Muid.from_bytes(middle_key_bytes[:16]), Muid.from_bytes(middle_key_bytes[16:]))
-        elif using in (BOX, VERTEX):
+        elif using in (BOX, VERTEX, ACCUMULATOR):
             middle_key = None
         else:
             raise ValueError(f"unexpected behavior {using}")

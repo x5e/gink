@@ -7,7 +7,7 @@ from nacl.signing import SigningKey, VerifyKey
 
 
 # Gink specific modules
-from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder, ClaimBuilder
+from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder, ClaimBuilder, Behavior
 from .bundle_info import BundleInfo
 from .chain_tracker import ChainTracker
 from .typedefs import UserKey, MuTimestamp, Medallion, Limit
@@ -274,3 +274,18 @@ class AbstractStore(BundleStore, Generic[Lock]):
     @abstractmethod
     def get_symmetric_key(self, key_id: Union[int, Chain, None]) -> Optional[bytes]:
         """ Retrieves a previously stored symmetric key. """
+
+    @abstractmethod
+    def get_billionths(self, accumulator: Muid, *, as_of: MuTimestamp = -1) -> int:
+        """ Returns the sum of increments in an accumumlator. """
+
+    def _get_accumulator_reset(self,container: Muid, to_time: MuTimestamp):
+            previous = self.get_billionths(container, as_of=to_time)
+            current = self.get_billionths(container, as_of=-1)
+            needed = -current + previous
+            change_builder = ChangeBuilder()
+            entry_builder: EntryBuilder = change_builder.entry
+            entry_builder.behavior = Behavior.ACCUMULATOR
+            container.put_into(entry_builder.container)
+            entry_builder.value.integer = str(needed)
+            return change_builder

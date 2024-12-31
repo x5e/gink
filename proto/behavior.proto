@@ -15,5 +15,6 @@ enum Behavior {
     PROPERTY = 10;  // entries have a describing and value, new entries with matching describing replace old ones
     EDGE_TYPE = 11; // entries have a pair (source and target) and optionally a value (e.g. for message payload)
     TABLE = 12;
-    BRAID = 13;  // like property have a describing and value, but may only describe chains
+    BRAID = 13;  // like property has a describing and value, but may only describe chains
+    ACCUMULATOR = 14;  // has describing (which must be a vertex) and an integer change of billionths
 };

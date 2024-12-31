@@ -21,6 +21,7 @@ from .impl.builders import ClaimBuilder
 from .impl.tuples import Chain
 from .impl.braid import Braid
 from .impl.typedefs import inf, GenericTimestamp
+from .impl.accumulator import Accumulator, Decimal
 
 
 __all__ = [
@@ -50,4 +51,6 @@ __all__ = [
     "Braid",
     "inf",
     "GenericTimestamp",
+    "Accumulator",
+    "Decimal",
 ]

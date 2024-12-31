@@ -10,7 +10,7 @@ from nacl.secret import SecretBox
 
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder,
-                       ContainerBuilder, Message, ChangeBuilder, ClaimBuilder)
+                       ContainerBuilder, Message, ChangeBuilder, ClaimBuilder, Behavior)
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .bundle_info import BundleInfo
@@ -20,7 +20,7 @@ from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey, PAIR_MAP, PAIR_SET,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change, deletion,
                      Placement, decode_entry_occupant, EDGE_TYPE,
-                     PROPERTY, decode_value, new_entries_replace, BOX, GROUP,
+                     PROPERTY, decode_value, new_entries_replace, BOX, GROUP, ACCUMULATOR,
                      KEY_SET, VERTEX, EDGE_TYPE, serialize, encode_key, normalize_entry_builder)
 
 from .utilities import (create_claim, is_needed, generate_timestamp, resolve_timestamp,
@@ -47,6 +47,7 @@ class MemoryStore(AbstractStore):
     _verify_keys: Dict[Chain, VerifyKey]
     _signing_keys: Dict[VerifyKey, SigningKey]
     _symmetric_keys: Dict[int, bytes]
+    _totals: Dict[bytes, int]  # (muid as bytes plus key to total)
 
     def __init__(self, retain_entries = True) -> None:
         # TODO: add a "no retention" capability for bundles?
@@ -67,6 +68,20 @@ class MemoryStore(AbstractStore):
         self._symmetric_keys = dict()
         self._logger = getLogger(self.__class__.__name__)
         self._retaining_entries = retain_entries
+        self._totals = dict()
+
+    def get_billionths(self, accumulator: Muid, *, as_of = -1):
+        if as_of == -1:
+            return self._totals.get(bytes(accumulator), 0)
+        minimum = bytes(Placement(accumulator, None, Muid(+0, +0, +0), None))
+        maximum = bytes(Placement(accumulator, None, Muid(as_of, -1, -1), None))
+        total = 0
+        for placement_key in self._placements.irange(minimum=minimum, maximum=maximum):
+            entry_key = self._placements[placement_key]
+            entry_builder = self._entries[entry_key]
+            assert entry_builder.behavior == ACCUMULATOR
+            total += int(entry_builder.value.integer)
+        return total
 
     def drop_history(self, as_of: Optional[MuTimestamp] = None):
         if as_of is None:
@@ -438,6 +453,13 @@ class MemoryStore(AbstractStore):
         placement = Placement.from_builder(entry_builder, new_info, offset)
         entry_muid = placement.placer
         container_muid = placement.container
+        if entry_builder.behavior == ACCUMULATOR:
+            container_muid_bytes = bytes(container_muid)
+            total = self._totals.get(container_muid_bytes, 0)
+            total += int(entry_builder.value.integer)
+            self._totals[container_muid_bytes] = total
+            if not self._retaining_entries:
+                return
         encoded_placement_key = bytes(placement)
         if new_entries_replace(entry_builder.behavior):
             found_entry = self.get_entry_by_key(container_muid, placement.middle, as_of=generate_timestamp())
@@ -595,6 +617,9 @@ class MemoryStore(AbstractStore):
                 yield change
             return
         if behavior == 13:
+            return
+        if behavior == Behavior.ACCUMULATOR:
+            yield self._get_accumulator_reset(container, to_time)
             return
         else:
             raise NotImplementedError(f"don't know how to reset container of type {behavior}")
