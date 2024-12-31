@@ -3,7 +3,7 @@ from contextlib import closing
 from .. import *
 
 def test_basics():
-    """ Test the basic set/get functionality of directories works as expected. """
+    """ Test the basic set/get functionality of accumulators works as expected. """
     for store in [
         LmdbStore(),
         MemoryStore(),

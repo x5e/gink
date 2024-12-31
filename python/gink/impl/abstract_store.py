@@ -276,5 +276,5 @@ class AbstractStore(BundleStore, Generic[Lock]):
         """ Retrieves a previously stored symmetric key. """
 
     @abstractmethod
-    def get_billionths(self, accumulator: Muid, as_of: MuTimestamp = -1) -> int:
+    def get_billionths(self, accumulator: Muid, *, as_of: MuTimestamp = -1) -> int:
         """ Returns the sum of increments in an accumumlator. """

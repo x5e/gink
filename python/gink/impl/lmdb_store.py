@@ -86,6 +86,8 @@ class LmdbStore(AbstractStore):
         self._signing_keys = self._handle.open_db(b"signing_keys") # signing_key.verify_key -> signing_key
         self._verify_keys = self._handle.open_db(b"verify_keys") # chain -> verify_key
         self._symmetric_keys = self._handle.open_db(b"symmetric_keys") # key_id -> symmetric_key
+        self._totals = self._handle.open_db(b"totals")
+
 
         if reset:
             with self._handle.begin(write=True) as txn:
@@ -108,6 +110,7 @@ class LmdbStore(AbstractStore):
                 txn.drop(self._signing_keys, delete=False)
                 txn.drop(self._verify_keys, delete=False)
                 txn.drop(self._symmetric_keys, delete=False)
+                txn.drop(self._totals, delete=False)
         with self._handle.begin() as txn:
             # I'm checking to see if retentions are set in a read-only transaction, because if
             # they are and another process has this file open I don't want to wait to get a lock.
@@ -124,11 +127,15 @@ class LmdbStore(AbstractStore):
             # TODO: add expiries table to keep track of when things need to be removed
         self._seen_through: MuTimestamp = 0
 
-    def get_billionths(self, accumulator: Muid, as_of = -1):
-        # TODO: keep a running total table to speed up these calculations
+    def get_billionths(self, accumulator: Muid, *, as_of = -1):
         with self._handle.begin() as trxn:
-            placement_cursor = trxn.cursor(self._placements)
             prefix = bytes(accumulator)
+            if as_of == -1:
+                total_string = trxn.get(prefix, db=self._totals, default="0")
+                return int(total_string)
+            # TODO: switch algo to go from counting up from zero to counting down from total
+            # The current approach won't give the right answer when we only have partial history.
+            placement_cursor = trxn.cursor(self._placements)
             placed = placement_cursor.set_range(prefix)
             total = 0
             while placed and placement_cursor.key().startswith(prefix):
@@ -1056,9 +1063,16 @@ class LmdbStore(AbstractStore):
         retaining = bool(decode_muts(bytes(txn.get(b"entries", db=self._retentions))))
         ensure_entry_is_valid(builder=builder, context=new_info, offset=offset)
         placement_key = Placement.from_builder(builder, new_info, offset)
-        entry_muid = placement_key.placer
         container_muid = placement_key.container
+        if builder.behavior == Behavior.ACCUMULATOR:
+            totals_key = bytes(container_muid)
+            total = int(txn.get(totals_key, default=b"0", db=self._totals).decode())
+            total += int(builder.value.integer)
+            txn.put(totals_key, str(total).encode(), db=self._totals)
+            if not retaining:
+                return
         serialized_placement_key = bytes(placement_key)
+        entry_muid = placement_key.placer
         if new_entries_replace(builder.behavior):
             found_entry = self.get_entry_by_key(container_muid, placement_key.middle)
             if found_entry:
@@ -1068,10 +1082,10 @@ class LmdbStore(AbstractStore):
                     txn.put(encode_muts(new_info.timestamp), bytes(removal_key), db=self._removals_by_time)
                 else:
                     self._remove_entry(found_entry.address, txn)
-        entry_bytes = bytes(entry_muid)
-        txn.put(entry_bytes, serialize(builder), db=self._entries)
+        entry_muid_bytes = bytes(entry_muid)
+        txn.put(entry_muid_bytes, serialize(builder), db=self._entries)
         try:
-            txn.put(serialized_placement_key, entry_bytes, db=self._placements)
+            txn.put(serialized_placement_key, entry_muid_bytes, db=self._placements)
         except BadValsizeError:
             raise BadValsizeError("Max key size for LMDB is 511 bytes.")
         entries_loc_key = bytes(LocationKey(entry_muid, entry_muid))
@@ -1087,8 +1101,8 @@ class LmdbStore(AbstractStore):
         if builder.HasField("pair"):
             left = Muid.create(context=entry_muid, builder=builder.pair.left)
             rite = Muid.create(context=entry_muid, builder=builder.pair.rite)
-            txn.put(bytes(left) + bytes(entry_muid), entry_bytes, db=self._by_side)
-            txn.put(bytes(rite) + bytes(entry_muid), entry_bytes, db=self._by_side)
+            txn.put(bytes(left) + bytes(entry_muid), entry_muid_bytes, db=self._by_side)
+            txn.put(bytes(rite) + bytes(entry_muid), entry_muid_bytes, db=self._by_side)
         if container_muid == Muid(-1, -1, Behavior.PROPERTY):
             if builder.HasField("value") and builder.HasField("describing"):
                 describing_muid = Muid.create(new_info, builder.describing)

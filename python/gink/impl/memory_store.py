@@ -68,7 +68,7 @@ class MemoryStore(AbstractStore):
         self._logger = getLogger(self.__class__.__name__)
         self._retaining_entries = retain_entries
 
-    def get_billionths(self, accumulator: Muid, as_of = -1):
+    def get_billionths(self, accumulator: Muid, *, as_of = -1):
         minimum = bytes(Placement(accumulator, None, Muid(+0, +0, +0), None))
         maximum = bytes(Placement(accumulator, None, Muid(as_of, -1, -1), None))
         total = 0

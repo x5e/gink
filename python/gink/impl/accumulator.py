@@ -104,4 +104,4 @@ class Accumulator(Container):
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         """ Returns the number of billionths. """
         resolved = -1 if as_of is None else self._database.resolve_timestamp(as_of)
-        return self._database.get_store().get_billionths(self._muid, resolved)
+        return self._database.get_store().get_billionths(self._muid, as_of=resolved)

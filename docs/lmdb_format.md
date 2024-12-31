@@ -35,13 +35,19 @@
                 * In the case of a PROPERTY/LABEL/REGISTRY the middle key will be subject muid
                 * In the case of a BOX, VERTEX, or ACCUMULATOR there's no middle key.
 
-        removals - Used to soft-delete items from the entries table.
+        removals - Used to soft-delete items from the placements table.
             key: (container-muid, placement-muid you're removing, removing-muid)
             val: binaryproto of the movement, or nothing if removal was a replacement entry
 
         locations - table used as an index to look-up entries by entry-muid for (re)-moving
             key: (entry-muid, placement-muid)
             val: key from the placements table
+
+        totals - table used to keep the current total (in billionths) for accumulator-like data
+            key: (container-muid, key)
+            val: string total in the format -?\d+
+            Note that for the accumulator datatype itself the key is an empty string.
+            I expect future container types will allow a key though.
 
         containers - Map from muid to serialized containers definitions.
 
