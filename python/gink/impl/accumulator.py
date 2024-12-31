@@ -74,6 +74,9 @@ class Accumulator(Container):
 
     def clear(self, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
         """ Subtracts the current value. """
+        # Note that just setting the value to zero rather than subtracting the current
+        # value would lead to some edge cases where the accumulator won't converge
+        # to the same value across instances in case of a network partition.
         return self.increment(-1 * self.get(), bundler=bundler, comment=comment)
 
     def get(self, /, *, as_of: GenericTimestamp = None) -> Decimal:
