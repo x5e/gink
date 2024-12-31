@@ -403,8 +403,18 @@ class LmdbStore(AbstractStore):
             for change in self._get_ordered_reset_changes(container, to_time, trxn, seen):
                 yield change
             return
-        else:
-            raise NotImplementedError(f"don't know how to reset container of type {behavior}")
+        if behavior == Behavior.ACCUMULATOR:
+            previous = self.get_billionths(container, as_of=to_time)
+            current = self.get_billionths(container, as_of=-1)
+            needed = -current + previous
+            change_builder = ChangeBuilder()
+            entry_builder: EntryBuilder = change_builder.entry
+            entry_builder.behavior = Behavior.ACCUMULATOR
+            container.put_into(entry_builder.container)
+            entry_builder.value.integer = str(needed)
+            yield change_builder
+            return
+        raise NotImplementedError(f"don't know how to reset container of type {behavior}")
 
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=True) -> Iterable[ChangeBuilder]:

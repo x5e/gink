@@ -24,4 +24,10 @@ def test_basics():
                 accumulator -= 7.7
                 assert accumulator.get() == Decimal("-7.7")
                 assert accumulator.get(as_of=before_clear) == Decimal('15.3')
+                before_reset = generate_timestamp()
+                database.reset(before_clear)
+                assert accumulator == 15.3
+                assert accumulator.get(as_of=before_reset) == Decimal('-7.7')
+                database.reset(before_reset)
+                assert accumulator == -7.7
 
