@@ -404,15 +404,7 @@ class LmdbStore(AbstractStore):
                 yield change
             return
         if behavior == Behavior.ACCUMULATOR:
-            previous = self.get_billionths(container, as_of=to_time)
-            current = self.get_billionths(container, as_of=-1)
-            needed = -current + previous
-            change_builder = ChangeBuilder()
-            entry_builder: EntryBuilder = change_builder.entry
-            entry_builder.behavior = Behavior.ACCUMULATOR
-            container.put_into(entry_builder.container)
-            entry_builder.value.integer = str(needed)
-            yield change_builder
+            yield self._get_accumulator_reset(container, to_time)
             return
         raise NotImplementedError(f"don't know how to reset container of type {behavior}")
 

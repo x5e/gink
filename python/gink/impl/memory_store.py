@@ -10,7 +10,7 @@ from nacl.secret import SecretBox
 
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder,
-                       ContainerBuilder, Message, ChangeBuilder, ClaimBuilder)
+                       ContainerBuilder, Message, ChangeBuilder, ClaimBuilder, Behavior)
 from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .bundle_info import BundleInfo
@@ -617,6 +617,9 @@ class MemoryStore(AbstractStore):
                 yield change
             return
         if behavior == 13:
+            return
+        if behavior == Behavior.ACCUMULATOR:
+            yield self._get_accumulator_reset(container, to_time)
             return
         else:
             raise NotImplementedError(f"don't know how to reset container of type {behavior}")
