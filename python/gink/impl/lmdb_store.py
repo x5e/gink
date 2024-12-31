@@ -125,6 +125,7 @@ class LmdbStore(AbstractStore):
         self._seen_through: MuTimestamp = 0
 
     def get_billionths(self, accumulator: Muid, as_of = -1):
+        # TODO: keep a running total table to speed up these calculations
         with self._handle.begin() as trxn:
             placement_cursor = trxn.cursor(self._placements)
             prefix = bytes(accumulator)

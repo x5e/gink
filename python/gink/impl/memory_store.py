@@ -20,7 +20,7 @@ from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey, PAIR_MAP, PAIR_SET,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change, deletion,
                      Placement, decode_entry_occupant, EDGE_TYPE,
-                     PROPERTY, decode_value, new_entries_replace, BOX, GROUP,
+                     PROPERTY, decode_value, new_entries_replace, BOX, GROUP, ACCUMULATOR,
                      KEY_SET, VERTEX, EDGE_TYPE, serialize, encode_key, normalize_entry_builder)
 
 from .utilities import (create_claim, is_needed, generate_timestamp, resolve_timestamp,
@@ -68,8 +68,16 @@ class MemoryStore(AbstractStore):
         self._logger = getLogger(self.__class__.__name__)
         self._retaining_entries = retain_entries
 
-    def get_billionths(self, accumulator, as_of = -1):
-        raise NotImplementedError()
+    def get_billionths(self, accumulator: Muid, as_of = -1):
+        minimum = bytes(Placement(accumulator, None, Muid(+0, +0, +0), None))
+        maximum = bytes(Placement(accumulator, None, Muid(as_of, -1, -1), None))
+        total = 0
+        for placement_key in self._placements.irange(minimum=minimum, maximum=maximum):
+            entry_key = self._placements[placement_key]
+            entry_builder = self._entries[entry_key]
+            assert entry_builder.behavior == ACCUMULATOR
+            total += int(entry_builder.value.integer)
+        return total
 
     def drop_history(self, as_of: Optional[MuTimestamp] = None):
         if as_of is None:

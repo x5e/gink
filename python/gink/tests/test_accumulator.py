@@ -6,7 +6,7 @@ def test_basics():
     """ Test the basic set/get functionality of directories works as expected. """
     for store in [
         LmdbStore(),
-        #MemoryStore(),
+        MemoryStore(),
         ]:
         with closing(store):
             database = Database(store=store)
