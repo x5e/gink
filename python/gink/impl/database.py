@@ -167,8 +167,7 @@ class Database(Relay):
         for muid, container_builder in self._store.list_containers():
             container = get_container(muid=muid, behavior=container_builder.behavior, database=self)
             assert isinstance(container, Container)
-            if container.size(as_of=as_of):
-                container.dump(as_of=as_of, file=file)
+            container.dump(as_of=as_of, file=file)
         if include_global_containers:
             for cls in container_classes.values():
                 container = cls(arche=True, database=self)

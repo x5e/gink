@@ -927,7 +927,7 @@ class LmdbStore(AbstractStore):
                             container = change.entry.container
                             muid = Muid(container.timestamp, container.medallion, container.offset)
                             if not muid in self._seen_containers:
-                                if not self.get_container(muid):
+                                if not (self.get_container(muid) or container.timestamp == -1):
                                     container_builder = ContainerBuilder()
                                     container_builder.behavior = change.entry.behavior
                                     trxn.put(bytes(muid), container_builder.SerializeToString(), db=self._containers)
