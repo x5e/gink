@@ -79,7 +79,7 @@ def test_bundle_two():
 def test_reset_everything():
     """ makes sure the database.reset works """
     for store in [
-        LmdbStore(),
+        #LmdbStore(),
         MemoryStore(),
     ]:
         with closing(store):

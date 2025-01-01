@@ -395,11 +395,11 @@ class LmdbStore(AbstractStore):
             for change in self._get_vertex_reset_changes(container, to_time, trxn):
                 yield change
             return
-        if behavior in (DIRECTORY, BOX, GROUP, KEY_SET, PROPERTY):
+        if behavior in (DIRECTORY, BOX, GROUP, KEY_SET, PROPERTY, PAIR_MAP, PAIR_SET):
             for change in self._get_keyed_reset_changes(container, to_time, trxn, seen, None, behavior):
                 yield change
             return
-        if behavior in (SEQUENCE, EDGE_TYPE):
+        if behavior in (SEQUENCE, EDGE_TYPE, Behavior.EVENT_TYPE):
             for change in self._get_ordered_reset_changes(container, to_time, trxn, seen):
                 yield change
             return
@@ -425,6 +425,11 @@ class LmdbStore(AbstractStore):
                     for change in self._container_reset_changes(to_time, muid, seen, txn):
                         yield change
                     cursor_placed = containers_cursor.next()
+                for name, behavior in Behavior.items():
+                    if name not in ('UNSPECIFIED', 'TABLE', 'BRAID'):
+                        muid = Muid(-1,-1,behavior)
+                        for change in self._container_reset_changes(to_time, muid, seen, txn):
+                            yield change
             else:
                 if user_key is not None:
                     for change in self._get_keyed_reset_changes(
@@ -927,7 +932,7 @@ class LmdbStore(AbstractStore):
                             container = change.entry.container
                             muid = Muid(container.timestamp, container.medallion, container.offset)
                             if not muid in self._seen_containers:
-                                if not self.get_container(muid):
+                                if not (self.get_container(muid) or container.timestamp == -1):
                                     container_builder = ContainerBuilder()
                                     container_builder.behavior = change.entry.behavior
                                     trxn.put(bytes(muid), container_builder.SerializeToString(), db=self._containers)
