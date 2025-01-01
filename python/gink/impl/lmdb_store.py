@@ -215,7 +215,7 @@ class LmdbStore(AbstractStore):
     def get_verify_key(self, chain: Chain, trxn: Optional[Trxn]=None, /) -> VerifyKey:
         if trxn is None:
             with self._handle.begin(write=False) as trxn:
-                self.get_verify_key(chain, trxn)
+                return self.get_verify_key(chain, trxn)
         else:
             found = trxn.get(bytes(chain), db=self._verify_keys)
             if found is None:

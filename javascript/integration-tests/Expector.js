@@ -71,7 +71,7 @@ module.exports = class Expector {
     send(what) {
         this.proc.stdin.write(
             what,
-            // () => console.error("flushed")
+            //(err) => console.error(`flushed, err=${err}`)
         );
     }
 
