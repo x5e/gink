@@ -112,7 +112,7 @@ class Database(Relay):
         assert self._symmetric_key is None
         self._last_link = reused = self._store.maybe_reuse_chain(self._identity)
         if reused:
-            self._symmetric_key = self._store.get_symmetric_key(reused.get_chain())
+            self._symmetric_key = self._store.get_symmetric_key(None)
             verify_key = self._store.get_verify_key(reused.get_chain())
             self._signing_key = self._store.get_signing_key(verify_key)
             return reused, self._signing_key
