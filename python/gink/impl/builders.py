@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Iterator, Tuple
 
 from google.protobuf.message import Message  # type: ignore
 from enum import IntEnum
@@ -95,6 +95,10 @@ if TYPE_CHECKING:
         TABLE = 12
         BRAID = 13
         ACCUMULATOR = 14
+
+        @staticmethod
+        def items() -> Iterator[Tuple[str, int]]:
+            raise Exception("for type checking purposes only")
 else:
     from ..builders.bundle_pb2 import Bundle as BundleBuilder
     from ..builders.sync_message_pb2 import SyncMessage
