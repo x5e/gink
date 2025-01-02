@@ -42,9 +42,10 @@ def test_get_by_name():
             prop.set(new_dir, "new_dir")
             assert len(list(store.get_by_name("root"))) == 1
             assert len(list(store.get_by_name("new_dir"))) == 1
-            prop.set(Sequence(arche=True), "root")
+            queue = Sequence()
+            prop.set(queue, "root")
             assert len(list(store.get_by_name("root"))) == 2
-            prop.delete(Sequence(arche=True))
+            prop.delete(queue)
             assert len(list(store.get_by_name("root"))) == 1
 
 def test_properties_on_containers():

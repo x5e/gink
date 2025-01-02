@@ -44,7 +44,7 @@ class Vertex(Container):
         elif muid is None:
             muid = Container._create(VERTEX, bundler=bundler)
         assert muid.timestamp != -1 or muid.offset == VERTEX
-        Container.__init__(self, behavior=VERTEX, muid=muid, database=database)
+        Container.__init__(self, muid=muid, database=database)
 
         if len(bundler) and immediate:
             bundler.commit()
@@ -136,7 +136,7 @@ class EdgeType(Container):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(EDGE_TYPE, bundler=bundler)
-        Container.__init__(self, behavior=EDGE_TYPE, muid=muid, database=database)
+        Container.__init__(self, muid=muid, database=database)
 
         if contents:
             pass  # This is intentional! The edge constructors will restore them!

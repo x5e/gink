@@ -40,7 +40,7 @@ def test_property_dump():
             assert named == "fred", named
             assert namer.size() == 1, store
             dumped = namer.dumps()
-            assert dumped == "Property(arche=True, contents={Muid(-1, -1, 4):'fred'})", dumped
+            assert dumped == "Property(muid=Muid(-1, -1, 10), contents={Muid(-1, -1, 4):'fred'})", dumped
             namer.set(directory, "joe")
             assert namer.get(directory) == "joe"
             eval(dumped)

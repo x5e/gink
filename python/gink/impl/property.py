@@ -14,6 +14,7 @@ from .utilities import experimental
 
 @experimental
 class Property(Container):
+    _BEHAVIOR = PROPERTY
 
     @typechecked
     def __init__(
@@ -47,7 +48,7 @@ class Property(Container):
             muid = Container._create(PROPERTY, bundler=bundler)
             created = True
         assert muid.timestamp != -1 or muid.offset == PROPERTY
-        Container.__init__(self, behavior=PROPERTY, muid=muid, database=database)
+        Container.__init__(self, muid=muid, database=database)
         if contents:
             if not created:
                 self.clear(bundler=bundler)
