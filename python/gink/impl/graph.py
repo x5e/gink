@@ -4,11 +4,11 @@ from typeguard import typechecked
 
 from .typedefs import GenericTimestamp, UserValue, Inclusion, MuTimestamp
 from .container import Container
-from .coding import EDGE_TYPE, VERTEX, inclusion, encode_value, decode_value, deletion
+from .coding import EDGE_TYPE, VERTEX, inclusion, encode_value, decode_value
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
-from .builders import EntryBuilder, ChangeBuilder, Behavior
+from .builders import EntryBuilder, ChangeBuilder
 from .addressable import Addressable
 from .utilities import experimental
 
