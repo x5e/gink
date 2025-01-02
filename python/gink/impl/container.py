@@ -62,6 +62,7 @@ class Container(Addressable, ABC):
     @classmethod
     def get_behavior(cls) -> int:
         """ Gets the behavior tag/enum for the particular class. """
+        assert hasattr(cls, '_BEHAVIOR')
         return cls._BEHAVIOR
 
     @classmethod

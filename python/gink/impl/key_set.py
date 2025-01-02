@@ -46,6 +46,7 @@ class KeySet(Container):
         elif muid is None:
             muid = Container._create(KEY_SET, bundler=bundler)
             created = True
+        assert isinstance(muid, Muid)
         assert muid.timestamp != -1 or muid.offset == KEY_SET
         Container.__init__(self, muid=muid, database=database)
         if contents:

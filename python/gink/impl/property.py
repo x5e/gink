@@ -47,6 +47,7 @@ class Property(Container):
         elif muid is None:
             muid = Container._create(PROPERTY, bundler=bundler)
             created = True
+        assert isinstance(muid, Muid)
         assert muid.timestamp != -1 or muid.offset == PROPERTY
         Container.__init__(self, muid=muid, database=database)
         if contents:

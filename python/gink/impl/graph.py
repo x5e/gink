@@ -43,6 +43,7 @@ class Vertex(Container):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(VERTEX, bundler=bundler)
+        assert isinstance(muid, Muid)
         assert muid.timestamp != -1 or muid.offset == VERTEX
         Container.__init__(self, muid=muid, database=database)
 

@@ -42,6 +42,7 @@ class Box(Container):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(BOX, bundler=bundler)
+        assert isinstance(muid, Muid)
         assert muid.timestamp != -1 or muid.offset == BOX
         Container.__init__(self, muid=muid, database=database)
 

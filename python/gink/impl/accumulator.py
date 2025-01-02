@@ -38,6 +38,7 @@ class Accumulator(Container):
         elif muid is None:
             muid = Container._create(ACCUMULATOR, bundler=bundler)
             created = True
+        assert isinstance(muid, Muid)
         assert muid.timestamp != -1 or muid.offset == ACCUMULATOR
         Container.__init__(self, muid=muid, database=database)
         if contents:

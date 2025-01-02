@@ -44,6 +44,7 @@ class PairMap(Container):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(PAIR_MAP, bundler=bundler)
+        assert isinstance(muid, Muid)
         assert muid.timestamp != -1 or muid.offset == PAIR_MAP
         Container.__init__(self, muid=muid, database=database)
         if contents:
