@@ -15,7 +15,7 @@ from .utilities import experimental
 
 @experimental
 class Vertex(Container):
-    BEHAVIOR = VERTEX
+    _BEHAVIOR = VERTEX
 
     @typechecked
     def __init__(
@@ -105,7 +105,7 @@ class Vertex(Container):
 
 @experimental
 class EdgeType(Container):
-    BEHAVIOR = EDGE_TYPE
+    _BEHAVIOR = EDGE_TYPE
 
     @typechecked
     def __init__(

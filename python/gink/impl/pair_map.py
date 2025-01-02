@@ -14,7 +14,7 @@ Pair = Tuple[Union[Container, Muid], Union[Container, Muid]]
 
 class PairMap(Container):
     _missing = object()
-    BEHAVIOR = PAIR_MAP
+    _BEHAVIOR = PAIR_MAP
 
     @typechecked
     def __init__(
@@ -45,7 +45,7 @@ class PairMap(Container):
         elif muid is None:
             muid = Container._create(PAIR_MAP, bundler=bundler)
         assert muid.timestamp != -1 or muid.offset == PAIR_MAP
-        Container.__init__(self, behavior=PAIR_MAP, muid=muid, database=database)
+        Container.__init__(self, muid=muid, database=database)
         if contents:
             self.clear(bundler=bundler)
             for key_pair, value in contents.items():

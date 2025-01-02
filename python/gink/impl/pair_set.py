@@ -15,7 +15,7 @@ Pair = Tuple[Union[Container, Muid], Union[Container, Muid]]
 @experimental
 class PairSet(Container):
     _missing = object()
-    BEHAVIOR = PAIR_SET
+    _BEHAVIOR = PAIR_SET
 
     @typechecked
     def __init__(
@@ -47,7 +47,7 @@ class PairSet(Container):
         elif muid is None:
             muid = Container._create(PAIR_SET, bundler=bundler)
             created = True
-        Container.__init__(self, behavior=PAIR_SET, muid=muid, database=database)
+        Container.__init__(self, muid=muid, database=database)
         if contents:
             assert isinstance(contents, dict)
             assert contents.keys() <= {"include", "exclude"}, "expecting only 'include' and 'exclude' keys in contents"
@@ -94,7 +94,7 @@ class PairSet(Container):
         """ Returns a set of muid pairs included in the pair set at a given time """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self._muid, as_of=as_of, behavior=self.BEHAVIOR)
+            container=self._muid, as_of=as_of, behavior=self._BEHAVIOR)
 
         return {(Muid.create(builder=entry_pair.builder.pair.left, context=entry_pair.address),
                 Muid.create(builder=entry_pair.builder.pair.rite, context=entry_pair.address))
@@ -108,7 +108,7 @@ class PairSet(Container):
         """ Returns the number of elements included in the pair set, optionally at a given time """
         ts = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self._muid, as_of=ts, behavior=self.BEHAVIOR)
+            container=self._muid, as_of=ts, behavior=self._BEHAVIOR)
         count = 0
         for entry_pair in iterable:
             if not entry_pair.builder.deletion:
@@ -126,7 +126,7 @@ class PairSet(Container):
         excluded_stuffing = "'exclude': [\n\t"
         something = False
         for entry_pair in self._database.get_store().get_keyed_entries(
-            container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of):
+            container=self.get_muid(), behavior=self._BEHAVIOR, as_of=as_of):
             something = True
             left = Muid.create(builder=entry_pair.builder.pair.left)
             rite = Muid.create(builder=entry_pair.builder.pair.rite)

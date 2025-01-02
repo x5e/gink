@@ -14,13 +14,13 @@ from .utilities import experimental
 
 @experimental
 class Braid(Container):
+    _BEHAVIOR = BRAID
 
     @typechecked
     def __init__(
             self,
             muid: Optional[Union[Muid, str]] = None,
             *,
-            arche: Optional[bool] = None,
             contents: Optional[Dict[Chain, Limit]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
@@ -30,7 +30,6 @@ class Braid(Container):
         Constructor for a braid proxy.
 
         muid: the global id of this container, created on the fly if None
-        arche: whether this will be the global version of this container (accessible by all databases)
         contents: prefill the braid with a dict of Chain: Limit upon initialization
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
@@ -42,15 +41,12 @@ class Braid(Container):
             immediate = True
             bundler = database.start_bundle(comment)
         created = False
-        if arche:
-            assert muid is None
-            muid = Muid(-1, -1, BRAID)
-        elif isinstance(muid, str):
+        if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(BRAID, bundler=bundler)
             created = True
-        Container.__init__(self, behavior=BRAID, muid=muid, database=database)
+        Container.__init__(self, muid=muid, database=database)
         if contents:
             if not created:
                 self.clear(bundler=bundler)
@@ -60,10 +56,7 @@ class Braid(Container):
 
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "arche=True"
-        else:
-            identifier = f"muid={self._muid!r}"
+        identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         stuffing = [f"{k!r}:{v!r}" for k, v in self.items(as_of=as_of)]

@@ -14,7 +14,7 @@ from .utilities import experimental
 
 @experimental
 class Group(Container):
-    BEHAVIOR = Behavior.GROUP
+    _BEHAVIOR = Behavior.GROUP
 
     @typechecked
     def __init__(
@@ -48,7 +48,7 @@ class Group(Container):
             muid = Container._create(GROUP, bundler=bundler)
             created = True
         assert muid.timestamp != -1 or muid.offset == GROUP
-        Container.__init__(self, behavior=GROUP, muid=muid, database=database)
+        Container.__init__(self, muid=muid, database=database)
         if contents:
             assert contents.keys() <= {"include", "exclude"}
             if not created:
