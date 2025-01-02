@@ -25,7 +25,6 @@ class Group(Container):
                 database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
-                arche: Optional[bool] = None,
             ):
         """
         Constructor for a group definition.
@@ -43,14 +42,12 @@ class Group(Container):
             bundler = database.start_bundle(comment)
 
         created = False
-        if arche:
-            assert muid is None
-            muid = Muid(-1, -1, GROUP)
-        elif isinstance(muid, str):
+        if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(GROUP, bundler=bundler)
             created = True
+        assert muid.timestamp != -1 or muid.offset == GROUP
         Container.__init__(self, behavior=GROUP, muid=muid, database=database)
         if contents:
             assert contents.keys() <= {"include", "exclude"}
@@ -94,10 +91,7 @@ class Group(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this group to a string. """
         ts = self._database.resolve_timestamp(as_of)
-        if self._muid.timestamp == -1 and self._muid.medallion == -1:
-            identifier = "arche=True"
-        else:
-            identifier = f"muid={self._muid!r}"
+        identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         included_stuffing = "\n\t'include': [\n\t"

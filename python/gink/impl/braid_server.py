@@ -58,7 +58,7 @@ class BraidServer(Server):
         box = Box(arche=True, database=self._control_db)
         box_contents = box.get()
         if self._app_id is not None:
-            control_root = Directory(arche=True, database=self._control_db)
+            control_root = Directory(root=True, database=self._control_db)
             if self._app_id in control_root:
                 directory = control_root[self._app_id]
                 if not isinstance(directory, Directory):

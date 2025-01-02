@@ -14,7 +14,7 @@ from .utilities import generate_timestamp
 
 class KeySet(Container):
     _missing = object()
-    BEHAVIOR = KEY_SET
+    _BEHAVIOR = KEY_SET
 
     @typechecked
     def __init__(
@@ -25,7 +25,6 @@ class KeySet(Container):
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
-            arche: Optional[bool] = None,
     ):
         """
         Constructor for a set proxy.
@@ -42,15 +41,13 @@ class KeySet(Container):
             immediate = True
             bundler = database.start_bundle(comment)
         created = False
-        if arche:
-            assert muid is None
-            muid = Muid(-1, -1, KEY_SET)
-        elif isinstance(muid, str):
+        if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(KEY_SET, bundler=bundler)
             created = True
-        Container.__init__(self, behavior=KEY_SET, muid=muid, database=database)
+        assert muid.timestamp != -1 or muid.offset == KEY_SET
+        Container.__init__(self, muid=muid, database=database)
         if contents:
             if not created:
                 self.clear(bundler=bundler)
@@ -126,7 +123,7 @@ class KeySet(Container):
         """ Returns a Boolean stating whether the key set is a subset of the specified set/list/tuple """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of)
+            container=self.get_muid(), behavior=self._BEHAVIOR, as_of=as_of)
         for entry_pair in iterable:
             if entry_pair.builder.deletion:
                 continue
@@ -146,7 +143,7 @@ class KeySet(Container):
         """ Returns an iterable of keys in the key set that are not in the specified sets/lists/tuples  """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of)
+            container=self.get_muid(), behavior=self._BEHAVIOR, as_of=as_of)
         for entry_pair in iterable:
             if entry_pair.builder.deletion:
                 continue
@@ -196,7 +193,7 @@ class KeySet(Container):
             immedate = True
         intersection = self.intersection(s)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self.get_muid(), behavior=self.BEHAVIOR, as_of=generate_timestamp())
+            container=self.get_muid(), behavior=self._BEHAVIOR, as_of=generate_timestamp())
 
         for entry_pair in iterable:
             if entry_pair.builder.deletion:
@@ -217,7 +214,7 @@ class KeySet(Container):
         """ Updates the key set, keeping only elements found in either the key set or the specified set, not both. """
         sym_diff = self.symmetric_difference(s)
         iterator = self._database.get_store().get_keyed_entries(
-            container=self.get_muid(), behavior=self.BEHAVIOR, as_of=generate_timestamp())
+            container=self.get_muid(), behavior=self._BEHAVIOR, as_of=generate_timestamp())
         for entry_pair in iterator:
             if entry_pair.builder.deletion:
                 continue
@@ -230,7 +227,7 @@ class KeySet(Container):
         """ returns an iterable of all items in the key set """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
-            container=self._muid, as_of=as_of, behavior=self.BEHAVIOR)
+            container=self._muid, as_of=as_of, behavior=self._BEHAVIOR)
         for entry_pair in iterable:
             if entry_pair.builder.deletion:
                 continue
@@ -253,13 +250,10 @@ class KeySet(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ return the contents of this container as a string """
         as_of = self._database.resolve_timestamp(as_of)
-        if self._muid.timestamp == -1 and self._muid.medallion == -1:
-            identifier = "arche=True"
-        else:
-            identifier = f"muid={self._muid!r}"
+        identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
-        src = self._database.get_store().get_keyed_entries(container=self._muid, behavior=self.BEHAVIOR, as_of=as_of)
+        src = self._database.get_store().get_keyed_entries(container=self._muid, behavior=self._BEHAVIOR, as_of=as_of)
         stuffing = [repr(decode_key(entry_pair.builder)) for entry_pair in src]
         as_one_line = result + ",".join(stuffing) + "})"
         if len(as_one_line) < 80:

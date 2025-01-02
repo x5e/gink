@@ -23,16 +23,12 @@ class Container(Addressable, ABC):
     @typechecked
     def __init__(self,
                  *,
-                 behavior: int,
                  muid: Muid,
                  database: Database,
         ):
-        self._behavior = behavior
         Addressable.__init__(self, database=database, muid=muid)
 
     def __repr__(self):
-        if self._muid.timestamp == -1 and self._muid.medallion == -1:
-            return f"{self.__class__.__name__}(arche=True)"
         return f"{self.__class__.__name__}(muid={self._muid!r})"
 
     @abstractmethod
@@ -63,10 +59,10 @@ class Container(Addressable, ABC):
                 muid=pointee_muid, database=self._database)
         raise Exception("unexpected")
 
-    @experimental
-    def _get_behavior(self):
+    @classmethod
+    def get_behavior(cls) -> int:
         """ Gets the behavior tag/enum for the particular class. """
-        return self._behavior
+        return cls._BEHAVIOR
 
     @classmethod
     def _get_global_instance(cls, database: Optional[Database] = None):
@@ -78,7 +74,7 @@ class Container(Addressable, ABC):
             be used to coordinate between database instances or just for
             testing/demo purposes.
         """
-        return cls(database=database, arche=True)
+        return cls(database=database, muid=Muid(-1, -1, cls.get_behavior()))
 
     @staticmethod
     def _create(behavior: int, bundler: Bundler) -> Muid:
@@ -132,7 +128,7 @@ class Container(Addressable, ABC):
             bundler = self._database.start_bundle(comment)
         change_builder = ChangeBuilder()
         entry_builder: EntryBuilder = change_builder.entry
-        entry_builder.behavior = behavior or self._behavior
+        entry_builder.behavior = behavior or self.get_behavior()
         if expiry is not None:
             now = generate_timestamp()
             expiry = self._database.resolve_timestamp(expiry)

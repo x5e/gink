@@ -20,7 +20,6 @@ class Property(Container):
             self,
             muid: Optional[Union[Muid, str]] = None,
             *,
-            arche: Optional[bool] = None,
             contents: Optional[Union[Dict[Union[Addressable, Muid], Union[UserValue, Container]],
                       Iterable[Tuple[Union[Addressable, Muid], Union[UserValue, Container]]]]] = None,
             database: Optional[Database] = None,
@@ -31,7 +30,6 @@ class Property(Container):
         Constructor for a property.
 
         muid: the global id of this container, created on the fly if None
-        arche: whether this will be the global version of this container (accessible by all databases)
         contents: prefill the property with a dictionary upon initialization
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
@@ -43,14 +41,12 @@ class Property(Container):
             immediate = True
             bundler = database.start_bundle(comment)
         created = False
-        if arche:
-            assert muid is None
-            muid = Muid(-1, -1, PROPERTY)
-        elif isinstance(muid, str):
+        if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(PROPERTY, bundler=bundler)
             created = True
+        assert muid.timestamp != -1 or muid.offset == PROPERTY
         Container.__init__(self, behavior=PROPERTY, muid=muid, database=database)
         if contents:
             if not created:
@@ -61,10 +57,7 @@ class Property(Container):
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this property to a string. """
-        if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "arche=True"
-        else:
-            identifier = f"muid={self._muid!r}"
+        identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         stuffing = [f"{k!r}:{v!r}" for k, v in self.items(as_of=as_of)]

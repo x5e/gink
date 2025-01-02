@@ -37,7 +37,7 @@ def test_get_by_name():
             assert len(bobs) == 2 and b in bobs and s in bobs
 
             prop = Property._get_global_instance()
-            prop.set(Directory(arche=True), "root")
+            prop.set(Directory(root=True), "root")
             new_dir = Directory(database=database)
             prop.set(new_dir, "new_dir")
             assert len(list(store.get_by_name("root"))) == 1

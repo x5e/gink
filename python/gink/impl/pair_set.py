@@ -26,13 +26,11 @@ class PairSet(Container):
                 database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
-                arche: Optional[bool] = None,
             ):
         """
         Constructor for a pair set proxy.
 
         muid: the global id of this container, created on the fly if None
-        arche: whether this will be the global version of this container (accessible by all databases)
         contents: optionally expecting a dictionary of {"include": Set, "exclude": Set} to prefill the pair set
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
@@ -44,10 +42,7 @@ class PairSet(Container):
             immediate = True
             bundler = database.start_bundle(comment)
         created = False
-        if arche:
-            assert muid is None
-            muid = Muid(-1, -1, PAIR_SET)
-        elif isinstance(muid, str):
+        if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(PAIR_SET, bundler=bundler)
@@ -123,10 +118,7 @@ class PairSet(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Returns the contents of this container as a string """
         as_of = self._database.resolve_timestamp(as_of)
-        if self._muid.timestamp == -1 and self._muid.medallion == -1:
-            identifier = "arche=True"
-        else:
-            identifier = f"muid={self._muid!r}"
+        identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
 

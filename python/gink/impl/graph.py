@@ -22,7 +22,6 @@ class Vertex(Container):
             self,
             muid: Optional[Union[Muid, str]] = None,
             *,
-            arche: Optional[bool] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -31,7 +30,6 @@ class Vertex(Container):
         Creates a placeholder node to contain the idea of something.
 
         muid: the global id of this container, created on the fly if None
-        arche: whether this will be the global version of this container (accessible by all databases)
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
         comment: optional comment to add to the bundler
@@ -41,13 +39,11 @@ class Vertex(Container):
         if not isinstance(bundler, Bundler):
             immediate = True
             bundler = database.start_bundle(comment)
-        if arche:
-            assert muid is None
-            muid = Muid(-1, -1, VERTEX)
-        elif isinstance(muid, str):
+        if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(VERTEX, bundler=bundler)
+        assert muid.timestamp != -1 or muid.offset == VERTEX
         Container.__init__(self, behavior=VERTEX, muid=muid, database=database)
 
         if len(bundler) and immediate:
@@ -114,9 +110,8 @@ class EdgeType(Container):
     @typechecked
     def __init__(
             self,
-            *,
             muid: Optional[Union[Muid, str]] = None,
-            arche: Optional[bool] = None,
+            *,
             contents: Optional[Iterable['Edge']] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
@@ -126,7 +121,6 @@ class EdgeType(Container):
         Constructor for a EdgeType (otherwise known as Edge Type).
 
         muid: the global id of this container, created on the fly if None
-        arche: whether this will be the global version of this container (accessible by all databases)
         contents: prefill the EdgeType with an iterable of edges upon initialization
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
@@ -138,10 +132,7 @@ class EdgeType(Container):
             immediate = True
             bundler = database.start_bundle(comment)
 
-        if arche:
-            assert muid is None
-            muid = Muid(-1, -1, EDGE_TYPE)
-        elif isinstance(muid, str):
+        if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(EDGE_TYPE, bundler=bundler)
@@ -198,10 +189,7 @@ class EdgeType(Container):
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dump all the edges for this edge_type. """
-        if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "arche=True"
-        else:
-            identifier = f"muid={repr(self._muid)}"
+        identifier = f"muid={repr(self._muid)}"
         result = f"""{self.__class__.__name__}({identifier}, contents=["""
         if self.size() == 0:
             return result + "])"

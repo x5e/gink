@@ -24,9 +24,9 @@ def test_happy_path():
     assert list(external2.get_connections())
 
     logger.debug("connections established")
-    external_root1 = Directory(database=external1, arche=True)
+    external_root1 = Directory(database=external1, root=True)
     external_root1["foo"] = "bar"
     loop(braid_server, external1, external2, until=0.1)
 
-    external_root2 = Directory(database=external2, arche=True)
+    external_root2 = Directory(database=external2, root=True)
     assert external_root2["foo"] == "bar"

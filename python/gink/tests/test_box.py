@@ -93,12 +93,9 @@ def test_dumps():
             global_box.set("test value")
             result = global_box.dumps()
 
-            if global_box._muid.medallion != -1 and global_box._muid.timestamp != -1:
-                identifier = repr(str(global_box._muid))
-            else:
-                identifier = "arche=True"
+            identifier = f"muid={global_box._muid!r}"
 
-            assert result == f"""{global_box.__class__.__name__}({identifier}, contents='test value')"""
+            assert result == f"""{global_box.__class__.__name__}({identifier}, contents='test value')""", result
 
 
 

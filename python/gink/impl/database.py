@@ -16,6 +16,7 @@ from .typedefs import Medallion, MuTimestamp, GenericTimestamp, EPOCH
 from .tuples import Chain
 from .attribution import Attribution
 from .decomposition import Decomposition
+from .muid import Muid
 from threading import Lock
 from .utilities import (
     generate_timestamp,
@@ -170,7 +171,7 @@ class Database(Relay):
             if include_empty_containers or container.size(as_of=as_of):
                 container.dump(as_of=as_of, file=file)
         for cls in container_classes.values():
-            container = cls(arche=True, database=self)
+            container = cls(muid=Muid(-1,-1,cls.get_behavior()), database=self)
             assert isinstance(container, Container)
             if include_empty_containers or container.size(as_of=as_of):
                 container.dump(as_of=as_of, file=file)

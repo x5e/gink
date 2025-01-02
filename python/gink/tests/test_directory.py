@@ -268,7 +268,7 @@ def test_walk():
     for store in [MemoryStore(), LmdbStore()]:
         with closing(store):
             database = Database(store=store)
-            for directory in [Directory(arche=True, database=database), Directory()]:
+            for directory in [Directory(root=True, database=database), Directory()]:
                 directory.set(["foo", "bar"], 32)
                 result = directory["/foo/bar/".split("/")]
                 assert result == 32, result

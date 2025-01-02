@@ -10,8 +10,8 @@ def test_basics():
         ]:
         with closing(store):
             database = Database(store=store)
-            for arche in [True, False]:
-                accumulator = Accumulator(arche=arche, database=database)
+            for arche in [False]:
+                accumulator = Accumulator(database=database)
                 accumulator += 7
                 accumulator += 5
                 assert accumulator.get() == 12

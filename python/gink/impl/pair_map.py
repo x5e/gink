@@ -21,7 +21,6 @@ class PairMap(Container):
             self,
             muid: Optional[Union[Muid, str]] = None,
             *,
-            arche: Optional[bool] = None,
             contents: Optional[Dict[Pair, Union[UserValue, Container, Muid]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
@@ -31,7 +30,6 @@ class PairMap(Container):
         Constructor for a pair map proxy.
 
         muid: the global id of this container, created on the fly if None
-        arche: whether this will be the global version of this container (accessible by all databases)
         contents: prefill the pair map with a dict of (Vertex, Vertex): Value pairs upon initialization
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
@@ -42,13 +40,11 @@ class PairMap(Container):
         if bundler is None:
             immediate = True
             bundler = database.start_bundle(comment)
-        if arche:
-            assert muid is None
-            muid = Muid(-1, -1, PAIR_MAP)
-        elif isinstance(muid, str):
+        if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(PAIR_MAP, bundler=bundler)
+        assert muid.timestamp != -1 or muid.offset == PAIR_MAP
         Container.__init__(self, behavior=PAIR_MAP, muid=muid, database=database)
         if contents:
             self.clear(bundler=bundler)
@@ -131,10 +127,7 @@ class PairMap(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Return the contents of this container as a string """
         as_of = self._database.resolve_timestamp(as_of)
-        if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "arche=True"
-        else:
-            identifier = f"muid={self._muid!r}"
+        identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         stuffing = ""

@@ -15,14 +15,13 @@ from .utilities import generate_timestamp
 
 
 class Sequence(Container):
-    BEHAVIOR = SEQUENCE
+    _BEHAVIOR = SEQUENCE
 
     @typechecked
     def __init__(
             self,
             muid: Optional[Union[Muid, str]] = None,
             *,
-            arche: Optional[bool] = None,
             contents: Optional[Iterable[Union[UserValue, Container]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
@@ -32,7 +31,6 @@ class Sequence(Container):
         Constructor for a sequence proxy.
 
         muid: the global id of this container, created on the fly if None
-        arche: whether this will be the global version of this container (accessible by all databases)
         contents: prefill the sequence with an iterable of values upon initialization
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
@@ -43,14 +41,12 @@ class Sequence(Container):
         if bundler is None:
             immediate = True
             bundler = database.start_bundle(comment)
-        if arche:
-            assert muid is None
-            muid = Muid(-1, -1, SEQUENCE)
-        elif isinstance(muid, str):
+        if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(SEQUENCE, bundler=bundler)
-        Container.__init__(self, behavior=SEQUENCE, muid=muid, database=database)
+        assert muid.timestamp != -1 or muid.offset == SEQUENCE
+        Container.__init__(self, muid=muid, database=database)
         if contents is not None:
             self.clear(bundler=bundler)
             self.extend(contents, bundler=bundler)
@@ -62,10 +58,7 @@ class Sequence(Container):
             yield thing
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "arche=True"
-        else:
-            identifier = f"muid={self._muid!r}"
+        identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents=["""
         stuffing = [repr(val) for val in self.values(as_of=as_of)]
         as_one_line = result + ", ".join(stuffing) + "])"

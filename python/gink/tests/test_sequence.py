@@ -33,7 +33,6 @@ def test_repr():
             sequence = Sequence._get_global_instance(database)
             sequence.append("Hello, World!")
             assert list(sequence) == ["Hello, World!"]
-            assert repr(sequence) == "Sequence(arche=True)"
             sequence = Sequence(muid=Muid(1673009484969039, 362514588210531, 1))
             assert repr(sequence) == "Sequence(muid=Muid(1673009484969039, 362514588210531, 1))"
 
@@ -235,7 +234,7 @@ def test_simple_reset():
             queue = Sequence._get_global_instance(database)
             change_muid = queue.append("something")
             assert database.resolve_timestamp(-1) == change_muid.timestamp
-            assert queue.dumps() == "Sequence(arche=True, contents=['something'])"
+            assert len(queue) == 1 and queue[0] == "something"
             reset_bundle = queue.reset(-1)
             assert reset_bundle is not None
-            assert queue.dumps() == "Sequence(arche=True, contents=[])"
+            assert len(queue) == 0

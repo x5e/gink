@@ -157,8 +157,8 @@ def test_react_to_store_changes():
         db1a = Database(store1a)
         db1b = Database(store1b)
 
-        root1a = Directory(arche=True, database=db1a)
-        root1b = Directory(arche=True, database=db1b)
+        root1a = Directory(root=True, database=db1a)
+        root1b = Directory(root=True, database=db1b)
 
         loop(db1b, until=.01)
         bundle_infos = list()
@@ -177,7 +177,7 @@ def test_dump():
     ]:
         with closing(store):
             database = Database(store=store)
-            root = Directory(arche=True, database=database)
+            root = Directory(root=True, database=database)
             root["foo"] = Directory()
             root["foo"]["bar"] = 91
             seq_muid = Sequence(contents=[1, 2, "3"], database=database).get_muid()
@@ -201,7 +201,7 @@ def test_dump():
             # Note: the directories being loaded back in are automatically using db2
             exec(dumped)
 
-            root2 = Directory(arche=True, database=db2)
+            root2 = Directory(root=True, database=db2)
             assert root2["foo"]["bar"] == 91
 
             seq = Sequence(muid=seq_muid, database=db2)
