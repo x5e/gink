@@ -18,13 +18,14 @@ from .utilities import generate_timestamp
 class Directory(Container):
     """ the Gink mutable mapping object """
     _missing = object()
+    _BEHAVIOR = DIRECTORY
 
     @typechecked
     def __init__(
             self,
             muid: Optional[Union[Muid, str]] = None,
             *,
-            arche: Optional[bool] = None,
+            root: Optional[bool] = None,
             contents: Optional[Dict[UserKey, Union[UserValue, Container]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
@@ -34,7 +35,7 @@ class Directory(Container):
         Constructor for a directory proxy.
 
         muid: the global id of this container, created on the fly if None
-        arche: whether this will be the global version of this container (accessible by all databases)
+        root: whether this will be the global version of this container (accessible by all databases)
         contents: prefill the directory with a dict of key: value pairs upon initialization
         database: database send bundles through, or last db instance created if None
         bundler: the bundler to add changes to, or a new one if None and immediately commits
@@ -47,7 +48,7 @@ class Directory(Container):
             immediate = True
             bundler = database.start_bundle(comment)
         created = False
-        if arche:
+        if root:
             assert muid is None
             muid = Muid(-1, -1, DIRECTORY)
         elif isinstance(muid, str):
@@ -55,7 +56,7 @@ class Directory(Container):
         elif muid is None:
             muid = Container._create(DIRECTORY, bundler=bundler)
             created = True
-        Container.__init__(self, behavior=DIRECTORY, muid=muid, database=database)
+        Container.__init__(self, muid=muid, database=database)
         if contents:
             if not created:
                 self.clear(bundler=bundler)
@@ -63,11 +64,17 @@ class Directory(Container):
         if immediate and len(bundler):
             bundler.commit()
 
+    def __repr__(self):
+        if self._muid.timestamp == -1 and self._muid.offset == -1:
+            return "Directory(root=True)"
+        return f"{self.__class__.__name__}(muid={self._muid!r})"
+
+
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this directory to a string.
         """
         if self._muid.medallion == -1 and self._muid.timestamp == -1:
-            identifier = "arche=True"
+            identifier = "root=True"
         else:
             identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""

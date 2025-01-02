@@ -155,16 +155,16 @@ def random_container() -> Container:
     return choice(CONTAINERS)()
 
 def try_random_good_data(container: Container):
-    good_key_types = CONTAINER_KEY_TYPES[container._get_behavior()]
-    good_value_types = CONTAINER_VALUE_TYPES[container._get_behavior()]
+    good_key_types = CONTAINER_KEY_TYPES[container.get_behavior()]
+    good_value_types = CONTAINER_VALUE_TYPES[container.get_behavior()]
     for _ in range(randint(1, NUM_ENTRIES)):
         key = random_data(type=set_choice(good_key_types))
         value = random_data(type=set_choice(good_value_types))
         container_set_adapter(container, key, value)
 
 def try_random_bad_data(container: Container):
-    bad_key_types = ALL_GINK_TYPES - CONTAINER_KEY_TYPES[container._get_behavior()]
-    bad_value_types = ALL_GINK_TYPES - CONTAINER_VALUE_TYPES[container._get_behavior()]
+    bad_key_types = ALL_GINK_TYPES - CONTAINER_KEY_TYPES[container.get_behavior()]
+    bad_value_types = ALL_GINK_TYPES - CONTAINER_VALUE_TYPES[container.get_behavior()]
     for _ in range(randint(1, NUM_ENTRIES)):
         key = random_data(type=set_choice(bad_key_types))
         value = random_data(type=set_choice(bad_value_types))
@@ -179,7 +179,7 @@ def try_random_bad_data(container: Container):
 
 def container_set_adapter(container: Container, key, value, check=True):
     """ if check is True, check to see if the value is set correctly """
-    if container._get_behavior() == BOX:
+    if container.get_behavior() == BOX:
         assert isinstance(container, Box)
         container.set(value)
         if check:
@@ -187,7 +187,7 @@ def container_set_adapter(container: Container, key, value, check=True):
                 value = tuple(value)
             gotten = container.get()
             assert gotten == value, f"Expected {value}, \ngot {gotten}"
-    elif container._get_behavior() == DIRECTORY:
+    elif container.get_behavior() == DIRECTORY:
         assert isinstance(container, Directory)
         container.set(key, value)
         if check:
@@ -195,12 +195,12 @@ def container_set_adapter(container: Container, key, value, check=True):
                 value = tuple(value)
             gotten = container.get(key)
             assert gotten == value, f"Expected {value}, \ngot {gotten}"
-    elif container._get_behavior() == KEY_SET:
+    elif container.get_behavior() == KEY_SET:
         assert isinstance(container, KeySet)
         container.add(key)
         if check:
             assert container.contains(key)
-    elif container._get_behavior() == SEQUENCE:
+    elif container.get_behavior() == SEQUENCE:
         assert isinstance(container, Sequence)
         container.append(value)
         if check:
@@ -208,7 +208,7 @@ def container_set_adapter(container: Container, key, value, check=True):
                 value = tuple(value)
             gotten = container.at(-1)[1]
             assert gotten == value, f"Expected {value}, \ngot {gotten}"
-    elif container._get_behavior() == PAIR_MAP:
+    elif container.get_behavior() == PAIR_MAP:
         assert isinstance(container, PairMap)
         container.set(key, value)
         if check:
@@ -216,17 +216,17 @@ def container_set_adapter(container: Container, key, value, check=True):
                 value = tuple(value)
             gotten = container.get(key)
             assert gotten == value, f"Expected {value}, \ngot {gotten}"
-    elif container._get_behavior() == PAIR_SET:
+    elif container.get_behavior() == PAIR_SET:
         assert isinstance(container, PairSet)
         container.include(key)
         if check:
             assert container.contains(key)
-    elif container._get_behavior() == GROUP:
+    elif container.get_behavior() == GROUP:
         assert isinstance(container, Group)
         container.include(key)
         if check:
             assert container.contains(key)
-    elif container._get_behavior() == PROPERTY:
+    elif container.get_behavior() == PROPERTY:
         assert isinstance(container, Property)
         if isinstance(value, list):
             value = tuple(value)
@@ -234,7 +234,7 @@ def container_set_adapter(container: Container, key, value, check=True):
         if check:
             gotten = container.get(key)
             assert gotten == value, f"Expected {value}, \ngot {gotten}"
-    elif container._get_behavior() == BRAID:
+    elif container.get_behavior() == BRAID:
         assert isinstance(container, Braid)
         container.set(key, value)
         if check:

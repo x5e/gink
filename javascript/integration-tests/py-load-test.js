@@ -107,7 +107,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
             `PairMap\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
             `Property\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
             `Group\\(muid=Muid\\((.*)\\), contents=\\{[\\s\\S]*?` +
-            `Directory\\(arche=True, contents=\\{'foo': 'bar'\\}\\)`,
+            `Directory\\(root=True, contents=\\{'foo': 'bar'\\}\\)`,
     );
     gink.send("database.dump();\n");
     await gink.expect(regex, 2000);

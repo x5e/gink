@@ -23,7 +23,7 @@ process.chdir(__dirname + "/..");
     await python.expect("connection established!", 2000);
     await client.expect("connected!", 2000);
 
-    python.send("Directory(arche=True).set(3,4);\n");
+    python.send("Directory(root=True).set(3,4);\n");
     await python.expect("Muid", 2000);
 
     await sleep(100);

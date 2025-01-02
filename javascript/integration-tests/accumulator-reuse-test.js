@@ -31,7 +31,7 @@ process.exit(0);
         await sleep(100);
         //python1.send("db = Database('/tmp/foo.gink')\n");
         await sleep(100);
-        python1.send("accum = Accumulator(arche=True)\n");
+        python1.send("accum = root['accum'] = Accumulator()\n");
         await sleep(100);
         python1.send("accum += 3.7\n");
         await sleep(100);
@@ -46,7 +46,7 @@ process.exit(0);
         cobra.send("2+3\n")
         await cobra.expect("5");
         console.log("got 5");
-        cobra.send("accum = Accumulator(arche=True)\n");
+        cobra.send("accum = root['accum']\n");
         await sleep(100);
         cobra.send("accum.get()\n");
         await cobra.expect("3.7");

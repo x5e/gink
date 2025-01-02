@@ -24,7 +24,7 @@ Set auth key with env AUTH_TOKEN.
 
 """
 def app(env, start_response):
-    root = Directory(arche=True)
+    root = Directory(root=True)
     auth_token = environ.get("AUTH_TOKEN")
 
     # If auth token is present, expect token in the Authorization header.

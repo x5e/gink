@@ -14,13 +14,15 @@ from .looping import Selectable
 from .braid import Braid
 from .directory import Directory
 from .box import Box
+from .muid import Muid
 from .looping import Finished
 from .decomposition import Decomposition
 from .chain_tracker import ChainTracker
 from .bundle_info import BundleInfo
-from .utilities import decode_and_verify_jwt, generate_random_token
+from .utilities import decode_and_verify_jwt, generate_random_token, experimental
 
 
+@experimental
 class BraidServer(Server):
 
     def __init__(
@@ -52,12 +54,12 @@ class BraidServer(Server):
             If an app_id is specified, then we use a directory linked to from the root
             directory using app_id as the key (creating it if it doesn't exist).  If no
             app_id is given, then we have the application root directory linked to from
-            the archetype box (creating if a directory isn't there).
+            the global box (creating if a directory isn't there).
         """
-        box = Box(arche=True, database=self._control_db)
+        box = Box(muid=Muid(-1,-1,Box.get_behavior()), database=self._control_db)
         box_contents = box.get()
         if self._app_id is not None:
-            control_root = Directory(arche=True, database=self._control_db)
+            control_root = Directory(root=True, database=self._control_db)
             if self._app_id in control_root:
                 directory = control_root[self._app_id]
                 if not isinstance(directory, Directory):

@@ -6,7 +6,7 @@ def test_as_of():
         with store:
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
-            root = Directory(arche=True, database=database)
+            root = Directory(root=True, database=database)
             root["hello"] = "world"
             root["hello"] = "universe"
             assert root["hello"] == "universe"

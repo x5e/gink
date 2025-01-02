@@ -37,14 +37,15 @@ def test_get_by_name():
             assert len(bobs) == 2 and b in bobs and s in bobs
 
             prop = Property._get_global_instance()
-            prop.set(Directory(arche=True), "root")
+            prop.set(Directory(root=True), "root")
             new_dir = Directory(database=database)
             prop.set(new_dir, "new_dir")
             assert len(list(store.get_by_name("root"))) == 1
             assert len(list(store.get_by_name("new_dir"))) == 1
-            prop.set(Sequence(arche=True), "root")
+            queue = Sequence()
+            prop.set(queue, "root")
             assert len(list(store.get_by_name("root"))) == 2
-            prop.delete(Sequence(arche=True))
+            prop.delete(queue)
             assert len(list(store.get_by_name("root"))) == 1
 
 def test_properties_on_containers():

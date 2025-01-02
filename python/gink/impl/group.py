@@ -14,7 +14,7 @@ from .utilities import experimental
 
 @experimental
 class Group(Container):
-    BEHAVIOR = Behavior.GROUP
+    _BEHAVIOR = Behavior.GROUP
 
     @typechecked
     def __init__(
@@ -25,7 +25,6 @@ class Group(Container):
                 database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
-                arche: Optional[bool] = None,
             ):
         """
         Constructor for a group definition.
@@ -43,15 +42,14 @@ class Group(Container):
             bundler = database.start_bundle(comment)
 
         created = False
-        if arche:
-            assert muid is None
-            muid = Muid(-1, -1, GROUP)
-        elif isinstance(muid, str):
+        if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(GROUP, bundler=bundler)
             created = True
-        Container.__init__(self, behavior=GROUP, muid=muid, database=database)
+        assert isinstance(muid, Muid)
+        assert muid.timestamp != -1 or muid.offset == GROUP
+        Container.__init__(self, muid=muid, database=database)
         if contents:
             assert contents.keys() <= {"include", "exclude"}
             if not created:

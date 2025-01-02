@@ -15,13 +15,13 @@ from .addressable import Addressable
 
 class Accumulator(Container):
     """ the Gink mutable mapping object """
+    _BEHAVIOR = ACCUMULATOR
 
     @typechecked
     def __init__(
             self,
             muid: Optional[Union[Muid, str]] = None,
             *,
-            arche: Optional[bool] = None,
             contents: Union[Decimal, int, float, None] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
@@ -33,15 +33,14 @@ class Accumulator(Container):
             immediate = True
             bundler = database.start_bundle(comment)
         created = False
-        if arche:
-            assert muid is None
-            muid = Muid(-1, -1, ACCUMULATOR)
-        elif isinstance(muid, str):
+        if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(ACCUMULATOR, bundler=bundler)
             created = True
-        Container.__init__(self, behavior=ACCUMULATOR, muid=muid, database=database)
+        assert isinstance(muid, Muid)
+        assert muid.timestamp != -1 or muid.offset == ACCUMULATOR
+        Container.__init__(self, muid=muid, database=database)
         if contents:
             if not created:
                 self.clear(bundler=bundler)
@@ -50,10 +49,7 @@ class Accumulator(Container):
             bundler.commit()
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
-        if self._muid == Muid(-1, -1, ACCUMULATOR):
-            id = "arche=True"
-        else:
-            id = repr(self._muid)
+        id = repr(self._muid)
         return f"{self.__class__.__name__}({id}, contents={self.get(as_of=as_of)!r})"
 
     def increment(

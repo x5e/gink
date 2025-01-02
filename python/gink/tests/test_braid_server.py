@@ -16,7 +16,7 @@ def test_happy_path():
     external2 = Database()
     external2.connect_to(target="localhost:9999/abc/xyz", name="external2")
     loop(braid_server, external1, external2, until=0.1)
-    control_root = Box(arche=True, database=control_db).get()
+    control_root = Box(muid=Muid(-1,-1, Box.get_behavior()), database=control_db).get()
     assert isinstance(control_root, Directory)
     braid = control_root["braids"]["abc"]["xyz"]
     assert isinstance(braid, Braid)
@@ -24,9 +24,9 @@ def test_happy_path():
     assert list(external2.get_connections())
 
     logger.debug("connections established")
-    external_root1 = Directory(database=external1, arche=True)
+    external_root1 = Directory(database=external1, root=True)
     external_root1["foo"] = "bar"
     loop(braid_server, external1, external2, until=0.1)
 
-    external_root2 = Directory(database=external2, arche=True)
+    external_root2 = Directory(database=external2, root=True)
     assert external_root2["foo"] == "bar"
