@@ -199,7 +199,7 @@ def test_dump():
             db2 = Database(store=store)
             dumped = string_io.getvalue()
             # Note: the directories being loaded back in are automatically using db2
-            exec(dumped.replace("})\n", "})"))
+            exec(dumped)
 
             root2 = Directory(arche=True, database=db2)
             assert root2["foo"]["bar"] == 91
