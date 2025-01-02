@@ -1,12 +1,11 @@
-from abc import abstractmethod
-from typing import Dict
-
 from .database import Database
 from .muid import Muid
 from .bundler import Bundler
 from .typedefs import UserValue, GenericTimestamp
 from .builders import Behavior, ChangeBuilder
 from .coding import encode_value, decode_value
+from .utilities import experimental
+
 
 class Addressable:
     def __init__(self, database: Database, muid: Muid):
@@ -22,6 +21,7 @@ class Addressable:
     def __hash__(self):
         return hash(self._muid)
 
+    @experimental
     def get_property_value_by_name(self, name: str, *,
                                    default=None,
                                    as_of: GenericTimestamp=None):
@@ -43,6 +43,7 @@ class Addressable:
         result = decode_value(found.builder.value)
         return result
 
+    @experimental
     def set_property_value_by_name(self, name: str, value: UserValue, *,
                                    create=True, bundler=None, comment=None):
         """ Sets the value of the property with the given name on this container.

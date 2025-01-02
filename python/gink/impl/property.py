@@ -9,8 +9,10 @@ from .coding import PROPERTY, deletion
 from .muid import Muid
 from .database import Database
 from .bundler import Bundler
+from .utilities import experimental
 
 
+@experimental
 class Property(Container):
 
     @typechecked

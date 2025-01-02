@@ -18,9 +18,10 @@ from .looping import Finished
 from .decomposition import Decomposition
 from .chain_tracker import ChainTracker
 from .bundle_info import BundleInfo
-from .utilities import decode_and_verify_jwt, generate_random_token
+from .utilities import decode_and_verify_jwt, generate_random_token, experimental
 
 
+@experimental
 class BraidServer(Server):
 
     def __init__(
