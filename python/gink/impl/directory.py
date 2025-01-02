@@ -23,8 +23,8 @@ class Directory(Container):
     @typechecked
     def __init__(
             self,
-            muid: Optional[Union[Muid, str]] = None,
             *,
+            muid: Optional[Union[Muid, str]] = None,
             root: Optional[bool] = None,
             contents: Optional[Dict[UserKey, Union[UserValue, Container]]] = None,
             database: Optional[Database] = None,
@@ -65,7 +65,7 @@ class Directory(Container):
             bundler.commit()
 
     def __repr__(self):
-        if self._muid.timestamp == -1 and self._muid.offset == -1:
+        if self._muid.timestamp == -1 and self._muid.medallion == -1:
             return "Directory(root=True)"
         return f"{self.__class__.__name__}(muid={self._muid!r})"
 

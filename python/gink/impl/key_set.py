@@ -19,8 +19,8 @@ class KeySet(Container):
     @typechecked
     def __init__(
             self,
-            muid: Optional[Union[Muid, str]] = None,
             *,
+            muid: Optional[Union[Muid, str]] = None,
             contents: Optional[Iterable[UserKey]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
