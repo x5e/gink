@@ -42,9 +42,8 @@ class Container(Addressable, ABC):
     def dump(self, *, as_of: GenericTimestamp = None, file=stdout):
         """ Dumps the contents of this container to file (default stdout)."""
         # probably should stream the contents to the filehandle
-        file.write("\n")
         file.write(self.dumps(as_of=as_of))
-        file.write("\n\n")
+        file.write("\n")
         file.flush()
 
     @typechecked

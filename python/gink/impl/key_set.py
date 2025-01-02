@@ -1,6 +1,6 @@
 """ Contains the key set class definition """
 
-from typing import Optional, Iterable, Container as StandardContainer, Set, Union
+from typing import Optional, Iterable, Container as StandardContainer, Union
 from typeguard import typechecked
 
 from .database import Database
@@ -253,7 +253,10 @@ class KeySet(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ return the contents of this container as a string """
         as_of = self._database.resolve_timestamp(as_of)
-        identifier = f"muid={self._muid!r}"
+        if self._muid.timestamp == -1 and self._muid.medallion == -1:
+            identifier = "arche=True"
+        else:
+            identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         src = self._database.get_store().get_keyed_entries(container=self._muid, behavior=self.BEHAVIOR, as_of=as_of)

@@ -23,6 +23,7 @@ from .utilities import (
     generate_medallion,
     resolve_timestamp,
     combine,
+    experimental,
 )
 from .relay import Relay
 
@@ -157,7 +158,7 @@ class Database(Relay):
             bundler.commit()
 
     def dump(self, *,
-             include_global_containers=True,
+             include_empty_containers=False,
              as_of: GenericTimestamp = None,
              file=stdout,
              ):
@@ -166,14 +167,13 @@ class Database(Relay):
         from .get_container import get_container, container_classes
         for muid, container_builder in self._store.list_containers():
             container = get_container(muid=muid, behavior=container_builder.behavior, database=self)
+            if include_empty_containers or container.size(as_of=as_of):
+                container.dump(as_of=as_of, file=file)
+        for cls in container_classes.values():
+            container = cls(arche=True, database=self)
             assert isinstance(container, Container)
-            container.dump(as_of=as_of, file=file)
-        if include_global_containers:
-            for cls in container_classes.values():
-                container = cls(arche=True, database=self)
-                assert isinstance(container, Container)
-                if container.size(as_of=as_of):
-                    container.dump(as_of=as_of, file=file)
+            if include_empty_containers or container.size(as_of=as_of):
+                container.dump(as_of=as_of, file=file)
 
     def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
         """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
@@ -204,6 +204,7 @@ class Database(Relay):
         for attribution in self.log(limit=limit, include_starts=include_starts):
             print(attribution, file=file)
 
+    @experimental
     def get_by_name(self, name: str, as_of: GenericTimestamp = None) -> List:
         """ Returns all containers of the given type with the given name.
         """

@@ -8,10 +8,11 @@ from .container import Container
 from .coding import PAIR_SET, deletion, inclusion
 from .bundler import Bundler
 from .typedefs import GenericTimestamp
-from .utilities import normalize_pair
+from .utilities import normalize_pair, experimental
 
 Pair = Tuple[Union[Container, Muid], Union[Container, Muid]]
 
+@experimental
 class PairSet(Container):
     _missing = object()
     BEHAVIOR = PAIR_SET
@@ -122,22 +123,28 @@ class PairSet(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Returns the contents of this container as a string """
         as_of = self._database.resolve_timestamp(as_of)
-        identifier = f"muid={self._muid!r}"
+        if self._muid.timestamp == -1 and self._muid.medallion == -1:
+            identifier = "arche=True"
+        else:
+            identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
 
         included_stuffing = "'include': [\n\t"
         excluded_stuffing = "'exclude': [\n\t"
+        something = False
         for entry_pair in self._database.get_store().get_keyed_entries(
             container=self.get_muid(), behavior=self.BEHAVIOR, as_of=as_of):
+            something = True
             left = Muid.create(builder=entry_pair.builder.pair.left)
             rite = Muid.create(builder=entry_pair.builder.pair.rite)
-            if not entry_pair.builder.deletion:
-                included_stuffing += f"({left!r}, {rite!r}),\n\t"
-            else:
+            if entry_pair.builder.deletion:
                 excluded_stuffing += f"({left!r}, {rite!r}),\n\t"
+            else:
+                included_stuffing += f"({left!r}, {rite!r}),\n\t"
 
-        result += "\n\t"
+        if something:
+            result += "\n\t"
         if included_stuffing != "'include': [\n\t":
             result += "".join(included_stuffing) + "],"
         if excluded_stuffing != "'exclude': [\n\t":

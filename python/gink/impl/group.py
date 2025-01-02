@@ -94,7 +94,10 @@ class Group(Container):
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Dumps the contents of this group to a string. """
         ts = self._database.resolve_timestamp(as_of)
-        identifier = f"muid={self._muid!r}"
+        if self._muid.timestamp == -1 and self._muid.medallion == -1:
+            identifier = "arche=True"
+        else:
+            identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
         result += "{"
         included_stuffing = "\n\t'include': [\n\t"
