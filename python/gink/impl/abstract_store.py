@@ -9,7 +9,7 @@ from nacl.signing import SigningKey, VerifyKey
 # Gink specific modules
 from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder, ClaimBuilder, Behavior
 from .bundle_info import BundleInfo
-from .chain_tracker import ChainTracker
+from .has_map import HasMap
 from .typedefs import UserKey, MuTimestamp, Medallion, Limit
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
@@ -206,7 +206,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
             return None
 
     @abstractmethod
-    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
+    def get_has_map(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> HasMap:
         """Returns a tracker showing what this store has at the time this function is called."""
 
     @abstractmethod

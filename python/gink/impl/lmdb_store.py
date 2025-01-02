@@ -20,7 +20,7 @@ from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, Decomposition
-from .chain_tracker import ChainTracker
+from .has_map import HasMap
 from .lmdb_utilities import to_last_with_prefix
 from .utilities import generate_timestamp, create_claim, is_needed, shorter_hash, resolve_timestamp
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
@@ -1183,19 +1183,19 @@ class LmdbStore(AbstractStore):
                     callback(bundle_wrapper)
                 data_remaining = bundle_infos_cursor.next()
 
-    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
-        chain_tracker = ChainTracker()
+    def get_has_map(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> HasMap:
+        has_map = HasMap()
         with self._handle.begin() as txn:
             infos_cursor = txn.cursor(self._chains)
             data_remaining = infos_cursor.first()
             while data_remaining:
                 info_bytes = infos_cursor.value()
                 bundle_info = BundleInfo(encoded=info_bytes)
-                chain_tracker.mark_as_having(bundle_info)
+                has_map.mark_as_having(bundle_info)
                 data_remaining = infos_cursor.next()
         if limit_to is not None:
-            chain_tracker = chain_tracker.get_subset(limit_to.keys())
-        return chain_tracker
+            has_map = has_map.get_subset(limit_to.keys())
+        return has_map
 
     def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:
         prefix = bytes(desc)

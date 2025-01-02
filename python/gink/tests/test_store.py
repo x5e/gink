@@ -279,7 +279,7 @@ def generic_test_tracks(store_maker: StoreMaker):
         store.apply_bundle(cs2)
         store.apply_bundle(cs3)
         store.apply_bundle(cs4)
-        tracker = store.get_chain_tracker()
+        tracker = store.get_has_map()
         assert tracker.has(info1)
         assert tracker.has(info2)
         assert tracker.has(info3)

@@ -15,7 +15,7 @@ from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, Decomposition, Lock
-from .chain_tracker import ChainTracker
+from .has_map import HasMap
 from .muid import Muid
 from .coding import (DIRECTORY, encode_muts, QueueMiddleKey, RemovalKey, PAIR_MAP, PAIR_SET,
                      SEQUENCE, LocationKey, create_deleting_entry, wrap_change, deletion,
@@ -536,14 +536,14 @@ class MemoryStore(AbstractStore):
                 bundle_wrapper = self._bundles[bundle_info]
                 callback(bundle_wrapper)
 
-    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
-        chain_tracker = ChainTracker()
+    def get_has_map(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> HasMap:
+        has_map = HasMap()
         for bundle_info in self._chain_infos.values():
             assert isinstance(bundle_info, BundleInfo)
-            chain_tracker.mark_as_having(bundle_info)
+            has_map.mark_as_having(bundle_info)
         if limit_to is not None:
-            chain_tracker = chain_tracker.get_subset(limit_to.keys())
-        return chain_tracker
+            has_map = has_map.get_subset(limit_to.keys())
+        return has_map
 
     def get_last(self, chain: Chain) -> BundleInfo:
         return self._chain_infos[chain]

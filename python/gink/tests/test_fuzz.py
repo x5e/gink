@@ -19,7 +19,7 @@ from ..impl.property import Property
 from ..impl.group import Group
 from ..impl.braid import Braid
 from ..impl.muid import Muid
-from ..impl.chain_tracker import Chain
+from ..impl.has_map import Chain
 from ..impl.utilities import generate_medallion, generate_timestamp
 from ..impl.graph import Edge, EdgeType, Vertex
 from ..impl.coding import BOX, DIRECTORY, KEY_SET, SEQUENCE, PAIR_SET, PAIR_MAP, PROPERTY, GROUP, BRAID
