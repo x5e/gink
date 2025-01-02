@@ -24,7 +24,7 @@ process.chdir(__dirname + "/..");
     await client.expect("connect", 2000);
     await server.expect("accepted", 2000);
 
-    server.send("Directory(arche=True).set(3,4);\n");
+    server.send("Directory(root=True).set(3,4);\n");
     await server.expect("Muid", 1000);
     await sleep(100);
 

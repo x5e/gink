@@ -166,6 +166,7 @@ class Database(Relay):
         """ writes the contents of the database to file """
         from .container import Container
         from .get_container import get_container, container_classes
+        file.write("\n")
         for muid, container_builder in self._store.list_containers():
             container = get_container(muid=muid, behavior=container_builder.behavior, database=self)
             if include_empty_containers or container.size(as_of=as_of):

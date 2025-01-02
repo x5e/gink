@@ -39,7 +39,7 @@ class Container(Addressable, ABC):
         """ Dumps the contents of this container to file (default stdout)."""
         # probably should stream the contents to the filehandle
         file.write(self.dumps(as_of=as_of))
-        file.write("\n")
+        file.write("\n\n")
         file.flush()
 
     @typechecked
