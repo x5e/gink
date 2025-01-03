@@ -99,8 +99,8 @@ class Directory(Container):
         return result
 
     @typechecked
-    def __setitem__(self, key: UserKey, value: Union[UserValue, Container]):
-        self.set(key, value)
+    def __setitem__(self, key_or_keys: Union[UserKey, Iterable[UserKey]], value: Union[UserValue, Container]):
+        self.set(key_or_keys, value)
 
     @typechecked
     def __delitem__(self, key: UserKey):
