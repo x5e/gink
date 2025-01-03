@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 from pathlib import Path
 from .tuples import Chain
-from .typedefs import Limit
+from .typedefs import Limit, Medallion, MuTimestamp
 from .has_map import HasMap
 from .decomposition import Decomposition
 from .watcher import Watcher
@@ -50,6 +50,10 @@ class BundleStore(ABC):
             The peer_has data can be used to optimize what the store is sending to only what the
             peer needs, but it can be ignored, and it's up to the callback to drop unneeded bundles.
         """
+
+    @abstractmethod
+    def get_one_bundle(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Decomposition:
+        """ Gives the contents of a bundle.  Intended to be used to analyze history. """
 
     @abstractmethod
     def get_has_map(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> HasMap:

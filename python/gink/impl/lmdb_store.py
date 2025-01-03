@@ -127,6 +127,9 @@ class LmdbStore(AbstractStore):
             # TODO: add expiries table to keep track of when things need to be removed
         self._seen_through: MuTimestamp = 0
 
+    def get_one_bundle(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Decomposition:
+        raise Exception("not implemented")
+
     def get_billionths(self, accumulator: Muid, *, as_of = -1):
         with self._handle.begin() as trxn:
             prefix = bytes(accumulator)

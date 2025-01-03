@@ -157,6 +157,9 @@ class MemoryStore(AbstractStore):
         self._claims[chain.medallion] = claim_builder
         return claim_builder
 
+    def get_one_bundle(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Decomposition:
+        raise Exception("not implemented")
+
     def get_edge_entries(
             self, *,
             as_of: MuTimestamp,
