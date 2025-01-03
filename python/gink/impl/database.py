@@ -54,6 +54,10 @@ class Database(Relay):
         self._signing_key = None
         self._symmetric_key = None
 
+    def get_root(self):
+        from .directory import Directory
+        return Directory(root=True, database=self)
+
     def __enter__(self) -> Tuple[BundleInfo, SigningKey]:
         self._lock.acquire()
         return self._acquire_appendable_link()
