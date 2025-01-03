@@ -25,6 +25,7 @@ from .utilities import (
     resolve_timestamp,
     combine,
     experimental,
+    summarize,
 )
 from .relay import Relay
 
@@ -188,6 +189,9 @@ class Database(Relay):
             that it can be used via get_attribution(*muid).
         """
         comment = self._store.get_comment(medallion=medallion, timestamp=timestamp)
+        if comment is None:
+            decomposition = self._store.get_one_bundle(timestamp=timestamp, medallion=medallion)
+            comment = summarize(decomposition) if decomposition else None
         chain = self._store.find_chain(medallion=medallion, timestamp=timestamp)
         identity = self._store.get_identity(chain)
         return Attribution(
@@ -197,7 +201,7 @@ class Database(Relay):
             abstract=comment,
         )
 
-    def log(self, limit: Optional[int] = -10, *, include_starts=False) -> Iterable[Attribution]:
+    def _get_log(self, limit: Optional[int] = -10, *, include_starts=False) -> Iterable[Attribution]:
         """ Gets a list of attributions representing all bundles stored by the db. """
         for bundle_info in self._store.get_some(BundleInfo, limit):
             assert isinstance(bundle_info, BundleInfo)
@@ -207,7 +211,7 @@ class Database(Relay):
 
     def show_log(self, limit: Optional[int] = -10, *, include_starts=False, file=stdout):
         """ Just prints the log to stdout in a human-readable format. """
-        for attribution in self.log(limit=limit, include_starts=include_starts):
+        for attribution in self._get_log(limit=limit, include_starts=include_starts):
             print(attribution, file=file)
 
     @experimental

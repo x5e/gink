@@ -2,7 +2,8 @@ from typing import Optional
 
 from .builders import BundleBuilder
 from .bundle_info import BundleInfo
-from .utilities import digest
+from nacl.hash import blake2b
+from nacl.encoding import RawEncoder
 
 
 class Decomposition:
@@ -23,6 +24,6 @@ class Decomposition:
 
     def get_info(self) -> BundleInfo:
         if self._bundle_info is None:
-            hex_hash = digest(self._bundle_bytes).hex()
+            hex_hash = blake2b(self._bundle_bytes, digest_size=32, encoder=RawEncoder).hex()
             self._bundle_info = BundleInfo(builder=self.get_builder(), hex_hash=hex_hash)
         return self._bundle_info

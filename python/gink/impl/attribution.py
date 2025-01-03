@@ -36,10 +36,4 @@ class Attribution:
         local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
         as_datetime = datetime.fromtimestamp(self.timestamp / 1e6, local_timezone)
         as_datetime = as_datetime.replace(microsecond=0)
-        returning = ""
-        returning += hex(self.medallion)[2:] + f" {as_datetime}"
-        returning += "%30s" % self.identity
-        if self.abstract:
-            returning += "   "
-            returning += repr(self.abstract)
-        return returning
+        return f"{as_datetime} {self.identity} {self.abstract}"
