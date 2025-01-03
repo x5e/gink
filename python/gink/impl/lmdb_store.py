@@ -127,8 +127,17 @@ class LmdbStore(AbstractStore):
             # TODO: add expiries table to keep track of when things need to be removed
         self._seen_through: MuTimestamp = 0
 
-    def get_one_bundle(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Decomposition:
-        raise Exception("not implemented")
+    def get_one_bundle(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Optional[Decomposition]:
+        with self._handle.begin() as trxn:
+            bundle_infos_cursor = trxn.cursor(self._bundle_infos)
+            found = to_last_with_prefix(bundle_infos_cursor, prefix=pack(">QQ", timestamp, medallion))
+            if not found:
+                raise KeyError(f"could not find bundle for {timestamp=} {medallion=}")
+            received: bytes = bundle_infos_cursor.value()
+            bundle_bytes = trxn.get(received, db=self._bundles)
+            if not bundle_bytes:
+                raise KeyError(f"missing bundle for {timestamp=} {medallion=}")
+            return Decomposition(bundle_bytes=bundle_bytes)
 
     def get_billionths(self, accumulator: Muid, *, as_of = -1):
         with self._handle.begin() as trxn:

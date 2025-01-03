@@ -150,15 +150,21 @@ class MemoryStore(AbstractStore):
                 return thing.comment
             else:
                 return None
-        raise Exception("unexpected")
+        return None
 
     def _add_claim(self, _: Lock, chain: Chain, /) -> ClaimBuilder:
         claim_builder = create_claim(chain)
         self._claims[chain.medallion] = claim_builder
         return claim_builder
 
-    def get_one_bundle(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Decomposition:
-        raise Exception("not implemented")
+    def get_one_bundle(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Optional[Decomposition]:
+        look_for = BundleInfo(timestamp=timestamp, medallion=medallion)
+        for thing in self._bundles.irange(minimum=look_for):
+            assert isinstance(thing, BundleInfo)
+            if thing.timestamp != timestamp or thing.medallion != medallion:
+                return None
+            return self._bundles[thing]
+        return None
 
     def get_edge_entries(
             self, *,

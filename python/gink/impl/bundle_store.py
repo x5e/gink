@@ -52,7 +52,7 @@ class BundleStore(ABC):
         """
 
     @abstractmethod
-    def get_one_bundle(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Decomposition:
+    def get_one_bundle(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Optional[Decomposition]:
         """ Gives the contents of a bundle.  Intended to be used to analyze history. """
 
     @abstractmethod
