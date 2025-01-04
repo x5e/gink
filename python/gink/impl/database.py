@@ -7,6 +7,7 @@ from sys import stdout
 from logging import getLogger
 from re import fullmatch
 from nacl.signing import SigningKey
+from dateutil.parser import parse
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -93,7 +94,7 @@ class Database(Relay):
             if fullmatch(r"-?\d+", timestamp):
                 timestamp = int(timestamp)
             else:
-                timestamp = float(timestamp)
+                return int(parse(timestamp).timestamp() * 1_000_000)
         if isinstance(timestamp, int) and -1e6 < timestamp < 1e6:
             bundle_info = self._store.get_one(BundleInfo, int(timestamp))
             if bundle_info is None:
