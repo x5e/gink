@@ -451,4 +451,11 @@ def summarize(decomposition: Decomposition) -> Optional[str]:
                 return f"deleted Directory {key=} in {directory}"
             else:
                 return f"set Directory {key=} in {directory}"
+        if behavior == Behavior.SEQUENCE:
+            return f"added entry to Sequence {muid}"
+        if behavior == Behavior.BOX:
+            if change.entry.deletion:
+                return f"deleted contents from Box {muid}"
+            else:
+                return f"set a value in Box {muid}"
     return None
