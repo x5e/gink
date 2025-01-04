@@ -19,8 +19,8 @@ class PairMap(Container):
     @typechecked
     def __init__(
             self,
-            muid: Optional[Union[Muid, str]] = None,
             *,
+            muid: Optional[Union[Muid, str]] = None,
             contents: Optional[Dict[Pair, Union[UserValue, Container, Muid]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,

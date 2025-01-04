@@ -11,7 +11,7 @@ from .abstract_store import AbstractStore
 from .bundle_info import BundleInfo
 from .connection import Connection
 from .listener import Listener
-from .chain_tracker import ChainTracker
+from .has_map import HasMap
 from .lmdb_store import LmdbStore
 from .memory_store import MemoryStore
 from .decomposition import Decomposition
@@ -121,7 +121,7 @@ class Relay(Server):
 
     def _on_connection_ready(self, connection: Connection) -> None:
         """ When a connection is ready, receive objects from it.
-            Receives a BundleWrapper (data), ChainTracker (greeting),
+            Receives a BundleWrapper (data), HasMap (greeting),
             or BundleInfo (ack).
 
             If the connection is finished, remove it from this
@@ -134,7 +134,7 @@ class Relay(Server):
                     if isinstance(thing, Decomposition):  # some data
                         self.receive(thing)
                         connection.send(thing.get_info().as_acknowledgement())
-                    elif isinstance(thing, ChainTracker):  # greeting message
+                    elif isinstance(thing, HasMap):  # greeting message
                         self._store.get_bundles(connection.send_bundle, peer_has=thing)
                     elif isinstance(thing, BundleInfo):  # an ack:
                         self._not_acked.discard(thing)
@@ -148,7 +148,7 @@ class Relay(Server):
 
     def _sync_func(self, **_) -> SyncMessage:
         """ Returns the greeting (SyncMessage) for the underlying store's chain tracker. """
-        return self._store.get_chain_tracker().to_greeting_message()
+        return self._store.get_has_map().to_greeting_message()
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         """ Called when a listener is ready to accept a connection.

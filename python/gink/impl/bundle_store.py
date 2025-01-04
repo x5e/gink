@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 
 from pathlib import Path
 from .tuples import Chain
-from .typedefs import Limit
-from .chain_tracker import ChainTracker
+from .typedefs import Limit, Medallion, MuTimestamp
+from .has_map import HasMap
 from .decomposition import Decomposition
 from .watcher import Watcher
 
@@ -31,7 +31,7 @@ class BundleStore(ABC):
     def get_bundles(
         self,
         callback: Callable[[Decomposition], None], *,
-        peer_has: Optional[ChainTracker] = None,
+        peer_has: Optional[HasMap] = None,
         limit_to: Optional[Mapping[Chain, Limit]] = None,
     ):
         """ Calls `callback` for all bunles stored,  limited to those designed by the `limit_to` (if present).
@@ -52,7 +52,11 @@ class BundleStore(ABC):
         """
 
     @abstractmethod
-    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
+    def get_one_bundle(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Optional[Decomposition]:
+        """ Gives the contents of a bundle.  Intended to be used to analyze history. """
+
+    @abstractmethod
+    def get_has_map(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> HasMap:
         """Returns a tracker showing what this store has at the time this function is called."""
 
     @abstractmethod

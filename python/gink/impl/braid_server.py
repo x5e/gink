@@ -17,7 +17,7 @@ from .box import Box
 from .muid import Muid
 from .looping import Finished
 from .decomposition import Decomposition
-from .chain_tracker import ChainTracker
+from .has_map import HasMap
 from .bundle_info import BundleInfo
 from .utilities import decode_and_verify_jwt, generate_random_token, experimental
 
@@ -128,7 +128,7 @@ class BraidServer(Server):
             raise Finished(value_error)
         assert isinstance(misc, Connection)
         self._braids[misc] = braid
-        ct = self._data_relay.get_store().get_chain_tracker(limit_to=dict(braid.items()))
+        ct = self._data_relay.get_store().get_has_map(limit_to=dict(braid.items()))
         return ct.to_greeting_message()
 
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
@@ -221,7 +221,7 @@ class BraidServer(Server):
                         braid.set(chain, inf)
                     self._data_relay.receive(thing)
                     connection.send(thing.get_info().as_acknowledgement())
-                elif isinstance(thing, ChainTracker):  # greeting message
+                elif isinstance(thing, HasMap):  # greeting message
                     if not connection.get_permissions() & AUTH_READ:
                         self._logger.debug("ignoring greeting from connection without read perms")
                         continue

@@ -1,32 +1,32 @@
-""" Tests the ChainTracker class. """
+""" Tests the HasMap class. """
 from ..impl.bundle_info import BundleInfo
-from ..impl.chain_tracker import ChainTracker
+from ..impl.has_map import HasMap
 
 
 def test_tracking():
     """ Tests the basic tracking functionality. """
-    chain_tracker = ChainTracker()
+    has_map = HasMap()
     info1 = BundleInfo(medallion=123, chain_start=345, timestamp=789)
     info2 = BundleInfo(medallion=222, chain_start=345, timestamp=789)
     info3 = BundleInfo(medallion=123, chain_start=345, timestamp=346)
     info4 = BundleInfo(medallion=222, chain_start=888, timestamp=900)
-    chain_tracker.mark_as_having(info1)
-    chain_tracker.mark_as_having(info4)
-    assert not chain_tracker.has(info2)
-    assert chain_tracker.has(info3)
-    assert chain_tracker.has(info4)
+    has_map.mark_as_having(info1)
+    has_map.mark_as_having(info4)
+    assert not has_map.has(info2)
+    assert has_map.has(info3)
+    assert has_map.has(info4)
 
 
 def test_to_greeting_message():
-    """ Tests the too_greeting_message method of ChainTracker. """
-    chain_tracker = ChainTracker()
+    """ Tests the too_greeting_message method of HasMap. """
+    has_map = HasMap()
     info1 = BundleInfo(medallion=123, chain_start=345, timestamp=789)
     info2 = BundleInfo(medallion=222, chain_start=888, timestamp=900)
     info3 = BundleInfo(medallion=123, chain_start=888, timestamp=899)
-    chain_tracker.mark_as_having(info1)
-    chain_tracker.mark_as_having(info2)
-    chain_tracker.mark_as_having(info3)
-    builder = chain_tracker.to_greeting_message()
+    has_map.mark_as_having(info1)
+    has_map.mark_as_having(info2)
+    has_map.mark_as_having(info3)
+    builder = has_map.to_greeting_message()
 
     entries = builder.greeting.entries  # type: ignore # pylint: disable=maybe-no-member
     assert len(entries) == 3

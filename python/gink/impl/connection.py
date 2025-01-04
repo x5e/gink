@@ -40,7 +40,7 @@ from .typedefs import AuthFunc, AUTH_FULL, AUTH_RITE
 from .sync_func import SyncFunc
 from .bundle_info import BundleInfo
 from .decomposition import Decomposition
-from .chain_tracker import ChainTracker
+from .has_map import HasMap
 from .utilities import decode_from_hex, encode_to_hex, dedent
 
 
@@ -83,7 +83,7 @@ class Connection:
         self._port = port
         self._logger = getLogger(self.__class__.__name__)
         self._closed = False
-        self._tracker: Optional[ChainTracker] = None
+        self._tracker: Optional[HasMap] = None
         self._name = name
         connection_type = ConnectionType.CLIENT if is_client else ConnectionType.SERVER
         self._ws = WSConnection(connection_type=connection_type)
@@ -393,8 +393,8 @@ class Connection:
         self.send(sync_message)
         self._tracker.mark_as_having(info)
 
-    def receive_objects(self) -> Iterable[Union[BundleInfo, Decomposition, ChainTracker]]:
-        """ Receive BundleWrappers, BundleInfos, and/or ChainTrackers from a peer. """
+    def receive_objects(self) -> Iterable[Union[BundleInfo, Decomposition, HasMap]]:
+        """ Receive BundleWrappers, BundleInfos, and/or HasMaps from a peer. """
         for sync_message in self.receive():
             if sync_message.HasField("bundle"):
                 bundle_bytes = sync_message.bundle
@@ -404,7 +404,7 @@ class Connection:
                     self._tracker.mark_as_having(info)
                 yield wrap
             elif sync_message.HasField("greeting"):
-                self._tracker = ChainTracker(sync_message=sync_message)
+                self._tracker = HasMap(sync_message=sync_message)
                 yield self._tracker
             elif sync_message.HasField("ack"):
                 yield BundleInfo.from_ack(sync_message)

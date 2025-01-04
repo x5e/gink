@@ -17,8 +17,8 @@ class Box(Container):
     @typechecked
     def __init__(
             self,
-            muid: Optional[Union[Muid, str]] = None,
             *,
+            muid: Optional[Union[Muid, str]] = None,
             contents: Union[UserValue, Container] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,

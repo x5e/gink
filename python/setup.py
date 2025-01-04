@@ -32,6 +32,7 @@ setup(
         "authlib",
         "typeguard",
         "pynacl",
+        "python-dateutil",
     ],
     extras_require={
         "test": ["nose2", "flask", "requests"],

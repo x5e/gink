@@ -135,7 +135,7 @@
 <hr>
 
 ```{eval-rst}
-.. automodule:: python.gink.impl.chain_tracker
+.. automodule:: python.gink.impl.has_map
    :members:
 ```
 <hr>

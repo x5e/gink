@@ -111,17 +111,13 @@ datetime types, etc.
 
 Container types such as `DIRECTORY`, `SEQUENCE`, `PROPERTY`, and `BOX` all have the capability
 to store "value" data in entries.  The value data can encode common data types such as:
+* null (python None)
 * character strings
 * byte strings
-* numbers, including integers, floats, doubles, bigints, fractions, etc.
-* dates, datetimes, time, time-zones, etc.
-* specialized types such as UUIDs.
+* numbers, including arbitrary sized integers and double precision floats,
+* datetimes
 * compound types, such a documents and tuples, which can represent "frozen" mapping and
 ordered data structures, respectively.
-* Expressions, which can include static values as well as invocations of functions on
-paramaterized values (e.g. Invocation(func="add", ordered arguements=column1, column2)),
-which can be used for defining indexes.
-In general, "value" data should be used for data that doesn't reference any other part of gink.
 
 ### Muid References
 
@@ -215,36 +211,7 @@ When displaying data from the database in a format such as json, boxes should us
 implicitly traversed (e.g. act as if the contents of the box is what was pointed to or stored
 whatever data structure was pointing to the box.)
 
-There's currently no prescribed use for the global box or the medallion-specific box instances.
-
-### FILE
-
-Eventually Gink provide file storage capability though this hasn't been realized in any
-implementation yet.  When it does the following behavior/limitations should be respected:
-* Each entry contains a span indicating what region of the file to write to and optionally octets
-  specifying what data to write there.
-* If octets are included in an entry, then a span must be included as well, and ends-from should
-  equal the number of bytes in the octets field.
-* If no octets are included in an entry but the span contains a non-zero "ends" field, then
-  implementations should treat the corresponding range in the file between "from" and "ends" as
-  zeroed out.
-* If a span contains an non-zero "from" field but no "ends" field, then it should act to truncate
-  the file to "from" length (and there should be no octets data).
-* A clearance on a file should act to truncate the file to length zero.
-* Spans written to a file need not be contiguous, i.e. implementations must support sparse files.
-* The "octets" field should not hold more than one GiB (2**30 bytes) of data.
-
-### STREAM
-
-In the case where of the `STREAM` behavior, no link is allowed, and the "contains" field
-must have octets set with size less than one GiB of data.  Like sequence containers, movements
-are allowed, and the ordering algo is the same.
-
-Essentially a stream is just a sequence where entries are forced to be binary data stored
-in the "octets" field, rather than containing values or references.  It could be used for
-binary logs, and information such as the originating hostname, process id, etc. will be
-available through the medallion directory.  It's expected in such cases that you'd want to
-set the expiry field so logs aren't retained forever.
+There's currently no prescribed use for the global box instances.
 
 ### PROPERTY
 
@@ -300,7 +267,7 @@ The `deletion` and `expiry` fields may be used with their usual meaning.  As in 
 container types, you can't move entries, but you can overwrite them by adding another entry
 with the same subject.
 
-### NOUN
+### VERTEX
 
 Placeholder containers may be created to serve as a proxy for a
 real-world object, which then can be described via properties or pointed to via other containers.
