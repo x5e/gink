@@ -2,12 +2,13 @@
 from typing import Optional, Union, Callable
 from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN, LOCK_SH
 from pathlib import Path
-from .builders import LogFileBuilder, ClaimBuilder
+from .builders import LogFileBuilder, ClaimBuilder, KeyPairBuilder
 from .memory_store import MemoryStore
 from .decomposition import Decomposition
 from .abstract_store import Lock
 from .tuples import Chain
 from .utilities import create_claim
+from nacl.signing import SigningKey, VerifyKey
 
 
 class LogBackedStore(MemoryStore):
@@ -63,6 +64,8 @@ class LogBackedStore(MemoryStore):
             count += 1
         for claim_builder in self._log_file_builder.claims:
             self._claims[claim_builder.medallion] = claim_builder
+        for key_pair_builder in self._log_file_builder.key_pairs:
+            self._signing_keys[VerifyKey(key_pair_builder.public_key)] = SigningKey(key_pair_builder.secret_key)
         self._processed_to += len(file_bytes)
         return count
 
@@ -92,6 +95,7 @@ class LogBackedStore(MemoryStore):
             data: bytes = self._log_file_builder.SerializeToString()  # type: ignore
             self._handle.write(data)
             self._handle.flush()
+            self._processed_to += len(data)
             if callback is not None:
                 callback(bundle)
         if flocked_by_apply:
@@ -103,3 +107,15 @@ class LogBackedStore(MemoryStore):
     def close(self):
         """Closes the underlying file."""
         self._handle.close()
+
+    def save_signing_key(self, signing_key: SigningKey):
+        key_pair_builder = KeyPairBuilder()
+        key_pair_builder.public_key = bytes(signing_key.verify_key)
+        key_pair_builder.secret_key = bytes(signing_key)
+        self._log_file_builder.Clear()
+        self._log_file_builder.key_pairs.append(key_pair_builder)
+        data: bytes = self._log_file_builder.SerializeToString()
+        self._handle.write(data)
+        self._handle.flush()
+        self._processed_to += len(data)
+        self._signing_keys[signing_key.verify_key] = signing_key

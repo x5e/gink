@@ -75,9 +75,14 @@ if TYPE_CHECKING:
         process_id: int
         claim_time: MuTimestamp
 
+    class KeyPairBuilder(Message):
+        public_key: bytes
+        secret_key: bytes
+
     class LogFileBuilder(Message):
         bundles: List[bytes]
         claims: List[ClaimBuilder]
+        key_pairs: List[KeyPairBuilder]
 
     class Behavior(IntEnum):
         UNSPECIFIED = 0
@@ -115,3 +120,4 @@ else:
     from ..builders.behavior_pb2 import Behavior
     from ..builders.log_file_pb2 import LogFile as LogFileBuilder
     from ..builders.claim_pb2 import Claim as ClaimBuilder
+    from ..builders.key_pair_pb2 import KeyPair as KeyPairBuilder
