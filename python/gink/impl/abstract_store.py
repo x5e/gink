@@ -4,12 +4,13 @@
 from typing import Tuple, Optional, Iterable, List, Union, Mapping, TypeVar, Generic, Callable
 from abc import abstractmethod
 from nacl.signing import SigningKey, VerifyKey
+from sys import stderr
 
 
 # Gink specific modules
 from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder, ClaimBuilder, Behavior
 from .bundle_info import BundleInfo
-from .chain_tracker import ChainTracker
+from .has_map import HasMap
 from .typedefs import UserKey, MuTimestamp, Medallion, Limit
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
@@ -114,7 +115,9 @@ class AbstractStore(BundleStore, Generic[Lock]):
             claims = self._get_claims(lock)
             for old_claim in claims.values():
                 chain = Chain(medallion=old_claim.medallion, chain_start=old_claim.chain_start)
-                if self.get_identity(chain) == identity and is_certainly_gone(old_claim.process_id):
+                chain_identity = self.get_identity(chain)
+                print(f"{identity=} {chain_identity=} {identity == chain_identity}", file=stderr)
+                if chain_identity == identity and is_certainly_gone(old_claim.process_id):
                     self._add_claim(lock, chain)
                     return self.get_last(chain)
             else:
@@ -206,7 +209,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
             return None
 
     @abstractmethod
-    def get_chain_tracker(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> ChainTracker:
+    def get_has_map(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> HasMap:
         """Returns a tracker showing what this store has at the time this function is called."""
 
     @abstractmethod

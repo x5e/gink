@@ -32,6 +32,7 @@ from .builders import (
 from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE
 from .builders import Behavior
 from .bundle_info import BundleInfo
+from .decomposition import Decomposition
 
 def digest(data: bytes) -> bytes:
     return blake2b(data, digest_size=32, encoder=RawEncoder)
@@ -423,3 +424,38 @@ def combine(
     serialized = bundle_builder.SerializeToString()
     signed = signing_key.sign(serialized)
     return signed
+
+def summarize(decomposition: Decomposition) -> Optional[str]:
+    from .get_container import container_classes
+    from .builders import ContainerBuilder
+    from .coding import decode_key
+    bundle_builder = decomposition.get_builder()
+    changes = bundle_builder.changes
+    if len(changes) > 1:
+        return "<multiple changes>"
+    if len(changes) == 0:
+        return "<empty bundle>"
+    change = changes[0]
+    if change.HasField("container"):
+        container_builder: ContainerBuilder = change.container
+        container_class = container_classes.get(container_builder.behavior)
+        name = container_class.__name__ if container_class else None
+        return f"created a {name}"
+    if change.HasField("entry"):
+        muid = Muid.create(decomposition.get_info(), change.entry.container)
+        behavior = change.entry.behavior
+        if behavior == Behavior.DIRECTORY:
+            key = decode_key(change.entry)
+            directory = "root" if muid.timestamp == -1 else str(muid)
+            if change.entry.deletion:
+                return f"deleted Directory {key=} in {directory}"
+            else:
+                return f"set Directory {key=} in {directory}"
+        if behavior == Behavior.SEQUENCE:
+            return f"added entry to Sequence {muid}"
+        if behavior == Behavior.BOX:
+            if change.entry.deletion:
+                return f"deleted contents from Box {muid}"
+            else:
+                return f"set a value in Box {muid}"
+    return None

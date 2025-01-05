@@ -7,6 +7,7 @@ from sys import stdout
 from logging import getLogger
 from re import fullmatch
 from nacl.signing import SigningKey
+from dateutil.parser import parse
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -25,6 +26,7 @@ from .utilities import (
     resolve_timestamp,
     combine,
     experimental,
+    summarize,
 )
 from .relay import Relay
 
@@ -53,6 +55,10 @@ class Database(Relay):
         self._lock = Lock()
         self._signing_key = None
         self._symmetric_key = None
+
+    def get_root(self):
+        from .directory import Directory
+        return Directory(root=True, database=self)
 
     def __enter__(self) -> Tuple[BundleInfo, SigningKey]:
         self._lock.acquire()
@@ -88,7 +94,7 @@ class Database(Relay):
             if fullmatch(r"-?\d+", timestamp):
                 timestamp = int(timestamp)
             else:
-                timestamp = float(timestamp)
+                return int(parse(timestamp).timestamp() * 1_000_000)
         if isinstance(timestamp, int) and -1e6 < timestamp < 1e6:
             bundle_info = self._store.get_one(BundleInfo, int(timestamp))
             if bundle_info is None:
@@ -167,23 +173,26 @@ class Database(Relay):
         from .container import Container
         from .get_container import get_container, container_classes
         file.write("\n")
-        for muid, container_builder in self._store.list_containers():
-            container = get_container(muid=muid, behavior=container_builder.behavior, database=self)
-            if include_empty_containers or container.size(as_of=as_of):
-                container.dump(as_of=as_of, file=file)
         for cls in container_classes.values():
             container = cls(muid=Muid(-1,-1,cls.get_behavior()), database=self)
             assert isinstance(container, Container)
             if include_empty_containers or container.size(as_of=as_of):
                 container.dump(as_of=as_of, file=file)
+        for muid, container_builder in self._store.list_containers():
+            container = get_container(muid=muid, behavior=container_builder.behavior, database=self)
+            if include_empty_containers or container.size(as_of=as_of):
+                container.dump(as_of=as_of, file=file)
 
-    def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
+    def get_one_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
         """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
 
             After the timestamp and medallion it will ignore other ordered arguments, so
             that it can be used via get_attribution(*muid).
         """
         comment = self._store.get_comment(medallion=medallion, timestamp=timestamp)
+        if comment is None:
+            decomposition = self._store.get_one_bundle(timestamp=timestamp, medallion=medallion)
+            comment = summarize(decomposition) if decomposition else None
         chain = self._store.find_chain(medallion=medallion, timestamp=timestamp)
         identity = self._store.get_identity(chain)
         return Attribution(
@@ -193,17 +202,17 @@ class Database(Relay):
             abstract=comment,
         )
 
-    def log(self, limit: Optional[int] = -10, *, include_starts=False) -> Iterable[Attribution]:
+    def get_attributions(self, limit: Optional[int] = -10, *, include_starts=False) -> Iterable[Attribution]:
         """ Gets a list of attributions representing all bundles stored by the db. """
         for bundle_info in self._store.get_some(BundleInfo, limit):
             assert isinstance(bundle_info, BundleInfo)
-            if bundle_info.timestamp == bundle_info.chain_start and not include_starts:
-                continue
-            yield self.get_attribution(bundle_info.timestamp, bundle_info.medallion)
+            #if bundle_info.timestamp == bundle_info.chain_start and not include_starts:
+            #    continue
+            yield self.get_one_attribution(bundle_info.timestamp, bundle_info.medallion)
 
     def show_log(self, limit: Optional[int] = -10, *, include_starts=False, file=stdout):
         """ Just prints the log to stdout in a human-readable format. """
-        for attribution in self.log(limit=limit, include_starts=include_starts):
+        for attribution in self.get_attributions(limit=limit, include_starts=include_starts):
             print(attribution, file=file)
 
     @experimental

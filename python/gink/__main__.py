@@ -37,6 +37,8 @@ parser.add_argument("--mkdir", help="create a directory using path notation")
 parser.add_argument("--comment", help="comment to add to modifications (set or mkdir)")
 parser.add_argument("--log", nargs="?", const="-10", type=int,
                     help="show LOG entries from log (e.g. last ten entries as LOG=-10)")
+parser.add_argument("--attributions", nargs="?", const="-10", type=int,
+                    help="show attribution entries")
 parser.add_argument("--listen_on", "-l", nargs="?", const=True,
                     help="start listening on ip:port (default *:8080)")
 parser.add_argument("--connect_to", "-c", nargs="+", help="remote instances to connect to")
@@ -173,6 +175,11 @@ if args.mkdir:
 if args.log:
     database.show_log(args.log, include_starts=args.starts)
     database.close()
+    exit(0)
+
+if args.attributions:
+    for attr in database.get_attributions(limit=args.attributions):
+        print(repr(attr))
     exit(0)
 
 def parse_listen_on(

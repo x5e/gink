@@ -24,7 +24,7 @@ process.exit(0);
         const args = ["-uim", "gink", TEST_DB_PATH]
         const python1 = new Expector("python3", args);
         python1.send("1+2\n")
-        await python1.expect("3");
+        await python1.expect("3", 2000);
         console.log("got three")
         await sleep(100);
         //python1.send("from gink import * \n")
@@ -44,16 +44,16 @@ process.exit(0);
 
         const cobra = new Expector("python3", args);
         cobra.send("2+3\n")
-        await cobra.expect("5");
+        await cobra.expect("5", 2000);
         console.log("got 5");
         cobra.send("accum = root['accum']\n");
         await sleep(100);
         cobra.send("accum.get()\n");
-        await cobra.expect("3.7");
+        await cobra.expect("3.7", 2000);
         cobra.send("accum += 7.4\n");
         await sleep(100);
         cobra.send("accum.get()\n");
-        await cobra.expect("11.1");
+        await cobra.expect("11.1", 2000);
         process.exit(0);
     } catch (error) {
         console.log(`error = ${error}`);

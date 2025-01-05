@@ -20,8 +20,8 @@ class Vertex(Container):
     @typechecked
     def __init__(
             self,
-            muid: Optional[Union[Muid, str]] = None,
             *,
+            muid: Optional[Union[Muid, str]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -111,8 +111,8 @@ class EdgeType(Container):
     @typechecked
     def __init__(
             self,
-            muid: Optional[Union[Muid, str]] = None,
             *,
+            muid: Optional[Union[Muid, str]] = None,
             contents: Optional[Iterable['Edge']] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,

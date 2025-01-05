@@ -1,5 +1,4 @@
-"""
-Defines the ChainTracker class.
+""" Defines the HasMap class.
 """
 from typing import Union, Optional, Iterable
 
@@ -12,9 +11,9 @@ from .tuples import Chain
 from .bundle_info import BundleInfo
 
 
-class ChainTracker:
+class HasMap:
     """
-    Keep track of what data a particular instance has.
+    Keep track of what data a particular database instance has.
     """
 
     _data: SortedDict  # [Chain, MuTimestamp]
@@ -30,9 +29,9 @@ class ChainTracker:
                     chain_start=greeting_entry.chain_start)
                 self._data[chain] = greeting_entry.seen_through
 
-    def get_subset(self, chains=Iterable[Chain]) -> 'ChainTracker':
-        """ Returns a subset of this ChainTracker with the chains in the given iterable. """
-        result = ChainTracker()
+    def get_subset(self, chains=Iterable[Chain]) -> 'HasMap':
+        """ Returns a subset of this HasMap with the chains in the given iterable. """
+        result = HasMap()
         for chain in chains:
             i_have = self._data.get(chain)
             if i_have is not None:
