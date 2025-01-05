@@ -4,6 +4,7 @@
 from typing import Tuple, Optional, Iterable, List, Union, Mapping, TypeVar, Generic, Callable
 from abc import abstractmethod
 from nacl.signing import SigningKey, VerifyKey
+from sys import stderr
 
 
 # Gink specific modules
@@ -115,7 +116,6 @@ class AbstractStore(BundleStore, Generic[Lock]):
             for old_claim in claims.values():
                 chain = Chain(medallion=old_claim.medallion, chain_start=old_claim.chain_start)
                 chain_identity = self.get_identity(chain)
-
                 if chain_identity == identity and is_certainly_gone(old_claim.process_id):
                     self._add_claim(lock, chain)
                     return self.get_last(chain)
