@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 from .typedefs import MuTimestamp, Medallion
 from typing import Optional
+from .muid import Muid
 
 
 class Attribution:
@@ -28,12 +29,12 @@ class Attribution:
         result = "Attribution("
         for key in self.__slots__:
             if hasattr(self, key) and getattr(self, key):
-                result += f"\n\t{key}={getattr(self, key)!r},"
-        result += ")\n"
+                result += f"{key}={getattr(self, key)!r},"
+        result += ")"
         return result
 
     def __str__(self):
         local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
         as_datetime = datetime.fromtimestamp(self.timestamp / 1e6, local_timezone)
         as_datetime = as_datetime.replace(microsecond=0)
-        return f"{as_datetime}  {self.identity}  {self.abstract}"
+        return f"{hex(self.medallion)} {as_datetime}  {self.identity}  {self.abstract}"

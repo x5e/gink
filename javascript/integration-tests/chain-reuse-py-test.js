@@ -8,7 +8,7 @@ const shell = os.platform() === "linux" ? "/usr/bin/bash" : "/bin/bash";
 const TEST_DB_PATH = "/tmp/chain-reuse-py-test.db";
 process.chdir(__dirname + "/..");
 
-for (const format of ["lmdb", "binlog",]) {
+for (const format of ["binlog", "lmdb", ]) {
     console.log("starting");
     if (fs.existsSync(TEST_DB_PATH)) {
         fs.unlinkSync(TEST_DB_PATH);
@@ -38,7 +38,7 @@ for (const format of ["lmdb", "binlog",]) {
     if (result1.status !== 0) {
         throw Error(`invocation 1 failed ${result1.stderr}`);
     } else {
-        console.log("invocation 1 okay");
+        console.log(`invocation 1 okay, stderr=\n${result1.stderr}`);
     }
 
     const result2 = spawnSync(
@@ -63,7 +63,7 @@ for (const format of ["lmdb", "binlog",]) {
     if (result2.status !== 0) {
         throw Error(`invocation 2 failed ${result2.stderr}`);
     } else {
-        console.log("invocation 2 okay");
+        console.log(`invocation 2 okay, stderr=\n${result2.stderr}`);
     }
 
     const result3 = spawnSync(
@@ -88,14 +88,14 @@ for (const format of ["lmdb", "binlog",]) {
     if (result3.status !== 0) {
         throw Error(`invocation 3 failed ${result3.stderr}`);
     } else {
-        console.log("invocation 3 okay");
+        console.log(`invocation 3 okay, , stderr=\n${result3.stderr}`);
     }
 
     const result4 = spawnSync(
         shell,
         [
             "-c",
-            `"python3 -m gink ${TEST_DB_PATH} --log --format ${format} | cut -b 1-13 | sort -u | wc -l "`,
+            `"python3 -m gink ${TEST_DB_PATH} --log | cut -b 50-64 | sort -u | wc -l "`,
         ],
         { shell: shell },
     );
@@ -103,7 +103,7 @@ for (const format of ["lmdb", "binlog",]) {
     if (result4.status !== 0) {
         throw Error(`invocation 4 failed ${result4.stderr}`);
     } else {
-        console.log("invocation 4 okay");
+        console.log(`invocation 4 okay , stderr=\n${result4.stderr}`);
     }
 
     const found = result4.stdout.toString().trim();

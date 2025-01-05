@@ -183,7 +183,7 @@ class Database(Relay):
             if include_empty_containers or container.size(as_of=as_of):
                 container.dump(as_of=as_of, file=file)
 
-    def get_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
+    def get_one_attribution(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Attribution:
         """ Takes a timestamp and medallion and figures out who/what to blame the changes on.
 
             After the timestamp and medallion it will ignore other ordered arguments, so
@@ -202,17 +202,17 @@ class Database(Relay):
             abstract=comment,
         )
 
-    def _get_log(self, limit: Optional[int] = -10, *, include_starts=False) -> Iterable[Attribution]:
+    def get_attributions(self, limit: Optional[int] = -10, *, include_starts=False) -> Iterable[Attribution]:
         """ Gets a list of attributions representing all bundles stored by the db. """
         for bundle_info in self._store.get_some(BundleInfo, limit):
             assert isinstance(bundle_info, BundleInfo)
-            if bundle_info.timestamp == bundle_info.chain_start and not include_starts:
-                continue
-            yield self.get_attribution(bundle_info.timestamp, bundle_info.medallion)
+            #if bundle_info.timestamp == bundle_info.chain_start and not include_starts:
+            #    continue
+            yield self.get_one_attribution(bundle_info.timestamp, bundle_info.medallion)
 
     def show_log(self, limit: Optional[int] = -10, *, include_starts=False, file=stdout):
         """ Just prints the log to stdout in a human-readable format. """
-        for attribution in self._get_log(limit=limit, include_starts=include_starts):
+        for attribution in self.get_attributions(limit=limit, include_starts=include_starts):
             print(attribution, file=file)
 
     @experimental

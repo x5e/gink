@@ -346,7 +346,7 @@ class Directory(Container):
                 continue
             muid = found.address
             assert muid.timestamp is not None and muid.medallion is not None
-            result[key] = self._database.get_attribution(
+            result[key] = self._database.get_one_attribution(
                 medallion=muid.medallion, timestamp=muid.timestamp)
         return result
 
@@ -365,7 +365,7 @@ class Directory(Container):
                 break
             muid = found.address
             assert muid.timestamp is not None and muid.medallion is not None
-            yield self._database.get_attribution(muid.timestamp, muid.medallion)
+            yield self._database.get_one_attribution(muid.timestamp, muid.medallion)
             as_of = muid.timestamp
 
     @typechecked
