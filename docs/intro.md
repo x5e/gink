@@ -99,19 +99,6 @@ $> python3
 (1.7, True, {'foo': 'bar'}, b'\x01\x02', None)
 
 ```
----
-<!-- _class: invert -->
-
-| Gink Type | Javascript| Python Type | Python Example |
-| --- | ----- | ---- | --- |
-| Boolean | boolean | bool | <pre>True
-| Double | number | float | <pre>3.141592653589793 |
-|  Integer | BigInt | int | <pre>73786976294838206464 |
-| String | string | str | <pre>"Hello, world!"</pre> |
-| Byte String | Unit8Array |  bytes | <pre>b"Hello, World!"</pre> |
-| Timestamp | Date | datetime | <pre>datetime(2025, 1, 3, 21, 39, 41) |
-| Document | Map | dict | <pre>{"name": "John Smith", "id": 134} |
-| Tuple | Array | tuple | <pre> [3.7, True, {"foo": b"bar"}] |
 
 ---
 
@@ -159,6 +146,28 @@ $> python3
 2025-01-03 22:57:47-05:00  darin@pengin  created a Sequence
 ```
 
+---
+<!-- _class: invert -->
+
+# Use your own comment and/or bundle changes.
+#
+```
+with database.start_bundle("combining some operations") as bundler:
+    sequence = Sequence(bundler=bundler)
+    root.set("example", sequence, bundler=bundler)
+    sequence.append("hello world", bundler=bundler)
+
+sequence.pop(comment="removing hello world")
+
+database.show_log()
+```
+
+.
+```
+2025-01-04 15:42:38-05:00  darin@pengin  removing hello world
+2025-01-04 15:42:38-05:00  darin@pengin  combining some operations
+```
+
 
 ---
 <!-- _class: invert -->
@@ -172,9 +181,9 @@ $> python3
 >>> directory[1234] = "something else"
 
 >>> database.show_log()
-2025-01-03 23:08:20-05:00  darin@angel  set Directory key=1234 in 062AD9871...
-2025-01-03 23:08:11-05:00  darin@angel  set Directory key=1234 in 062AD9871...
-2025-01-03 23:07:03-05:00  darin@angel  created a Directory
+2025-01-03 23:08:20-05:00  darin@pengin  set Directory key=1234 in 062AD9871...
+2025-01-03 23:08:11-05:00  darin@pengin  set Directory key=1234 in 062AD9871...
+2025-01-03 23:07:03-05:00  darin@pengin  created a Directory
 
 >>> directory.get(1234)
 'something else'
