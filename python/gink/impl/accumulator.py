@@ -104,3 +104,12 @@ class Accumulator(Container):
         """ Returns the number of billionths. """
         resolved = -1 if as_of is None else self._database.resolve_timestamp(as_of)
         return self._database.get_store().get_billionths(self._muid, as_of=resolved)
+
+    def __int__(self) -> int:
+        return int(self.get())
+
+    def __float__(self) -> float:
+        return float(self.get())
+
+    def __str__(self) -> str:
+        return str(self.get())
