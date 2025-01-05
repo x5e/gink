@@ -192,3 +192,46 @@ database.show_log()
 'very important data'
 
 ```
+
+---
+<!-- _class: invert -->
+# And you can reset individual containers or the whole database to a time in the past.
+#
+```
+from gink import *
+database = Database("demo.db")
+
+directory = Directory()
+directory[1234] = "very important data"
+directory[1234] = "something else"
+
+directory.reset(-1)
+print(directory[1234]) # very important data
+
+database.reset(-1)
+print(directory[1234]) # something else
+
+```
+
+---
+<!-- _class: invert -->
+# Writing web backends is easy using Gink.
+```
+from gink import Database, Accumulator
+from flask import Flask
+
+root = Database("demo.db").get_root()
+app = Flask(__name__)
+
+if "counter" not in root:
+    root["counter"] = Accumulator()
+
+@app.route('/')
+def count_hits():
+    counter = root["counter"]
+    counter += 1
+    return str(counter)
+
+if __name__ == '__main__':
+    app.run()
+```
