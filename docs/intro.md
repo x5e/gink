@@ -235,3 +235,11 @@ def count_hits():
 if __name__ == '__main__':
     app.run()
 ```
+
+
+---
+<!-- _class: invert -->
+# Next Week:
+* syncronizing databases between servers
+* sharing databases with Javascript backends
+* architecture and performance considerations
