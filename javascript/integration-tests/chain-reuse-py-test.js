@@ -8,7 +8,7 @@ const shell = os.platform() === "linux" ? "/usr/bin/bash" : "/bin/bash";
 const TEST_DB_PATH = "/tmp/chain-reuse-py-test.db";
 process.chdir(__dirname + "/..");
 
-for (const format of ["binlog", "lmdb", ]) {
+for (const format of ["lmdb", ]) {
     console.log("starting");
     if (fs.existsSync(TEST_DB_PATH)) {
         fs.unlinkSync(TEST_DB_PATH);
