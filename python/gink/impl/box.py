@@ -34,6 +34,7 @@ class Box(Container):
         comment: optional comment to add to the bundler
         """
         database = database or Database.get_most_recently_created_database()
+        bundler = bundler or database.get_open_bundler()
         immediate = False
         if bundler is None:
             immediate = True

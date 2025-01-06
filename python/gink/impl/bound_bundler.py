@@ -26,6 +26,7 @@ class BoundBundler(Bundler):
         self._comment = comment
         self._changes: List[ChangeBuilder] = []
         self._logger = getLogger(self.__class__.__name__)
+        self._is_open = True
 
     def __len__(self):
         return self._count_items
@@ -33,8 +34,8 @@ class BoundBundler(Bundler):
     def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Muid:
         """ adds a single change (in the form of the proto builder) """
         # TODO: remove medallion from references when they're within the current chain
-        if self._decomposition:
-            raise AssertionError("already completed")
+        if not self._is_open:
+            raise AssertionError("bundle not open")
         self._count_items += 1
         muid = Muid(offset=self._count_items, bundler=self)
         if isinstance(builder, EntryBuilder):
@@ -55,12 +56,19 @@ class BoundBundler(Bundler):
             self.commit()
         else:
             assert exc_value is not None and traceback is not None
+            self.rollback()
             self._logger.exception("abandoning bundle: ", exc_info=(exc_type, exc_value, traceback))
         return None
 
+    def is_open(self) -> bool:
+        return self._is_open
+
+    def rollback(self):
+        self._is_open = False
+
     def commit(self):
-        if self._decomposition:
-            raise ValueError("already committed")
+        if not self._is_open:
+            raise ValueError("bundle isn't open")
         assert self._database is not None, "cannot commit without a database"
         with self._database as needed:
             last_link, signing_key = needed

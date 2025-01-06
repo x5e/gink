@@ -8,6 +8,7 @@ from logging import getLogger
 from re import fullmatch
 from nacl.signing import SigningKey
 from dateutil.parser import parse
+from threading import local as Local
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -40,6 +41,7 @@ class Database(Relay):
     _signing_key: Optional[SigningKey]
     _lock: Lock
     _symmetric_key: Optional[bytes]
+    _thread_local: Local
 
     def __init__(
             self,
@@ -55,6 +57,7 @@ class Database(Relay):
         self._lock = Lock()
         self._signing_key = None
         self._symmetric_key = None
+        self._thread_local = Local()
 
     def get_root(self):
         from .directory import Directory
@@ -142,9 +145,20 @@ class Database(Relay):
         return self._last_link, self._signing_key
 
     def start_bundle(self, comment: Optional[str] = None) -> Bundler:
+        bundler = getattr(self._thread_local, "bundler", None)
+        if bundler is not None and bundler.is_open():
+            raise Exception("A bundler is already open for this thread.")
         from .bound_bundler import BoundBundler
         symmetric_key = self._store.get_symmetric_key(None)
-        return BoundBundler(database=self, comment=comment, symmetric_key=symmetric_key)
+        bundler = BoundBundler(database=self, comment=comment, symmetric_key=symmetric_key)
+        self._thread_local.bundler = bundler
+        return bundler
+
+    def get_open_bundler(self) -> Optional[Bundler]:
+        bundler = getattr(self._thread_local, "bundler", None)
+        if bundler is None or not bundler.is_open():
+            return None
+        return bundler
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None) -> None:
         """ Resets the database to a specific point in time.

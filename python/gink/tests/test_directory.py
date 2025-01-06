@@ -31,7 +31,7 @@ def test_creation():
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
             directory1 = Directory(muid=Muid(1, 2, 3), database=database)
-            assert len(store.get_bundle_infos()) == 0
+            assert len(store.get_bundle_infos()) == 0, store.get_bundle_infos()
 
             directory2 = Directory()
             assert len(store.get_bundle_infos()) != 0
@@ -249,7 +249,7 @@ def test_blame_and_log():
                 attr2 = directory.blame(as_of=-1)["foo"]
                 assert attr2.abstract == "first", attr2
 
-                as_list = list(directory.log("foo"))
+                as_list = list(directory.get_attributions("foo"))
                 assert as_list[0].abstract == "second"
                 assert as_list[1].abstract == "first"
 

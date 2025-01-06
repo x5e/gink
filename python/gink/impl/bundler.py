@@ -25,6 +25,9 @@ class Bundler(ABC):
     def __len__(self) -> int:
         """ return the number of changes in this bundle """
 
+    def __bool__(self) -> bool:
+        return True
+
     @abstractmethod
     def add_change(self, builder: Union[ChangeBuilder, EntryBuilder, ContainerBuilder]) -> Muid:
         """ adds a single change (in the form of the proto builder) """
@@ -32,3 +35,11 @@ class Bundler(ABC):
     @abstractmethod
     def commit(self):
         """ Finishes the bundle and adds it to the database. """
+
+    @abstractmethod
+    def is_open(self) -> bool:
+        """ Figure out if this bundler can still accept changes. """
+
+    @abstractmethod
+    def rollback(self):
+        """ Abandon the bundle. """
