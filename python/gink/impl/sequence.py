@@ -37,6 +37,7 @@ class Sequence(Container):
         comment: optional comment to add to the bundler
         """
         database = database or Database.get_most_recently_created_database()
+        bundler = bundler or Bundler.get_active()
         immediate = False
         if bundler is None:
             immediate = True
@@ -126,6 +127,7 @@ class Sequence(Container):
 
             Returns the bundler (either passed or created on the fly)
         """
+        bundler = bundler or Bundler.get_active()
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
@@ -156,6 +158,7 @@ class Sequence(Container):
 
             returns: the muid of the change
         """
+        bundler = bundler or Bundler.get_active()
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True

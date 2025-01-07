@@ -28,6 +28,7 @@ class Accumulator(Container):
             comment: Optional[str] = None,
     ):
         database = database or Database.get_most_recently_created_database()
+        bundler = bundler or Bundler.get_active()
         immediate = False
         if bundler is None:
             immediate = True
@@ -58,15 +59,8 @@ class Accumulator(Container):
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None) -> Muid:
         """ Adds the change to the current value. """
-        immediate = False
-        if bundler is None:
-            immediate = True
-            bundler = self._database.start_bundle(comment)
         billionths = int(change * int(1e9))
-        result = self._add_entry(value=billionths, bundler=bundler)
-        if immediate:
-            bundler.commit()
-        return result
+        return self._add_entry(value=billionths, bundler=bundler, comment=comment)
 
     def clear(self, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
         """ Subtracts the current value. """

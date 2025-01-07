@@ -144,7 +144,8 @@ class Database(Relay):
     def start_bundle(self, comment: Optional[str] = None) -> Bundler:
         from .bound_bundler import BoundBundler
         symmetric_key = self._store.get_symmetric_key(None)
-        return BoundBundler(database=self, comment=comment, symmetric_key=symmetric_key)
+        bundler = BoundBundler(database=self, comment=comment, symmetric_key=symmetric_key)
+        return bundler
 
     def reset(self, to_time: GenericTimestamp = EPOCH, *, bundler=None, comment=None) -> None:
         """ Resets the database to a specific point in time.

@@ -31,7 +31,7 @@ def test_creation():
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
             directory1 = Directory(muid=Muid(1, 2, 3), database=database)
-            assert len(store.get_bundle_infos()) == 0
+            assert len(store.get_bundle_infos()) == 0, store.get_bundle_infos()
 
             directory2 = Directory()
             assert len(store.get_bundle_infos()) != 0
@@ -42,7 +42,7 @@ def test_set_get():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            global_directory = Directory._get_global_instance(database=database)
+            global_directory = database.get_root()
 
             bundler = database.start_bundle("testing")
             global_directory.set("foo", "bar", bundler=bundler)
@@ -186,7 +186,7 @@ def test_reset():
             assert 44 not in gdi["nope"]  # type: ignore
             assert bundle is not None and len(bundle) > 0
             bundle = gdi.reset(middle, recursive=True)
-            assert not bundle
+            assert len(bundle) == 0
 
 def test_clearance():
     """ tests the directory.clear method works as expected """
@@ -249,7 +249,7 @@ def test_blame_and_log():
                 attr2 = directory.blame(as_of=-1)["foo"]
                 assert attr2.abstract == "first", attr2
 
-                as_list = list(directory.log("foo"))
+                as_list = list(directory.get_attributions("foo"))
                 assert as_list[0].abstract == "second"
                 assert as_list[1].abstract == "first"
 

@@ -44,6 +44,7 @@ class Directory(Container):
         self._logger = getLogger(self.__class__.__name__)
         database = database or Database.get_most_recently_created_database()
         immediate = False
+        bundler = bundler or Bundler.get_active()
         if bundler is None:
             immediate = True
             bundler = database.start_bundle(comment)
@@ -61,8 +62,11 @@ class Directory(Container):
             if not created:
                 self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
-        if immediate and len(bundler):
-            bundler.commit()
+        if immediate:
+            if len(bundler):
+                bundler.commit()
+            else:
+                bundler.rollback()
 
     def __repr__(self):
         if self._muid.timestamp == -1 and self._muid.medallion == -1:
@@ -100,6 +104,9 @@ class Directory(Container):
 
     @typechecked
     def __setitem__(self, key_or_keys: Union[UserKey, Iterable[UserKey]], value: Union[UserValue, Container]):
+        there_now = self.get(key_or_keys, self._missing)
+        if type(value) == type(there_now) and value == there_now:
+            return  # this is to prevent in-place operators like += from re-assigning
         self.set(key_or_keys, value)
 
     @typechecked
@@ -139,8 +146,13 @@ class Directory(Container):
         return current
 
     @typechecked
-    def set(self, key_or_keys: Union[UserKey, Iterable[UserKey]], value: Union[UserValue, Container],
-            /, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> Muid:
+    def set(
+        self,
+        key_or_keys: Union[UserKey, Iterable[UserKey]],
+        value: Union[UserValue, Container], /, *,
+        bundler: Optional[Bundler] = None,
+        comment: Optional[str] = None,
+    ) -> Muid:
         """ Sets a value in the mapping, returns the muid address of the entry.
 
             If bundler is specified, then simply adds an entry to that bundler.
@@ -148,17 +160,21 @@ class Directory(Container):
             sets it's comment to the comment arg (if set) then adds it to the database.
 
             If the first argument is a list or tuple, then it will walk into the relevant
-            sub-directory(ies) and set the value there.
+            sub-directory(ies) and set the value there, ignoring empty strings/byte-strings.
+
         """
         timestamp = generate_timestamp()
-        raw_seq = key_or_keys if isinstance(key_or_keys, (tuple, list)) else [key_or_keys]
-        keys = [key for key in raw_seq if key not in ('', b'')]
+        if isinstance(key_or_keys, (tuple, list)):
+            keys = [key for key in key_or_keys if key not in ('', b'')]
+        else:
+            keys = [key_or_keys]
         if len(keys) < 1:
             raise ValueError(f"invalid argument to set: {key_or_keys!r}")
         final_key = keys.pop()
         current = self
         just_created = False
         store = self._database.get_store()
+        bundler = bundler or Bundler.get_active()
         immediate = bundler is None
         if bundler is None:
             bundler = self._database.start_bundle(comment)
@@ -318,6 +334,7 @@ class Directory(Container):
             otherwise will try:  for k, v in E: D[k] = v
 
         """
+        bundler = bundler or Bundler.get_active()
         immediate = False
         if bundler is None:
             immediate = True
@@ -356,7 +373,7 @@ class Directory(Container):
             print(repr(key), str(val), file=file)
 
     @typechecked
-    def log(self, key: UserKey, /) -> Iterable[Attribution]:
+    def get_attributions(self, key: UserKey, /) -> Iterable[Attribution]:
         """ Get the history of modifications for a particular key. """
         as_of = generate_timestamp()
         while as_of:
@@ -371,7 +388,7 @@ class Directory(Container):
     @typechecked
     def show_log(self, key: UserKey, /, *, file=stdout, limit=10):
         """ writes the history of modifications to <file> in a human-readable format """
-        for att in self.log(key):
+        for att in self.get_attributions(key):
             if limit is not None and limit <= 0:
                 break
             print(str(att), file=file)
