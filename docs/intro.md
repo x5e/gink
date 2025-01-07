@@ -153,9 +153,8 @@ $> python3
 #
 ```
 with database.start_bundle("combining some operations") as bundler:
-    sequence = Sequence(bundler=bundler)
-    root.set("example", sequence, bundler=bundler)
-    sequence.append("hello world", bundler=bundler)
+    sequence = Sequence()
+    sequence.append("hello world")
 
 sequence.pop(comment="removing hello world")
 
