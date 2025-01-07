@@ -95,7 +95,7 @@ class Container(Addressable, ABC):
             hidden until some future time with something like .remove(..., dest=10.0).
         """
         # pylint: disable=maybe-no-member
-        bundler = bundler or self._database.get_open_bundler()
+        bundler = bundler or Bundler.get_active()
         immediate = False
         if not isinstance(bundler, Bundler):
             bundler = self._database.start_bundle(comment)
@@ -124,7 +124,7 @@ class Container(Addressable, ABC):
 
             If on_muid is specified, then the entry will be added to that container instead of this one.
         """
-        bundler = bundler or self._database.get_open_bundler()
+        bundler = bundler or Bundler.get_active()
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True

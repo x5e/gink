@@ -1,6 +1,6 @@
-from typing import Optional, Union, List, Type
-from types import TracebackType
-from logging import getLogger
+from typing import Optional, Union, List
+
+
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
 from .muid import Muid
@@ -25,7 +25,6 @@ class BoundBundler(Bundler):
         self._count_items = 0
         self._comment = comment
         self._changes: List[ChangeBuilder] = []
-        self._logger = getLogger(self.__class__.__name__)
         self._is_open = True
 
     def __len__(self):
@@ -45,20 +44,6 @@ class BoundBundler(Bundler):
         assert isinstance(builder, ChangeBuilder)
         self._changes.append(builder)
         return muid
-
-    def __exit__(
-        self, /,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType]
-    ) -> Optional[bool]:
-        if exc_type is None:
-            self.commit()
-        else:
-            assert exc_value is not None and traceback is not None
-            self.rollback()
-            self._logger.exception("abandoning bundle: ", exc_info=(exc_type, exc_value, traceback))
-        return None
 
     def is_open(self) -> bool:
         return self._is_open
@@ -91,8 +76,6 @@ class BoundBundler(Bundler):
             added = self._database.receive(wrap)
             assert added
             self._decomposition = wrap
-            info = wrap.get_info()
-            self._logger.debug("locally committed bundle: %r", info)
 
     def get_decomposition(self) -> Optional[Decomposition]:
         return self._decomposition

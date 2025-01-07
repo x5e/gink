@@ -36,6 +36,7 @@ class KeySet(Container):
         comment: optional comment to add to the bundler
         """
         database = database or Database.get_most_recently_created_database()
+        bundler = bundler or Bundler.get_active()
         immediate = False
         if bundler is None:
             immediate = True
@@ -65,6 +66,7 @@ class KeySet(Container):
     def update(self, keys: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Adds multiple specified values to the key set """
         immediate = False
+        bundler = bundler or Bundler.get_active()
         if bundler is None:
             immediate = True
             bundler = self._database.start_bundle(comment)
@@ -176,6 +178,7 @@ class KeySet(Container):
     def difference_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, removing elements found in the specified iterables. """
         immediate = False
+        bundler = bundler or Bundler.get_active()
         if bundler is None:
             immediate = True
             bundler = self._database.start_bundle()
@@ -189,6 +192,7 @@ class KeySet(Container):
     def intersection_update(self, s: Iterable[UserKey], bundler: Optional[Bundler]=None, comment: Optional[str]=None):
         """ Updates the key set, keeping only elements found in the key set and the specified iterables. """
         immedate = False
+        bundler = bundler or Bundler.get_active()
         if bundler is None:
             bundler = self._database.start_bundle(comment)
             immedate = True

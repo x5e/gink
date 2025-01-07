@@ -44,7 +44,7 @@ class Directory(Container):
         self._logger = getLogger(self.__class__.__name__)
         database = database or Database.get_most_recently_created_database()
         immediate = False
-        bundler = bundler or database.get_open_bundler()
+        bundler = bundler or Bundler.get_active()
         if bundler is None:
             immediate = True
             bundler = database.start_bundle(comment)
@@ -174,7 +174,7 @@ class Directory(Container):
         current = self
         just_created = False
         store = self._database.get_store()
-        bundler = bundler or self._database.get_open_bundler()
+        bundler = bundler or Bundler.get_active()
         immediate = bundler is None
         if bundler is None:
             bundler = self._database.start_bundle(comment)
@@ -334,7 +334,7 @@ class Directory(Container):
             otherwise will try:  for k, v in E: D[k] = v
 
         """
-        bundler = bundler or self._database.get_open_bundler()
+        bundler = bundler or Bundler.get_active()
         immediate = False
         if bundler is None:
             immediate = True
