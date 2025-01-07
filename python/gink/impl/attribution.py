@@ -1,5 +1,5 @@
 """ Contains the Attribution class. """
-from datetime import datetime, timezone
+from datetime import datetime
 from .typedefs import MuTimestamp, Medallion
 from typing import Optional
 from .muid import Muid
@@ -34,6 +34,10 @@ class Attribution:
         return result
 
     def __str__(self):
+        """ Note: the stringified form of Attribution is subject to change.
+
+            If you're trying to read in the output of the log, use the repr.
+        """
         as_datetime = datetime.fromtimestamp(self.timestamp / 1e6)
         as_datetime = as_datetime.replace(microsecond=0)
         muid = Muid(self.timestamp, self.medallion, 0)
