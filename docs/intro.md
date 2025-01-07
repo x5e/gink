@@ -112,22 +112,6 @@ $> python3
 | Key Set | Set Operations | ints, strings, bytes | |
 | Accumulator | Numeric Balance | | Decimal Value
 
----
-<!-- _class: invert -->
-
-# (By default) Gink keeps a history of all changes.
-#
-```
->>> root["example sequence"] = Sequence()
-
->>> root["example sequence"].append("foo bar")
-
->>> database.show_log()
-
-2025-01-03 22:57:58-05:00  darin@pengin  added entry to Sequence 062AD965...
-2025-01-03 22:57:47-05:00  darin@pengin  set Directory key='example sequence' in root
-2025-01-03 22:57:47-05:00  darin@pengin  created a Sequence
-```
 
 ---
 <!-- _class: invert -->

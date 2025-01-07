@@ -203,7 +203,7 @@ class Database(Relay):
             abstract=comment,
         )
 
-    def get_attributions(self, limit: Optional[int] = -10, *, include_starts=False) -> Iterable[Attribution]:
+    def get_attributions(self, limit: Optional[int] = None, *, include_starts=False) -> Iterable[Attribution]:
         """ Gets a list of attributions representing all bundles stored by the db. """
         for bundle_info in self._store.get_some(BundleInfo, limit):
             assert isinstance(bundle_info, BundleInfo)
@@ -211,7 +211,7 @@ class Database(Relay):
             #    continue
             yield self.get_one_attribution(bundle_info.timestamp, bundle_info.medallion)
 
-    def show_log(self, limit: Optional[int] = -10, *, include_starts=False, file=stdout):
+    def show_log(self, limit: Optional[int] = None, *, include_starts=False, file=stdout):
         """ Just prints the log to stdout in a human-readable format. """
         for attribution in self.get_attributions(limit=limit, include_starts=include_starts):
             print(attribution, file=file)

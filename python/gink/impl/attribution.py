@@ -37,4 +37,4 @@ class Attribution:
         local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
         as_datetime = datetime.fromtimestamp(self.timestamp / 1e6, local_timezone)
         as_datetime = as_datetime.replace(microsecond=0)
-        return f"{hex(self.medallion)} {as_datetime}  {self.identity}  {self.abstract}"
+        return f"{as_datetime}  {self.identity}  {self.abstract}"
