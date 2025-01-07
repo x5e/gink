@@ -68,6 +68,10 @@ class BundleStore(ABC):
     def close(self):
         """ free resources """
 
+    def is_closed(self) -> bool:
+        """ Return true if closed """
+        return False
+
     def is_selectable(self) -> bool:
         return self._get_watcher() is not None
 

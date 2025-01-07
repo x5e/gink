@@ -1,6 +1,6 @@
 """ implementation of the LogBackedStore class """
 from typing import Optional, Union, Callable
-from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN, LOCK_SH
+from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN
 from pathlib import Path
 from .builders import LogFileBuilder, ClaimBuilder, KeyPairBuilder
 from .memory_store import MemoryStore
@@ -16,24 +16,57 @@ class LogBackedStore(MemoryStore):
 
     def __init__(self, filepath: Union[Path, str], *, exclusive=False, reset=False):
         MemoryStore.__init__(self)
+        self._log_file_builder = LogFileBuilder()
         self._filepath = Path(filepath)
         self._handle = open(self._filepath, "ab+")
+        self._is_closed = False
         self._flocked: bool = False
         self._exclusive = bool(exclusive)
         if self._exclusive:
             flock(self._handle, LOCK_EX | LOCK_NB)  # this will throw if another process has a lock
             self._flocked = True
+        flocked_by_aquire = self._acquire_lock()
         if reset:
             self._handle.truncate()
-        self._handle.seek(0)
         self._processed_to = 0
-        self._log_file_builder = LogFileBuilder()
-        self.refresh()
+        self._handle.seek(0, 2)
+        file_starting_size = self._handle.tell()
+        if file_starting_size == 0:
+            self._log_file_builder.magic_number = 1263421767
+            data: bytes = self._log_file_builder.SerializeToString()
+            self._handle.write(data)
+            self._handle.flush()
+            self._processed_to += len(data)
+        else:
+            self._handle.seek(0)
+            self._refresh_helper(flocked_by_aquire)
+        self._release_lock(flocked_by_aquire)
+
+    def is_closed(self) -> bool:
+        """ Return true if closed """
+        return self._is_closed
+
+    @staticmethod
+    def is_binlog_file(path: Union[str, Path]) -> bool:
+        path = Path(path)
+        if not path.exists():
+            raise Exception(f"{path} does not exist!")
+        with path.open("rb") as handle:
+            first_bytes = handle.read(5)
+        return first_bytes == b"\rGINK"
+
+    @staticmethod
+    def dump(filepath: Union[Path, str]):
+        filepath = Path(filepath)
+        with filepath.open("rb") as handle:
+            contents = handle.read()
+        log_file_builder = LogFileBuilder.FromString(contents)
+        print(log_file_builder)
 
     def _acquire_lock(self) -> bool:
         flocked_by_acquire = False
         if not self._flocked:
-            flock(self._handle, LOCK_SH)
+            flock(self._handle, LOCK_EX)
             flocked_by_acquire = self._flocked = True
         return flocked_by_acquire
 
@@ -107,6 +140,7 @@ class LogBackedStore(MemoryStore):
     def close(self):
         """Closes the underlying file."""
         self._handle.close()
+        self._is_closed = True
 
     def save_signing_key(self, signing_key: SigningKey):
         key_pair_builder = KeyPairBuilder()

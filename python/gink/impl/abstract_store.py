@@ -96,10 +96,6 @@ class AbstractStore(BundleStore, Generic[Lock]):
     def close(self):
         """Safely releases resources."""
 
-    def is_closed(self) -> bool:
-        """ Return true if closed """
-        return False
-
     @abstractmethod
     def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[Decomposition], None]]=None, /) -> int:
         """ Do a refresh using a lock/transaction """
