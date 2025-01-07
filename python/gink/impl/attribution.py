@@ -33,13 +33,11 @@ class Attribution:
         result += ")"
         return result
 
-    def __str__(self):
-        """ Note: the stringified form of Attribution is subject to change.
-
-            If you're trying to read in the output of the log, use the repr.
-        """
-        as_datetime = datetime.fromtimestamp(self.timestamp / 1e6)
-        as_datetime = as_datetime.replace(microsecond=0)
+    def __format__(self, format_spec: str) -> str:
         muid = Muid(self.timestamp, self.medallion, 0)
         short = str(muid)[0:28]
-        return f"{short}  {as_datetime}  {self.identity}  {self.abstract}"
+        as_datetime = datetime.fromtimestamp(self.timestamp / 1e6)
+        if format_spec == "full":
+            return f"{short}  {as_datetime}  {self.identity}  {self.abstract}"
+        if format_spec == "brief":
+            return f"{as_datetime}   {self.abstract}"

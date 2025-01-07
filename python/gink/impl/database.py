@@ -8,6 +8,7 @@ from logging import getLogger
 from re import fullmatch
 from nacl.signing import SigningKey
 from dateutil.parser import parse
+from pathlib import Path
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -43,7 +44,7 @@ class Database(Relay):
 
     def __init__(
             self,
-            store: Union[AbstractStore, str, None] = None,
+            store: Union[AbstractStore, str, Path, None] = None,
             identity: str = get_identity(),
             ):
         super().__init__(store=store)
@@ -211,10 +212,10 @@ class Database(Relay):
                 continue
             yield self.get_one_attribution(bundle_info.timestamp, bundle_info.medallion)
 
-    def show_log(self, limit: Optional[int] = None, *, include_starts=False, file=stdout):
+    def show_log(self, frmt="full", /, limit: Optional[int] = None, include_starts=False, file=stdout):
         """ Just prints the log to stdout in a human-readable format. """
         for attribution in self.get_attributions(limit=limit, include_starts=include_starts):
-            print(attribution, file=file)
+            print(format(attribution, frmt), file=file)
 
     @experimental
     def get_by_name(self, name: str, as_of: GenericTimestamp = None) -> List:

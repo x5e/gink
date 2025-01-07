@@ -4,7 +4,7 @@ from typing import Set, Union, Iterable, List, Callable, Optional, cast
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 from ssl import SSLError
-
+from pathlib import Path
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -31,7 +31,7 @@ class Relay(Server):
     _store: BundleStore
     _not_acked: Set[BundleInfo]
 
-    def __init__(self, store: Union[BundleStore, str, None] = None):
+    def __init__(self, store: Union[BundleStore, str, Path, None] = None):
         super().__init__()
         if isinstance(store, str):
             store = LmdbStore(store)
