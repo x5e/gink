@@ -42,7 +42,7 @@ def test_set_get():
     for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            global_directory = Directory._get_global_instance(database=database)
+            global_directory = database.get_root()
 
             bundler = database.start_bundle("testing")
             global_directory.set("foo", "bar", bundler=bundler)
