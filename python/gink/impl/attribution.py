@@ -33,12 +33,31 @@ class Attribution:
         result += ")"
         return result
 
+    def __str__(self):
+        return format(self, "%O-%Q  %FT%T.%f  %i  %v")
+
     def __format__(self, format_spec: str) -> str:
+        """ Translate given the format spec:
+
+            %i -- identity
+            %v -- comment / summary
+            %o -- timestamp as integer
+            %O -- timestamp as HEX
+            %q -- medallion as integer
+            %Q -- medallion as HEX
+
+        """
+
         muid = Muid(self.timestamp, self.medallion, 0)
         short = str(muid)[0:28]
+        timestamp_as_hex = short[0:14]
+        medallion_as_hex = short[15:]
         as_datetime = datetime.fromtimestamp(self.timestamp / 1e6)
-        if format_spec == "full":
-            return f"{short}  {as_datetime}  {self.identity}  {self.abstract}"
-        if format_spec == "brief":
-            return f"{as_datetime}   {self.abstract}"
-        raise ValueError(f"format not recognized: {format_spec}")
+        partial = format(as_datetime, format_spec)
+        partial = partial.replace("%i", self.identity)
+        partial = partial.replace("%v", self.abstract)
+        partial = partial.replace("%o", str(self.timestamp))
+        partial = partial.replace("%O", timestamp_as_hex)
+        partial = partial.replace("%q", str(self.medallion))
+        partial = partial.replace("%Q", medallion_as_hex)
+        return partial

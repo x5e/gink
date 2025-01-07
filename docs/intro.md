@@ -213,7 +213,7 @@ if "counter" not in root:
 def count_hits():
     counter = root["counter"]
     counter += 1
-    return str(counter)
+    return str(counter.get())
 
 if __name__ == '__main__':
     app.run()

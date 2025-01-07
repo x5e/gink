@@ -212,10 +212,10 @@ class Database(Relay):
                 continue
             yield self.get_one_attribution(bundle_info.timestamp, bundle_info.medallion)
 
-    def show_log(self, frmt="full", /, limit: Optional[int] = None, include_starts=False, file=stdout):
+    def show_log(self, frmt=None, /, limit: Optional[int] = None, include_starts=False, file=stdout):
         """ Just prints the log to stdout in a human-readable format. """
         for attribution in self.get_attributions(limit=limit, include_starts=include_starts):
-            print(format(attribution, frmt), file=file)
+            print(format(attribution, frmt) if frmt else attribution, file=file)
 
     @experimental
     def get_by_name(self, name: str, as_of: GenericTimestamp = None) -> List:

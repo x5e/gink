@@ -104,6 +104,3 @@ class Accumulator(Container):
 
     def __float__(self) -> float:
         return float(self.get())
-
-    def __str__(self) -> str:
-        return str(self.get())
