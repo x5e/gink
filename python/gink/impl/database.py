@@ -191,7 +191,7 @@ class Database(Relay):
             After the timestamp and medallion it will ignore other ordered arguments, so
             that it can be used via get_attribution(*muid).
         """
-        comment = self._store.get_comment(medallion=medallion, timestamp=timestamp)
+        comment = self._store.get_comment(medallion=medallion, timestamp=timestamp) or None
         if comment is None:
             decomposition = self._store.get_one_bundle(timestamp=timestamp, medallion=medallion)
             comment = summarize(decomposition) if decomposition else None

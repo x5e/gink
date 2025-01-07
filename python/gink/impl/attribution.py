@@ -41,3 +41,4 @@ class Attribution:
             return f"{short}  {as_datetime}  {self.identity}  {self.abstract}"
         if format_spec == "brief":
             return f"{as_datetime}   {self.abstract}"
+        raise ValueError(f"format not recognized: {format_spec}")
