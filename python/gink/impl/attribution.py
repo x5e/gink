@@ -34,7 +34,8 @@ class Attribution:
         return result
 
     def __str__(self):
-        local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
-        as_datetime = datetime.fromtimestamp(self.timestamp / 1e6, local_timezone)
+        as_datetime = datetime.fromtimestamp(self.timestamp / 1e6)
         as_datetime = as_datetime.replace(microsecond=0)
-        return f"{as_datetime}  {self.identity}  {self.abstract}"
+        muid = Muid(self.timestamp, self.medallion, 0)
+        short = str(muid)[0:28]
+        return f"{short}  {as_datetime}  {self.identity}  {self.abstract}"
