@@ -19,11 +19,12 @@ from .impl.selectable_console import SelectableConsole
 from .impl.utilities import get_identity, make_auth_func
 from .impl.looping import loop
 from .impl.wsgi_listener import WsgiListener
+from .impl.decomposition import Decomposition
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
 parser.add_argument("--verbosity", "-v", default="INFO", help="the log level to use, e.g. INFO or DEBUG")
-parser.add_argument("--format", default="lmdb", help="storage file format", choices=["lmdb", "binlog"])
+parser.add_argument("--format", help="storage file format", choices=["lmdb", "binlog"])
 parser.add_argument("--set", help="set key/value in path from root, reading value from stdin")
 parser.add_argument("--get", help="get a value from specified path and write to stdout")
 parser.add_argument("--delete", help="delete the value at the specified key or path")
@@ -69,11 +70,14 @@ if args.db_path is None:
     store = MemoryStore()
 elif args.format == "lmdb":
     store = LmdbStore(args.db_path)
-else:
+elif args.format == "binlog":
     store = LogBackedStore(args.db_path)
+else:
+    store = args.db_path
 
 database = Database(store, identity=args.identity or get_identity())
-root = Directory._get_global_instance(database=database)
+store = database.get_store()
+root = database.get_root()
 
 if args.dump:
     if args.dump is True:
@@ -110,11 +114,10 @@ if args.load:
     exit(0)
 
 if args.show_bundles:
-    builder = BundleBuilder()
-    def show(data: bytes, _: BundleInfo):
-        builder.ParseFromString(data)  # type: ignore
+    def show(decomposition: Decomposition):
+        bundle_builder = decomposition.get_builder()
         print("=" * 79)
-        print(builder)
+        print(bundle_builder)
     store.get_bundles(show)
     database.close()
     exit(0)

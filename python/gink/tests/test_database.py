@@ -283,9 +283,12 @@ def generic_test_drop_history(store_maker):
 
 
 def test_file_type_detection():
-    path = Path("/tmp") / currentframe().f_code.co_name
+    path = Path("/tmp") / (currentframe().f_code.co_name + ".gink")
     key = "a key"
-    for Cls in [LmdbStore, LogBackedStore]:
+    for Cls in [
+            LogBackedStore,
+            LmdbStore,
+        ]:
         path.unlink(missing_ok=True)
         store = Cls(path)
         assert isinstance(store, AbstractStore)
@@ -298,13 +301,19 @@ def test_file_type_detection():
         encode_key(key, change_builder.entry.key)
         value = randint(1_000_000, 2_000_000)
         encode_value(value, change_builder.entry.value)
-        bundle = combine(timestamp=chain.chain_start, chain=chain, signing_key=signing_key, identity="abc")
+        bundle = combine(
+            timestamp=chain.chain_start,
+            chain=chain,
+            signing_key=signing_key,
+            identity="abc",
+            changes=[change_builder])
         store.apply_bundle(bundle)
         store.close()
         database = Database(path)
         root = database.get_root()
         found = root.get(key)
-        assert found == value, found
+        assert found == value, (found, value, Cls.__name__)
+        path.unlink()
 
 
 
