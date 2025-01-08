@@ -4,7 +4,11 @@ from contextlib import closing
 from pathlib import Path
 from platform import system
 from io import StringIO
+from inspect import currentframe
+from nacl.signing import SigningKey
+from random import randint
 
+from ..impl.tuples import Chain
 from ..impl.database import Database
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
@@ -14,7 +18,7 @@ from ..impl.sequence import Sequence
 from ..impl.key_set import KeySet
 from ..impl.log_backed_store import LogBackedStore
 from ..impl.looping import loop
-from ..impl.utilities import generate_timestamp
+from ..impl.utilities import generate_timestamp, generate_medallion, combine
 from ..impl.box import Box
 from ..impl.pair_set import PairSet
 from ..impl.pair_map import PairMap
@@ -22,6 +26,9 @@ from ..impl.property import Property
 from ..impl.group import Group
 # from ..impl.group import Group
 from ..impl.muid import Muid # needed for the exec() call in test_dump
+from ..impl.abstract_store import AbstractStore
+from ..impl.builders import ChangeBuilder, EntryBuilder, Behavior
+from ..impl.coding import encode_key, encode_value
 
 _ = Muid(0, 0, 0)
 
@@ -273,3 +280,42 @@ def generic_test_drop_history(store_maker):
         assert seq.size() == 0
         assert "foo" not in gdi
         assert new_dir["foo"] == "baz"
+
+
+def test_file_type_detection():
+    path = Path("/tmp") / (currentframe().f_code.co_name + ".gink")
+    key = "a key"
+    for Cls in [
+            LogBackedStore,
+            LmdbStore,
+        ]:
+        path.unlink(missing_ok=True)
+        store = Cls(path)
+        assert isinstance(store, AbstractStore)
+        chain = Chain(medallion=generate_medallion(), chain_start=generate_timestamp())
+        signing_key = SigningKey.generate()
+        change_builder = ChangeBuilder()
+        #change_builder.entry = EntryBuilder()
+        change_builder.entry.behavior = Behavior.DIRECTORY
+        Muid(-1, -1, Behavior.DIRECTORY).put_into(change_builder.entry.container)
+        encode_key(key, change_builder.entry.key)
+        value = randint(1_000_000, 2_000_000)
+        encode_value(value, change_builder.entry.value)
+        bundle = combine(
+            timestamp=chain.chain_start,
+            chain=chain,
+            signing_key=signing_key,
+            identity="abc",
+            changes=[change_builder])
+        store.apply_bundle(bundle)
+        store.close()
+        database = Database(path)
+        root = database.get_root()
+        found = root.get(key)
+        assert found == value, (found, value, Cls.__name__)
+        path.unlink()
+
+
+
+if __name__ == "__main__":
+    test_file_type_detection()

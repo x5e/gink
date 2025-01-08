@@ -19,6 +19,7 @@ from nacl.hash import blake2b, shorthash, SIPHASH_KEYBYTES
 from nacl.encoding import RawEncoder
 from struct import unpack
 from nacl.signing import SigningKey
+from decimal import Decimal
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp
 from .tuples import Chain
@@ -440,7 +441,7 @@ def summarize(decomposition: Decomposition) -> Optional[str]:
         container_builder: ContainerBuilder = change.container
         container_class = container_classes.get(container_builder.behavior)
         name = container_class.__name__ if container_class else None
-        return f"created a {name}"
+        return f"created a {name}" if name != "Accumulator" else f"created an Accumulator"
     if change.HasField("entry"):
         muid = Muid.create(decomposition.get_info(), change.entry.container)
         behavior = change.entry.behavior
@@ -453,6 +454,10 @@ def summarize(decomposition: Decomposition) -> Optional[str]:
                 return f"set Directory {key=} in {directory}"
         if behavior == Behavior.SEQUENCE:
             return f"added entry to Sequence {muid}"
+        if behavior == Behavior.ACCUMULATOR:
+            integer_value: str = change.entry.value.integer
+            change_amount = Decimal(integer_value) / int(1e9)
+            return f"added {change_amount} to Accumulator {muid}"
         if behavior == Behavior.BOX:
             if change.entry.deletion:
                 return f"deleted contents from Box {muid}"

@@ -31,6 +31,9 @@ class Container(Addressable, ABC):
     def __repr__(self):
         return f"{self.__class__.__name__}(muid={self._muid!r})"
 
+    def __str__(self):
+        return f"{self.__class__.__name__} {self.muid}"
+
     @abstractmethod
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         """ Return the contents of this container as a string """

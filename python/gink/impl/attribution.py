@@ -1,5 +1,5 @@
 """ Contains the Attribution class. """
-from datetime import datetime, timezone
+from datetime import datetime
 from .typedefs import MuTimestamp, Medallion
 from typing import Optional
 from .muid import Muid
@@ -18,7 +18,7 @@ class Attribution:
                  timestamp: MuTimestamp,
                  medallion: Medallion,
                  identity: str,
-                 abstract: Optional[str]=None,
+                 abstract: Optional[str],
                  ):
         self.timestamp = timestamp
         self.medallion = medallion
@@ -34,7 +34,31 @@ class Attribution:
         return result
 
     def __str__(self):
-        local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
-        as_datetime = datetime.fromtimestamp(self.timestamp / 1e6, local_timezone)
-        as_datetime = as_datetime.replace(microsecond=0)
-        return f"{hex(self.medallion)} {as_datetime}  {self.identity}  {self.abstract}"
+        return format(self, "%O-%Q  %FT%T.%f  %i  %v")
+
+    def __format__(self, format_spec: str) -> str:
+        """ Translate given the format spec:
+
+            %i -- identity
+            %v -- comment / summary
+            %o -- timestamp as integer
+            %O -- timestamp as HEX
+            %q -- medallion as integer
+            %Q -- medallion as HEX
+
+        """
+
+        muid = Muid(self.timestamp, self.medallion, 0)
+        short = str(muid)[0:28]
+        timestamp_as_hex = short[0:14]
+        medallion_as_hex = short[15:]
+        partial = format_spec
+        partial = partial.replace("%i", self.identity)
+        partial = partial.replace("%v", self.abstract or "<missing bundle>")
+        partial = partial.replace("%o", str(self.timestamp))
+        partial = partial.replace("%O", timestamp_as_hex)
+        partial = partial.replace("%q", str(self.medallion))
+        partial = partial.replace("%Q", medallion_as_hex)
+        as_datetime = datetime.fromtimestamp(self.timestamp / 1e6)
+        partial = format(as_datetime, partial)
+        return partial

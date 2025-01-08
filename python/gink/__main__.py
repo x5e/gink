@@ -14,16 +14,16 @@ assert datetime
 # TODO: don't import all of datetime
 
 from . import *
-from .impl.builders import BundleBuilder
 from .impl.selectable_console import SelectableConsole
 from .impl.utilities import get_identity, make_auth_func
 from .impl.looping import loop
 from .impl.wsgi_listener import WsgiListener
+from .impl.decomposition import Decomposition
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
 parser.add_argument("--verbosity", "-v", default="INFO", help="the log level to use, e.g. INFO or DEBUG")
-parser.add_argument("--format", default="lmdb", help="storage file format", choices=["lmdb", "binlog"])
+parser.add_argument("--file_format", help="storage file format", choices=["lmdb", "binlog"])
 parser.add_argument("--set", help="set key/value in path from root, reading value from stdin")
 parser.add_argument("--get", help="get a value from specified path and write to stdout")
 parser.add_argument("--delete", help="delete the value at the specified key or path")
@@ -35,10 +35,9 @@ parser.add_argument("--blame", action="store_true", help="show blame information
 parser.add_argument("--as_of", help="as-of time to use for dump or get operation")
 parser.add_argument("--mkdir", help="create a directory using path notation")
 parser.add_argument("--comment", help="comment to add to modifications (set or mkdir)")
-parser.add_argument("--log", nargs="?", const="-10", type=int,
-                    help="show LOG entries from log (e.g. last ten entries as LOG=-10)")
-parser.add_argument("--attributions", nargs="?", const="-10", type=int,
-                    help="show attribution entries")
+parser.add_argument("--log", action="store_true", help="show the log")
+parser.add_argument("--limit", help="limit the number of log entries")
+parser.add_argument("--log_format", help="format for the log")
 parser.add_argument("--listen_on", "-l", nargs="?", const=True,
                     help="start listening on ip:port (default *:8080)")
 parser.add_argument("--connect_to", "-c", nargs="+", help="remote instances to connect to")
@@ -55,6 +54,7 @@ parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defa
 parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help="auth token for connections")
 parser.add_argument("--ssl-cert", default=environ.get("GINK_SSL_CERT"), help="path to ssl certificate file")
 parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path to ssl key file")
+parser.add_argument("--parse", action="store_true", help="parse a binlog file and dump to stdout")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -63,17 +63,24 @@ basicConfig(format="\r[%(asctime)s.%(msecs)03d %(name)s:%(levelname)s] %(message
             level=args.verbosity, datefmt='%I:%M:%S')
 logger = getLogger()
 
+if args.parse:
+    LogBackedStore.dump(args.db_path)
+    exit(0)
+
 store: AbstractStore
 if args.db_path is None:
     logger.warning("Using a transient in-memory database.")
     store = MemoryStore()
-elif args.format == "lmdb":
+elif args.file_format == "lmdb":
     store = LmdbStore(args.db_path)
-else:
+elif args.file_format == "binlog":
     store = LogBackedStore(args.db_path)
+else:
+    store = args.db_path
 
 database = Database(store, identity=args.identity or get_identity())
-root = Directory._get_global_instance(database=database)
+store = database.get_store()
+root = database.get_root()
 
 if args.dump:
     if args.dump is True:
@@ -110,11 +117,10 @@ if args.load:
     exit(0)
 
 if args.show_bundles:
-    builder = BundleBuilder()
-    def show(data: bytes, _: BundleInfo):
-        builder.ParseFromString(data)  # type: ignore
+    def show(decomposition: Decomposition):
+        bundle_builder = decomposition.get_builder()
         print("=" * 79)
-        print(builder)
+        print(bundle_builder)
     store.get_bundles(show)
     database.close()
     exit(0)
@@ -173,13 +179,8 @@ if args.mkdir:
     exit(0)
 
 if args.log:
-    database.show_log(args.log, include_starts=args.starts)
+    database.show_log(args.log_format, limit=args.limit, include_starts=args.starts)
     database.close()
-    exit(0)
-
-if args.attributions:
-    for attr in database.get_attributions(limit=args.attributions):
-        print(repr(attr))
     exit(0)
 
 def parse_listen_on(

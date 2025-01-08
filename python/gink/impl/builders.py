@@ -83,6 +83,7 @@ if TYPE_CHECKING:
         bundles: List[bytes]
         claims: List[ClaimBuilder]
         key_pairs: List[KeyPairBuilder]
+        magic_number: int
 
     class Behavior(IntEnum):
         UNSPECIFIED = 0

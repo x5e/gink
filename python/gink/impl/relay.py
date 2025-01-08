@@ -4,10 +4,9 @@ from typing import Set, Union, Iterable, List, Callable, Optional, cast
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 from ssl import SSLError
-
+from pathlib import Path
 
 # gink modules
-from .abstract_store import AbstractStore
 from .bundle_info import BundleInfo
 from .connection import Connection
 from .listener import Listener
@@ -21,7 +20,7 @@ from .server import Server
 from .sync_func import SyncFunc
 from .builders import SyncMessage
 from .utilities import validate_bundle
-
+from .log_backed_store import LogBackedStore
 
 class Relay(Server):
     """ An extension of the Server class that handles
@@ -31,13 +30,17 @@ class Relay(Server):
     _store: BundleStore
     _not_acked: Set[BundleInfo]
 
-    def __init__(self, store: Union[BundleStore, str, None] = None):
+    def __init__(self, store: Union[BundleStore, str, Path, None] = None):
         super().__init__()
-        if isinstance(store, str):
-            store = LmdbStore(store)
         if isinstance(store, type(None)):
             store = MemoryStore()
-        assert isinstance(store, AbstractStore)
+        elif isinstance(store, (str, Path)):
+            store = Path(store)
+            if not store.exists() or LogBackedStore.is_binlog_file(store):
+                store = LogBackedStore(store)
+            else:
+                store = LmdbStore(store)
+        assert isinstance(store, BundleStore)
         self._store = store
         self._logger = getLogger(self.__class__.__name__)
         self._callbacks: List[Callable[[Decomposition], None]] = list()

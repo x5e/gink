@@ -6,8 +6,9 @@ from typing import Optional, Union, Iterable, List, Tuple
 from sys import stdout
 from logging import getLogger
 from re import fullmatch
-from nacl.signing import SigningKey
+from nacl.signing import SigningKey, VerifyKey
 from dateutil.parser import parse
+from pathlib import Path
 
 # gink modules
 from .abstract_store import AbstractStore
@@ -43,7 +44,7 @@ class Database(Relay):
 
     def __init__(
             self,
-            store: Union[AbstractStore, str, None] = None,
+            store: Union[AbstractStore, str, Path, None] = None,
             identity: str = get_identity(),
             ):
         super().__init__(store=store)
@@ -62,7 +63,10 @@ class Database(Relay):
 
     def __enter__(self) -> Tuple[BundleInfo, SigningKey]:
         self._lock.acquire()
-        return self._acquire_appendable_link()
+        bundle_info, signing_key = self._acquire_appendable_link()
+        assert isinstance(bundle_info, BundleInfo), "not a bundle info?"
+        assert isinstance(signing_key, SigningKey), "not a signing key?"
+        return bundle_info, signing_key
 
     def __exit__(self, *_):
         self._lock.release()
@@ -122,7 +126,11 @@ class Database(Relay):
         if reused:
             self._symmetric_key = self._store.get_symmetric_key(None)
             verify_key = self._store.get_verify_key(reused.get_chain())
+            assert isinstance(verify_key, VerifyKey)
             self._signing_key = self._store.get_signing_key(verify_key)
+            assert isinstance(self._signing_key, SigningKey)
+            if self._signing_key is None:
+                raise AssertionError("could not find a signing key")
             return reused, self._signing_key
         self._signing_key = SigningKey.generate()
         self._store.save_signing_key(self._signing_key)
@@ -190,7 +198,7 @@ class Database(Relay):
             After the timestamp and medallion it will ignore other ordered arguments, so
             that it can be used via get_attribution(*muid).
         """
-        comment = self._store.get_comment(medallion=medallion, timestamp=timestamp)
+        comment = self._store.get_comment(medallion=medallion, timestamp=timestamp) or None
         if comment is None:
             decomposition = self._store.get_one_bundle(timestamp=timestamp, medallion=medallion)
             comment = summarize(decomposition) if decomposition else None
@@ -203,18 +211,18 @@ class Database(Relay):
             abstract=comment,
         )
 
-    def get_attributions(self, limit: Optional[int] = -10, *, include_starts=False) -> Iterable[Attribution]:
+    def get_attributions(self, limit: Optional[int] = None, *, include_starts=False) -> Iterable[Attribution]:
         """ Gets a list of attributions representing all bundles stored by the db. """
         for bundle_info in self._store.get_some(BundleInfo, limit):
             assert isinstance(bundle_info, BundleInfo)
-            #if bundle_info.timestamp == bundle_info.chain_start and not include_starts:
-            #    continue
+            if bundle_info.timestamp == bundle_info.chain_start and not include_starts:
+                continue
             yield self.get_one_attribution(bundle_info.timestamp, bundle_info.medallion)
 
-    def show_log(self, limit: Optional[int] = -10, *, include_starts=False, file=stdout):
+    def show_log(self, frmt=None, /, limit: Optional[int] = None, include_starts=False, file=stdout):
         """ Just prints the log to stdout in a human-readable format. """
         for attribution in self.get_attributions(limit=limit, include_starts=include_starts):
-            print(attribution, file=file)
+            print(format(attribution, frmt) if frmt else attribution, file=file)
 
     @experimental
     def get_by_name(self, name: str, as_of: GenericTimestamp = None) -> List:
