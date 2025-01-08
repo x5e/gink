@@ -16,7 +16,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
     console.log("starting");
     const db1 = new Expector(
         "python3",
-        ["-u", "-m", "gink", TEST_DB_PATH1, "--format", "lmdb", "-v", "DEBUG"],
+        ["-u", "-m", "gink", TEST_DB_PATH1, "--file_format", "lmdb", "-v", "DEBUG"],
         {
             env: {
                 ...process.env,
@@ -54,7 +54,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
             "-m",
             "gink",
             TEST_DB_PATH1,
-            "--format",
+            "--file_format",
             "lmdb",
             "--dump_to",
             DUMP_PATH,
@@ -75,7 +75,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
             "-m",
             "gink",
             TEST_DB_PATH2,
-            "--format",
+            "--file_format",
             "lmdb",
             "--load",
             DUMP_PATH,
@@ -90,7 +90,7 @@ const TEST_DB_PATH2 = "/tmp/py-load-test2.db";
     await loaded.close();
     const gink = new Expector(
         "python3",
-        ["-u", "-m", "gink", TEST_DB_PATH2, "--format", "lmdb"],
+        ["-u", "-m", "gink", TEST_DB_PATH2, "--file_format", "lmdb"],
         {
             env: {
                 ...process.env,

@@ -125,7 +125,7 @@ class MemoryStore(AbstractStore):
         self._signing_keys[signing_key.verify_key] = signing_key
 
     def get_signing_key(self, verify_key: VerifyKey) -> SigningKey:
-        self._signing_keys[verify_key]
+        return self._signing_keys[verify_key]
 
     def get_verify_key(self, chain: Chain, *_) -> VerifyKey:
         return self._verify_keys[chain]

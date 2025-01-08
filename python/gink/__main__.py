@@ -23,7 +23,7 @@ from .impl.decomposition import Decomposition
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
 parser.add_argument("--verbosity", "-v", default="INFO", help="the log level to use, e.g. INFO or DEBUG")
-parser.add_argument("--format", help="storage file format", choices=["lmdb", "binlog"])
+parser.add_argument("--file_format", help="storage file format", choices=["lmdb", "binlog"])
 parser.add_argument("--set", help="set key/value in path from root, reading value from stdin")
 parser.add_argument("--get", help="get a value from specified path and write to stdout")
 parser.add_argument("--delete", help="delete the value at the specified key or path")
@@ -35,10 +35,9 @@ parser.add_argument("--blame", action="store_true", help="show blame information
 parser.add_argument("--as_of", help="as-of time to use for dump or get operation")
 parser.add_argument("--mkdir", help="create a directory using path notation")
 parser.add_argument("--comment", help="comment to add to modifications (set or mkdir)")
-parser.add_argument("--log", nargs="?", const="-10", type=int,
-                    help="show LOG entries from log (e.g. last ten entries as LOG=-10)")
-parser.add_argument("--attributions", nargs="?", const="-10", type=int,
-                    help="show attribution entries")
+parser.add_argument("--log", action="store_true", help="show the log")
+parser.add_argument("--limit", help="limit the number of log entries")
+parser.add_argument("--log_format", help="format for the log")
 parser.add_argument("--listen_on", "-l", nargs="?", const=True,
                     help="start listening on ip:port (default *:8080)")
 parser.add_argument("--connect_to", "-c", nargs="+", help="remote instances to connect to")
@@ -72,9 +71,9 @@ store: AbstractStore
 if args.db_path is None:
     logger.warning("Using a transient in-memory database.")
     store = MemoryStore()
-elif args.format == "lmdb":
+elif args.file_format == "lmdb":
     store = LmdbStore(args.db_path)
-elif args.format == "binlog":
+elif args.file_format == "binlog":
     store = LogBackedStore(args.db_path)
 else:
     store = args.db_path
@@ -180,13 +179,8 @@ if args.mkdir:
     exit(0)
 
 if args.log:
-    database.show_log(limit=args.log, include_starts=args.starts)
+    database.show_log(args.log_format, limit=args.limit, include_starts=args.starts)
     database.close()
-    exit(0)
-
-if args.attributions:
-    for attr in database.get_attributions(limit=args.attributions):
-        print(repr(attr))
     exit(0)
 
 def parse_listen_on(
