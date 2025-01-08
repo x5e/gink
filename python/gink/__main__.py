@@ -14,7 +14,6 @@ assert datetime
 # TODO: don't import all of datetime
 
 from . import *
-from .impl.builders import BundleBuilder
 from .impl.selectable_console import SelectableConsole
 from .impl.utilities import get_identity, make_auth_func
 from .impl.looping import loop
@@ -56,6 +55,7 @@ parser.add_argument("--wsgi_listen_on", help="ip:port or port to listen on (defa
 parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help="auth token for connections")
 parser.add_argument("--ssl-cert", default=environ.get("GINK_SSL_CERT"), help="path to ssl certificate file")
 parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path to ssl key file")
+parser.add_argument("--parse", action="store_true", help="parse a binlog file and dump to stdout")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -63,6 +63,10 @@ if args.show_arguments:
 basicConfig(format="\r[%(asctime)s.%(msecs)03d %(name)s:%(levelname)s] %(message)s",
             level=args.verbosity, datefmt='%I:%M:%S')
 logger = getLogger()
+
+if args.parse:
+    LogBackedStore.dump(args.db_path)
+    exit(0)
 
 store: AbstractStore
 if args.db_path is None:
@@ -176,7 +180,7 @@ if args.mkdir:
     exit(0)
 
 if args.log:
-    database.show_log(args.log, include_starts=args.starts)
+    database.show_log(limit=args.log, include_starts=args.starts)
     database.close()
     exit(0)
 

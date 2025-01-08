@@ -6,7 +6,7 @@ from typing import Optional, Union, Iterable, List, Tuple
 from sys import stdout
 from logging import getLogger
 from re import fullmatch
-from nacl.signing import SigningKey
+from nacl.signing import SigningKey, VerifyKey
 from dateutil.parser import parse
 from pathlib import Path
 
@@ -63,7 +63,10 @@ class Database(Relay):
 
     def __enter__(self) -> Tuple[BundleInfo, SigningKey]:
         self._lock.acquire()
-        return self._acquire_appendable_link()
+        bundle_info, signing_key = self._acquire_appendable_link()
+        assert isinstance(bundle_info, BundleInfo), "not a bundle info?"
+        assert isinstance(signing_key, SigningKey), "not a signing key?"
+        return bundle_info, signing_key
 
     def __exit__(self, *_):
         self._lock.release()
@@ -123,7 +126,11 @@ class Database(Relay):
         if reused:
             self._symmetric_key = self._store.get_symmetric_key(None)
             verify_key = self._store.get_verify_key(reused.get_chain())
+            assert isinstance(verify_key, VerifyKey)
             self._signing_key = self._store.get_signing_key(verify_key)
+            assert isinstance(self._signing_key, SigningKey)
+            if self._signing_key is None:
+                raise AssertionError("could not find a signing key")
             return reused, self._signing_key
         self._signing_key = SigningKey.generate()
         self._store.save_signing_key(self._signing_key)

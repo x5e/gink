@@ -52,12 +52,13 @@ class Attribution:
         short = str(muid)[0:28]
         timestamp_as_hex = short[0:14]
         medallion_as_hex = short[15:]
-        as_datetime = datetime.fromtimestamp(self.timestamp / 1e6)
-        partial = format(as_datetime, format_spec)
+        partial = format_spec
         partial = partial.replace("%i", self.identity)
         partial = partial.replace("%v", self.abstract or "<missing bundle>")
         partial = partial.replace("%o", str(self.timestamp))
         partial = partial.replace("%O", timestamp_as_hex)
         partial = partial.replace("%q", str(self.medallion))
         partial = partial.replace("%Q", medallion_as_hex)
+        as_datetime = datetime.fromtimestamp(self.timestamp / 1e6)
+        partial = format(as_datetime, partial)
         return partial
