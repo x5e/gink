@@ -455,8 +455,9 @@ def summarize(decomposition: Decomposition) -> Optional[str]:
         if behavior == Behavior.SEQUENCE:
             return f"added entry to Sequence {muid}"
         if behavior == Behavior.ACCUMULATOR:
-            change = Decimal(change.entry.value.integer) / int(1e9)
-            return f"added {change} to Accumulator {muid}"
+            integer_value: str = change.entry.value.integer
+            change_amount = Decimal(integer_value) / int(1e9)
+            return f"added {change_amount} to Accumulator {muid}"
         if behavior == Behavior.BOX:
             if change.entry.deletion:
                 return f"deleted contents from Box {muid}"

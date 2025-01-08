@@ -18,7 +18,7 @@ class Attribution:
                  timestamp: MuTimestamp,
                  medallion: Medallion,
                  identity: str,
-                 abstract: Optional[str]=None,
+                 abstract: Optional[str],
                  ):
         self.timestamp = timestamp
         self.medallion = medallion
@@ -55,7 +55,7 @@ class Attribution:
         as_datetime = datetime.fromtimestamp(self.timestamp / 1e6)
         partial = format(as_datetime, format_spec)
         partial = partial.replace("%i", self.identity)
-        partial = partial.replace("%v", self.abstract)
+        partial = partial.replace("%v", self.abstract or "<missing bundle>")
         partial = partial.replace("%o", str(self.timestamp))
         partial = partial.replace("%O", timestamp_as_hex)
         partial = partial.replace("%q", str(self.medallion))
