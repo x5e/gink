@@ -231,11 +231,14 @@ for target in (args.connect_to or []):
 
 if args.interactive:
     interactive = True
-elif args.line_mode:
-    interactive = False
 else:
     interactive = stdin.isatty()
 
-console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
+if interactive:
 
-loop(console, database, wsgi_listener, context_manager=console)
+    console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
+
+    loop(console, database, wsgi_listener, context_manager=console)
+
+else:
+    exec(stdin.read())
