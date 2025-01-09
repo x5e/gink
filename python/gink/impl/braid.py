@@ -39,7 +39,7 @@ class Braid(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = database.start_bundle(comment)
+            bundler = database.bundler(comment)
         created = False
         if isinstance(muid, str):
             muid = Muid.from_str(muid)
@@ -108,7 +108,7 @@ class Braid(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler)

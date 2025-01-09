@@ -38,7 +38,7 @@ class Vertex(Container):
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = database.start_bundle(comment)
+            bundler = database.bundler(comment)
         if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
@@ -90,7 +90,7 @@ class Vertex(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
         change_builder = ChangeBuilder()
         entry_builder: EntryBuilder = change_builder.entry
         entry_builder.behavior = VERTEX
@@ -131,7 +131,7 @@ class EdgeType(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = database.start_bundle(comment)
+            bundler = database.bundler(comment)
 
         if isinstance(muid, str):
             muid = Muid.from_str(muid)
@@ -157,7 +157,7 @@ class EdgeType(Container):
         bundler: Optional[Bundler] = None) -> 'Edge':
         immediate = False
         if bundler is None:
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
             immediate = True
         return Edge(
             action=self,
@@ -241,7 +241,7 @@ class Edge(Addressable):
             self._action = action if isinstance(action, Muid) else action._muid
             if bundler is None:
                 _immediate = True
-                bundler = self._database.start_bundle()
+                bundler = self._database.bundler()
             change_builder = ChangeBuilder()
             entry_builder: EntryBuilder = change_builder.entry
             entry_builder.behavior = EDGE_TYPE
@@ -311,7 +311,7 @@ class Edge(Addressable):
         """
         immediate = False
         if not isinstance(bundler, Bundler):
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
             immediate = True
         change_builder = ChangeBuilder()
         movement_builder = change_builder.movement

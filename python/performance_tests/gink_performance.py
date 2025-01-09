@@ -42,7 +42,7 @@ def test_write_big_bundle(db_file_path: Path, count: int) -> dict:
     with LmdbStore(db_file_path, True) as store:
         db = Database(store)
         directory = Directory(db, muid=Muid(1, 2, 3))
-        bundler = db.start_bundle("test")
+        bundler = db.bundler("test")
         print("Testing Gink Python writing performance to fresh database in one bundle.")
         print("Writing", count, "key, value entries...")
         before_time = datetime.now()

@@ -32,7 +32,7 @@ class Accumulator(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = database.start_bundle(comment)
+            bundler = database.bundler(comment)
         created = False
         if isinstance(muid, str):
             muid = Muid.from_str(muid)

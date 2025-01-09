@@ -15,7 +15,7 @@ def test_create_and_set():
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
-            with database.start_bundle() as bundler:
+            with database.bundler() as bundler:
                 directory1 = Directory(bundler=bundler)
                 set_muid = directory1.set("foo", "bar", bundler=bundler)
             after = directory1.get("foo")
@@ -44,7 +44,7 @@ def test_set_get():
             database = Database(store=store)
             global_directory = database.get_root()
 
-            bundler = database.start_bundle("testing")
+            bundler = database.bundler("testing")
             global_directory.set("foo", "bar", bundler=bundler)
             bundler.commit()
             infos = store.get_bundle_infos()

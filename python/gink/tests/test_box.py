@@ -17,11 +17,11 @@ def test_creation():
         with closing(store):
             assert isinstance(store, AbstractStore)
             database = Database(store=store)
-            with database.start_bundle() as bundler:
+            with database.bundler() as bundler:
                 box1 = Box(muid=Muid(1, 2, 3), database=database, bundler=bundler)
                 assert len(bundler) == 0  # no actual changes
 
-            with database.start_bundle() as bundler:
+            with database.bundler() as bundler:
                 box2 = Box(bundler=bundler)
                 assert len(bundler)
             assert box1 != box2
@@ -33,7 +33,7 @@ def test_set_get():
             database = Database(store=store)
             global_box = Box._get_global_instance(database=database)
 
-            bundler = database.start_bundle("testing")
+            bundler = database.bundler("testing")
             global_box.set("test value", bundler=bundler)
             bundler.commit()
             infos = store.get_bundle_infos()
