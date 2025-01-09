@@ -17,6 +17,7 @@ process.chdir(__dirname + "/..");
         "-u",
         "-m",
         "gink",
+        "--line_mode",
         "-c",
         `ws://localhost:${port}`,
     ]);
@@ -24,7 +25,7 @@ process.chdir(__dirname + "/..");
     await server.expect("accepted");
     await sleep(100);
 
-    server.send("await root.set(3,4, 'test bundle');\n");
+    server.send("await root.set(3,4, {comment:'test bundle'});\n");
     await server.expect("received bundle", 1000);
     await sleep(100);
 

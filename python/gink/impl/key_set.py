@@ -40,7 +40,7 @@ class KeySet(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = database.start_bundle(comment)
+            bundler = database.bundler(comment)
         created = False
         if isinstance(muid, str):
             muid = Muid.from_str(muid)
@@ -69,7 +69,7 @@ class KeySet(Container):
         bundler = bundler or Bundler.get_active()
         if bundler is None:
             immediate = True
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
         for key in keys:
             self._add_entry(key=key, value=inclusion, bundler=bundler)
         if immediate:
@@ -181,7 +181,7 @@ class KeySet(Container):
         bundler = bundler or Bundler.get_active()
         if bundler is None:
             immediate = True
-            bundler = self._database.start_bundle()
+            bundler = self._database.bundler()
         for element in s:
             if self.contains(element):
                 self.remove(element, bundler=bundler, comment=comment)
@@ -194,7 +194,7 @@ class KeySet(Container):
         immedate = False
         bundler = bundler or Bundler.get_active()
         if bundler is None:
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
             immedate = True
         intersection = self.intersection(s)
         iterable = self._database.get_store().get_keyed_entries(

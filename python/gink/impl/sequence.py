@@ -41,7 +41,7 @@ class Sequence(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = database.start_bundle(comment)
+            bundler = database.bundler(comment)
         if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
@@ -131,7 +131,7 @@ class Sequence(Container):
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
         items = list(iterable)
         if hasattr(expiries, "__iter__"):
             expiries = list(expiries)  # type: ignore
@@ -162,7 +162,7 @@ class Sequence(Container):
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
         change_builder = ChangeBuilder()
         movement_builder = change_builder.movement  # type: ignore
         self._muid.put_into(movement_builder.container)

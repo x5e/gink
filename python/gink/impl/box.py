@@ -38,7 +38,7 @@ class Box(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = database.start_bundle(comment)
+            bundler = database.bundler(comment)
         if isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:

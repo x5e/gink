@@ -149,7 +149,7 @@ class Database(Relay):
         self._last_link = wrapper.get_info()
         return self._last_link, self._signing_key
 
-    def start_bundle(self, comment: Optional[str] = None) -> Bundler:
+    def bundler(self, comment: Optional[str] = None) -> Bundler:
         from .bound_bundler import BoundBundler
         symmetric_key = self._store.get_symmetric_key(None)
         bundler = BoundBundler(database=self, comment=comment, symmetric_key=symmetric_key)
@@ -165,7 +165,7 @@ class Database(Relay):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self.start_bundle(comment)
+            bundler = self.bundler(comment)
         assert isinstance(bundler, Bundler)
         to_time = self.resolve_timestamp(to_time)
         for change in self._store.get_reset_changes(to_time=to_time, container=None, user_key=None):

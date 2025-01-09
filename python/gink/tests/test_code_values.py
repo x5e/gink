@@ -102,7 +102,7 @@ def test_entry_to_from_builder():
     for store in [LmdbStore(), MemoryStore()]:
         database = Database(store)
 
-        bundler = database.start_bundle()
+        bundler = database.bundler()
         change_builder = ChangeBuilder()
         entry_builder = change_builder.entry
         entry_builder.behavior = PAIR_SET

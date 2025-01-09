@@ -7,6 +7,7 @@ from io import StringIO
 from inspect import currentframe
 from nacl.signing import SigningKey
 from random import randint
+from decimal import Decimal
 
 from ..impl.tuples import Chain
 from ..impl.database import Database
@@ -27,8 +28,9 @@ from ..impl.group import Group
 # from ..impl.group import Group
 from ..impl.muid import Muid # needed for the exec() call in test_dump
 from ..impl.abstract_store import AbstractStore
-from ..impl.builders import ChangeBuilder, EntryBuilder, Behavior
+from ..impl.builders import ChangeBuilder, Behavior
 from ..impl.coding import encode_key, encode_value
+from ..impl.accumulator import Accumulator
 
 _ = Muid(0, 0, 0)
 
@@ -46,7 +48,7 @@ def test_add_bundle() -> None:
     store = MemoryStore()
     database = Database(store=store)
     started = generate_timestamp()
-    bundler = database.start_bundle("just a test")
+    bundler = database.bundler("just a test")
     bundler.commit()
     bundles: List[BundleInfo] = []
     store.get_bundles(lambda _: bundles.append(_.get_info()))
@@ -62,7 +64,7 @@ def test_negative_as_of():
     ]:
         with closing(store):
             database = Database(store=store)
-            bundler = database.start_bundle("hello world")
+            bundler = database.bundler("hello world")
             assert bundler.timestamp is None
             bundler.commit()
             assert bundler.timestamp is not None
@@ -77,9 +79,9 @@ def test_bundle_two():
     ]:
         with closing(store):
             database = Database(store=store)
-            first = database.start_bundle("hello world")
+            first = database.bundler("hello world")
             first.commit()
-            second = database.start_bundle("goodbye, world")
+            second = database.bundler("goodbye, world")
             second.commit()
 
 
@@ -198,6 +200,8 @@ def test_dump():
             g = Group(contents={"include": {box_muid, ps_muid}, "exclude": {pm_muid}}, database=database)
             group_dump = g.dumps()
             group_muid = g.get_muid()
+            root["counter"] = Accumulator()
+            root["counter"] += 17.3
             # TODO: vertex, edge_type, edge
 
             string_io = StringIO()
@@ -212,8 +216,8 @@ def test_dump():
             assert root2["foo"]["bar"] == 91
 
             seq = Sequence(muid=seq_muid, database=db2)
-            assert seq.at(1)[1] == 2
-            assert seq.at(2)[1] == "3"
+            assert seq[1] == 2
+            assert seq[2] == "3"
 
             ks = KeySet(muid=ks_muid, database=db2)
             assert ks.contains("3")
@@ -236,6 +240,8 @@ def test_dump():
             assert group.contains(box_muid)
             assert group.contains(ps_muid)
             assert group.dumps() == group_dump
+
+            assert root["counter"] == Decimal('17.3')
 
 
 def generic_test_drop_history(store_maker):

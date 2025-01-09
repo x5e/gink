@@ -32,7 +32,7 @@ class Accumulator(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = database.start_bundle(comment)
+            bundler = database.bundler(comment)
         created = False
         if isinstance(muid, str):
             muid = Muid.from_str(muid)
@@ -51,7 +51,7 @@ class Accumulator(Container):
 
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         id = repr(self._muid)
-        return f"{self.__class__.__name__}({id}, contents={self.get(as_of=as_of)!r})"
+        return f"{self.__class__.__name__}(muid={id}, contents={self.get(as_of=as_of)!r})"
 
     def increment(
             self,

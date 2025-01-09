@@ -9,6 +9,7 @@ process.chdir(__dirname + "/..");
         "-u",
         "-m",
         "gink",
+        "--line_mode",
         "--wsgi",
         "examples.wsgi.hello",
         "--wsgi_listen_on",

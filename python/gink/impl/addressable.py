@@ -53,7 +53,7 @@ class Addressable:
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
         store = self._database.get_store()
         hits = [fc for fc in store.get_by_name(name) if fc.builder.behavior == Behavior.PROPERTY]
         if len(hits) > 1:

@@ -8,6 +8,19 @@ _class: invert
 
 ---
 <!-- _class: invert -->
+## Why create the Gink database system?
+##
+
+I wanted a system that's:
+* file-based and easy to use
+* flexible / rearrangeable
+* easy to sync (mergable multi-master)
+* kept history (easy to query history and restore)
+* protocol based (allowing multiple implementations)
+* basically git but for data structures
+
+---
+<!-- _class: invert -->
 ## Gink Directories are like Python's dictionaries.
 ##
 ```
@@ -119,15 +132,19 @@ $> python3
 # (By default) Gink keeps a history of all changes.
 #
 ```
+>>> from gink import *
+
+>>> root = Database("demo.db").get_root()
+
 >>> root["example"] = Sequence()
 
 >>> root["example"].append("foo bar")
 
->>> database.show_log()
+>>> database.show_log("%F  %T  %i  %v")
 
-2025-01-03 22:57:58-05:00  darin@pengin  added entry to Sequence 062AD965...
-2025-01-03 22:57:47-05:00  darin@pengin  set Directory key='example' in root
-2025-01-03 22:57:47-05:00  darin@pengin  created a Sequence
+2025-01-09  00:52:56  darin@pengin  created a Sequence
+2025-01-09  00:52:56  darin@pengin  set Directory key='example' in root
+2025-01-09  00:53:15  darin@pengin  added entry to Sequence 062B3F97...
 ```
 
 ---
@@ -136,19 +153,16 @@ $> python3
 # Use your own comment and/or bundle changes.
 #
 ```
-with database.start_bundle("combining some operations") as bundler:
+with database.bundler("combining some operations"):
     sequence = Sequence()
     sequence.append("hello world")
 
 sequence.pop(comment="removing hello world")
 
-database.show_log()
-```
+database.show_log("%T.%f  %v")
 
-.
-```
-2025-01-04 15:42:38-05:00  darin@pengin  removing hello world
-2025-01-04 15:42:38-05:00  darin@pengin  combining some operations
+00:50:55.114179  combining some operations
+00:50:55.115294  removing hello world
 ```
 
 
@@ -163,15 +177,16 @@ database.show_log()
 
 >>> directory[1234] = "something else"
 
->>> database.show_log()
-2025-01-03 23:08:20-05:00  darin@pengin  set Directory key=1234 in 062AD9871...
-2025-01-03 23:08:11-05:00  darin@pengin  set Directory key=1234 in 062AD9871...
-2025-01-03 23:07:03-05:00  darin@pengin  created a Directory
+>>> database.show_log("%F  %T  %v")
+
+2025-01-03  23:07:03  created a Directory
+2025-01-03  23:08:11  set Directory key=1234 in 062AD9871...
+2025-01-03  23:08:20  set Directory key=1234 in 062AD9871...
 
 >>> directory.get(1234)
 'something else'
 
->>> directory.get(1234, as_of="2025-01-03 23:08:15-05:00")
+>>> directory.get(1234, as_of="2025-01-03 23:08:15")
 'very important data'
 
 ```
@@ -222,7 +237,7 @@ if __name__ == '__main__':
 
 ---
 <!-- _class: invert -->
-# Next Week:
+# Next Time:
 * syncronizing databases between servers
 * sharing databases with Javascript backends
 * architecture and performance considerations

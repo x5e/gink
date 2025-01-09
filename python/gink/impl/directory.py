@@ -47,7 +47,7 @@ class Directory(Container):
         bundler = bundler or Bundler.get_active()
         if bundler is None:
             immediate = True
-            bundler = database.start_bundle(comment)
+            bundler = database.bundler(comment)
         created = False
         if root:
             assert muid is None
@@ -177,7 +177,7 @@ class Directory(Container):
         bundler = bundler or Bundler.get_active()
         immediate = bundler is None
         if bundler is None:
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
         for key in keys:
             found = store.get_entry_by_key(current._muid, key=key, as_of=timestamp) if not just_created else None
             if found is None or found.builder.deletion:  # type: ignore
@@ -338,7 +338,7 @@ class Directory(Container):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
         if hasattr(from_what, "keys"):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore

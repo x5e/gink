@@ -9,6 +9,7 @@ process.chdir(__dirname + "/..");
         "-u",
         "-m",
         "gink",
+        "--line_mode",
         "-l",
         `*:${port}`,
     ]);
@@ -37,6 +38,7 @@ process.chdir(__dirname + "/..");
         "-u",
         "-m",
         "gink",
+        "--line_mode",
         "-l",
         `*:${port}`,
     ]);

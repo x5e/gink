@@ -101,7 +101,7 @@ class Container(Addressable, ABC):
         bundler = bundler or Bundler.get_active()
         immediate = False
         if not isinstance(bundler, Bundler):
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
             immediate = True
         change_builder = ChangeBuilder()
         self._muid.put_into(change_builder.clearance.container)  # type: ignore
@@ -131,7 +131,7 @@ class Container(Addressable, ABC):
         immediate = False
         if not isinstance(bundler, Bundler):
             immediate = True
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
         change_builder = ChangeBuilder()
         entry_builder: EntryBuilder = change_builder.entry
         entry_builder.behavior = behavior or self.get_behavior()
@@ -242,7 +242,7 @@ class Container(Addressable, ABC):
         immediate = False
         if bundler is None:
             immediate = True
-            bundler = self._database.start_bundle(comment)
+            bundler = self._database.bundler(comment)
         assert isinstance(bundler, Bundler)
         to_time = self._database.resolve_timestamp(to_time)
         for change in self._database.get_store().get_reset_changes(to_time=to_time,
