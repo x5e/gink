@@ -55,6 +55,7 @@ parser.add_argument("--auth_token", default=environ.get("GINK_AUTH_TOKEN"), help
 parser.add_argument("--ssl-cert", default=environ.get("GINK_SSL_CERT"), help="path to ssl certificate file")
 parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path to ssl key file")
 parser.add_argument("--parse", action="store_true", help="parse a binlog file and dump to stdout")
+parser.add_argument("--loop", action="store_true", help="process events without a repl")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -234,10 +235,12 @@ if args.interactive:
 else:
     interactive = stdin.isatty()
 
-if interactive:
-
+if interactive or args.line_mode:
     console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
+else:
+    console = None
 
+if console or args.loop:
     loop(console, database, wsgi_listener, context_manager=console)
 
 else:

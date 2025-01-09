@@ -12,6 +12,7 @@ process.chdir(__dirname + "/..");
             "-u",
             "-m",
             "gink",
+            "--loop",
             "--wsgi",
             "gink.crud.app",
             "--wsgi_listen_on",

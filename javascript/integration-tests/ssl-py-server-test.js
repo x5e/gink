@@ -10,6 +10,7 @@ process.chdir(__dirname + "/..");
         "-u",
         "-m",
         "gink",
+        "--line_mode",
         "-l",
         `*:${port}`,
         "--ssl-cert",
@@ -23,6 +24,7 @@ process.chdir(__dirname + "/..");
         "-u",
         "-m",
         "gink",
+        "--line_mode",
         "-c",
         `wss://localhost:${port}`,
     ]);

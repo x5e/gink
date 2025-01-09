@@ -31,7 +31,7 @@ class Selectable(Protocol):
 
 def loop(
         *selectables: Optional[Selectable],
-        context_manager: ContextManager = nullcontext(),
+        context_manager: Optional[ContextManager] = None,
         selector: Optional[BaseSelector] = None,
         until: GenericTimestamp = None,
         _logger = getLogger(__name__),
@@ -57,6 +57,7 @@ def loop(
                 registered.add(selectable_)
 
     add(selectables)
+    context_manager = context_manager or nullcontext()
     with context_manager:
         while until_muts is None or generate_timestamp() < until_muts:
             try:
