@@ -8,9 +8,16 @@ _class: invert
 
 ---
 <!-- _class: invert -->
-## Gink Directories are like Python's dictionaries.
+## Why create the Gink database system?
 ##
 
+I wanted a system that's:
+* file-based and easy to use
+* flexible / rearrangeable
+* easy to sync (mergable multi-master)
+* kept history (easy to query history and restore)
+* protocol based (allowing multiple implementations)
+* basically git but for data structures
 
 ---
 <!-- _class: invert -->
@@ -230,7 +237,7 @@ if __name__ == '__main__':
 
 ---
 <!-- _class: invert -->
-# Next Week:
+# Next Time:
 * syncronizing databases between servers
 * sharing databases with Javascript backends
 * architecture and performance considerations
