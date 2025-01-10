@@ -70,7 +70,11 @@ class MemoryStore(AbstractStore):
         self._retaining_entries = retain_entries
         self._totals = dict()
 
+    def _maybe_refresh(self):
+        pass  # used by LogBackedStore subclass
+
     def get_billionths(self, accumulator: Muid, *, as_of = -1):
+        self._maybe_refresh()
         if as_of == -1:
             return self._totals.get(bytes(accumulator), 0)
         minimum = bytes(Placement(accumulator, None, Muid(+0, +0, +0), None))
@@ -112,6 +116,7 @@ class MemoryStore(AbstractStore):
         return key_id
 
     def get_symmetric_key(self, key_id: Union[Chain, int, None]) -> Optional[bytes]:
+        self._maybe_refresh()
         if isinstance(key_id, Chain):
             raise NotImplementedError()
         if key_id is None:
@@ -125,12 +130,15 @@ class MemoryStore(AbstractStore):
         self._signing_keys[signing_key.verify_key] = signing_key
 
     def get_signing_key(self, verify_key: VerifyKey) -> SigningKey:
+        self._maybe_refresh()
         return self._signing_keys[verify_key]
 
     def get_verify_key(self, chain: Chain, *_) -> VerifyKey:
+        self._maybe_refresh()
         return self._verify_keys[chain]
 
     def get_container(self, container: Muid) -> Optional[ContainerBuilder]:
+        self._maybe_refresh()
         return self._containers.get(container)
 
     def _get_file_path(self) -> Optional[Path]:
@@ -143,6 +151,7 @@ class MemoryStore(AbstractStore):
             yield key, val
 
     def get_comment(self, *, medallion: Medallion, timestamp: MuTimestamp) -> Optional[str]:
+        self._maybe_refresh()
         look_for = BundleInfo(timestamp=timestamp, medallion=medallion)
         for thing in self._bundles.irange(minimum=look_for):
             assert isinstance(thing, BundleInfo)
@@ -158,6 +167,7 @@ class MemoryStore(AbstractStore):
         return claim_builder
 
     def get_one_bundle(self, timestamp: MuTimestamp, medallion: Medallion, *_) -> Optional[Decomposition]:
+        self._maybe_refresh()
         look_for = BundleInfo(timestamp=timestamp, medallion=medallion)
         for thing in self._bundles.irange(minimum=look_for):
             assert isinstance(thing, BundleInfo)
@@ -172,6 +182,7 @@ class MemoryStore(AbstractStore):
             edge_type: Optional[Muid] = None,
             source: Optional[Muid] = None,
             target: Optional[Muid] = None) -> Iterable[FoundEntry]:
+        self._maybe_refresh()
         if edge_type is None:
             raise NotImplementedError("edge scans without an edge type aren't currently supported in memory store")
         edge_type_bytes = bytes(edge_type)
@@ -192,9 +203,11 @@ class MemoryStore(AbstractStore):
                 yield FoundEntry(entry_muid, entry_builder)
 
     def get_entry(self, muid: Muid) -> Optional[EntryBuilder]:
+        self._maybe_refresh()
         return self._entries.get(muid)
 
     def get_some(self, cls, last_index: Optional[int] = None):
+        self._maybe_refresh()
         sorted_dict = {
             BundleBuilder: self._bundles,
             EntryBuilder: self._entries,
@@ -229,6 +242,7 @@ class MemoryStore(AbstractStore):
                 raise ValueError(f"don't know what to do with {key}")
 
     def get_keyed_entries(self, container: Muid, behavior: int, as_of: MuTimestamp) -> Iterable[FoundEntry]:
+        self._maybe_refresh()
         cont_bytes = bytes(container)
         clearance_time = self._get_time_of_prior_clear(container, as_of)
         iterator = self._placements.irange(
@@ -253,6 +267,7 @@ class MemoryStore(AbstractStore):
 
     def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None, Tuple[Muid, Muid]],
                          as_of: MuTimestamp) -> Optional[FoundEntry]:
+        self._maybe_refresh()
         as_of_muid = Muid(timestamp=as_of, medallion=0, offset=0)
         clearance_time = self._get_time_of_prior_clear(container, as_of)
         epoch_muid = Muid(0, 0, 0)
@@ -272,6 +287,7 @@ class MemoryStore(AbstractStore):
         return None
 
     def _get_claims(self, _: Lock, /) -> Mapping[Medallion, ClaimBuilder]:
+        self._maybe_refresh()
         return self._claims
 
     def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[Decomposition], None]]=None, /) -> int:
@@ -285,7 +301,7 @@ class MemoryStore(AbstractStore):
             offset: int = 0,
             desc: bool = False,
     ) -> Iterable[PositionedEntry]:
-
+        self._maybe_refresh()
         prefix = bytes(container)
         clearance_time = self._get_time_of_prior_clear(container, as_of)
         for placement_bytes in self._placements.irange(prefix, prefix + encode_muts(as_of), reverse=desc):
@@ -407,9 +423,11 @@ class MemoryStore(AbstractStore):
         return None
 
     def get_identity(self, chain: Chain, lock: Optional[bool]=None, /) -> str:
+        self._maybe_refresh()
         return self._identities[chain]
 
     def find_chain(self, medallion: Medallion, timestamp: MuTimestamp) -> Chain:
+        self._maybe_refresh()
         for chain in self._identities.irange(reverse=True,
             minimum=Chain(medallion=medallion, chain_start=0),
             maximum=Chain(medallion=medallion+1, chain_start=0)):
@@ -539,6 +557,7 @@ class MemoryStore(AbstractStore):
         limit_to: Optional[Mapping[Chain, Limit]] = None,
         **_
     ):
+        self._maybe_refresh()
         start_scan_at: MuTimestamp = 0
         for bundle_info in self._bundles.irange(minimum=BundleInfo(timestamp=start_scan_at)):
             if limit_to is None or bundle_info.timestamp <= limit_to.get(bundle_info.get_chain(), 0):
@@ -546,6 +565,7 @@ class MemoryStore(AbstractStore):
                 callback(bundle_wrapper)
 
     def get_has_map(self, limit_to: Optional[Mapping[Chain, Limit]]=None) -> HasMap:
+        self._maybe_refresh()
         has_map = HasMap()
         for bundle_info in self._chain_infos.values():
             assert isinstance(bundle_info, BundleInfo)
@@ -555,6 +575,7 @@ class MemoryStore(AbstractStore):
         return has_map
 
     def get_last(self, chain: Chain) -> BundleInfo:
+        self._maybe_refresh()
         return self._chain_infos[chain]
 
     def _get_location(self, entry_muid: Muid, as_of: MuTimestamp = -1) -> Optional[bytes]:
@@ -567,6 +588,7 @@ class MemoryStore(AbstractStore):
         return None
 
     def get_positioned_entry(self, entry: Muid, as_of: MuTimestamp = -1) -> Optional[PositionedEntry]:
+        self._maybe_refresh()
         location = self._get_location(entry, as_of)
         if location is None:
             return None
@@ -580,6 +602,7 @@ class MemoryStore(AbstractStore):
 
     def get_reset_changes(self, to_time: MuTimestamp, container: Optional[Muid],
                           user_key: Optional[UserKey], recursive=True) -> Iterable[ChangeBuilder]:
+        self._maybe_refresh()
         if container is None and user_key is not None:
             raise ValueError("can't specify key without specifying container")
         if container is None:
@@ -855,6 +878,7 @@ class MemoryStore(AbstractStore):
         return clearance_time
 
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+        self._maybe_refresh()
         as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
         key_min = name.encode() + b"\x00"
         key_max = name.encode() + b"\x00" + bytes(as_of_muid)
@@ -873,6 +897,7 @@ class MemoryStore(AbstractStore):
                 yield FoundContainer(address=describing_muid, builder=container_builder)
 
     def get_by_describing(self, desc: Muid, as_of: MuTimestamp = -1) -> Iterable[FoundEntry]:
+        self._maybe_refresh()
         min = bytes(desc)
         as_of_muid = Muid(timestamp=as_of, medallion=-1, offset=-1)
         max = bytes(desc) + bytes(as_of_muid)

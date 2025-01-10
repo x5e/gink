@@ -1,6 +1,6 @@
 """ implementation of the LogBackedStore class """
 from typing import Optional, Union, Callable
-from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN
+from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN, LOCK_SH
 from pathlib import Path
 from .builders import LogFileBuilder, ClaimBuilder, KeyPairBuilder
 from .memory_store import MemoryStore
@@ -87,6 +87,21 @@ class LogBackedStore(MemoryStore):
 
     def _get_file_path(self) -> Optional[Path]:
         return self._filepath
+
+    def _maybe_refresh(self):
+        if self._flocked:
+            return  # will have already refreshed inside an apply, and no new data is possible if exclusive
+        current_location = self._handle.tell()
+        assert current_location == self._processed_to, (current_location, self._processed_to)
+        self._handle.seek(0, 2)
+        end_of_file = self._handle.tell()
+        if end_of_file != self._processed_to:
+            self._handle.seek(self._processed_to, 0)
+            flock(self._handle, LOCK_SH)
+            self._flocked = True
+            self._refresh_helper(False)
+            flock(self._handle, LOCK_UN)
+            self._flocked = False
 
     def _refresh_helper(self, _: Lock, callback: Optional[Callable[[Decomposition], None]]=None, /) -> int:
         file_bytes = self._handle.read()
