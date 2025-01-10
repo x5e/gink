@@ -43,7 +43,12 @@ class Muid:
         raise ValueError("medallion not defined")
 
     def __lt__(self, other):
-        return bytes(self) < bytes(other)
+        if not isinstance(other, Muid):
+            raise ValueError(f"can't compare a muid to a {other}")
+        return (
+            self.timestamp < other.timestamp or
+            self.medallion < other.medallion or
+            self.offset < other.offset)
 
     def __hash__(self):
         return hash((self.offset, self.medallion, self.timestamp))

@@ -9,6 +9,7 @@ from .bundler import Bundler
 from .utilities import generate_timestamp, combine
 from .decomposition import Decomposition
 from .typedefs import MuTimestamp, Medallion
+from .timing import *
 
 class BoundBundler(Bundler):
 
@@ -51,6 +52,7 @@ class BoundBundler(Bundler):
     def rollback(self):
         self._is_open = False
 
+    @timing
     def commit(self):
         if not self._is_open:
             raise ValueError("bundle isn't open")

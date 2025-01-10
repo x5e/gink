@@ -15,6 +15,7 @@ from .typedefs import UserKey, MuTimestamp, UserValue, Deletion, Inclusion
 from .muid import Muid
 from .bundle_info import BundleInfo
 from .utilities import is_named_tuple
+from .timing import *
 
 UNSPECIFIED: int = Behavior.UNSPECIFIED
 SEQUENCE: int = Behavior.SEQUENCE
