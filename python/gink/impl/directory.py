@@ -122,7 +122,6 @@ class Directory(Container):
         result = self.get(key_or_keys, obj, as_of=as_of)
         return result is not obj
 
-    @timing
     @typechecked
     def get(self, key_or_keys: Union[UserKey, Iterable[UserKey]], default=None, /, *, as_of: GenericTimestamp = None):
         """ gets the value associate with a key, default if missing, optionally as_of a time
@@ -147,7 +146,6 @@ class Directory(Container):
             current = current._get_occupant(found.builder, found.address)
         return current
 
-    @timing
     @typechecked
     def set(
         self,

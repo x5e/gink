@@ -52,7 +52,6 @@ class BoundBundler(Bundler):
     def rollback(self):
         self._is_open = False
 
-    @timing
     def commit(self):
         if not self._is_open:
             raise ValueError("bundle isn't open")

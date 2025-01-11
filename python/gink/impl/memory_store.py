@@ -266,7 +266,6 @@ class MemoryStore(AbstractStore):
                              address=entry_storage_key.placer)
             last = entry_storage_key.middle
 
-    @timing
     def get_entry_by_key(self, container: Muid, key: Union[UserKey, Muid, None, Tuple[Muid, Muid]],
                          as_of: MuTimestamp) -> Optional[FoundEntry]:
         self._maybe_refresh()
@@ -336,7 +335,6 @@ class MemoryStore(AbstractStore):
             if limit is not None:
                 limit -= 1
 
-    @timing
     def apply_bundle(
             self,
             bundle: Union[Decomposition, bytes],
@@ -364,8 +362,7 @@ class MemoryStore(AbstractStore):
                 prior_hash = bundle_builder.prior_hash
                 if prior_hash != bytes.fromhex(old_info.hex_hash):
                     raise ValueError("prior_hash doesn't match hash of prior bundle")
-            with Timer("verify"):
-                verify_key.verify(bundle.get_bytes())
+            verify_key.verify(bundle.get_bytes())
             self._bundles[new_info] = bundle
             self._chain_infos[chain_key] = new_info
             if bundle_builder.encrypted:
