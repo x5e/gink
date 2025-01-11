@@ -22,7 +22,7 @@ from .impl.tuples import Chain
 from .impl.braid import Braid
 from .impl.typedefs import inf, GenericTimestamp
 from .impl.accumulator import Accumulator, Decimal
-from .impl.timing import Timer
+from .impl.timing import Timer, report_timing
 
 
 __all__ = [
@@ -55,4 +55,5 @@ __all__ = [
     "Accumulator",
     "Decimal",
     "Timer",
+    "report_timing",
 ]
