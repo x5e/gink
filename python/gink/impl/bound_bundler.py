@@ -9,6 +9,7 @@ from .bundler import Bundler
 from .utilities import generate_timestamp, combine
 from .decomposition import Decomposition
 from .typedefs import MuTimestamp, Medallion
+from .timing import *
 
 class BoundBundler(Bundler):
 

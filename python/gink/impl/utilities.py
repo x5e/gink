@@ -34,6 +34,7 @@ from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE
 from .builders import Behavior
 from .bundle_info import BundleInfo
 from .decomposition import Decomposition
+from .timing import *
 
 def digest(data: bytes) -> bytes:
     return blake2b(data, digest_size=32, encoder=RawEncoder)
@@ -378,7 +379,6 @@ def shorter_hash(data: bytes, _key = b"\x5e"*SIPHASH_KEYBYTES, _mask = 2**52 - 1
     shorthash_int = unpack("<q", short_hash_result)[0]
     truncated = shorthash_int & _mask
     return truncated
-
 
 def combine(
         *,

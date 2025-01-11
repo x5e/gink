@@ -5,7 +5,7 @@ from uuid import UUID
 
 from .builders import MuidBuilder
 from .dummy import Dummy
-from .typedefs import MuTimestamp, Medallion
+from .typedefs import MuTimestamp, Medallion, OFFSET_MOD, TIMESTAMP_MOD, MEDALLION_MOD
 
 
 class Muid:
@@ -42,8 +42,12 @@ class Muid:
             return self._bundler.medallion
         raise ValueError("medallion not defined")
 
-    def __lt__(self, other):
-        return bytes(self) < bytes(other)
+    def __lt__(self, othr):
+        if not isinstance(othr, Muid):
+            raise ValueError(f"can't compare a muid to a {othr}")
+        self_tuple = (self.timestamp % TIMESTAMP_MOD, self.medallion % MEDALLION_MOD, self.offset % OFFSET_MOD)
+        othr_tuple = (othr.timestamp % TIMESTAMP_MOD, othr.medallion % MEDALLION_MOD, othr.offset % OFFSET_MOD)
+        return self_tuple < othr_tuple
 
     def __hash__(self):
         return hash((self.offset, self.medallion, self.timestamp))
@@ -68,12 +72,9 @@ class Muid:
         """Translates to a format that looks like: 05D5EAC793E61F-1F8CB77AE1EAA-0000B
 
         See docs/muid.md for a description of the format."""
-        timestamp_mod = 16**14
-        medallion_mod = 16**13
-        offset_mod = 16**5
-        time_part = hex(self.timestamp % timestamp_mod)[2:].upper().zfill(14)
-        medallion_part = hex(self.medallion % medallion_mod)[2:].upper().zfill(13)
-        offset_part = hex(self.offset % offset_mod)[2:].upper().zfill(5)
+        time_part = hex(self.timestamp % TIMESTAMP_MOD)[2:].upper().zfill(14)
+        medallion_part = hex(self.medallion % MEDALLION_MOD)[2:].upper().zfill(13)
+        offset_part = hex(self.offset % OFFSET_MOD)[2:].upper().zfill(5)
 
         result = f"{time_part}-{medallion_part}-{offset_part}"
 

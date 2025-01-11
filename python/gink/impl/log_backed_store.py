@@ -1,14 +1,16 @@
 """ implementation of the LogBackedStore class """
 from typing import Optional, Union, Callable
-from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN
+from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN, LOCK_SH
 from pathlib import Path
+from nacl.signing import SigningKey, VerifyKey
+
 from .builders import LogFileBuilder, ClaimBuilder, KeyPairBuilder
 from .memory_store import MemoryStore
 from .decomposition import Decomposition
 from .abstract_store import Lock
 from .tuples import Chain
 from .utilities import create_claim
-from nacl.signing import SigningKey, VerifyKey
+from .timing import *
 
 
 class LogBackedStore(MemoryStore):
@@ -84,12 +86,32 @@ class LogBackedStore(MemoryStore):
         data: bytes = self._log_file_builder.SerializeToString()  # type: ignore
         self._handle.write(data)
         self._handle.flush()
+        self._processed_to += len(data)
 
     def _get_file_path(self) -> Optional[Path]:
         return self._filepath
 
+    def _maybe_refresh(self):
+        if self._flocked:
+            return  # will have already refreshed inside an apply, and no new data is possible if exclusive
+        current_location = self._handle.tell()
+        if current_location != self._processed_to:
+            raise AssertionError("%d != %d" % (current_location, self._processed_to))
+        self._handle.seek(0, 2)
+        end_of_file = self._handle.tell()
+        if end_of_file != self._processed_to:
+            self._handle.seek(self._processed_to, 0)
+            flock(self._handle, LOCK_SH)
+            self._flocked = True
+            self._refresh_helper(False)
+            flock(self._handle, LOCK_UN)
+            self._flocked = False
+
     def _refresh_helper(self, _: Lock, callback: Optional[Callable[[Decomposition], None]]=None, /) -> int:
+        assert self._handle.tell() == self._processed_to
         file_bytes = self._handle.read()
+        if len(file_bytes) == 0:
+            return 0
         self._log_file_builder.ParseFromString(file_bytes)  # type: ignore
         count = 0
         for bundle_bytes in self._log_file_builder.bundles:  # type: ignore # pylint: disable=maybe-no-member
@@ -100,6 +122,7 @@ class LogBackedStore(MemoryStore):
         for key_pair_builder in self._log_file_builder.key_pairs:
             self._signing_keys[VerifyKey(key_pair_builder.public_key)] = SigningKey(key_pair_builder.secret_key)
         self._processed_to += len(file_bytes)
+        assert self._handle.tell() == self._processed_to
         return count
 
     def apply_bundle(

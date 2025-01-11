@@ -30,6 +30,7 @@ from .utilities import (
     summarize,
 )
 from .relay import Relay
+from .timing import *
 
 
 class Database(Relay):

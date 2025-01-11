@@ -13,6 +13,7 @@ from .bundler import Bundler
 from .typedefs import UserKey, GenericTimestamp, UserValue
 from .attribution import Attribution
 from .utilities import generate_timestamp
+from .timing import *
 
 
 class Directory(Container):
@@ -25,7 +26,7 @@ class Directory(Container):
             self,
             *,
             muid: Optional[Union[Muid, str]] = None,
-            root: Optional[bool] = None,
+            root: bool = False,
             contents: Optional[Dict[UserKey, Union[UserValue, Container]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
@@ -45,7 +46,7 @@ class Directory(Container):
         database = database or Database.get_most_recently_created_database()
         immediate = False
         bundler = bundler or Bundler.get_active()
-        if bundler is None:
+        if bundler is None and (contents is not None or (muid is None and not root)):
             immediate = True
             bundler = database.bundler(comment)
         created = False
@@ -62,7 +63,7 @@ class Directory(Container):
             if not created:
                 self.clear(bundler=bundler)
             self.update(contents, bundler=bundler)
-        if immediate:
+        if immediate and bundler is not None:
             if len(bundler):
                 bundler.commit()
             else:

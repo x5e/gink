@@ -16,6 +16,7 @@ from .addressable import Addressable
 from .tuples import Chain
 from .utilities import generate_timestamp, normalize_pair, experimental
 from .builders import Behavior
+from .timing import *
 
 class Container(Addressable, ABC):
     """ Abstract base class for mutable data types (directories, sequences, etc). """
