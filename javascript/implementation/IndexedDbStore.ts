@@ -115,6 +115,9 @@ export class IndexedDbStore implements Store {
     ) {
         this.ready = this.initialize(indexedDbName, reset);
     }
+    getBillionths(muid: Muid, asOf?: AsOf): Promise<BigInt> {
+        throw new Error("Method not implemented.");
+    }
 
     acquireChain(identity: string): Promise<BundleInfo | null> {
         return Promise.resolve(null);

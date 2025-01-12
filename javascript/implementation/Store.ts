@@ -165,4 +165,6 @@ export interface Store {
      * @param keyId the id of the symmetric key to retrieve
      */
     getSymmetricKey(keyId: Number): Promise<Bytes>;
+
+    getBillionths(muid: Muid, asOf?: AsOf): Promise<BigInt>;
 }

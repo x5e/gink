@@ -71,6 +71,9 @@ export class LogBackedStore extends LockableLog implements Store {
             this.initializeLogBackedStore(),
         );
     }
+    getBillionths(muid: Muid, asOf?: AsOf): Promise<BigInt> {
+        return this.internalStore.getBillionths(muid, asOf);
+    }
 
     acquireChain(identity: string): Promise<BundleInfo | null> {
         return Promise.resolve(null);
@@ -117,7 +120,7 @@ export class LogBackedStore extends LockableLog implements Store {
         const unlockingFunction = await this.memoryLock.acquireLock();
         await this.pullDataFromFile();
         const thisLogBackedStore = this;
-        this.fileWatcher = watch(this.filename, async (eventType, filename) => {
+        this.fileWatcher = watch(this.filename, async (eventType, _filename) => {
             await new Promise((r) => setTimeout(r, 10));
             if (thisLogBackedStore.closed || !thisLogBackedStore.opened) return;
             let size: number = await thisLogBackedStore.getFileLength();

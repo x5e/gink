@@ -1,8 +1,7 @@
 import { Database } from "./Database";
 import { Container } from "./Container";
-import { Value, Muid, AsOf, Meta } from "./typedefs";
-import { ensure, muidToString } from "./utils";
-import { toJson, interpret } from "./factories";
+import { Muid, AsOf, Meta } from "./typedefs";
+import { ensure } from "./utils";
 import { Behavior } from "./builders";
 
 export class Accumulator extends Container {
@@ -31,17 +30,14 @@ export class Accumulator extends Container {
         return new Accumulator(database, muid);
     }
 
-    async set(value: Value | Container, meta?: Meta): Promise<Muid> {
+    async addNumber(increment: number, meta?: Meta): Promise<Muid> {
+        const value = BigInt(Math.floor(increment * 1_000_000_000));
         return this.addEntry(undefined, value, meta);
     }
 
-    async get(asOf?: AsOf): Promise<Container | Value | undefined> {
-        const entry = await this.database.store.getEntryByKey(
-            this.address,
-            undefined,
-            asOf,
-        );
-        return interpret(entry, this.database);
+    async getNumber(asOf?: AsOf): Promise<number> {
+        const billionths = await this.database.store.getBillionths(this.address, asOf);
+        return Number(billionths) / 1_000_000_000;
     }
 
     /**
@@ -50,56 +46,30 @@ export class Accumulator extends Container {
      * @returns 0 or 1 depending on whether there's something in the box.
      */
     async size(asOf?: AsOf): Promise<number> {
-        const entry = await this.database.store.getEntryByKey(
-            this.address,
-            undefined,
-            asOf,
-        );
-        return +!(entry === undefined || entry.deletion);
+        return this.getNumber(asOf);
+    }
+
+    public async clear(purge?: boolean, meta?: Meta): Promise<Muid> {
+        throw new Error("not implemented");
     }
 
     async reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void> {
-        if (recurse === true) {
-            recurse = new Set();
-        }
-        if (recurse instanceof Set) {
-            recurse.add(muidToString(this.address));
-        }
         const bundler = await this.database.startBundle(meta);
         if (!toTime) {
             // If no time is specified, we are resetting to epoch, which is just a clear
             this.clear(false, { bundler });
         } else {
-            const thereNow = await this.get();
+            /*
+            const thereNow = await this.getNumber();
             const thereThen = await this.get(toTime);
             if (thereThen !== thereNow) {
                 await this.set(thereThen, { bundler });
             }
-            if (
-                recurse &&
-                thereThen instanceof Container &&
-                !recurse.has(muidToString(thereThen.address))
-            ) {
-                await thereThen.reset(toTime, recurse, { bundler });
-            }
+            */
         }
         if (!meta?.bundler) {
             await bundler.commit();
         }
-    }
-
-    /**
-     * checks to see if something is in the box
-     * @param asOf
-     * @returns true if no value or container is in the box
-     */
-    async isEmpty(asOf?: AsOf): Promise<boolean> {
-        const entry = await this.database.store.getEntryByKey(
-            this.address,
-            undefined,
-            asOf,
-        );
-        return entry === undefined || entry.deletion;
     }
 
     /**
@@ -111,13 +81,10 @@ export class Accumulator extends Container {
      * @returns a JSON string
      */
     async toJson(
-        indent: number | boolean = false,
+        _indent: number | boolean = false,
         asOf?: AsOf,
-        seen?: Set<string>,
+        _seen?: Set<string>,
     ): Promise<string> {
-        if (seen === undefined) seen = new Set();
-        const contents = await this.get(asOf);
-        if (contents === undefined) return "[null]";
-        return "[" + (await toJson(contents, indent, asOf, seen)) + "]";
+        return String(await this.getNumber(asOf));
     }
 }

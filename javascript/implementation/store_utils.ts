@@ -52,7 +52,7 @@ export function getStorageKey(
         behavior === Behavior.EDGE_TYPE
     ) {
         return entryBuilder.getEffective() || entryMuid.timestamp;
-    } else if (behavior === Behavior.BOX || behavior === Behavior.VERTEX) {
+    } else if (behavior === Behavior.BOX || behavior === Behavior.VERTEX || behavior == Behavior.ACCUMULATOR) {
         return [];
     } else if (behavior === Behavior.PROPERTY || behavior === Behavior.GROUP) {
         ensure(entryBuilder.hasDescribing());
