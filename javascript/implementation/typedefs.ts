@@ -165,6 +165,10 @@ export interface Sealer {
 }
 
 export interface IndexedDbStoreSchema extends DBSchema {
+    accumulatorTotals: {
+        key: MuidTuple;
+        value: bigint;
+    }
     trxns: {
         key: BundleInfoTuple;
         value: BundleBytes;

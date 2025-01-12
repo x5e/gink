@@ -11,7 +11,7 @@ import { ensure, generateTimestamp } from "../implementation/utils";
 it("basic accumulator operation", async function () {
     // set up the objects
     for (const store of [
-        // new IndexedDbStore("Box.test1", true),
+        new IndexedDbStore("Accumulator.test1", true),
         new MemoryStore(true),
     ]) {
         const instance = new Database({ store });
