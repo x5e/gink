@@ -26,7 +26,6 @@ export class CommandLineInterface {
     constructor(args: {
         connect_to?: string[];
         listen_on?: string;
-        data_root?: string;
         data_file?: string;
         identity?: string;
         reconnect?: boolean;

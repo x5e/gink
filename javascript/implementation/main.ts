@@ -20,8 +20,9 @@ if (require.main === module) {
         nargs: "?",
         const: 8080,
     });
-    parser.add_argument("--data-file", {
-        help: `path to a logbacked store database file.`,
+    parser.add_argument("data_file", {
+        nargs: "?",
+        help: `path to a log-backed database file.`,
         default: process.env["GINK_DATA_FILE"],
     });
     parser.add_argument("-i", "--identity", {
