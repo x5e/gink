@@ -414,12 +414,10 @@ export function testStore(
         entryBuilder2.setValue(wrapValue("top secret"));
         changeBuilder2.setEntry(entryBuilder2);
         innerBundleBuilder.getChangesList().push(changeBuilder2);
-
         const encrypted = encryptMessage(
             innerBundleBuilder.serializeBinary(),
             symKey,
         );
-
         const outerBundleBuilder = extendChainWithoutSign(
             "Outer",
             chainStart,

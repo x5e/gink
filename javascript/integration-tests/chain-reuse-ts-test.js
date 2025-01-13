@@ -15,7 +15,7 @@ let instance2;
 
     instance = new Expector(
         "./tsc.out/implementation/main.js",
-        ["--data-file", TEST_DB_PATH, "-i", "chain-test@test"],
+        [TEST_DB_PATH, "-i", "chain-test@test"],
         {
             env: { ...process.env },
         },
@@ -35,7 +35,7 @@ let instance2;
 
     instance2 = new Expector(
         "./tsc.out/implementation/main.js",
-        ["--data-file", TEST_DB_PATH, "-i", "chain-test@test"],
+        [TEST_DB_PATH, "-i", "chain-test@test"],
         {
             env: { ...process.env },
         },

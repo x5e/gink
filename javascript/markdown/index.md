@@ -150,7 +150,7 @@ const noResult = await box.get();
 ### Directory
 The `Directory` aims to mimic the functionality and API of a JavaScript Map.
 ```js
-const directory = await database.createDirectory();
+const directory = await Directory.create(database);
 
 // As seen in the quick start, some of the basic
 // directory operations:
@@ -162,7 +162,7 @@ const result = await directory.get("key1");
 const asMap = await directory.toMap();
 
 // Storing sub-Directories
-const subdir = await database.createDirectory();
+const subdir = await Directory.create(database);
 await directory.set("new dir", subdir);
 ```
 
@@ -170,7 +170,7 @@ await directory.set("new dir", subdir);
 A `Sequence` is the Gink version of a JavaScript Array. Sequences are specifically ordered by time of insertion, so they end up representing a queue quite well. Due to the fact they are ordered by insertion, Sequences do not support `unshift`.
 
 ```ts
-const seq = await database.createSequence();
+const seq = await Sequence.create(database);
 
 await seq.push("A");
 await seq.push("B");
@@ -222,7 +222,7 @@ await seq.move(cMuid, 1);
 A Gink `KeySet` behaves similarly to a JavaScript Set. A `KeySet` may only contain unique values. These values may not include other Gink Containers (check out `Group` if you are looking for a collection of Containers).
 
 ```ts
-const ks = await database.createKeySet();
+const ks = await KeySet.create(database);
 
 await ks.add("key1");
 
