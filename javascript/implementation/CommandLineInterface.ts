@@ -3,7 +3,13 @@ import { Store } from "./Store";
 import { Database } from "./Database";
 import { AuthFunction, BundleView } from "./typedefs";
 import { SimpleServer } from "./SimpleServer";
-import { ensure, generateTimestamp, getIdentity, logToStdErr, noOp } from "./utils";
+import {
+    ensure,
+    generateTimestamp,
+    getIdentity,
+    logToStdErr,
+    noOp,
+} from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { start, REPLServer } from "node:repl";
 import { Directory } from "./Directory";
@@ -36,7 +42,6 @@ export class CommandLineInterface {
         ssl_key?: string;
         verbose?: boolean;
     }) {
-
         // This makes debugging through integration tests way easier.
         globalThis.ensure = ensure;
         this.logger = args.verbose ? logToStdErr : noOp;
