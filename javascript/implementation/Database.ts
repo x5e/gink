@@ -304,20 +304,11 @@ export class Database {
     ): Promise<BundleInfo> {
         return this.store.addBundle(bundle).then((added) => {
             if (!added) return;
-            let summary: string;
-            if (bundle.info.chainStart === bundle.info.timestamp) {
-                summary = JSON.stringify(bundle.info, [
-                    "medallion",
-                    "timestamp",
-                    "chainStart",
-                ]);
-            } else {
-                summary = JSON.stringify(bundle.info, [
-                    "medallion",
-                    "timestamp",
-                    "priorTime",
-                ]);
-            }
+            const summary = JSON.stringify(bundle.info, [
+                "medallion",
+                "timestamp",
+                "comment",
+            ]);
             this.logger(`added bundle from ${fromConnectionId}: ${summary}`);
             this.iHave.markAsHaving(bundle.info);
             const peer = this.peers.get(fromConnectionId);

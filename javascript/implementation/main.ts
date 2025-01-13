@@ -47,7 +47,7 @@ if (require.main === module) {
     });
     parser.add_argument("-v", "--verbose", {
         help: `whether or not to be verbose`,
-        default: "",
+        action: "store_true",
     });
     parser.add_argument("-r", "--reconnect", {
         help: `retry connection to database servers if they disconnect? default is true.`,
