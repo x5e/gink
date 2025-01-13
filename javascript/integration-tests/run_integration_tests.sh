@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 #set -o errexit
+
 cd "$(dirname "$0")"
 if [[ -z ${PYTHONPATH} ]]; then
-    export PYTHONPATH=../../python;
+    cd "../../python"
+    export PYTHONPATH=$PWD;
+    cd "../javascript/integration-tests"
 fi
+pwd
+
 
 export CURRENT_SAFE_PORT=8080
 

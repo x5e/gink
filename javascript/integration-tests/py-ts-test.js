@@ -2,18 +2,19 @@
 const Expector = require("./Expector.js");
 const { sleep } = require("./browser_test_utilities.js");
 process.chdir(__dirname + "/..");
-
+let client = null;
+let server = null;
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector(
+    server = new Expector(
         "./tsc.out/implementation/main.js",
-        ["-l", port],
+        ["-l", port, "--verbose"],
         { env: { ...process.env } },
     );
     await server.expect("ready", 2000);
 
-    const client = new Expector("python3", [
+    client = new Expector("python3", [
         "-u",
         "-m",
         "gink",
@@ -26,7 +27,7 @@ process.chdir(__dirname + "/..");
     await sleep(100);
 
     server.send("await root.set(3,4, {comment:'test bundle'});\n");
-    await server.expect("received bundle", 1000);
+    await server.expect("added bundle", 1000);
     await sleep(100);
 
     client.send("root.get(3);\n");
@@ -37,7 +38,9 @@ process.chdir(__dirname + "/..");
     await server.close();
     console.log("finished!");
     process.exit(0);
-})().catch((reason) => {
+})().catch(async (reason) => {
+    if (client) await client.close();
+    if (server) await server.close();
     console.error(reason);
     process.exit(1);
 });
