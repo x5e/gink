@@ -15,6 +15,7 @@ process.chdir(__dirname + "/..");
             "/etc/ssl/certs/localhost.crt",
             "--ssl-key",
             "/etc/ssl/certs/localhost.key",
+            "--verbose",
         ],
         {
             env: { ...process.env },
@@ -36,7 +37,7 @@ process.chdir(__dirname + "/..");
     await sleep(100);
 
     server.send("await root.set(3,4, 'test bundle');\n");
-    await server.expect("received bundle", 1000);
+    await server.expect("added bundle", 1000);
     await sleep(100);
 
     client.send("root.get(3);\n");

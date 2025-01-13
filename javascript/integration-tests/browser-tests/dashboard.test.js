@@ -17,13 +17,13 @@ it("share bundles between two pages", async () => {
     try {
         server = new Expector(
             "node",
-            ["./tsc.out/implementation/main.js", "-l", port],
+            ["./tsc.out/implementation/main.js", "-l", port, "--verbose"],
             { env: { ...process.env } },
             false,
         );
         browser = await puppeteer.launch(getLaunchOptions()); // pass false to getLaunchOptions for local debugging.
         await sleep(1000);
-        await server.expect("ready");
+        await server.expect("node.gink");
 
         let page1 = await browser.newPage();
         let page2 = await browser.newPage();

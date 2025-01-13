@@ -12,7 +12,7 @@ let server = null;
         ["-l", port, "--verbose"],
         { env: { ...process.env } },
     );
-    await server.expect("ready", 2000);
+    await server.expect("node.gink", 2000);
 
     client = new Expector("python3", [
         "-u",
