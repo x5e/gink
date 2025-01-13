@@ -25,7 +25,7 @@ it("connect to server and display bundles", async () => {
         );
         browser = await puppeteer.launch(getLaunchOptions());
         await sleep(1000);
-        await server.expect("ready");
+        await server.expect("node.gink");
 
         let page = await browser.newPage();
 

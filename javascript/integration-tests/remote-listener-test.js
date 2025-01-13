@@ -1,6 +1,10 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict
 const Expector = require("./Expector.js");
-const { Database, ensure, Directory } = require("../tsc.out/implementation/index.js");
+const {
+    Database,
+    ensure,
+    Directory,
+} = require("../tsc.out/implementation/index.js");
 const { sleep } = require("./browser_test_utilities.js");
 process.chdir(__dirname + "/..");
 
@@ -9,11 +13,11 @@ process.chdir(__dirname + "/..");
     console.log("starting remote listener test");
     const server = new Expector(
         "./tsc.out/implementation/main.js",
-        ["-l", port],
+        ["-l", port, "--verbose"],
         { env: { ...process.env } },
         false,
     );
-    await server.expect("ready", 2000);
+    await server.expect("node.gink", 2000);
 
     const client1 = new Database();
     await client1.connectTo(`ws://localhost:${port}`, {

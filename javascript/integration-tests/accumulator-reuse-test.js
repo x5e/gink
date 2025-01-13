@@ -1,11 +1,11 @@
 #!/usr/bin/env -S node --unhandled-rejections=strict --trace-uncaught --trace-warnings
 const Expector = require("./Expector.js");
-const { existsSync, unlinkSync } = require('fs');
+const { existsSync, unlinkSync } = require("fs");
 const { sleep } = require("./browser_test_utilities.js");
 
 process.chdir(__dirname + "/../../python");
 
-const TEST_DB_PATH = "/tmp/accumulator-reuse-test.gink"
+const TEST_DB_PATH = "/tmp/accumulator-reuse-test.gink";
 if (existsSync(TEST_DB_PATH)) {
     unlinkSync(TEST_DB_PATH);
 }
@@ -21,11 +21,11 @@ process.exit(0);
 (async () => {
     try {
         console.log("started");
-        const args = ["-um", "gink", TEST_DB_PATH, "--line_mode"]
+        const args = ["-um", "gink", TEST_DB_PATH, "--line_mode"];
         const python1 = new Expector("python3", args);
-        python1.send("1+2\n")
+        python1.send("1+2\n");
         await python1.expect("3", 2000);
-        console.log("got three")
+        console.log("got three");
         await sleep(100);
         //python1.send("from gink import * \n")
         await sleep(100);
@@ -43,7 +43,7 @@ process.exit(0);
         console.log("finished first process");
 
         const cobra = new Expector("python3", args);
-        cobra.send("2+3\n")
+        cobra.send("2+3\n");
         await cobra.expect("5", 2000);
         console.log("got 5");
         cobra.send("accum = root['accum']\n");

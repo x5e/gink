@@ -515,6 +515,9 @@ export function valueToJson(value: Value): string {
         value = Array.from(value).map(intToHex).join("");
     }
     const type = typeof value;
+    if (type === "bigint") {
+        return String(value);
+    }
     if (
         type === "string" ||
         type === "number" ||

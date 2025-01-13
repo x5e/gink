@@ -79,6 +79,7 @@ type Transaction = IDBPTransaction<
         | "verifyKeys"
         | "secretKeys"
         | "symmetricKeys"
+        | "accumulatorTotals"
     )[],
     "readwrite" | "readonly"
 >;
@@ -114,6 +115,17 @@ export class IndexedDbStore implements Store {
         private keepingHistory = true,
     ) {
         this.ready = this.initialize(indexedDbName, reset);
+    }
+
+    async getBillionths(muid: Muid, asOf?: AsOf): Promise<bigint> {
+        if (asOf) throw new Error("asOf not implemented for accumulators yet");
+        const muidTuple = muidToTuple(muid);
+        await this.ready;
+        const trxn = this.getTransaction();
+        const value = await trxn
+            .objectStore("accumulatorTotals")
+            .get(muidTuple);
+        return value;
     }
 
     acquireChain(identity: string): Promise<BundleInfo | null> {
@@ -186,6 +198,7 @@ export class IndexedDbStore implements Store {
                 });
 
                 db.createObjectStore("containers"); // map from AddressTuple to ContainerBytes
+                db.createObjectStore("accumulatorTotals");
 
                 // the "removals" stores objects of type `Removal`
                 const removals = db.createObjectStore("removals", {
@@ -306,6 +319,7 @@ export class IndexedDbStore implements Store {
                     "verifyKeys",
                     "secretKeys",
                     "symmetricKeys",
+                    "accumulatorTotals",
                 ],
                 "readwrite",
             );
@@ -684,7 +698,8 @@ export class IndexedDbStore implements Store {
                 if (
                     !(
                         behavior === Behavior.SEQUENCE ||
-                        behavior === Behavior.EDGE_TYPE
+                        behavior === Behavior.EDGE_TYPE ||
+                        behavior === Behavior.ACCUMULATOR
                     )
                 ) {
                     const range = IDBKeyRange.bound(
@@ -711,6 +726,21 @@ export class IndexedDbStore implements Store {
                                 .delete(search.value.placementId);
                         }
                     }
+                }
+                if (behavior === Behavior.ACCUMULATOR) {
+                    let current = await trxn
+                        .objectStore("accumulatorTotals")
+                        .get(entry.containerId);
+                    let total = BigInt(0);
+                    if (typeof current === "bigint") {
+                        total = total + current;
+                    }
+                    if (typeof entry.value === "bigint") {
+                        total = total + entry.value;
+                    }
+                    await trxn
+                        .objectStore("accumulatorTotals")
+                        .put(total, entry.containerId);
                 }
                 await trxn.objectStore("entries").add(entry);
                 continue;

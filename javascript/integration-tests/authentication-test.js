@@ -10,11 +10,11 @@ let client;
     console.log("starting");
     server = new Expector(
         `./tsc.out/implementation/main.js`,
-        ["-l", port, "--auth-token", "abc"],
+        ["-l", port, "--auth-token", "abc", "--verbose"],
         { ...process.env },
     );
-    await server.expect("ready", 2000);
-    client = new Expector("./tsc.out/implementation/main.js");
+    await server.expect("node.gink", 2000);
+    client = new Expector("./tsc.out/implementation/main.js", ["--verbose"]);
     await client.expect("node.gink", 2000);
     console.log("all ready");
 

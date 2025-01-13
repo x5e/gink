@@ -26,19 +26,21 @@ export class LockableFile {
     }
 
     protected async lockFile(block: boolean): Promise<boolean> {
-        const thisLogBackedStore = this;
+        // console.error(`about to lock ${this.filename}`);
+        const thisLockableFile = this;
         return new Promise((resolve, reject) => {
             flock(this.fileHandle.fd, block ? "ex" : "exnb", (err) => {
                 if (err) {
                     return reject(err);
                 }
-                thisLogBackedStore.fileLocked = true;
+                thisLockableFile.fileLocked = true;
                 resolve(true);
             });
         });
     }
 
     protected async unlockFile(): Promise<boolean> {
+        // console.error(`about to unlock ${this.filename}`)
         const thisLogBackedStore = this;
         return new Promise((resolve, reject) => {
             flock(this.fileHandle.fd, "un", async (err) => {

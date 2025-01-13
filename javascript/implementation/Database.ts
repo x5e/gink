@@ -21,7 +21,6 @@ import {
     BundleView,
     AsOf,
     KeyPair,
-    MuidTuple,
     Medallion,
     Meta,
     Bundler,
@@ -304,21 +303,14 @@ export class Database {
     ): Promise<BundleInfo> {
         return this.store.addBundle(bundle).then((added) => {
             if (!added) return;
-            let summary: string;
-            if (bundle.info.chainStart === bundle.info.timestamp) {
-                summary = JSON.stringify(bundle.info, [
-                    "medallion",
-                    "timestamp",
-                    "chainStart",
-                ]);
-            } else {
-                summary = JSON.stringify(bundle.info, [
-                    "medallion",
-                    "timestamp",
-                    "priorTime",
-                ]);
-            }
-            this.logger(`added bundle from ${fromConnectionId}: ${summary}`);
+            const summary = JSON.stringify(bundle.info, [
+                "medallion",
+                "timestamp",
+                "comment",
+            ]);
+            this.logger(
+                `added bundle from ${fromConnectionId ?? "local"}: ${summary}`,
+            );
             this.iHave.markAsHaving(bundle.info);
             const peer = this.peers.get(fromConnectionId);
             if (peer) {
@@ -419,7 +411,7 @@ export class Database {
                     chainStart: ack.getChainStart(),
                 };
                 this.logger(
-                    `got ack from ${fromConnectionId}: ${JSON.stringify(info)}`,
+                    `got ack from ${fromConnectionId}: ${JSON.stringify(info, ["timestamp", "medallion"])}`,
                 );
                 this.peers.get(fromConnectionId)?.hasMap?.markAsHaving(info);
             }

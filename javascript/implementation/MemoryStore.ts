@@ -86,9 +86,17 @@ export class MemoryStore implements Store {
     private verifyKeys: Map<string, Bytes> = new Map();
     private secretKeys: Map<string, KeyPair> = new Map();
     private symmetricKeys: Map<number, Bytes> = new Map(); // keyId => symmetricKey
+    private accumulatorTotals: Map<string, bigint> = new Map();
     constructor(private keepingHistory = true) {
         this.ready = librariesReady;
     }
+
+    getBillionths(muid: Muid, asOf?: AsOf): Promise<bigint> {
+        if (asOf) throw new Error("asOf Not implemented for accumulators yet");
+        const key = muidToString(muid);
+        return Promise.resolve(this.accumulatorTotals.get(key) ?? BigInt(0));
+    }
+
     saveKeyPair(keyPair: KeyPair): Promise<void> {
         this.secretKeys.set(bytesToHex(keyPair.publicKey), keyPair);
         return Promise.resolve();
@@ -793,6 +801,15 @@ export class MemoryStore implements Store {
             }
         }
         this.placements.set(placementKey, entry);
+        if (behavior == Behavior.ACCUMULATOR) {
+            const delta = entry.value;
+            if (typeof delta !== "bigint")
+                throw new Error("Accumulator increment not an integer?");
+            let total = this.accumulatorTotals.get(containerIdStr) ?? BigInt(0);
+            total = total + delta;
+            this.accumulatorTotals.set(containerIdStr, total);
+            return;
+        }
         this.byKeyPlacement.set(
             `${storageKeyToString(entry.storageKey)},${placementIdStr}`,
             entry,

@@ -21,6 +21,7 @@ export declare enum Behavior {
     EDGE_TYPE = 11,
     TABLE = 12,
     BRAID = 13,
+    ACCUMULATOR = 14,
 }
 export declare enum Special {
     MISSING = 0,
