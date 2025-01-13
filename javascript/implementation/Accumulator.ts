@@ -40,36 +40,29 @@ export class Accumulator extends Container {
         return Number(billionths) / 1_000_000_000;
     }
 
-    /**
-     * checks to see how many things are in the box (will be either 0 or 1)
-     * @param asOf Historical time to look
-     * @returns 0 or 1 depending on whether there's something in the box.
-     */
-    async size(asOf?: AsOf): Promise<number> {
-        return this.getNumber(asOf);
+    async getBillionths(asOf?: AsOf): Promise<bigint> {
+        return this.database.store.getBillionths(this.address, asOf);
+    }
+
+    async addBillionths(value: bigint, meta?: Meta): Promise<Muid> {
+        return this.addEntry(undefined, value, meta);
+    }
+
+    async size(_asOf?: AsOf): Promise<number> {
+        throw new Error("size not defined for accumulators")
     }
 
     public async clear(purge?: boolean, meta?: Meta): Promise<Muid> {
-        throw new Error("not implemented");
+        throw new Error("accumulators cannot be cleared");
     }
 
-    async reset(toTime?: AsOf, recurse?, meta?: Meta): Promise<void> {
-        const bundler = await this.database.startBundle(meta);
-        if (!toTime) {
-            // If no time is specified, we are resetting to epoch, which is just a clear
-            this.clear(false, { bundler });
-        } else {
-            /*
-            const thereNow = await this.getNumber();
-            const thereThen = await this.get(toTime);
-            if (thereThen !== thereNow) {
-                await this.set(thereThen, { bundler });
-            }
-            */
+    async reset(toTime?: AsOf, _recurse?, meta?: Meta): Promise<void> {
+        let current = await this.getBillionths();
+        let pastValue = 0n;
+        if (toTime) {
+            pastValue = await this.getBillionths(toTime);
         }
-        if (!meta?.bundler) {
-            await bundler.commit();
-        }
+        await this.addBillionths((-1n * current) + pastValue, meta);
     }
 
     /**

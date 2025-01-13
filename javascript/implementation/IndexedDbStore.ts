@@ -117,7 +117,7 @@ export class IndexedDbStore implements Store {
         this.ready = this.initialize(indexedDbName, reset);
     }
 
-    async getBillionths(muid: Muid, asOf?: AsOf): Promise<BigInt> {
+    async getBillionths(muid: Muid, asOf?: AsOf): Promise<bigint> {
         if (asOf)
             throw new Error("asOf not implemented for accumulators yet");
         const muidTuple = muidToTuple(muid);

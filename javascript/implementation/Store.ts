@@ -166,5 +166,5 @@ export interface Store {
      */
     getSymmetricKey(keyId: Number): Promise<Bytes>;
 
-    getBillionths(muid: Muid, asOf?: AsOf): Promise<BigInt>;
+    getBillionths(muid: Muid, asOf?: AsOf): Promise<bigint>;
 }
