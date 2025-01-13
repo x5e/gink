@@ -92,8 +92,7 @@ export class MemoryStore implements Store {
     }
 
     getBillionths(muid: Muid, asOf?: AsOf): Promise<bigint> {
-        if (asOf)
-            throw new Error("asOf Not implemented for accumulators yet");
+        if (asOf) throw new Error("asOf Not implemented for accumulators yet");
         const key = muidToString(muid);
         return Promise.resolve(this.accumulatorTotals.get(key) ?? BigInt(0));
     }
@@ -804,7 +803,8 @@ export class MemoryStore implements Store {
         this.placements.set(placementKey, entry);
         if (behavior == Behavior.ACCUMULATOR) {
             const delta = entry.value;
-            if (typeof delta !== "bigint") throw new Error("Accumulator increment not an integer?");
+            if (typeof delta !== "bigint")
+                throw new Error("Accumulator increment not an integer?");
             let total = this.accumulatorTotals.get(containerIdStr) ?? BigInt(0);
             total = total + delta;
             this.accumulatorTotals.set(containerIdStr, total);

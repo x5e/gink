@@ -14,13 +14,20 @@ export class Accumulator extends Container {
 
     static get(database?: Database, muid?: Muid): Accumulator {
         if (!muid) {
-            muid = { timestamp: -1, medallion: -1, offset: Behavior.ACCUMULATOR };
+            muid = {
+                timestamp: -1,
+                medallion: -1,
+                offset: Behavior.ACCUMULATOR,
+            };
         }
         database = database || Database.recent;
         return new Accumulator(database, muid);
     }
 
-    static async create(database?: Database, meta?: Meta): Promise<Accumulator> {
+    static async create(
+        database?: Database,
+        meta?: Meta,
+    ): Promise<Accumulator> {
         database = database || Database.recent;
         const muid = await Container.addContainer({
             behavior: Behavior.ACCUMULATOR,
@@ -36,7 +43,10 @@ export class Accumulator extends Container {
     }
 
     async getNumber(asOf?: AsOf): Promise<number> {
-        const billionths = await this.database.store.getBillionths(this.address, asOf);
+        const billionths = await this.database.store.getBillionths(
+            this.address,
+            asOf,
+        );
         return Number(billionths) / 1_000_000_000;
     }
 
@@ -49,7 +59,7 @@ export class Accumulator extends Container {
     }
 
     async size(_asOf?: AsOf): Promise<number> {
-        throw new Error("size not defined for accumulators")
+        throw new Error("size not defined for accumulators");
     }
 
     public async clear(purge?: boolean, meta?: Meta): Promise<Muid> {
@@ -62,7 +72,7 @@ export class Accumulator extends Container {
         if (toTime) {
             pastValue = await this.getBillionths(toTime);
         }
-        await this.addBillionths((-1n * current) + pastValue, meta);
+        await this.addBillionths(-1n * current + pastValue, meta);
     }
 
     /**

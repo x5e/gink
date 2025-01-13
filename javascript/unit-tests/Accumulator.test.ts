@@ -24,6 +24,5 @@ it("basic accumulator operation", async function () {
         // check that the desired result exists in the database
         const result = await accumulator.getNumber();
         ensure(result === 3.7, `result is ${result}`);
-
     }
 });

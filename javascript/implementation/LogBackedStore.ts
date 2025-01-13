@@ -123,20 +123,25 @@ export class LogBackedStore extends LockableLog implements Store {
         const unlockingFunction = await this.memoryLock.acquireLock();
         await this.pullDataFromFile();
         const thisLogBackedStore = this;
-        this.fileWatcher = watch(this.filename, async (eventType, _filename) => {
-            await new Promise((r) => setTimeout(r, 10));
-            if (thisLogBackedStore.closed || !thisLogBackedStore.opened) return;
-            let size: number = await thisLogBackedStore.getFileLength();
-            if (eventType === "change" && size > this.redTo) {
-                const unlockingFunction = await this.memoryLock.acquireLock();
-                if (!this.exclusive) await this.lockFile(true);
+        this.fileWatcher = watch(
+            this.filename,
+            async (eventType, _filename) => {
+                await new Promise((r) => setTimeout(r, 10));
+                if (thisLogBackedStore.closed || !thisLogBackedStore.opened)
+                    return;
+                let size: number = await thisLogBackedStore.getFileLength();
+                if (eventType === "change" && size > this.redTo) {
+                    const unlockingFunction =
+                        await this.memoryLock.acquireLock();
+                    if (!this.exclusive) await this.lockFile(true);
 
-                await this.pullDataFromFile();
+                    await this.pullDataFromFile();
 
-                if (!this.exclusive) await this.unlockFile();
-                unlockingFunction();
-            }
-        });
+                    if (!this.exclusive) await this.unlockFile();
+                    unlockingFunction();
+                }
+            },
+        );
 
         unlockingFunction();
         this.opened = true;

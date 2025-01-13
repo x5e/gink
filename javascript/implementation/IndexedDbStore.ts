@@ -118,12 +118,13 @@ export class IndexedDbStore implements Store {
     }
 
     async getBillionths(muid: Muid, asOf?: AsOf): Promise<bigint> {
-        if (asOf)
-            throw new Error("asOf not implemented for accumulators yet");
+        if (asOf) throw new Error("asOf not implemented for accumulators yet");
         const muidTuple = muidToTuple(muid);
         await this.ready;
         const trxn = this.getTransaction();
-        const value = await trxn.objectStore("accumulatorTotals").get(muidTuple);
+        const value = await trxn
+            .objectStore("accumulatorTotals")
+            .get(muidTuple);
         return value;
     }
 
@@ -727,7 +728,9 @@ export class IndexedDbStore implements Store {
                     }
                 }
                 if (behavior === Behavior.ACCUMULATOR) {
-                    let current = await trxn.objectStore("accumulatorTotals").get(entry.containerId);
+                    let current = await trxn
+                        .objectStore("accumulatorTotals")
+                        .get(entry.containerId);
                     let total = BigInt(0);
                     if (typeof current === "bigint") {
                         total = total + current;
@@ -735,7 +738,9 @@ export class IndexedDbStore implements Store {
                     if (typeof entry.value === "bigint") {
                         total = total + entry.value;
                     }
-                    await trxn.objectStore("accumulatorTotals").put(total, entry.containerId);
+                    await trxn
+                        .objectStore("accumulatorTotals")
+                        .put(total, entry.containerId);
                 }
                 await trxn.objectStore("entries").add(entry);
                 continue;
