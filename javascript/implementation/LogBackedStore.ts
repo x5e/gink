@@ -170,6 +170,24 @@ export class LogBackedStore extends LockableLog implements Store {
                     "log file doesn't have magic number",
                 );
             }
+            const claims: ClaimBuilder[] = logFileBuilder.getClaimsList();
+            for (let i = 0; i < claims.length; i++) {
+                this.claimedChains.push({
+                    medallion: claims[i].getMedallion(),
+                    chainStart: claims[i].getChainStart(),
+                    actorId: claims[i].getProcessId(),
+                    claimTime: claims[i].getClaimTime(),
+                });
+            }
+            const keyPairs: KeyPairBuilder[] = logFileBuilder.getKeyPairsList();
+            for (let i = 0; i < keyPairs.length; i++) {
+                const publicKey = keyPairs[i].getPublicKey_asU8()
+                const secretKey = keyPairs[i].getSecretKey_asU8()
+                this.internalStore.saveKeyPair({
+                    publicKey,
+                    secretKey: concatenate(secretKey, publicKey),
+                });
+            }
             const bundles = logFileBuilder.getBundlesList();
             for (const bundleBytes of bundles) {
                 const bundle: BundleView = new Decomposition(bundleBytes);
@@ -192,24 +210,6 @@ export class LogBackedStore extends LockableLog implements Store {
                     callback(bundle);
                 }
                 this.bundlesProcessed += 1;
-            }
-            const claims: ClaimBuilder[] = logFileBuilder.getClaimsList();
-            for (let i = 0; i < claims.length; i++) {
-                this.claimedChains.push({
-                    medallion: claims[i].getMedallion(),
-                    chainStart: claims[i].getChainStart(),
-                    actorId: claims[i].getProcessId(),
-                    claimTime: claims[i].getClaimTime(),
-                });
-            }
-            const keyPairs: KeyPairBuilder[] = logFileBuilder.getKeyPairsList();
-            for (let i = 0; i < keyPairs.length; i++) {
-                const publicKey = keyPairs[i].getPublicKey_asU8()
-                const secretKey = keyPairs[i].getSecretKey_asU8()
-                this.internalStore.saveKeyPair({
-                    publicKey,
-                    secretKey: concatenate(secretKey, publicKey),
-                });
             }
             this.redTo = totalSize;
         }

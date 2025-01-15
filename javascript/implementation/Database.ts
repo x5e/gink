@@ -301,7 +301,8 @@ export class Database {
         bundle: BundleView,
         fromConnectionId?: number,
     ): Promise<BundleInfo> {
-        return this.store.addBundle(bundle).then((added) => {
+        const claimChain = !(fromConnectionId || bundle.info.chainStart != bundle.info.timestamp);
+        return this.store.addBundle(bundle, claimChain).then((added) => {
             if (!added) return;
             const summary = JSON.stringify(bundle.info, [
                 "medallion",

@@ -31,6 +31,11 @@ export interface Store {
      */
     getChainTracker: () => Promise<ChainTracker>;
 
+    /**
+     * Tries to see if there's a free chain available with the given
+     * identity that's not currently being used by another processes,
+     * and if so, adds a claim to it and returns the final link of that chain.
+     */
     acquireChain: (identity: string) => Promise<BundleInfo | null>;
 
     /**
