@@ -21,7 +21,13 @@ import { LockableLog } from "./LockableLog";
 import { watch, FSWatcher } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder, KeyPairBuilder } from "./builders";
-import { generateTimestamp, ensure, getActorId, concatenate, isAlive } from "./utils";
+import {
+    generateTimestamp,
+    ensure,
+    getActorId,
+    concatenate,
+    isAlive,
+} from "./utils";
 import { Decomposition } from "./Decomposition";
 
 /*
@@ -177,8 +183,8 @@ export class LogBackedStore extends LockableLog implements Store {
             }
             const keyPairs: KeyPairBuilder[] = logFileBuilder.getKeyPairsList();
             for (let i = 0; i < keyPairs.length; i++) {
-                const publicKey = keyPairs[i].getPublicKey_asU8()
-                const secretKey = keyPairs[i].getSecretKey_asU8()
+                const publicKey = keyPairs[i].getPublicKey_asU8();
+                const secretKey = keyPairs[i].getSecretKey_asU8();
                 this.internalStore.saveKeyPair({
                     publicKey,
                     secretKey: concatenate(secretKey, publicKey),
@@ -299,7 +305,6 @@ export class LogBackedStore extends LockableLog implements Store {
         return added;
     }
 
-
     async acquireChain(identity: string): Promise<BundleInfo | null> {
         await this.ready;
         if (!this.exclusive) {
@@ -309,7 +314,7 @@ export class LogBackedStore extends LockableLog implements Store {
         let found: BundleInfo | null = null;
         for (const claim of this.claimedChains.values()) {
             if (await isAlive(claim.actorId)) {
-                continue;  // don't want to conflict with a current process
+                continue; // don't want to conflict with a current process
             }
             const medallion = claim.medallion;
             const chainStart = claim.chainStart;

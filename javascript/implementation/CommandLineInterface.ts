@@ -122,8 +122,8 @@ export class CommandLineInterface {
             }
         }
         this.replServer = start({ prompt: "node+gink> ", useGlobal: true });
-        this.replServer.on('exit', () => {
+        this.replServer.on("exit", () => {
             process.exit(0);
-        })
+        });
     }
 }

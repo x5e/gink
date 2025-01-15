@@ -27,7 +27,7 @@ import {
 } from "./builders";
 
 import { hostname, userInfo } from "os";
-import { TreeMap, MapIterator, } from "jstreemap";
+import { TreeMap, MapIterator } from "jstreemap";
 
 import {
     ready as sodium_ready,
@@ -104,8 +104,9 @@ const findProcess =
     typeof window === "undefined" ? eval("require('find-process')") : undefined;
 
 export const inspectSymbol =
-    typeof window === "undefined" ? eval("require('util').inspect.custom") : Symbol("inspect");
-
+    typeof window === "undefined"
+        ? eval("require('util').inspect.custom")
+        : Symbol("inspect");
 
 export function ensure(x: any, msg?: string) {
     if (!x) throw new Error(msg ?? "assert failed");
@@ -745,7 +746,8 @@ export function mergeBytes(arrayOne: Bytes, arrayTwo: Bytes): Bytes {
 }
 
 export function signBundle(message: Bytes, secretKey: Bytes): Bytes {
-    if (secretKey.length != 64) throw new Error("secret key not appropriate length!");
+    if (secretKey.length != 64)
+        throw new Error("secret key not appropriate length!");
     if (signingBundles) {
         //return mergeBytes(secretKey, message);
         return crypto_sign(message, secretKey);
@@ -761,7 +763,9 @@ export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {
 
 export function createKeyPair(): KeyPair {
     const result = crypto_sign_keypair();
-    ensure(bytesToHex(result.privateKey).endsWith(bytesToHex(result.publicKey)));
+    ensure(
+        bytesToHex(result.privateKey).endsWith(bytesToHex(result.publicKey)),
+    );
     return {
         publicKey: result.publicKey,
         secretKey: result.privateKey,

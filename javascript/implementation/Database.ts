@@ -302,7 +302,9 @@ export class Database {
         bundle: BundleView,
         fromConnectionId?: number,
     ): Promise<BundleInfo> {
-        const claimChain = !(fromConnectionId || bundle.info.chainStart != bundle.info.timestamp);
+        const claimChain = !(
+            fromConnectionId || bundle.info.chainStart != bundle.info.timestamp
+        );
         return this.store.addBundle(bundle, claimChain).then((added) => {
             if (!added) return;
             const summary = JSON.stringify(bundle.info, [
