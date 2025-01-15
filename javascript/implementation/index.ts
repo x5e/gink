@@ -22,5 +22,6 @@ export {
     muidToString,
     muidTupleToString,
     strToMuid,
+    isAlive,
 } from "./utils";
 export { construct } from "./factories";
