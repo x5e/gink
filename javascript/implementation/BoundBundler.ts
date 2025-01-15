@@ -1,5 +1,6 @@
 import { Muid, BundleInfo, Sealer, Bundler, Meta } from "./typedefs";
 import { ChangeBuilder } from "./builders";
+import { inspectSymbol } from "./utils";
 
 /**
  * This class is considered part of the internal interface of Gink and is not part of the API
@@ -53,6 +54,13 @@ export class BoundBundler implements Bundler {
             }
             get timestamp() {
                 return this.bundler.bundleInfo?.timestamp;
+            }
+            [inspectSymbol](depth, opts) {
+                return this.toString();
+            }
+
+            toString() {
+                return `Muid(${this.timestamp}, ${this.medallion}, ${this.offset})`;
             }
         })(this, offset);
     }

@@ -27,7 +27,7 @@ import {
 } from "./builders";
 
 import { hostname, userInfo } from "os";
-import { TreeMap, MapIterator, Tree } from "jstreemap";
+import { TreeMap, MapIterator, } from "jstreemap";
 
 import {
     ready as sodium_ready,
@@ -102,6 +102,10 @@ export function dumpTree<V>(map: TreeMap<string, V>) {
 // TODO: only install this package when you will be using as a backend?
 const findProcess =
     typeof window === "undefined" ? eval("require('find-process')") : undefined;
+
+export const inspectSymbol =
+    typeof window === "undefined" ? eval("require('util').inspect.custom") : Symbol("inspect");
+
 
 export function ensure(x: any, msg?: string) {
     if (!x) throw new Error(msg ?? "assert failed");
