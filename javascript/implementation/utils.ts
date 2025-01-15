@@ -27,7 +27,7 @@ import {
 } from "./builders";
 
 import { hostname, userInfo } from "os";
-import { TreeMap, MapIterator, Tree } from "jstreemap";
+import { TreeMap, MapIterator } from "jstreemap";
 
 import {
     ready as sodium_ready,
@@ -102,6 +102,11 @@ export function dumpTree<V>(map: TreeMap<string, V>) {
 // TODO: only install this package when you will be using as a backend?
 const findProcess =
     typeof window === "undefined" ? eval("require('find-process')") : undefined;
+
+export const inspectSymbol =
+    typeof window === "undefined"
+        ? eval("require('util').inspect.custom")
+        : Symbol("inspect");
 
 export function ensure(x: any, msg?: string) {
     if (!x) throw new Error(msg ?? "assert failed");
@@ -758,17 +763,23 @@ export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {
 
 export function createKeyPair(): KeyPair {
     const result = crypto_sign_keypair();
-    return { publicKey: result.publicKey, secretKey: result.privateKey };
+    ensure(
+        bytesToHex(result.privateKey).endsWith(bytesToHex(result.publicKey)),
+    );
+    return {
+        publicKey: result.publicKey,
+        secretKey: result.privateKey,
+    };
 
     /*
-    uncomment for deterministic debugging
+    //uncomment for deterministic debugging
     const x = '5FF46DD6A05CCA09822D96CA4AF957D4ED22E059B1D82AA8DD692FF092B5A15C';
     const y = '26F20F23EB12D508DF46DB9EE51BCA3E005AD00845F8A92A1E0E3E2440FE35E0';
     return {
         secretKey: hexToBytes( x + y),
         publicKey: hexToBytes(y),
     }
-        */
+    */
 }
 
 export function getSig(bytes: Bytes): number {
@@ -796,4 +807,11 @@ export function decryptMessage(message: Bytes, key: Bytes): Bytes {
     let nonce = message.slice(0, crypto_secretbox_NONCEBYTES),
         ciphertext = message.slice(crypto_secretbox_NONCEBYTES);
     return crypto_secretbox_open_easy(ciphertext, nonce, key);
+}
+
+export function concatenate(a: Bytes, b: Bytes): Bytes {
+    const c = new Uint8Array(a.length + b.length);
+    c.set(a, 0);
+    c.set(b, a.length);
+    return c;
 }

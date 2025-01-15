@@ -1,7 +1,7 @@
 import { LogBackedStore } from "./LogBackedStore";
 import { Store } from "./Store";
 import { Database } from "./Database";
-import { AuthFunction, BundleView } from "./typedefs";
+import { AuthFunction } from "./typedefs";
 import { SimpleServer } from "./SimpleServer";
 import {
     ensure,
@@ -9,6 +9,7 @@ import {
     getIdentity,
     logToStdErr,
     noOp,
+    isAlive,
 } from "./utils";
 import { IndexedDbStore } from "./IndexedDbStore";
 import { start, REPLServer } from "node:repl";
@@ -101,6 +102,7 @@ export class CommandLineInterface {
     async run() {
         if (this.instance) {
             await this.instance.ready;
+            globalThis.isAlive = isAlive;
             globalThis.database = this.instance;
             globalThis.root = Directory.get(this.instance);
             for (const target of this.targets) {
@@ -120,5 +122,8 @@ export class CommandLineInterface {
             }
         }
         this.replServer = start({ prompt: "node+gink> ", useGlobal: true });
+        this.replServer.on("exit", () => {
+            process.exit(0);
+        });
     }
 }

@@ -26,7 +26,6 @@ export class LockableFile {
     }
 
     protected async lockFile(block: boolean): Promise<boolean> {
-        // console.error(`about to lock ${this.filename}`);
         const thisLockableFile = this;
         return new Promise((resolve, reject) => {
             flock(this.fileHandle.fd, block ? "ex" : "exnb", (err) => {
@@ -39,8 +38,7 @@ export class LockableFile {
         });
     }
 
-    protected async unlockFile(): Promise<boolean> {
-        // console.error(`about to unlock ${this.filename}`)
+    protected async unlockFile(): Promise<void> {
         const thisLogBackedStore = this;
         return new Promise((resolve, reject) => {
             flock(this.fileHandle.fd, "un", async (err) => {
@@ -48,7 +46,7 @@ export class LockableFile {
                     return reject(err);
                 }
                 thisLogBackedStore.fileLocked = false;
-                resolve(true);
+                resolve();
             });
         });
     }
