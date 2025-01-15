@@ -741,8 +741,7 @@ export function mergeBytes(arrayOne: Bytes, arrayTwo: Bytes): Bytes {
 }
 
 export function signBundle(message: Bytes, secretKey: Bytes): Bytes {
-    if (secretKey.length != 64)
-        throw new Error("secret key not appropriate length!");
+    if (secretKey.length != 64) throw new Error("secret key not appropriate length!");
     if (signingBundles) {
         //return mergeBytes(secretKey, message);
         return crypto_sign(message, secretKey);
@@ -758,17 +757,21 @@ export function verifyBundle(signedBundle: Bytes, verifyKey: Bytes) {
 
 export function createKeyPair(): KeyPair {
     const result = crypto_sign_keypair();
-    return { publicKey: result.publicKey, secretKey: result.privateKey };
+    ensure(bytesToHex(result.privateKey).endsWith(bytesToHex(result.publicKey)));
+    return {
+        publicKey: result.publicKey,
+        secretKey: result.privateKey,
+    };
 
     /*
-    uncomment for deterministic debugging
+    //uncomment for deterministic debugging
     const x = '5FF46DD6A05CCA09822D96CA4AF957D4ED22E059B1D82AA8DD692FF092B5A15C';
     const y = '26F20F23EB12D508DF46DB9EE51BCA3E005AD00845F8A92A1E0E3E2440FE35E0';
     return {
         secretKey: hexToBytes( x + y),
         publicKey: hexToBytes(y),
     }
-        */
+    */
 }
 
 export function getSig(bytes: Bytes): number {
@@ -796,4 +799,11 @@ export function decryptMessage(message: Bytes, key: Bytes): Bytes {
     let nonce = message.slice(0, crypto_secretbox_NONCEBYTES),
         ciphertext = message.slice(crypto_secretbox_NONCEBYTES);
     return crypto_secretbox_open_easy(ciphertext, nonce, key);
+}
+
+export function concatenate(a: Bytes, b: Bytes): Bytes {
+    const c = new Uint8Array(a.length + b.length);
+    c.set(a, 0);
+    c.set(b, a.length);
+    return c;
 }

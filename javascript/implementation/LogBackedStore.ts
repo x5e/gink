@@ -21,7 +21,7 @@ import { LockableLog } from "./LockableLog";
 import { watch, FSWatcher } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder, KeyPairBuilder } from "./builders";
-import { generateTimestamp, ensure, getActorId } from "./utils";
+import { generateTimestamp, ensure, getActorId, concatenate } from "./utils";
 import { Decomposition } from "./Decomposition";
 
 /*
@@ -97,7 +97,7 @@ export class LogBackedStore extends LockableLog implements Store {
         if (this.redTo === 0) this.redTo += await this.writeMagicNumber();
         const keyPairBuilder = new KeyPairBuilder();
         keyPairBuilder.setPublicKey(keyPair.publicKey);
-        keyPairBuilder.setSecretKey(keyPair.secretKey);
+        keyPairBuilder.setSecretKey(keyPair.secretKey.slice(0, 32));
         const logFragment = new LogFileBuilder();
         logFragment.setKeyPairsList([keyPairBuilder]);
         this.redTo += await this.writeLogFragment(logFragment, true);
@@ -204,9 +204,11 @@ export class LogBackedStore extends LockableLog implements Store {
             }
             const keyPairs: KeyPairBuilder[] = logFileBuilder.getKeyPairsList();
             for (let i = 0; i < keyPairs.length; i++) {
+                const publicKey = keyPairs[i].getPublicKey_asU8()
+                const secretKey = keyPairs[i].getSecretKey_asU8()
                 this.internalStore.saveKeyPair({
-                    publicKey: keyPairs[i].getPublicKey_asU8(),
-                    secretKey: keyPairs[i].getSecretKey_asU8(),
+                    publicKey,
+                    secretKey: concatenate(secretKey, publicKey),
                 });
             }
             this.redTo = totalSize;
