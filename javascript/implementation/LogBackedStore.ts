@@ -93,9 +93,12 @@ export class LogBackedStore extends LockableLog implements Store {
     }
 
     async saveKeyPair(keyPair: KeyPair): Promise<void> {
-        await this.ready;
+        await this.logBackedStoreReady;
         const unlockingFunction = await this.memoryLock.acquireLock();
-        if (!this.exclusive) await this.lockFile(true);
+        if (!this.exclusive) {
+            await this.lockFile(true);
+        }
+        ensure(this.fileLocked, "expected to be locked");
         if (this.redTo === 0) this.redTo += await this.writeMagicNumber();
         const keyPairBuilder = new KeyPairBuilder();
         keyPairBuilder.setPublicKey(keyPair.publicKey);
@@ -124,15 +127,23 @@ export class LogBackedStore extends LockableLog implements Store {
     private async initializeLogBackedStore(): Promise<void> {
         await this.internalStore.ready;
         const unlockingFunction = await this.memoryLock.acquireLock();
+        if (this.exclusive) {
+            ensure(this.fileLocked);
+        } else {
+            await this.lockFile(true);
+        }
         await this.pullDataFromFile();
-        const thisLogBackedStore = this;
+        if (!this.exclusive) {
+            this.unlockFile();
+        }
+        unlockingFunction();
+        this.opened = true;
         this.fileWatcher = watch(
             this.filename,
             async (eventType, _filename) => {
                 await new Promise((r) => setTimeout(r, 10));
-                if (thisLogBackedStore.closed || !thisLogBackedStore.opened)
-                    return;
-                let size: number = await thisLogBackedStore.getFileLength();
+                if (this.closed || !this.opened) return;
+                let size: number = await this.getFileLength();
                 if (eventType === "change" && size > this.redTo) {
                     const unlockingFunction =
                         await this.memoryLock.acquireLock();
@@ -145,9 +156,6 @@ export class LogBackedStore extends LockableLog implements Store {
                 }
             },
         );
-
-        unlockingFunction();
-        this.opened = true;
     }
 
     async close() {
@@ -160,60 +168,65 @@ export class LogBackedStore extends LockableLog implements Store {
 
     private async pullDataFromFile(): Promise<void> {
         if (this.closed) return;
-        const totalSize = await this.getFileLength();
-        if (this.redTo < totalSize) {
-            const logFileBuilder = await this.getLogContents(
-                this.redTo,
-                totalSize,
+        let totalSize = await this.getFileLength();
+        if (this.redTo == totalSize) return;
+        let lockedByPull = false;
+        if (!this.fileLocked) {
+            await this.lockFile(true);
+            totalSize = await this.getFileLength();
+            lockedByPull = true;
+        }
+        const logFileBuilder = await this.getLogContents(this.redTo, totalSize);
+        if (this.redTo === 0) {
+            ensure(
+                logFileBuilder.getMagicNumber() === 1263421767,
+                "log file doesn't have magic number",
             );
-            if (this.redTo === 0) {
-                ensure(
-                    logFileBuilder.getMagicNumber() === 1263421767,
-                    "log file doesn't have magic number",
+        }
+        const claims: ClaimBuilder[] = logFileBuilder.getClaimsList();
+        for (let i = 0; i < claims.length; i++) {
+            this.claimedChains.set(claims[i].getMedallion(), {
+                medallion: claims[i].getMedallion(),
+                chainStart: claims[i].getChainStart(),
+                actorId: claims[i].getProcessId(),
+                claimTime: claims[i].getClaimTime(),
+            });
+        }
+        const keyPairs: KeyPairBuilder[] = logFileBuilder.getKeyPairsList();
+        for (let i = 0; i < keyPairs.length; i++) {
+            const publicKey = keyPairs[i].getPublicKey_asU8();
+            const secretKey = keyPairs[i].getSecretKey_asU8();
+            this.internalStore.saveKeyPair({
+                publicKey,
+                secretKey: concatenate(secretKey, publicKey),
+            });
+        }
+        const bundles = logFileBuilder.getBundlesList();
+        for (const bundleBytes of bundles) {
+            const bundle: BundleView = new Decomposition(bundleBytes);
+            const added = await this.internalStore.addBundle(bundle);
+            if (!added) throw new Error("unexpected not added");
+            const info = bundle.info;
+            const identity = bundle.builder.getIdentity();
+            this.hasMap.markAsHaving(bundle.info);
+            // This is the start of a chain, and we need to keep track of the identity.
+            if (info.timestamp === info.chainStart && !info.priorTime) {
+                ensure(identity, "chain start bundle has no identity");
+                this.identities.set(
+                    `${info.medallion},${info.chainStart}`,
+                    identity,
                 );
+            } else {
+                ensure(!identity, "non-chain-start bundle has identity");
             }
-            const claims: ClaimBuilder[] = logFileBuilder.getClaimsList();
-            for (let i = 0; i < claims.length; i++) {
-                this.claimedChains.set(claims[i].getMedallion(), {
-                    medallion: claims[i].getMedallion(),
-                    chainStart: claims[i].getChainStart(),
-                    actorId: claims[i].getProcessId(),
-                    claimTime: claims[i].getClaimTime(),
-                });
+            for (const callback of this.foundBundleCallBacks) {
+                callback(bundle);
             }
-            const keyPairs: KeyPairBuilder[] = logFileBuilder.getKeyPairsList();
-            for (let i = 0; i < keyPairs.length; i++) {
-                const publicKey = keyPairs[i].getPublicKey_asU8();
-                const secretKey = keyPairs[i].getSecretKey_asU8();
-                this.internalStore.saveKeyPair({
-                    publicKey,
-                    secretKey: concatenate(secretKey, publicKey),
-                });
-            }
-            const bundles = logFileBuilder.getBundlesList();
-            for (const bundleBytes of bundles) {
-                const bundle: BundleView = new Decomposition(bundleBytes);
-                const added = await this.internalStore.addBundle(bundle);
-                if (!added) throw new Error("unexpected not added");
-                const info = bundle.info;
-                const identity = bundle.builder.getIdentity();
-                this.hasMap.markAsHaving(bundle.info);
-                // This is the start of a chain, and we need to keep track of the identity.
-                if (info.timestamp === info.chainStart && !info.priorTime) {
-                    ensure(identity, "chain start bundle has no identity");
-                    this.identities.set(
-                        `${info.medallion},${info.chainStart}`,
-                        identity,
-                    );
-                } else {
-                    ensure(!identity, "non-chain-start bundle has identity");
-                }
-                for (const callback of this.foundBundleCallBacks) {
-                    callback(bundle);
-                }
-                this.bundlesProcessed += 1;
-            }
-            this.redTo = totalSize;
+            this.bundlesProcessed += 1;
+        }
+        this.redTo = totalSize;
+        if (lockedByPull) {
+            await this.unlockFile();
         }
     }
 
@@ -326,7 +339,7 @@ export class LogBackedStore extends LockableLog implements Store {
             found = this.hasMap.getBundleInfo([medallion, chainStart]);
             break;
         }
-        await this.unlockFile();
+        if (!this.exclusive) await this.unlockFile();
         return found;
     }
 
