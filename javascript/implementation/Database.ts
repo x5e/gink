@@ -184,6 +184,7 @@ export class Database {
             ensure(publicKey);
             this.keyPair = ensure(await this.store.pullKeyPair(publicKey));
             this.lastLink = toReuse;
+            this.medallion = toReuse.medallion;
         } else {
             this.keyPair = createKeyPair();
             await this.store.saveKeyPair(this.keyPair);

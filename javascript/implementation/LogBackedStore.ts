@@ -307,23 +307,18 @@ export class LogBackedStore extends LockableLog implements Store {
         }
         await this.pullDataFromFile();
         let found: BundleInfo | null = null;
-        console.error(`starting acquireChain with id=${identity}`)
         for (const claim of this.claimedChains.values()) {
-            console.error(`considering ${JSON.stringify(claim)}`)
             if (await isAlive(claim.actorId)) {
-                console.error(`still alive`)
                 continue;  // don't want to conflict with a current process
             }
             const medallion = claim.medallion;
             const chainStart = claim.chainStart;
             const chainId = this.identities.get(`${medallion},${chainStart}`);
             if (identity != chainId) {
-                console.error(`chainId=${chainId} doesn't match my id`)
                 continue; // don't want to step on someone else's toes
             }
             await this.claimChain(medallion, chainStart, getActorId());
             found = this.hasMap.getBundleInfo([medallion, chainStart]);
-            console.error(`claiming! ${JSON.stringify(found)}`)
             break;
         }
         await this.unlockFile();
