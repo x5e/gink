@@ -21,7 +21,7 @@ import { LockableLog } from "./LockableLog";
 import { watch, FSWatcher } from "fs";
 import { ChainTracker } from "./ChainTracker";
 import { ClaimBuilder, LogFileBuilder, KeyPairBuilder } from "./builders";
-import { generateTimestamp, ensure, getActorId, concatenate } from "./utils";
+import { generateTimestamp, ensure, getActorId, concatenate, isAlive } from "./utils";
 import { Decomposition } from "./Decomposition";
 
 /*
@@ -38,9 +38,9 @@ import { Decomposition } from "./Decomposition";
 
 export class LogBackedStore extends LockableLog implements Store {
     private bundlesProcessed = 0;
-    private chainTracker: ChainTracker = new ChainTracker({});
+    private hasMap: ChainTracker = new ChainTracker({});
 
-    private claimedChains: ClaimedChain[] = [];
+    private claimedChains: Map<number, ClaimedChain> = new Map();
     private identities: Map<string, string> = new Map(); // Medallion,ChainStart => identity
 
     // While the operating system lock prevents other processes from writing to this file,
@@ -79,10 +79,6 @@ export class LogBackedStore extends LockableLog implements Store {
     async getBillionths(muid: Muid, asOf?: AsOf): Promise<bigint> {
         await this.pullDataFromFile();
         return this.internalStore.getBillionths(muid, asOf);
-    }
-
-    acquireChain(identity: string): Promise<BundleInfo | null> {
-        return Promise.resolve(null);
     }
 
     async getVerifyKey(chainInfo: [Medallion, ChainStart]): Promise<Bytes> {
@@ -172,7 +168,7 @@ export class LogBackedStore extends LockableLog implements Store {
             }
             const claims: ClaimBuilder[] = logFileBuilder.getClaimsList();
             for (let i = 0; i < claims.length; i++) {
-                this.claimedChains.push({
+                this.claimedChains.set(claims[i].getMedallion(), {
                     medallion: claims[i].getMedallion(),
                     chainStart: claims[i].getChainStart(),
                     actorId: claims[i].getProcessId(),
@@ -195,7 +191,7 @@ export class LogBackedStore extends LockableLog implements Store {
                 if (!added) throw new Error("unexpected not added");
                 const info = bundle.info;
                 const identity = bundle.builder.getIdentity();
-                this.chainTracker.markAsHaving(bundle.info);
+                this.hasMap.markAsHaving(bundle.info);
                 // This is the start of a chain, and we need to keep track of the identity.
                 if (info.timestamp === info.chainStart && !info.priorTime) {
                     ensure(identity, "chain start bundle has no identity");
@@ -288,7 +284,7 @@ export class LogBackedStore extends LockableLog implements Store {
                     getActorId(),
                 );
             }
-            this.chainTracker.markAsHaving(info);
+            this.hasMap.markAsHaving(info);
             if (added) {
                 ensure(this.fileLocked);
                 await this.pullDataFromFile();
@@ -303,14 +299,28 @@ export class LogBackedStore extends LockableLog implements Store {
         return added;
     }
 
-    async getClaimedChains(): Promise<Map<Medallion, ClaimedChain>> {
+
+    async acquireChain(identity: string): Promise<BundleInfo | null> {
         await this.ready;
-        await this.pullDataFromFile();
-        const result = new Map();
-        for (let chain of this.claimedChains) {
-            result.set(chain.medallion, chain);
+        if (!this.exclusive) {
+            await this.lockFile(true);
         }
-        return result;
+        await this.pullDataFromFile();
+        let found: BundleInfo | null = null;
+        for (const claim of this.claimedChains.values()) {
+            if (isAlive(claim.actorId))
+                continue;  // don't want to conflict with a current process
+            const medallion = claim.medallion;
+            const chainStart = claim.chainStart;
+            const chainId = this.identities.get(`${medallion},${chainStart}`);
+            if (identity != chainId)
+                continue; // don't want to step on someone else's toes
+            await this.claimChain(medallion, chainStart, getActorId());
+            found = this.hasMap.getBundleInfo([medallion, chainStart]);
+            break;
+        }
+        await this.unlockFile();
+        return found;
     }
 
     private async claimChain(
@@ -318,7 +328,7 @@ export class LogBackedStore extends LockableLog implements Store {
         chainStart: ChainStart,
         actorId?: ActorId,
     ): Promise<ClaimedChain> {
-        await this.pullDataFromFile();
+        ensure(this.fileLocked, "file not locked?");
         const claimTime = generateTimestamp();
         const fragment = new LogFileBuilder();
         const claim = new ClaimBuilder();
@@ -334,7 +344,7 @@ export class LogBackedStore extends LockableLog implements Store {
             actorId: actorId || 0,
             claimTime,
         };
-        this.claimedChains.push(chain);
+        this.claimedChains.set(medallion, chain);
         return chain;
     }
 
