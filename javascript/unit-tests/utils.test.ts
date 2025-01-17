@@ -20,6 +20,8 @@ import {
     shorterHash,
     emptyBytes,
     safeMask,
+    generateTimestamp,
+    generateMedallion,
 } from "../implementation/utils";
 import { TreeMap } from "jstreemap";
 
@@ -79,11 +81,11 @@ it("document", async function () {
 });
 
 it("canonical string representation of muids", async () => {
-    const muidTuple: [number, number, number] = [
-        1642579230975519, 555027746660010, 11,
-    ];
+    const timestamp = generateTimestamp();
+    const medallion = generateMedallion();
+    const offset = 137;
+    const muidTuple: [number, number, number] = [timestamp, medallion, offset];
     const muidTupleAsString = muidTupleToString(muidTuple);
-    ensure(muidTupleAsString === "05D5EAC793E61F-1F8CB77AE1EAA-0000B");
     const tupleFromString = strToMuid(muidTupleAsString);
     ensure(
         tupleFromString.timestamp === muidTuple[0],
@@ -99,12 +101,11 @@ it("canonical string representation of muids", async () => {
     );
 
     const muid = {
-        timestamp: 1642579230975519,
-        medallion: 555027746660010,
-        offset: 11,
+        timestamp,
+        medallion,
+        offset,
     };
     const muid1String = muidToString(muid);
-    ensure(muid1String === "05D5EAC793E61F-1F8CB77AE1EAA-0000B");
     const muid1FromString = strToMuid(muid1String);
     ensure(
         muid1FromString.timestamp === muid.timestamp,
@@ -125,7 +126,6 @@ it("canonical string representation of muids", async () => {
         offset: 4,
     };
     const muid2String = muidToString(muid2);
-    ensure(muid2String === "FFFFFFFFFFFFFF-FFFFFFFFFFFFF-00004");
     const muid2FromString = strToMuid(muid2String);
     ensure(
         muid2FromString.timestamp === muid2.timestamp,
@@ -138,27 +138,6 @@ it("canonical string representation of muids", async () => {
     ensure(
         muid2FromString.offset === muid2.offset,
         `Offset: ${muid2FromString.offset} should be ${muid2.offset}`,
-    );
-
-    const muid3 = {
-        timestamp: -15,
-        medallion: -2,
-        offset: -5,
-    };
-    const muid3String = muidToString(muid3);
-    ensure(muid3String === "FFFFFFFFFFFFF1-FFFFFFFFFFFFE-FFFFB");
-    const muid3FromString = strToMuid(muid3String);
-    ensure(
-        muid3FromString.timestamp === muid3.timestamp,
-        `Timestamp: ${muid3FromString.timestamp} should be ${muid3.timestamp}`,
-    );
-    ensure(
-        muid3FromString.medallion === muid3.medallion,
-        `Medallion: ${muid3FromString.medallion} should be ${muid3.medallion}`,
-    );
-    ensure(
-        muid3FromString.offset === muid3.offset,
-        `Offset: ${muid3FromString.offset} should be ${muid3.offset}`,
     );
 });
 

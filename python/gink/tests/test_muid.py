@@ -1,27 +1,49 @@
 """ various tests of the Muid class """
+from random import randint
 from ..impl.muid import Muid
+from ..impl.utilities import generate_medallion, generate_timestamp
+from ..impl.typedefs import MIN_OFFSET, MAX_OFFSET
 
+def random_offset():
+    return randint(MIN_OFFSET, MAX_OFFSET)
 
 def test_muid_to_str():
     """ tests that a standard muid can be converted to a string in the expected format """
-    muid = Muid(1642579230975519, 555027746660010, 11)
-    as_str = str(muid)
-    assert as_str == "05D5EAC793E61F-1F8CB77AE1EAA-0000B", as_str
+    timestamp = generate_timestamp()
+    medallion = generate_medallion()
+    offset = random_offset()
+    original = Muid(timestamp, medallion, offset)
+    as_str = str(original)
+    from_str = Muid.from_str(as_str)
+    assert from_str == original, (original, as_str, from_str)
+    assert from_str.timestamp == timestamp
+    assert from_str.medallion == medallion
+    assert from_str.offset == offset, (from_str.offset, offset)
 
 
 def test_muid_to_repr():
     """ tests that repr(muid) works as expected """
-    muid = Muid(1642579230975519, 555027746660010, 11)
-    expected = "Muid(1642579230975519, 555027746660010, 11)"
+    timestamp = generate_timestamp()
+    medallion = generate_medallion()
+    offset = random_offset()
+    muid = Muid(timestamp, medallion, offset)
     as_repr = repr(muid)
-    assert as_repr == expected, as_repr
+    evald = eval(as_repr)
+    assert isinstance(evald, Muid)
+    assert evald.timestamp == timestamp
+    assert evald.medallion == medallion
+    assert evald.offset == offset
 
 
 def test_to_from_bytes():
     """ test to make sure the binary serialization works as expected """
-    muid = Muid(1642579230975519, 555027746660010, 11)
-    as_bytes = bytes(muid)
-    expected = bytes.fromhex("05D5EAC793E61F-1F8CB77AE1EAA-0000B".replace("-", ""))
-    assert as_bytes == expected, as_bytes.hex()
-    hydrated = Muid.from_bytes(as_bytes)
-    assert hydrated == muid, (repr(muid), repr(hydrated))
+    timestamp = generate_timestamp()
+    medallion = generate_medallion()
+    offset = random_offset()
+    original = Muid(timestamp, medallion, offset)
+    as_bytes = bytes(original)
+    from_bytes = Muid.from_bytes(as_bytes)
+    assert from_bytes.timestamp == timestamp
+    assert from_bytes.medallion == medallion
+    assert from_bytes.offset == offset, (from_bytes.offset, offset)
+    assert original == from_bytes

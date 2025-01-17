@@ -1,6 +1,6 @@
 import { Peer } from "./Peer";
 import {
-    makeMedallion,
+    generateMedallion,
     ensure,
     noOp,
     generateTimestamp,
@@ -188,7 +188,7 @@ export class Database {
         } else {
             this.keyPair = createKeyPair();
             await this.store.saveKeyPair(this.keyPair);
-            this.medallion = makeMedallion();
+            this.medallion = generateMedallion();
         }
         this.identity = identity;
     }

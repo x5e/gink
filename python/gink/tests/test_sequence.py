@@ -9,7 +9,7 @@ from ..impl.sequence import Sequence
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
-from ..impl.utilities import generate_timestamp
+from ..impl.utilities import generate_timestamp, generate_medallion
 
 
 def test_creation():
@@ -33,8 +33,8 @@ def test_repr():
             sequence = Sequence._get_global_instance(database)
             sequence.append("Hello, World!")
             assert list(sequence) == ["Hello, World!"]
-            sequence = Sequence(muid=Muid(1673009484969039, 362514588210531, 1))
-            assert repr(sequence) == "Sequence(muid=Muid(1673009484969039, 362514588210531, 1))"
+            sequence = Sequence(muid=Muid(generate_timestamp(), generate_medallion(), 1))
+            assert eval(repr(sequence)) == sequence
 
 
 def test_basics():

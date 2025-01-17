@@ -5,7 +5,10 @@ from uuid import UUID
 
 from .builders import MuidBuilder
 from .dummy import Dummy
-from .typedefs import MuTimestamp, Medallion, OFFSET_MOD, TIMESTAMP_MOD, MEDALLION_MOD
+from .typedefs import (
+    MuTimestamp, Medallion, OFFSET_MOD, TIMESTAMP_MOD, MEDALLION_MOD,
+    OFFSET_HEX_DIGITS, MEDALLION_HEX_DIGITS, MAX_OFFSET, MIN_OFFSET, TIMESTAMP_HEX_DIGITS
+)
 
 
 class Muid:
@@ -21,9 +24,19 @@ class Muid:
     ):
         if bundler is None and (timestamp is None or medallion is None):
             raise ValueError("need timestamp and medallion when not using bundle")
-        self._timestamp = timestamp
-        self._medallion = medallion
-        self.offset = offset
+        self._timestamp = None
+        if timestamp is not None:
+            if timestamp >= TIMESTAMP_MOD or timestamp < -1:
+                raise ValueError(f"{timestamp=} out of range")
+            self._timestamp = -1 if timestamp == TIMESTAMP_MOD - 1 else timestamp
+        self._medallion = None
+        if medallion is not None:
+            if medallion >= MEDALLION_MOD or medallion < -1:
+                raise ValueError(f"{medallion=} out of range")
+            self._medallion = -1 if medallion == MEDALLION_MOD - 1 else medallion
+        if offset >= OFFSET_MOD or offset <= -OFFSET_MOD:
+            raise ValueError(f"{offset=} out of range")
+        self.offset = offset if offset < (OFFSET_MOD >> 1) else offset - OFFSET_MOD
         self._bundler = bundler
 
     @property
@@ -72,13 +85,13 @@ class Muid:
         """Translates to a format that looks like: 05D5EAC793E61F-1F8CB77AE1EAA-0000B
 
         See docs/muid.md for a description of the format."""
-        time_part = hex(self.timestamp % TIMESTAMP_MOD)[2:].upper().zfill(14)
-        medallion_part = hex(self.medallion % MEDALLION_MOD)[2:].upper().zfill(13)
-        offset_part = hex(self.offset % OFFSET_MOD)[2:].upper().zfill(5)
+        time_part = hex(self.timestamp % TIMESTAMP_MOD)[2:].upper().zfill(TIMESTAMP_HEX_DIGITS)
+        medallion_part = hex(self.medallion % MEDALLION_MOD)[2:].upper().zfill(MEDALLION_HEX_DIGITS)
+        offset_part = hex(self.offset % OFFSET_MOD)[2:].upper().zfill(OFFSET_HEX_DIGITS)
 
         result = f"{time_part}-{medallion_part}-{offset_part}"
 
-        assert len(result) == 34, len(result)
+        assert len(result) == 34, (len(result), result)
         return result
 
     def put_into(self, builder: MuidBuilder):
@@ -101,11 +114,12 @@ class Muid:
         """
         timestamp = builder.timestamp or context.timestamp  # type: ignore
         medallion = builder.medallion or context.medallion  # type: ignore
-        offset = offset or builder.offset or 0
+        offset = (offset or builder.offset) or 0
         if offset < 0:
             if not isinstance(context, Muid):
                 raise ValueError("invalid context for negative offset")
             offset = context.offset + offset
+        assert isinstance(offset, int)
         assert medallion, "no medallion"
         assert timestamp, "no timestamp"
         return cls(timestamp, medallion, offset)
@@ -113,25 +127,24 @@ class Muid:
     @staticmethod
     def from_str(hexed: str):
         """ The inverse of str(muid) """
-        timestamp_mod = 16**14
-        medallion_mod = 16**13
-        offset_mod = 16**5
-        hexed = hexed.replace("-", "")
-        if len(hexed) != 32:
+        if len(hexed.replace("-", "")) != 32:
             raise ValueError("doesn't look like a valid muid: %r" % hexed)
-        time_part = int(hexed[0:14], 16)
-        medl_part = int(hexed[14:27], 16)
-        off_part = int(hexed[27:32], 16)
-        return Muid(
-            timestamp=time_part - timestamp_mod * (time_part > (timestamp_mod >> 1)),
-            medallion=medl_part - medallion_mod * (medl_part > (medallion_mod >> 1)),
-            offset=off_part - offset_mod * (off_part > (offset_mod >> 1)),
-        )
+        parts = hexed.split("-")
+        assert len(parts) == 3
+        timestamp = int(parts[0], 16)
+        medallion = int(parts[1], 16)
+        offset = int(parts[2], 16)
+        return Muid(timestamp, medallion, offset)
 
     @staticmethod
     def from_bytes(data: bytes):
         """ The inverse of bytes(muid) """
         # there's probably a more efficient way to do this
-        if len(data) < 16:
-            raise ValueError("can't parse less than 16 bytes into a muid")
-        return Muid.from_str(data.hex())
+        if len(data) != 16:
+            raise ValueError("expect a muid to be 16 bytes")
+        total = int(data.hex(), 16)
+        offset = total & (OFFSET_MOD - 1)
+        total = total >> (OFFSET_HEX_DIGITS * 4)
+        medallion = total & (MEDALLION_MOD - 1)
+        timestamp = total >> (MEDALLION_HEX_DIGITS * 4)
+        return Muid(timestamp, medallion, offset)

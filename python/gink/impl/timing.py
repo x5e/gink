@@ -3,11 +3,12 @@ import threading
 from typing import Dict, List
 #from .logging_stuff import info
 # from .stats import print_dist
+from sys import __stderr__
 from functools import wraps
 __all__ = ["report_timing", "timing", "Timer"]
 _times: Dict[str, List[timedelta]] = dict()
 _lock = threading.Lock()
-info = print
+info = lambda *x: print(*x, file=__stderr__)
 from copy import copy
 
 
@@ -33,6 +34,7 @@ def print_dist(vec, render=str, display=info):
 
 
 def report_timing():
+    info("Timing Report:")
     for k, v in _times.items():
         info("times for:", k)
         print_dist(v)
