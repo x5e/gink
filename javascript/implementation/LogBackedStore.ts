@@ -244,7 +244,8 @@ export class LogBackedStore extends LockableLog implements Store {
         asOf?: AsOf,
     ): Promise<Map<string, Entry>> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         return this.internalStore.getOrderedEntries(container, through, asOf);
     }
 
@@ -254,7 +255,8 @@ export class LogBackedStore extends LockableLog implements Store {
         asOf?: AsOf,
     ): Promise<Entry[]> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         return this.internalStore.getEntriesBySourceOrTarget(
             vertex,
             source,
@@ -264,13 +266,15 @@ export class LogBackedStore extends LockableLog implements Store {
 
     async getBundlesProcessed() {
         await this.ready;
-        await this.pullDataFromFile();
+        if (! this.exclusive)
+            await this.pullDataFromFile();
         return this.bundlesProcessed;
     }
 
     async getLocation(entry: Muid, asOf?: AsOf): Promise<Placement> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (! this.exclusive)
+            await this.pullDataFromFile();
         return await this.internalStore.getLocation(entry, asOf);
     }
 
@@ -372,25 +376,29 @@ export class LogBackedStore extends LockableLog implements Store {
         chainInfo: [Medallion, ChainStart],
     ): Promise<string> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         return this.identities.get(`${chainInfo[0]},${chainInfo[1]}`);
     }
 
     async getChainTracker(): Promise<ChainTracker> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         return await this.internalStore.getChainTracker();
     }
 
     async getBundles(callBack: (bundle: BundleView) => void): Promise<void> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         await this.internalStore.getBundles(callBack);
     }
 
     async getContainerBytes(address: Muid): Promise<Bytes | undefined> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         return this.internalStore.getContainerBytes(address);
     }
 
@@ -400,7 +408,8 @@ export class LogBackedStore extends LockableLog implements Store {
         asOf?: AsOf,
     ): Promise<Entry | undefined> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         return this.internalStore.getEntryByKey(container, key, asOf);
     }
 
@@ -409,7 +418,8 @@ export class LogBackedStore extends LockableLog implements Store {
         asOf?: AsOf,
     ): Promise<Map<string, Entry>> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         return this.internalStore.getKeyedEntries(container, asOf);
     }
 
@@ -418,25 +428,29 @@ export class LogBackedStore extends LockableLog implements Store {
         asOf?: AsOf,
     ): Promise<Entry | undefined> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         return this.internalStore.getEntryById(entryMuid, asOf);
     }
 
     async getAllEntries(): Promise<Entry[]> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         return this.internalStore.getAllEntries();
     }
 
     async getContainersByName(name: string, asOf?: AsOf): Promise<Muid[]> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         return await this.internalStore.getContainersByName(name, asOf);
     }
 
     async getAllContainerTuples(): Promise<MuidTuple[]> {
         await this.ready;
-        await this.pullDataFromFile();
+        if (!this.exclusive)
+            await this.pullDataFromFile();
         return await this.internalStore.getAllContainerTuples();
     }
 

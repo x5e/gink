@@ -34,7 +34,10 @@ export abstract class Container extends Addressable {
     }
 
     [inspectSymbol](depth, opts) {
-        return `[${this.whatAmI()}]`;
+        const timestamp = this.address.timestamp;
+        const medallion = this.address.medallion;
+        const offset = this.address.offset;
+        return `[${this.whatAmI()}] {timestamp: ${timestamp}, medallion: ${medallion}, offset: ${offset}}`;
     }
 
     public whatAmI() {

@@ -49,6 +49,10 @@ if (require.main === module) {
         help: `whether or not to be verbose`,
         action: "store_true",
     });
+    parser.add_argument("--exclusive", {
+        help: `prevent other programs from accessing this file (faster)`,
+        action: "store_true",
+    });
     parser.add_argument("-r", "--reconnect", {
         help: `retry connection to database servers if they disconnect? default is true.`,
         nargs: "?",
