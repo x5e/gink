@@ -20,6 +20,9 @@ test-python:
 test-javascript:
 	cd javascript && npm test
 
+test-browser:
+	cd javascript && npm run browser-unit
+
 test: test-python test-javascript
 
 install-debian-packages: running-as-root
@@ -54,7 +57,7 @@ javascript/proto: $(PROTOS)
 	--js_out=import_style=commonjs,binary:javascript/ $(PROTOS) \
 
 javascript/content_root/generated: javascript/tsc.out
-	env npx webpack-cli build --config ./javascript/webpack.config.js
+	env webpack-cli build --config ./javascript/webpack.config.js
 
 javascript/tsc.out: $(wildcard javascript/implementation/*.ts)
 	env tsc -p javascript && chmod a+x javascript/tsc.out/implementation/main.js

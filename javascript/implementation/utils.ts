@@ -47,9 +47,9 @@ import {
 
 export const emptyBytes = new Uint8Array(0);
 
-const TIMESTAMP_HEX_DIGITS = 14;
+const TIMESTAMP_HEX_DIGITS = 13;
 const MEDALLION_HEX_DIGITS = 11;
-const OFFSET_HEX_DIGITS = 7;
+const OFFSET_HEX_DIGITS = 8;
 
 const MAXIMUM_MEDALLION = 16 ** MEDALLION_HEX_DIGITS - 1;
 
@@ -115,7 +115,9 @@ export const inspectSymbol =
         : Symbol("inspect");
 
 export function ensure(x: any, msg?: string) {
-    if (!x) throw new Error(msg ?? "assert failed");
+    if (!x) {
+        throw new Error(msg ?? "assert failed");
+    }
     return x;
 }
 
@@ -157,8 +159,10 @@ export function fromStorageKey(
     return newKey;
 }
 
-const MIN_RANDOM_MEDALLION = 2 ** (MEDALLION_HEX_DIGITS - 1);
+const MIN_RANDOM_MEDALLION = 16 ** (MEDALLION_HEX_DIGITS - 1);
 const MAX_RANDOM_MEDALLION = MIN_RANDOM_MEDALLION * 2 - 1;
+
+var nodeCrypto = (typeof window === "undefined") ? eval("require('crypto')") : undefined;
 
 /**
  * Randomly selects a number that can be used as a medallion.
@@ -169,20 +173,26 @@ const MAX_RANDOM_MEDALLION = MIN_RANDOM_MEDALLION * 2 - 1;
  * https://en.wikipedia.org/wiki/Birthday_problem#Probability_table
  */
 export function generateMedallion() {
-    const crypto = globalThis["crypto"];
-    if (crypto) {
-        const getRandomValues = crypto["getRandomValues"]; // defined in browsers
+    const cryptoLib = nodeCrypto && crypto;
+    if (cryptoLib) {
+        const getRandomValues = cryptoLib["getRandomValues"]; // defined in browsers
         if (getRandomValues) {
-            const array = new Uint8Array(MEDALLION_HEX_DIGITS);
-            globalThis.crypto.getRandomValues(array);
-            array[0] = 1;
-            let total = 0;
-            for (let i = 0; i < MEDALLION_HEX_DIGITS; i++) {
-                total = total << 8;
-                total = total + array[i];
+            ensure(typeof getRandomValues == "function", `getRandomValues is a ${typeof getRandomValues}`)
+            console.log("here");
+            const array = new Uint8Array(MEDALLION_HEX_DIGITS - 1);
+            console.log("there", array, getRandomValues);
+            getRandomValues(array);
+            console.log("wherever");
+            let total = 1;
+            for (let i = 0; i < array.length; i++) {
+                const inc = (array[i] & 15);
+                ensure(inc >= 0 && total > 0, `problem, inc=${inc}, total=${total}, i=${i}`)
+                total = total * 16;
+                total = total + inc;
             }
             ensure(
-                total > MIN_RANDOM_MEDALLION && total < MAX_RANDOM_MEDALLION,
+                total >= MIN_RANDOM_MEDALLION && total <= MAX_RANDOM_MEDALLION,
+                `generated medallion not in expected range ${total} ${array[0]} ${array[1]}`
             );
             return total;
         }
@@ -454,7 +464,7 @@ export function muidToString(muid: Muid): string {
 export function muidTupleToString(muidTuple: MuidTuple): string {
     let timestamp: string;
     if (muidTuple[0] === Infinity || muidTuple[0] === -1) {
-        timestamp = "FFFFFFFFFFFFFF";
+        timestamp = "F".repeat(TIMESTAMP_HEX_DIGITS);
     } else {
         timestamp = intToHex(muidTuple[0], TIMESTAMP_HEX_DIGITS);
     }
