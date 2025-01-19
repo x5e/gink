@@ -14,6 +14,7 @@ import {
 import { PairBuilder } from "./builders";
 import { Addressable } from "./Addressable";
 import { interpret } from "./factories";
+import { inspectSymbol } from "./utils";
 
 export abstract class Container extends Addressable {
     protected static readonly DELETION = new Deletion();
@@ -30,6 +31,19 @@ export abstract class Container extends Addressable {
         readonly behavior: Behavior,
     ) {
         super(address);
+    }
+
+    [inspectSymbol](depth, opts) {
+        return `[${this.whatAmI()}]`;
+    }
+
+    public whatAmI() {
+        const re = /Error\n\s*at (\w+)\./;
+        const stack = new Error().stack;
+        if (stack) {
+            return stack.match(re)[1];
+        }
+        return "Container"
     }
 
     protected static async addContainer({

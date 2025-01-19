@@ -177,12 +177,9 @@ export function generateMedallion() {
     if (cryptoLib) {
         const getRandomValues = cryptoLib["getRandomValues"]; // defined in browsers
         if (getRandomValues) {
-            ensure(typeof getRandomValues == "function", `getRandomValues is a ${typeof getRandomValues}`)
-            console.log("here");
+            ensure(typeof getRandomValues == "function", `getRandomValues is a ${typeof getRandomValues}`);
             const array = new Uint8Array(MEDALLION_HEX_DIGITS - 1);
-            console.log("there", array, getRandomValues);
             getRandomValues(array);
-            console.log("wherever");
             let total = 1;
             for (let i = 0; i < array.length; i++) {
                 const inc = (array[i] & 15);

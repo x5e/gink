@@ -60,7 +60,7 @@ export class BoundBundler implements Bundler {
             }
 
             toString() {
-                return `Muid(${this.timestamp}, ${this.medallion}, ${this.offset})`;
+                return `Muid {timestamp: ${this.timestamp}, medallion: ${this.medallion}, offset: ${this.offset}}`;
             }
         })(this, offset);
     }
