@@ -109,10 +109,7 @@ export function dumpTree<V>(map: TreeMap<string, V>) {
 const findProcess =
     typeof window === "undefined" ? eval("require('find-process')") : undefined;
 
-export const inspectSymbol =
-    typeof window === "undefined"
-        ? eval("require('util').inspect.custom")
-        : Symbol("inspect");
+export const inspectSymbol = Symbol.for("nodejs.util.inspect.custom");
 
 export function ensure(x: any, msg?: string) {
     if (!x) {
@@ -174,16 +171,11 @@ var nodeCrypto =
  * https://en.wikipedia.org/wiki/Birthday_problem#Probability_table
  */
 export function generateMedallion() {
-    const cryptoLib = nodeCrypto && crypto;
+    const cryptoLib = nodeCrypto || window.crypto;
     if (cryptoLib) {
-        const getRandomValues = cryptoLib["getRandomValues"]; // defined in browsers
-        if (getRandomValues) {
-            ensure(
-                typeof getRandomValues == "function",
-                `getRandomValues is a ${typeof getRandomValues}`,
-            );
+        if (cryptoLib.getRandomValues) {
             const array = new Uint8Array(MEDALLION_HEX_DIGITS - 1);
-            getRandomValues(array);
+            cryptoLib.getRandomValues(array);
             let total = 1;
             for (let i = 0; i < array.length; i++) {
                 const inc = array[i] & 15;
@@ -200,9 +192,11 @@ export function generateMedallion() {
             );
             return total;
         }
-        const randomInt = crypto["randomInt"]; // defined in some versions of node
-        if (randomInt) {
-            return randomInt(MIN_RANDOM_MEDALLION, MAX_RANDOM_MEDALLION);
+        if (cryptoLib.randomInt) {
+            return cryptoLib.randomInt(
+                MIN_RANDOM_MEDALLION,
+                MAX_RANDOM_MEDALLION,
+            );
         }
     }
     var basic =

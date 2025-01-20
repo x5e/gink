@@ -34,19 +34,36 @@ export abstract class Container extends Addressable {
     }
 
     [inspectSymbol](depth, opts) {
+        /*
         const timestamp = this.address.timestamp;
         const medallion = this.address.medallion;
         const offset = this.address.offset;
-        return `[${this.whatAmI()}] {timestamp: ${timestamp}, medallion: ${medallion}, offset: ${offset}}`;
+        {timestamp: ${timestamp}, medallion: ${medallion}, offset: ${offset}}
+        */
+        /*
+        {
+            stylize: [Function: stylizeWithColor],
+            showHidden: false,
+            depth: 2,
+            colors: true,
+            customInspect: true,
+            showProxy: true,
+            maxArrayLength: 100,
+            maxStringLength: 10000,
+            breakLength: 80,
+            compact: 3,
+            sorted: false,
+            getters: false,
+            numericSeparator: false
+        }
+        */
+        return `[${this.whatAmI()}]`;
     }
 
     public whatAmI() {
-        const re = /Error\n\s*at (\w+)\./;
-        const stack = new Error().stack;
-        if (stack) {
-            return stack.match(re)[1];
-        }
-        return "Container";
+        const name = this.constructor?.name;
+        if (name && name.length > 2) return name;
+        return "(Minified)";
     }
 
     protected static async addContainer({
