@@ -47,6 +47,12 @@ import {
 
 export const emptyBytes = new Uint8Array(0);
 
+const TIMESTAMP_HEX_DIGITS = 13;
+const MEDALLION_HEX_DIGITS = 11;
+const OFFSET_HEX_DIGITS = 8;
+
+const MAXIMUM_MEDALLION = 16 ** MEDALLION_HEX_DIGITS - 1;
+
 let shorthashKey: Uint8Array = emptyBytes;
 
 export function getShortHashKey(): Bytes {
@@ -103,13 +109,12 @@ export function dumpTree<V>(map: TreeMap<string, V>) {
 const findProcess =
     typeof window === "undefined" ? eval("require('find-process')") : undefined;
 
-export const inspectSymbol =
-    typeof window === "undefined"
-        ? eval("require('util').inspect.custom")
-        : Symbol("inspect");
+export const inspectSymbol = Symbol.for("nodejs.util.inspect.custom");
 
 export function ensure(x: any, msg?: string) {
-    if (!x) throw new Error(msg ?? "assert failed");
+    if (!x) {
+        throw new Error(msg ?? "assert failed");
+    }
     return x;
 }
 
@@ -151,6 +156,12 @@ export function fromStorageKey(
     return newKey;
 }
 
+const MIN_RANDOM_MEDALLION = 16 ** (MEDALLION_HEX_DIGITS - 1);
+const MAX_RANDOM_MEDALLION = MIN_RANDOM_MEDALLION * 2 - 1;
+
+var nodeCrypto =
+    typeof window === "undefined" ? eval("require('crypto')") : undefined;
+
 /**
  * Randomly selects a number that can be used as a medallion.
  * Note that this doesn't actually have to be cryptographically secure;
@@ -158,23 +169,40 @@ export function fromStorageKey(
  * This is unlikely to cause collisions as long as an organization
  * has fewer than a million instances, after that some tracking is warranted.
  * https://en.wikipedia.org/wiki/Birthday_problem#Probability_table
- * @returns Random number between 2**48 and 2**49 (exclusive)
  */
-export function makeMedallion() {
-    const crypto = globalThis["crypto"];
-    if (crypto) {
-        const getRandomValues = crypto["getRandomValues"]; // defined in browsers
-        if (getRandomValues) {
-            const array = new Uint16Array(3);
-            globalThis.crypto.getRandomValues(array);
-            return 2 ** 48 + array[0] * 2 ** 32 + array[1] * 2 ** 16 + array[2];
+export function generateMedallion() {
+    const cryptoLib = nodeCrypto || window.crypto;
+    if (cryptoLib) {
+        if (cryptoLib.getRandomValues) {
+            const array = new Uint8Array(MEDALLION_HEX_DIGITS - 1);
+            cryptoLib.getRandomValues(array);
+            let total = 1;
+            for (let i = 0; i < array.length; i++) {
+                const inc = array[i] & 15;
+                ensure(
+                    inc >= 0 && total > 0,
+                    `problem, inc=${inc}, total=${total}, i=${i}`,
+                );
+                total = total * 16;
+                total = total + inc;
+            }
+            ensure(
+                total >= MIN_RANDOM_MEDALLION && total <= MAX_RANDOM_MEDALLION,
+                `generated medallion not in expected range ${total} ${array[0]} ${array[1]}`,
+            );
+            return total;
         }
-        const randomInt = crypto["randomInt"]; // defined in some versions of node
-        if (randomInt) {
-            return randomInt(2 ** 48 + 1, 2 ** 49 - 1);
+        if (cryptoLib.randomInt) {
+            return cryptoLib.randomInt(
+                MIN_RANDOM_MEDALLION,
+                MAX_RANDOM_MEDALLION,
+            );
         }
     }
-    return Math.floor(Math.random() * 2 ** 48) + 1 + 2 ** 48;
+    var basic =
+        Math.floor(Math.random() * MIN_RANDOM_MEDALLION) + MIN_RANDOM_MEDALLION;
+    ensure(basic >= MIN_RANDOM_MEDALLION && basic <= MAX_RANDOM_MEDALLION);
+    return basic;
 }
 
 export function muidToBuilder(
@@ -423,23 +451,23 @@ export function pairKeyToArray(storageKey: String): Array<Muid> {
  * @returns a string of the canonical string representation
  */
 export function muidToString(muid: Muid): string {
-    let timestamp = intToHex(muid.timestamp, 14);
-    let medallion = intToHex(muid.medallion, 13);
-    let offset = intToHex(muid.offset, 5);
+    let timestamp = intToHex(muid.timestamp, TIMESTAMP_HEX_DIGITS);
+    let medallion = intToHex(muid.medallion, MEDALLION_HEX_DIGITS);
+    let offset = intToHex(muid.offset, OFFSET_HEX_DIGITS);
     let result = `${timestamp}-${medallion}-${offset}`;
-    ensure(result.length === 34);
+    ensure(result.length === 34, `${result} isn't 34 characters long`);
     return result;
 }
 
 export function muidTupleToString(muidTuple: MuidTuple): string {
     let timestamp: string;
-    if (muidTuple[0] === Infinity) {
-        timestamp = "FFFFFFFFFFFFFF";
+    if (muidTuple[0] === Infinity || muidTuple[0] === -1) {
+        timestamp = "F".repeat(TIMESTAMP_HEX_DIGITS);
     } else {
-        timestamp = intToHex(muidTuple[0], 14);
+        timestamp = intToHex(muidTuple[0], TIMESTAMP_HEX_DIGITS);
     }
-    let medallion = intToHex(muidTuple[1], 13);
-    let offset = intToHex(muidTuple[2], 5);
+    let medallion = intToHex(muidTuple[1], MEDALLION_HEX_DIGITS);
+    let offset = intToHex(muidTuple[2], OFFSET_HEX_DIGITS);
     return `${timestamp}-${medallion}-${offset}`;
 }
 

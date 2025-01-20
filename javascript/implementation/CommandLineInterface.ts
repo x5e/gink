@@ -14,6 +14,10 @@ import {
 import { IndexedDbStore } from "./IndexedDbStore";
 import { start, REPLServer } from "node:repl";
 import { Directory } from "./Directory";
+import { Box } from "./Box";
+import { Sequence } from "./Sequence";
+import { KeySet } from "./KeySet";
+import { Accumulator } from "./Accumulator";
 
 /**
     Intended to manage server side running of Gink.
@@ -42,6 +46,7 @@ export class CommandLineInterface {
         ssl_cert?: string;
         ssl_key?: string;
         verbose?: boolean;
+        exclusive?: boolean;
     }) {
         // This makes debugging through integration tests way easier.
         globalThis.ensure = ensure;
@@ -68,8 +73,9 @@ export class CommandLineInterface {
         }
 
         if (args.data_file) {
-            this.logger(`using data file=${args.data_file}`);
-            this.store = new LogBackedStore(args.data_file);
+            const is_exclusive = args.exclusive ? "exclusive" : "not exclusive";
+            this.logger(`using data file=${args.data_file} (${is_exclusive})`);
+            this.store = new LogBackedStore(args.data_file, args.exclusive);
         } else {
             this.logger(`using in-memory database`);
             this.store = new IndexedDbStore(generateTimestamp().toString());
@@ -105,6 +111,11 @@ export class CommandLineInterface {
             globalThis.isAlive = isAlive;
             globalThis.database = this.instance;
             globalThis.root = Directory.get(this.instance);
+            globalThis.Accumulator = Accumulator;
+            globalThis.Sequence = Sequence;
+            globalThis.Box = Box;
+            globalThis.KeySet = KeySet;
+            globalThis.Directory = Directory;
             for (const target of this.targets) {
                 this.logger(`connecting to: ${target}`);
                 try {

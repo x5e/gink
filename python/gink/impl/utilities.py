@@ -21,7 +21,7 @@ from struct import unpack
 from nacl.signing import SigningKey
 from decimal import Decimal
 
-from .typedefs import MuTimestamp, Medallion, GenericTimestamp
+from .typedefs import MuTimestamp, Medallion, GenericTimestamp, MEDALLION_MOD
 from .tuples import Chain
 from .muid import Muid
 from .builders import (
@@ -92,7 +92,9 @@ def generate_timestamp() -> MuTimestamp:
 
 def generate_medallion() -> Medallion:
     """ Creates a new medallion. """
-    return randint((2 ** 48) + 1, (2 ** 49) - 1)
+    minimum = MEDALLION_MOD >> 4
+    maximum = minimum * 2
+    return randint(minimum+1, maximum-1)
 
 
 def get_identity() -> str:

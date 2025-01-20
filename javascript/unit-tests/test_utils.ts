@@ -12,13 +12,14 @@ import {
     signBundle,
     librariesReady,
     ensure,
+    generateMedallion,
 } from "../implementation/utils";
 
-export const MEDALLION1 = 425579549941797;
+export const MEDALLION1 = generateMedallion();
 export const START_MICROS1 = Date.parse("2022-02-19 23:24:50") * 1000;
 export const NEXT_TS1 = Date.parse("2022-02-20 00:39:29") * 1000;
 
-export const MEDALLION2 = 458510670893748;
+export const MEDALLION2 = generateMedallion();
 export const START_MICROS2 = Date.parse("2022-02-20 00:38:21") * 1000;
 export const NEXT_TS2 = Date.parse("2022-02-20 00:40:12") * 1000;
 

@@ -1,6 +1,6 @@
 import { Peer } from "./Peer";
 import {
-    makeMedallion,
+    generateMedallion,
     ensure,
     noOp,
     generateTimestamp,
@@ -40,6 +40,8 @@ import { construct } from "./factories";
 import { BoundBundler } from "./BoundBundler";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { Property } from "./Property";
+import { inspectSymbol } from "./utils";
+import { Directory } from "./Directory";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -79,6 +81,18 @@ export class Database {
         this.ready = this.initialize();
         this.identity = args?.identity;
         Database.lastCreated = this;
+    }
+
+    [inspectSymbol](depth, opts) {
+        return this.toString();
+    }
+
+    public toString(): string {
+        return `[Database]`;
+    }
+
+    public getRoot() {
+        return Directory.get(this);
     }
 
     public getLastLink(): BundleInfo | undefined {
@@ -188,7 +202,7 @@ export class Database {
         } else {
             this.keyPair = createKeyPair();
             await this.store.saveKeyPair(this.keyPair);
-            this.medallion = makeMedallion();
+            this.medallion = generateMedallion();
         }
         this.identity = identity;
     }

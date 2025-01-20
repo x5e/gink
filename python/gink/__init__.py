@@ -16,7 +16,7 @@ from .impl.key_set import KeySet
 from .impl.graph import Vertex, EdgeType, Edge
 from .impl.pair_set import PairSet
 from .impl.pair_map import PairMap
-from .impl.utilities import generate_timestamp
+from .impl.utilities import generate_timestamp, generate_medallion
 from .impl.builders import ClaimBuilder
 from .impl.tuples import Chain
 from .impl.braid import Braid
@@ -48,6 +48,7 @@ __all__ = [
     "PairSet",
     "PairMap",
     "generate_timestamp",
+    "generate_medallion",
     "ClaimBuilder",
     "Braid",
     "inf",

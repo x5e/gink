@@ -19,6 +19,7 @@ import { Behavior, ContainerBuilder } from "./builders";
 import { Property } from "./Property";
 import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
+import { Accumulator } from "./Accumulator";
 
 export async function construct(
     database: Database,
@@ -43,6 +44,8 @@ export async function construct(
             return Property.get(database, address);
         if (address.offset === Behavior.VERTEX)
             return Vertex.get(database, address);
+        if (address.offset === Behavior.ACCUMULATOR)
+            return Accumulator.get(database, address);
     }
 
     if (containerBuilder === undefined) {
@@ -74,6 +77,8 @@ export async function construct(
         return Property.get(database, address);
     if (containerBuilder.getBehavior() === Behavior.GROUP)
         return Group.get(database, address);
+    if (containerBuilder.getBehavior() === Behavior.ACCUMULATOR)
+        return Accumulator.get(database, address);
 
     throw new Error(
         `container type not recognized/implemented: ${containerBuilder.getBehavior()}`,

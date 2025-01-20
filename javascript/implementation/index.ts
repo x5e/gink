@@ -23,5 +23,7 @@ export {
     muidTupleToString,
     strToMuid,
     isAlive,
+    intToHex,
+    generateMedallion,
 } from "./utils";
 export { construct } from "./factories";

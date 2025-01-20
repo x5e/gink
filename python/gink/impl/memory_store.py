@@ -379,30 +379,27 @@ class MemoryStore(AbstractStore):
                 bundle_builder.ParseFromString(decrypted)
             change_items: Iterable[Tuple[int, ChangeBuilder]] = enumerate(bundle_builder.changes, start=1)
             for offset, change in change_items:
-                try:
-                    if change.HasField("container"):
-                        container_muid = Muid.create(
-                            context=new_info, offset=offset)
-                        self._containers[container_muid] = change.container
-                        continue
-                    if change.HasField("entry"):
-                        container = change.entry.container
-                        muid = Muid(container.timestamp, container.medallion, container.offset)
-                        if muid.timestamp != -1 and muid not in self._containers:
-                            container_builder = ContainerBuilder()
-                            container_builder.behavior = change.entry.behavior
-                            self._containers[muid] = container_builder
-                        self._add_entry(new_info=new_info, offset=offset, entry_builder=change.entry)
-                        continue
-                    if change.HasField("movement"):
-                        self._add_movement(new_info=new_info, offset=offset, builder=change.movement)
-                        continue
-                    if change.HasField("clearance"):
-                        self._add_clearance(new_info=new_info, offset=offset, builder=change.clearance)
-                        continue
-                    raise ValueError(f"didn't recognize change: {new_info} {offset} {change}")
-                except ValueError as value_error:
-                    self._logger.error("problem processing change: %s", value_error)
+                if change.HasField("container"):
+                    container_muid = Muid.create(
+                        context=new_info, offset=offset)
+                    self._containers[container_muid] = change.container
+                    continue
+                if change.HasField("entry"):
+                    container = change.entry.container
+                    muid = Muid(container.timestamp, container.medallion, container.offset)
+                    if muid.timestamp != -1 and muid not in self._containers:
+                        container_builder = ContainerBuilder()
+                        container_builder.behavior = change.entry.behavior
+                        self._containers[muid] = container_builder
+                    self._add_entry(new_info=new_info, offset=offset, entry_builder=change.entry)
+                    continue
+                if change.HasField("movement"):
+                    self._add_movement(new_info=new_info, offset=offset, builder=change.movement)
+                    continue
+                if change.HasField("clearance"):
+                    self._add_clearance(new_info=new_info, offset=offset, builder=change.clearance)
+                    continue
+                raise ValueError(f"didn't recognize change: {new_info} {offset} {change}")
         if needed and callback is not None:
             callback(bundle)
         return needed

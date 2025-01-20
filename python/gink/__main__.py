@@ -56,6 +56,7 @@ parser.add_argument("--ssl-cert", default=environ.get("GINK_SSL_CERT"), help="pa
 parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path to ssl key file")
 parser.add_argument("--parse", action="store_true", help="parse a binlog file and dump to stdout")
 parser.add_argument("--loop", action="store_true", help="process events without a repl")
+parser.add_argument("--exclusive", action="store_true", help="prevent other programs from accessing db")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -75,7 +76,7 @@ if args.db_path is None:
 elif args.file_format == "lmdb":
     store = LmdbStore(args.db_path)
 elif args.file_format == "binlog":
-    store = LogBackedStore(args.db_path)
+    store = LogBackedStore(args.db_path, exclusive=args.exclusive)
 else:
     store = args.db_path
 

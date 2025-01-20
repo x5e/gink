@@ -3,7 +3,10 @@ from .. import *
 
 def test_set_get():
     """ Test the basic set/get functionality of properties works as expected. """
-    for store in [LmdbStore(), MemoryStore(), ]:
+    for store in [
+            LmdbStore(),
+            MemoryStore(),
+        ]:
         with closing(store):
             database = Database(store=store)
             braid = Braid(database=database)
