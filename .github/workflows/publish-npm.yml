@@ -25,6 +25,8 @@ jobs:
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
+      - name: Install protoc-gen-js
+        run: npm install -g protoc-gen-js
       - name: Install dependencies
         run: npm ci && npm rebuild
       - name: Build Protos
