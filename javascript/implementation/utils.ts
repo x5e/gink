@@ -162,7 +162,8 @@ export function fromStorageKey(
 const MIN_RANDOM_MEDALLION = 16 ** (MEDALLION_HEX_DIGITS - 1);
 const MAX_RANDOM_MEDALLION = MIN_RANDOM_MEDALLION * 2 - 1;
 
-var nodeCrypto = (typeof window === "undefined") ? eval("require('crypto')") : undefined;
+var nodeCrypto =
+    typeof window === "undefined" ? eval("require('crypto')") : undefined;
 
 /**
  * Randomly selects a number that can be used as a medallion.
@@ -177,19 +178,25 @@ export function generateMedallion() {
     if (cryptoLib) {
         const getRandomValues = cryptoLib["getRandomValues"]; // defined in browsers
         if (getRandomValues) {
-            ensure(typeof getRandomValues == "function", `getRandomValues is a ${typeof getRandomValues}`);
+            ensure(
+                typeof getRandomValues == "function",
+                `getRandomValues is a ${typeof getRandomValues}`,
+            );
             const array = new Uint8Array(MEDALLION_HEX_DIGITS - 1);
             getRandomValues(array);
             let total = 1;
             for (let i = 0; i < array.length; i++) {
-                const inc = (array[i] & 15);
-                ensure(inc >= 0 && total > 0, `problem, inc=${inc}, total=${total}, i=${i}`)
+                const inc = array[i] & 15;
+                ensure(
+                    inc >= 0 && total > 0,
+                    `problem, inc=${inc}, total=${total}, i=${i}`,
+                );
                 total = total * 16;
                 total = total + inc;
             }
             ensure(
                 total >= MIN_RANDOM_MEDALLION && total <= MAX_RANDOM_MEDALLION,
-                `generated medallion not in expected range ${total} ${array[0]} ${array[1]}`
+                `generated medallion not in expected range ${total} ${array[0]} ${array[1]}`,
             );
             return total;
         }

@@ -88,7 +88,7 @@ export class Database {
     }
 
     public toString(): string {
-        return `[Database]`
+        return `[Database]`;
     }
 
     public getRoot() {

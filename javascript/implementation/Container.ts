@@ -46,7 +46,7 @@ export abstract class Container extends Addressable {
         if (stack) {
             return stack.match(re)[1];
         }
-        return "Container"
+        return "Container";
     }
 
     protected static async addContainer({
