@@ -21,7 +21,7 @@ process.exit(0);
 (async () => {
     try {
         console.log("started");
-        const args = ["-um", "gink", TEST_DB_PATH, "--line_mode"];
+        const args = ["-um", "gink", TEST_DB_PATH, "--interactive"];
         const python1 = new Expector("python3", args);
         python1.send("1+2\n");
         await python1.expect("3", 2000);

@@ -44,7 +44,6 @@ parser.add_argument("--connect_to", "-c", nargs="+", help="remote instances to c
 parser.add_argument("--show_arguments", action="store_true")
 parser.add_argument("--show_bundles", action="store_true")
 parser.add_argument("--repr", action="store_true", help="show repr of stored value when using --get")
-parser.add_argument("--line_mode", action="store_true", help="read lines of input from stdin")
 parser.add_argument("--interactive", action="store_true", help="force interactive mode")
 parser.add_argument("--heartbeat_to", type=Path, help="write on console refresh (for debugging)")
 parser.add_argument("--identity", help="explicitly set identity to be associated with changes")
@@ -231,18 +230,12 @@ for target in (args.connect_to or []):
     auth_data = f"Token {args.auth_token}" if args.auth_token else None
     database.connect_to(target, auth_data=auth_data)
 
-if args.interactive:
-    interactive = True
-else:
-    interactive = stdin.isatty()
-
-if interactive or args.line_mode:
-    console = SelectableConsole(locals(), interactive=interactive, heartbeat_to=args.heartbeat_to)
+if args.interactive or stdin.isatty():
+    console = SelectableConsole(locals(), heartbeat_to=args.heartbeat_to)
 else:
     console = None
 
 if console or args.loop:
     loop(console, database, wsgi_listener, context_manager=console)
-
 else:
     exec(stdin.read())
