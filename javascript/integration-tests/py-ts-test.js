@@ -18,7 +18,7 @@ let server = null;
         "-u",
         "-m",
         "gink",
-        "--line_mode",
+        "--interactive",
         "-c",
         `ws://localhost:${port}`,
     ]);

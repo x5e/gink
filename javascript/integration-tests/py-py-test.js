@@ -9,7 +9,7 @@ process.chdir(__dirname + "/..");
         "-u",
         "-m",
         "gink",
-        "--line_mode",
+        "--interactive",
         "-l",
         `*:${port}`,
     ]);
@@ -19,7 +19,7 @@ process.chdir(__dirname + "/..");
         "-u",
         "-m",
         "gink",
-        "--line_mode",
+        "--interactive",
         "-c",
         `ws://localhost:${port}`,
     ]);

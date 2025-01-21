@@ -15,10 +15,10 @@ from .looping import Finished
 
 class SelectableConsole(InteractiveInterpreter):
 
-    def __init__(self, locals_, interactive: bool, heartbeat_to: Optional[Path] = None):
+    def __init__(self, locals_, heartbeat_to: Optional[Path] = None):
         """ Line mode (non-interactive), if specified, or if not using a TTY. """
         super().__init__(locals_)
-        self._interactive = interactive
+        self._interactive = stdin.isatty()
         self._buffer: List[str] = []
         self._input: TextIO = stdin
         self._output: TextIO = stderr
