@@ -106,8 +106,8 @@ def get_identity() -> str:
 def experimental(thing):
     """ Decorator to mark a function or class as experimental. """
     warned = [False]
-    if hasattr(thing, "__module__"):
-        name = f"{thing.__module__}.{thing.__name__}"
+    if hasattr(thing, "__name__"):
+        name = f"{thing.__name__}"
     else:
         name = str(thing)
     the_class = None
