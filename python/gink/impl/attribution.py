@@ -1,6 +1,6 @@
 """ Contains the Attribution class. """
 from datetime import datetime
-from .typedefs import MuTimestamp, Medallion
+from .typedefs import MuTimestamp, Medallion, OFFSET_HEX_DIGITS, TIMESTAMP_HEX_DIGITS
 from typing import Optional
 from .muid import Muid
 
@@ -49,9 +49,9 @@ class Attribution:
         """
 
         muid = Muid(self.timestamp, self.medallion, 0)
-        short = str(muid)[0:28]
-        timestamp_as_hex = short[0:14]
-        medallion_as_hex = short[15:]
+        short = str(muid)[0:-(OFFSET_HEX_DIGITS+1)]
+        timestamp_as_hex = short[0:TIMESTAMP_HEX_DIGITS]
+        medallion_as_hex = short[(TIMESTAMP_HEX_DIGITS+1):]
         partial = format_spec
         partial = partial.replace("%i", self.identity)
         partial = partial.replace("%v", self.abstract or "<missing bundle>")
