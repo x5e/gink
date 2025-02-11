@@ -22,7 +22,9 @@ from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, Decomposition
 from .has_map import HasMap
 from .lmdb_utilities import to_last_with_prefix
-from .utilities import generate_timestamp, create_claim, is_needed, shorter_hash, resolve_timestamp
+from .utilities import (
+    generate_timestamp, create_claim, is_needed, shorter_hash, resolve_timestamp,
+    experimental )
 from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
@@ -30,6 +32,7 @@ from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, de
                      normalize_entry_builder, VERTEX, new_entries_replace, RemovalKey)
 
 
+@experimental
 class LmdbStore(AbstractStore):
     """
     """
