@@ -27,3 +27,11 @@ class Decomposition:
             hex_hash = blake2b(self._bundle_bytes, digest_size=32, encoder=RawEncoder).hex()
             self._bundle_info = BundleInfo(builder=self.get_builder(), hex_hash=hex_hash)
         return self._bundle_info
+
+    def __len__(self) -> int:
+        builder = self.get_builder()
+        changes = builder.changes
+        return len(changes)
+
+    def __bool__(self) -> bool:
+        return True
