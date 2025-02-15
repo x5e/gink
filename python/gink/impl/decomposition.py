@@ -32,3 +32,6 @@ class Decomposition:
         builder = self.get_builder()
         changes = builder.changes
         return len(changes)
+
+    def __bool__(self) -> bool:
+        return True
