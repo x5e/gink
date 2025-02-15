@@ -216,10 +216,8 @@ class Database(Relay):
         """ Gets a list of attributions representing all bundles stored by the db. """
         for bundle_info in self._store.get_some(BundleInfo, limit):
             assert isinstance(bundle_info, BundleInfo)
-            if bundle_info.timestamp == bundle_info.chain_start and not include_empty:
-                continue
             attribution = self.get_one_attribution(bundle_info.timestamp, bundle_info.medallion)
-            if attribution.abstract == "<empty bundle>" and not include_empty:
+            if not include_empty and attribution.abstract is None or attribution.abstract == "<empty bundle>":
                 continue
             yield attribution
 
