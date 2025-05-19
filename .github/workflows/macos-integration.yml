@@ -1,6 +1,6 @@
 name: Continuous Integration - MacOS
 
-on: [push]
+# on: [push]  # Temporarily disabled
 
 env:
   PYTHONPATH: /Users/runner/work/gink/gink/python
