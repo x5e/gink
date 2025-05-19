@@ -29,6 +29,7 @@
         "package.json",
         "content_root/**",
         "tsc.out/**",
+        "implementation/**",
         "README.md"
     ],
     "bin": "./tsc.out/implementation/main.js",
