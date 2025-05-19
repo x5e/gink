@@ -31,8 +31,7 @@ export async function construct(
             return Directory.get(database, address);
         if (address.offset === Behavior.SEQUENCE)
             return Sequence.get(database, address);
-        if (address.offset === Behavior.BOX)
-            return Box.get(database, address);
+        if (address.offset === Behavior.BOX) return Box.get(database, address);
         if (address.offset === Behavior.PAIR_MAP)
             return PairMap.get(database, address);
         if (address.offset === Behavior.PAIR_SET)

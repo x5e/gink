@@ -28,10 +28,10 @@ import {
 
 import { TreeMap, MapIterator } from "jstreemap";
 
-const nodeOs = typeof window === "undefined" ? eval("require('os')") : undefined;
+const nodeOs =
+    typeof window === "undefined" ? eval("require('os')") : undefined;
 const hostname = nodeOs?.hostname || (() => "browser");
 const userInfo = nodeOs?.userInfo || (() => ({ username: "browser-user" }));
-
 
 import {
     ready as sodium_ready,
