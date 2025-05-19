@@ -250,7 +250,7 @@ export class Database {
         listener: BundleListener,
         containerMuid?: Muid,
         remoteOnly: boolean = false,
-    ) {
+    ): () => void {
         const key = containerMuid ? muidToString(containerMuid) : "all";
         if (!this.listeners.has(key)) {
             const innerMap = new Map();
@@ -259,7 +259,14 @@ export class Database {
             this.listeners.set(key, innerMap);
         }
         const which = remoteOnly ? "remote_only" : "all_bundles";
-        this.listeners.get(key).get(which).push(listener);
+        const array = this.listeners.get(key).get(which);
+        array.push(listener);
+        return () => {
+            const index = array.indexOf(listener);
+            if (index !== -1) {
+                array.splice(index, 1);
+            }
+        };
     }
 
     /**
