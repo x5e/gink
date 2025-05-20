@@ -269,6 +269,7 @@ export class Database {
                 this.logger(`successfully removed listener for ${key}, remoteOnly: ${remoteOnly}`);
             } else {
                 this.logger(`listener not found for ${key}, remoteOnly: ${remoteOnly} (already removed)`);
+
             }
         };
     }
