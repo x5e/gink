@@ -252,6 +252,7 @@ export class Database {
         remoteOnly: boolean = false,
     ): () => void {
         const key = containerMuid ? muidToString(containerMuid) : "all";
+        this.logger(`adding listener for ${key}, remoteOnly: ${remoteOnly}`);
         if (!this.listeners.has(key)) {
             const innerMap = new Map();
             innerMap.set("all_bundles", []);
@@ -265,6 +266,9 @@ export class Database {
             const index = array.indexOf(listener);
             if (index !== -1) {
                 array.splice(index, 1);
+                this.logger(`successfully removed listener for ${key}, remoteOnly: ${remoteOnly}`);
+            } else {
+                this.logger(`listener not found for ${key}, remoteOnly: ${remoteOnly} (already removed)`);
             }
         };
     }
