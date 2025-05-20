@@ -266,10 +266,13 @@ export class Database {
             const index = array.indexOf(listener);
             if (index !== -1) {
                 array.splice(index, 1);
-                this.logger(`successfully removed listener for ${key}, remoteOnly: ${remoteOnly}`);
+                this.logger(
+                    `successfully removed listener for ${key}, remoteOnly: ${remoteOnly}`,
+                );
             } else {
-                this.logger(`listener not found for ${key}, remoteOnly: ${remoteOnly} (already removed)`);
-
+                this.logger(
+                    `listener not found for ${key}, remoteOnly: ${remoteOnly} (already removed)`,
+                );
             }
         };
     }
