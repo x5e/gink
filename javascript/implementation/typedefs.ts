@@ -160,6 +160,20 @@ export interface Bundler {
     medallion: number;
 }
 
+export type ConnectionState =
+      "waiting"
+    | "connecting"
+    | "connected"
+    | "initial-sync"
+    | "disconnected"
+    | "error"
+    | "closing"
+    | "closed";
+
+export interface Connection {
+    subscribe(callback: (state: ConnectionState) => void): () => void;
+}
+
 export interface Sealer {
     (changes: ChangeBuilder[], meta?: Meta): Promise<BundleInfo>;
 }

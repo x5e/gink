@@ -21,6 +21,8 @@ import { Vertex } from "./Vertex";
 import { EdgeType } from "./EdgeType";
 import { Accumulator } from "./Accumulator";
 
+// TODO: maybe make address the first argument, and then database second and optional
+
 export async function construct(
     database: Database,
     address: Muid,

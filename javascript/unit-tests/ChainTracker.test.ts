@@ -1,5 +1,5 @@
 import { BundleInfo } from "../implementation";
-import { ChainTracker } from "../implementation/ChainTracker";
+import { HasMap } from "../implementation/HasMap";
 import {
     ensure,
     digest,
@@ -9,7 +9,7 @@ import {
 
 it("track two bundles", async () => {
     await librariesReady;
-    const chainTracker = new ChainTracker({});
+    const chainTracker = new HasMap({});
     const medallion = 521994040637930;
     const chainStart = 1662789574924000;
     const secondTime = 1662789590300000;

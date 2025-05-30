@@ -1,22 +1,17 @@
-import { BundleInfo, BundleView, CallBack } from "./typedefs";
+import { BundleInfo, BundleView, CallBack, ConnectionState } from "./typedefs";
 import { ensure, noOp } from "./utils";
-import { ChainTracker } from "./ChainTracker";
+import { HasMap } from "./HasMap";
 import { AckBuilder, SyncMessageBuilder } from "./builders";
 
-export class Peer {
-    private sendFunc: (msg: Uint8Array) => void;
-    private readonly closeFunc: () => void;
+export class AbstractConnection {
     private callWhenReady: CallBack;
     private callOnTimeout: CallBack;
-    hasMap?: ChainTracker;
-    ready: Promise<Peer>;
+    protected listeners: Array<(state: ConnectionState) => void> = [];
+    protected state: ConnectionState = "connecting";
+    hasMap?: HasMap;
+    ready: Promise<AbstractConnection>;
 
-    constructor(
-        sendFunc: (msg: Uint8Array) => void,
-        closeFunc: () => void = noOp,
-    ) {
-        this.sendFunc = sendFunc;
-        this.closeFunc = closeFunc;
+    constructor() {
         const thisPeer = this;
         this.ready = new Promise((resolve, reject) => {
             thisPeer.callWhenReady = resolve;
@@ -27,14 +22,28 @@ export class Peer {
         }, 1000);
     }
 
-    close() {
-        const func = this.closeFunc;
-        func();
-        this.sendFunc = noOp;
-        this.hasMap = undefined;
+    protected setState(state: ConnectionState) {
+        this.state = state;
+        this.listeners.forEach(listener => listener(state));
     }
 
-    _receiveHasMap(hasMap: ChainTracker) {
+    subscribe(callback: (state: ConnectionState) => void): () => void {
+        this.listeners.push(callback);
+        return () => {
+            this.listeners = this.listeners.filter(listener => listener !== callback);
+        };
+    }
+
+    send(_: Uint8Array) {
+        throw new Error("Not implemented");
+    }
+
+    close() {
+        throw new Error("Not implemented");
+    }
+
+
+    receiveHasMap(hasMap: HasMap) {
         ensure(
             !this.hasMap,
             "Already received a HasMap/Greeting from this Peer!",
@@ -66,13 +75,13 @@ export class Peer {
      * @param bundleBytes The bundle to be sent.
      * @param bundleInfo Meta about the bundle.
      */
-    _sendIfNeeded(bundle: BundleView) {
+    sendIfNeeded(bundle: BundleView) {
         if (this.hasMap?.markAsHaving(bundle.info, true)) {
-            this.sendFunc(Peer.makeBundleMessage(bundle.bytes));
+            this.send(AbstractConnection.makeBundleMessage(bundle.bytes));
         }
     }
 
-    _sendAck(changeSetInfo: BundleInfo) {
+    sendAck(changeSetInfo: BundleInfo) {
         const ack = new AckBuilder();
         ack.setMedallion(changeSetInfo.medallion);
         ack.setChainStart(changeSetInfo.chainStart);
@@ -80,6 +89,6 @@ export class Peer {
         const syncMessageBuilder = new SyncMessageBuilder();
         syncMessageBuilder.setAck(ack);
         const bytes = syncMessageBuilder.serializeBinary();
-        this.sendFunc(bytes);
+        this.send(bytes);
     }
 }

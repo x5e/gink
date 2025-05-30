@@ -4,7 +4,7 @@ import {
     Message as WebSocketMessage,
 } from "websocket";
 import { Database } from "./Database";
-import { Peer } from "./Peer";
+import { AbstractConnection } from "./AbstractConnection";
 import { Buffer } from "buffer";
 import { Store } from "./Store";
 import {
@@ -84,10 +84,10 @@ export class SimpleServer extends Database {
         };
         const connectionId = this.createConnectionId();
         this.connections.set(connectionId, connection);
-        const peer = new Peer(sendFunc, closeFunc);
-        this.peers.set(connectionId, peer);
+        const peer = new AbstractConnection(sendFunc, closeFunc);
+        this.connections.set(connectionId, peer);
         connection.on("close", function (_reasonCode, _description) {
-            thisServer.peers.delete(connectionId);
+            thisServer.connections.delete(connectionId);
             thisServer.connections.delete(connectionId);
             thisServer.logger(
                 " Peer " + connection.remoteAddress + " disconnected.",

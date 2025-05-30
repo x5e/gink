@@ -1,4 +1,4 @@
-import { ChainTracker } from "./ChainTracker";
+import { HasMap } from "./HasMap";
 import {
     Medallion,
     ChainStart,
@@ -29,7 +29,7 @@ export interface Store {
      *
      * Implicitly awaits on this.ready;
      */
-    getChainTracker: () => Promise<ChainTracker>;
+    getChainTracker: () => Promise<HasMap>;
 
     /**
      * Tries to see if there's a free chain available with the given

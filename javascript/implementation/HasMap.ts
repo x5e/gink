@@ -19,7 +19,7 @@ import {
  * This is essentially the same data that's in the Greeting message, so I've included
  * functionality to convert from/to Greeting objects.
  */
-export class ChainTracker {
+export class HasMap {
     private readonly data: Map<Medallion, Map<ChainStart, BundleInfo>> =
         new Map();
     private readonly waiters: Map<CallBack, [Medallion, Timestamp]> = new Map();
