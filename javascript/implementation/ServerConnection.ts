@@ -5,20 +5,18 @@ import {
 
 import { AbstractConnection } from "./AbstractConnection";
 
-
 export class ServerConnection extends AbstractConnection {
-
     private onData: (data: Uint8Array) => Promise<void>;
     private onClose: () => void;
     private websocketConnection: WebSocketConnection;
 
     constructor(args: {
-        onClose: () => void,
-        onData: (data: Uint8Array) => Promise<void>,
-        websocketConnection: WebSocketConnection,
+        onClose: () => void;
+        onData: (data: Uint8Array) => Promise<void>;
+        websocketConnection: WebSocketConnection;
     }) {
         super();
-        const {onData, onClose, websocketConnection} = args;
+        const { onData, onClose, websocketConnection } = args;
         this.onData = onData;
         this.onClose = onClose;
         this.websocketConnection = websocketConnection;
@@ -45,5 +43,4 @@ export class ServerConnection extends AbstractConnection {
             });
         }
     }
-
 }

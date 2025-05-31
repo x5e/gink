@@ -202,9 +202,7 @@ export function medallionChainStartToString(tuple: [number, number]): string {
     return `${intToHex(tuple[0])}-${intToHex(tuple[1])}`;
 }
 
-export function buildChainTracker(
-    chainInfos: Iterable<BundleInfo>,
-): HasMap {
+export function buildChainTracker(chainInfos: Iterable<BundleInfo>): HasMap {
     const hasMap: HasMap = new HasMap({});
     for (const value of chainInfos) {
         hasMap.markAsHaving(value);

@@ -20,7 +20,8 @@ import {
  * functionality to convert from/to Greeting objects.
  */
 export class HasMap {
-    private readonly data: Map<Medallion, Map<ChainStart, BundleInfo>> = new Map();
+    private readonly data: Map<Medallion, Map<ChainStart, BundleInfo>> =
+        new Map();
     private readonly waiters: Map<CallBack, [Medallion, Timestamp]> = new Map();
 
     constructor({ greetingBytes = null, greeting = null }) {

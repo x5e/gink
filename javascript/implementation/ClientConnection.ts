@@ -1,12 +1,12 @@
-
 import { AbstractConnection } from "./AbstractConnection";
 import { encodeToken } from "./utils";
 import { Connection } from "./typedefs";
 
-export class ClientConnection extends AbstractConnection  implements Connection {
-    private static W3cWebSocket =typeof WebSocket === "function"
-        ? WebSocket
-        : eval("require('websocket').w3cwebsocket");
+export class ClientConnection extends AbstractConnection implements Connection {
+    private static W3cWebSocket =
+        typeof WebSocket === "function"
+            ? WebSocket
+            : eval("require('websocket').w3cwebsocket");
     private websocketClient?: WebSocket;
     private reconnectOnClose: boolean;
     private pendingConnect: boolean;
@@ -16,14 +16,14 @@ export class ClientConnection extends AbstractConnection  implements Connection 
     readonly endpoint: string;
 
     constructor(options: {
-        endpoint: string,
-        authToken?: string,
-        onData: (data: Uint8Array) => Promise<void>,
-        onOpen: () => void,
-        reconnectOnClose?: boolean,
+        endpoint: string;
+        authToken?: string;
+        onData: (data: Uint8Array) => Promise<void>;
+        onOpen: () => void;
+        reconnectOnClose?: boolean;
     }) {
         super();
-        const {endpoint, authToken, onData, reconnectOnClose} = options;
+        const { endpoint, authToken, onData, reconnectOnClose } = options;
         this.endpoint = endpoint;
         this.onData = onData;
         this.protocols = ["gink"];
@@ -40,13 +40,18 @@ export class ClientConnection extends AbstractConnection  implements Connection 
     private connect() {
         this.pendingConnect = false;
         if (this.websocketClient) {
-            if (this.websocketClient.readyState === WebSocket.OPEN ||
-                this.websocketClient.readyState === WebSocket.CONNECTING) {
-                    console.error("connect called but already connected");
-                    return;
+            if (
+                this.websocketClient.readyState === WebSocket.OPEN ||
+                this.websocketClient.readyState === WebSocket.CONNECTING
+            ) {
+                console.error("connect called but already connected");
+                return;
             }
         }
-        this.websocketClient = new ClientConnection.W3cWebSocket(this.endpoint, this.protocols);
+        this.websocketClient = new ClientConnection.W3cWebSocket(
+            this.endpoint,
+            this.protocols,
+        );
         if (!this.websocketClient) {
             throw new Error("Failed to create WebSocket client");
         }
@@ -99,5 +104,4 @@ export class ClientConnection extends AbstractConnection  implements Connection 
         this.reconnectOnClose = false;
         this.websocketClient.close();
     }
-
 }

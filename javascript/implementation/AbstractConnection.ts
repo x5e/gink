@@ -3,7 +3,7 @@ import {
     BundleView,
     ChainStart,
     Medallion,
-    Timestamp
+    Timestamp,
 } from "./typedefs";
 import { HasMap } from "./HasMap";
 import { AckBuilder, SyncMessageBuilder } from "./builders";
@@ -60,12 +60,20 @@ export class AbstractConnection {
     onAck(bundleInfo: BundleInfo) {
         const innerMap = this.unacked.get(bundleInfo.medallion);
         if (!innerMap) {
-            console.error("Received an ack for a medallion we don't have?", bundleInfo);
+            console.error(
+                "Received an ack for a medallion we don't have?",
+                bundleInfo,
+            );
             return;
         }
-        const lastSentForThisChain: Timestamp|undefined = innerMap.get(bundleInfo.chainStart);
+        const lastSentForThisChain: Timestamp | undefined = innerMap.get(
+            bundleInfo.chainStart,
+        );
         if (!lastSentForThisChain) {
-            console.error("received an ack for a chain we didn't send?", bundleInfo);
+            console.error(
+                "received an ack for a chain we didn't send?",
+                bundleInfo,
+            );
             return;
         }
         if (bundleInfo.timestamp === lastSentForThisChain) {
@@ -82,13 +90,15 @@ export class AbstractConnection {
     }
 
     protected notify() {
-        this.listeners.forEach(listener => listener());
+        this.listeners.forEach((listener) => listener());
     }
 
     subscribe(callback: () => void): () => void {
         this.listeners.push(callback);
         return () => {
-            this.listeners = this.listeners.filter(listener => listener !== callback);
+            this.listeners = this.listeners.filter(
+                (listener) => listener !== callback,
+            );
         };
     }
 
@@ -102,7 +112,9 @@ export class AbstractConnection {
 
     setPeerHasMap(hasMap?: HasMap) {
         if (this.peerHasMap && hasMap) {
-            throw new Error("Already received a HasMap/Greeting from this Peer?");
+            throw new Error(
+                "Already received a HasMap/Greeting from this Peer?",
+            );
         }
         this.peerHasMap = hasMap;
     }
