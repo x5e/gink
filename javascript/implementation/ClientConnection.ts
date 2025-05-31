@@ -1,9 +1,9 @@
-import { Connection, ConnectionState } from "./typedefs";
+
 import { AbstractConnection } from "./AbstractConnection";
 import { encodeToken } from "./utils";
 import { HasMap } from "./HasMap";
 
-export class ClientConnection extends AbstractConnection implements Connection {
+export class ClientConnection extends AbstractConnection {
     private static W3cWebSocket =typeof WebSocket === "function"
         ? WebSocket
         : eval("require('websocket').w3cwebsocket");

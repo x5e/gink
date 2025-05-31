@@ -1,33 +1,74 @@
-import { BundleInfo, BundleView, CallBack, ConnectionState } from "./typedefs";
-import { ensure, noOp } from "./utils";
+import {
+    BundleInfo,
+    BundleView,
+    ChainStart,
+    Connection,
+    Medallion,
+    Timestamp
+} from "./typedefs";
 import { HasMap } from "./HasMap";
 import { AckBuilder, SyncMessageBuilder } from "./builders";
 
-export class AbstractConnection {
-    private callWhenReady: CallBack;
-    private callOnTimeout: CallBack;
-    protected listeners: Array<(state: ConnectionState) => void> = [];
-    protected state: ConnectionState = "connecting";
-    hasMap?: HasMap;
-    ready: Promise<AbstractConnection>;
+export class AbstractConnection implements Connection {
+    protected listeners: Array<(connection: Connection) => void> = [];
+    protected peerHasMap?: HasMap; // Data the peer has said that it has or we have sent it.
+    private unacked: Map<Medallion, Map<ChainStart, Timestamp>> = new Map();
+    private unackedChains: number = 0;
+    private hasSentEverythingState: boolean = false;
 
-    constructor() {
-        const thisPeer = this;
-        this.ready = new Promise((resolve, reject) => {
-            thisPeer.callWhenReady = resolve;
-            thisPeer.callOnTimeout = reject;
-        });
-        setTimeout(() => {
-            thisPeer.callOnTimeout();
-        }, 1000);
+    protected resetAbstractConnection() {
+        this.unacked = new Map();
+        this.unackedChains = 0;
+        this.peerHasMap = undefined;
+        this.hasSentEverythingState = false;
     }
 
-    protected setState(state: ConnectionState) {
-        this.state = state;
-        this.listeners.forEach(listener => listener(state));
+    get hasSentEverything(): boolean {
+        return this.hasSentEverythingState;
     }
 
-    subscribe(callback: (state: ConnectionState) => void): () => void {
+    get hasReceivedEverything(): boolean {
+        throw new Error("Not implemented");
+    }
+
+    markHasSentEverything() {
+        this.hasSentEverythingState = true;
+        this.notify();
+    }
+
+    get hasSentUnackedData(): boolean {
+        return this.unackedChains > 0;
+    }
+
+    onAck(bundleInfo: BundleInfo) {
+        const innerMap = this.unacked.get(bundleInfo.medallion);
+        if (!innerMap) {
+            console.error("Received an ack for a medallion we don't have?", bundleInfo);
+            return;
+        }
+        const lastSentForThisChain: Timestamp|undefined = innerMap.get(bundleInfo.chainStart);
+        if (!lastSentForThisChain) {
+            console.error("received an ack for a chain we didn't send?", bundleInfo);
+            return;
+        }
+        if (bundleInfo.timestamp === lastSentForThisChain) {
+            innerMap.delete(bundleInfo.chainStart);
+            if (this.unackedChains > 0) {
+                this.unackedChains--;
+                if (this.unackedChains === 0) {
+                    this.notify();
+                }
+            } else {
+                console.error("expected unacked chains to be > 0");
+            }
+        }
+    }
+
+    protected notify() {
+        this.listeners.forEach(listener => listener(this));
+    }
+
+    subscribe(callback: (connection: Connection) => void): () => void {
         this.listeners.push(callback);
         return () => {
             this.listeners = this.listeners.filter(listener => listener !== callback);
@@ -42,14 +83,11 @@ export class AbstractConnection {
         throw new Error("Not implemented");
     }
 
-
-    receiveHasMap(hasMap: HasMap) {
-        ensure(
-            !this.hasMap,
-            "Already received a HasMap/Greeting from this Peer!",
-        );
-        this.hasMap = hasMap;
-        this.callWhenReady(this);
+    setPeerHasMap(hasMap?: HasMap) {
+        if (this.peerHasMap && hasMap) {
+            throw new Error("Already received a HasMap/Greeting from this Peer?");
+        }
+        this.peerHasMap = hasMap;
     }
 
     /**
@@ -76,12 +114,29 @@ export class AbstractConnection {
      * @param bundleInfo Meta about the bundle.
      */
     sendIfNeeded(bundle: BundleView) {
-        if (this.hasMap?.markAsHaving(bundle.info, true)) {
+        if (this.peerHasMap?.markAsHaving(bundle.info, true)) {
             this.send(AbstractConnection.makeBundleMessage(bundle.bytes));
+            if (!this.unacked.has(bundle.info.medallion)) {
+                this.unacked.set(bundle.info.medallion, new Map());
+            }
+            const innerMap = this.unacked.get(bundle.info.medallion);
+            const hadUnacked = this.unackedChains > 0;
+            if (!innerMap.has(bundle.info.chainStart)) {
+                this.unackedChains++;
+            }
+            innerMap.set(bundle.info.chainStart, bundle.info.timestamp);
+            if (!hadUnacked) {
+                this.notify();
+            }
         }
     }
 
-    sendAck(changeSetInfo: BundleInfo) {
+    onReceivedBundle(bundleInfo: BundleInfo) {
+        this.peerHasMap?.markAsHaving(bundleInfo);
+        this.sendAck(bundleInfo);
+    }
+
+    private sendAck(changeSetInfo: BundleInfo) {
         const ack = new AckBuilder();
         ack.setMedallion(changeSetInfo.medallion);
         ack.setChainStart(changeSetInfo.chainStart);

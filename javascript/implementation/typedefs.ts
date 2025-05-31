@@ -160,18 +160,11 @@ export interface Bundler {
     medallion: number;
 }
 
-export type ConnectionState =
-      "waiting"
-    | "connecting"
-    | "connected"
-    | "initial-sync"
-    | "disconnected"
-    | "error"
-    | "closing"
-    | "closed";
-
 export interface Connection {
-    subscribe(callback: (state: ConnectionState) => void): () => void;
+    subscribe(callback: (connection: Connection) => void): () => void;
+    get hasSentUnackedData(): boolean;
+    get hasSentEverything(): boolean;
+    get hasReceivedEverything(): boolean;
 }
 
 export interface Sealer {

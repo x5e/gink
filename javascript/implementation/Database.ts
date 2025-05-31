@@ -341,10 +341,9 @@ export class Database {
                 `added bundle from ${fromConnectionId ?? "local"}: ${summary}`,
             );
             this.iHave.markAsHaving(bundle.info);
-            const peer = this.connections.get(fromConnectionId);
-            if (peer) {
-                peer.hasMap?.markAsHaving(bundle.info);
-                peer.sendAck(bundle.info);
+            const fromConnection = this.connections.get(fromConnectionId);
+            if (fromConnection) {
+                fromConnection.onReceivedBundle(bundle.info);
             }
             for (const [peerId, peer] of this.connections) {
                 if (peerId !== fromConnectionId) peer.sendIfNeeded(bundle);
@@ -354,6 +353,7 @@ export class Database {
                 listener(bundle);
             }
 
+            // TODO: maybe remove?  a lot of computation may not be necessary
             if (this.listeners.size > 1) {
                 // Loop through changes and gather a set of changed containers.
                 const changedContainers: Set<Muid> = new Set();
@@ -412,8 +412,8 @@ export class Database {
         fromConnectionId: number,
     ) {
         await this.ready;
-        const peer = this.connections.get(fromConnectionId);
-        if (!peer)
+        const connection = this.connections.get(fromConnectionId);
+        if (!connection)
             throw Error("Got a message from a peer I don't have a proxy for?");
         try {
             const parsed = <SyncMessageBuilder>(
@@ -428,8 +428,9 @@ export class Database {
             if (parsed.hasGreeting()) {
                 this.logger(`got greeting from ${fromConnectionId}`);
                 const greeting = parsed.getGreeting();
-                peer.receiveHasMap(new HasMap({ greeting }));
-                await this.store.getBundles(peer.sendIfNeeded.bind(peer));
+                connection.setPeerHasMap(new HasMap({ greeting }));
+                await this.store.getBundles(connection.sendIfNeeded.bind(connection));
+                connection.markHasSentEverything();
                 return;
             }
             if (parsed.hasAck()) {
@@ -442,7 +443,7 @@ export class Database {
                 this.logger(
                     `got ack from ${fromConnectionId}: ${JSON.stringify(info, ["timestamp", "medallion"])}`,
                 );
-                this.connections.get(fromConnectionId)?.hasMap?.markAsHaving(info);
+                this.connections.get(fromConnectionId)?.onAck(info);
             }
         } catch (e) {
             //TODO: Send some sensible code to the peer to say what went wrong.
