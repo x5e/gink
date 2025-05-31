@@ -44,7 +44,7 @@ export class ClientConnection extends AbstractConnection  implements Connection 
         if (this.websocketClient) {
             if (this.websocketClient.readyState === WebSocket.OPEN ||
                 this.websocketClient.readyState === WebSocket.CONNECTING) {
-                    console.log("connect called but already connected");
+                    console.error("connect called but already connected");
                     return;
             }
         }

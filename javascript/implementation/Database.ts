@@ -34,6 +34,7 @@ import {
     ChangeBuilder,
     SyncMessageBuilder,
     BundleBuilder,
+    SignalType,
 } from "./builders";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
@@ -443,7 +444,17 @@ export class Database {
                 this.logger(
                     `got ack from ${fromConnectionId}: ${JSON.stringify(info, ["timestamp", "medallion"])}`,
                 );
-                this.connections.get(fromConnectionId)?.onAck(info);
+                connection.onAck(info);
+            }
+            if (parsed.hasSignal()) {
+                const signal = parsed.getSignal();
+                const signalType = signal.getSignalType();
+                if (signalType === SignalType.BUNDLES_SENT) {
+                    connection.markHasReceivedEverything();
+                    this.logger(`received everything from connection number ${fromConnectionId}`);
+                } else {
+                    console.error(`received unknown signal from ${fromConnectionId}: ${signalType}`);
+                }
             }
         } catch (e) {
             //TODO: Send some sensible code to the peer to say what went wrong.

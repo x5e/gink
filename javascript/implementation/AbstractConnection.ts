@@ -15,6 +15,7 @@ export class AbstractConnection {
     private unacked: Map<Medallion, Map<ChainStart, Timestamp>> = new Map();
     private unackedChains: number = 0;
     private hasSentEverythingState: boolean = false;
+    private hasReceivedEverythingState: boolean = false;
 
     protected resetAbstractConnection() {
         this.unacked = new Map();
@@ -28,11 +29,16 @@ export class AbstractConnection {
     }
 
     get hasReceivedEverything(): boolean {
-        throw new Error("Not implemented");
+        return this.hasReceivedEverythingState;
     }
 
     markHasSentEverything() {
         this.hasSentEverythingState = true;
+        this.notify();
+    }
+
+    markHasReceivedEverything() {
+        this.hasReceivedEverythingState = true;
         this.notify();
     }
 
