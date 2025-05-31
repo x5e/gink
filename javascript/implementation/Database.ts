@@ -411,63 +411,78 @@ export class Database {
     protected async receiveMessage(
         messageBytes: Uint8Array,
         fromConnectionId: number,
-    ) {
+    ): Promise<void> {
         await this.ready;
         const connection = this.connections.get(fromConnectionId);
         if (!connection)
             throw Error("Got a message from a peer I don't have a proxy for?");
-        try {
-            const parsed = <SyncMessageBuilder>(
-                SyncMessageBuilder.deserializeBinary(messageBytes)
+
+        const parsed = <SyncMessageBuilder>(
+            SyncMessageBuilder.deserializeBinary(messageBytes)
+        );
+        if (parsed.hasBundle()) {
+            const bundleBytes: BundleBytes = parsed.getBundle_asU8();
+            const decomposition = new Decomposition(bundleBytes);
+            await this.receiveBundle(decomposition, fromConnectionId);
+            return;
+        }
+        if (parsed.hasGreeting()) {
+            this.logger(`got greeting from ${fromConnectionId}`);
+            const greeting = parsed.getGreeting();
+            connection.setPeerHasMap(new HasMap({ greeting }));
+            await this.store.getBundles(
+                connection.sendIfNeeded.bind(connection),
             );
-            if (parsed.hasBundle()) {
-                const bundleBytes: BundleBytes = parsed.getBundle_asU8();
-                const decomposition = new Decomposition(bundleBytes);
-                await this.receiveBundle(decomposition, fromConnectionId);
-                return;
-            }
-            if (parsed.hasGreeting()) {
-                this.logger(`got greeting from ${fromConnectionId}`);
-                const greeting = parsed.getGreeting();
-                connection.setPeerHasMap(new HasMap({ greeting }));
-                await this.store.getBundles(connection.sendIfNeeded.bind(connection));
-                connection.markHasSentEverything();
-                return;
-            }
-            if (parsed.hasAck()) {
-                const ack = parsed.getAck();
-                const info: BundleInfo = {
-                    medallion: ack.getMedallion(),
-                    timestamp: ack.getTimestamp(),
-                    chainStart: ack.getChainStart(),
-                };
+            connection.markHasSentEverything();
+            return;
+        }
+        if (parsed.hasAck()) {
+            const ack = parsed.getAck();
+            const info: BundleInfo = {
+                medallion: ack.getMedallion(),
+                timestamp: ack.getTimestamp(),
+                chainStart: ack.getChainStart(),
+            };
+            this.logger(
+                `got ack from ${fromConnectionId}: ${JSON.stringify(info, ["timestamp", "medallion"])}`,
+            );
+            connection.onAck(info);
+        }
+        if (parsed.hasSignal()) {
+            const signal = parsed.getSignal();
+            const signalType = signal.getSignalType();
+            if (signalType === SignalType.BUNDLES_SENT) {
+                connection.markHasReceivedEverything();
                 this.logger(
-                    `got ack from ${fromConnectionId}: ${JSON.stringify(info, ["timestamp", "medallion"])}`,
+                    `received everything from connection number ${fromConnectionId}`,
                 );
-                connection.onAck(info);
+            } else {
+                console.error(
+                    `received unknown signal from ${fromConnectionId}: ${signalType}`,
+                );
             }
-            if (parsed.hasSignal()) {
-                const signal = parsed.getSignal();
-                const signalType = signal.getSignalType();
-                if (signalType === SignalType.BUNDLES_SENT) {
-                    connection.markHasReceivedEverything();
-                    this.logger(`received everything from connection number ${fromConnectionId}`);
-                } else {
-                    console.error(`received unknown signal from ${fromConnectionId}: ${signalType}`);
-                }
-            }
-        } catch (e) {
-            //TODO: Send some sensible code to the peer to say what went wrong.
-            console.error(e);
-            this.connections.get(fromConnectionId)?.close();
-            this.connections.delete(fromConnectionId);
-        } finally {
-            //unlockingFunction();
         }
     }
 
-    public getOrCreateConnection(options: {endpoint: string, authToken?: string}): AbstractConnection {
-        const {endpoint, authToken} = options;
+    protected onConnectionOpen(connectionId: number) {
+        const connection = this.connections.get(connectionId);
+        if (!connection) {
+            console.error(
+                `got connection open but connection ${connectionId} not found`,
+            );
+            return;
+        }
+        connection.send(this.iHave.getGreetingMessageBytes());
+        connection.markHasSentGreeting();
+        this.logger(`connection ${connectionId} opened and greeting sent`);
+    }
+
+    public getOrCreateConnection(options: {
+        endpoint: string;
+        authToken?: string;
+        reconnectOnClose?: boolean;
+    }): AbstractConnection {
+        const { endpoint, authToken, reconnectOnClose } = options;
         if (this.connectionsByEndpoint.has(endpoint)) {
             return this.connectionsByEndpoint.get(endpoint);
         }
@@ -475,7 +490,8 @@ export class Database {
         const connection = new ClientConnection({
             endpoint,
             authToken,
-            iHave: this.iHave,
+            reconnectOnClose,
+            onOpen: () => this.onConnectionOpen(connectionId),
             onData: (data) => this.receiveMessage(data, connectionId),
         });
         this.connections.set(connectionId, connection);

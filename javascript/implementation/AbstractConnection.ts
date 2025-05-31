@@ -2,7 +2,6 @@ import {
     BundleInfo,
     BundleView,
     ChainStart,
-    Connection,
     Medallion,
     Timestamp
 } from "./typedefs";
@@ -16,12 +15,19 @@ export class AbstractConnection {
     private unackedChains: number = 0;
     private hasSentEverythingState: boolean = false;
     private hasReceivedEverythingState: boolean = false;
+    private hasSentGreetingState: boolean = false;
 
     protected resetAbstractConnection() {
         this.unacked = new Map();
         this.unackedChains = 0;
         this.peerHasMap = undefined;
         this.hasSentEverythingState = false;
+        this.hasReceivedEverythingState = false;
+        this.hasSentGreetingState = false;
+    }
+
+    get hasSentGreeting(): boolean {
+        return this.hasSentGreetingState;
     }
 
     get hasSentEverything(): boolean {
@@ -30,6 +36,11 @@ export class AbstractConnection {
 
     get hasReceivedEverything(): boolean {
         return this.hasReceivedEverythingState;
+    }
+
+    markHasSentGreeting() {
+        this.hasSentGreetingState = true;
+        this.notify();
     }
 
     markHasSentEverything() {

@@ -1,7 +1,6 @@
 
 import { AbstractConnection } from "./AbstractConnection";
 import { encodeToken } from "./utils";
-import { HasMap } from "./HasMap";
 import { Connection } from "./typedefs";
 
 export class ClientConnection extends AbstractConnection  implements Connection {
@@ -9,24 +8,23 @@ export class ClientConnection extends AbstractConnection  implements Connection 
         ? WebSocket
         : eval("require('websocket').w3cwebsocket");
     private websocketClient?: WebSocket;
-    private iHave: HasMap;
     private reconnectOnClose: boolean;
     private pendingConnect: boolean;
     private onData: (data: Uint8Array) => void;
+    private onOpen: () => void;
     private protocols: string[];
     readonly endpoint: string;
 
     constructor(options: {
         endpoint: string,
         authToken?: string,
-        iHave: HasMap,
-        onData: (data: Uint8Array) => void,
+        onData: (data: Uint8Array) => Promise<void>,
+        onOpen: () => void,
         reconnectOnClose?: boolean,
     }) {
         super();
-        const {endpoint, authToken, iHave, onData, reconnectOnClose} = options;
+        const {endpoint, authToken, onData, reconnectOnClose} = options;
         this.endpoint = endpoint;
-        this.iHave = iHave;
         this.onData = onData;
         this.protocols = ["gink"];
         if (authToken) this.protocols.push(encodeToken(authToken));
@@ -82,10 +80,6 @@ export class ClientConnection extends AbstractConnection  implements Connection 
         }
     }
 
-    private onOpen() {
-        this.websocketClient.send(this.iHave.getGreetingMessageBytes());
-    }
-
     private onMessage(ev: MessageEvent) {
         const data = ev.data;
         if (data instanceof ArrayBuffer) {
@@ -102,13 +96,8 @@ export class ClientConnection extends AbstractConnection  implements Connection 
     }
 
     close() {
+        this.reconnectOnClose = false;
         this.websocketClient.close();
     }
-
-    stop() {
-        this.reconnectOnClose = false;
-        this.close();
-    }
-
 
 }

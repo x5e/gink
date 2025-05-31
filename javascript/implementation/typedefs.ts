@@ -1,5 +1,6 @@
 import { Behavior, BundleBuilder, ChangeBuilder } from "./builders";
 import { DBSchema } from "idb";
+export const PROTOCOL = "gink";
 
 export type Bytes = Uint8Array;
 export type BundleBytes = Bytes;
@@ -166,6 +167,7 @@ export interface Connection {
     get hasSentEverything(): boolean;
     get hasReceivedEverything(): boolean;
     get readyState(): number;
+    get hasSentGreeting(): boolean;
 }
 
 export interface Sealer {
