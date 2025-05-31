@@ -161,10 +161,11 @@ export interface Bundler {
 }
 
 export interface Connection {
-    subscribe(callback: (connection: Connection) => void): () => void;
+    subscribe(callback: () => void): () => void;
     get hasSentUnackedData(): boolean;
     get hasSentEverything(): boolean;
     get hasReceivedEverything(): boolean;
+    get readyState(): number;
 }
 
 export interface Sealer {

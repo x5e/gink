@@ -2,8 +2,9 @@
 import { AbstractConnection } from "./AbstractConnection";
 import { encodeToken } from "./utils";
 import { HasMap } from "./HasMap";
+import { Connection } from "./typedefs";
 
-export class ClientConnection extends AbstractConnection {
+export class ClientConnection extends AbstractConnection  implements Connection {
     private static W3cWebSocket =typeof WebSocket === "function"
         ? WebSocket
         : eval("require('websocket').w3cwebsocket");
@@ -34,9 +35,12 @@ export class ClientConnection extends AbstractConnection {
         this.connect();
     }
 
+    get readyState(): number {
+        return this.websocketClient?.readyState ?? WebSocket.CLOSED;
+    }
+
     private connect() {
         this.pendingConnect = false;
-        this.setState("connecting");
         if (this.websocketClient) {
             if (this.websocketClient.readyState === WebSocket.OPEN ||
                 this.websocketClient.readyState === WebSocket.CONNECTING) {
@@ -66,14 +70,12 @@ export class ClientConnection extends AbstractConnection {
     }
 
     private onClosed() {
-        this.setState("closed");
         if (this.reconnectOnClose) {
             if (this.pendingConnect) {
                 console.log("onClose called but pendingConnect is true");
                 return;
             }
             this.pendingConnect = true;
-            this.setState("waiting");
             setTimeout(() => {
                 this.connect();
             }, 1000);
@@ -82,7 +84,6 @@ export class ClientConnection extends AbstractConnection {
 
     private onOpen() {
         this.websocketClient.send(this.iHave.getGreetingMessageBytes());
-        this.setState("connected");
     }
 
     private onMessage(ev: MessageEvent) {
@@ -101,7 +102,6 @@ export class ClientConnection extends AbstractConnection {
     }
 
     close() {
-        this.setState("closing");
         this.websocketClient.close();
     }
 

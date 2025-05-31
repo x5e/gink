@@ -9,8 +9,8 @@ import {
 import { HasMap } from "./HasMap";
 import { AckBuilder, SyncMessageBuilder } from "./builders";
 
-export class AbstractConnection implements Connection {
-    protected listeners: Array<(connection: Connection) => void> = [];
+export class AbstractConnection {
+    protected listeners: Array<() => void> = [];
     protected peerHasMap?: HasMap; // Data the peer has said that it has or we have sent it.
     private unacked: Map<Medallion, Map<ChainStart, Timestamp>> = new Map();
     private unackedChains: number = 0;
@@ -65,10 +65,10 @@ export class AbstractConnection implements Connection {
     }
 
     protected notify() {
-        this.listeners.forEach(listener => listener(this));
+        this.listeners.forEach(listener => listener());
     }
 
-    subscribe(callback: (connection: Connection) => void): () => void {
+    subscribe(callback: () => void): () => void {
         this.listeners.push(callback);
         return () => {
             this.listeners = this.listeners.filter(listener => listener !== callback);
