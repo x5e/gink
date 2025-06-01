@@ -2,13 +2,14 @@ import {
     BundleInfo,
     BundleView,
     ChainStart,
+    Connection,
     Medallion,
     Timestamp,
 } from "./typedefs";
 import { HasMap } from "./HasMap";
 import { AckBuilder, SyncMessageBuilder } from "./builders";
 
-export class AbstractConnection {
+export class AbstractConnection implements Connection {
     protected listeners: Array<() => void> = [];
     protected peerHasMap?: HasMap; // Data the peer has said that it has or we have sent it.
     private unacked: Map<Medallion, Map<ChainStart, Timestamp>> = new Map();
@@ -16,6 +17,7 @@ export class AbstractConnection {
     private hasSentEverythingState: boolean = false;
     private hasReceivedEverythingState: boolean = false;
     private hasSentGreetingState: boolean = false;
+    protected onErrorCb?: (error: Error) => void;
 
     protected resetAbstractConnection() {
         this.unacked = new Map();

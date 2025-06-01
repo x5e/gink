@@ -119,8 +119,7 @@ export class CommandLineInterface {
             for (const target of this.targets) {
                 this.logger(`connecting to: ${target}`);
                 try {
-                    await this.instance.getOrCreateConnection({
-                        endpoint: target,
+                    await this.instance.connectTo(target, {
                         reconnectOnClose: this.reconnectOnClose,
                         authToken: this.authToken,
                     });

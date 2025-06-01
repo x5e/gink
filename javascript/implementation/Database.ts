@@ -477,12 +477,15 @@ export class Database {
         this.logger(`connection ${connectionId} opened and greeting sent`);
     }
 
-    public getOrCreateConnection(options: {
-        endpoint: string;
-        authToken?: string;
-        reconnectOnClose?: boolean;
-    }): AbstractConnection {
-        const { endpoint, authToken, reconnectOnClose } = options;
+    public connectTo(
+        endpoint: string,
+        options?: {
+            authToken?: string;
+            onError?: (error: Error) => void;
+            reconnectOnClose?: boolean;
+        },
+    ): Connection {
+        const { authToken, reconnectOnClose } = options ?? {};
         if (this.connectionsByEndpoint.has(endpoint)) {
             return this.connectionsByEndpoint.get(endpoint);
         }
@@ -493,6 +496,7 @@ export class Database {
             reconnectOnClose,
             onOpen: () => this.onConnectionOpen(connectionId),
             onData: (data) => this.receiveMessage(data, connectionId),
+            onError: options?.onError,
         });
         this.connections.set(connectionId, connection);
         return connection;

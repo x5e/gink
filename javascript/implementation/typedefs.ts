@@ -166,8 +166,8 @@ export interface Connection {
     get hasSentUnackedData(): boolean;
     get hasSentEverything(): boolean;
     get hasReceivedEverything(): boolean;
-    get readyState(): number;
     get hasSentGreeting(): boolean;
+    close(): void;
 }
 
 export interface Sealer {

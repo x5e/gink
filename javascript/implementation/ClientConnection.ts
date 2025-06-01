@@ -21,16 +21,19 @@ export class ClientConnection extends AbstractConnection implements Connection {
         onData: (data: Uint8Array) => Promise<void>;
         onOpen: () => void;
         reconnectOnClose?: boolean;
+        onError?: (error: Error) => void;
     }) {
         super();
-        const { endpoint, authToken, onData, reconnectOnClose } = options;
+        const { endpoint, authToken, onData, reconnectOnClose, onOpen, onError } = options;
+        this.onOpen = onOpen;
         this.endpoint = endpoint;
         this.onData = onData;
         this.protocols = ["gink"];
         if (authToken) this.protocols.push(encodeToken(authToken));
-        this.reconnectOnClose = reconnectOnClose ?? true;
+        this.reconnectOnClose = reconnectOnClose;
         this.pendingConnect = true;
         this.connect();
+        this.onErrorCb = onError;
     }
 
     get readyState(): number {
@@ -63,12 +66,11 @@ export class ClientConnection extends AbstractConnection implements Connection {
     }
 
     private onError(ev: Event) {
-        console.log("onError", ev);
+        this.onErrorCb?.(new Error(ev.toString()));
         this.onClosed();
     }
 
     private onClose(ev: CloseEvent) {
-        console.log("onClose", ev);
         this.onClosed();
     }
 
