@@ -23,6 +23,7 @@ process.chdir(__dirname + "/..");
             "-c",
             `ws://0.0.0.0:${port}`,
             "--verbose",
+            "--reconnect=true",
         ],
         { env: { ...process.env } },
     );
@@ -37,7 +38,7 @@ process.chdir(__dirname + "/..");
     await client.expect("\n4n\n", 2000);
 
     await python.close();
-    await client.expect("retrying", 2000);
+    await client.expect("reconnecting", 2000);
 
     const python2 = new Expector("python3", [
         "-u",
@@ -49,7 +50,7 @@ process.chdir(__dirname + "/..");
     ]);
     await python2.expect("listen", 2000);
 
-    await client.expect("reconnected", 2000);
+    await client.expect("got greeting", 2000);
 
     await client.close();
     await python2.close();

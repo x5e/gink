@@ -54,9 +54,9 @@ if (require.main === module) {
         action: "store_true",
     });
     parser.add_argument("-r", "--reconnect", {
-        help: `retry connection to database servers if they disconnect? default is true.`,
+        help: `retry connection to database servers if they disconnect? default is false.`,
         nargs: "?",
-        const: true,
+        const: false,
     });
 
     const args = parser.parse_args();

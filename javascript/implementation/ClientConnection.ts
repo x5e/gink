@@ -24,7 +24,14 @@ export class ClientConnection extends AbstractConnection implements Connection {
         onError?: (error: Error) => void;
     }) {
         super();
-        const { endpoint, authToken, onData, reconnectOnClose, onOpen, onError } = options;
+        const {
+            endpoint,
+            authToken,
+            onData,
+            reconnectOnClose,
+            onOpen,
+            onError,
+        } = options;
         this.onOpen = onOpen;
         this.endpoint = endpoint;
         this.onData = onData;
@@ -37,15 +44,20 @@ export class ClientConnection extends AbstractConnection implements Connection {
     }
 
     get readyState(): number {
-        return this.websocketClient?.readyState ?? WebSocket.CLOSED;
+        return (
+            this.websocketClient?.readyState ??
+            ClientConnection.W3cWebSocket.CLOSED
+        );
     }
 
     private connect() {
         this.pendingConnect = false;
         if (this.websocketClient) {
             if (
-                this.websocketClient.readyState === WebSocket.OPEN ||
-                this.websocketClient.readyState === WebSocket.CONNECTING
+                this.websocketClient.readyState ===
+                    ClientConnection.W3cWebSocket.OPEN ||
+                this.websocketClient.readyState ===
+                    ClientConnection.W3cWebSocket.CONNECTING
             ) {
                 console.error("connect called but already connected");
                 return;
@@ -70,16 +82,18 @@ export class ClientConnection extends AbstractConnection implements Connection {
         this.onClosed();
     }
 
-    private onClose(ev: CloseEvent) {
+    private onClose(_: CloseEvent) {
         this.onClosed();
     }
 
     private onClosed() {
+        this.resetAbstractConnection();
         if (this.reconnectOnClose) {
             if (this.pendingConnect) {
                 console.log("onClose called but pendingConnect is true");
                 return;
             }
+            console.log("reconnecting");
             this.pendingConnect = true;
             setTimeout(() => {
                 this.connect();

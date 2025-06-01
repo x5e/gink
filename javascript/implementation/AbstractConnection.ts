@@ -26,6 +26,7 @@ export class AbstractConnection implements Connection {
         this.hasSentEverythingState = false;
         this.hasReceivedEverythingState = false;
         this.hasSentGreetingState = false;
+        this.peerHasMap = undefined;
     }
 
     get hasSentGreeting(): boolean {
