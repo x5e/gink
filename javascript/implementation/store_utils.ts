@@ -1,4 +1,4 @@
-import { ChainTracker } from "./ChainTracker";
+import { HasMap } from "./HasMap";
 import {
     Behavior,
     ChangeBuilder,
@@ -202,10 +202,8 @@ export function medallionChainStartToString(tuple: [number, number]): string {
     return `${intToHex(tuple[0])}-${intToHex(tuple[1])}`;
 }
 
-export function buildChainTracker(
-    chainInfos: Iterable<BundleInfo>,
-): ChainTracker {
-    const hasMap: ChainTracker = new ChainTracker({});
+export function buildChainTracker(chainInfos: Iterable<BundleInfo>): HasMap {
+    const hasMap: HasMap = new HasMap({});
     for (const value of chainInfos) {
         hasMap.markAsHaving(value);
     }

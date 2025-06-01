@@ -24,6 +24,7 @@ message SyncMessage {
         bytes bundle = 1; // bytes so it's easy to save verbatim.
         Greeting greeting = 2;  // sent by each peer when the connection is made
         Ack ack = 3;
+        Signal signal = 4;
     }
 
     message Greeting {
@@ -41,5 +42,13 @@ message SyncMessage {
         uint64 chain_start = 2;
         uint64 timestamp = 3;
         uint64 previous = 4;
+    }
+
+    message Signal {
+        enum SignalType {
+            UNDEFINED = 0;
+            BUNDLES_SENT = 1;
+        }
+        SignalType type = 1;
     }
 }

@@ -19,13 +19,13 @@ let client;
     console.log("all ready");
 
     client.send(
-        `await database.connectTo('ws://127.0.0.1:${port}').catch((err)=>console.error('unable to connect'));\n`,
+        `void database.connectTo('ws://127.0.0.1:${port}', {onError: (err)=>console.error('unable to connect')});\n`,
     );
     await client.expect("unable to connect", 2000);
     console.log("saw rejection");
 
     client.send(
-        `await database.connectTo('ws://127.0.0.1:${port}', {authToken:'abc'}).catch((err)=>console.error(err, 'unable to connect'));\n`,
+        `void database.connectTo('ws://127.0.0.1:${port}', {authToken:'abc', onError: (err)=>console.error(err, 'unable to connect')});\n`,
     );
     await server.expect("Connection accepted.", 2000);
     console.log("correct token accepted");

@@ -1,4 +1,4 @@
-import { Peer } from "./Peer";
+import { AbstractConnection } from "./AbstractConnection";
 import {
     generateMedallion,
     ensure,
@@ -24,8 +24,9 @@ import {
     Medallion,
     Meta,
     Bundler,
+    Connection,
 } from "./typedefs";
-import { ChainTracker } from "./ChainTracker";
+import { HasMap } from "./HasMap";
 
 import { Store } from "./Store";
 import {
@@ -33,6 +34,7 @@ import {
     ChangeBuilder,
     SyncMessageBuilder,
     BundleBuilder,
+    SignalType,
 } from "./builders";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
@@ -42,6 +44,7 @@ import { PromiseChainLock } from "./PromiseChainLock";
 import { Property } from "./Property";
 import { inspectSymbol } from "./utils";
 import { Directory } from "./Directory";
+import { ClientConnection } from "./ClientConnection";
 
 /**
  * This is an instance of the Gink database that can be run inside a web browser or via
@@ -50,13 +53,13 @@ import { Directory } from "./Directory";
  */
 export class Database {
     ready: Promise<any>;
-    readonly peers: Map<number, Peer> = new Map();
-    static readonly PROTOCOL = "gink";
+    readonly connections: Map<number, AbstractConnection> = new Map();
+    readonly connectionsByEndpoint: Map<string, AbstractConnection> = new Map();
 
     private listeners: Map<string, Map<string, BundleListener[]>> = new Map();
     private countConnections = 0; // Includes disconnected clients.
     private identity?: string;
-    protected iHave: ChainTracker;
+    protected iHave: HasMap;
     private static lastCreated?: Database;
     readonly store: Store;
     protected logger: CallBack;
@@ -64,12 +67,6 @@ export class Database {
     protected medallion?: Medallion;
     protected keyPair?: KeyPair;
     protected lastLink?: BundleInfo;
-
-    //TODO: centralize platform dependent code
-    private static W3cWebSocket =
-        typeof WebSocket === "function"
-            ? WebSocket
-            : eval("require('websocket').w3cwebsocket");
 
     constructor(args?: {
         store?: Store;
@@ -113,8 +110,8 @@ export class Database {
         this.listeners.set("all", innerMap);
 
         const callback = async (bundle: BundleView): Promise<void> => {
-            for (const [peerId, peer] of this.peers) {
-                peer._sendIfNeeded(bundle);
+            for (const [peerId, peer] of this.connections) {
+                peer.sendIfNeeded(bundle);
             }
             // Send to listeners subscribed to all containers.
             for (const listener of this.getListeners()) {
@@ -299,7 +296,7 @@ export class Database {
      * Closes connections to peers and closes the store.
      */
     public async close() {
-        for (const peer of this.peers.values()) {
+        for (const peer of this.connections.values()) {
             try {
                 peer.close();
             } catch (problem) {
@@ -345,19 +342,19 @@ export class Database {
                 `added bundle from ${fromConnectionId ?? "local"}: ${summary}`,
             );
             this.iHave.markAsHaving(bundle.info);
-            const peer = this.peers.get(fromConnectionId);
-            if (peer) {
-                peer.hasMap?.markAsHaving(bundle.info);
-                peer._sendAck(bundle.info);
+            const fromConnection = this.connections.get(fromConnectionId);
+            if (fromConnection) {
+                fromConnection.onReceivedBundle(bundle.info);
             }
-            for (const [peerId, peer] of this.peers) {
-                if (peerId !== fromConnectionId) peer._sendIfNeeded(bundle);
+            for (const [peerId, peer] of this.connections) {
+                if (peerId !== fromConnectionId) peer.sendIfNeeded(bundle);
             }
             // Send to listeners subscribed to all containers.
             for (const listener of this.getListeners()) {
                 listener(bundle);
             }
 
+            // TODO: maybe remove?  a lot of computation may not be necessary
             if (this.listeners.size > 1) {
                 // Loop through changes and gather a set of changed containers.
                 const changedContainers: Set<Muid> = new Set();
@@ -414,162 +411,94 @@ export class Database {
     protected async receiveMessage(
         messageBytes: Uint8Array,
         fromConnectionId: number,
-    ) {
+    ): Promise<void> {
         await this.ready;
-        const peer = this.peers.get(fromConnectionId);
-        if (!peer)
+        const connection = this.connections.get(fromConnectionId);
+        if (!connection)
             throw Error("Got a message from a peer I don't have a proxy for?");
-        try {
-            const parsed = <SyncMessageBuilder>(
-                SyncMessageBuilder.deserializeBinary(messageBytes)
+
+        const parsed = <SyncMessageBuilder>(
+            SyncMessageBuilder.deserializeBinary(messageBytes)
+        );
+        if (parsed.hasBundle()) {
+            const bundleBytes: BundleBytes = parsed.getBundle_asU8();
+            const decomposition = new Decomposition(bundleBytes);
+            await this.receiveBundle(decomposition, fromConnectionId);
+            return;
+        }
+        if (parsed.hasGreeting()) {
+            this.logger(`got greeting from ${fromConnectionId}`);
+            const greeting = parsed.getGreeting();
+            connection.setPeerHasMap(new HasMap({ greeting }));
+            await this.store.getBundles(
+                connection.sendIfNeeded.bind(connection),
             );
-            if (parsed.hasBundle()) {
-                const bundleBytes: BundleBytes = parsed.getBundle_asU8();
-                const decomposition = new Decomposition(bundleBytes);
-                await this.receiveBundle(decomposition, fromConnectionId);
-                return;
-            }
-            if (parsed.hasGreeting()) {
-                this.logger(`got greeting from ${fromConnectionId}`);
-                const greeting = parsed.getGreeting();
-                peer._receiveHasMap(new ChainTracker({ greeting }));
-                await this.store.getBundles(peer._sendIfNeeded.bind(peer));
-                return;
-            }
-            if (parsed.hasAck()) {
-                const ack = parsed.getAck();
-                const info: BundleInfo = {
-                    medallion: ack.getMedallion(),
-                    timestamp: ack.getTimestamp(),
-                    chainStart: ack.getChainStart(),
-                };
+            connection.markHasSentEverything();
+            return;
+        }
+        if (parsed.hasAck()) {
+            const ack = parsed.getAck();
+            const info: BundleInfo = {
+                medallion: ack.getMedallion(),
+                timestamp: ack.getTimestamp(),
+                chainStart: ack.getChainStart(),
+            };
+            this.logger(
+                `got ack from ${fromConnectionId}: ${JSON.stringify(info, ["timestamp", "medallion"])}`,
+            );
+            connection.onAck(info);
+        }
+        if (parsed.hasSignal()) {
+            const signal = parsed.getSignal();
+            const signalType = signal.getSignalType();
+            if (signalType === SignalType.BUNDLES_SENT) {
+                connection.markHasReceivedEverything();
                 this.logger(
-                    `got ack from ${fromConnectionId}: ${JSON.stringify(info, ["timestamp", "medallion"])}`,
+                    `received everything from connection number ${fromConnectionId}`,
                 );
-                this.peers.get(fromConnectionId)?.hasMap?.markAsHaving(info);
+            } else {
+                console.error(
+                    `received unknown signal from ${fromConnectionId}: ${signalType}`,
+                );
             }
-        } catch (e) {
-            //TODO: Send some sensible code to the peer to say what went wrong.
-            console.error(e);
-            this.peers.get(fromConnectionId)?.close();
-            this.peers.delete(fromConnectionId);
-        } finally {
-            //unlockingFunction();
         }
     }
 
-    /**
-     * Initiates a websocket connection to a peer.
-     * @param target a websocket uri, e.g. "ws://127.0.0.1:8080/"
-     * @param onClose optional callback to invoke when the connection is closed
-     * @param resolveOnOpen if true, resolve when the connection is established, otherwise wait for greeting
-     * @param retryOnDisconnect if true, try to reconnect (with backoff) if the server closes the connection
-     * @returns a promise to the peer
-     */
-    public async connectTo(
-        target: string,
+    protected onConnectionOpen(connectionId: number) {
+        const connection = this.connections.get(connectionId);
+        if (!connection) {
+            console.error(
+                `got connection open but connection ${connectionId} not found`,
+            );
+            return;
+        }
+        connection.send(this.iHave.getGreetingMessageBytes());
+        connection.markHasSentGreeting();
+        this.logger(`connection ${connectionId} opened and greeting sent`);
+    }
+
+    public connectTo(
+        endpoint: string,
         options?: {
-            onClose?: CallBack;
-            resolveOnOpen?: boolean;
-            retryOnDisconnect?: boolean;
             authToken?: string;
+            onError?: (error: Error) => void;
+            reconnectOnClose?: boolean;
         },
-    ): Promise<Peer> {
-        //TODO(https://github.com/google/gink/issues/69): have the default be to wait for databases to sync
-        const onClose: CallBack =
-            options && options.onClose ? options.onClose : noOp;
-        const resolveOnOpen: boolean =
-            options && options.resolveOnOpen ? options.resolveOnOpen : false;
-        const retryOnDisconnect =
-            options && options.retryOnDisconnect === false ? false : true;
-        const authToken: string =
-            options && options.authToken ? options.authToken : undefined;
-
-        await this.ready;
-        const thisClient = this;
-        return new Promise<Peer>((resolve, reject) => {
-            let protocols = [Database.PROTOCOL];
-
-            if (authToken) protocols.push(encodeToken(authToken));
-            const connectionId = this.createConnectionId();
-            let websocketClient: WebSocket = new Database.W3cWebSocket(
-                target,
-                protocols,
-            );
-            websocketClient.binaryType = "arraybuffer";
-            const peer = new Peer(
-                websocketClient.send.bind(websocketClient),
-                websocketClient.close.bind(websocketClient),
-            );
-
-            websocketClient.onopen = function (_ev: Event) {
-                // called once the new connection has been established
-                websocketClient.send(
-                    thisClient.iHave.getGreetingMessageBytes(),
-                );
-                thisClient.peers.set(connectionId, peer);
-                if (resolveOnOpen) resolve(peer);
-                else peer.ready.then(resolve);
-            };
-            websocketClient.onerror = function (ev: Event) {
-                // if/when this is called depends on the details of the websocket implementation
-                console.error(
-                    `error on connection ${connectionId} to ${target}, ${ev}`,
-                );
-                reject(ev);
-            };
-            websocketClient.onclose = async function (ev: CloseEvent) {
-                // this should always be called once the peer disconnects, including in cases of error
-                onClose(`closed connection ${connectionId} to ${target}`);
-
-                // If the connection was never successfully established, then
-                // reject the promise returned from the outer connectTo.
-                reject(ev);
-
-                // I'm intentionally leaving the peer object in the peers map just in case we get data from them.
-                // thisClient.peers.delete(connectionId);  // might still be processing data from peer
-                if (retryOnDisconnect) {
-                    let peer: Peer;
-                    let pow = 0;
-                    let retry_ms = 1000;
-                    let jitter = Math.floor(Math.random() * 1000);
-                    while (!peer) {
-                        await new Promise((resolve) =>
-                            setTimeout(resolve, retry_ms + jitter),
-                        );
-                        try {
-                            console.log(`retrying connection to ${target}`);
-                            peer = await thisClient.connectTo(target, options);
-
-                            if (peer) {
-                                console.log(`reconnected to ${target}`);
-                                break;
-                            }
-                        } catch (e) {
-                            console.error(`retry failed: ${e.message}`);
-                        } finally {
-                            if (retry_ms < 30000) {
-                                pow += 1;
-                                retry_ms = 1000 * Math.pow(2, pow);
-                                jitter = Math.floor(
-                                    Math.random() * 1000 * Math.pow(2, pow),
-                                );
-                            }
-                        }
-                    }
-                }
-            };
-            websocketClient.onmessage = function (ev: MessageEvent) {
-                // Called when any protocol messages are received.
-                const data = ev.data;
-                if (data instanceof ArrayBuffer) {
-                    const uint8View = new Uint8Array(data);
-                    thisClient.receiveMessage(uint8View, connectionId);
-                } else {
-                    // We don't expect any non-binary text messages.
-                    console.error(`got non-arraybuffer message: ${data}`);
-                }
-            };
+    ): Connection {
+        const { authToken, reconnectOnClose } = options ?? {};
+        if (this.connectionsByEndpoint.has(endpoint)) {
+            return this.connectionsByEndpoint.get(endpoint);
+        }
+        const connectionId = this.createConnectionId();
+        const connection = new ClientConnection({
+            endpoint,
+            authToken,
+            reconnectOnClose,
+            onOpen: () => this.onConnectionOpen(connectionId),
+            onData: (data) => this.receiveMessage(data, connectionId),
+            onError: options?.onError,
         });
+        this.connections.set(connectionId, connection);
+        return connection;
     }
 }

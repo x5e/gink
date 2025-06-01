@@ -41,7 +41,7 @@ import {
     Value,
     Placement,
 } from "./typedefs";
-import { ChainTracker } from "./ChainTracker";
+import { HasMap } from "./HasMap";
 import { Store } from "./Store";
 import {
     Behavior,
@@ -181,7 +181,7 @@ export class MemoryStore implements Store {
         );
     }
 
-    async getChainTracker(): Promise<ChainTracker> {
+    async getChainTracker(): Promise<HasMap> {
         const chainInfos = this.getChainInfos();
         const chainTracker = buildChainTracker(chainInfos);
         return Promise.resolve(chainTracker);

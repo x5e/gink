@@ -1,6 +1,6 @@
 import { isEqual } from "lodash";
 import { BundleBytes, Entry, BundleView } from "../implementation/typedefs";
-import { ChainTracker } from "../implementation/ChainTracker";
+import { HasMap } from "../implementation/HasMap";
 import { Store } from "../implementation/Store";
 import { Decomposition } from "../implementation/Decomposition";
 import {
@@ -138,7 +138,7 @@ export function testStore(
 
     it(`${implName} test creates greeting`, async () => {
         await addTrxns(store);
-        const hasMap = <ChainTracker>await store.getChainTracker();
+        const hasMap = <HasMap>await store.getChainTracker();
 
         expect(
             hasMap.getBundleInfo([MEDALLION1, START_MICROS1])!.timestamp,

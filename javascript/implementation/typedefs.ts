@@ -1,5 +1,6 @@
 import { Behavior, BundleBuilder, ChangeBuilder } from "./builders";
 import { DBSchema } from "idb";
+export const PROTOCOL = "gink";
 
 export type Bytes = Uint8Array;
 export type BundleBytes = Bytes;
@@ -158,6 +159,15 @@ export interface Bundler {
     addChange(changeBuilder: ChangeBuilder): Muid;
     commit(comment?: string): Promise<BundleInfo>;
     medallion: number;
+}
+
+export interface Connection {
+    subscribe(callback: () => void): () => void;
+    get hasSentUnackedData(): boolean;
+    get hasSentEverything(): boolean;
+    get hasReceivedEverything(): boolean;
+    get hasSentGreeting(): boolean;
+    close(): void;
 }
 
 export interface Sealer {

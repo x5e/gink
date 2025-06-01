@@ -150,6 +150,9 @@ export class SyncMessageBuilder extends ImplementedMessage {
     getAck(): AckBuilder;
     setBundle(Uint8Array);
     setAck(AckBuilder);
+    hasSignal(): boolean;
+    getSignal(): SignalBuilder;
+    setSignal(SignalBuilder);
 }
 
 export class MuidBuilder extends ImplementedMessage {
@@ -252,4 +255,14 @@ export class MovementBuilder extends ImplementedMessage {
     setContainer(MuidBuilder);
     getPurge(): boolean;
     setPurge(boolean);
+}
+
+export class SignalBuilder extends ImplementedMessage {
+    getSignalType(): number;
+    setSignalType(number);
+}
+
+export declare enum SignalType {
+    UNDEFINED = 0,
+    BUNDLES_SENT = 1,
 }

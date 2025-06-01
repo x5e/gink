@@ -32,7 +32,7 @@ export class CommandLineInterface {
     instance?: Database;
     replServer?: REPLServer;
     authToken?: string;
-    retryOnDisconnect: boolean;
+    reconnectOnClose: boolean;
     logger: (_: string) => void;
 
     constructor(args: {
@@ -53,7 +53,7 @@ export class CommandLineInterface {
         this.logger = args.verbose ? logToStdErr : noOp;
 
         this.authToken = args.auth_token;
-        this.retryOnDisconnect = args.reconnect;
+        this.reconnectOnClose = args.reconnect;
         this.targets = args.connect_to ?? [];
         const identity = args.identity ?? getIdentity();
         ensure(identity);
@@ -120,8 +120,7 @@ export class CommandLineInterface {
                 this.logger(`connecting to: ${target}`);
                 try {
                     await this.instance.connectTo(target, {
-                        onClose: logToStdErr,
-                        retryOnDisconnect: this.retryOnDisconnect,
+                        reconnectOnClose: this.reconnectOnClose,
                         authToken: this.authToken,
                     });
                     this.logger(`connected!`);

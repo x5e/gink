@@ -19,7 +19,7 @@ import { Store } from "./Store";
 import { PromiseChainLock } from "./PromiseChainLock";
 import { LockableLog } from "./LockableLog";
 import { watch, FSWatcher } from "fs";
-import { ChainTracker } from "./ChainTracker";
+import { HasMap } from "./HasMap";
 import { ClaimBuilder, LogFileBuilder, KeyPairBuilder } from "./builders";
 import {
     generateTimestamp,
@@ -44,7 +44,7 @@ import { Decomposition } from "./Decomposition";
 
 export class LogBackedStore extends LockableLog implements Store {
     private bundlesProcessed = 0;
-    private hasMap: ChainTracker = new ChainTracker({});
+    private hasMap: HasMap = new HasMap({});
 
     private claimedChains: Map<number, ClaimedChain> = new Map();
     private identities: Map<string, string> = new Map(); // Medallion,ChainStart => identity
@@ -376,7 +376,7 @@ export class LogBackedStore extends LockableLog implements Store {
         return this.identities.get(`${chainInfo[0]},${chainInfo[1]}`);
     }
 
-    async getChainTracker(): Promise<ChainTracker> {
+    async getChainTracker(): Promise<HasMap> {
         await this.ready;
         if (!this.exclusive) await this.pullDataFromFile();
         return await this.internalStore.getChainTracker();

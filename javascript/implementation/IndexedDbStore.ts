@@ -54,7 +54,7 @@ import {
     bundleInfoToKey,
     storageKeyToString,
 } from "./store_utils";
-import { ChainTracker } from "./ChainTracker";
+import { HasMap } from "./HasMap";
 import { Store } from "./Store";
 import {
     Behavior,
@@ -504,7 +504,7 @@ export class IndexedDbStore implements Store {
         return claim;
     }
 
-    async getChainTracker(): Promise<ChainTracker> {
+    async getChainTracker(): Promise<HasMap> {
         await this.ready;
         const chainInfos = await this.getChainInfos();
         const chainTracker = buildChainTracker(chainInfos);
