@@ -34,7 +34,8 @@ export class AbstractConnection implements Connection {
         return (
             this.hasSentGreeting &&
             this.hasSentInitialSync &&
-            !this.hasSentUnackedData);
+            !this.hasSentUnackedData
+        );
     }
 
     get connected(): boolean {
