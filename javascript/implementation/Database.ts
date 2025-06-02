@@ -497,6 +497,7 @@ export class Database {
             onOpen: () => this.onConnectionOpen(connectionId),
             onData: (data) => this.receiveMessage(data, connectionId),
             onError: options?.onError,
+            waitFor: this.ready,
         });
         this.connections.set(connectionId, connection);
         return connection;
