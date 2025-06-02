@@ -52,7 +52,11 @@ export class ClientConnection extends AbstractConnection implements Connection {
         );
     }
 
-    private connect() {
+    get connected(): boolean {
+        return this.readyState === ClientConnection.W3cWebSocket.OPEN;
+    }
+
+    connect() {
         this.pendingConnect = false;
         if (this.websocketClient) {
             if (
@@ -90,6 +94,8 @@ export class ClientConnection extends AbstractConnection implements Connection {
 
     private onClosed() {
         this.resetAbstractConnection();
+        this.websocketClient = undefined;
+        this.notify();
         if (this.reconnectOnClose) {
             if (this.pendingConnect) {
                 console.log("onClose called but pendingConnect is true");

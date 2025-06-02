@@ -164,9 +164,10 @@ export interface Bundler {
 export interface Connection {
     subscribe(callback: () => void): () => void;
     get hasSentUnackedData(): boolean;
-    get hasSentEverything(): boolean;
-    get hasReceivedEverything(): boolean;
+    get hasSentInitialSync(): boolean;
+    get hasRecvInitialSync(): boolean;
     get hasSentGreeting(): boolean;
+    get synced(): boolean;
     close(): void;
 }
 
