@@ -22,6 +22,7 @@ export class ClientConnection extends AbstractConnection implements Connection {
         onOpen: () => void;
         reconnectOnClose?: boolean;
         onError?: (error: Error) => void;
+        waitFor: Promise<void>;
     }) {
         super();
         const {
@@ -31,6 +32,7 @@ export class ClientConnection extends AbstractConnection implements Connection {
             reconnectOnClose,
             onOpen,
             onError,
+            waitFor,
         } = options;
         this.onOpen = onOpen;
         this.endpoint = endpoint;
@@ -38,9 +40,9 @@ export class ClientConnection extends AbstractConnection implements Connection {
         this.protocols = ["gink"];
         if (authToken) this.protocols.push(encodeToken(authToken));
         this.reconnectOnClose = reconnectOnClose;
-        this.pendingConnect = true;
-        this.connect();
         this.onErrorCb = onError;
+        this.pendingConnect = true;
+        waitFor.then(() => this.connect());
     }
 
     get readyState(): number {

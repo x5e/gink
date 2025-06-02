@@ -9,7 +9,7 @@ export { Property } from "./Property";
 export { Group } from "./Group";
 export { IndexedDbStore } from "./IndexedDbStore";
 export { MemoryStore } from "./MemoryStore";
-export { Muid, BundleInfo, Value } from "./typedefs";
+export { Muid, BundleInfo, Value, Connection } from "./typedefs";
 export { Container } from "./Container";
 export { Vertex } from "./Vertex";
 export { EdgeType } from "./EdgeType";
