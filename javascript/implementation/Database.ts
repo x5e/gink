@@ -433,7 +433,7 @@ export class Database {
             await this.store.getBundles(
                 connection.sendIfNeeded.bind(connection),
             );
-            connection.markHasSentEverything();
+            connection.markHasSentInitialSync();
             return;
         }
         if (parsed.hasAck()) {
@@ -452,7 +452,7 @@ export class Database {
             const signal = parsed.getSignal();
             const signalType = signal.getSignalType();
             if (signalType === SignalType.BUNDLES_SENT) {
-                connection.markHasReceivedEverything();
+                connection.markHasRecvInitialSync();
                 this.logger(
                     `received everything from connection number ${fromConnectionId}`,
                 );

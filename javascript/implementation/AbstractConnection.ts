@@ -14,8 +14,8 @@ export class AbstractConnection implements Connection {
     protected peerHasMap?: HasMap; // Data the peer has said that it has or we have sent it.
     private unacked: Map<Medallion, Map<ChainStart, Timestamp>> = new Map();
     private unackedChains: number = 0;
-    private hasSentEverythingState: boolean = false;
-    private hasReceivedEverythingState: boolean = false;
+    private hasSentInitialSyncState: boolean = false;
+    private hasRecvInitialSyncState: boolean = false;
     private hasSentGreetingState: boolean = false;
     protected onErrorCb?: (error: Error) => void;
 
@@ -23,22 +23,35 @@ export class AbstractConnection implements Connection {
         this.unacked = new Map();
         this.unackedChains = 0;
         this.peerHasMap = undefined;
-        this.hasSentEverythingState = false;
-        this.hasReceivedEverythingState = false;
+        this.hasSentInitialSyncState = false;
+        this.hasRecvInitialSyncState = false;
         this.hasSentGreetingState = false;
         this.peerHasMap = undefined;
+    }
+
+    get synced(): boolean {
+        // TODO: after python can send sync completed, add hasRecvInitialSync
+        return (
+            this.hasSentGreeting &&
+            this.hasSentInitialSync &&
+            !this.hasSentUnackedData
+        );
+    }
+
+    get connected(): boolean {
+        throw new Error("Not implemented");
     }
 
     get hasSentGreeting(): boolean {
         return this.hasSentGreetingState;
     }
 
-    get hasSentEverything(): boolean {
-        return this.hasSentEverythingState;
+    get hasSentInitialSync(): boolean {
+        return this.hasSentInitialSyncState;
     }
 
-    get hasReceivedEverything(): boolean {
-        return this.hasReceivedEverythingState;
+    get hasRecvInitialSync(): boolean {
+        return this.hasRecvInitialSyncState;
     }
 
     markHasSentGreeting() {
@@ -46,13 +59,13 @@ export class AbstractConnection implements Connection {
         this.notify();
     }
 
-    markHasSentEverything() {
-        this.hasSentEverythingState = true;
+    markHasSentInitialSync() {
+        this.hasSentInitialSyncState = true;
         this.notify();
     }
 
-    markHasReceivedEverything() {
-        this.hasReceivedEverythingState = true;
+    markHasRecvInitialSync() {
+        this.hasRecvInitialSyncState = true;
         this.notify();
     }
 
