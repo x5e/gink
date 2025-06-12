@@ -38,9 +38,12 @@ export class Keyed<
      */
     set(
         key: GenericType,
-        value: Value | Container,
+        value: Container | Value,
         meta?: Meta,
     ): Promise<Muid> {
+        if (value === undefined) {
+            throw new Error("value is undefined");
+        }
         return this.addEntry(key, value, meta);
     }
 

@@ -56,7 +56,7 @@ export interface ClaimedChain {
 }
 
 export interface CallBack {
-    (value?: any): void;
+    (...args: any[]): void;
 }
 
 export interface Indexer {

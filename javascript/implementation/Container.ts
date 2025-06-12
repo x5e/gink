@@ -146,7 +146,7 @@ export abstract class Container extends Addressable {
             | [Addressable, Addressable]
             | Muid
             | [Muid, Muid],
-        value?: Value | Deletion | Inclusion,
+        value?: Container | Value | Deletion | Inclusion,
         meta?: Meta,
         onContainer?: Muid,
     ): Promise<Muid> {

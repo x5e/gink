@@ -140,6 +140,9 @@ class Relay(Server):
                     elif isinstance(thing, HasMap):  # greeting message
                         self._store.get_bundles(connection.send_bundle, peer_has=thing)
                     elif isinstance(thing, BundleInfo):  # an ack:
+                        if thing not in self._not_acked:
+                            # self._logger.warning(f"ack {thing} not in not_acked")
+                            pass # TODO: properly track not acked bundles
                         self._not_acked.discard(thing)
                     else:
                         raise AssertionError(f"unexpected object {thing}")
