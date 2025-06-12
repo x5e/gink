@@ -1,6 +1,6 @@
 import { AbstractConnection } from "./AbstractConnection";
 import { encodeToken } from "./utils";
-import { Connection } from "./typedefs";
+import { CallBack, Connection } from "./typedefs";
 
 export class ClientConnection extends AbstractConnection implements Connection {
     private static W3cWebSocket =
@@ -14,6 +14,7 @@ export class ClientConnection extends AbstractConnection implements Connection {
     private onOpen: () => void;
     private protocols: string[];
     readonly endpoint: string;
+    private logger: CallBack;
 
     constructor(options: {
         endpoint: string;
@@ -21,7 +22,7 @@ export class ClientConnection extends AbstractConnection implements Connection {
         onData: (data: Uint8Array) => Promise<void>;
         onOpen: () => void;
         reconnectOnClose?: boolean;
-        onError?: (error: Error) => void;
+        logger?: CallBack;
         waitFor: Promise<void>;
     }) {
         super();
@@ -31,16 +32,16 @@ export class ClientConnection extends AbstractConnection implements Connection {
             onData,
             reconnectOnClose,
             onOpen,
-            onError,
             waitFor,
+            logger,
         } = options;
         this.onOpen = onOpen;
         this.endpoint = endpoint;
         this.onData = onData;
+        this.logger = logger;
         this.protocols = ["gink"];
         if (authToken) this.protocols.push(encodeToken(authToken));
         this.reconnectOnClose = reconnectOnClose;
-        this.onErrorCb = onError;
         this.pendingConnect = true;
         waitFor.then(() => this.connect());
     }
@@ -84,11 +85,12 @@ export class ClientConnection extends AbstractConnection implements Connection {
     }
 
     private onError(ev: Event) {
-        this.onErrorCb?.(new Error(ev.toString()));
+        this.logger("WebSocket error:", ev);
         this.onClosed();
     }
 
-    private onClose(_: CloseEvent) {
+    private onClose(ev: CloseEvent) {
+        this.logger(`WebSocket closed: code=${ev.code}, reason=${ev.reason}, wasClean=${ev.wasClean}`);
         this.onClosed();
     }
 
@@ -97,11 +99,8 @@ export class ClientConnection extends AbstractConnection implements Connection {
         this.websocketClient = undefined;
         this.notify();
         if (this.reconnectOnClose) {
-            if (this.pendingConnect) {
-                console.log("onClose called but pendingConnect is true");
-                return;
-            }
-            console.log("reconnecting");
+            if (this.pendingConnect) return;
+            this.logger("will start reconnect in 1 second");
             this.pendingConnect = true;
             setTimeout(() => {
                 this.connect();

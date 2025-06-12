@@ -481,7 +481,6 @@ export class Database {
         endpoint: string,
         options?: {
             authToken?: string;
-            onError?: (error: Error) => void;
             reconnectOnClose?: boolean;
         },
     ): Connection {
@@ -496,7 +495,7 @@ export class Database {
             reconnectOnClose,
             onOpen: () => this.onConnectionOpen(connectionId),
             onData: (data) => this.receiveMessage(data, connectionId),
-            onError: options?.onError,
+            logger: this.logger,
             waitFor: this.ready,
         });
         this.connections.set(connectionId, connection);
