@@ -62,7 +62,6 @@ process.chdir(__dirname + "/..");
     await client.close();
     await python2.close();
     */
-
 })().catch((reason) => {
     console.error(reason);
     process.exit(1);

@@ -122,7 +122,10 @@ export class CommandLineInterface {
                     reconnectOnClose: this.reconnectOnClose,
                     authToken: this.authToken,
                     onError: (e) => {
-                        this.logger(`Failed connection to ${target}. Bad Auth token?\n` + e);
+                        this.logger(
+                            `Failed connection to ${target}. Bad Auth token?\n` +
+                                e,
+                        );
                     },
                 }).ready;
                 this.logger(`connected!`);
