@@ -482,6 +482,7 @@ export class Database {
         options?: {
             authToken?: string;
             reconnectOnClose?: boolean;
+            onError?: CallBack;
         },
     ): Connection {
         const { authToken, reconnectOnClose } = options ?? {};
@@ -497,6 +498,7 @@ export class Database {
             onData: (data) => this.receiveMessage(data, connectionId),
             logger: this.logger,
             waitFor: this.ready,
+            onError: options?.onError,
         });
         this.connections.set(connectionId, connection);
         return connection;

@@ -38,6 +38,13 @@ process.chdir(__dirname + "/..");
     await client.expect("\n4n\n", 2000);
 
     await python.close();
+    await client.close();
+    console.log("finished!");
+    process.exit(0);
+
+    /*
+    await client.close();
+
     await client.expect("reconnecting", 2000);
 
     const python2 = new Expector("python3", [
@@ -54,8 +61,8 @@ process.chdir(__dirname + "/..");
 
     await client.close();
     await python2.close();
-    console.log("finished!");
-    process.exit(0);
+    */
+
 })().catch((reason) => {
     console.error(reason);
     process.exit(1);

@@ -15,6 +15,7 @@ export class ClientConnection extends AbstractConnection implements Connection {
     private protocols: string[];
     readonly endpoint: string;
     private logger: CallBack;
+    private onErrorCb?: CallBack;
 
     constructor(options: {
         endpoint: string;
@@ -23,6 +24,7 @@ export class ClientConnection extends AbstractConnection implements Connection {
         onOpen: () => void;
         reconnectOnClose?: boolean;
         logger?: CallBack;
+        onError?: CallBack;
         waitFor: Promise<void>;
     }) {
         super();
@@ -34,7 +36,9 @@ export class ClientConnection extends AbstractConnection implements Connection {
             onOpen,
             waitFor,
             logger,
+            onError,
         } = options;
+        this.onErrorCb = onError;
         this.onOpen = onOpen;
         this.endpoint = endpoint;
         this.onData = onData;
@@ -84,14 +88,20 @@ export class ClientConnection extends AbstractConnection implements Connection {
         this.websocketClient.onclose = this.onClose.bind(this);
     }
 
-    private onError(ev: Event) {
+    private onError(ev?: Event) {
         this.logger("WebSocket error:", ev);
+        // console.log(`onErrorCb: ${this.onErrorCb}`);
+        if (ev) {
+            this.onErrorCb?.(ev);
+        } else {
+            this.onErrorCb?.(new Error("WebSocket error"));
+        }
         this.onClosed();
     }
 
     private onClose(ev: CloseEvent) {
         this.logger(
-            `WebSocket closed: code=${ev.code}, reason=${ev.reason}, wasClean=${ev.wasClean}`,
+            `WebSocket closed: code=${ev?.code}, reason=${ev?.reason}, wasClean=${ev?.wasClean}`,
         );
         this.onClosed();
     }
