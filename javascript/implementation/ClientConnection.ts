@@ -90,7 +90,9 @@ export class ClientConnection extends AbstractConnection implements Connection {
     }
 
     private onClose(ev: CloseEvent) {
-        this.logger(`WebSocket closed: code=${ev.code}, reason=${ev.reason}, wasClean=${ev.wasClean}`);
+        this.logger(
+            `WebSocket closed: code=${ev.code}, reason=${ev.reason}, wasClean=${ev.wasClean}`,
+        );
         this.onClosed();
     }
 

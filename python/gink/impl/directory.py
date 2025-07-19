@@ -180,6 +180,8 @@ class Directory(Container):
         if bundler is None:
             bundler = self._database.bundler(comment)
         for key in keys:
+            if not isinstance(key, (str, bytes, int)):
+                raise TypeError(f"key must be a string, bytes, or int, got {type(key)}")
             found = store.get_entry_by_key(current._muid, key=key, as_of=timestamp) if not just_created else None
             if found is None or found.builder.deletion:  # type: ignore
                 new_directory = Directory(database=self._database, bundler=bundler)

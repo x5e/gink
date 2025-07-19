@@ -307,20 +307,15 @@ class Connection:
                 self._logger.info('Text message received: %r', event.data)
             elif isinstance(event, BytesMessage):
                 received = bytes(event.data) if isinstance(event.data, bytearray) else event.data
-                #self._logger.debug('Received %d bytes (%s): %r', len(received), self._name, [x for x in received])
                 assert isinstance(received, bytes)
                 if not event.message_finished:
                     self._message_buffer += received
-                    # self._logger.debug('Added to message buffer, now have %d bytes (%s): %r', len(self._message_buffer), self._name, [x for x in self._message_buffer])
                 else:
                     final_message = received
-                    # self._logger.debug('Message buffer state before combine: %r', [x for x in self._message_buffer] if self._message_buffer else None)
                     if len(self._message_buffer) > 0:
                         # Combine with previous partial messages
-                        self._logger.debug('Combining %d bytes from message buffer with %d new bytes', len(self._message_buffer), len(received))
                         final_message = self._message_buffer + received
                         self._message_buffer = b""
-                    #self._logger.debug('Processing complete message of %d bytes (%s): %r', len(final_message), self._name, [x for x in final_message])
                     sync_message = SyncMessage()
                     sync_message.ParseFromString(final_message)
                     yield sync_message
