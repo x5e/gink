@@ -83,9 +83,7 @@ export const librariesReady = sodium_ready;
 
 export const signingBundles = true;
 
-export function noOp(_?: any) {
-    ensure(arguments.length > 0);
-}
+export function noOp(..._args: any[]) {}
 
 export function toLastWithPrefixBeforeSuffix<V>(
     map: TreeMap<string, V>,

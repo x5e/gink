@@ -56,7 +56,7 @@ export interface ClaimedChain {
 }
 
 export interface CallBack {
-    (value?: any): void;
+    (...args: any[]): void;
 }
 
 export interface Indexer {
@@ -168,6 +168,7 @@ export interface Connection {
     get hasRecvInitialSync(): boolean;
     get hasSentGreeting(): boolean;
     get synced(): boolean;
+    get ready(): Promise<void>;
     close(): void;
 }
 

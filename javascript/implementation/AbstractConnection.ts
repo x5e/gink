@@ -17,7 +17,16 @@ export class AbstractConnection implements Connection {
     private hasSentInitialSyncState: boolean = false;
     private hasRecvInitialSyncState: boolean = false;
     private hasSentGreetingState: boolean = false;
-    protected onErrorCb?: (error: Error) => void;
+    private _ready: Promise<void>;
+    private onReady: (() => void) | undefined;
+
+    constructor() {
+        this.resetAbstractConnection();
+    }
+
+    get ready(): Promise<void> {
+        return this._ready;
+    }
 
     protected resetAbstractConnection() {
         this.unacked = new Map();
@@ -27,6 +36,9 @@ export class AbstractConnection implements Connection {
         this.hasRecvInitialSyncState = false;
         this.hasSentGreetingState = false;
         this.peerHasMap = undefined;
+        this._ready = new Promise((resolve) => {
+            this.onReady = resolve;
+        });
     }
 
     get synced(): boolean {
@@ -107,6 +119,9 @@ export class AbstractConnection implements Connection {
 
     protected notify() {
         this.listeners.forEach((listener) => listener());
+        if (this.synced) {
+            this.onReady?.();
+        }
     }
 
     subscribe(callback: () => void): () => void {

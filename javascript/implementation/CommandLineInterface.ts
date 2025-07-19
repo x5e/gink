@@ -118,17 +118,17 @@ export class CommandLineInterface {
             globalThis.Directory = Directory;
             for (const target of this.targets) {
                 this.logger(`connecting to: ${target}`);
-                try {
-                    await this.instance.connectTo(target, {
-                        reconnectOnClose: this.reconnectOnClose,
-                        authToken: this.authToken,
-                    });
-                    this.logger(`connected!`);
-                } catch (e) {
-                    this.logger(
-                        `Failed connection to ${target}. Bad Auth token?\n` + e,
-                    );
-                }
+                await this.instance.connectTo(target, {
+                    reconnectOnClose: this.reconnectOnClose,
+                    authToken: this.authToken,
+                    onError: (e) => {
+                        this.logger(
+                            `Failed connection to ${target}. Bad Auth token?\n` +
+                                e,
+                        );
+                    },
+                }).ready;
+                this.logger(`connected!`);
             }
         }
         this.replServer = start({ prompt: "node+gink> ", useGlobal: true });
