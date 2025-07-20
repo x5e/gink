@@ -3,6 +3,7 @@ from typing import *
 from logging import getLogger
 from io import BytesIO
 from ssl import SSLError
+from typing_extensions import override
 
 from .database import Database
 from .listener import Listener
@@ -131,6 +132,7 @@ class BraidServer(Server):
         ct = self._data_relay.get_store().get_has_map(limit_to=dict(braid.items()))
         return ct.to_greeting_message()
 
+    @override
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
         """ Called when a listener is ready to accept a connection.
             Attempts to accept the connection, then returns the connection as a list.
