@@ -33,6 +33,7 @@ setup(
         "typeguard",
         "pynacl",
         "python-dateutil",
+        "typing-extensions"
     ],
     extras_require={
         "test": ["nose2", "flask", "requests"],
