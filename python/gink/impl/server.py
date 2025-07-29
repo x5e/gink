@@ -38,7 +38,7 @@ class Server(ABC):
             and the selectable list is updated.
         """
         self._selectables.add(selectable)
-        self._socket_left.send(b'1')
+        self._socket_left.send(b"1")
 
     def _remove_selectable(self, selectable: Selectable):
         """ Removes a selectable from the list of active selectables. """
@@ -62,17 +62,24 @@ class Server(ABC):
     def is_closed(self) -> bool:
         return self._closed
 
-    def start_listening(self, addr="",
-                        port: Union[str, int] = "8080",
-                        auth: Optional[AuthFunc] = None,
-                        certfile: Optional[str] = None,
-                        keyfile: Optional[str] = None,
-                        ):
-
-        """ Listen for incoming connections on the given port. """
+    def start_listening(
+        self,
+        addr="",
+        port: Union[str, int] = "8080",
+        auth: Optional[AuthFunc] = None,
+        certfile: Optional[str] = None,
+        keyfile: Optional[str] = None,
+    ) -> None:
+        """Listen for incoming connections on the given port."""
         port = int(port)
-        listener = Listener(addr=addr, port=port, auth=auth, certfile=certfile, keyfile=keyfile,
-                            on_ready=self._on_listener_ready)
+        listener = Listener(
+            addr=addr,
+            port=port,
+            auth=auth,
+            certfile=certfile,
+            keyfile=keyfile,
+            on_ready=self._on_listener_ready,
+        )
         security = "secure" if listener.get_context() else "insecure"
         self._logger.info(f"starting {security} server listening on %r:%r", addr, port)
         self._listeners.add(listener)
@@ -80,4 +87,4 @@ class Server(ABC):
 
     @abstractmethod
     def _on_listener_ready(self, listener: Listener) -> Iterable[Selectable]:
-        """ Abstract method called whenever someone attempts to connect to server. """
+        """Abstract method called whenever someone attempts to connect to server."""
