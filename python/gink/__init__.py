@@ -23,6 +23,10 @@ from .impl.braid import Braid
 from .impl.typedefs import inf, GenericTimestamp
 from .impl.accumulator import Accumulator, Decimal
 from .impl.timing import Timer, report_timing
+from .impl.selectable_console import SelectableConsole
+from .impl.braid_server import BraidServer
+from .impl.relay import Relay
+from .impl.looping import loop
 
 
 __all__ = [
@@ -57,4 +61,8 @@ __all__ = [
     "Decimal",
     "Timer",
     "report_timing",
+    "SelectableConsole",
+    "BraidServer",
+    "Relay",
+    "loop",
 ]

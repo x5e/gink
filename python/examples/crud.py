@@ -1,7 +1,7 @@
 from json import loads, dumps
 from os import environ
 
-from .impl.directory import Directory
+from gink import Directory
 
 """
 WSGI application to GET, PUT, and DELETE data in a Gink database.
