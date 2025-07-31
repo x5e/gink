@@ -36,7 +36,7 @@ from wsproto.events import (
 # gink modules
 from .builders import SyncMessage
 from .looping import Finished
-from .typedefs import AuthFunc, AUTH_FULL, AUTH_RITE
+from .typedefs import AuthFunc, AUTH_NONE, AUTH_RITE
 from .sync_func import SyncFunc
 from .bundle_info import BundleInfo
 from .decomposition import Decomposition
@@ -67,7 +67,7 @@ class Connection:
             sync_func: Optional[SyncFunc] = None,
             auth_func: Optional[AuthFunc] = None,
             auth_data: Optional[str] = None,  # only relevant when used as a client
-            permissions: int = AUTH_FULL,     # default permissions when used as a server
+            permissions: int = AUTH_NONE,     # default permissions when used as a server
             secure_connection: bool = False,
     ):
         if socket is None:
