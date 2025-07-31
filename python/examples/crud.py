@@ -1,7 +1,7 @@
 from json import loads, dumps
 from os import environ
 
-from .impl.directory import Directory
+from gink import Directory
 
 """
 WSGI application to GET, PUT, and DELETE data in a Gink database.
@@ -18,7 +18,7 @@ curl -X GET http://localhost:8099/key
 
 # Returns 3
 
-To run this application, pass --wsgi gink.crud.app when starting gink.
+To run this application, pass --wsgi crud.app when starting gink.
 
 Set auth key with env AUTH_TOKEN.
 

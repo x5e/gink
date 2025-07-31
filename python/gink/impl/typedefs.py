@@ -1,5 +1,6 @@
 """ Various types classes for use throughout the codebase. """
-from typing import NewType, Union, TypeVar, Callable
+from typing import NewType, Union, TypeVar, Callable, Protocol, Optional
+from collections.abc import Mapping
 from datetime import datetime, timedelta, date
 from pathlib import Path
 
@@ -12,7 +13,7 @@ Destination = GenericTimestamp
 UserKey = Union[str, int, bytes]
 UserValue = Union[str, int, float, datetime, bytes, bool, None, dict, tuple, list]
 EPOCH = 0
-Limit = Union[int, float]
+Limit = Union[MuTimestamp, float]
 T = TypeVar('T')
 inf = float("inf")
 
@@ -25,7 +26,27 @@ class Inclusion:
     """ Used to indicate adding something to a set or group. """
 
 
-AuthFunc = Callable[[str, Path], int]
+class WebSocketRequest(Protocol):
+
+    @property
+    def path(self) -> str:
+        pass
+
+    @property
+    def headers(self) -> Mapping[str, str]:
+        pass
+
+    @property
+    def authorization(self) -> Optional[str]:
+        pass
+
+    @property
+    def cookies(self) -> Mapping[str, str]:
+        pass
+
+
+
+AuthFunc = Callable[[WebSocketRequest], int]
 
 AUTH_NONE = 0
 AUTH_READ = 1

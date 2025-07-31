@@ -30,7 +30,7 @@ from .builders import (
     ChangeBuilder,
     EntryBuilder,
 )
-from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE
+from .typedefs import AuthFunc, AUTH_FULL, AUTH_NONE, WebSocketRequest
 from .builders import Behavior
 from .bundle_info import BundleInfo
 from .decomposition import Decomposition
@@ -40,8 +40,9 @@ def digest(data: bytes) -> bytes:
     return blake2b(data, digest_size=32, encoder=RawEncoder)
 
 def make_auth_func(token: str) -> AuthFunc:
-    def auth_func(data: str, *_) -> int:
-        return AUTH_FULL if fullmatch(fr"token\s+{token}\s*", data, IGNORECASE) else AUTH_NONE
+    def auth_func(web_socket_request: WebSocketRequest, *_) -> int:
+        authorization = web_socket_request.authorization or ""
+        return AUTH_FULL if fullmatch(fr"token\s+{token}\s*", authorization, IGNORECASE) else AUTH_NONE
     return auth_func
 
 

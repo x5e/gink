@@ -14,7 +14,7 @@ process.chdir(__dirname + "/..");
             "gink",
             "--loop",
             "--wsgi",
-            "gink.crud.app",
+            "examples.crud.app",
             "--wsgi_listen_on",
             `127.0.0.1:${port}`,
         ],
