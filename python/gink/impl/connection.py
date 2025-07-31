@@ -36,7 +36,7 @@ from wsproto.events import (
 # gink modules
 from .builders import SyncMessage
 from .looping import Finished
-from .typedefs import AuthFunc, AUTH_NONE, AUTH_RITE
+from .typedefs import AuthFunc, AUTH_NONE, AUTH_RITE, AUTH_FULL
 from .sync_func import SyncFunc
 from .bundle_info import BundleInfo
 from .decomposition import Decomposition
@@ -67,7 +67,6 @@ class Connection:
             sync_func: Optional[SyncFunc] = None,
             auth_func: Optional[AuthFunc] = None,
             auth_data: Optional[str] = None,  # only relevant when used as a client
-            permissions: int = AUTH_NONE,     # default permissions when used as a server
             secure_connection: bool = False,
     ):
         if socket is None:
@@ -103,7 +102,7 @@ class Connection:
         self._socket.settimeout(0.2)
         self._auth_func = auth_func
         self._sync_func = sync_func
-        self._perms: int = 0 if auth_func else permissions
+        self._perms: int = AUTH_NONE if auth_func else AUTH_FULL
         self._buffer: bytes = b""
         self._message_buffer: bytes = b""  # New buffer specifically for partial messages
         self._need_header = not is_client
