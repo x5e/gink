@@ -1,6 +1,7 @@
 """ Contains the `Braid` Container class, which is primarily intended for internal use in the braid server. """
 from typing import Optional, Dict, Tuple, Iterable, Union
 from typeguard import typechecked
+from typing_extensions import override
 
 from .typedefs import GenericTimestamp, Limit, T
 from .tuples import Chain
@@ -14,6 +15,11 @@ from .utilities import experimental
 
 @experimental
 class Braid(Container):
+    """ Used to represent a virtual database from a bunch of Chains combined (woven) together.
+
+        Essentially a mapping whose keys are chains and whose values are the "limit", i.e. how far into
+        that given chain to recognize updates.  Usually the limit will be infinity (no limit).
+    """
     _BEHAVIOR = BRAID
 
     @typechecked
@@ -54,7 +60,7 @@ class Braid(Container):
         if immediate and len(bundler):
             bundler.commit()
 
-
+    @override
     def dumps(self, as_of: GenericTimestamp = None) -> str:
         identifier = f"muid={self._muid!r}"
         result = f"""{self.__class__.__name__}({identifier}, contents="""
@@ -97,6 +103,10 @@ class Braid(Container):
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None
     ) -> Muid:
+        if isinstance(value, int) and (value < 1753913414371016 or value > 17539134950000000):
+            raise ValueError("unexpected braid limit")
+        if isinstance(value, float) and value != float("inf"):
+            raise ValueError("unexpected float value")
         return self._add_entry(key=describing, value=value, bundler=bundler, comment=comment)
 
     def update(
@@ -105,6 +115,10 @@ class Braid(Container):
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None
     ):
+        """ Update from dictionary like object.
+
+            Something with a "keys" method or a list of key, value pairs.
+        """
         immediate = False
         if bundler is None:
             immediate = True

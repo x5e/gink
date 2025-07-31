@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import *
 from logging import getLogger
-from io import BytesIO
 from ssl import SSLError
 from typing_extensions import override
 
@@ -20,7 +19,7 @@ from .looping import Finished
 from .decomposition import Decomposition
 from .has_map import HasMap
 from .bundle_info import BundleInfo
-from .utilities import decode_and_verify_jwt, generate_random_token, experimental
+from .utilities import experimental
 
 
 @experimental
@@ -31,8 +30,8 @@ class BraidServer(Server):
             data_relay: Relay,
             control_db: Database,
             auth_func: Optional[AuthFunc] = None,
-            static_root: Optional[Path] = None,
             app_id: Optional[str] = None,
+            wsgi_func: Optional[Callable] = None,
     ):
         super().__init__()
         self._braids: Dict[Connection, Braid] = dict()
@@ -42,7 +41,7 @@ class BraidServer(Server):
         self._auth_func = auth_func
         self._logger = getLogger(self.__class__.__name__)
         self._count_connections = 0
-        self._static_path = static_root
+        self._wsgi_func = wsgi_func
         self._app_id = app_id
 
     def _get_app_directory(self) -> Directory:
@@ -96,10 +95,10 @@ class BraidServer(Server):
                 # Note: connection internally keeps track of what peer has and will prevent echo
                 connection.send_bundle(bundle_wrapper)
 
-    def _get_braid(self, path: Path, create_if_missing: bool = False) -> Braid:
+    def _get_braid(self, path: str, create_if_missing: bool = False) -> Braid:
         """ Returns the braid associated with the given path, creating it create_if_missing is True.
         """
-        parts = path.parts
+        parts = Path(path).parts
         if len(parts) == 0 or parts[0] == "/":
             raise ValueError(f"invaid path: {path}")
         directory_keys = list(parts[:-1])
@@ -122,7 +121,7 @@ class BraidServer(Server):
             raise ValueError("not a braid")
         return braid
 
-    def _get_greeting(self, path: Path, perms: int, misc: Any) -> SyncMessage:
+    def _get_greeting(self, path: str, perms: int, misc: Any) -> SyncMessage:
         try:
             braid = self._get_braid(path=path, create_if_missing=bool(perms & AUTH_MAKE))
         except ValueError as value_error:
@@ -157,51 +156,11 @@ class BraidServer(Server):
             auth_func=listener.get_auth(),
             name="connection #%s from %s" % (self._count_connections, addr[0]),
             on_ws_act=self._on_websocket_ready,
-            wsgi_func=self._on_http_request,
+            wsgi_func=self._wsgi_func,
         )
         self._add_selectable(connection)
         self._logger.info("accepted incoming connection from %s", addr[0])
         return [connection]
-
-    def _on_http_request(self, environ, start_response) -> Iterable[bytes]:
-        request_method = environ["REQUEST_METHOD"]
-        if request_method == "GET":
-            if not self._static_path:
-                start_response("200 OK", [("Content-type", "text/plain")])
-                return [b"OK"]
-            else:
-                relative_path = environ.get("PATH_INFO", "/")
-                assert ".." not in relative_path
-                absolute_path = self._static_path.joinpath("." + relative_path)
-                if absolute_path.exists() and absolute_path.is_file():
-                    content_type = "text/html" if absolute_path.suffix == ".html" else "text/plain"
-                    start_response("200 OK", [("Content-type", content_type)])
-                    return [absolute_path.read_bytes()]
-                else:
-                    self._logger.warning(f"could not find: {absolute_path}")
-                    start_response("404 Not Found", [("Content-type", "text/plain")])
-                    return [b"not found\n"]
-        elif request_method != "POST":
-            start_response("400 Bad Request", [("Content-type", "text/plain")])
-            return [b"bad request method"]
-        app_directory = self._get_app_directory()
-        tokens_directory = app_directory.get("tokens")
-        if tokens_directory is None:
-            tokens_directory = Directory(database=self._control_db)
-            app_directory["tokens"] = tokens_directory
-        assert isinstance(tokens_directory, Directory)
-        stream = cast(BytesIO, environ["wsgi.input"])
-        jwt_token = stream.read()
-        try:
-            claims = decode_and_verify_jwt(jwt_token, self._app_id)
-        except ValueError as value_error:
-            self._logger.warning("problem with jwt token", exc_info=value_error)
-            start_response("400 Bad Request", [("Content-type", "text/plain")])
-            return [b"problem with jwt token"]
-        gink_token = generate_random_token()
-        tokens_directory.set(gink_token, claims)
-        start_response("200 OK", [("Content-type", "text/plain")])
-        return [gink_token.encode()]
 
     def _on_websocket_ready(self, connection: Connection):
         braid = None

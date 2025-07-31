@@ -52,7 +52,7 @@ class Connection:
 
     """
     PROTOCOL = "gink"
-    _path: Path
+    _path: str
 
     def __init__(
             self, *,
@@ -66,8 +66,8 @@ class Connection:
             wsgi_func: Optional[Callable] = None,
             sync_func: Optional[SyncFunc] = None,
             auth_func: Optional[AuthFunc] = None,
-            auth_data: Optional[str] = None,
-            permissions: int = AUTH_FULL,
+            auth_data: Optional[str] = None,  # only relevant when used as a client
+            permissions: int = AUTH_FULL,     # default permissions when used as a server
             secure_connection: bool = False,
     ):
         if socket is None:
@@ -96,7 +96,7 @@ class Connection:
             if auth_data:
                 subprotocols.append(encode_to_hex(auth_data))
             host = host or "localhost"
-            self._path = Path(path or "/")
+            self._path = path or "/"
             request = Request(host=host, target=str(self._path), subprotocols=subprotocols)
             self._socket.send(self._ws.send(request))
         self._logger.debug("finished setup")
@@ -114,96 +114,130 @@ class Connection:
         self._response_headers: Optional[List[tuple]] = None
         self._status: Optional[str] = None
         self._response_started = False
+        self._header: Optional[bytes] = None
+        self._request_method: Optional[str] = None
+        self._decoded: Optional[str] = None
+
+    @property
+    def headers(self):
+        assert self._request_headers
+        return self._request_headers
+
+    @property
+    def cookies(self) -> dict:
+        return dict(
+            pair.strip().split('=', 1)
+            for pair in self.headers["cookies"].split(';')
+            if '=' in pair
+        )
+
+    @property
+    def path(self):
+        assert self._path
+        return self._path
+
+    @property
+    def authorization(self) -> Optional[str]:
+        if self._decoded:
+            return self._decoded
+        else:
+            return self.headers.get("authorization")
+
+    def _handle_wsgi_request(self) -> None:
+        if not self._wsgi:
+            self._socket.sendall(dedent(b"""
+                HTTP/1.0 400 Bad Request
+                Content-type: text/plain
+
+                Websocket connections only!"""))
+            raise Finished()
+        assert self._request_headers
+        if int(self._request_headers.get("content-length", "0")) != len(self._body):
+            # TODO wait for the rest of the body then process the post/put request
+            self._socket.sendall(b"HTTP/1.0 500 Internal Server Error\r\n\r\n")
+            self._logger.warning("improper HTTP POST handling, please fix me")
+            raise Finished()
+        if "host" in self._request_headers:
+            self._server_name = self._request_headers["host"].split(":")[0]
+        env = {
+            'wsgi.version': (1, 0),
+            'wsgi.url_scheme': 'http',
+            'wsgi.input': BytesIO(self._body),
+            'wsgi.errors': stderr,
+            'wsgi.multithread': False,
+            'wsgi.multiprocess': False,
+            'wsgi.run_once': False,
+            'REQUEST_METHOD': self._request_method,
+            'PATH_INFO': self._path,
+            'SERVER_NAME': self._server_name,
+            'SERVER_PORT': str(self._port),
+        }
+        if "content-type" in self._request_headers:
+            env['HTTP_CONTENT_TYPE'] = self._request_headers["content-type"]
+
+        if "authorization" in self._request_headers:
+            env['HTTP_AUTHORIZATION'] = self._request_headers["authorization"]
+        try:
+            result: Iterable[bytes] = self._wsgi(env, self._start_response)
+            for data in result:
+                if data:
+                    self._write(data)
+            if not self._response_started:
+                self._write(b"")
+        except Exception as exception:
+            if not self._response_started:
+                self._start_response(
+                    "500 Internal Server Error", [("Content-type", "text/plain")])
+                self._write(str(exception).encode("utf-8"))
+            raise Finished(exception)
+        raise Finished()  # will cause the loop to call close after deregistering
+
+    def _receive_header(self) -> bool:
+        data = self._socket.recv(4096 * 16)
+        if not data:
+            raise Finished()
+        self._buffer += data
+        match = fullmatch(rb"(.+)\r?\n\r?\n(.*)", self._buffer, DOTALL)
+        if not match:
+            return False# wait until we get more data
+        self._need_header = False
+        self._header = match.group(1)
+        self._body = match.group(2)
+        header_lines = self._header.decode('utf-8').splitlines()
+        if len(header_lines) == 0:
+            self._logger.warning("bad request")
+            raise Finished()
+        (self._request_method, self._path, _) = header_lines.pop(0).split(maxsplit=3)
+        self._request_headers = {}
+        for header_line in header_lines:
+            key, val = header_line.split(":", 1)
+            self._request_headers[key.strip().lower()] = val.strip()
+        if "upgrade" in self._request_headers.get("connection", "").lower():
+            if not self._on_ws_act:
+                self._socket.sendall(dedent(b"""
+                    HTTP/1.0 400 Bad Request
+                    Content-type: text/plain
+
+                    no websocket handler configured"""))
+                self._logger.warning("websocket connection without handler set")
+                raise Finished()
+            self._is_websocket = True
+            self._pending = True
+        return True
 
     def on_ready(self) -> None:
         """ Called when the connection is ready to be used.
             Handles both websocket requests, and http(s) requests if a WSGI function is provided.
         """
+        if self._need_header:
+            received = self._receive_header()
+            if not received:
+                return
         if self._is_websocket:
             assert self._on_ws_act
             self._on_ws_act(self)
-            return
-        if self._need_header:
-            data = self._socket.recv(4096 * 16)
-            if not data:
-                raise Finished()
-            self._buffer += data
-            match = fullmatch(rb"(.+)\r?\n\r?\n(.*)", self._buffer, DOTALL)
-            if not match:
-                return  # wait until we get more data
-            self._need_header = False
-            header = match.group(1)
-            header_lines = header.decode('utf-8').splitlines()
-            if len(header_lines) == 0:
-                self._logger.warning("bad request")
-                raise Finished()
-            (request_method, path, _) = header_lines.pop(0).split(maxsplit=3)
-            self._request_headers = {}
-            for header_line in header_lines:
-                key, val = header_line.split(":", 1)
-                self._request_headers[key.strip().lower()] = val.strip()
-            if "upgrade" in self._request_headers.get("connection", "").lower():
-                if not self._on_ws_act:
-                    self._socket.sendall(dedent(b"""
-                        HTTP/1.0 400 Bad Request
-                        Content-type: text/plain
-
-                        no websocket handler configured"""))
-                    self._logger.warning("websocket connection without handler set")
-                    raise Finished()
-                self._is_websocket = True
-                self._pending = True
-                self._on_ws_act(self)
-                return
-            else:
-                if not self._wsgi:
-                    self._socket.sendall(dedent(b"""
-                        HTTP/1.0 400 Bad Request
-                        Content-type: text/plain
-
-                        Websocket connections only!"""))
-                    raise Finished()
-                body = match.group(2)
-                if int(self._request_headers.get("content-length", "0")) != len(body):
-                    # TODO wait for the rest of the body then process the post/put request
-                    self._socket.sendall(b"HTTP/1.0 500 Internal Server Error\r\n\r\n")
-                    self._logger.warning("improper HTTP POST handling, please fix me")
-                    raise Finished()
-                if "host" in self._request_headers:
-                    self._server_name = self._request_headers["host"].split(":")[0]
-                env = {
-                    'wsgi.version': (1, 0),
-                    'wsgi.url_scheme': 'http',
-                    'wsgi.input': BytesIO(body),
-                    'wsgi.errors': stderr,
-                    'wsgi.multithread': False,
-                    'wsgi.multiprocess': False,
-                    'wsgi.run_once': False,
-                    'REQUEST_METHOD': request_method,
-                    'PATH_INFO': path,
-                    'SERVER_NAME': self._server_name,
-                    'SERVER_PORT': str(self._port),
-                }
-                if "content-type" in self._request_headers:
-                    env['HTTP_CONTENT_TYPE'] = self._request_headers["content-type"]
-
-                if "authorization" in self._request_headers:
-                    env['HTTP_AUTHORIZATION'] = self._request_headers["authorization"]
-                try:
-                    result: Iterable[bytes] = self._wsgi(env, self._start_response)
-                    for data in result:
-                        if data:
-                            self._write(data)
-                    if not self._response_started:
-                        self._write(b"")
-                except Exception as exception:
-                    if not self._response_started:
-                        self._start_response(
-                            "500 Internal Server Error", [("Content-type", "text/plain")])
-                        self._write(str(exception).encode("utf-8"))
-                    raise Finished(exception)
-                raise Finished()  # will cause the loop to call close after deregistering
-        raise AssertionError("did not expect to get here")
+        else:
+            self._handle_wsgi_request()
 
     def _start_response(self, status: str, response_headers: List[tuple], exc_info=None):
         server_headers: List[tuple] = [
@@ -264,13 +298,12 @@ class Connection:
                     (path, _) = event.target.split("?", 2)
                 else:
                     path = event.target
-                self._path = Path(path)
+                self._path = path
                 if self._auth_func:
                     for protocol in event.subprotocols:
                         if protocol.lower().startswith("0x"):
-                            decoded = decode_from_hex(protocol)
-                            assert self._path is not None
-                            self._perms |= self._auth_func(decoded, self._path)
+                            self._decoded = decode_from_hex(protocol)
+                    self._perms |= self._auth_func(self)
                 if not self._perms:
                     self._logger.warning("rejected a connection due to insufficient permissions")
                     self._socket.send(self._ws.send(RejectConnection()))
