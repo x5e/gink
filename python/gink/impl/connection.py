@@ -3,7 +3,6 @@
 # batteries included python imports
 from typing import Iterable, Optional, Callable, Union, List
 from wsgiref.handlers import format_date_time
-from pathlib import Path
 from ssl import create_default_context, SSLSocket
 from logging import getLogger
 from io import BytesIO
@@ -36,7 +35,7 @@ from wsproto.events import (
 # gink modules
 from .builders import SyncMessage
 from .looping import Finished
-from .typedefs import AuthFunc, AUTH_NONE, AUTH_RITE, AUTH_FULL
+from .typedefs import AuthFunc, AUTH_NONE, AUTH_RITE, AUTH_FULL, ConnFunc, WsgiFunc
 from .sync_func import SyncFunc
 from .bundle_info import BundleInfo
 from .decomposition import Decomposition
@@ -51,7 +50,7 @@ class Connection:
         websocket, and we don't know which it'll be at the time the connection is made.
 
     """
-    PROTOCOL = "gink"
+    GINK_PROTOCOL = "gink"
     _path: str
 
     def __init__(
@@ -63,10 +62,10 @@ class Connection:
             path: Optional[str] = None,
             name: Optional[str] = None,
             on_ws_act: Optional[Callable] = None,
-            wsgi_func: Optional[Callable] = None,
-            sync_func: Optional[SyncFunc] = None,
+            wsgi_func: Optional[WsgiFunc] = None,
+            conn_func: Optional[ConnFunc] = None,
             auth_func: Optional[AuthFunc] = None,
-            auth_data: Optional[str] = None,  # only relevant when used as a client
+            auth_data: Optional[str] = None,
             secure_connection: bool = False,
     ):
         if socket is None:
@@ -91,17 +90,19 @@ class Connection:
         self._wsgi = wsgi_func
         self._on_ws_act = on_ws_act
         if is_client:
-            subprotocols = [self.PROTOCOL]
+            subprotocols = [self.GINK_PROTOCOL]
             if auth_data:
                 subprotocols.append(encode_to_hex(auth_data))
             host = host or "localhost"
             self._path = path or "/"
-            request = Request(host=host, target=str(self._path), subprotocols=subprotocols)
+            if not self._path.startswith("/"):
+                raise AssertionError(self._path)
+            request = Request(host=host, target=self._path, subprotocols=subprotocols)
             self._socket.send(self._ws.send(request))
         self._logger.debug("finished setup")
         self._socket.settimeout(0.2)
         self._auth_func = auth_func
-        self._sync_func = sync_func
+        self._conn_func = conn_func
         self._perms: int = AUTH_NONE if auth_func else AUTH_FULL
         self._buffer: bytes = b""
         self._message_buffer: bytes = b""  # New buffer specifically for partial messages
@@ -238,10 +239,10 @@ class Connection:
         else:
             self._handle_wsgi_request()
 
-    def _start_response(self, status: str, response_headers: List[tuple], exc_info=None):
+    def _start_response(self, status: str, response_headers: List[tuple[str, str]], exc_info=None):
         server_headers: List[tuple] = [
             ("Date", format_date_time(get_time())),
-            ('Server', 'gink'),
+            ('Server', self.GINK_PROTOCOL),
         ]
         if exc_info and self._response_started:
             raise exc_info[1].with_traceback(exc_info[2])
@@ -307,21 +308,21 @@ class Connection:
                     self._logger.warning("rejected a connection due to insufficient permissions")
                     self._socket.send(self._ws.send(RejectConnection()))
                     raise Finished()
-                if "gink" not in event.subprotocols:
+                if self.GINK_PROTOCOL not in event.subprotocols:
                     self._logger.warning("rejected a non-gink connection")
                     self._socket.send(self._ws.send(RejectConnection()))
                     raise Finished()
                 greeting = None
                 try:
-                    if self._sync_func is not None:
-                        greeting = self._sync_func(path=self._path, perms=self._perms, misc=self)
+                    if self._conn_func is not None:
+                        greeting = self._conn_func(self)
                 except Exception as exception:
                     self._logger.warning(f"could not generate greeting", exc_info=exception)
                     self._socket.send(self._ws.send(RejectConnection()))
                     self._ws_closed = True
                     raise Finished()
                 self._logger.debug("got a Request, sending an AcceptConnection")
-                self._socket.send(self._ws.send(AcceptConnection("gink")))
+                self._socket.send(self._ws.send(AcceptConnection(self.GINK_PROTOCOL)))
                 self._logger.info("Server connection established!")
                 self._ws_connected = True
                 if greeting and self._perms & AUTH_RITE:
@@ -359,8 +360,8 @@ class Connection:
             elif isinstance(event, AcceptConnection):
                 self._logger.info("Client connection established!")
                 self._ws_connected = True
-                if self._sync_func and self._perms & AUTH_RITE:
-                    greeting = self._sync_func(path=self._path, perms=self._perms, misc=self)
+                if self._conn_func and self._perms & AUTH_RITE:
+                    greeting = self._conn_func(self)
                     sent = self.send(greeting)
                     self._logger.debug("sent greeting of %d bytes (%s)", sent, self._name)
             elif isinstance(event, RejectConnection):
@@ -410,8 +411,8 @@ class Connection:
             self._socket.close()
             self._closed = True
 
-    def send_bundle(self, bundle_wrapper: Decomposition) -> None:
-        info = bundle_wrapper.get_info()
+    def send_bundle(self, decomposition: Decomposition) -> None:
+        info = decomposition.get_info()
         self._logger.debug("(%s) send_bundle %s", self._name, info)
         if self._tracker is None:  # haven't received greeting
             self._logger.debug("_tracker is None")
@@ -423,7 +424,7 @@ class Connection:
         if not self._tracker.is_valid_extension(info):
             raise ValueError("bundle would be an invalid extension!")
         sync_message = SyncMessage()
-        sync_message.bundle = bundle_wrapper.get_bytes()
+        sync_message.bundle = decomposition.get_bytes()
         self.send(sync_message)
         self._tracker.mark_as_having(info)
 
@@ -448,7 +449,8 @@ class Connection:
             else:
                 self._logger.warning("got binary message without ack, bundle, or greeting")
 
-    def get_name(self) -> Optional[str]:
+    @property
+    def name(self) -> Optional[str]:
         return self._name
 
     def get_permissions(self) -> int:

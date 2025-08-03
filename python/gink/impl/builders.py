@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, List, Iterator, Tuple
 from google.protobuf.message import Message  # type: ignore
 from enum import IntEnum
 
-from .typedefs import Medallion, MuTimestamp
 
 if TYPE_CHECKING:
 
@@ -65,15 +64,15 @@ if TYPE_CHECKING:
         pass
 
     class MuidBuilder(Message):
-        timestamp: MuTimestamp
-        medallion: Medallion
+        timestamp: int
+        medallion: int
         offset: int
 
     class ClaimBuilder(Message):
-        medallion: Medallion
-        chain_start: MuTimestamp
+        medallion: int
+        chain_start: int
         process_id: int
-        claim_time: MuTimestamp
+        claim_time: int
 
     class KeyPairBuilder(Message):
         public_key: bytes

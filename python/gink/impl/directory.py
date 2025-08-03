@@ -1,5 +1,5 @@
 """ contains the Directory class definition """
-from typing import Union, Optional, Iterable, Dict, Iterable, Tuple
+from typing import Union, Optional, Iterable, Dict, Iterable, Tuple, Callable, Any
 from typeguard import typechecked
 from sys import stdout
 from logging import getLogger
@@ -232,10 +232,19 @@ class Directory(Container):
         return dir._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
     @typechecked
-    def setdefault(self, key: UserKey, default=None, /, *, bundler: Optional[Bundler] = None, respect_deletion=False):
+    def setdefault(
+        self,
+        key: UserKey,
+        default=None, /, *,
+        bundler: Optional[Bundler] = None,
+        comment: Optional[str] = None,
+        default_factory: Optional[Callable[[], Any]] = None,
+        respect_deletion=False,
+        ):
         """ Insert key with a value of default if key is not in the directory.
 
-            Return the value for key if key is in the directory, else default.
+            Return the value for key if key is in the directory, else if default_factory is not None,
+            call it and set to the returned value, but if it is None just use the "default".
 
             If respect_deletion is set to something truthy then it won't make any changes
             if the most recent entry in the directory for the key is a delete entry. In this
@@ -249,8 +258,9 @@ class Directory(Container):
             return respect_deletion
         if found and not found.builder.deletion:  # type: ignore
             return dir._get_occupant(found.builder, found.address)
-        dir._add_entry(key=key, value=default, bundler=bundler)
-        return default
+        value = default if default_factory is None else default_factory()
+        dir._add_entry(key=key, value=value, bundler=bundler, comment=comment)
+        return value
 
     @typechecked
     def pop(self, key: UserKey, *default, bundler: Optional[Bundler] = None, comment: Optional[str] = None):

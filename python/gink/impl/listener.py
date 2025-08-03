@@ -1,5 +1,5 @@
 """ contains the Listener class that listens on a port for incomming connections """
-from typing import Callable, Optional, Iterable
+from typing import Callable, Optional, Iterable, Union
 from socket import (
     socket as Socket,
     AF_INET,
@@ -11,6 +11,7 @@ from ssl import SSLContext, create_default_context, Purpose
 
 from .typedefs import AuthFunc
 from .looping import Selectable
+from .utilities import make_auth_func
 
 
 class Listener(Socket):
@@ -20,7 +21,7 @@ class Listener(Socket):
             self,
             addr: str = "",
             port: int = 8080,
-            auth: Optional[AuthFunc] = None,
+            auth: Union[AuthFunc, str, None] = None,
             certfile: Optional[str] = None,
             keyfile: Optional[str] = None,
             on_ready: Optional[Callable] = None,
@@ -35,7 +36,7 @@ class Listener(Socket):
         self.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.bind((addr, int(port)))
         self.listen(128)
-        self._auth_func = auth
+        self._auth_func = make_auth_func(auth) if isinstance(auth, str) else auth
         self._on_ready = on_ready
 
     def on_ready(self) -> Iterable[Selectable]:
@@ -44,7 +45,7 @@ class Listener(Socket):
         """
         return self._on_ready(self) if self._on_ready else []
 
-    def get_auth(self) -> Optional[AuthFunc]:
+    def get_auth_func(self) -> Optional[AuthFunc]:
         """ Returns the authentication function for this listener. """
         return self._auth_func
 

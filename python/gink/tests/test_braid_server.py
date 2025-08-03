@@ -18,7 +18,7 @@ def test_happy_path():
     loop(braid_server, external1, external2, until=0.1)
     control_root = Box(muid=Muid(-1,-1, Box.get_behavior()), database=control_db).get()
     assert isinstance(control_root, Directory)
-    braid = control_root["braids"]["abc"]["xyz"]
+    braid = control_root["braids"]["/abc/xyz"]
     assert isinstance(braid, Braid)
     assert list(external1.get_connections())
     assert list(external2.get_connections())
