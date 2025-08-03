@@ -1,5 +1,5 @@
 """ contains the Directory class definition """
-from typing import Union, Optional, Iterable, Dict, Iterable, Tuple, Callable
+from typing import Union, Optional, Iterable, Dict, Iterable, Tuple, Callable, Any
 from typeguard import typechecked
 from sys import stdout
 from logging import getLogger
@@ -238,7 +238,7 @@ class Directory(Container):
         default=None, /, *,
         bundler: Optional[Bundler] = None,
         comment: Optional[str] = None,
-        default_factory: Optional[Callable] = None,
+        default_factory: Optional[Callable[[], Any]] = None,
         respect_deletion=False,
         ):
         """ Insert key with a value of default if key is not in the directory.
