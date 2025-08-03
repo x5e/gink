@@ -33,10 +33,11 @@ setup(
         "typeguard",
         "pynacl",
         "python-dateutil",
-        "typing-extensions"
+        "typing-extensions",
+        "requests",
     ],
     extras_require={
-        "test": ["nose2", "flask", "requests"],
+        "test": ["nose2", "flask"],
         "lint": ["mypy"],
         "performance": ["matplotlib"],
         "docs": [
