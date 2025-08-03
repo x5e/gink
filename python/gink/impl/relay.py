@@ -1,6 +1,6 @@
 """ Contains the Relay class  """
 # standard python modules
-from typing import Set, Union, Iterable, List, Callable, Optional, cast
+from typing import Set, Union, Iterable, List, Callable, Optional
 from logging import getLogger
 from re import fullmatch, IGNORECASE
 from ssl import SSLError
@@ -17,7 +17,6 @@ from .decomposition import Decomposition
 from .looping import Selectable, Finished
 from .bundle_store import BundleStore
 from .server import Server
-from .sync_func import SyncFunc
 from .builders import SyncMessage
 from .utilities import validate_bundle
 from .log_backed_store import LogBackedStore
@@ -69,7 +68,7 @@ class Relay(Server):
                    ):
         """ Initiate a connection to another Gink instance. """
         self._logger.info("initating connection to %s", target)
-        match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:/+(.*))?$", target, IGNORECASE)
+        match = fullmatch(r"(ws+://)?([a-z0-9.-]+)(?::(\d+))?(?:(/+.*))?$", target, IGNORECASE)
         assert match, f"can't connect to: {target}"
         prefix, host, port, path = match.groups()
         secure_connection = False
@@ -85,7 +84,7 @@ class Relay(Server):
             port=int(port),
             path=path,
             name=name,
-            sync_func=cast(SyncFunc, self._sync_func),
+            conn_func=self._conn_func,
             auth_data=auth_data,
             secure_connection=secure_connection,
             on_ws_act=self._on_connection_ready,
@@ -152,7 +151,7 @@ class Relay(Server):
                 self._logger.info(f"Connection (fileno {connection.fileno()}) disconnected.")
                 raise
 
-    def _sync_func(self, **_) -> SyncMessage:
+    def _conn_func(self, *_) -> SyncMessage:
         """ Returns the greeting (SyncMessage) for the underlying store's chain tracker. """
         return self._store.get_has_map().to_greeting_message()
 
@@ -180,8 +179,8 @@ class Relay(Server):
             socket=socket,
             host=addr[0],
             port=addr[1],
-            sync_func=cast(SyncFunc, self._sync_func),
-            auth_func=listener.get_auth(),
+            conn_func=self._conn_func,
+            auth_func=listener.get_auth_func(),
             on_ws_act=self._on_connection_ready,
         )
         self._connections.add(connection)

@@ -66,7 +66,7 @@ class Server(ABC):
         self,
         addr="",
         port: Union[str, int] = "8080",
-        auth: Optional[AuthFunc] = None,
+        auth: Union[AuthFunc, str, None] = None,
         certfile: Optional[str] = None,
         keyfile: Optional[str] = None,
     ) -> None:
