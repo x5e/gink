@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Iterator, Tuple
+from typing import TYPE_CHECKING, List, Iterator, Tuple, Iterable
 
 from google.protobuf.message import Message  # type: ignore
 from enum import IntEnum
@@ -46,10 +46,31 @@ if TYPE_CHECKING:
         effective: int
 
     class ValueBuilder(Message):
-        pass
+        integer: str
+        characters: str
+        octets: bytes
+        special: 'ValueBuilder.Special'
+        floating: float
+        timestamp: int
+        document: 'ValueBuilder.Document'
+        tuple: 'ValueBuilder.Tuple'
+
+        class Tuple:
+            values: List['ValueBuilder']
+
+        class Document:
+            keys: List['KeyBuilder']
+            values: List['ValueBuilder']
+
+        class Special(IntEnum):
+            NULL = 0
+            TRUE = 1
+            FALSE = 2
 
     class KeyBuilder(Message):
-        pass
+        characters: str
+        number: int
+        octets: bytes
 
     class ContainerBuilder(Message):
         behavior: int
