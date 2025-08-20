@@ -156,7 +156,7 @@ def resolve_timestamp(timestamp: GenericTimestamp) -> MuTimestamp:
         else:
             timestamp = datetime.fromisoformat(timestamp)
     if timestamp is not None and hasattr(timestamp, "timestamp"):
-        muid_timestamp = timestamp.timestamp
+        muid_timestamp = cast(int, getattr(timestamp, "timestamp"))
         if not isinstance(muid_timestamp, MuTimestamp):
             raise ValueError("timestamp.timestamp doesn't have a resolved timestamp")
         return muid_timestamp
@@ -223,7 +223,7 @@ def decode_and_verify_jwt(token: bytes, app_id: Optional[str] = None) -> dict:
         raise ValueError("not the issuer I expected")
     if not decoded.get("email_verified"):
         raise ValueError("email not verified")
-    if decoded.get("exp") < get_time():
+    if (decoded.get("exp") or 0) < get_time():
         raise ValueError("jwt expired")
     if app_id is not None and decoded.get("aud") != app_id:
         raise ValueError("app id is not what I expected")

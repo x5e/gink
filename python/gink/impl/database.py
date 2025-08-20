@@ -50,8 +50,8 @@ class Database(Relay):
             ):
         super().__init__(store=store)
         setattr(Database, "_last", self)
-        assert isinstance(self._abstract_store, AbstractStore), "store must be an AbstractStore"
-        self._abstract_store = self._abstract_store
+        assert isinstance(self._store, AbstractStore), "store must be an AbstractStore"
+        self._abstract_store = self._store
         self._last_link = None
         self._last_time = None
         self._identity = identity

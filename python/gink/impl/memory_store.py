@@ -488,7 +488,9 @@ class MemoryStore(AbstractStore):
                 return
         encoded_placement_key = bytes(placement)
         if new_entries_replace(entry_builder.behavior):
-            found_entry = self.get_entry_by_key(container_muid, placement.middle, as_of=generate_timestamp())
+            key = placement.middle
+            assert not isinstance(key, QueueMiddleKey)
+            found_entry = self.get_entry_by_key(container_muid, key, as_of=generate_timestamp())
             if found_entry:
                 if self._retaining_entries:
                     removal_key = RemovalKey(container_muid, found_entry.address, entry_muid)
@@ -570,7 +572,7 @@ class MemoryStore(AbstractStore):
             assert isinstance(bundle_info, BundleInfo)
             has_map.mark_as_having(bundle_info)
         if limit_to is not None:
-            has_map = has_map.get_subset(limit_to.keys())
+            has_map = has_map.get_subset(list(limit_to.keys()))
         return has_map
 
     def get_last(self, chain: Chain) -> BundleInfo:

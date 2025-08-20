@@ -48,7 +48,8 @@ class Muid:
         if self._timestamp is not None:
             return self._timestamp
         if self._bundler:
-            assert self._bundler.timestamp is not None, "bundler has no timestamp"
+            if self._bundler.timestamp is None:
+                raise ValueError("bundler has no timestamp")
             return self._bundler.timestamp
         raise ValueError("timestamp not defined?")
 
@@ -109,8 +110,8 @@ class Muid:
     def put_into(self, builder: MuidBuilder):
         """Puts the data from this muid into the builder."""
         builder.offset = self.offset  # type: ignore
-        builder.timestamp = self.timestamp if self.timestamp else 0  # type: ignore
-        builder.medallion = self.medallion if self.medallion else 0  # type: ignore
+        builder.timestamp = self._timestamp if self._timestamp else 0  # type: ignore
+        builder.medallion = self._medallion if self._medallion else 0  # type: ignore
 
     @classmethod
     def create(

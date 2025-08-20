@@ -203,6 +203,7 @@ class Connection:
         self._need_header = False
         self._header = match.group(1)
         self._body = match.group(2)
+        assert self._header is not None
         header_lines = self._header.decode('utf-8').splitlines()
         if len(header_lines) == 0:
             self._logger.warning("bad request")
@@ -290,7 +291,7 @@ class Connection:
             self._buffer = b""
         except RemoteProtocolError as rpe:
             self._logger.warning("rejected a malformed connection attempt")
-            self._socket.send(self._ws.send(rpe.event_hint))
+            self._socket.send(self._ws.send(rpe.event_hint or RejectConnection()))
             raise Finished()
         for event in self._ws.events():
             if isinstance(event, Request):

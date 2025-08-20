@@ -5,10 +5,10 @@ from os import unlink
 from os.path import exists
 from logging import getLogger
 import uuid
-from typing import Tuple, Iterable, Optional, Set, Union, Mapping, Callable
+from typing import Tuple, Iterable, Optional, Set, Union, Mapping, Callable, cast
 from struct import pack
 from pathlib import Path
-from lmdb import Environment, Transaction as Trxn, Cursor, BadValsizeError
+from lmdb import Environment, Transaction as Trxn, Cursor, BadValsizeError  # type: ignore
 from nacl.signing import SigningKey, VerifyKey
 from nacl.secret import SecretBox
 
@@ -63,11 +63,14 @@ class LmdbStore(AbstractStore):
                 prefix = "/dev/shm/temp."
             file_path = prefix + str(uuid.uuid4()) + ".gink.mdb"
             self._temporary = True
-        if isinstance(file_path, Path):
-            file_path = str(file_path)
-        self._file_path = file_path
+        if isinstance(file_path, bytes):
+            file_path = Path(file_path.decode("utf-8"))
+        if isinstance(file_path, str):
+            file_path = Path(file_path)
+        assert isinstance(file_path, Path), "file_path should be a Path"
+        self._file_path: Path = file_path
         self._seen_containers: Set[Muid] = set()
-        self._handle = Environment(file_path, max_dbs=100, map_size=map_size, subdir=False)
+        self._handle = Environment(str(file_path), max_dbs=100, map_size=map_size, subdir=False)
         self._bundles = self._handle.open_db(b"bundles") # bundle_receive_time -> bundle_wrapper
         self._bundle_infos = self._handle.open_db(b"bundle_infos") # bundle_info -> bundle_receive_time
         self._chains = self._handle.open_db(b"chains") # chain -> bundle_info
@@ -140,6 +143,7 @@ class LmdbStore(AbstractStore):
             bundle_bytes = trxn.get(received, db=self._bundles)
             if not bundle_bytes:
                 raise KeyError(f"missing bundle for {timestamp=} {medallion=}")
+            assert isinstance(bundle_bytes, bytes), "bundle_bytes should be bytes"
             return Decomposition(bundle_bytes=bundle_bytes)
 
     def get_billionths(self, accumulator: Muid, *, as_of = -1):
@@ -147,6 +151,7 @@ class LmdbStore(AbstractStore):
             prefix = bytes(accumulator)
             if as_of == -1:
                 total_string = trxn.get(prefix, db=self._totals, default="0")
+                assert isinstance(total_string, bytes), "total_string should be a string"
                 return int(total_string)
             # TODO: switch algo to go from counting up from zero to counting down from total
             # The current approach won't give the right answer when we only have partial history.
@@ -158,6 +163,7 @@ class LmdbStore(AbstractStore):
                 if as_of > 0 and placement.placer.timestamp > as_of:
                     break
                 entry_bytes = trxn.get(placement_cursor.value(), db=self._entries)
+                assert isinstance(entry_bytes, bytes), "entry_bytes should be bytes"
                 entry_builder = EntryBuilder.FromString(entry_bytes)
                 assert entry_builder and entry_builder.behavior == Behavior.ACCUMULATOR
                 total += int(entry_builder.value.integer)
@@ -184,7 +190,7 @@ class LmdbStore(AbstractStore):
             if found is None:
                 raise KeyError("could not find a symmetric key for that key id")
             assert len(found) == 32, "I thought we were only storing 32 byte symmetric keys!"
-            return found
+            return cast(bytes, found)
 
     def drop_history(self, as_of: Optional[MuTimestamp] = None):
         if as_of is None:
@@ -225,7 +231,7 @@ class LmdbStore(AbstractStore):
             found = trxn.get(bytes(verify_key), db=self._signing_keys)
             if found is None:
                 raise KeyError("could not find a signing key for that verify key")
-            return SigningKey(found)
+            return SigningKey(cast(bytes, found))
 
     def get_verify_key(self, chain: Chain, trxn: Optional[Trxn]=None, /) -> VerifyKey:
         if trxn is None:
@@ -235,9 +241,9 @@ class LmdbStore(AbstractStore):
             found = trxn.get(bytes(chain), db=self._verify_keys)
             if found is None:
                 raise KeyError("could not find a verify key for that chain")
-            return VerifyKey(found)
+            return VerifyKey(cast(bytes, found))
 
-    def _get_file_path(self):
+    def _get_file_path(self) -> Optional[Path]:
         return self._file_path
 
     def get_edge_entries(
@@ -268,6 +274,7 @@ class LmdbStore(AbstractStore):
                         break
                     assert isinstance(entry_bytes, bytes) and len(entry_bytes) == 16
                     entry_builder_bytes = trxn.get(entry_bytes, db=self._entries)
+                    assert isinstance(entry_builder_bytes, bytes), "entry_builder_bytes should be bytes"
                     entry_builder = EntryBuilder.FromString(entry_builder_bytes)
                     entry_muid = Muid.from_bytes(entry_bytes)
                     found_edge_type_muid = Muid.create(context=entry_muid, builder=entry_builder.container)
@@ -661,7 +668,7 @@ class LmdbStore(AbstractStore):
     def close(self):
         self._handle.close()
         if self._temporary:
-            unlink(self._file_path)
+            self._file_path.unlink(missing_ok=True)
 
     def _add_claim(self, trxn: Trxn, chain: Chain):
         claim_builder = create_claim(chain)

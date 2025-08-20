@@ -44,7 +44,6 @@ class Vertex(Container):
         elif muid is None:
             muid = Container._create(VERTEX, bundler=bundler)
         assert isinstance(muid, Muid)
-        assert muid.timestamp != -1 or muid.offset == VERTEX
         Container.__init__(self, muid=muid, database=database)
 
         if len(bundler) and immediate:
@@ -137,6 +136,7 @@ class EdgeType(Container):
             muid = Muid.from_str(muid)
         elif muid is None:
             muid = Container._create(EDGE_TYPE, bundler=bundler)
+        assert isinstance(muid, Muid)
         Container.__init__(self, muid=muid, database=database)
 
         if contents:

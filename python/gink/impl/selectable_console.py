@@ -31,6 +31,9 @@ class SelectableConsole(InteractiveInterpreter):
     def close(self):
         pass
 
+    def is_closed(self) -> bool:
+        return False
+
     def fileno(self) -> int:
         """ Returns the file descriptor of stdin. """
         return self._input.fileno()
