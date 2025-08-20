@@ -92,4 +92,4 @@ class BundleStore(ABC):
 
     def _clear_notifications(self):
         if hasattr(self, "_watcher"):
-            self._watcher.clear()
+            getattr(self, "_watcher").clear()

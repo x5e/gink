@@ -399,6 +399,7 @@ def decode_muts(data: bytes, _q_struct=Struct(">q")) -> Optional[MuTimestamp]:
 
         Treats 0 as "None" and -1 as "integer infinity" (i.e. highest unsigned 64 bit number)
     """
+    assert isinstance(data, bytes), "expected byets, got %s" % type(data)
     result = _q_struct.unpack(data)[0]
     return INT_INF if result == -1 else (result or None)
 

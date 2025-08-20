@@ -98,10 +98,13 @@ class BraidServer(Server):
 
     def _get_greeting(self, connection: ConnectionInterface) -> SyncMessage:
         braids: Directory
-        braids = self._app_directory.setdefault("braids", default_factory=lambda: Directory(database=self._control_db))
+        braids = cast(
+            Directory,
+            self._app_directory.setdefault("braids", default_factory=lambda: Directory(database=self._control_db)))
         braid = braids.setdefault(connection.path, default_factory=lambda: Braid(database=self._control_db))
+        assert isinstance(braid, Braid), "braid should be a Braid instance"
         self._connection_braid_map[connection] = braid
-        has_map = self._data_relay.get_store().get_has_map(limit_to=dict(braid.items()))
+        has_map = self._data_relay.get_bundle_store().get_has_map(limit_to=dict(braid.items()))
         return has_map.to_greeting_message()
 
     @override
@@ -161,7 +164,7 @@ class BraidServer(Server):
                         continue
                     if braid is None:
                         raise Finished("don't have braid for this connection")
-                    self._data_relay.get_store().get_bundles(
+                    self._data_relay.get_bundle_store().get_bundles(
                         connection.send_bundle, peer_has=thing, limit_to=dict(braid.items()))
                 elif isinstance(thing, BundleInfo):  # an ack:
                     pass

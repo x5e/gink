@@ -1,5 +1,5 @@
 """ contains the Directory class definition """
-from typing import Union, Optional, Iterable, Dict, Iterable, Tuple, Callable, Any
+from typing import Union, Optional, Iterable, Dict, Iterable, Tuple, Callable, Any, cast
 from typeguard import typechecked
 from sys import stdout
 from logging import getLogger
@@ -56,8 +56,10 @@ class Directory(Container):
         elif isinstance(muid, str):
             muid = Muid.from_str(muid)
         elif muid is None:
+            assert isinstance(bundler, Bundler), "bundler must be a Bundler instance"
             muid = Container._create(DIRECTORY, bundler=bundler)
             created = True
+        assert isinstance(muid, Muid), f"muid must be a Muid, got {type(muid)}"
         Container.__init__(self, muid=muid, database=database)
         if contents:
             if not created:
@@ -136,6 +138,7 @@ class Directory(Container):
         current: Union[UserValue, Container] = self
         store = self._database.get_store()
         for key in keys:
+            assert isinstance(key, (str, bytes, int)), f"key must be a string, bytes, or int, got {type(key)}"
             if key == "" or key == b"":
                 continue
             if not isinstance(current, Directory):
@@ -172,6 +175,8 @@ class Directory(Container):
         if len(keys) < 1:
             raise ValueError(f"invalid argument to set: {key_or_keys!r}")
         final_key = keys.pop()
+        if not isinstance(final_key, (str, bytes, int)):
+            raise AssertionError(f"key must be a string, bytes, or int, got {type(final_key)}")
         current = self
         just_created = False
         store = self._database.get_store()
@@ -229,6 +234,7 @@ class Directory(Container):
             dir, key = (self.walk(key_or_keys[:-1]), key_or_keys[-1])
         else:
             dir, key = (self, key_or_keys)
+        assert isinstance(key, (str, bytes, int)), f"key must be a string, bytes, or int, got {type(key)}"
         return dir._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
     @typechecked
@@ -356,7 +362,7 @@ class Directory(Container):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore
         else:
-            for key, val in from_what:
+            for key, val in cast(Iterable[Tuple[UserKey, UserValue | Container]], from_what):
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
             bundler.commit()

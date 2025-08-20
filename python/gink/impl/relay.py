@@ -49,13 +49,12 @@ class Relay(Server):
             self._store.on_ready = self._on_store_ready
             self._add_selectable(self._store)
 
+    def get_bundle_store(self) -> BundleStore:
+        return self._store
+
     def add_callback(self, callback: Callable[[Decomposition], None]):
         """ Add a callback to be called when a bundle is received. """
         self._callbacks.append(callback)
-
-    def get_store(self) -> BundleStore:
-        """ Returns the store managed by this database """
-        return self._store
 
     def get_connections(self) -> Iterable[Connection]:
         """ Returns an iterable of all active connections. """

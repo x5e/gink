@@ -29,7 +29,7 @@ class HasMap:
                     chain_start=greeting_entry.chain_start)
                 self._data[chain] = greeting_entry.seen_through
 
-    def get_subset(self, chains=Iterable[Chain]) -> 'HasMap':
+    def get_subset(self, chains: Iterable[Chain]) -> 'HasMap':
         """ Returns a subset of this HasMap with the chains in the given iterable. """
         result = HasMap()
         for chain in chains:

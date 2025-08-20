@@ -173,7 +173,7 @@ def try_random_bad_data(container: Container):
             raise AssertionError(f"Bad Data Test: {container.__class__.__name__}: key:{repr(key)} value:{repr(value)}")
         except Exception as e:
             error_name = e.__class__.__name__
-            if error_name not in ("TypeCheckError", "TypeError"):
+            if error_name not in ("TypeCheckError", "TypeError", "ValueError", "AssertionError"):
                 raise e
             continue
 

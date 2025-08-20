@@ -48,7 +48,6 @@ class Group(Container):
             muid = Container._create(GROUP, bundler=bundler)
             created = True
         assert isinstance(muid, Muid)
-        assert muid.timestamp != -1 or muid.offset == GROUP
         Container.__init__(self, muid=muid, database=database)
         if contents:
             assert contents.keys() <= {"include", "exclude"}

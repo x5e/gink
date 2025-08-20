@@ -1,5 +1,5 @@
 """ Contains the `Property` Container class. """
-from typing import Optional, Dict, Tuple, Iterable, Union
+from typing import Optional, Dict, Tuple, Iterable, Union, cast
 from typeguard import typechecked
 
 from .typedefs import UserValue, GenericTimestamp
@@ -48,7 +48,6 @@ class Property(Container):
             muid = Container._create(PROPERTY, bundler=bundler)
             created = True
         assert isinstance(muid, Muid)
-        assert muid.timestamp != -1 or muid.offset == PROPERTY
         Container.__init__(self, muid=muid, database=database)
         if contents:
             if not created:
@@ -100,7 +99,7 @@ class Property(Container):
             Overwrites the value of this property on this object if previously set.
             Returns the muid of the new entry.
         """
-        if hasattr(describing, "_muid"):
+        if isinstance(describing, Addressable):
             describing = describing._muid
         return self._add_entry(key=describing, value=value, bundler=bundler, comment=comment)
 
@@ -121,17 +120,17 @@ class Property(Container):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore
         else:
+            from_what = cast(Iterable[Tuple[Union[Addressable, Muid], Union[UserValue, Container]]], from_what)
             for key, val in from_what:
-                self._add_entry(key=key, value=val, bundler=bundler)
+                self._add_entry(key=key.get_muid(), value=val, bundler=bundler)
         if immediate:
             bundler.commit()
 
     @typechecked
     def delete(self, describing: Union[Addressable, Muid], *, bundler=None, comment=None) -> Muid:
         """ Removes the value (if any) of this property on object pointed to by `describing`. """
-        if not hasattr(describing, "_muid"):
-            raise ValueError("describing must be a container")
-        return self._add_entry(key=describing._muid, value=deletion, bundler=bundler, comment=comment)
+        muid = cast(Muid, getattr(describing, "_muid", describing))
+        return self._add_entry(key=muid, value=deletion, bundler=bundler, comment=comment)
 
     @typechecked
     def get(self, describing: Union[Addressable, Muid], default: Union[UserValue, Container] = None, *,
@@ -140,7 +139,7 @@ class Property(Container):
         if not hasattr(describing, "_muid"):
             raise ValueError("describing must be a container")
         as_of = self._database.resolve_timestamp(as_of)
-        found = self._database.get_store().get_entry_by_key(self._muid, key=describing._muid, as_of=as_of)
+        found = self._database.get_store().get_entry_by_key(self._muid, key=describing.get_muid(), as_of=as_of)
         if found is None or found.builder.deletion:  # type: ignore
             return default
         value = self._get_occupant(found.builder, found.address)

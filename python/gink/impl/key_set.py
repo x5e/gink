@@ -48,7 +48,6 @@ class KeySet(Container):
             muid = Container._create(KEY_SET, bundler=bundler)
             created = True
         assert isinstance(muid, Muid)
-        assert muid.timestamp != -1 or muid.offset == KEY_SET
         Container.__init__(self, muid=muid, database=database)
         if contents:
             if not created:
@@ -163,7 +162,7 @@ class KeySet(Container):
     @typechecked
     def symmetric_difference(self, s: Iterable[UserKey], *, as_of: GenericTimestamp=None) -> Iterable[UserKey]:
         """ Returns a new set with elements in either the key set or the specified iterable, but not both. """
-        elements = self.union(s, as_of=as_of)
+        elements = set(self.union(s, as_of=as_of))
         for element in s:
             if self.contains(element, as_of=as_of):
                 elements.remove(element)

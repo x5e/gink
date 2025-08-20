@@ -39,25 +39,37 @@ class Muid:
         self.offset = offset if offset < (OFFSET_MOD >> 1) else offset - OFFSET_MOD
         self._bundler = bundler
 
+    def get_muid(self) -> 'Muid':
+        """ Returns the Muid instance itself. """
+        return self
+
     @property
-    def timestamp(self) -> Optional[MuTimestamp]:
+    def timestamp(self) -> MuTimestamp:
         if self._timestamp is not None:
             return self._timestamp
         if self._bundler:
+            if self._bundler.timestamp is None:
+                raise ValueError("bundler has no timestamp")
             return self._bundler.timestamp
         raise ValueError("timestamp not defined?")
 
     @property
-    def medallion(self) -> Optional[Medallion]:
+    def medallion(self) -> Medallion:
         if self._medallion is not None:
             return self._medallion
         if self._bundler:
+            if self._bundler.medallion is None:
+                raise ValueError("bundler has no medallion")
             return self._bundler.medallion
         raise ValueError("medallion not defined")
 
     def __lt__(self, othr):
         if not isinstance(othr, Muid):
             raise ValueError(f"can't compare a muid to a {othr}")
+        if self.timestamp is None or othr.timestamp is None:
+            raise ValueError("can't compare muids without timestamps")
+        if self.medallion is None or othr.medallion is None:
+            raise ValueError("can't compare muids without medallions")
         self_tuple = (self.timestamp % TIMESTAMP_MOD, self.medallion % MEDALLION_MOD, self.offset % OFFSET_MOD)
         othr_tuple = (othr.timestamp % TIMESTAMP_MOD, othr.medallion % MEDALLION_MOD, othr.offset % OFFSET_MOD)
         return self_tuple < othr_tuple
@@ -85,6 +97,8 @@ class Muid:
         """Translates to a format that looks like: 05D5EAC793E61F-1F8CB77AE1EAA-0000B
 
         See docs/muid.md for a description of the format."""
+        assert self.timestamp is not None, "timestamp is None"
+        assert self.medallion is not None, "medallion is None"
         time_part = hex(self.timestamp % TIMESTAMP_MOD)[2:].upper().zfill(TIMESTAMP_HEX_DIGITS)
         medallion_part = hex(self.medallion % MEDALLION_MOD)[2:].upper().zfill(MEDALLION_HEX_DIGITS)
         offset_part = hex(self.offset % OFFSET_MOD)[2:].upper().zfill(OFFSET_HEX_DIGITS)
@@ -94,11 +108,27 @@ class Muid:
         assert len(result) == 34, (len(result), result)
         return result
 
+    def get_timestamp_or_zero(self) -> MuTimestamp:
+        """ Returns the timestamp or a default value if not set. """
+        if self._timestamp is not None:
+            return self._timestamp
+        if self._bundler and self._bundler.timestamp is not None:
+            return self._bundler.timestamp
+        return 0
+
+    def get_medallion_or_zero(self) -> Medallion:
+        """ Returns the timestamp or a default value if not set. """
+        if self._medallion is not None:
+            return self._medallion
+        if self._bundler and self._bundler.medallion is not None:
+            return self._bundler.medallion
+        return 0
+
     def put_into(self, builder: MuidBuilder):
         """Puts the data from this muid into the builder."""
         builder.offset = self.offset  # type: ignore
-        builder.timestamp = self.timestamp if self.timestamp else 0  # type: ignore
-        builder.medallion = self.medallion if self.medallion else 0  # type: ignore
+        builder.timestamp = self.get_timestamp_or_zero()
+        builder.medallion = self.get_medallion_or_zero()
 
     @classmethod
     def create(

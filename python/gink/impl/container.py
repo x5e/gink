@@ -33,7 +33,7 @@ class Container(Addressable, ABC):
         return f"{self.__class__.__name__}(muid={self._muid!r})"
 
     def __str__(self):
-        return f"{self.__class__.__name__} {self.muid}"
+        return f"{self.__class__.__name__} {self._muid}"
 
     @abstractmethod
     def dumps(self, as_of: GenericTimestamp = None) -> str:
@@ -66,8 +66,8 @@ class Container(Addressable, ABC):
     @classmethod
     def get_behavior(cls) -> int:
         """ Gets the behavior tag/enum for the particular class. """
-        assert hasattr(cls, '_BEHAVIOR')
-        return cls._BEHAVIOR
+        result = getattr(cls, '_BEHAVIOR')
+        return result
 
     @classmethod
     def _get_global_instance(cls, database: Optional[Database] = None):
@@ -79,6 +79,8 @@ class Container(Addressable, ABC):
             be used to coordinate between database instances or just for
             testing/demo purposes.
         """
+        if database is None:
+            database = Database.get_most_recently_created_database()
         return cls(database=database, muid=Muid(-1, -1, cls.get_behavior()))
 
     @staticmethod
@@ -168,11 +170,9 @@ class Container(Addressable, ABC):
         if isinstance(value, Container):
             value = value.get_muid()
         if isinstance(value, Muid):
-            if value.medallion:
-                entry_builder.pointee.medallion = value.medallion  # type: ignore
-            if value.timestamp:
-                entry_builder.pointee.timestamp = value.timestamp  # type: ignore
-            entry_builder.pointee.offset = value.offset  # type: ignore
+            entry_builder.pointee.medallion = value.get_medallion_or_zero()
+            entry_builder.pointee.timestamp = value.get_timestamp_or_zero()
+            entry_builder.pointee.offset = value.offset
         elif isinstance(value, (str, int, float, dict, tuple, list, bool, bytes, type(None), datetime)):
             encode_value(value, entry_builder.value)  # type: ignore # pylint: disable=maybe-no-member
         elif value == deletion:

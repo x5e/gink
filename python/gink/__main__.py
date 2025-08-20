@@ -19,6 +19,7 @@ from .impl.utilities import get_identity, make_auth_func
 from .impl.looping import loop
 from .impl.wsgi_listener import WsgiListener
 from .impl.decomposition import Decomposition
+from .impl.get_container import get_container
 
 parser: ArgumentParser = ArgumentParser(allow_abbrev=False)
 parser.add_argument("db_path", nargs="?", help="path to a database; created if doesn't exist")
@@ -94,10 +95,12 @@ if args.dump:
             for component in path_components:
                 if not component:
                     continue
+                assert isinstance(container, Directory)
                 container = container.get(component, as_of=args.as_of)
         else:
             muid = Muid.from_str(args.dump)
-            container = database.get_container(muid=muid)
+            container = get_container(database=database, muid=muid)
+        assert isinstance(container, Container)
         container.dump(as_of=args.as_of)
     exit(0)
 
@@ -144,6 +147,7 @@ if args.get:
         result = dumps(result)
     if isinstance(result, str):
         result = result.encode()
+    assert isinstance(result, bytes)
     stdout.buffer.write(result)
     stdout.buffer.flush()
     database.close()
@@ -190,14 +194,15 @@ def parse_listen_on(
         port = "8080") -> Tuple[str, str]:
     if listen_on is True or listen_on is None:
         pass
-    elif ":" in listen_on:
+    elif isinstance(listen_on, str) and ":" in listen_on:
         ip_addr, port = listen_on.split(":")
-    elif fullmatch(r"\d+", listen_on):
+    elif isinstance(listen_on, str) and fullmatch(r"\d+", listen_on):
         port = listen_on
     else:
         ip_addr = listen_on
     if ip_addr == "*":
         ip_addr = ""
+    assert isinstance(ip_addr, str)
     return (ip_addr, port)
 
 wsgi_listener: Optional[WsgiListener] = None
@@ -230,6 +235,7 @@ for target in (args.connect_to or []):
     auth_data = f"Token {args.auth_token}" if args.auth_token else None
     database.connect_to(target, auth_data=auth_data)
 
+console: Optional[SelectableConsole]
 if args.interactive or stdin.isatty():
     console = SelectableConsole(locals(), heartbeat_to=args.heartbeat_to)
 else:

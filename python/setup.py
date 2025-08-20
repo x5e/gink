@@ -14,7 +14,6 @@ setup(
         'Development Status :: 4 - Beta',
         "Intended Audience :: Developers",
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
@@ -22,7 +21,7 @@ setup(
     ],
     keywords='gink lmdb crdt history versioned',
     packages=find_packages(),
-    python_requires=">=3.9, <4",
+    python_requires=">=3.10, <4",
     install_requires=[
         "wsproto",
         "sortedcontainers",

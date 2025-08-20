@@ -255,12 +255,15 @@ def test_blame_and_log():
 
 def test_float_int():
     """ makes sure that the directory.get_blame works """
-    for store in [MemoryStore(), LmdbStore()]:
+    for store in [LmdbStore(), MemoryStore(), ]:
         with closing(store):
             database = Database(store=store)
-            for directory in [Directory._get_global_instance(database=database), Directory()]:
+            for directory in [Directory(), Directory._get_global_instance(database=database), ]:
                 directory["foo"] = 1
                 directory[0] = 1.0
+                if len(directory) != 2:
+                    msg = f"problem with {directory} len {len(directory)}"
+                    raise AssertionError(msg)
                 assert isinstance(directory["foo"], int)
                 assert isinstance(directory[0], float)
 
