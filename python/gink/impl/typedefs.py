@@ -21,7 +21,6 @@ inf = float("inf")
 
 ExcInfo = Tuple[Type[BaseException], BaseException, Any]
 StartResponse = Callable[[str, List[Tuple[str, str]], Optional[ExcInfo]], None]
-WsgiFunc = Callable[[Dict[str, Any], StartResponse], Iterable[bytes]]
 
 
 class Deletion:  # pylint: disable=too-few-public-methods
@@ -36,11 +35,11 @@ class Request(Protocol):
 
     @property
     def path(self) -> str:
-        pass
+        raise NotImplementedError()
 
     @property
     def headers(self) -> Mapping[str, str]:
-        pass
+        raise NotImplementedError()
 
     @property
     def authorization(self) -> Optional[str]:
@@ -48,7 +47,8 @@ class Request(Protocol):
 
     @property
     def cookies(self) -> Mapping[str, str]:
-        pass
+        raise NotImplementedError()
+
 
 
 AuthFunc = Callable[[Request], int]
@@ -62,7 +62,7 @@ AUTH_FULL = 7
 class ConnectionInterface(Protocol):
     @property
     def path(self) -> str:
-        pass
+        raise NotImplementedError()
 
     @property
     def name(self) -> Optional[str]:

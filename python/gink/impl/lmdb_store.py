@@ -314,7 +314,7 @@ class LmdbStore(AbstractStore):
                     found_removal = to_last_with_prefix(removal_cursor, removals_lookup)
                     if found_removal:
                         include = False
-                    entry_builder = EntryBuilder.FromString(trxn.get(val, db=self._entries))
+                    entry_builder = EntryBuilder.FromString(cast(bytes, trxn.get(val, db=self._entries)))
                     entry_muid = Muid.from_bytes(val)
                     if (source is not None and
                             Muid.create(context=entry_muid, builder=entry_builder.pair.left) != source):
@@ -332,7 +332,7 @@ class LmdbStore(AbstractStore):
             if not found:
                 return None
             entry_builder = EntryBuilder()
-            entry_builder.ParseFromString(found)
+            entry_builder.ParseFromString(cast(bytes, found))
             return entry_builder
 
     def list_containers(self) -> Iterable[Tuple[Muid, ContainerBuilder]]:
@@ -521,7 +521,7 @@ class LmdbStore(AbstractStore):
                 # this particular placement was active at to_time
                 entry_builder = EntryBuilder()
                 entry_muid_bytes = placements_cursor.value()
-                entry_builder.ParseFromString(trxn.get(entry_muid_bytes, db=self._entries))
+                entry_builder.ParseFromString(cast(bytes, trxn.get(entry_muid_bytes, db=self._entries)))
                 entry_muid = Muid.from_bytes(entry_muid_bytes)
                 occupant = decode_entry_occupant(entry_muid, entry_builder)
                 if isinstance(occupant, Muid) and seen is not None:
@@ -560,7 +560,7 @@ class LmdbStore(AbstractStore):
             if describer_property not in issued:
                 issued.add(describer_property)
                 entry_builder = EntryBuilder()
-                entry_builder.ParseFromString(trxn.get(describer_entry_bytes, db=self._entries))
+                entry_builder.ParseFromString(cast(bytes, trxn.get(describer_entry_bytes, db=self._entries)))
                 normalize_entry_builder(
                     entry_builder=entry_builder, entry_muid=Muid.from_bytes(describer_entry_bytes))
                 offset -= 1
@@ -582,14 +582,14 @@ class LmdbStore(AbstractStore):
         was_deleted = container.timestamp > to_time
         if previous_change:
             entry_builder = EntryBuilder()
-            entry_builder.ParseFromString(trxn.get(placement_cursor.value(), db=self._entries))
+            entry_builder.ParseFromString(cast(bytes, trxn.get(placement_cursor.value(), db=self._entries)))
             if entry_builder.deletion:
                 was_deleted = True
         is_deleted = False
         current_change = to_last_with_prefix(placement_cursor, bytes(container))
         if current_change:
             entry_builder = EntryBuilder()
-            entry_builder.ParseFromString(trxn.get(placement_cursor.value(), db=self._entries))
+            entry_builder.ParseFromString(cast(bytes, trxn.get(placement_cursor.value(), db=self._entries)))
             if entry_builder.deletion:
                 is_deleted = True
         if is_deleted != was_deleted:
@@ -676,13 +676,14 @@ class LmdbStore(AbstractStore):
         key = encode_muts(claim_builder.claim_time)
         val = claim_builder.SerializeToString()
         trxn.put(key, val, db=self._claims)
+        return claim_builder
 
     def _get_claims(self, trxn: Trxn) -> Mapping[Medallion, ClaimBuilder]:
         results = dict()
         claims_cursor = trxn.cursor(self._claims)
         for val in claims_cursor.iternext(keys=False, values=True):
             claim_builder = ClaimBuilder()
-            claim_builder.ParseFromString(val)
+            claim_builder.ParseFromString(cast(bytes, val))
             results[claim_builder.medallion] = claim_builder
         return results
 
@@ -705,7 +706,7 @@ class LmdbStore(AbstractStore):
 
     def get_last(self, chain: Chain) -> BundleInfo:
         with self._handle.begin() as trxn:
-            return BundleInfo.from_bytes(trxn.get(bytes(chain), db=self._chains))
+            return BundleInfo.from_bytes(cast(bytes, trxn.get(bytes(chain), db=self._chains)))
 
     def get_positioned_entry(self, entry: Muid,
                              as_of: MuTimestamp = -1) -> Optional[PositionedEntry]:
@@ -716,7 +717,7 @@ class LmdbStore(AbstractStore):
             middle_key = placement.middle
             assert isinstance(middle_key, QueueMiddleKey)
             entry_builder = EntryBuilder()
-            entry_builder.ParseFromString(trxn.get(bytes(entry), db=self._entries))
+            entry_builder.ParseFromString(cast(bytes, trxn.get(bytes(entry), db=self._entries)))
             return PositionedEntry(
                 middle_key.effective_time,
                 placement.get_positioner(),
@@ -759,8 +760,7 @@ class LmdbStore(AbstractStore):
                 if isinstance(key[0], Muid) and isinstance(key[1], Muid):
                     serialized_key = bytes(key[0]) + bytes(key[1])
                 else:
-                    assert not isinstance(key[0], int)
-                    serialized_key = bytes(key[0]._muid) + bytes(key[1]._muid)
+                    raise TypeError(f"tuple keys must be Muid tuples, got {key}")
                 behavior = PAIR_MAP
             elif isinstance(key, (int, str, bytes)):
                 serialized_key = serialize(encode_key(key))
@@ -782,7 +782,7 @@ class LmdbStore(AbstractStore):
             placement_key = Placement.from_bytes(placement_key_bytes, behavior)
             if placement_key.placer.timestamp < clearance_time:
                 return None
-            entry_builder.ParseFromString(txn.get(placements_cursor.value(), db=self._entries))
+            entry_builder.ParseFromString(cast(bytes, txn.get(placements_cursor.value(), db=self._entries)))
             return FoundEntry(placement_key.placer, builder=entry_builder)
 
     def get_ordered_entries(self, container: Muid, as_of: MuTimestamp, limit: Optional[int] = None,
@@ -895,24 +895,25 @@ class LmdbStore(AbstractStore):
             callback: Optional[Callable[[Decomposition], None]]=None,
             claim_chain: bool=False
             ) -> bool:
-        wrapper = Decomposition(bundle) if isinstance(bundle, bytes) else bundle
-        builder = wrapper.get_builder()
-        new_info = wrapper.get_info()
+
+        decomposition: Decomposition = Decomposition(bundle) if not isinstance(bundle, Decomposition) else bundle
+        builder = decomposition.get_builder()
+        new_info = decomposition.get_info()
         chain_key = bytes(new_info.get_chain())
         # Note: LMDB supports only one write transaction, so we don't need to explicitly lock.
         with self._handle.begin(write=True) as trxn:
             self._refresh_helper(trxn=trxn, callback=callback)
-            chain_value_old = trxn.get(chain_key, db=self._chains)
+            chain_value_old = cast(bytes, trxn.get(chain_key, db=self._chains))
             old_info = BundleInfo(encoded=chain_value_old) if chain_value_old else None
             needed = is_needed(new_info, old_info)
             if needed:
                 if claim_chain:
                     assert new_info.timestamp == new_info.chain_start
                     self._add_claim(trxn, new_info.get_chain())
-                if decode_muts(trxn.get(b"bundles", db=self._retentions)):
+                if decode_muts(cast(bytes, trxn.get(b"bundles", db=self._retentions))):
                     bundle_receive_time = generate_timestamp()
                     bundle_location = encode_muts(bundle_receive_time)
-                    trxn.put(bundle_location, wrapper.get_bytes(), db=self._bundles)
+                    trxn.put(bundle_location, decomposition.get_bytes(), db=self._bundles)
                     self._seen_through = bundle_receive_time
                     trxn.put(bytes(new_info), bundle_location, db=self._bundle_infos)
                 trxn.put(chain_key, bytes(new_info), db=self._chains)
@@ -929,13 +930,13 @@ class LmdbStore(AbstractStore):
                     prior_hash = builder.prior_hash
                     if prior_hash != bytes.fromhex(old_info.hex_hash):
                         raise ValueError("prior_hash doesn't match hash of prior bundle")
-                verify_key.verify(wrapper.get_bytes())
+                verify_key.verify(decomposition.get_bytes())
                 if builder.encrypted:
                     if builder.changes:
                         raise ValueError("did not expect plain changes when using encryption")
                     if not builder.key_id:
                         raise ValueError("expected to have a key_id when encrypted is present")
-                    symmetric_key = trxn.get(encode_muts(builder.key_id), db=self._symmetric_keys)
+                    symmetric_key = cast(bytes, trxn.get(encode_muts(builder.key_id), db=self._symmetric_keys))
                     if not symmetric_key:
                         raise KeyError("could not find symmetric key referenced in bundle")
                     secret_box = SecretBox(symmetric_key)
@@ -973,15 +974,15 @@ class LmdbStore(AbstractStore):
                         self._logger.error("could not process change %s, %s", value_error, change)
         self._clear_notifications()
         if needed and callback is not None:
-            callback(wrapper)
+            callback(decomposition)
         return needed
 
     def get_identity(self, chain: Chain, trxn: Optional[Trxn]=None, /) -> str:
         if trxn is None:
             with self._handle.begin() as trxn:
-                result = trxn.get(bytes(chain), db=self._identities)
+                result = cast(Optional[bytes], trxn.get(bytes(chain), db=self._identities))
         else:
-            result = trxn.get(bytes(chain), db=self._identities)
+            result = cast(Optional[bytes], trxn.get(bytes(chain), db=self._identities))
         if result is None:
             raise ValueError(f"identity for chain not found: {chain}")
         return result.decode()
@@ -1033,7 +1034,7 @@ class LmdbStore(AbstractStore):
         dest = getattr(builder, "dest")
         locations_cursor = txn.cursor(self._locations)
         entry_muid_bytes = bytes(entry_muid)
-        entry_builder_bytes = txn.get(entry_muid_bytes, db=self._entries)
+        entry_builder_bytes = cast(Optional[bytes], txn.get(entry_muid_bytes, db=self._entries))
         if not entry_builder_bytes:
             return
         entry_builder = EntryBuilder.FromString(entry_builder_bytes)
@@ -1090,13 +1091,13 @@ class LmdbStore(AbstractStore):
             If the container type calls for an entry to be replaced,
             then either a removal will be added, or the existing entry will be removed.
         """
-        retaining = bool(decode_muts(bytes(txn.get(b"entries", db=self._retentions))))
+        retaining = bool(decode_muts(cast(bytes, txn.get(b"entries", db=self._retentions))))
         ensure_entry_is_valid(builder=builder, context=new_info, offset=offset)
         placement_key = Placement.from_builder(builder, new_info, offset)
         container_muid = placement_key.container
         if builder.behavior == Behavior.ACCUMULATOR:
             totals_key = bytes(container_muid)
-            total = int(txn.get(totals_key, default=b"0", db=self._totals).decode())
+            total = int(cast(bytes, txn.get(totals_key, default=b"0", db=self._totals)).decode())
             total += int(builder.value.integer)
             txn.put(totals_key, str(total).encode(), db=self._totals)
             if not retaining:
@@ -1104,7 +1105,9 @@ class LmdbStore(AbstractStore):
         serialized_placement_key = bytes(placement_key)
         entry_muid = placement_key.placer
         if new_entries_replace(builder.behavior):
-            found_entry = self.get_entry_by_key(container_muid, placement_key.middle)
+            key = placement_key.middle
+            assert not isinstance(key, QueueMiddleKey)
+            found_entry = self.get_entry_by_key(container_muid, key)
             if found_entry:
                 if retaining:
                     removal_key = RemovalKey(container_muid, found_entry.address, entry_muid)
@@ -1190,7 +1193,7 @@ class LmdbStore(AbstractStore):
         **_
     ):
         with self._handle.begin() as txn:
-            retention = decode_muts(txn.get(b"bundles", db=self._retentions))
+            retention = decode_muts(cast(bytes, txn.get(b"bundles", db=self._retentions)))
             if retention is None or retention != 1:
                 # TODO: handle the case of partial bundle retention, which would require computing the
                 # minimum lookback time necessary to service the request.
@@ -1201,7 +1204,7 @@ class LmdbStore(AbstractStore):
             while data_remaining:
                 bundle_info = BundleInfo(encoded=bundle_infos_cursor.key())
                 if limit_to is None or bundle_info.timestamp <= limit_to.get(bundle_info.get_chain(), 0):
-                    bundle_bytes = txn.get(bundle_infos_cursor.value(), db=self._bundles)
+                    bundle_bytes = cast(bytes, txn.get(bundle_infos_cursor.value(), db=self._bundles))
                     bundle_wrapper = Decomposition(bundle_bytes=bundle_bytes, bundle_info=bundle_info)
                     callback(bundle_wrapper)
                 data_remaining = bundle_infos_cursor.next()
@@ -1242,7 +1245,7 @@ class LmdbStore(AbstractStore):
                 else:
                     removed = None
                 if (not removed) and (as_of == -1 or entry_muid.timestamp < as_of):
-                    proto_bytes = trxn.get(entry_muid_bytes, db=self._entries)
+                    proto_bytes = cast(bytes, trxn.get(entry_muid_bytes, db=self._entries))
                     assert proto_bytes is not None
                     yield FoundEntry(entry_muid, EntryBuilder.FromString(proto_bytes))
                 placed = by_describing_cursor.next()
@@ -1270,7 +1273,7 @@ class LmdbStore(AbstractStore):
                 else:
                     removed = None
                 if (not removed) and (as_of == -1 or entry_muid.timestamp < as_of):
-                    proto_bytes = trxn.get(named_muid_bytes, db=self._containers)
+                    proto_bytes = cast(bytes, trxn.get(named_muid_bytes, db=self._containers))
                     named_muid = Muid.from_bytes(named_muid_bytes)
                     container_builder = ContainerBuilder()
                     if named_muid.timestamp == -1:
