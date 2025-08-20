@@ -150,8 +150,9 @@ class LmdbStore(AbstractStore):
         with self._handle.begin() as trxn:
             prefix = bytes(accumulator)
             if as_of == -1:
-                total_string = trxn.get(prefix, db=self._totals, default="0")
-                assert isinstance(total_string, bytes), "total_string should be a string"
+                total_string = trxn.get(prefix, db=self._totals, default=b"0")
+                if not isinstance(total_string, bytes):
+                    raise AssertionError("expected total_string to be a byte string")
                 return int(total_string)
             # TODO: switch algo to go from counting up from zero to counting down from total
             # The current approach won't give the right answer when we only have partial history.
@@ -377,7 +378,7 @@ class LmdbStore(AbstractStore):
                 EntryBuilder: self._entries,
                 MovementBuilder: self._removals,
                 BundleInfo: self._bundle_infos,
-                Placement: self._entries,
+                Placement: self._placements,
                 RemovalKey: self._removals,
                 LocationKey: self._locations,
                 ClaimBuilder: self._claims,

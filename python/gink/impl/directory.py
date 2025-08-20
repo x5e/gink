@@ -175,7 +175,8 @@ class Directory(Container):
         if len(keys) < 1:
             raise ValueError(f"invalid argument to set: {key_or_keys!r}")
         final_key = keys.pop()
-        assert isinstance(final_key, (str, bytes, int))
+        if not isinstance(final_key, (str, bytes, int)):
+            raise AssertionError(f"key must be a string, bytes, or int, got {type(final_key)}")
         current = self
         just_created = False
         store = self._database.get_store()

@@ -70,7 +70,7 @@ class Container(Addressable, ABC):
         return result
 
     @classmethod
-    def _get_global_instance(cls, database: Database):
+    def _get_global_instance(cls, database: Optional[Database] = None):
         """ Gets a proxy to the "magic" global instance of the given class.
 
             For each container type there's a pre-existing global instance
@@ -79,6 +79,8 @@ class Container(Addressable, ABC):
             be used to coordinate between database instances or just for
             testing/demo purposes.
         """
+        if database is None:
+            database = Database.get_most_recently_created_database()
         return cls(database=database, muid=Muid(-1, -1, cls.get_behavior()))
 
     @staticmethod
@@ -168,11 +170,9 @@ class Container(Addressable, ABC):
         if isinstance(value, Container):
             value = value.get_muid()
         if isinstance(value, Muid):
-            if value.medallion:
-                entry_builder.pointee.medallion = value.medallion  # type: ignore
-            if value.timestamp:
-                entry_builder.pointee.timestamp = value.timestamp  # type: ignore
-            entry_builder.pointee.offset = value.offset  # type: ignore
+            entry_builder.pointee.medallion = value.get_medallion_or_zero()
+            entry_builder.pointee.timestamp = value.get_timestamp_or_zero()
+            entry_builder.pointee.offset = value.offset
         elif isinstance(value, (str, int, float, dict, tuple, list, bool, bytes, type(None), datetime)):
             encode_value(value, entry_builder.value)  # type: ignore # pylint: disable=maybe-no-member
         elif value == deletion:

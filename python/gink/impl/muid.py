@@ -58,7 +58,8 @@ class Muid:
         if self._medallion is not None:
             return self._medallion
         if self._bundler:
-            assert self._bundler.medallion is not None, "bundler has no medallion"
+            if self._bundler.medallion is None:
+                raise ValueError("bundler has no medallion")
             return self._bundler.medallion
         raise ValueError("medallion not defined")
 
@@ -107,11 +108,27 @@ class Muid:
         assert len(result) == 34, (len(result), result)
         return result
 
+    def get_timestamp_or_zero(self) -> MuTimestamp:
+        """ Returns the timestamp or a default value if not set. """
+        if self._timestamp is not None:
+            return self._timestamp
+        if self._bundler and self._bundler.timestamp is not None:
+            return self._bundler.timestamp
+        return 0
+
+    def get_medallion_or_zero(self) -> Medallion:
+        """ Returns the timestamp or a default value if not set. """
+        if self._medallion is not None:
+            return self._medallion
+        if self._bundler and self._bundler.medallion is not None:
+            return self._bundler.medallion
+        return 0
+
     def put_into(self, builder: MuidBuilder):
         """Puts the data from this muid into the builder."""
         builder.offset = self.offset  # type: ignore
-        builder.timestamp = self._timestamp if self._timestamp else 0  # type: ignore
-        builder.medallion = self._medallion if self._medallion else 0  # type: ignore
+        builder.timestamp = self.get_timestamp_or_zero()
+        builder.medallion = self.get_medallion_or_zero()
 
     @classmethod
     def create(

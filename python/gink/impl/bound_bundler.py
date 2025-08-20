@@ -39,6 +39,8 @@ class BoundBundler(Bundler):
         self._count_items += 1
         muid = Muid(offset=self._count_items, bundler=self)
         if isinstance(builder, EntryBuilder):
+            if muid.offset == 1 and not builder.container.timestamp:
+                raise ValueError("attempting to add an entry to an undefined container")
             entry_builder = builder
             builder = ChangeBuilder()
             builder.entry.CopyFrom(entry_builder)  # type: ignore # pylint: disable=maybe-no-member
