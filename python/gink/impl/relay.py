@@ -53,10 +53,6 @@ class Relay(Server):
         """ Add a callback to be called when a bundle is received. """
         self._callbacks.append(callback)
 
-    def get_store(self) -> BundleStore:
-        """ Returns the store managed by this database """
-        return self._store
-
     def get_connections(self) -> Iterable[Connection]:
         """ Returns an iterable of all active connections. """
         for connection in self._connections:
