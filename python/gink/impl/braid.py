@@ -52,6 +52,7 @@ class Braid(Container):
         elif muid is None:
             muid = Container._create(BRAID, bundler=bundler)
             created = True
+        assert isinstance(muid, Muid)
         Container.__init__(self, muid=muid, database=database)
         if contents:
             if not created:
@@ -83,7 +84,7 @@ class Braid(Container):
             muid = Muid.create(builder=entry_pair.builder.describing, context=entry_pair.address)
             value = self._get_occupant(entry_pair.builder, address=entry_pair.address)
             assert isinstance(value, (float, int))
-            yield Chain(muid.medallion, muid.timestamp), value
+            yield Chain(muid.medallion or 0, muid.timestamp or 0), value
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)

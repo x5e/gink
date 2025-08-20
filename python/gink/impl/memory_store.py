@@ -97,7 +97,7 @@ class MemoryStore(AbstractStore):
         removal_keys = list(self._removals.keys())
         for key in removal_keys:
             removal = RemovalKey.from_bytes(key)
-            if removal.movement.timestamp > as_of:
+            if (removal.movement.timestamp or 0) > as_of:
                 break
             self._remove_entry(removal.removing)
             self._removals.pop(key)
@@ -162,7 +162,7 @@ class MemoryStore(AbstractStore):
                 return None
         return None
 
-    def _add_claim(self, _: Lock, chain: Chain, /) -> ClaimBuilder:
+    def _add_claim(self, _: object, chain: Chain, /) -> ClaimBuilder:
         claim_builder = create_claim(chain)
         self._claims[chain.medallion] = claim_builder
         return claim_builder
@@ -191,7 +191,7 @@ class MemoryStore(AbstractStore):
             if not placement_bytes.startswith(edge_type_bytes):
                 break
             placement = Placement.from_bytes(placement_bytes, using=EDGE_TYPE)
-            if placement.placer.timestamp > as_of:
+            if (placement.placer.timestamp or 0) > as_of:
                 continue
             entry_muid = self._placements[placement_bytes]
             entry_builder: EntryBuilder = self._entries[entry_muid]
@@ -287,11 +287,11 @@ class MemoryStore(AbstractStore):
             return FoundEntry(address=entry_storage_key.placer, builder=builder)
         return None
 
-    def _get_claims(self, _: Lock, /) -> Mapping[Medallion, ClaimBuilder]:
+    def _get_claims(self, _: object, /) -> Mapping[Medallion, ClaimBuilder]:
         self._maybe_refresh()
         return self._claims
 
-    def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[Decomposition], None]]=None, /) -> int:
+    def _refresh_helper(self, lock: object, callback: Optional[Callable[[Decomposition], None]]=None, /) -> int:
         return 0
 
     def get_ordered_entries(
@@ -309,6 +309,7 @@ class MemoryStore(AbstractStore):
             if limit is not None and limit <= 0:
                 break
             entry_muid = self._placements.get(placement_bytes)
+            assert isinstance(entry_muid, Muid)
             entry_builder = self._entries[entry_muid]
             placement_key = Placement.from_bytes(placement_bytes, SEQUENCE)
             placed_time = placement_key.get_placed_time()

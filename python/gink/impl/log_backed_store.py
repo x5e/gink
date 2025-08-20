@@ -78,7 +78,7 @@ class LogBackedStore(MemoryStore):
             flock(self._handle, LOCK_UN)
             self._flocked = False
 
-    def _add_claim(self, _: Lock, chain: Chain, /):
+    def _add_claim(self, _: object, chain: Chain, /) -> ClaimBuilder:
         assert self._flocked
         claim_builder = super()._add_claim(True, chain)
         self._log_file_builder.Clear()
@@ -87,6 +87,7 @@ class LogBackedStore(MemoryStore):
         self._handle.write(data)
         self._handle.flush()
         self._processed_to += len(data)
+        return claim_builder
 
     def _get_file_path(self) -> Optional[Path]:
         return self._filepath
@@ -135,6 +136,7 @@ class LogBackedStore(MemoryStore):
             raise AssertionError("attempt to write to closed LogBackStore")
         if isinstance(bundle, bytes):
             bundle = Decomposition(bundle)
+        assert isinstance(bundle, Decomposition)
         flocked_by_apply = False
         if not self._flocked:
             flock(self._handle, LOCK_EX)  # this will block (wait) if another process has a lock
