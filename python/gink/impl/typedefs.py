@@ -21,7 +21,7 @@ inf = float("inf")
 
 ExcInfo = Tuple[Type[BaseException], BaseException, Any]
 StartResponse = Callable[[str, List[Tuple[str, str]], Optional[ExcInfo]], None]
-
+WsgiFunc = Callable[[Dict[str, Any], StartResponse], Iterable[bytes]]
 
 class Deletion:  # pylint: disable=too-few-public-methods
     """ Used internally to indicate that a key/value assocation has been removed. """

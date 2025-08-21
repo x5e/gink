@@ -9,7 +9,7 @@ from io import BytesIO
 from re import fullmatch, DOTALL
 from time import time as get_time
 from sys import stderr
-from wsgiref.types import WSGIApplication
+
 from socket import (
     socket as Socket,
     SHUT_WR
@@ -36,7 +36,7 @@ from wsproto.events import (
 # gink modules
 from .builders import SyncMessage
 from .looping import Finished
-from .typedefs import AuthFunc, AUTH_NONE, AUTH_RITE, AUTH_FULL, ConnFunc
+from .typedefs import AuthFunc, AUTH_NONE, AUTH_RITE, AUTH_FULL, ConnFunc, WsgiFunc
 from .sync_func import SyncFunc
 from .bundle_info import BundleInfo
 from .decomposition import Decomposition
@@ -63,7 +63,7 @@ class Connection:
             path: Optional[str] = None,
             name: Optional[str] = None,
             on_ws_act: Optional[Callable] = None,
-            wsgi_func: Optional[WSGIApplication] = None,
+            wsgi_func: Optional[WsgiFunc] = None,
             conn_func: Optional[ConnFunc] = None,
             auth_func: Optional[AuthFunc] = None,
             auth_data: Optional[str] = None,

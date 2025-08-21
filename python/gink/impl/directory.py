@@ -362,7 +362,7 @@ class Directory(Container):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore
         else:
-            for key, val in cast(Iterable[Tuple[UserKey, UserValue | Container]], from_what):
+            for key, val in from_what:  # type: ignore
                 self._add_entry(key=key, value=val, bundler=bundler)
         if immediate:
             bundler.commit()
