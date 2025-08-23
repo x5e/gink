@@ -47,6 +47,8 @@ class Database(Relay):
             self,
             store: Union[AbstractStore, str, Path, None] = None,
             identity: str = get_identity(),
+            allow_new_chains: bool = True,
+            require_symmetric_key: bool = False,
             ):
         super().__init__(store=store)
         setattr(Database, "_last", self)
@@ -59,6 +61,8 @@ class Database(Relay):
         self._lock = Lock()
         self._signing_key = None
         self._symmetric_key = None
+        self._allow_new_chains = allow_new_chains
+        self._require_symmetric_key = require_symmetric_key
 
     def get_root(self):
         from .directory import Directory
@@ -130,19 +134,29 @@ class Database(Relay):
             return self._last_link, self._signing_key
         assert self._signing_key is None
         assert self._symmetric_key is None
-        self._last_link = reused = self._abstract_store.maybe_reuse_chain(self._identity)
-        if reused:
-            self._symmetric_key = self._abstract_store.get_symmetric_key(None)
-            verify_key = self._abstract_store.get_verify_key(reused.get_chain())
+        to_reuse = self._abstract_store.maybe_reuse_chain(self._identity)
+        if to_reuse:
+            # TODO: lookup symmetric key based on chain
+            symmetric_key = self._abstract_store.get_symmetric_key(None)
+            if self._require_symmetric_key and symmetric_key is None:
+                raise RuntimeError("symmetric key required, but none found for reused chain")
+            self._symmetric_key = symmetric_key
+            verify_key = self._abstract_store.get_verify_key(to_reuse.get_chain())
             assert isinstance(verify_key, VerifyKey)
             self._signing_key = self._abstract_store.get_signing_key(verify_key)
             assert isinstance(self._signing_key, SigningKey)
             if self._signing_key is None:
                 raise AssertionError("could not find a signing key")
-            return reused, self._signing_key
+            self._last_link = to_reuse
+            return to_reuse, self._signing_key
+        elif not self._allow_new_chains:
+            raise RuntimeError("no existing chain to reuse, and new chains are not allowed")
+        symmetric_key = self._abstract_store.get_symmetric_key(None)
+        if self._require_symmetric_key and symmetric_key is None:
+            raise RuntimeError("symmetric key required, but no default key found")
+        self._symmetric_key = symmetric_key
         self._signing_key = SigningKey.generate()
         self._abstract_store.save_signing_key(self._signing_key)
-        self._symmetric_key = self._abstract_store.get_symmetric_key(None)
         medallion = generate_medallion()
         chain_start = generate_timestamp()
         chain = Chain(medallion=medallion, chain_start=chain_start)

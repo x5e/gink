@@ -37,6 +37,10 @@ class AbstractStore(BundleStore, Generic[Lock]):
         self.close()
 
     @abstractmethod
+    def get_chains(self) -> Iterable[Chain]:
+        """ Gets all the chains known to the store. """
+
+    @abstractmethod
     def drop_history(self, as_of: Optional[MuTimestamp] = None):
         """ Drops all entries from the store before the given time. """
 
@@ -77,7 +81,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
 
     @abstractmethod
     def get_ordered_entries(self, container: Muid, as_of: MuTimestamp, limit: Optional[int] = None,
-                            offset: int = 0, desc: bool = False) -> Iterable[PositionedEntry]:
+                            offset: int = 0, desc: bool = False, after: MuTimestamp = 0) -> Iterable[PositionedEntry]:
         """ Get data for the Sequence data structure. """
 
     @abstractmethod

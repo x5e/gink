@@ -71,6 +71,9 @@ class MemoryStore(AbstractStore):
         self._retaining_entries = retain_entries
         self._totals = dict()
 
+    def get_chains(self):
+        return list(self._chain_infos.keys())
+
     def _maybe_refresh(self):
         pass  # used by LogBackedStore subclass
 
@@ -301,11 +304,14 @@ class MemoryStore(AbstractStore):
             limit: Optional[int] = None,
             offset: int = 0,
             desc: bool = False,
+            after: MuTimestamp = 0,
     ) -> Iterable[PositionedEntry]:
         self._maybe_refresh()
         prefix = bytes(container)
         clearance_time = self._get_time_of_prior_clear(container, as_of)
-        for placement_bytes in self._placements.irange(prefix, prefix + encode_muts(as_of), reverse=desc):
+        after_bytes = encode_muts(after)
+        before_bytes = encode_muts(as_of)
+        for placement_bytes in self._placements.irange(prefix + after_bytes, prefix + before_bytes, reverse=desc):
             if limit is not None and limit <= 0:
                 break
             entry_muid = self._placements.get(placement_bytes)

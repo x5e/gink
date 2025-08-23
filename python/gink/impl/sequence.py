@@ -216,22 +216,30 @@ class Sequence(Container):
                                  bundler=bundler, comment=comment)
         raise ValueError("matching item not found")
 
-    def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[SequenceKey, Union[UserValue, Container]]]:
+    def items(
+        self, *,
+        as_of: GenericTimestamp = None,
+        after: GenericTimestamp = None,
+        ) -> Iterable[Tuple[SequenceKey, Union[UserValue, Container]]]:
         """ Returns pairs of (muid, contents) for the sequence at the given time. """
         as_of = self._database.resolve_timestamp(as_of)
-        for positioned in self._database.get_store().get_ordered_entries(self._muid, as_of=as_of):
+        after = self._database.resolve_timestamp(after) if after else 0
+        for positioned in self._database.get_store().get_ordered_entries(self._muid, as_of=as_of, after=after):
             found = self._get_occupant(positioned.builder, positioned.entry_muid)
             sequence_key = SequenceKey(positioned.position, positioned.entry_muid)
             yield sequence_key, found
 
-    def keys(self, *, as_of: GenericTimestamp = None) -> Iterable[SequenceKey]:
+    def keys(self, *, as_of: GenericTimestamp = None, after: GenericTimestamp = None) -> Iterable[SequenceKey]:
         """ Returns an iterable of the keys in the sequence at the given time. """
-        for key, _ in self.items(as_of=as_of):
+        for key, _ in self.items(as_of=as_of, after=after):
             yield key
 
-    def values(self, *, as_of: GenericTimestamp = None) -> Iterable[Union[UserValue, Container]]:
+    def values(
+        self, *,
+        as_of: GenericTimestamp = None,
+        after: GenericTimestamp = None) -> Iterable[Union[UserValue, Container]]:
         """ Returns an iterable of the values in the sequence at the given time. """
-        for _, val in self.items(as_of=as_of):
+        for _, val in self.items(as_of=as_of, after=after):
             yield val
 
     def __getitem__(self, what):

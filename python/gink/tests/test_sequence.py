@@ -238,3 +238,16 @@ def test_simple_reset():
             reset_bundle = queue.reset(-1)
             assert reset_bundle is not None
             assert len(queue) == 0
+
+
+def test_after():
+    """ make sure that historical queries work as expected """
+    for store in [LmdbStore(), MemoryStore(), ]:
+        with closing(store):
+            database = Database(store=store)
+            for seq in [Sequence._get_global_instance(database), Sequence()]:
+                seq.append("foo")
+                time1 = generate_timestamp()
+                seq.append("bar")
+                assert list(seq.values()) == ["foo", "bar"], list(seq.values())
+                assert list(seq.values(after=time1)) == ["bar"], list(seq.values(after=time1))

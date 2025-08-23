@@ -1,7 +1,6 @@
 """Contains the LmdbStore class."""
 
 # Standard Python Stuff
-from os import unlink
 from os.path import exists
 from logging import getLogger
 import uuid
@@ -45,7 +44,7 @@ class LmdbStore(AbstractStore):
             retain_entries=True,
             apply_changes=True,
             map_size: int=2**30) -> None:
-        """ Opens a gink.mdb file for use as a Store.
+        """ Opens a gink.lmdb file for use as a Store.
 
             file_path: where find or place the data file
             reset: if True and file exists, will wipe it after opening
@@ -61,7 +60,7 @@ class LmdbStore(AbstractStore):
             prefix = "/tmp/temp."
             if exists("/dev/shm"):
                 prefix = "/dev/shm/temp."
-            file_path = prefix + str(uuid.uuid4()) + ".gink.mdb"
+            file_path = prefix + str(uuid.uuid4()) + ".gink.lmdb"
             self._temporary = True
         if isinstance(file_path, bytes):
             file_path = Path(file_path.decode("utf-8"))
@@ -184,6 +183,11 @@ class LmdbStore(AbstractStore):
             raise Exception("not implemented")
         with self._handle.begin(write=False) as trxn:
             if key_id is None:
+                stats = trxn.stat(db=self._symmetric_keys)
+                if stats['entries'] == 0:
+                    return None
+                if stats['entries'] > 1:
+                    raise Exception("multiple symmetric keys stored, but no key id specified")
                 cursor = trxn.cursor(db=self._symmetric_keys)
                 return cursor.value() if cursor.first() else None
             assert key_id is not None
@@ -786,7 +790,7 @@ class LmdbStore(AbstractStore):
             return FoundEntry(placement_key.placer, builder=entry_builder)
 
     def get_ordered_entries(self, container: Muid, as_of: MuTimestamp, limit: Optional[int] = None,
-                            offset: int = 0, desc: bool = False) -> Iterable[PositionedEntry]:
+                            offset: int = 0, desc: bool = False, after: MuTimestamp = 0) -> Iterable[PositionedEntry]:
         prefix = bytes(container)
         with self._handle.begin() as txn:
             clearance_time = self._get_time_of_prior_clear(txn, container, as_of)
@@ -795,7 +799,7 @@ class LmdbStore(AbstractStore):
             if desc:
                 placed = to_last_with_prefix(placements_cursor, prefix)
             else:
-                placed = placements_cursor.set_range(prefix)
+                placed = placements_cursor.set_range(prefix + encode_muts(after))
             while placed and (limit is None or limit > 0):
                 encoded_placements_key = placements_cursor.key()
                 if not encoded_placements_key.startswith(prefix):
@@ -809,6 +813,11 @@ class LmdbStore(AbstractStore):
                         continue
                     else:
                         break  # times will only increase
+                if middle_key.effective_time < after:
+                    if desc:
+                        break  # times will only decrease
+                    else:
+                        raise AssertionError("before the after time in ascending order?")
                 placed_time = placement_key.get_placed_time()
                 if placed_time >= as_of or placed_time < clearance_time:
                     placed = placements_cursor.prev() if desc else placements_cursor.next()
@@ -976,6 +985,14 @@ class LmdbStore(AbstractStore):
         if needed and callback is not None:
             callback(decomposition)
         return needed
+
+    def get_chains(self) -> Iterable[Chain]:
+        result = list()
+        with self._handle.begin() as trxn:
+            chains_cursor = trxn.cursor(db=self._chains)
+            for key_bytes, _ in chains_cursor:
+                result.append(Chain.from_bytes(key_bytes))
+        return result
 
     def get_identity(self, chain: Chain, trxn: Optional[Trxn]=None, /) -> str:
         if trxn is None:
