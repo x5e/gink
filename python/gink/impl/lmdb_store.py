@@ -752,7 +752,9 @@ class LmdbStore(AbstractStore):
         When "key" is a Muid, assumes that "container" is a queue and that the "key"
         is the muid for the desired entry.
         """
-
+        if container.get_timestamp_or_zero() == 0:
+            self._logger.warning("attempting to get entry by key from an uncommited container")
+            return None
         entry_builder = EntryBuilder()
         with self._handle.begin() as txn:
             clearance_time = self._get_time_of_prior_clear(txn, container, as_of)

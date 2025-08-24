@@ -16,7 +16,7 @@ from .impl.key_set import KeySet
 from .impl.graph import Vertex, EdgeType, Edge
 from .impl.pair_set import PairSet
 from .impl.pair_map import PairMap
-from .impl.utilities import generate_timestamp, generate_medallion
+from .impl.utilities import generate_timestamp, generate_medallion, get_identity
 from .impl.builders import ClaimBuilder
 from .impl.tuples import Chain
 from .impl.braid import Braid
@@ -65,4 +65,5 @@ __all__ = [
     "BraidServer",
     "Relay",
     "loop",
+    "get_identity",
 ]

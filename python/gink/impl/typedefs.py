@@ -2,7 +2,7 @@
 from typing import NewType, Union, TypeVar, Callable, Protocol, Optional, List, Tuple, Dict, Iterable, Any, Type
 from collections.abc import Mapping
 from datetime import datetime, timedelta, date
-
+from pathlib import Path
 from .builders import SyncMessage
 
 

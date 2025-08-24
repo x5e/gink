@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional, Tuple, Union
 from importlib import import_module
 from os import environ
-from json import dumps
+from json import dumps, loads
 import datetime # allows setting of datetime objects from CLI
 assert datetime
 # TODO: don't import all of datetime
@@ -57,6 +57,9 @@ parser.add_argument("--ssl-key", default=environ.get("GINK_SSL_KEY"), help="path
 parser.add_argument("--parse", action="store_true", help="parse a binlog file and dump to stdout")
 parser.add_argument("--loop", action="store_true", help="process events without a repl")
 parser.add_argument("--exclusive", action="store_true", help="prevent other programs from accessing db")
+parser.add_argument("--json", action="store_true", help="expect/output json to set and get")
+parser.add_argument("--jsonl", action="store_true", help="output json lines")
+parser.add_argument("--string", action="store_true", help="store a string when passed to set (default is bytes)")
 args: Namespace = parser.parse_args()
 if args.show_arguments:
     print(args)
@@ -130,10 +133,20 @@ if args.show_bundles:
     exit(0)
 
 if args.set:
-    value = stdin.buffer.read()
-    container = root
-    container.set(args.set.split("/"), value, comment=args.comment)
-    database.close()
+    if args.string:
+        value = stdin.read()
+        root.set(args.set.split("/"), value, comment=args.comment)
+    elif args.json:
+        value = stdin.read()
+        parsed = loads(value)
+        root.set(args.set.split("/"), parsed, comment=args.comment)
+    elif args.jsonl:
+        raise NotImplementedError("not set up to read jsonl")
+    else:
+        value = stdin.buffer.read()
+        container = root
+        container.set(args.set.split("/"), value, comment=args.comment)
+        database.close()
     exit(0)
 
 if args.get:
@@ -143,8 +156,23 @@ if args.get:
     if result is default:
         print("nothing found", file=stderr)
         exit(1)
-    if isinstance(result, (dict, list, tuple)):
-        result = dumps(result)
+    if isinstance(result, Sequence):
+        if args.jsonl:
+            for thing in result:
+                if isinstance(thing, (dict, list, tuple, str)):
+                    print(dumps(thing))
+                else:
+                    print(f"don't know what to do with a {type(thing)}", file=stderr)
+                    exit(1)
+            exit(0)
+        print("found a Sequence but jsonl not specified", file=stderr)
+        exit(1)
+    if args.json:
+        if isinstance(result, (dict, list, tuple, str)):
+            print(dumps(result))
+            exit(0)
+        print(f"don't know how to write as json: {type(result)}", file=stderr)
+        exit(1)
     if isinstance(result, str):
         result = result.encode()
     assert isinstance(result, bytes)

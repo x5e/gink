@@ -37,7 +37,6 @@ from wsproto.events import (
 from .builders import SyncMessage
 from .looping import Finished
 from .typedefs import AuthFunc, AUTH_NONE, AUTH_RITE, AUTH_FULL, ConnFunc, WsgiFunc
-from .sync_func import SyncFunc
 from .bundle_info import BundleInfo
 from .decomposition import Decomposition
 from .has_map import HasMap
@@ -119,6 +118,9 @@ class Connection:
         self._request_method: Optional[str] = None
         self._decoded: Optional[str] = None
 
+    def __hash__(self) -> int:
+        return id(self)
+
     @property
     def headers(self):
         assert self._request_headers
@@ -133,7 +135,7 @@ class Connection:
         )
 
     @property
-    def path(self):
+    def path(self) -> str:
         assert self._path
         return self._path
 

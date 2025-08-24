@@ -69,6 +69,7 @@ class Database(Relay):
         return Directory(root=True, database=self)
 
     def __enter__(self) -> Tuple[BundleInfo, SigningKey]:
+        """ This is called by the bound bundler, and not intended for general use. """
         self._lock.acquire()
         bundle_info, signing_key = self._acquire_appendable_link()
         assert isinstance(bundle_info, BundleInfo), "not a bundle info?"
