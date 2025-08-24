@@ -3,9 +3,9 @@ from logging import getLogger
 from ssl import SSLError
 from typing_extensions import override
 from pathlib import Path
+from collections import defaultdict
 
 from .builders import SyncMessage
-from .database import Database
 from .listener import Listener
 from .connection import Connection
 from .relay import Relay
@@ -13,69 +13,42 @@ from .typedefs import inf, AUTH_READ, AUTH_RITE, AuthFunc, ConnectionInterface
 from .server import Server
 from .looping import Selectable
 from .braid import Braid
-from .directory import Directory
-from .box import Box
-from .muid import Muid
 from .looping import Finished
 from .decomposition import Decomposition
 from .has_map import HasMap
 from .bundle_info import BundleInfo
 from .utilities import experimental
+from .tuples import Chain
 
 @experimental
 class BraidServer(Server):
 
+    EMPTY: Tuple = tuple()
+
     def __init__(
             self, *,
             data_relay: Relay,
-            control_db: Database,
+            braid_func: Callable[[Path], Braid],
             auth_func: Optional[AuthFunc] = None,
-            app_id: Optional[str] = None,
             wsgi_func: Optional[Callable] = None,
     ):
         super().__init__()
         self._connection_braid_map: Dict[ConnectionInterface, Braid] = dict()
         data_relay.add_callback(self._after_relay_recieves_bundle)
         self._data_relay = data_relay
-        self._control_db = control_db
         self._logger = getLogger(self.__class__.__name__)
         self._count_connections = 0
         self._wsgi_func = wsgi_func
-        self._app_id = app_id
         self._auth_func = auth_func
-        self._app_directory = self._get_app_directory()
-
-    def _get_app_directory(self) -> Directory:
-        """ Get's the base directory for this particular applicaiton.
-
-            We want each app to be based in a user-created directory, with appropriate
-            sub-directories for auth, braids, etc., so that if this db ever gets merged with
-            another database from a different app, those two apps don't merge their data.
-
-            If an app_id is specified, then we use a directory linked to from the root
-            directory using app_id as the key (creating it if it doesn't exist).  If no
-            app_id is given, then we have the application root directory linked to from
-            the global box (creating if a directory isn't there).
+        self._braid_func = braid_func
+        self._chain_connections_map: Dict[Chain, Set[ConnectionInterface]] = defaultdict(lambda: set())
         """
-        box = Box(muid=Muid(-1,-1,Box.get_behavior()), database=self._control_db)
-        box_contents = box.get()
-        if self._app_id is not None:
-            control_root = Directory(root=True, database=self._control_db)
-            if self._app_id in control_root:
-                directory = control_root[self._app_id]
-                if not isinstance(directory, Directory):
-                    raise ValueError(f"/{self._app_id} points to a {type(directory)}")
-                return directory
-            else:
-                directory = Directory(database=self._control_db)
-                control_root[self._app_id] = directory
-                return directory
-        else:
-            if isinstance(box_contents, Directory):
-                return box_contents
-            directory = Directory(database=self._control_db)
-            box.set(directory)
-            return directory
+
+
+            Note that the braid returned by the braid_func should not be modified once returned except by this
+            braid server, otherwise, the braid server won't know about chains that have been added and won't
+            send the appropriate updates to it.
+        """
 
     def _get_connections(self) -> Iterable[Connection]:
         """ Returns an iterable of active selectable Connection objects. """
@@ -89,21 +62,20 @@ class BraidServer(Server):
         """
         info = decomposition.get_info()
         chain = info.get_chain()
-        # TODO: do something more efficient than looping over connections
-        for connection, braid in self._connection_braid_map.items():
+        for connection in self._chain_connections_map.get(chain, self.EMPTY):
+            braid = self._connection_braid_map[connection]
             self._logger.debug("considering connection: %s", connection.name)
             if braid.get(chain, 0) > info.timestamp:
                 # Note: connection internally keeps track of what peer has and will prevent echo
                 connection.send_bundle(decomposition)
 
     def _get_greeting(self, connection: ConnectionInterface) -> SyncMessage:
-        braids: Directory
-        braids = cast(
-            Directory,
-            self._app_directory.setdefault("braids", default_factory=lambda: Directory(database=self._control_db)))
-        braid = braids.setdefault(connection.path, default_factory=lambda: Braid(database=self._control_db))
-        assert isinstance(braid, Braid), "braid should be a Braid instance"
+        braid = self._braid_func(Path(connection.path))
+        if not isinstance(braid, Braid):
+            raise ValueError("braid should be a Braid instance")
         self._connection_braid_map[connection] = braid
+        for chain, _ in braid.items():
+            self._chain_connections_map[chain].add(connection)
         has_map = self._data_relay.get_bundle_store().get_has_map(limit_to=dict(braid.items()))
         return has_map.to_greeting_message()
 
@@ -156,6 +128,7 @@ class BraidServer(Server):
                             self._logger.warning("connection tried pushing non-start to a braid")
                             raise Finished()
                         braid.set(chain, inf)
+                        self._chain_connections_map[chain].add(connection)
                     self._data_relay.receive(thing)
                     connection.send(thing.get_info().as_acknowledgement())
                 elif isinstance(thing, HasMap):  # greeting message
@@ -171,6 +144,9 @@ class BraidServer(Server):
                 else:
                     raise Finished(f"unexpected object {thing}")
         except Finished:
-            self._connection_braid_map.pop(connection, None)
+            braid = self._connection_braid_map.pop(connection, None)
+            if braid:
+                for chain, _ in braid.items():
+                    self._chain_connections_map[chain].discard(connection)
             self._remove_selectable(connection)
             raise
