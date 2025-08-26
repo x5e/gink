@@ -1,5 +1,4 @@
 from .. import *
-from ..impl.braid_server import BraidServer, Database, Relay
 from ..impl.looping import loop
 from logging import getLogger
 
@@ -9,17 +8,15 @@ def test_happy_path():
     ctrl_store = LmdbStore()
     relay = Relay(data_store)
     control_db = Database(ctrl_store)
-    braid_server = BraidServer(data_relay=relay, control_db=control_db)
+    test_braid = Braid(database=control_db)
+    braid_func = lambda _: test_braid
+    braid_server = BraidServer(data_relay=relay, braid_func=braid_func)
     external1 = Database()
     braid_server.start_listening(port=9999)
     external1.connect_to(target="localhost:9999/abc/xyz", name="external1")
     external2 = Database()
     external2.connect_to(target="localhost:9999/abc/xyz", name="external2")
     loop(braid_server, external1, external2, until=0.1)
-    control_root = Box(muid=Muid(-1,-1, Box.get_behavior()), database=control_db).get()
-    assert isinstance(control_root, Directory)
-    braid = control_root["braids"]["/abc/xyz"]
-    assert isinstance(braid, Braid)
     assert list(external1.get_connections())
     assert list(external2.get_connections())
 

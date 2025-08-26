@@ -34,6 +34,7 @@ class BraidServer(Server):
     ):
         super().__init__()
         self._connection_braid_map: Dict[ConnectionInterface, Braid] = dict()
+        self._braid_connection_map: Dict[Braid, Set[ConnectionInterface]] = defaultdict(lambda: set())
         data_relay.add_callback(self._after_relay_recieves_bundle)
         self._data_relay = data_relay
         self._logger = getLogger(self.__class__.__name__)
@@ -61,6 +62,7 @@ class BraidServer(Server):
             the relay receives a bundle.
         """
         info = decomposition.get_info()
+        self._logger.debug("received bundle: %s", info)
         chain = info.get_chain()
         for connection in self._chain_connections_map.get(chain, self.EMPTY):
             braid = self._connection_braid_map[connection]
@@ -74,6 +76,7 @@ class BraidServer(Server):
         if not isinstance(braid, Braid):
             raise ValueError("braid should be a Braid instance")
         self._connection_braid_map[connection] = braid
+        self._braid_connection_map[braid].add(connection)
         for chain, _ in braid.items():
             self._chain_connections_map[chain].add(connection)
         has_map = self._data_relay.get_bundle_store().get_has_map(limit_to=dict(braid.items()))
@@ -128,7 +131,9 @@ class BraidServer(Server):
                             self._logger.warning("connection tried pushing non-start to a braid")
                             raise Finished()
                         braid.set(chain, inf)
-                        self._chain_connections_map[chain].add(connection)
+                        connected_to_this_braid = self._braid_connection_map[braid]  # includes this connection
+                        for conn in list(connected_to_this_braid):
+                            self._chain_connections_map[chain].add(conn)
                     self._data_relay.receive(thing)
                     connection.send(thing.get_info().as_acknowledgement())
                 elif isinstance(thing, HasMap):  # greeting message
@@ -148,5 +153,6 @@ class BraidServer(Server):
             if braid:
                 for chain, _ in braid.items():
                     self._chain_connections_map[chain].discard(connection)
+                self._braid_connection_map[braid].discard(connection)
             self._remove_selectable(connection)
             raise

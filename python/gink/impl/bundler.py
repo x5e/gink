@@ -50,7 +50,7 @@ class Bundler(ABC):
         """ adds a single change (in the form of the proto builder) """
 
     @abstractmethod
-    def commit(self):
+    def commit(self, _skip_if_empty=True):
         """ Finishes the bundle and adds it to the database. """
 
     @abstractmethod

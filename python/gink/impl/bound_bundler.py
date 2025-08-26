@@ -54,10 +54,10 @@ class BoundBundler(Bundler):
     def rollback(self):
         self._is_open = False
 
-    def commit(self):
+    def commit(self, _skip_if_empty=True):
         if not self._is_open:
             raise ValueError("bundle isn't open")
-        if not self._changes:
+        if _skip_if_empty and not self._changes:
             self._logger.info("no changes to commit, skipping")
             return
         assert self._database is not None, "cannot commit without a database"
