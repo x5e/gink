@@ -1,6 +1,5 @@
 from typing import Optional, Union, List
-
-
+from logging import getLogger
 
 from .builders import BundleBuilder, ChangeBuilder, EntryBuilder, ContainerBuilder
 from .muid import Muid
@@ -27,6 +26,7 @@ class BoundBundler(Bundler):
         self._comment = comment
         self._changes: List[ChangeBuilder] = []
         self._is_open = True
+        self._logger = getLogger(self.__class__.__name__)
 
     def __len__(self):
         return self._count_items
@@ -54,9 +54,12 @@ class BoundBundler(Bundler):
     def rollback(self):
         self._is_open = False
 
-    def commit(self):
+    def commit(self, _skip_if_empty=True):
         if not self._is_open:
             raise ValueError("bundle isn't open")
+        if _skip_if_empty and not self._changes:
+            self._logger.info("no changes to commit, skipping")
+            return
         assert self._database is not None, "cannot commit without a database"
         with self._database as needed:
             last_link, signing_key = needed
