@@ -41,7 +41,7 @@ from .typedefs import (
 from .bundle_info import BundleInfo
 from .decomposition import Decomposition
 from .has_map import HasMap
-from .utilities import decode_from_hex, encode_to_hex, dedent
+from .utilities import encode_to_hex, dedent
 from .timing import observing
 
 
@@ -323,9 +323,6 @@ class Connection(Selectable):
                     path = event.target
                 self._path = path
                 if self._auth_func:
-                    for protocol in event.subprotocols:
-                        if protocol.lower().startswith("0x"):
-                            self._decoded = decode_from_hex(protocol)
                     self._perms |= self._auth_func(self)
                 if not self._perms:
                     self._logger.warning("rejected a connection due to insufficient permissions")

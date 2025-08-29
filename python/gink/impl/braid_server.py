@@ -9,7 +9,7 @@ from .builders import SyncMessage
 from .listener import Listener
 from .connection import Connection
 from .relay import Relay
-from .typedefs import inf, AUTH_READ, AUTH_RITE, AuthFunc
+from .typedefs import Request, inf, AUTH_READ, AUTH_RITE, AuthFunc
 from .server import Server
 from .looping import Selectable
 from .braid import Braid
@@ -28,7 +28,7 @@ class BraidServer(Server):
     def __init__(
             self, *,
             data_relay: Relay,
-            braid_func: Callable[[Path], Braid],
+            braid_func: Callable[[Request], Braid],
             auth_func: Optional[AuthFunc] = None,
             wsgi_func: Optional[Callable] = None,
     ):
@@ -72,7 +72,7 @@ class BraidServer(Server):
                 connection.send_bundle(decomposition)
 
     def _get_greeting(self, connection: Connection) -> SyncMessage:
-        braid = self._braid_func(Path(connection.path))
+        braid = self._braid_func(connection)
         if not isinstance(braid, Braid):
             raise ValueError("braid should be a Braid instance")
         self._connection_braid_map[connection] = braid
