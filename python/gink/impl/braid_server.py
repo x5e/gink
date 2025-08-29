@@ -9,7 +9,7 @@ from .builders import SyncMessage
 from .listener import Listener
 from .connection import Connection
 from .relay import Relay
-from .typedefs import inf, AUTH_READ, AUTH_RITE, AuthFunc, ConnectionInterface
+from .typedefs import inf, AUTH_READ, AUTH_RITE, AuthFunc
 from .server import Server
 from .looping import Selectable
 from .braid import Braid
@@ -33,8 +33,8 @@ class BraidServer(Server):
             wsgi_func: Optional[Callable] = None,
     ):
         super().__init__()
-        self._connection_braid_map: Dict[ConnectionInterface, Braid] = dict()
-        self._braid_connection_map: Dict[Braid, Set[ConnectionInterface]] = defaultdict(lambda: set())
+        self._connection_braid_map: Dict[Connection, Braid] = dict()
+        self._braid_connection_map: Dict[Braid, Set[Connection]] = defaultdict(lambda: set())
         data_relay.add_callback(self._after_relay_recieves_bundle)
         self._data_relay = data_relay
         self._logger = getLogger(self.__class__.__name__)
@@ -42,7 +42,7 @@ class BraidServer(Server):
         self._wsgi_func = wsgi_func
         self._auth_func = auth_func
         self._braid_func = braid_func
-        self._chain_connections_map: Dict[Chain, Set[ConnectionInterface]] = defaultdict(lambda: set())
+        self._chain_connections_map: Dict[Chain, Set[Connection]] = defaultdict(lambda: set())
         """
 
 
@@ -71,7 +71,7 @@ class BraidServer(Server):
                 # Note: connection internally keeps track of what peer has and will prevent echo
                 connection.send_bundle(decomposition)
 
-    def _get_greeting(self, connection: ConnectionInterface) -> SyncMessage:
+    def _get_greeting(self, connection: Connection) -> SyncMessage:
         braid = self._braid_func(Path(connection.path))
         if not isinstance(braid, Braid):
             raise ValueError("braid should be a Braid instance")
@@ -131,7 +131,7 @@ class BraidServer(Server):
                             self._logger.warning("connection tried pushing non-start to a braid")
                             raise Finished()
                         braid.set(chain, inf)
-                        connected_to_this_braid = self._braid_connection_map[braid]  # includes this connection
+                        connected_to_this_braid = self._braid_connection_map[braid]
                         for conn in list(connected_to_this_braid):
                             self._chain_connections_map[chain].add(conn)
                     self._data_relay.receive(thing)

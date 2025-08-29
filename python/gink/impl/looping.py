@@ -4,30 +4,7 @@ from contextlib import nullcontext
 from logging import getLogger
 
 from .utilities import GenericTimestamp, resolve_timestamp, generate_timestamp
-
-class Finished(BaseException):
-    """ Thrown when FileObj should be removed from selectable set and closed.
-
-        The interface in selectors requires removal before the file/connection is closed,
-        so I'm using throwing this exception to indicate that that should happen.
-    """
-    pass
-
-
-class Selectable(Protocol):
-
-    def fileno(self) -> int:
-        """ Return the underlying filehandle """
-
-    def close(self):
-        """ Close the file object """
-
-    def on_ready(self) -> Optional[Iterable['Selectable']]:
-        """ What to call when selected """
-
-    def is_closed(self) -> bool:
-        """ Return true if this object has been closed """
-
+from .typedefs import Selectable, Finished
 
 def loop(
         *selectables: Optional[Selectable],

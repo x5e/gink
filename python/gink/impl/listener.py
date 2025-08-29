@@ -9,12 +9,12 @@ from socket import (
 )
 from ssl import SSLContext, create_default_context, Purpose
 
-from .typedefs import AuthFunc
+from .typedefs import AuthFunc, Selectable
 from .looping import Selectable
 from .utilities import make_auth_func
 
 
-class Listener(Socket):
+class Listener(Socket, Selectable):
     """ Listens on a port for incoming connections. """
 
     def __init__(

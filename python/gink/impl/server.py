@@ -5,10 +5,10 @@ from abc import ABC, abstractmethod
 
 from .listener import Listener
 from .looping import Selectable
-from .typedefs import AuthFunc
+from .typedefs import AuthFunc, Selectable
 
 
-class Server(ABC):
+class Server(Selectable):
 
     def __init__(self) -> None:
         self._logger = getLogger(self.__class__.__name__)

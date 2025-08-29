@@ -36,7 +36,8 @@ from wsproto.events import (
 # gink modules
 from .builders import SyncMessage
 from .looping import Finished
-from .typedefs import AuthFunc, AUTH_NONE, AUTH_RITE, AUTH_FULL, ConnFunc, ConnectionInterface, WsgiFunc, WbscFunc
+from .typedefs import (
+    AuthFunc, AUTH_NONE, AUTH_RITE, AUTH_FULL, ConnFunc, Selectable, WsgiFunc, WbscFunc)
 from .bundle_info import BundleInfo
 from .decomposition import Decomposition
 from .has_map import HasMap
@@ -44,7 +45,7 @@ from .utilities import decode_from_hex, encode_to_hex, dedent
 from .timing import observing
 
 
-class Connection:
+class Connection(Selectable):
     """ Manages a selectable connection.
 
         The connection could end up either being an incoming http(s) request, or a bidirectional
@@ -193,7 +194,7 @@ class Connection:
         if "authorization" in self._request_headers:
             env['HTTP_AUTHORIZATION'] = self._request_headers["authorization"]
         try:
-            result: Iterable[bytes] = self._wsgi(env, self._start_response)
+            result: Iterable[bytes] = self._wsgi(env, self._start_response)  # type: ignore
             for data in result:
                 if data:
                     self._write(data)

@@ -1,5 +1,5 @@
 """ tests to make sure that websocket connection works as intended """
-from logging import basicConfig, getLogger, DEBUG, ERROR
+from logging import getLogger, DEBUG, ERROR
 from socket import socketpair
 
 # builders
@@ -9,7 +9,7 @@ from google.protobuf.text_format import Parse  # type: ignore
 from ..impl.connection import Connection, Finished
 from ..impl.utilities import make_auth_func
 from ..impl.looping import loop
-from ..impl.typedefs import ConnectionInterface
+
 
 # basicConfig(level=DEBUG)
 _logger = getLogger(__name__)
@@ -80,7 +80,7 @@ def test_request():
 
 def test_auth():
 
-    def on_ws_act(connection: ConnectionInterface) -> None:
+    def on_ws_act(connection: Connection) -> None:
         for thing in connection.receive_objects():
             _logger.debug(f"default_wbsc_func got {thing}")
 

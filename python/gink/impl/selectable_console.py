@@ -10,10 +10,9 @@ from termios import FIONREAD
 from pathlib import Path
 from datetime import datetime as DateTime
 
-from .looping import Finished
+from .typedefs import Selectable, Finished
 
-
-class SelectableConsole(InteractiveInterpreter):
+class SelectableConsole(InteractiveInterpreter, Selectable):
 
     def __init__(self, locals_, heartbeat_to: Optional[Path] = None):
         """ Line mode (non-interactive), if specified, or if not using a TTY. """
