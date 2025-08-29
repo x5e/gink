@@ -20,16 +20,23 @@ from .impl.utilities import generate_timestamp, generate_medallion, get_identity
 from .impl.builders import ClaimBuilder
 from .impl.tuples import Chain
 from .impl.braid import Braid
-from .impl.typedefs import inf, GenericTimestamp
 from .impl.accumulator import Accumulator, Decimal
 from .impl.timing import Timer, report_timing
 from .impl.selectable_console import SelectableConsole
 from .impl.braid_server import BraidServer
 from .impl.relay import Relay
 from .impl.looping import loop
+from .impl.typedefs import (
+    inf, GenericTimestamp, Request, AUTH_FULL, AUTH_NONE, AUTH_RITE, AUTH_READ, AuthFunc
+)
 
 
 __all__ = [
+    "AUTH_FULL",
+    "AUTH_NONE",
+    "AUTH_RITE",
+    "AUTH_READ",
+    "AuthFunc",
     "LmdbStore",
     "MemoryStore",
     "Database",
@@ -66,4 +73,5 @@ __all__ = [
     "Relay",
     "loop",
     "get_identity",
+    "Request",
 ]

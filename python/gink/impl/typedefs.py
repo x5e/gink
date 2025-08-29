@@ -1,8 +1,22 @@
 """ Various types classes for use throughout the codebase. """
-from typing import NewType, Union, TypeVar, Callable, Protocol, Optional, List, Tuple, Dict, Iterable, Any, Type
+from typing import (
+    NewType,
+    Union,
+    TypeVar,
+    Callable,
+    Protocol,
+    Optional,
+    List,
+    Tuple,
+    Dict,
+    Iterable,
+    Any,
+    Type,
+)
 from collections.abc import Mapping
 from datetime import datetime, timedelta, date
-from pathlib import Path
+from abc import ABC, abstractmethod
+
 from .builders import SyncMessage
 
 
@@ -42,10 +56,6 @@ class Request(Protocol):
         raise NotImplementedError()
 
     @property
-    def authorization(self) -> Optional[str]:
-        pass
-
-    @property
     def cookies(self) -> Mapping[str, str]:
         raise NotImplementedError()
 
@@ -59,19 +69,38 @@ AUTH_RITE = 2
 AUTH_MAKE = 4
 AUTH_FULL = 7
 
-class ConnectionInterface(Protocol):
-    @property
-    def path(self) -> str:
-        raise NotImplementedError()
 
-    @property
-    def name(self) -> Optional[str]:
-        pass
+class Finished(BaseException):
+    """ Thrown when FileObj should be removed from selectable set and closed.
 
-    def send_bundle(self, decomposition):
-        pass
+        The interface in selectors requires removal before the file/connection is closed,
+        so I'm using throwing this exception to indicate that that should happen.
+    """
+    pass
 
-ConnFunc = Callable[[ConnectionInterface], SyncMessage]
+
+class Selectable(ABC):
+
+    @abstractmethod
+    def fileno(self) -> int:
+        """ Return the underlying filehandle """
+
+    @abstractmethod
+    def close(self):
+        """ Close the file object """
+
+    @abstractmethod
+    def on_ready(self) -> Optional[Iterable['Selectable']]:
+        """ What to call when selected """
+
+    @abstractmethod
+    def is_closed(self) -> bool:
+        """ Return true if this object has been closed """
+
+
+ConnFunc = Callable[[Any], SyncMessage]
+
+WbscFunc = Callable[[Any], None]
 
 TIMESTAMP_HEX_DIGITS = 13
 MEDALLION_HEX_DIGITS = 11

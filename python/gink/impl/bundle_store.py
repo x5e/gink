@@ -4,16 +4,13 @@ from abc import ABC, abstractmethod
 
 from pathlib import Path
 from .tuples import Chain
-from .typedefs import Limit, Medallion, MuTimestamp
+from .typedefs import Limit, Medallion, MuTimestamp, Selectable
 from .has_map import HasMap
 from .decomposition import Decomposition
 from .watcher import Watcher
 
-
-class BundleStore(ABC):
+class BundleStore(Selectable):
     """ Abstract base class for the data store that would serve up data for multiple users. """
-
-    on_ready: Callable  # needs to by dynamically assigned
 
     @abstractmethod
     def apply_bundle(
@@ -93,3 +90,11 @@ class BundleStore(ABC):
     def _clear_notifications(self):
         if hasattr(self, "_watcher"):
             getattr(self, "_watcher").clear()
+
+    def assign_on_ready(self, on_ready: Callable[[], Iterable[Selectable]]):
+        self._on_ready = on_ready
+
+    def on_ready(self) -> Iterable[Selectable]:
+        if not hasattr(self, "_on_ready"):
+            raise NotImplementedError("on_ready needs to be dynamically assigned")
+        return self._on_ready()

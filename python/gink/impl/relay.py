@@ -21,6 +21,7 @@ from .builders import SyncMessage
 from .utilities import validate_bundle
 from .log_backed_store import LogBackedStore
 
+
 class Relay(Server):
     """ An extension of the Server class that handles
         creating connections and receiving bundles .
@@ -46,7 +47,7 @@ class Relay(Server):
         self._connections: Set[Connection] = set()
         self._not_acked = set()
         if self._store.is_selectable():
-            self._store.on_ready = self._on_store_ready
+            self._store.assign_on_ready(self._on_store_ready)
             self._add_selectable(self._store)
 
     def get_bundle_store(self) -> BundleStore:

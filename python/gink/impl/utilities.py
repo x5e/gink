@@ -20,6 +20,7 @@ from nacl.encoding import RawEncoder
 from struct import unpack
 from nacl.signing import SigningKey
 from decimal import Decimal
+from re import split
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp, MEDALLION_MOD
 from .tuples import Chain
@@ -41,8 +42,13 @@ def digest(data: bytes) -> bytes:
 
 def make_auth_func(token: str) -> AuthFunc:
     def auth_func(web_socket_request: Request, *_) -> int:
-        authorization = web_socket_request.authorization or ""
-        return AUTH_FULL if fullmatch(fr"token\s+{token}\s*", authorization, IGNORECASE) else AUTH_NONE
+        protocols_string = web_socket_request.headers.get("sec-websocket-protocol", "")
+        for protocol in split(r",\s*", protocols_string):
+            if protocol.lower().startswith("0x"):
+                decoded = decode_from_hex(protocol)
+                if fullmatch(fr"token\s+{token}\s*", decoded, IGNORECASE):
+                    return AUTH_FULL
+        return AUTH_NONE
     return auth_func
 
 
