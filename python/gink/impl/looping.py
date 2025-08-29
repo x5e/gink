@@ -61,7 +61,7 @@ def loop(
     with context_manager:
         while until_muts is None or generate_timestamp() < until_muts:
             try:
-                selected = selector.select(0.1)
+                selected = selector.select(0.01)
             except KeyboardInterrupt:
                 break
             for selector_key, _ in selected:
@@ -71,7 +71,7 @@ def loop(
                     if results:
                         add(results)
                 except Finished as finished:
-                    _logger.debug("removing connection", finished)
+                    _logger.debug("removing connection %s", finished)
                     selector.unregister(selectable)
                     selectable.close()
                     registered.remove(selectable)

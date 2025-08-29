@@ -20,7 +20,7 @@ from .impl.utilities import generate_timestamp, generate_medallion, get_identity
 from .impl.builders import ClaimBuilder
 from .impl.tuples import Chain
 from .impl.braid import Braid
-from .impl.typedefs import inf, GenericTimestamp
+from .impl.typedefs import inf, GenericTimestamp, Request
 from .impl.accumulator import Accumulator, Decimal
 from .impl.timing import Timer, report_timing
 from .impl.selectable_console import SelectableConsole
@@ -66,4 +66,5 @@ __all__ = [
     "Relay",
     "loop",
     "get_identity",
+    "Request",
 ]

@@ -1,8 +1,20 @@
 """ Various types classes for use throughout the codebase. """
-from typing import NewType, Union, TypeVar, Callable, Protocol, Optional, List, Tuple, Dict, Iterable, Any, Type
+from typing import (
+    NewType,
+    Union,
+    TypeVar,
+    Callable,
+    Protocol,
+    Optional,
+    List,
+    Tuple,
+    Dict,
+    Iterable,
+    Any,
+    Type,
+)
 from collections.abc import Mapping
 from datetime import datetime, timedelta, date
-from pathlib import Path
 from .builders import SyncMessage
 
 
@@ -42,10 +54,6 @@ class Request(Protocol):
         raise NotImplementedError()
 
     @property
-    def authorization(self) -> Optional[str]:
-        pass
-
-    @property
     def cookies(self) -> Mapping[str, str]:
         raise NotImplementedError()
 
@@ -71,7 +79,12 @@ class ConnectionInterface(Protocol):
     def send_bundle(self, decomposition):
         pass
 
+    def receive_objects(self) -> Iterable[Any]:
+        raise NotImplementedError()
+
 ConnFunc = Callable[[ConnectionInterface], SyncMessage]
+
+WbscFunc = Callable[[ConnectionInterface], None]
 
 TIMESTAMP_HEX_DIGITS = 13
 MEDALLION_HEX_DIGITS = 11

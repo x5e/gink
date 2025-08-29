@@ -1,5 +1,5 @@
 """ tests to make sure that websocket connection works as intended """
-import logging
+from logging import basicConfig, getLogger, DEBUG, ERROR
 from socket import socketpair
 
 # builders
@@ -9,8 +9,10 @@ from google.protobuf.text_format import Parse  # type: ignore
 from ..impl.connection import Connection, Finished
 from ..impl.utilities import make_auth_func
 from ..impl.looping import loop
+from ..impl.typedefs import ConnectionInterface
 
-logging.basicConfig(level=logging.DEBUG)
+# basicConfig(level=DEBUG)
+_logger = getLogger(__name__)
 
 
 def test_chit_chat():
@@ -20,7 +22,7 @@ def test_chit_chat():
     # creating a client connection implicitly sends a request
     server = Connection(socket=server_socket)
     client = Connection(socket=client_socket, is_client=True)
-    getattr(client, "_logger").setLevel(logging.ERROR)
+    # getattr(client, "_logger").setLevel(ERROR)
 
     # force the server to receive the initial request and send a response
     for incoming in server.receive():
@@ -77,42 +79,40 @@ def test_request():
 
 
 def test_auth():
+
+    def on_ws_act(connection: ConnectionInterface) -> None:
+        for thing in connection.receive_objects():
+            _logger.debug(f"default_wbsc_func got {thing}")
+
     """ tests authentication """
-    for correct in [True, False]:
+    for correct in [False, True]:
         server_socket, client_socket = socketpair()
         token = "ABCXYZ123"
         auth_func = make_auth_func(token)
         # creating a client connection implicitly sends a request
-        server = Connection(socket=server_socket, auth_func=auth_func)
-        server.on_ready = lambda: server.receive() and None
+        server = Connection(
+            socket=server_socket,
+            auth_func=auth_func,
+            on_ws_act=on_ws_act,
+        )
 
         if correct:
             auth_data = f"Token {token}"
         else:
-            auth_data = "Token bad"
+            auth_data = f"Token WRONG"
 
         client = Connection(
-            socket=client_socket, is_client=True, auth_data=auth_data)
-        client.on_ready = lambda: client.receive() and None
-        getattr(client, "_logger").setLevel(logging.ERROR)
+            socket=client_socket, is_client=True, auth_data=auth_data, on_ws_act=on_ws_act
+        )
+        getattr(client, "_logger").setLevel(ERROR)
 
         if correct:
             loop(server, client, until=.010)
-            assert client.is_alive()
-            assert server.is_alive()
-        else:
-            let_auth_through = False
-            try:
-                # force the server to receive the initial request and send a response
-                loop(server, client, until=.010)
-                assert (not client.is_alive()) and (not server.is_alive())
-                # The above should error when the connection gets rejected,
-                # so let_auth_through should remain false.
-                let_auth_through = True
-            except:
-                pass
-            if let_auth_through:
-                raise AssertionError("auth allowed when token was bad")
+            assert client.is_alive(), "client not alive"
+            assert server.is_alive(), "server not alive"
+        if not correct:
+            loop(server, client, until=.010)
+            assert (not client.is_alive()) and (not server.is_alive()), "expected both closed"
 
         try:
             server_socket.close()

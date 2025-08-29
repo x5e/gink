@@ -4,12 +4,16 @@ from typing import Dict, List
 #from .logging_stuff import info
 # from .stats import print_dist
 from sys import __stderr__
+from time import time as get_time
 from functools import wraps
 __all__ = ["report_timing", "timing", "Timer"]
 _times: Dict[str, List[timedelta]] = dict()
 _lock = threading.Lock()
 info = lambda *x: print(*x, file=__stderr__)
 from copy import copy
+from logging import getLogger
+_logger = getLogger(__name__)
+_obs_level = 0
 
 
 def print_dist(vec, render=str, display=info):
@@ -65,6 +69,22 @@ def timing(func):
                     obs = _times.setdefault(func.__name__, [])
                 obs.append(elapsed)
         return out
+    return wrapper
+
+def observing(func):
+    @wraps(func)
+    def wrapper(*a, **b):
+        global _obs_level
+        _logger.debug(f"{_obs_level * '  '}Entering {func.__qualname__}")
+        _obs_level += 1
+        start = get_time()
+        try:
+            return func(*a, **b)
+        finally:
+            end = get_time()
+            elapsed = int((end - start)*1e6)
+            _obs_level -= 1
+            _logger.debug(f"{_obs_level * '  '}Exiting  {func.__qualname__} after {elapsed} usec")
     return wrapper
 
 

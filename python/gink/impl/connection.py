@@ -1,7 +1,7 @@
 """ Contains the WsPeer class to manage a connection to a websocket (gink) peer. """
 
 # batteries included python imports
-from typing import Iterable, Optional, Callable, Union, List
+from typing import Iterable, Optional, Union, List
 from wsgiref.handlers import format_date_time
 from ssl import create_default_context, SSLSocket
 from logging import getLogger
@@ -36,11 +36,12 @@ from wsproto.events import (
 # gink modules
 from .builders import SyncMessage
 from .looping import Finished
-from .typedefs import AuthFunc, AUTH_NONE, AUTH_RITE, AUTH_FULL, ConnFunc, WsgiFunc
+from .typedefs import AuthFunc, AUTH_NONE, AUTH_RITE, AUTH_FULL, ConnFunc, ConnectionInterface, WsgiFunc, WbscFunc
 from .bundle_info import BundleInfo
 from .decomposition import Decomposition
 from .has_map import HasMap
 from .utilities import decode_from_hex, encode_to_hex, dedent
+from .timing import observing
 
 
 class Connection:
@@ -53,6 +54,7 @@ class Connection:
     GINK_PROTOCOL = "gink"
     _path: str
 
+    @observing
     def __init__(
             self, *,
             host: Optional[str] = None,
@@ -61,13 +63,29 @@ class Connection:
             is_client: Optional[bool] = None,
             path: Optional[str] = None,
             name: Optional[str] = None,
-            on_ws_act: Optional[Callable] = None,
+            on_ws_act: Optional[WbscFunc] = None,
             wsgi_func: Optional[WsgiFunc] = None,
             conn_func: Optional[ConnFunc] = None,
             auth_func: Optional[AuthFunc] = None,
             auth_data: Optional[str] = None,
             secure_connection: bool = False,
     ):
+        """ Creates a connection (either client or server).
+
+            If a socket is not provided, a new one will be created.
+            host: The hostname or IP address to connect to (when client)
+            port: The port number to connect to (when client)
+            socket: use a pre-created socket (mostly for testing with socket pairs)
+            is_client: force to be client when it's not otherwise apparent
+            path: The path to connect to (when client)
+            name: The name of the connection (for logging purposes)
+            on_ws_act: what to be called when acting as a websocket and data is ready
+            wsgi_func: optionally, a WSGI application to use if serving regular requests
+            conn_func: function to call when connection is established
+            auth_func: a function to call to determine if an incoming connection is allowed
+            auth_data: when connecting as a client, the authentication data to send
+            secure_connection: whether to use a secure connection (TLS/SSL)
+        """
         if socket is None:
             is_client = True
             assert host is not None and port is not None
@@ -139,13 +157,7 @@ class Connection:
         assert self._path
         return self._path
 
-    @property
-    def authorization(self) -> Optional[str]:
-        if self._decoded:
-            return self._decoded
-        else:
-            return self.headers.get("authorization")
-
+    @observing
     def _handle_wsgi_request(self) -> None:
         if not self._wsgi:
             self._socket.sendall(dedent(b"""
@@ -195,6 +207,7 @@ class Connection:
             raise Finished(exception)
         raise Finished()  # will cause the loop to call close after deregistering
 
+    @observing
     def _receive_header(self) -> bool:
         data = self._socket.recv(4096 * 16)
         if not data:
@@ -202,7 +215,7 @@ class Connection:
         self._buffer += data
         match = fullmatch(rb"(.+)\r?\n\r?\n(.*)", self._buffer, DOTALL)
         if not match:
-            return False# wait until we get more data
+            return False  # wait until we get more data
         self._need_header = False
         self._header = match.group(1)
         self._body = match.group(2)
@@ -229,6 +242,7 @@ class Connection:
             self._pending = True
         return True
 
+    @observing
     def on_ready(self) -> None:
         """ Called when the connection is ready to be used.
             Handles both websocket requests, and http(s) requests if a WSGI function is provided.
@@ -243,6 +257,7 @@ class Connection:
         else:
             self._handle_wsgi_request()
 
+    @observing
     def _start_response(self, status: str, response_headers: List[tuple[str, str]], exc_info=None):
         server_headers: List[tuple] = [
             ("Date", format_date_time(get_time())),
@@ -254,6 +269,7 @@ class Connection:
         self._response_headers = response_headers + server_headers
         return self._write
 
+    @observing
     def _write(self, blob: bytes):
         if self._status is None:
             raise ValueError("write before start_response")
@@ -267,12 +283,14 @@ class Connection:
             self._response_started = True
         self._socket.sendall(blob)
 
+    @observing
     def is_alive(self) -> bool:
         return not (self._ws_closed or self._closed)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(host={self._host!r})"
 
+    @observing
     def receive(self) -> Iterable[SyncMessage]:
         """ receive a (possibly empty) series of encoded SyncMessages from a peer. """
         if self._closed:
@@ -374,6 +392,7 @@ class Connection:
             else:
                 self._logger.warning("got an unexpected event type: %s", event)
 
+    @observing
     def send(self, sync_message: SyncMessage) -> int:
         """ Send an encoded SyncMessage to a peer. """
         if self._closed:
@@ -385,6 +404,7 @@ class Connection:
         data = self._ws.send(BytesMessage(sync_message.SerializeToString()))
         return self._socket.send(data)
 
+    @observing
     def close(self, reason=None):
         if self._closed:
             return
@@ -415,6 +435,7 @@ class Connection:
             self._socket.close()
             self._closed = True
 
+    @observing
     def send_bundle(self, decomposition: Decomposition) -> None:
         info = decomposition.get_info()
         self._logger.debug("(%s) send_bundle %s", self._name, info)
@@ -457,6 +478,7 @@ class Connection:
     def name(self) -> Optional[str]:
         return self._name
 
+    @observing
     def get_permissions(self) -> int:
         return self._perms
 
