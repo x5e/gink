@@ -15,6 +15,7 @@ from .utilities import experimental
 @experimental
 class Property(Container):
     _BEHAVIOR = PROPERTY
+    _MISSING = object()
 
     @typechecked
     def __init__(
@@ -144,3 +145,14 @@ class Property(Container):
             return default
         value = self._get_occupant(found.builder, found.address)
         return value
+
+    def __getitem__(self, key: Union[Addressable, Muid]) -> Union[UserValue, Container]:
+        """ Gets the value of the property on the object it's describing. """
+        found = self.get(describing=key, default=self._MISSING)
+        if found is self._MISSING:
+            raise KeyError(key)
+        return found
+
+    def __setitem__(self, key: Union[Addressable, Muid], value: Union[UserValue, Container]):
+        """ Sets the value of the property on the object it's describing. """
+        self.set(describing=key, value=value)

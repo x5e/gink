@@ -1,5 +1,5 @@
 """ Contains the Vertex, EdgeType, and Edge classes (all needed for graph database functionality). """
-from typing import Optional, Union, Iterable
+from typing import Optional, Tuple, Union, Iterable, NamedTuple
 from typeguard import typechecked
 
 from .typedefs import GenericTimestamp, UserValue, Inclusion, MuTimestamp
@@ -326,3 +326,5 @@ class Edge(Addressable):
         if immediate:
             bundler.commit()
         return change_muid
+
+Pair = Tuple[Union[Vertex, Muid], Union[Vertex, Muid]]

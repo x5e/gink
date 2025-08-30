@@ -2,7 +2,6 @@ from typing import *
 from logging import getLogger
 from ssl import SSLError
 from typing_extensions import override
-from pathlib import Path
 from collections import defaultdict
 
 from .builders import SyncMessage

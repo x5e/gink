@@ -32,7 +32,7 @@ NoIterables = {str, int, float, bytes, bool, None, datetime.datetime}
 UserValue = NoIterables.union({list, tuple, dict})
 
 ValueContainer = UserValue.union({Container})
-Pair = {Tuple[Container, Container], Tuple[Muid, Muid]}
+Pair = {Tuple[Vertex, Vertex], Tuple[Muid, Muid]}
 CONTAINERS = [Box, Directory, KeySet, Sequence, PairSet, PairMap, Property, Group]
 ALL_GINK_TYPES: set = ValueContainer.union({Muid, Edge, Chain}).union(Pair)
 CONTAINER_KEY_TYPES: Dict[int, Set] = {
@@ -130,6 +130,8 @@ def random_data(type):
         return [random_data(type=set_choice(NoIterables)) for _ in range(randint(1, 50))]
     elif type == Tuple[Container, Container]:
         return (random_container(), random_container())
+    elif type == Tuple[Vertex, Vertex]:
+        return (Vertex(), Vertex())
     elif type == Tuple[Muid, Muid]:
         return (random_container().get_muid(), random_container().get_muid())
     elif type == tuple:

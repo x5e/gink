@@ -9,8 +9,7 @@ from .coding import PAIR_SET, deletion, inclusion
 from .bundler import Bundler
 from .typedefs import GenericTimestamp
 from .utilities import normalize_pair, experimental
-
-Pair = Tuple[Union[Container, Muid], Union[Container, Muid]]
+from .graph import Pair, Vertex
 
 @experimental
 class PairSet(Container):
