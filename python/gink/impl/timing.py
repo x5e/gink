@@ -82,9 +82,15 @@ def observing(func):
             return func(*a, **b)
         finally:
             end = get_time()
-            elapsed = int((end - start)*1e6)
+            elapsed_seconds = end - start
+            if elapsed_seconds > 1.0:
+                elapsed_str = f"{elapsed_seconds:.2f} seconds"
+            elif elapsed_seconds > 0.001:
+                elapsed_str = f"{elapsed_seconds * 1000:.2f} milliseconds"
+            else:
+                elapsed_str = f"{elapsed_seconds * 1_000_000:.2f} microseconds"
             _obs_level -= 1
-            _logger.debug(f"{_obs_level * '  '}Exiting  {func.__qualname__} after {elapsed} usec")
+            _logger.debug(f"{_obs_level * '  '}Exiting  {func.__qualname__} after {elapsed_str}")
     return wrapper
 
 

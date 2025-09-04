@@ -1,7 +1,7 @@
 """ Contains the WsPeer class to manage a connection to a websocket (gink) peer. """
 
 # batteries included python imports
-from typing import Iterable, Optional, Union, List
+from typing import Iterable, Optional, Union, List, Callable
 from wsgiref.handlers import format_date_time
 from ssl import create_default_context, SSLSocket
 from logging import getLogger
@@ -149,7 +149,7 @@ class Connection(Selectable):
     def cookies(self) -> dict:
         return dict(
             pair.strip().split('=', 1)
-            for pair in self.headers["cookies"].split(';')
+            for pair in self.headers["cookie"].split(';')
             if '=' in pair
         )
 
@@ -187,12 +187,30 @@ class Connection(Selectable):
             'PATH_INFO': self._path,
             'SERVER_NAME': self._server_name,
             'SERVER_PORT': str(self._port),
+            'SCRIPT_NAME': '',
+            'QUERY_STRING': '',
+            'REMOTE_ADDR': self._socket.getpeername()[0],
+            'SERVER_PROTOCOL': 'HTTP/1.0',
         }
+        if "content-type" in self._request_headers:
+            env['CONTENT_TYPE'] = self._request_headers["content-type"]
+
+        if "content-length" in self._request_headers:
+            env['CONTENT_LENGTH'] = self._request_headers["content-length"]
+
         if "content-type" in self._request_headers:
             env['HTTP_CONTENT_TYPE'] = self._request_headers["content-type"]
 
         if "authorization" in self._request_headers:
             env['HTTP_AUTHORIZATION'] = self._request_headers["authorization"]
+
+        if "cookie" in self._request_headers:
+            env['HTTP_COOKIE'] = self._request_headers["cookie"]
+
+        for key, value in self._request_headers.items():
+            http_key = f"HTTP_{key.upper().replace('-', '_')}"
+            if http_key not in env and key not in ("content-type", "content-length"):
+                env[http_key] = value
         try:
             result: Iterable[bytes] = self._wsgi(env, self._start_response)  # type: ignore
             for data in result:
@@ -259,7 +277,11 @@ class Connection(Selectable):
             self._handle_wsgi_request()
 
     @observing
-    def _start_response(self, status: str, response_headers: List[tuple[str, str]], exc_info=None):
+    def _start_response(
+        self,
+        status: str,
+        response_headers: List[tuple[str, str]],
+        exc_info=None) -> Callable[[bytes], None]:
         server_headers: List[tuple] = [
             ("Date", format_date_time(get_time())),
             ('Server', self.GINK_PROTOCOL),
