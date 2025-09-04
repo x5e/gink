@@ -198,15 +198,6 @@ class Connection(Selectable):
         if "content-length" in self._request_headers:
             env['CONTENT_LENGTH'] = self._request_headers["content-length"]
 
-        if "content-type" in self._request_headers:
-            env['HTTP_CONTENT_TYPE'] = self._request_headers["content-type"]
-
-        if "authorization" in self._request_headers:
-            env['HTTP_AUTHORIZATION'] = self._request_headers["authorization"]
-
-        if "cookie" in self._request_headers:
-            env['HTTP_COOKIE'] = self._request_headers["cookie"]
-
         for key, value in self._request_headers.items():
             http_key = f"HTTP_{key.upper().replace('-', '_')}"
             if http_key not in env and key not in ("content-type", "content-length"):
