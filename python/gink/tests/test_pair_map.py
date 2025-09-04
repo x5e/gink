@@ -3,7 +3,7 @@
 from contextlib import closing
 from ..impl.muid import Muid
 from ..impl.pair_map import PairMap
-from ..impl.graph import Vertex
+from ..impl.graph import Vertex, Pair
 from ..impl.memory_store import MemoryStore
 from ..impl.lmdb_store import LmdbStore
 from ..impl.database import Database
@@ -43,17 +43,41 @@ def test_basic():
 
             pairmap1.set(key=(vertex1, vertex3), value="test vertex1 -> vertex3")
             assert pairmap1.size() == 2
-            assert pairmap1.has(key=(vertex1._muid, vertex3._muid))
+            assert pairmap1.has(key=(vertex1, vertex3))
 
-            pairmap1.delete(key=(vertex1._muid, vertex2))
+            pairmap1.delete(key=(vertex1, vertex2))
             assert pairmap1.size() == 1
 
-            assert not pairmap1.get(key=(vertex1._muid, vertex3._muid), as_of=after_first)
-            assert pairmap1.get(key=(vertex1, vertex2._muid), as_of=after_first)
-            assert pairmap1.get(key=(vertex1._muid, vertex3)) == "test vertex1 -> vertex3"
+            assert not pairmap1.get(key=(vertex1, vertex3), as_of=after_first)
+            assert pairmap1.get(key=(vertex1, vertex2), as_of=after_first)
+            actual = pairmap1.get(key=(vertex1, vertex3))
+            expected = "test vertex1 -> vertex3"
+            assert actual == expected, (actual, expected)
 
-            pairmap1.delete(key=(vertex1, vertex3._muid))
+            pairmap1.delete(key=(vertex1, vertex3))
             assert pairmap1.size() == 0
+
+def test_by_one():
+    """ test that set, get, delete, and size methods work properly """
+    for store in [LmdbStore(), MemoryStore()]:
+        with closing(store):
+            assert isinstance(store, AbstractStore)
+            database = Database(store=store)
+            pairmap1 = PairMap(database=database)
+
+            vertex1 = Vertex()
+            vertex2 = Vertex()
+            vertex3 = Vertex()
+            pairmap1.set(key=(vertex1, vertex2), value="a")
+            pairmap1.set(key=(vertex2, vertex3), value="b")
+            pairmap1.set(key=(vertex1, vertex3), value="c")
+            pairmap1.set(key=(vertex2, vertex1), value="d")
+            result1 = set([(pair[1], val) for pair, val in pairmap1.by_one(vertex1, left=True)])
+            expected1 = set([(vertex2, "a"), (vertex3, "c")])
+            assert result1 == expected1, (result1, expected1)
+            result2 = set([(pair[0], val) for pair, val in pairmap1.by_one(vertex3, rite=True)])
+            assert result2 == set([(vertex2, "b"), (vertex1, "c")]), result2
+
 
 def test_contents_dumps():
     """ tests that creating a pair map with contents populates the entries
@@ -73,9 +97,11 @@ def test_contents_dumps():
                 database=database)
             assert pairmap1.size() == 2
 
-            items = list(pairmap1.items())
-            assert items[0] == ((vertex2._muid, vertex3._muid), 'test vertex2 -> vertex3')
-            assert items[1] == ((vertex1._muid, vertex2._muid), 'test vertex1 -> vertex2')
+            items = sorted(list(pairmap1.items()))
+            expected = ((vertex1, vertex2), 'test vertex1 -> vertex2')
+            assert items[0] == expected, (items[0], expected)
+            assert items[1] == ((vertex2, vertex3), 'test vertex2 -> vertex3'), items[1]
+
 
             pairmap2 = PairMap(contents={
                 (vertex1._muid, vertex2._muid): "test vertex1 -> vertex2",

@@ -21,6 +21,11 @@ class Addressable:
     def __hash__(self):
         return hash(self._muid)
 
+    def __lt__(self, other):
+        if not isinstance(other, Addressable):
+            return NotImplemented
+        return self._muid < other._muid
+
     @experimental
     def get_property_value_by_name(self, name: str, *,
                                    default=None,

@@ -230,7 +230,7 @@ class Connection(Selectable):
         for header_line in header_lines:
             key, val = header_line.split(":", 1)
             self._request_headers[key.strip().lower()] = val.strip()
-        if "upgrade" in self._request_headers.get("connection", "").lower():
+        if "websocket" in self._request_headers.get("upgrade", "").lower():
             if not self._on_ws_act:
                 self._socket.sendall(dedent(b"""
                     HTTP/1.0 400 Bad Request

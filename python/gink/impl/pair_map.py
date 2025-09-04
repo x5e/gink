@@ -8,10 +8,10 @@ from .container import Container
 from .coding import PAIR_MAP, deletion, decode_entry_occupant
 from .bundler import Bundler
 from .typedefs import GenericTimestamp, UserValue
-from .utilities import normalize_pair
+from .utilities import normalize_pair, experimental
+from .graph import Vertex, Pair
 
-Pair = Tuple[Union[Container, Muid], Union[Container, Muid]]
-
+@experimental
 class PairMap(Container):
     _missing = object()
     _BEHAVIOR = PAIR_MAP
@@ -67,8 +67,8 @@ class PairMap(Container):
             default=None, *, as_of: GenericTimestamp = None):
         """ Get the value associated with the pair. """
         as_of = self._database.resolve_timestamp(as_of)
-        key = normalize_pair(key)
-        found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
+        normalized = normalize_pair(key)
+        found = self._database.get_store().get_entry_by_key(self._muid, key=normalized, as_of=as_of)
 
         if found is None or found.builder.deletion:  # type: ignore
             return default
@@ -86,12 +86,12 @@ class PairMap(Container):
     def has(self, key: Pair, *, as_of=None) -> bool:
         """ Returns true if the given key exists in the mapping, optionally at specific time """
         as_of = self._database.resolve_timestamp(as_of)
-        key = normalize_pair(key)
-        found = self._database.get_store().get_entry_by_key(self._muid, key=key, as_of=as_of)
+        normalized = normalize_pair(key)
+        found = self._database.get_store().get_entry_by_key(self._muid, key=normalized, as_of=as_of)
         return found is not None and not found.builder.deletion  # type: ignore
 
     @typechecked
-    def items(self, *, as_of=None) -> Iterable[Tuple[Tuple[Muid, Muid], Union[UserValue, Container]]]:
+    def items(self, *, as_of=None) -> Iterable[Tuple[Tuple[Vertex, Vertex], Union[UserValue, Container]]]:
         """ Returns an iterable of key,value pairs, as of the effective time (or now) """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=PAIR_MAP)
@@ -100,10 +100,31 @@ class PairMap(Container):
                 continue
             left = entry_pair.builder.pair.left
             rite = entry_pair.builder.pair.rite
-            key = (Muid(left.timestamp, left.medallion, left.offset),
-                    (Muid(rite.timestamp, rite.medallion, rite.offset)))
+            key = (Vertex(muid=Muid(left.timestamp, left.medallion, left.offset), database=self._database),
+                   Vertex(muid=Muid(rite.timestamp, rite.medallion, rite.offset), database=self._database))
             contained = self._get_occupant(entry_pair.builder, entry_pair.address)
             yield key, contained
+
+    def by_one(
+        self,
+        vertex: Vertex, *,
+        left: bool = False,
+        rite: bool = False,
+        as_of=None) -> Iterable[Tuple[Tuple[Vertex, Vertex], Union[UserValue, Container]]]:
+        # TODO: Make this suck less (https://github.com/x5e/gink/issues/468)
+        as_of = self._database.resolve_timestamp(as_of)
+        iterable = self._database.get_store().get_keyed_entries(container=self._muid, as_of=as_of, behavior=PAIR_MAP)
+        for entry_pair in iterable:
+            if left and Muid.create(builder=entry_pair.builder.pair.left) != vertex.get_muid() :
+                continue
+            if rite and Muid.create(builder=entry_pair.builder.pair.rite) != vertex.get_muid():
+                continue
+            if entry_pair.builder.deletion:
+                continue
+            left_vertex = Vertex(muid=Muid.create(builder=entry_pair.builder.pair.left), database=self._database)
+            rite_vertex = Vertex(muid=Muid.create(builder=entry_pair.builder.pair.rite), database=self._database)
+            contained = self._get_occupant(entry_pair.builder, entry_pair.address)
+            yield (left_vertex, rite_vertex), contained
 
     @typechecked
     def __contains__(self, key: Pair):

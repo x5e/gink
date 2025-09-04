@@ -13,7 +13,7 @@ from .impl.bundle_info import BundleInfo
 from .impl.bundler import Bundler
 from .impl.group import Group
 from .impl.key_set import KeySet
-from .impl.graph import Vertex, EdgeType, Edge
+from .impl.graph import Vertex, EdgeType, Edge, Pair
 from .impl.pair_set import PairSet
 from .impl.pair_map import PairMap
 from .impl.utilities import generate_timestamp, generate_medallion, get_identity
@@ -74,4 +74,5 @@ __all__ = [
     "loop",
     "get_identity",
     "Request",
+    "Pair",
 ]

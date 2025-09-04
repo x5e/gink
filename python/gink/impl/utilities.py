@@ -184,7 +184,7 @@ def resolve_timestamp(timestamp: GenericTimestamp) -> MuTimestamp:
     raise ValueError(f"don't know how to resolve {timestamp} into a timestamp")
 
 
-def normalize_pair(pair: Tuple) -> Tuple[Muid, Muid]:
+def normalize_pair(pair: Tuple[Any, Any]) -> Tuple[Muid, Muid]:
     """ Returns a tuple of Muids from a tuple of 2 containers or muids.
 
         If the pair contains anything other than 2 containers or muids, a ValueError is raised.
