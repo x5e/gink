@@ -136,6 +136,7 @@ class Connection(Selectable):
         self._header: Optional[bytes] = None
         self._request_method: Optional[str] = None
         self._decoded: Optional[str] = None
+        self._query_string: Optional[str] = None
 
     def __hash__(self) -> int:
         return id(self)
@@ -175,6 +176,14 @@ class Connection(Selectable):
             raise Finished()
         if "host" in self._request_headers:
             self._server_name = self._request_headers["host"].split(":")[0]
+        assert self._path is not None
+        peer_name = self._socket.getpeername()
+        if isinstance(peer_name, tuple):
+            remote_addr = peer_name[0]
+        else:
+            remote_addr = "unknown"
+        assert self._path is not None
+        self._logger.debug("received WSGI request from %s for %s %s", remote_addr, self._request_method, self._path)
         env = {
             'wsgi.version': (1, 0),
             'wsgi.url_scheme': 'http',
@@ -188,8 +197,8 @@ class Connection(Selectable):
             'SERVER_NAME': self._server_name,
             'SERVER_PORT': str(self._port),
             'SCRIPT_NAME': '',
-            'QUERY_STRING': '',
-            'REMOTE_ADDR': self._socket.getpeername()[0],
+            'QUERY_STRING': self._query_string or '',
+            'REMOTE_ADDR': remote_addr,
             'SERVER_PROTOCOL': 'HTTP/1.0',
         }
         if "content-type" in self._request_headers:
@@ -230,10 +239,22 @@ class Connection(Selectable):
         self._header = match.group(1)
         self._body = match.group(2)
         assert self._header is not None
-        header_lines = self._header.decode('utf-8').splitlines()
+        header_lines: List[str] = self._header.decode('utf-8').splitlines()
         if len(header_lines) == 0:
             self._logger.warning("bad request")
             raise Finished()
+        request_line_match = fullmatch(r"(\S+)\s+(\S+)\s+HTTP/\d+\.\d+", header_lines[0])
+        if not request_line_match:
+            self._logger.warning("bad request line: %r", header_lines[0])
+            raise Finished()
+        self._request_method = request_line_match.group(1)
+        requesting = request_line_match.group(2)
+        if "?" in requesting:
+            (self._path, self._query_string) = requesting.split("?", 1)
+        else:
+            self._path = requesting
+            self._query_string = ""
+        #  HTTP version is ignored for now, since we only support HTTP/1.0
         (self._request_method, self._path, _) = header_lines.pop(0).split(maxsplit=3)
         self._request_headers = {}
         for header_line in header_lines:
