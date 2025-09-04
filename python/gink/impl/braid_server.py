@@ -28,7 +28,6 @@ class BraidServer(Server):
             self, *,
             data_relay: Relay,
             braid_func: Callable[[Request], Braid],
-            auth_func: Optional[AuthFunc] = None,
             wsgi_func: Optional[Callable] = None,
     ):
         super().__init__()
@@ -39,7 +38,6 @@ class BraidServer(Server):
         self._logger = getLogger(self.__class__.__name__)
         self._count_connections = 0
         self._wsgi_func = wsgi_func
-        self._auth_func = auth_func
         self._braid_func = braid_func
         self._chain_connections_map: Dict[Chain, Set[Connection]] = defaultdict(lambda: set())
         """

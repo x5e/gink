@@ -124,8 +124,8 @@ process.chdir(__dirname + "/..");
         "Authorization: Bearer abcd",
         `http://127.0.0.1:${port}/key2`,
     ]);
-    const expecting = `{"a": 1, "b": 2, "c": "test"}`;
-    await get2.expect(expecting, 2000);
+    const regex = /{\s*"a"\s*:\s*1\s*,\s*"b"\s*:\s*2\s*,\s*"c"\s*:\s*"test"\s*}/;
+    await get2.expect(regex, 2000);
 
     const get3 = new Expector("curl", [
         "-X",

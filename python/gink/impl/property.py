@@ -133,7 +133,6 @@ class Property(Container):
         muid = cast(Muid, getattr(describing, "_muid", describing))
         return self._add_entry(key=muid, value=deletion, bundler=bundler, comment=comment)
 
-    @typechecked
     def get(self, describing: Union[Addressable, Muid], default: Union[UserValue, Container] = None, *,
             as_of: GenericTimestamp = None) -> Union[UserValue, Container]:
         """ Gets the value of the property on the object it's describing, optionally in the past. """
@@ -148,7 +147,7 @@ class Property(Container):
 
     def __getitem__(self, key: Union[Addressable, Muid]) -> Union[UserValue, Container]:
         """ Gets the value of the property on the object it's describing. """
-        found = self.get(describing=key, default=self._MISSING)
+        found = self.get(describing=key, default=self._MISSING)  # type: ignore
         if found is self._MISSING:
             raise KeyError(key)
         return found
