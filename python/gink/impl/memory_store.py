@@ -11,7 +11,7 @@ from nacl.secret import SecretBox
 # gink modules
 from .builders import (BundleBuilder, EntryBuilder, MovementBuilder, ClearanceBuilder,
                        ContainerBuilder, Message, ChangeBuilder, ClaimBuilder, Behavior)
-from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit
+from .typedefs import UserKey, MuTimestamp, Medallion, Deletion, Limit, UserValue
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .bundle_info import BundleInfo
 from .abstract_store import AbstractStore, Decomposition, Lock
@@ -70,6 +70,13 @@ class MemoryStore(AbstractStore):
         self._logger = getLogger(self.__class__.__name__)
         self._retaining_entries = retain_entries
         self._totals = dict()
+
+    def get_by_value(
+            self,
+            property: Muid,
+            value: Union[UserValue, Muid],
+            as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+        raise NotImplementedError("get_by_value is not implemented in MemoryStore")
 
     def get_chains(self):
         return list(self._chain_infos.keys())

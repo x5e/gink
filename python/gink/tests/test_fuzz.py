@@ -20,7 +20,7 @@ from ..impl.group import Group
 from ..impl.braid import Braid
 from ..impl.muid import Muid
 from ..impl.has_map import Chain
-from ..impl.utilities import generate_medallion, generate_timestamp
+from ..impl.utilities import generate_medallion, generate_timestamp, suppress
 from ..impl.graph import Edge, EdgeType, Vertex
 from ..impl.coding import BOX, DIRECTORY, KEY_SET, SEQUENCE, PAIR_SET, PAIR_MAP, PROPERTY, GROUP, BRAID
 
@@ -68,7 +68,8 @@ def set_choice(set):
 
 def test_random():
     # get_edge_entries currently not working in MemoryStore
-    for store in [LmdbStore(), ]:
+    store = LmdbStore()
+    with suppress("not indexing property entry", "LmdbStore"):
         with closing(store):
             database = Database(store=store)
 

@@ -11,7 +11,7 @@ from sys import stderr
 from .builders import ContainerBuilder, ChangeBuilder, EntryBuilder, ClaimBuilder, Behavior
 from .bundle_info import BundleInfo
 from .has_map import HasMap
-from .typedefs import UserKey, MuTimestamp, Medallion, Limit
+from .typedefs import UserKey, MuTimestamp, Medallion, Limit, UserValue
 from .tuples import FoundEntry, Chain, PositionedEntry, FoundContainer
 from .muid import Muid
 from .decomposition import Decomposition
@@ -247,6 +247,15 @@ class AbstractStore(BundleStore, Generic[Lock]):
     @abstractmethod
     def get_by_name(self, name, as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
         """ Returns info about all things with the given name.
+        """
+
+    @abstractmethod
+    def get_by_value(
+            self,
+            property: Muid,
+            value: Union[UserValue, Muid],
+            as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+        """ Returns all containers that have the given value in the specified property.
         """
 
     @abstractmethod

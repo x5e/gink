@@ -14,7 +14,7 @@ from nacl.secret import SecretBox
 # Gink Implementation
 from .builders import (BundleBuilder, ChangeBuilder, EntryBuilder, MovementBuilder,
                        ContainerBuilder, ClearanceBuilder, Message, Behavior, ClaimBuilder)
-from .typedefs import MuTimestamp, UserKey, Medallion, Limit
+from .typedefs import MuTimestamp, UserKey, Medallion, Limit, UserValue
 from .tuples import Chain, FoundEntry, PositionedEntry, FoundContainer
 from .muid import Muid
 from .bundle_info import BundleInfo
@@ -24,7 +24,7 @@ from .lmdb_utilities import to_last_with_prefix
 from .utilities import (
     generate_timestamp, create_claim, is_needed, shorter_hash, resolve_timestamp,
     experimental )
-from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, wrap_change,
+from .coding import (encode_key, create_deleting_entry, PlacementBuilderPair, decode_muts, encode_value, wrap_change,
                      Placement, encode_muts, QueueMiddleKey, DIRECTORY, SEQUENCE, serialize,
                      ensure_entry_is_valid, deletion, Deletion, decode_entry_occupant, RemovalKey,
                      LocationKey, PROPERTY, BOX, GROUP, decode_value, EDGE_TYPE, PAIR_MAP, PAIR_SET, KEY_SET,
@@ -92,6 +92,7 @@ class LmdbStore(AbstractStore):
         self._verify_keys = self._handle.open_db(b"verify_keys") # chain -> verify_key
         self._symmetric_keys = self._handle.open_db(b"symmetric_keys") # key_id -> symmetric_key
         self._totals = self._handle.open_db(b"totals")
+        self._by_value = self._handle.open_db(b"by_value") # property_muid + encoded_value + placement_muid -> container
 
 
         if reset:
@@ -958,31 +959,28 @@ class LmdbStore(AbstractStore):
                 for offset, change in change_items:
                     if not self._apply_changes:
                         break
-                    try:
-                        if change.HasField("container"):
-                            trxn.put(bytes(Muid(new_info.timestamp, new_info.medallion, offset)),
-                                    change.container.SerializeToString(), db=self._containers)
-                            continue
-                        if change.HasField("entry"):
-                            container = change.entry.container
-                            muid = Muid(container.timestamp, container.medallion, container.offset)
-                            if not muid in self._seen_containers:
-                                if not (self.get_container(muid) or container.timestamp == -1):
-                                    container_builder = ContainerBuilder()
-                                    container_builder.behavior = change.entry.behavior
-                                    trxn.put(bytes(muid), container_builder.SerializeToString(), db=self._containers)
-                                    self._seen_containers.add(muid)
-                            self._add_entry(new_info, trxn, offset, change.entry)
-                            continue
-                        if change.HasField("movement"):
-                            self._apply_movement(new_info, trxn, offset, change.movement)
-                            continue
-                        if change.HasField("clearance"):
-                            self._apply_clearance(new_info, trxn, offset, change.clearance)
-                            continue
-                        raise ValueError(f"Can't process change: {new_info} {offset} {change}")
-                    except ValueError as value_error:
-                        self._logger.error("could not process change %s, %s", value_error, change)
+                    if change.HasField("container"):
+                        trxn.put(bytes(Muid(new_info.timestamp, new_info.medallion, offset)),
+                                change.container.SerializeToString(), db=self._containers)
+                        continue
+                    if change.HasField("entry"):
+                        container = change.entry.container
+                        muid = Muid(container.timestamp, container.medallion, container.offset)
+                        if not muid in self._seen_containers:
+                            if not (self.get_container(muid) or container.timestamp == -1):
+                                container_builder = ContainerBuilder()
+                                container_builder.behavior = change.entry.behavior
+                                trxn.put(bytes(muid), container_builder.SerializeToString(), db=self._containers)
+                                self._seen_containers.add(muid)
+                        self._add_entry(new_info, trxn, offset, change.entry)
+                        continue
+                    if change.HasField("movement"):
+                        self._apply_movement(new_info, trxn, offset, change.movement)
+                        continue
+                    if change.HasField("clearance"):
+                        self._apply_clearance(new_info, trxn, offset, change.clearance)
+                        continue
+                    raise ValueError(f"Can't process change: {new_info} {offset} {change}")
         self._clear_notifications()
         if needed and callback is not None:
             callback(decomposition)
@@ -1162,6 +1160,49 @@ class LmdbStore(AbstractStore):
                 if isinstance(name, str):
                     by_name_key = name.encode() + b"\x00" + bytes(entry_muid)
                     txn.put(by_name_key, bytes(describing_muid), db=self._by_name)
+        if builder.behavior == Behavior.PROPERTY:
+            if not builder.HasField("describing"):
+                raise ValueError("property entry must have describing field set")
+            describing_muid = Muid.create(entry_muid, builder.describing)
+            encoded_value = None
+            if builder.HasField("value"):
+                if not builder.value.HasField("document"):
+                    encoded_value = serialize(builder.value)
+            elif builder.HasField("pointee"):
+                encoded_value = serialize(builder.pointee)
+            elif not builder.HasField("deletion"):
+                raise ValueError("property entry must have either value or pointee or deletion field set")
+            if encoded_value is not None:
+                if len(encoded_value) > 511 - 32:
+                    self._logger.warning("not indexing property entry because value is too large for LMDB key")
+                else:
+                    by_value_key = bytes(container_muid) + encoded_value + bytes(entry_muid)
+                    txn.put(by_value_key, bytes(describing_muid), db=self._by_value)
+
+    def get_by_value(
+            self,
+            property: Muid,
+            value: Union[UserValue, Muid],
+            as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+        with self._handle.begin() as trxn:
+            if isinstance(value, Muid):
+                prefix = bytes(property) + bytes(value)
+            else:
+                prefix = bytes(property) + serialize(encode_value(value))
+            suffix = bytes(Muid(as_of, 0, 0))
+            by_value_cursor = trxn.cursor(self._by_value)
+            placed = to_last_with_prefix(by_value_cursor, prefix=prefix, suffix=suffix)
+            while placed:
+                key, container_muid_bytes = by_value_cursor.item()
+                if not key.startswith(prefix):
+                    break
+                container_muid = Muid.from_bytes(container_muid_bytes)
+                container_builder_bytes = cast(Optional[bytes], trxn.get(container_muid_bytes, db=self._containers))
+                if container_builder_bytes:
+                    container_builder = ContainerBuilder()
+                    container_builder.ParseFromString(container_builder_bytes)
+                    yield FoundContainer(container_muid, container_builder)
+                placed = by_value_cursor.prev()
 
     def _remove_entry(self, entry_muid: Muid, trxn: Trxn):
         """ Deletes an entry from the entries database and all related and relevant indexes.
