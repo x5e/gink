@@ -24,9 +24,19 @@ def test_property_set_get():
             assert named == "my favorite directory", named
 
 
-def test_property_listing():
-    """ makes sure that I can get a list of all properties of an object """
-
+def test_get_by_value():
+    for store in [LmdbStore(), ]:
+        with closing(store):
+            database = Database(store=store)
+            property = Property(database=database)
+            vertex1 = Vertex(database=database)
+            vertex2 = Vertex(database=database)
+            property.set(vertex1, "hello")
+            property.set(vertex2, 37)
+            found1 = list(property.get_by_value("hello"))
+            found2 = list(property.get_by_value(37))
+            assert found1 == [vertex1], found1
+            assert found2 == [vertex2], found2
 
 def test_property_dump():
     """ ensure that I can reset all of the properties on an object to a point in the past """

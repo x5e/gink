@@ -7,7 +7,7 @@ from functools import wraps
 from warnings import warn
 from random import randint
 from datetime import datetime, date, timedelta
-from re import fullmatch, IGNORECASE, sub
+from re import fullmatch, IGNORECASE, search, sub, split, Match
 from psutil import pid_exists
 from requests import get
 from authlib.jose import jwt, JsonWebKey, KeySet
@@ -20,7 +20,8 @@ from nacl.encoding import RawEncoder
 from struct import unpack
 from nacl.signing import SigningKey
 from decimal import Decimal
-from re import split
+from contextlib import contextmanager
+from logging import Filter, LogRecord, getLogger
 
 from .typedefs import MuTimestamp, Medallion, GenericTimestamp, MEDALLION_MOD
 from .tuples import Chain
@@ -473,3 +474,19 @@ def summarize(decomposition: Decomposition) -> Optional[str]:
             else:
                 return f"set a value in Box {muid}"
     return None
+
+
+@contextmanager
+def suppress(regex, logger_name=None):
+    class SubstringFilter(Filter):
+        def filter(self, record: LogRecord) -> bool:
+            match: Optional[Match] = search(regex, record.getMessage())
+            return match is None
+
+    logger = getLogger(logger_name)
+    filt = SubstringFilter()
+    logger.addFilter(filt)
+    try:
+        yield
+    finally:
+        logger.removeFilter(filt)

@@ -80,6 +80,10 @@
             key: (name string, null-byte, entry-muid)
             val: named_muid
 
+        by_value - index on properties by value
+            key: (property-muid, encoded-value, placement-muid)
+            val: container-muid
+
         by_side - lookup for edges based on source or target muid
             key: (source/target-muid, placement-muid)
             val: entry-muid

@@ -145,6 +145,18 @@ class Property(Container):
         value = self._get_occupant(found.builder, found.address)
         return value
 
+    def get_by_value(
+        self, value: Union[UserValue, Addressable, Muid], *, as_of: GenericTimestamp = None) -> Iterable[Container]:
+        from .get_container import get_container
+        as_of = self._database.resolve_timestamp(as_of)
+        store = self._database.get_store()
+        if isinstance(value, Addressable):
+            value = value.get_muid()
+        for found_container in store.get_by_value(property=self._muid, value=value, as_of=as_of):
+            yield get_container(
+                muid=found_container.address, database=self._database, behavior=found_container.builder.behavior)
+
+
     def __getitem__(self, key: Union[Addressable, Muid]) -> Union[UserValue, Container]:
         """ Gets the value of the property on the object it's describing. """
         found = self.get(describing=key, default=self._MISSING)  # type: ignore
