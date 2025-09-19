@@ -107,7 +107,7 @@ class BraidServer(Server):
             wsgi_func=self._wsgi_func,
         )
         self._add_selectable(connection)
-        self._logger.info("accepted incoming connection from %s", addr[0])
+        self._logger.debug("accepted incoming connection from %s", addr[0])
         return [connection]
 
     def _on_websocket_ready(self, connection: Connection):

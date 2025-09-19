@@ -55,7 +55,7 @@ class Connection(Selectable):
     GINK_PROTOCOL = "gink"
     _path: str
 
-    @observing
+    #@observing
     def __init__(
             self, *,
             host: Optional[str] = None,
@@ -148,6 +148,8 @@ class Connection(Selectable):
 
     @property
     def cookies(self) -> dict:
+        if not self._request_headers or "cookie" not in self._request_headers:
+            return {}
         return dict(
             pair.strip().split('=', 1)
             for pair in self.headers["cookie"].split(';')
@@ -159,7 +161,7 @@ class Connection(Selectable):
         assert self._path
         return self._path
 
-    @observing
+    #@observing
     def _handle_wsgi_request(self) -> None:
         if not self._wsgi:
             self._socket.sendall(dedent(b"""
@@ -169,10 +171,11 @@ class Connection(Selectable):
                 Websocket connections only!"""))
             raise Finished()
         assert self._request_headers
-        if int(self._request_headers.get("content-length", "0")) != len(self._body):
+        content_length = self._request_headers.get("content-length")
+        if int(content_length or "0") != len(self._body):
             # TODO wait for the rest of the body then process the post/put request
             self._socket.sendall(b"HTTP/1.0 500 Internal Server Error\r\n\r\n")
-            self._logger.warning("improper HTTP POST handling, please fix me")
+            self._logger.warning(f"improper HTTP POST handling, please fix me, {content_length=} != {len(self._body)}")
             raise Finished()
         if "host" in self._request_headers:
             self._server_name = self._request_headers["host"].split(":")[0]
@@ -183,7 +186,7 @@ class Connection(Selectable):
         else:
             remote_addr = "unknown"
         assert self._path is not None
-        self._logger.debug("received WSGI request from %s for %s %s", remote_addr, self._request_method, self._path)
+        self._logger.info("received WSGI request from %s for %s %s", remote_addr, self._request_method, self._path)
         env = {
             'wsgi.version': (1, 0),
             'wsgi.url_scheme': 'http',
@@ -226,7 +229,7 @@ class Connection(Selectable):
             raise Finished(exception)
         raise Finished()  # will cause the loop to call close after deregistering
 
-    @observing
+    #@observing
     def _receive_header(self) -> bool:
         data = self._socket.recv(4096 * 16)
         if not data:
@@ -273,7 +276,7 @@ class Connection(Selectable):
             self._pending = True
         return True
 
-    @observing
+    #@observing
     def on_ready(self) -> None:
         """ Called when the connection is ready to be used.
             Handles both websocket requests, and http(s) requests if a WSGI function is provided.
@@ -288,7 +291,7 @@ class Connection(Selectable):
         else:
             self._handle_wsgi_request()
 
-    @observing
+    #@observing
     def _start_response(
         self,
         status: str,
@@ -304,7 +307,7 @@ class Connection(Selectable):
         self._response_headers = response_headers + server_headers
         return self._write
 
-    @observing
+    #@observing
     def _write(self, blob: bytes):
         if self._status is None:
             raise ValueError("write before start_response")
@@ -318,14 +321,14 @@ class Connection(Selectable):
             self._response_started = True
         self._socket.sendall(blob)
 
-    @observing
+    #@observing
     def is_alive(self) -> bool:
         return not (self._ws_closed or self._closed)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(host={self._host!r})"
 
-    @observing
+    #@observing
     def receive(self) -> Iterable[SyncMessage]:
         """ receive a (possibly empty) series of encoded SyncMessages from a peer. """
         if self._closed:
@@ -391,7 +394,8 @@ class Connection(Selectable):
                 self._ws_closed = True
                 raise Finished()
             elif isinstance(event, TextMessage):
-                self._logger.info('Text message received: %r', event.data)
+                self._logger.info('Text message received: %r will echo back.', event.data)
+                self._socket.send(self._ws.send(TextMessage(data=event.data)))
             elif isinstance(event, BytesMessage):
                 received = bytes(event.data) if isinstance(event.data, bytearray) else event.data
                 assert isinstance(received, bytes)
@@ -424,7 +428,7 @@ class Connection(Selectable):
             else:
                 self._logger.warning("got an unexpected event type: %s", event)
 
-    @observing
+    #@observing
     def send(self, sync_message: SyncMessage) -> int:
         """ Send an encoded SyncMessage to a peer. """
         if self._closed:
@@ -436,7 +440,7 @@ class Connection(Selectable):
         data = self._ws.send(BytesMessage(sync_message.SerializeToString()))
         return self._socket.send(data)
 
-    @observing
+    #@observing
     def close(self, reason=None):
         if self._closed:
             return
@@ -467,7 +471,7 @@ class Connection(Selectable):
             self._socket.close()
             self._closed = True
 
-    @observing
+    #@observing
     def send_bundle(self, decomposition: Decomposition) -> None:
         info = decomposition.get_info()
         self._logger.debug("(%s) send_bundle %s", self._name, info)
@@ -510,7 +514,7 @@ class Connection(Selectable):
     def name(self) -> Optional[str]:
         return self._name
 
-    @observing
+    #@observing
     def get_permissions(self) -> int:
         return self._perms
 
