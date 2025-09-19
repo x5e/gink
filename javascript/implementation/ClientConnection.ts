@@ -127,7 +127,7 @@ export class ClientConnection extends AbstractConnection implements Connection {
             this.onData(uint8View);
         } else {
             // We don't expect any non-binary text messages.
-            console.error(`got non-arraybuffer message: ${data}`);
+            //console.error(`got non-arraybuffer message: ${data}`);
         }
     }
 
