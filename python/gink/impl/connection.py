@@ -152,7 +152,7 @@ class Connection(Selectable):
             return {}
         return dict(
             pair.strip().split('=', 1)
-            for pair in self.headers["cookie"].split(';')
+            for pair in self._request_headers["cookie"].split(';')
             if '=' in pair
         )
 
