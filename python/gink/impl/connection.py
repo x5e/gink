@@ -394,7 +394,7 @@ class Connection(Selectable):
                 self._ws_closed = True
                 raise Finished()
             elif isinstance(event, TextMessage):
-                self._logger.info('Text message received: %r will echo back.', event.data)
+                self._logger.info('Text message received: %r, echoing back.', event.data)
                 self._socket.send(self._ws.send(TextMessage(data=event.data)))
             elif isinstance(event, BytesMessage):
                 received = bytes(event.data) if isinstance(event.data, bytearray) else event.data
