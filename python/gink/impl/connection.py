@@ -175,7 +175,9 @@ class Connection(Selectable):
         if int(content_length or "0") != len(self._body):
             # TODO wait for the rest of the body then process the post/put request
             self._socket.sendall(b"HTTP/1.0 500 Internal Server Error\r\n\r\n")
-            self._logger.warning(f"Content-Length mismatch in HTTP request: content_length={content_length}, actual_body_length={len(self._body)}")
+            self._logger.warning(
+                "Content-Length mismatch in HTTP request: " +
+                f"content_length={content_length}, actual_body_length={len(self._body)}")
             raise Finished()
         if "host" in self._request_headers:
             self._server_name = self._request_headers["host"].split(":")[0]
