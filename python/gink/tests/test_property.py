@@ -37,6 +37,10 @@ def test_get_by_value():
             found2 = list(property.get_by_value(37))
             assert found1 == [vertex1], found1
             assert found2 == [vertex2], found2
+            property.set(vertex1, "goodbye")
+            found3 = list(property.get_by_value("hello"))
+            if found3 != []:
+                raise AssertionError(found3)
 
 def test_property_dump():
     """ ensure that I can reset all of the properties on an object to a point in the past """

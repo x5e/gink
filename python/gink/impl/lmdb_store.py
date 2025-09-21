@@ -372,6 +372,17 @@ class LmdbStore(AbstractStore):
 
     def get_some(self, cls, last_index: Optional[int] = None):
         """ gets several instance of the given class """
+        if isinstance(cls, str):
+            cls = {
+                "BundleBuilder": BundleBuilder,
+                "EntryBuilder": EntryBuilder,
+                "MovementBuilder": MovementBuilder,
+                "BundleInfo": BundleInfo,
+                "Placement": Placement,
+                "RemovalKey": RemovalKey,
+                "LocationKey": LocationKey,
+                "ClaimBuilder": ClaimBuilder,
+            }[cls]
         if last_index is None:
             last_index = 2 ** 52
         assert isinstance(last_index, int)
@@ -1184,24 +1195,31 @@ class LmdbStore(AbstractStore):
             property: Muid,
             value: Union[UserValue, Muid],
             as_of: MuTimestamp = -1) -> Iterable[FoundContainer]:
+        property_bytes = bytes(property)
         with self._handle.begin() as trxn:
             if isinstance(value, Muid):
-                prefix = bytes(property) + bytes(value)
+                prefix = property_bytes + bytes(value)
             else:
-                prefix = bytes(property) + serialize(encode_value(value))
+                prefix = property_bytes + serialize(encode_value(value))
             suffix = bytes(Muid(as_of, 0, 0))
             by_value_cursor = trxn.cursor(self._by_value)
             placed = to_last_with_prefix(by_value_cursor, prefix=prefix, suffix=suffix)
+            removals_cursor = trxn.cursor(self._removals)
             while placed:
                 key, container_muid_bytes = by_value_cursor.item()
                 if not key.startswith(prefix):
                     break
-                container_muid = Muid.from_bytes(container_muid_bytes)
-                container_builder_bytes = cast(Optional[bytes], trxn.get(container_muid_bytes, db=self._containers))
-                if container_builder_bytes:
-                    container_builder = ContainerBuilder()
-                    container_builder.ParseFromString(container_builder_bytes)
-                    yield FoundContainer(container_muid, container_builder)
+                placement_muid_bytes = key[-16:]
+                removals_key_prefix = property_bytes + placement_muid_bytes
+                removals_cursor.set_range(removals_key_prefix)
+                found_removal = removals_cursor.key()
+                if not (found_removal and found_removal.startswith(removals_key_prefix)):
+                    container_muid = Muid.from_bytes(container_muid_bytes)
+                    container_builder_bytes = cast(Optional[bytes], trxn.get(container_muid_bytes, db=self._containers))
+                    if container_builder_bytes:
+                        container_builder = ContainerBuilder()
+                        container_builder.ParseFromString(container_builder_bytes)
+                        yield FoundContainer(container_muid, container_builder)
                 placed = by_value_cursor.prev()
 
     def _remove_entry(self, entry_muid: Muid, trxn: Trxn):
