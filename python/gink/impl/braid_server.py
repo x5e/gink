@@ -66,7 +66,12 @@ class BraidServer(Server):
             self._logger.debug("considering connection: %s", connection.name)
             if braid.get(chain, 0) > info.timestamp:
                 # Note: connection internally keeps track of what peer has and will prevent echo
-                connection.send_bundle(decomposition)
+                try:
+                    self._logger.debug("sending bundle to connection: %s", connection.name)
+                    connection.send_bundle(decomposition)
+                except Exception as e:
+                    self._logger.warning(f"could not send bundle to {connection.name}: {e}")
+                    self._disconnect(connection)
 
     def _get_greeting(self, connection: Connection) -> SyncMessage:
         braid = self._braid_func(connection)
@@ -146,10 +151,13 @@ class BraidServer(Server):
                 else:
                     raise Finished(f"unexpected object {thing}")
         except Finished:
-            braid = self._connection_braid_map.pop(connection, None)
-            if braid:
-                for chain, _ in braid.items():
-                    self._chain_connections_map[chain].discard(connection)
-                self._braid_connection_map[braid].discard(connection)
-            self._remove_selectable(connection)
+            self._disconnect(connection)
             raise
+
+    def _disconnect(self, connection: Connection):
+        braid = self._connection_braid_map.pop(connection, None)
+        if braid:
+            for chain, _ in braid.items():
+                self._chain_connections_map[chain].discard(connection)
+            self._braid_connection_map[braid].discard(connection)
+        self._remove_selectable(connection)

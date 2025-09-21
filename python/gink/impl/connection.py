@@ -342,7 +342,11 @@ class Connection(Selectable):
                 data = self._socket.recv(4096)
             except TimeoutError:
                 self._logger.warning("unexpected socket timeout")
-                raise
+                raise Finished()
+            except ConnectionResetError:
+                self._logger.warning("connection reset by peer")
+                self._ws_closed = True
+                raise Finished()
             if not data:
                 self._ws_closed = True
                 raise Finished()
@@ -396,7 +400,7 @@ class Connection(Selectable):
                 self._ws_closed = True
                 raise Finished()
             elif isinstance(event, TextMessage):
-                self._logger.info('Text message received: %r, echoing back.', event.data)
+                self._logger.debug('Text message received: %r, echoing back.', event.data)
                 self._socket.send(self._ws.send(TextMessage(data=event.data)))
             elif isinstance(event, BytesMessage):
                 received = bytes(event.data) if isinstance(event.data, bytearray) else event.data
