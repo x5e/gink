@@ -444,7 +444,12 @@ class Connection(Selectable):
         if not self._ws_connected:
             raise ValueError("connection not ready!")
         data = self._ws.send(BytesMessage(sync_message.SerializeToString()))
-        return self._socket.send(data)
+        try:
+            return self._socket.send(data)
+        except Exception as e:
+            self._logger.error("Error sending data: %s", e)
+            self.close()
+            return 0
 
     #@observing
     def close(self, reason=None):
