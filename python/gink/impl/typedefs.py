@@ -69,6 +69,7 @@ AUTH_RITE = 2
 AUTH_MAKE = 4
 AUTH_FULL = 7
 
+AUTH_WRITE = AUTH_RITE
 
 class Finished(BaseException):
     """ Thrown when FileObj should be removed from selectable set and closed.

@@ -478,6 +478,8 @@ class Connection(Selectable):
                         break
                     self._logger.warning("got something unexpected waiting for close: %s", event)
             """
+        except BrokenPipeError as bpe:
+            self._logger.warning("could not send close message: %s", bpe)
         finally:
             self._socket.close()
             self._closed = True
