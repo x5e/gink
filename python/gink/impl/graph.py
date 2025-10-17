@@ -36,7 +36,7 @@ class Vertex(Container):
         """
         database = database or Database.get_most_recently_created_database()
         immediate = False
-        if not isinstance(bundler, Bundler):
+        if muid is None and not isinstance(bundler, Bundler):
             immediate = True
             bundler = database.bundler(comment)
         if isinstance(muid, str):
@@ -46,7 +46,7 @@ class Vertex(Container):
         assert isinstance(muid, Muid)
         Container.__init__(self, muid=muid, database=database)
 
-        if len(bundler) and immediate:
+        if bundler is not None and len(bundler) and immediate:
             bundler.commit()
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:

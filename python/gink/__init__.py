@@ -27,7 +27,7 @@ from .impl.braid_server import BraidServer
 from .impl.relay import Relay
 from .impl.looping import loop
 from .impl.typedefs import (
-    inf, GenericTimestamp, Request, AUTH_FULL, AUTH_NONE, AUTH_RITE, AUTH_READ, AuthFunc
+    inf, GenericTimestamp, Request, AUTH_FULL, AUTH_NONE, AUTH_RITE, AUTH_READ, AUTH_WRITE, AuthFunc
 )
 
 
@@ -36,6 +36,7 @@ __all__ = [
     "AUTH_NONE",
     "AUTH_RITE",
     "AUTH_READ",
+    "AUTH_WRITE",
     "AuthFunc",
     "LmdbStore",
     "MemoryStore",
