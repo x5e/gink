@@ -11,8 +11,8 @@ import {
     wrapKey,
     wrapValue,
 } from "./utils";
-import { construct, interpret, toJson, } from "./factories";
-import { Behavior, ChangeBuilder, } from "./builders";
+import { construct, interpret, toJson } from "./factories";
+import { Behavior, ChangeBuilder } from "./builders";
 import { EntryBuilder } from "./builders";
 import { movementHelper } from "./store_utils";
 
@@ -169,7 +169,7 @@ export class Sequence extends Container {
                     if (!recurse.has(muidToString(pointeeMuid))) {
                         const container = await construct(
                             pointeeMuid,
-                            this.database
+                            this.database,
                         );
                         await container.reset(toTime, recurse, { bundler });
                     }

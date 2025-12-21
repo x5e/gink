@@ -27,7 +27,7 @@ export async function construct(
     address: Muid,
     database: Database,
     containerBuilder?: ContainerBuilder,
-): Promise<Container|null> {
+): Promise<Container | null> {
     if (address.timestamp === -1) {
         if (address.offset === Behavior.DIRECTORY)
             return Directory.get(database, address);
@@ -99,7 +99,7 @@ export async function interpret(
     if (entry.value !== undefined) return entry.value;
     if (entry.pointeeList.length > 0) {
         const muid: Muid = rehydrate(entry.pointeeList[0]);
-        return construct(muid,database);
+        return construct(muid, database);
     }
     if (Array.isArray(entry.storageKey) && entry.storageKey.length === 3) {
         // For a MuidTuple effective key
