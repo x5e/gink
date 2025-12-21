@@ -24,10 +24,10 @@ import { Accumulator } from "./Accumulator";
 // TODO: maybe make address the first argument, and then database second and optional
 
 export async function construct(
-    database: Database,
     address: Muid,
+    database: Database,
     containerBuilder?: ContainerBuilder,
-): Promise<Container> {
+): Promise<Container|null> {
     if (address.timestamp === -1) {
         if (address.offset === Behavior.DIRECTORY)
             return Directory.get(database, address);
@@ -51,9 +51,11 @@ export async function construct(
     }
 
     if (containerBuilder === undefined) {
-        const containerBytes = ensure(
-            await database.store.getContainerBytes(address),
-        );
+        const containerBytes = await database.store.getContainerBytes(address);
+        if (containerBytes === null) {
+            return null;
+        }
+
         containerBuilder = <ContainerBuilder>(
             ContainerBuilder.deserializeBinary(containerBytes)
         );
@@ -97,11 +99,11 @@ export async function interpret(
     if (entry.value !== undefined) return entry.value;
     if (entry.pointeeList.length > 0) {
         const muid: Muid = rehydrate(entry.pointeeList[0]);
-        return construct(database, muid);
+        return construct(muid,database);
     }
     if (Array.isArray(entry.storageKey) && entry.storageKey.length === 3) {
         // For a MuidTuple effective key
-        return await construct(database, muidTupleToMuid(entry.storageKey));
+        return await construct(muidTupleToMuid(entry.storageKey), database);
     }
     throw new Error(
         `don't know how to interpret entry: ${JSON.stringify(entry)}`,

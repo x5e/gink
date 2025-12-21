@@ -153,7 +153,7 @@ export class EdgeType extends Container {
                     );
                     for (const [key, value] of propertiesThen.entries()) {
                         const property = <Property>(
-                            await construct(this.database, strToMuid(key))
+                            await construct(strToMuid(key), this.database)
                         );
                         ensure(
                             property.behavior === Behavior.PROPERTY,
@@ -235,7 +235,7 @@ export class EdgeType extends Container {
             // Resetting to epoch, so just delete all properties
             for (const [key, _] of propertiesNow.entries()) {
                 const property = <Property>(
-                    await construct(this.database, strToMuid(key))
+                    await construct(strToMuid(key), this.database)
                 );
                 ensure(
                     property.behavior === Behavior.PROPERTY,
@@ -250,7 +250,7 @@ export class EdgeType extends Container {
             for (const [key, value] of propertiesThen.entries()) {
                 if (value !== propertiesNow.get(key)) {
                     const property = <Property>(
-                        await construct(this.database, strToMuid(key))
+                        await construct(strToMuid(key), this.database)
                     );
                     ensure(
                         property.behavior === Behavior.PROPERTY,
@@ -265,7 +265,7 @@ export class EdgeType extends Container {
             // Now loop through the remaining entries in propertiesNow and delete them
             for (const [key, _] of propertiesNow.entries()) {
                 const property = <Property>(
-                    await construct(this.database, strToMuid(key))
+                    await construct(strToMuid(key), this.database)
                 );
                 ensure(
                     property.behavior === Behavior.PROPERTY,
