@@ -219,14 +219,14 @@ export class Database {
         ];
         for (const behavior of globalBehaviors) {
             const address = { timestamp: -1, medallion: -1, offset: behavior };
-            const container = await construct(this, address);
+            const container = await construct(address, this);
             await container.reset(toTime, false, { bundler });
             await container.resetProperties(toTime, { bundler });
         }
         const containers = await this.store.getAllContainerTuples();
 
         for (const muidTuple of containers) {
-            const container = await construct(this, muidTupleToMuid(muidTuple));
+            const container = await construct(muidTupleToMuid(muidTuple), this);
             if (container instanceof Property) continue;
             await container.reset(toTime, false, { bundler });
             await container.resetProperties(toTime, { bundler });

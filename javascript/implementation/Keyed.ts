@@ -140,8 +140,8 @@ export class Keyed<
                 const thenValue: Value | Container =
                     thenEntry?.pointeeList.length > 0
                         ? await construct(
-                              this.database,
                               muidTupleToMuid(thenEntry.pointeeList[0]),
+                              this.database,
                           )
                         : thenEntry?.value;
 
@@ -152,8 +152,8 @@ export class Keyed<
                 const nowValue: Value | Container =
                     nowEntry?.pointeeList.length > 0
                         ? await construct(
-                              this.database,
                               muidTupleToMuid(nowEntry.pointeeList[0]),
+                              this.database,
                           )
                         : nowEntry?.value;
 
@@ -226,7 +226,7 @@ export class Keyed<
             const val =
                 entry.value !== undefined
                     ? entry.value
-                    : await construct(this.database, pointee);
+                    : await construct(pointee, this.database);
             resultMap.set(entry.storageKey, val);
         }
         return resultMap;
@@ -276,8 +276,8 @@ export class Keyed<
             } else if (entry.pointeeList.length > 0) {
                 returning += await (
                     await construct(
-                        this.database,
                         muidTupleToMuid(entry.pointeeList[0]),
+                        this.database,
                     )
                 ).toJson(indent === false ? false : +indent + 1, asOf, seen);
             } else {
