@@ -25,9 +25,12 @@ import { Accumulator } from "./Accumulator";
 
 export async function construct(
     address: Muid,
-    database: Database,
+    database?: Database,
     containerBuilder?: ContainerBuilder,
 ): Promise<Container | null> {
+    if (database === undefined) {
+        database = Database.recent;
+    }
     if (address.timestamp === -1) {
         if (address.offset === Behavior.DIRECTORY)
             return Directory.get(database, address);
@@ -52,7 +55,7 @@ export async function construct(
 
     if (containerBuilder === undefined) {
         const containerBytes = await database.store.getContainerBytes(address);
-        if (containerBytes === null) {
+        if (!containerBytes) {
             return null;
         }
 
