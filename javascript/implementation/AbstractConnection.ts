@@ -17,6 +17,7 @@ export class AbstractConnection implements Connection {
     private hasSentInitialSyncState: boolean = false;
     private hasRecvInitialSyncState: boolean = false;
     private hasSentGreetingState: boolean = false;
+    private isReadOnlyState: boolean = false;
     private _ready: Promise<void>;
     private onReady: (() => void) | undefined;
 
@@ -45,13 +46,22 @@ export class AbstractConnection implements Connection {
         // TODO: after python can send sync completed, add hasRecvInitialSync
         return (
             this.hasSentGreeting &&
-            this.hasSentInitialSync &&
+            (this.hasSentInitialSync || this.isReadOnly) &&
+            this.hasRecvInitialSync &&
             !this.hasSentUnackedData
         );
     }
 
     get connected(): boolean {
         throw new Error("Not implemented");
+    }
+
+    get isReadOnly(): boolean {
+        return this.isReadOnlyState;
+    }
+
+    set isReadOnly(value: boolean) {
+        this.isReadOnlyState = value;
     }
 
     get hasSentGreeting(): boolean {

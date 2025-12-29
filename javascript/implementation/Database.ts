@@ -450,11 +450,16 @@ export class Database {
         }
         if (parsed.hasSignal()) {
             const signal = parsed.getSignal();
-            const signalType = signal.getSignalType();
-            if (signalType === SignalType.BUNDLES_SENT) {
+            const signalType = signal.getType();
+            if (signalType === SignalType.INITIAL_BUNDLES_SENT) {
                 connection.markHasRecvInitialSync();
                 this.logger(
                     `received everything from connection number ${fromConnectionId}`,
+                );
+            } else if (signalType === SignalType.READ_ONLY_CONNECTION) {
+                connection.isReadOnly = true;
+                this.logger(
+                    `connection number ${fromConnectionId} marked as read-only`,
                 );
             } else {
                 console.error(

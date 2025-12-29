@@ -1,3 +1,10 @@
+/**
+ * Interface describing a Store implementation.
+ * Only for internal consumption, should not be relied on externally.
+ */
+
+// TODO: Return null rather than undefined in cases where something isn't found.
+
 import { HasMap } from "./HasMap";
 import {
     Medallion,

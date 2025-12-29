@@ -22,7 +22,7 @@ message SyncMessage {
 
     oneof contents {
         bytes bundle = 1; // bytes so it's easy to save verbatim.
-        Greeting greeting = 2;  // sent by each peer when the connection is made
+        Greeting greeting = 2; // sent by each peer when the connection is made
         Ack ack = 3;
         Signal signal = 4;
     }
@@ -47,7 +47,8 @@ message SyncMessage {
     message Signal {
         enum SignalType {
             UNDEFINED = 0;
-            BUNDLES_SENT = 1;
+            INITIAL_BUNDLES_SENT = 1;
+            READ_ONLY_CONNECTION = 2;
         }
         SignalType type = 1;
     }

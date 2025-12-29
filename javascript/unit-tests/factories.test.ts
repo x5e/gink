@@ -6,8 +6,26 @@ import {
     Directory,
     Property,
     PairSet,
+    construct,
 } from "../implementation";
 import { ensure } from "../implementation/utils";
+
+it("test missing container", async () => {
+    for (const store of [
+        new IndexedDbStore("test missing container", true),
+        new MemoryStore(true),
+    ]) {
+        const instance = new Database({ store });
+        await instance.ready;
+        const missingMuid = {
+            timestamp: 123456789,
+            offset: 1234,
+            medallion: 3234324,
+        };
+        const container = await construct(missingMuid, instance);
+        ensure(!container); // expected missing container to return null
+    }
+});
 
 it("complex.toJSON", async function () {
     for (const store of [

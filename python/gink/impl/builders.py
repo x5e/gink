@@ -27,6 +27,14 @@ if TYPE_CHECKING:
 
     class SyncMessage(Message):
         bundle: bytes
+        signal: 'SyncMessage.Signal'
+
+        class Signal:
+            type: 'SyncMessage.Signal.SignalType'
+
+            class SignalType(IntEnum):
+                INITIAL_BUNDLES_SENT = 1
+                READ_ONLY_CONNECTION = 2
 
     class Pair:
         left: 'MuidBuilder'
