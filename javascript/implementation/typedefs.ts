@@ -167,6 +167,7 @@ export interface Connection {
     get hasSentInitialSync(): boolean;
     get hasRecvInitialSync(): boolean;
     get hasSentGreeting(): boolean;
+    get isReadOnly(): boolean;
     get synced(): boolean;
     get ready(): Promise<void>;
     close(): void;

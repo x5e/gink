@@ -456,6 +456,11 @@ export class Database {
                 this.logger(
                     `received everything from connection number ${fromConnectionId}`,
                 );
+            } else if (signalType === SignalType.READ_ONLY_CONNECTION) {
+                connection.isReadOnly = true;
+                this.logger(
+                    `connection number ${fromConnectionId} marked as read-only`,
+                );
             } else {
                 console.error(
                     `received unknown signal from ${fromConnectionId}: ${signalType}`,
