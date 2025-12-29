@@ -67,3 +67,11 @@ push-base:
 
 build-base:
 	docker build --tag darinmcgill/base:latest -f Dockerfile.base .
+
+publish-npm:
+	cd javascript && \
+	VERSION=`date -u +0.%Y%m%d.%s` && \
+	echo $$VERSION && \
+	sed -i '' "s/\"version\": \".*\"/\"version\": \"$$VERSION\"/g" package.json && \
+	npm publish --access public && \
+	git checkout -- package.json

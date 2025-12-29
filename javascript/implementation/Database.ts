@@ -433,6 +433,7 @@ export class Database {
             await this.store.getBundles(
                 connection.sendIfNeeded.bind(connection),
             );
+            connection.sendInitialBundlesSent();
             connection.markHasSentInitialSync();
             return;
         }

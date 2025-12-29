@@ -7,7 +7,7 @@ import {
     Timestamp,
 } from "./typedefs";
 import { HasMap } from "./HasMap";
-import { AckBuilder, SyncMessageBuilder } from "./builders";
+import { AckBuilder, SyncMessageBuilder, SignalType } from "./builders";
 
 export class AbstractConnection implements Connection {
     protected listeners: Array<() => void> = [];
@@ -43,11 +43,11 @@ export class AbstractConnection implements Connection {
     }
 
     get synced(): boolean {
-        // TODO: after python can send sync completed, add hasRecvInitialSync
         return (
             this.hasSentGreeting &&
             (this.hasSentInitialSync || this.isReadOnly) &&
             this.hasRecvInitialSync &&
+            this.connected &&
             !this.hasSentUnackedData
         );
     }
@@ -145,6 +145,13 @@ export class AbstractConnection implements Connection {
 
     send(_: Uint8Array) {
         throw new Error("Not implemented");
+    }
+
+    sendInitialBundlesSent() {
+        const message = new SyncMessageBuilder();
+        message.setSignal(SignalType.INITIAL_BUNDLES_SENT);
+        const bundleBytes = message.serializeBinary();
+        this.send(bundleBytes);
     }
 
     close() {
