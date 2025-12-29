@@ -258,11 +258,12 @@ export class MovementBuilder extends ImplementedMessage {
 }
 
 export class SignalBuilder extends ImplementedMessage {
-    getSignalType(): number;
-    setSignalType(number);
+    getType(): number;
+    setType(number);
 }
 
 export declare enum SignalType {
     UNDEFINED = 0,
-    BUNDLES_SENT = 1,
+    INITIAL_BUNDLES_SENT = 1,
+    READ_ONLY_CONNECTION = 2,
 }

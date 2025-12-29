@@ -14,7 +14,7 @@ import { PairSet } from "./PairSet";
 import { PairMap } from "./PairMap";
 import { KeySet } from "./KeySet";
 import { Database } from "./Database";
-import { ensure, valueToJson, muidTupleToMuid, rehydrate } from "./utils";
+import { valueToJson, muidTupleToMuid, rehydrate } from "./utils";
 import { Behavior, ContainerBuilder } from "./builders";
 import { Property } from "./Property";
 import { Vertex } from "./Vertex";

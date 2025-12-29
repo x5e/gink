@@ -391,6 +391,12 @@ class Connection(Selectable):
                 if greeting and self._perms & AUTH_RITE:
                     sent = self.send(greeting)
                     self._logger.debug("sent greeting of %d bytes (%s)", sent, self._name)
+                else:
+                    self._logger.debug("sending read-only flag instead of greeting (%s)", self._name)
+                    sync_message = SyncMessage()
+                    sync_message.signal.type = SyncMessage.Signal.SignalType.READ_ONLY_CONNECTION
+                    sent = self.send(sync_message)
+                    self._logger.debug("sent read-only signal of %d bytes (%s)", sent, self._name)
             elif isinstance(event, CloseConnection):
                 self._logger.info("got close msg, code=%d, reason=%s", event.code, event.reason)
                 try:

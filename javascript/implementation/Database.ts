@@ -450,8 +450,8 @@ export class Database {
         }
         if (parsed.hasSignal()) {
             const signal = parsed.getSignal();
-            const signalType = signal.getSignalType();
-            if (signalType === SignalType.BUNDLES_SENT) {
+            const signalType = signal.getType();
+            if (signalType === SignalType.INITIAL_BUNDLES_SENT) {
                 connection.markHasRecvInitialSync();
                 this.logger(
                     `received everything from connection number ${fromConnectionId}`,
