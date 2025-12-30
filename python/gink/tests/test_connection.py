@@ -30,7 +30,7 @@ def test_chit_chat():
 
     # force the server to receive the initial request and send a response
     for incoming in server.receive():
-        if incoming.signal.type in signals:
+        if incoming.HasField("signal") and incoming.signal in signals:
             continue
         raise Exception("didn't expect any user messages")
 
