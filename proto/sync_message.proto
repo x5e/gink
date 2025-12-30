@@ -44,12 +44,10 @@ message SyncMessage {
         uint64 previous = 4;
     }
 
-    message Signal {
-        enum SignalType {
-            UNDEFINED = 0;
-            INITIAL_BUNDLES_SENT = 1;
-            READ_ONLY_CONNECTION = 2;
-        }
-        SignalType type = 1;
+    enum Signal {
+        UNDEFINED = 0;
+        INITIAL_BUNDLES_SENT = 1;
+        READ_ONLY_CONNECTION = 2;
     }
+
 }

@@ -394,7 +394,7 @@ class Connection(Selectable):
                 else:
                     self._logger.debug("sending read-only flag instead of greeting (%s)", self._name)
                     sync_message = SyncMessage()
-                    sync_message.signal.type = SyncMessage.Signal.SignalType.READ_ONLY_CONNECTION
+                    sync_message.signal = SyncMessage.Signal.READ_ONLY_CONNECTION
                     sent = self.send(sync_message)
                     self._logger.debug("sent read-only signal of %d bytes (%s)", sent, self._name)
             elif isinstance(event, CloseConnection):

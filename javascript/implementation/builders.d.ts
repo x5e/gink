@@ -140,6 +140,14 @@ export class AckBuilder extends ImplementedMessage {
     setChainStart(number);
 }
 
+
+export declare enum Signal {
+    UNDEFINED = 0,
+    INITIAL_BUNDLES_SENT = 1,
+    READ_ONLY_CONNECTION = 2,
+}
+
+
 export class SyncMessageBuilder extends ImplementedMessage {
     setGreeting(GreetingBuilder);
     hasBundle(): boolean;
@@ -151,8 +159,8 @@ export class SyncMessageBuilder extends ImplementedMessage {
     setBundle(Uint8Array);
     setAck(AckBuilder);
     hasSignal(): boolean;
-    getSignal(): SignalBuilder;
-    setSignal(SignalBuilder);
+    getSignal(): Signal;
+    setSignal(Signal);
 }
 
 export class MuidBuilder extends ImplementedMessage {
@@ -255,15 +263,4 @@ export class MovementBuilder extends ImplementedMessage {
     setContainer(MuidBuilder);
     getPurge(): boolean;
     setPurge(boolean);
-}
-
-export class SignalBuilder extends ImplementedMessage {
-    getType(): number;
-    setType(number);
-}
-
-export declare enum SignalType {
-    UNDEFINED = 0,
-    INITIAL_BUNDLES_SENT = 1,
-    READ_ONLY_CONNECTION = 2,
 }

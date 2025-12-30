@@ -140,7 +140,7 @@ class Relay(Server):
                         self._store.get_bundles(connection.send_bundle, peer_has=thing)
                         self._logger.debug("sending initial sync completed flag (%s)", connection._name)
                         sync_message = SyncMessage()
-                        sync_message.signal.type = SyncMessage.Signal.SignalType.INITIAL_BUNDLES_SENT
+                        sync_message.signal = SyncMessage.Signal.INITIAL_BUNDLES_SENT
                         sent = connection.send(sync_message)
                         self._logger.debug("sent initial sync completed flag of %d bytes (%s)", sent, connection._name)
                     elif isinstance(thing, BundleInfo):  # an ack:

@@ -7,7 +7,11 @@ import {
     Timestamp,
 } from "./typedefs";
 import { HasMap } from "./HasMap";
-import { AckBuilder, SyncMessageBuilder, SignalType } from "./builders";
+import {
+    AckBuilder,
+    SyncMessageBuilder,
+    Signal,
+} from "./builders";
 
 export class AbstractConnection implements Connection {
     protected listeners: Array<() => void> = [];
@@ -149,7 +153,8 @@ export class AbstractConnection implements Connection {
 
     sendInitialBundlesSent() {
         const message = new SyncMessageBuilder();
-        message.setSignal(SignalType.INITIAL_BUNDLES_SENT);
+        const signal = Signal.INITIAL_BUNDLES_SENT;
+        message.setSignal(signal);
         const bundleBytes = message.serializeBinary();
         this.send(bundleBytes);
     }
