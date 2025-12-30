@@ -72,6 +72,7 @@ publish-npm:
 	cd javascript && \
 	VERSION=`date -u +0.%Y%m%d.%s` && \
 	echo $$VERSION && \
-	sed -i '' "s/\"version\": \".*\"/\"version\": \"$$VERSION\"/g" package.json && \
+	sed -i.bak "s/\"version\": \".*\"/\"version\": \"$$VERSION\"/g" package.json && \
+	rm -f package.json.bak && \
 	npm publish --access public && \
 	git checkout -- package.json
