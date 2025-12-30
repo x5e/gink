@@ -36,7 +36,7 @@ def test_chit_chat():
 
     # force the client to process the connection accepted message
     for incoming in client.receive():
-        if hasattr(incoming, "signal") and incoming.signal in signals:
+        if incoming.HasField("signal") and incoming.signal in signals:
             continue
         raise Exception("Didn't expect any user messages!")
 
