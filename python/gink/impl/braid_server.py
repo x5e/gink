@@ -148,7 +148,7 @@ class BraidServer(Server):
                         connection.send_bundle, peer_has=thing, limit_to=dict(braid.items()))
                     sync_message = SyncMessage()
                     sync_message.signal = SyncMessage.Signal.INITIAL_BUNDLES_SENT
-                    sent = connection.send(sync_message)
+                    connection.send(sync_message)
                 elif isinstance(thing, BundleInfo):  # an ack:
                     pass
                 else:
