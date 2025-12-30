@@ -1,8 +1,15 @@
 {
     "name": "@x5e/gink",
-    "version": "${VERSION}",
+    "version": "0.0.0",
     "description": "an eventually consistent database",
     "main": "tsc.out/implementation/index.js",
+    "exports": {
+        ".": {
+            "import": "./tsc.out/implementation/index.js",
+            "require": "./tsc.out/implementation/index.js"
+        },
+        "./*": "./*"
+    },
     "browser": {
         "@x5e/gink": "content_root/generated/packed.js",
         "fs": false,

@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
+        "module": "ES2020",
         "sourceMap": true,
         "target": "es2020",
         "moduleResolution": "node",
@@ -8,7 +8,12 @@
         "outDir": "tsc.out",
         "declaration": true,
         "skipLibCheck": true,
-        "allowJs": true
+        "allowJs": true,
+        "rootDir": "./",
+        "baseUrl": "./",
+        "paths": {
+            "gink/*": ["./*"]
+        }
     },
     "include": [
         "implementation/*.ts",

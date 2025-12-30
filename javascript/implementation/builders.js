@@ -1,27 +1,27 @@
-const BundleBuilder = require("../proto/bundle_pb")["Bundle"];
-const Behavior = require("../proto/behavior_pb")["Behavior"];
-const ChangeBuilder = require("../proto/change_pb")["Change"];
-const EntryBuilder = require("../proto/entry_pb")["Entry"];
-const ContainerBuilder = require("../proto/container_pb")["Container"];
-const SyncMessageBuilder = require("../proto/sync_message_pb")["SyncMessage"];
+import { Bundle as BundleBuilder } from "../builders/bundle_pb.js";
+import { Behavior } from "../builders/behavior_pb.js";
+import { Change as ChangeBuilder } from "../builders/change_pb.js";
+import { Entry as EntryBuilder } from "../builders/entry_pb.js";
+import { Container as ContainerBuilder } from "../builders/container_pb.js";
+import { SyncMessage as SyncMessageBuilder } from "../builders/sync_message_pb.js";
 const AckBuilder = SyncMessageBuilder.Ack;
 const GreetingBuilder = SyncMessageBuilder.Greeting;
 const GreetingEntryBuilder = GreetingBuilder.GreetingEntry;
 const Signal = SyncMessageBuilder.Signal;
-const LogFileBuilder = require("../proto/log_file_pb")["LogFile"];
-const ClaimBuilder = require("../proto/claim_pb")["Claim"];
-const MovementBuilder = require("../proto/movement_pb")["Movement"];
-const MuidBuilder = require("../proto/muid_pb")["Muid"];
-const KeyBuilder = require("../proto/key_pb")["Key"];
-const PairBuilder = require("../proto/pair_pb")["Pair"];
-const ValueBuilder = require("../proto/value_pb")["Value"];
-const ClearanceBuilder = require("../proto/clearance_pb")["Clearance"];
+import { LogFile as LogFileBuilder } from "../builders/log_file_pb.js";
+import { Claim as ClaimBuilder } from "../builders/claim_pb.js";
+import { Movement as MovementBuilder } from "../builders/movement_pb.js";
+import { Muid as MuidBuilder } from "../builders/muid_pb.js";
+import { Key as KeyBuilder } from "../builders/key_pb.js";
+import { Pair as PairBuilder } from "../builders/pair_pb.js";
+import { Value as ValueBuilder } from "../builders/value_pb.js";
+import { Clearance as ClearanceBuilder } from "../builders/clearance_pb.js";
 const Special = ValueBuilder.Special;
 const DocumentBuilder = ValueBuilder.Document;
 const TupleBuilder = ValueBuilder.Tuple;
-const KeyPairBuilder = require("../proto/key_pair_pb")["KeyPair"];
+import { KeyPair as KeyPairBuilder } from "../builders/key_pair_pb.js";
 
-module.exports = {
+export {
     BundleBuilder,
     Behavior,
     ChangeBuilder,
