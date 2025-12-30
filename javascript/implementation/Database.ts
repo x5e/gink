@@ -34,7 +34,7 @@ import {
     ChangeBuilder,
     SyncMessageBuilder,
     BundleBuilder,
-    SignalType,
+    Signal,
 } from "./builders";
 import { Decomposition } from "./Decomposition";
 import { MemoryStore } from "./MemoryStore";
@@ -433,6 +433,7 @@ export class Database {
             await this.store.getBundles(
                 connection.sendIfNeeded.bind(connection),
             );
+            connection.sendInitialBundlesSent();
             connection.markHasSentInitialSync();
             return;
         }
@@ -450,20 +451,19 @@ export class Database {
         }
         if (parsed.hasSignal()) {
             const signal = parsed.getSignal();
-            const signalType = signal.getType();
-            if (signalType === SignalType.INITIAL_BUNDLES_SENT) {
+            if (signal === Signal.INITIAL_BUNDLES_SENT) {
                 connection.markHasRecvInitialSync();
                 this.logger(
                     `received everything from connection number ${fromConnectionId}`,
                 );
-            } else if (signalType === SignalType.READ_ONLY_CONNECTION) {
+            } else if (signal === Signal.READ_ONLY_CONNECTION) {
                 connection.isReadOnly = true;
                 this.logger(
                     `connection number ${fromConnectionId} marked as read-only`,
                 );
             } else {
                 console.error(
-                    `received unknown signal from ${fromConnectionId}: ${signalType}`,
+                    `received unknown signal from ${fromConnectionId}: ${signal}`,
                 );
             }
         }

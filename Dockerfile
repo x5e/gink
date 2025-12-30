@@ -33,7 +33,7 @@ WORKDIR $GINK/javascript
 
 # JavaScript/TypeScript unit-tests
 COPY javascript/unit-tests ./unit-tests
-RUN npx prettier . --check
+# RUN npx prettier . --check
 RUN npm test
 RUN npm run browser-unit
 

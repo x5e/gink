@@ -7,8 +7,7 @@ const SyncMessageBuilder = require("../proto/sync_message_pb")["SyncMessage"];
 const AckBuilder = SyncMessageBuilder.Ack;
 const GreetingBuilder = SyncMessageBuilder.Greeting;
 const GreetingEntryBuilder = GreetingBuilder.GreetingEntry;
-const SignalBuilder = SyncMessageBuilder.Signal;
-const SignalType = SignalBuilder.SignalType;
+const Signal = SyncMessageBuilder.Signal;
 const LogFileBuilder = require("../proto/log_file_pb")["LogFile"];
 const ClaimBuilder = require("../proto/claim_pb")["Claim"];
 const MovementBuilder = require("../proto/movement_pb")["Movement"];
@@ -44,6 +43,5 @@ module.exports = {
     ClearanceBuilder,
     AckBuilder,
     KeyPairBuilder,
-    SignalBuilder,
-    SignalType,
+    Signal,
 };

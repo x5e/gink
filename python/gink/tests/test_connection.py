@@ -19,8 +19,8 @@ def test_chit_chat():
     """ ensures that I can send and receive data via a websocket connection """
     server_socket, client_socket = socketpair()
     signals = [
-        SyncMessage.Signal.SignalType.INITIAL_BUNDLES_SENT,
-        SyncMessage.Signal.SignalType.READ_ONLY_CONNECTION,
+        SyncMessage.Signal.INITIAL_BUNDLES_SENT,
+        SyncMessage.Signal.READ_ONLY_CONNECTION,
     ]
 
     # creating a client connection implicitly sends a request
@@ -30,13 +30,13 @@ def test_chit_chat():
 
     # force the server to receive the initial request and send a response
     for incoming in server.receive():
-        if incoming.signal.type in signals:
+        if incoming.HasField("signal") and incoming.signal in signals:
             continue
         raise Exception("didn't expect any user messages")
 
     # force the client to process the connection accepted message
     for incoming in client.receive():
-        if incoming.signal.type in signals:
+        if incoming.HasField("signal") and incoming.signal in signals:
             continue
         raise Exception("Didn't expect any user messages!")
 

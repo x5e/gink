@@ -43,4 +43,8 @@ export class ServerConnection extends AbstractConnection {
             });
         }
     }
+
+    get connected(): boolean {
+        return this.websocketConnection.connected;
+    }
 }
