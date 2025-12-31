@@ -535,7 +535,7 @@ class Connection(Selectable):
                 else:
                     self._logger.warning("(%s) unknown signal %s", self._name, sync_message.signal)
             else:
-                self._logger.warning("got binary message without ack, bundle, or greeting")
+                self._logger.warning("got binary message without ack, bundle, greeting, or signal")
 
     @property
     def name(self) -> Optional[str]:
