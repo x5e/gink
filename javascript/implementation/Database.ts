@@ -419,9 +419,9 @@ export class Database {
 
         let parsed: SyncMessageBuilder;
         try {
-        parsed = <SyncMessageBuilder>(
-            SyncMessageBuilder.deserializeBinary(messageBytes)
-        );
+            parsed = <SyncMessageBuilder>(
+                SyncMessageBuilder.deserializeBinary(messageBytes)
+            );
         } catch (problem) {
             console.error(
                 `problem deserializing message from ${fromConnectionId}: ${problem} \n messageBytes: ${messageBytes}`,
