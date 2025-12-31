@@ -16,7 +16,7 @@ running-as-root:
 
 on-main-and-clean:
 	bash -c 'test `git rev-parse --abbrev-ref HEAD` = main'
-	bash -c 'test -z "$(git status --porcelain)"'
+	bash -c 'test -z "$$(git status --porcelain)"'
 
 test-python:
 	cd python && python3 -m nose2
