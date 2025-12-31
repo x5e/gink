@@ -526,6 +526,14 @@ class Connection(Selectable):
             elif sync_message.HasField("ack"):
                 self._logger.debug("(%s) received ack %s", self._name, sync_message)
                 yield BundleInfo.from_ack(sync_message)
+            elif sync_message.HasField("signal"):
+                self._logger.debug("(%s) received signal %s", self._name, sync_message.signal)
+                if sync_message.signal == SyncMessage.Signal.READ_ONLY_CONNECTION:
+                    raise ValueError("peer has read-only connection")
+                elif sync_message.signal == SyncMessage.Signal.INITIAL_BUNDLES_SENT:
+                    self._logger.debug("(%s) received INITIAL_BUNDLES_SENT", self._name)
+                else:
+                    self._logger.warning("(%s) unknown signal %s", self._name, sync_message.signal)
             else:
                 self._logger.warning("got binary message without ack, bundle, or greeting")
 
