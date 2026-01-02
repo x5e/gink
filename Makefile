@@ -4,7 +4,7 @@ PYTHON_CODE=$(wildcard python/*.py python/gink/impl/*.py python/gink/tests/*.py 
 
 all: python/gink/builders javascript/proto javascript/tsc.out javascript/content_root/generated
 
-.PHONY: clean running-as-root install-dependencies install-debian-packages javascript push-base
+.PHONY: clean running-as-root on-main-and-clean install-dependencies install-debian-packages javascript push-base
 
 clean:
 	rm -rf javascript/proto javascript/content_root/generated javascript/tsc.out python/gink/builders
@@ -13,6 +13,10 @@ rebuild: clean all
 
 running-as-root:
 	bash -c 'test `id -u` -eq 0'
+
+on-main-and-clean:
+	bash -c 'test `git rev-parse --abbrev-ref HEAD` = main'
+	bash -c 'test -z "$$(git status --porcelain)"'
 
 test-python:
 	cd python && python3 -m nose2
@@ -68,7 +72,7 @@ push-base:
 build-base:
 	docker build --tag darinmcgill/base:latest -f Dockerfile.base .
 
-publish-npm:
+publish-npm: on-main-and-clean
 	cd javascript && \
 	VERSION=`date -u +0.%Y%m%d.%s` && \
 	echo $$VERSION && \

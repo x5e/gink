@@ -417,9 +417,17 @@ export class Database {
         if (!connection)
             throw Error("Got a message from a peer I don't have a proxy for?");
 
-        const parsed = <SyncMessageBuilder>(
-            SyncMessageBuilder.deserializeBinary(messageBytes)
-        );
+        let parsed: SyncMessageBuilder;
+        try {
+            parsed = <SyncMessageBuilder>(
+                SyncMessageBuilder.deserializeBinary(messageBytes)
+            );
+        } catch (problem) {
+            console.error(
+                `problem deserializing message from ${fromConnectionId}: ${problem} \n messageBytes: ${messageBytes}`,
+            );
+            return;
+        }
         if (parsed.hasBundle()) {
             const bundleBytes: BundleBytes = parsed.getBundle_asU8();
             const decomposition = new Decomposition(bundleBytes);
