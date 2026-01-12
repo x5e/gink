@@ -16,7 +16,7 @@ from .utilities import generate_timestamp
 from .timing import *
 
 
-class Directory(Container):
+class Directory[K: UserKey, V: UserValue|Container](Container):
     """ the Gink mutable mapping object """
     _missing = object()
     _BEHAVIOR = DIRECTORY
@@ -27,7 +27,7 @@ class Directory(Container):
             *,
             muid: Optional[Union[Muid, str]] = None,
             root: bool = False,
-            contents: Optional[Dict[UserKey, Union[UserValue, Container]]] = None,
+            contents: Optional[Dict[K, V]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -95,29 +95,29 @@ class Directory(Container):
         return result
 
     @typechecked
-    def __contains__(self, key: UserKey) -> bool:
+    def __contains__(self, key: K) -> bool:
         return self.has(key)
 
     @typechecked
-    def __getitem__(self, key_or_keys: Union[UserKey, Iterable[UserKey]]) -> Union[UserValue, Container]:
+    def __getitem__(self, key_or_keys: Union[K, Iterable[K]]) -> V:
         result = self.get(key_or_keys, self._missing)
         if result == self._missing:
             raise KeyError(key_or_keys)
-        return result
+        return cast(V, result)
 
     @typechecked
-    def __setitem__(self, key_or_keys: Union[UserKey, Iterable[UserKey]], value: Union[UserValue, Container]):
+    def __setitem__(self, key_or_keys: Union[K, Iterable[K]], value: V):
         there_now = self.get(key_or_keys, self._missing)
         if type(value) == type(there_now) and value == there_now:
             return  # this is to prevent in-place operators like += from re-assigning
         self.set(key_or_keys, value)
 
     @typechecked
-    def __delitem__(self, key: UserKey):
+    def __delitem__(self, key: K):
         self.delete(key)
 
     @typechecked
-    def has(self, key_or_keys: Union[UserKey, Iterable[UserKey]], *, as_of=None) -> bool:
+    def has(self, key_or_keys: Union[K, Iterable[K]], *, as_of=None) -> bool:
         """ returns true if the given key exists in the mapping, optionally at specific time """
         # there's probably a more efficient way of doing this
         obj = object()
@@ -125,7 +125,7 @@ class Directory(Container):
         return result is not obj
 
     @typechecked
-    def get(self, key_or_keys: Union[UserKey, Iterable[UserKey]], default=None, /, *, as_of: GenericTimestamp = None):
+    def get[D](self, key_or_keys: Union[K, Iterable[K]], default: D=None, /, *, as_of: GenericTimestamp = None) -> D|V:
         """ gets the value associate with a key, default if missing, optionally as_of a time
 
             If `key` is a list or tuple, the get will interpret that as instructions
@@ -147,13 +147,13 @@ class Directory(Container):
             if found is None or found.builder.deletion:  # type: ignore
                 return default
             current = current._get_occupant(found.builder, found.address)
-        return current
+        return cast(V, current)
 
     @typechecked
     def set(
         self,
-        key_or_keys: Union[UserKey, Iterable[UserKey]],
-        value: Union[UserValue, Container], /, *,
+        key_or_keys: Union[K, Iterable[K]],
+        value: V, /, *,
         bundler: Optional[Bundler] = None,
         comment: Optional[str] = None,
     ) -> Muid:
@@ -208,7 +208,7 @@ class Directory(Container):
         return muid
 
     @typechecked
-    def walk(self, path: Iterable[UserKey], /, *, as_of: GenericTimestamp = None) -> 'Directory':
+    def walk(self, path: Iterable[K], /, *, as_of: GenericTimestamp = None) -> 'Directory':
         """ Walks through the directory structure to find the directory at the end of the path.
             Raises a KeyError if it can't find the directory at the end of the path.
         """
@@ -222,7 +222,7 @@ class Directory(Container):
         return current
 
     @typechecked
-    def delete(self, key_or_keys: Union[UserKey, Iterable[UserKey]], /, *,
+    def delete(self, key_or_keys: Union[K, Iterable[K]], /, *,
                bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         """ Removes a value from the mapping, returning the muid address of the change.
 
@@ -240,36 +240,32 @@ class Directory(Container):
     @typechecked
     def setdefault(
         self,
-        key: UserKey,
-        default=None, /, *,
+        key: K,
+        default: Optional[V]=None, /, *,
         bundler: Optional[Bundler] = None,
         comment: Optional[str] = None,
-        default_factory: Optional[Callable[[], Any]] = None,
-        respect_deletion=False,
-        ):
+        default_factory: Optional[Callable[[], V]] = None,
+        ) -> V:
         """ Insert key with a value of default if key is not in the directory.
 
             Return the value for key if key is in the directory, else if default_factory is not None,
             call it and set to the returned value, but if it is None just use the "default".
 
-            If respect_deletion is set to something truthy then it won't make any changes
-            if the most recent entry in the directory for the key is a delete entry. In this
-            case it will return whatever has been passed into respect_deletion.
         """
+        if (default is not None and default_factory is not None) or (default is None and default_factory is None):
+            raise ValueError("must specify exactly one of default or default_factory")
         dir, key = (self.walk(key[:-1]), key[-1]) if isinstance(key, (tuple, list)) else (self, key)  # type: ignore
         as_of = generate_timestamp()
         store = self._database.get_store()
         found = store.get_entry_by_key(dir.get_muid(), key=key, as_of=as_of)
-        if found and found.builder.deletion and respect_deletion:  # type: ignore
-            return respect_deletion
         if found and not found.builder.deletion:  # type: ignore
-            return dir._get_occupant(found.builder, found.address)
-        value = default if default_factory is None else default_factory()
+            return cast(V, dir._get_occupant(found.builder, found.address))
+        value = cast(V, default if default_factory is None else default_factory())
         dir._add_entry(key=key, value=value, bundler=bundler, comment=comment)
         return value
 
     @typechecked
-    def pop(self, key: UserKey, *default, bundler: Optional[Bundler] = None, comment: Optional[str] = None):
+    def pop(self, key: K, *default, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> V:
         """ If key exists in the mapping, returns the corresponding value and removes it.
 
             Otherwise returns default.  In the case that the key is found and removed,
@@ -285,9 +281,9 @@ class Directory(Container):
             else:
                 raise KeyError(f"could not pop {key}")  # type: ignore
         dir._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
-        return dir._get_occupant(found.builder, found.address)
+        return cast(V, dir._get_occupant(found.builder, found.address))
 
-    def items(self, *, as_of=None) -> Iterable[Tuple[UserKey, Union[UserValue, Container]]]:
+    def items(self, *, as_of=None) -> Iterable[Tuple[K, V]]:
         """ returns an iterable of key,value pairs, as of the effective time (or now) """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
@@ -298,7 +294,7 @@ class Directory(Container):
             key = decode_key(entry_pair.builder)
             assert key is not None, "decoded key is None?"
             contained = self._get_occupant(entry_pair.builder, entry_pair.address)
-            yield (key, contained)
+            yield cast(Tuple[K, V], (key, contained))
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)
@@ -311,21 +307,21 @@ class Directory(Container):
             count += 1
         return count
 
-    def keys(self, *, as_of: GenericTimestamp = None) -> Iterable[UserKey]:
+    def keys(self, *, as_of: GenericTimestamp = None) -> Iterable[K]:
         """ returns an iterable of all the keys in this directory """
         for k, _ in self.items(as_of=as_of):
-            yield k
+            yield cast(K, k)
 
-    def values(self, *, as_of: GenericTimestamp = None) -> Iterable[Union[UserValue, Container]]:
+    def values(self, *, as_of: GenericTimestamp = None) -> Iterable[V]:
         """ returns a list of values in the directory as of the given time """
         for _, val in self.items(as_of=as_of):
-            yield val
+            yield cast(V, val)
 
     def popitem(
             self, *,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None
-    ) -> Tuple[UserKey, Union[UserValue, Container]]:
+    ) -> Tuple[K, V]:
         """ Remove and return a (key, value) tuple, or raises KeyError if empty.
 
             Order is determined by implementation of the store.
@@ -340,7 +336,7 @@ class Directory(Container):
             key = decode_key(entry_pair.builder)
             assert key is not None, "decoded key is None?"
             self._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
-            return (key, val)
+            return (cast(K, key), cast(V, val))
         raise KeyError("directory is empty")
 
     @typechecked
