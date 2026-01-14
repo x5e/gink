@@ -20,3 +20,4 @@ python3-typeguard
 python3-nacl
 python3-dateutil
 python3-typing-extensions
+pycodestyle

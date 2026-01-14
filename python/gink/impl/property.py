@@ -17,7 +17,7 @@ class Property[V: UserValue|Container](Container):
     _BEHAVIOR = PROPERTY
     _MISSING = object()
 
-    @typechecked
+
     def __init__(
             self,
             *,
@@ -92,7 +92,7 @@ class Property[V: UserValue|Container](Container):
                 count += 1
         return count
 
-    @typechecked
+
     def set(self, describing: Union[Addressable, Muid], value: V, *,
             bundler=None, comment=None) -> Muid:
         """ Sets the value of the property on the particular object addressed by describing.
@@ -104,7 +104,7 @@ class Property[V: UserValue|Container](Container):
             describing = describing._muid
         return self._add_entry(key=describing, value=value, bundler=bundler, comment=comment)
 
-    @typechecked
+
     def update(self, from_what: Union[Dict[Union[Addressable, Muid], V],
                                 Iterable[Tuple[Union[Addressable, Muid], V]]],
                                 *, bundler=None, comment=None):
@@ -127,14 +127,14 @@ class Property[V: UserValue|Container](Container):
         if immediate:
             bundler.commit()
 
-    @typechecked
+
     def delete(self, describing: Union[Addressable, Muid], *, bundler=None, comment=None) -> Muid:
         """ Removes the value (if any) of this property on object pointed to by `describing`. """
         muid = cast(Muid, getattr(describing, "_muid", describing))
         return self._add_entry(key=muid, value=deletion, bundler=bundler, comment=comment)
 
-    def get[D](self, describing: Union[Addressable, Muid], default: D = None, *,
-            as_of: GenericTimestamp = None) -> V|D:
+    def get[D](self, describing: Union[Addressable, Muid], default: D | None = None, *,
+            as_of: GenericTimestamp = None) -> V|D|None:
         """ Gets the value of the property on the object it's describing, optionally in the past. """
         if not hasattr(describing, "_muid"):
             raise ValueError("describing must be a container")

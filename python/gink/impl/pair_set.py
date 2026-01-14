@@ -1,6 +1,6 @@
 """ Contains the pair set class definition """
 
-from typing import Optional, Tuple, Iterable, Union, Set
+from typing import Dict, Optional, Tuple, Iterable, Union, Set
 from typeguard import typechecked
 from .database import Database
 from .muid import Muid
@@ -16,12 +16,11 @@ class PairSet(Container):
     _missing = object()
     _BEHAVIOR = PAIR_SET
 
-    @typechecked
     def __init__(
                 self,
                 *,
                 muid: Optional[Union[Muid, str]] = None,
-                contents: Optional[Iterable[Pair]] = None,
+                contents: Optional[dict[str, set]] = None,
                 database: Optional[Database] = None,
                 bundler: Optional[Bundler] = None,
                 comment: Optional[str] = None,
@@ -46,6 +45,7 @@ class PairSet(Container):
         elif muid is None:
             muid = Container._create(PAIR_SET, bundler=bundler)
             created = True
+        assert isinstance(muid, Muid)
         Container.__init__(self, muid=muid, database=database)
         if contents:
             assert isinstance(contents, dict)

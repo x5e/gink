@@ -21,7 +21,6 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
     _missing = object()
     _BEHAVIOR = DIRECTORY
 
-    @typechecked
     def __init__(
             self,
             *,
@@ -94,29 +93,24 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
         result += ",\n\t".join(stuffing) + "})"
         return result
 
-    @typechecked
     def __contains__(self, key: K) -> bool:
         return self.has(key)
 
-    @typechecked
     def __getitem__(self, key_or_keys: Union[K, Iterable[K]]) -> V:
         result = self.get(key_or_keys, self._missing)
         if result == self._missing:
             raise KeyError(key_or_keys)
         return cast(V, result)
 
-    @typechecked
     def __setitem__(self, key_or_keys: Union[K, Iterable[K]], value: V):
         there_now = self.get(key_or_keys, self._missing)
         if type(value) == type(there_now) and value == there_now:
             return  # this is to prevent in-place operators like += from re-assigning
         self.set(key_or_keys, value)
 
-    @typechecked
     def __delitem__(self, key: K):
         self.delete(key)
 
-    @typechecked
     def has(self, key_or_keys: Union[K, Iterable[K]], *, as_of=None) -> bool:
         """ returns true if the given key exists in the mapping, optionally at specific time """
         # there's probably a more efficient way of doing this
@@ -124,8 +118,12 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
         result = self.get(key_or_keys, obj, as_of=as_of)
         return result is not obj
 
-    @typechecked
-    def get[D](self, key_or_keys: Union[K, Iterable[K]], default: D=None, /, *, as_of: GenericTimestamp = None) -> D|V:
+    def get[D](
+        self,
+        key_or_keys: Union[K, Iterable[K]],
+        default: D|None=None, /, *,
+        as_of: GenericTimestamp = None,
+        ) -> D|V|None:
         """ gets the value associate with a key, default if missing, optionally as_of a time
 
             If `key` is a list or tuple, the get will interpret that as instructions
@@ -149,7 +147,6 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
             current = current._get_occupant(found.builder, found.address)
         return cast(V, current)
 
-    @typechecked
     def set(
         self,
         key_or_keys: Union[K, Iterable[K]],
@@ -189,7 +186,7 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
                 raise TypeError(f"key must be a string, bytes, or int, got {type(key)}")
             found = store.get_entry_by_key(current._muid, key=key, as_of=timestamp) if not just_created else None
             if found is None or found.builder.deletion:  # type: ignore
-                new_directory = Directory(database=self._database, bundler=bundler)
+                new_directory: Directory = Directory(database=self._database, bundler=bundler)
                 # if creating this directory is included in the bundler, its muid will still be deferred
                 # and calling get_entry_by_key will throw an Exception
                 current._add_entry(key=key, value=new_directory, bundler=bundler)
@@ -207,7 +204,6 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
             bundler.commit()
         return muid
 
-    @typechecked
     def walk(self, path: Iterable[K], /, *, as_of: GenericTimestamp = None) -> 'Directory':
         """ Walks through the directory structure to find the directory at the end of the path.
             Raises a KeyError if it can't find the directory at the end of the path.
@@ -221,7 +217,6 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
             current = result
         return current
 
-    @typechecked
     def delete(self, key_or_keys: Union[K, Iterable[K]], /, *,
                bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         """ Removes a value from the mapping, returning the muid address of the change.
@@ -237,7 +232,6 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
         assert isinstance(key, (str, bytes, int)), f"key must be a string, bytes, or int, got {type(key)}"
         return dir._add_entry(key=key, value=deletion, bundler=bundler, comment=comment)
 
-    @typechecked
     def setdefault(
         self,
         key: K,
@@ -264,7 +258,6 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
         dir._add_entry(key=key, value=value, bundler=bundler, comment=comment)
         return value
 
-    @typechecked
     def pop(self, key: K, *default, bundler: Optional[Bundler] = None, comment: Optional[str] = None) -> V:
         """ If key exists in the mapping, returns the corresponding value and removes it.
 
@@ -339,9 +332,8 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
             return (cast(K, key), cast(V, val))
         raise KeyError("directory is empty")
 
-    @typechecked
-    def update(self, from_what: Union[Dict[UserKey, Union[UserValue, Container]],
-                                Iterable[Tuple[UserKey, Union[UserValue, Container]]]],
+    def update(self, from_what: Union[Dict[K, V],
+                                Iterable[Tuple[K, V]]],
                                 /, *, bundler: Optional[Bundler] = None, comment: Optional[str] = None):
         """ Performs a shallow copy of key/value pairs from the argument.
 
@@ -363,7 +355,6 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
         if immediate:
             bundler.commit()
 
-    @typechecked
     def blame(self, key: Optional[UserKey] = None, as_of: GenericTimestamp = None
               ) -> Dict[UserKey, Attribution]:
         """ returns a dictionary mapping keys to who's responsible for each change """
@@ -387,7 +378,6 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
         for key, val in self.blame(as_of=as_of).items():
             print(repr(key), str(val), file=file)
 
-    @typechecked
     def get_attributions(self, key: UserKey, /) -> Iterable[Attribution]:
         """ Get the history of modifications for a particular key. """
         as_of = generate_timestamp()
@@ -400,7 +390,6 @@ class Directory[K: UserKey, V: UserValue|Container](Container):
             yield self._database.get_one_attribution(muid.timestamp, muid.medallion)
             as_of = muid.timestamp
 
-    @typechecked
     def show_log(self, key: UserKey, /, *, file=stdout, limit=10):
         """ writes the history of modifications to <file> in a human-readable format """
         for att in self.get_attributions(key):

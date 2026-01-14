@@ -14,7 +14,7 @@ from .coding import BOX
 class Box[T: UserValue|Container](Container):
     _BEHAVIOR = BOX
 
-    @typechecked
+
     def __init__(
             self,
             *,
@@ -52,7 +52,7 @@ class Box[T: UserValue|Container](Container):
         if immediate and len(bundler):
             bundler.commit()
 
-    @typechecked
+
     def set(self, value: T, *, bundler=None, comment=None) -> Muid:
         """ Sets a value in the box, returns the muid address of the entry.
 
@@ -63,7 +63,7 @@ class Box[T: UserValue|Container](Container):
         """
         return self._add_entry(value=value, bundler=bundler, comment=comment)
 
-    def get[D](self, default: D=None, *, as_of: GenericTimestamp = None) -> T|D:
+    def get[D](self, default: D|None=None, *, as_of: GenericTimestamp = None) -> T|D|None:
         """ Gets the value in the box, optionally as_of a time """
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(container=self._muid, key=None, as_of=as_of)

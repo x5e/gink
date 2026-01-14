@@ -1,8 +1,8 @@
 from contextlib import closing
 from typing_extensions import assert_type
-from .. import *
+from .. import LmdbStore, MemoryStore, Database, Box, Directory, Sequence
 
-def test_generic_box():
+def test_generic_box() -> None:
     """ Test the basic set/get functionality of GenericBox works as expected. """
     for store in [
         LmdbStore(),
@@ -13,11 +13,11 @@ def test_generic_box():
             box: Box[str] = Box()
             box.set("hello")
             there = box.get("world")
-            assert_type(there, str)
+            assert_type(there, str|None)
             assert there == "hello"
 
 
-def test_generic_directory():
+def test_generic_directory() -> None:
     """ Test the basic set/get functionality of GenericDirectory works as expected. """
     for store in [
         LmdbStore(),
@@ -45,7 +45,7 @@ def test_generic_directory():
             assert values == {1, 2}
 
 
-def test_generic_sequence():
+def test_generic_sequence() -> None:
     """ Test the basic set/get functionality of GenericSequence works as expected. """
     for store in [
         LmdbStore(),

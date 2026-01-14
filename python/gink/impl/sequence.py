@@ -17,7 +17,7 @@ from .utilities import generate_timestamp
 class Sequence[T: UserValue|Container](Container):
     _BEHAVIOR = SEQUENCE
 
-    @typechecked
+
     def __init__(
             self,
             *,
@@ -69,7 +69,7 @@ class Sequence[T: UserValue|Container](Container):
         result += ",\n\t".join(stuffing) + "])"
         return result
 
-    @typechecked
+
     def append(
             self,
             value: T, *,
@@ -83,7 +83,7 @@ class Sequence[T: UserValue|Container](Container):
         """
         return self._add_entry(value=value, bundler=bundler, comment=comment, expiry=expiry)
 
-    @typechecked
+
     def insert(
             self,
             index: int,
@@ -108,7 +108,7 @@ class Sequence[T: UserValue|Container](Container):
             comment=comment,
             expiry=expiry)
 
-    @typechecked
+
     def extend(
             self,
             iterable: Iterable[T], *,
@@ -145,7 +145,7 @@ class Sequence[T: UserValue|Container](Container):
             bundler.commit()
         return bundler
 
-    @typechecked
+
     def yank(self, muid: Muid, *, dest: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
         """ Removes or moves an entry by muid.
 
@@ -181,7 +181,7 @@ class Sequence[T: UserValue|Container](Container):
             bundler.commit()
         return muid
 
-    @typechecked
+
     def pop(self, index: int = -1, *, dest: GenericTimestamp = None, bundler=None, comment=None):
         """ (Re)move and return an item at index (default last).
 
@@ -196,7 +196,7 @@ class Sequence[T: UserValue|Container](Container):
         self.yank(sequence_key.entry_muid, dest=dest, bundler=bundler, comment=comment)
         return entry_value
 
-    @typechecked
+
     def remove(
         self,
         value: Union[UserValue, Container], *,
@@ -242,14 +242,14 @@ class Sequence[T: UserValue|Container](Container):
         for _, val in self.items(as_of=as_of, after=after):
             yield val
 
-    def __getitem__(self, what):
+    def __getitem__(self, what) -> T:
         """ Gets the specified item, either index counting up from
             zero, or negative number when counting from end,
             or whatever is found at an address in case of muid.
         """
         return self.at(what)[1]
 
-    @typechecked
+
     def at(self, index: int, *, as_of: GenericTimestamp = None) -> Tuple[SequenceKey, T]:
         """ Returns the ((position-ts, entry-muid), value) at the specified index.
 
@@ -275,7 +275,7 @@ class Sequence[T: UserValue|Container](Container):
             count += 1
         return count
 
-    @typechecked
+
     def index(self, value: T, start=0, stop=None, *, as_of: GenericTimestamp = None) -> int:
         """ Return the first index of the value at the given time (or now).
 
@@ -294,7 +294,7 @@ class Sequence[T: UserValue|Container](Container):
             index += 1
         raise ValueError("matching item not found")
 
-    @typechecked
+
     def __contains__(self, item: T) -> bool:
         """ Returns true if something matching item is in queue. """
         try:

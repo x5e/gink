@@ -36,13 +36,13 @@ class Vertex(Container):
         """
         database = database or Database.get_most_recently_created_database()
         immediate = False
-        if muid is None and not isinstance(bundler, Bundler):
-            immediate = True
-            bundler = database.bundler(comment)
-        if isinstance(muid, str):
-            muid = Muid.from_str(muid)
-        elif muid is None:
+        if muid is None:
+            if not isinstance(bundler, Bundler):
+                immediate = True
+                bundler = database.bundler(comment)
             muid = Container._create(VERTEX, bundler=bundler)
+        elif isinstance(muid, str):
+            muid = Muid.from_str(muid)
         assert isinstance(muid, Muid)
         Container.__init__(self, muid=muid, database=database)
 
