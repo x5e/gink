@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, cast
 from typeguard import typechecked
 
 
@@ -11,15 +11,15 @@ from .bundler import Bundler
 from .coding import BOX
 
 
-class Box(Container):
+class Box[T: UserValue|Container](Container):
     _BEHAVIOR = BOX
 
-    @typechecked
+
     def __init__(
             self,
             *,
             muid: Optional[Union[Muid, str]] = None,
-            contents: Union[UserValue, Container] = None,
+            contents: T|None = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -52,8 +52,8 @@ class Box(Container):
         if immediate and len(bundler):
             bundler.commit()
 
-    @typechecked
-    def set(self, value: Union[UserValue, Container], *, bundler=None, comment=None):
+
+    def set(self, value: T, *, bundler=None, comment=None) -> Muid:
         """ Sets a value in the box, returns the muid address of the entry.
 
             If bundler is specified, then simply adds an entry to that bundler.
@@ -63,7 +63,7 @@ class Box(Container):
         """
         return self._add_entry(value=value, bundler=bundler, comment=comment)
 
-    def get(self, default=None, *, as_of: GenericTimestamp = None):
+    def get[D](self, default: D|None=None, *, as_of: GenericTimestamp = None) -> T|D|None:
         """ Gets the value in the box, optionally as_of a time """
         as_of = self._database.resolve_timestamp(as_of)
         found = self._database.get_store().get_entry_by_key(container=self._muid, key=None, as_of=as_of)
@@ -71,7 +71,7 @@ class Box(Container):
         if found is None or found.builder.deletion:  # type: ignore
             return default
 
-        contents = self._get_occupant(found.builder, found.address)
+        contents = cast(T, self._get_occupant(found.builder, found.address))
 
         return contents
 
@@ -84,7 +84,7 @@ class Box(Container):
         if found is None or found.builder.deletion:  # type: ignore
             return f"""{self.__class__.__name__}({identifier}, contents={None})"""
 
-        contents = self._get_occupant(found.builder, found.address)
+        contents = cast(T, self._get_occupant(found.builder, found.address))
 
         result = f"""{self.__class__.__name__}({identifier}, contents={repr(contents)})"""
         return result

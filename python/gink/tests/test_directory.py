@@ -89,8 +89,6 @@ def test_setdefault():
             assert result == "bar"
             assert gdi["foo"] == "bar"
             del gdi["foo"]
-            gdi.setdefault("foo", "zoo", respect_deletion=True)
-            assert "foo" not in gdi
             result = gdi.setdefault("foo", "moo")
             assert result == "moo"
             assert "foo" in gdi

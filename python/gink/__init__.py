@@ -18,7 +18,7 @@ from .impl.pair_set import PairSet
 from .impl.pair_map import PairMap
 from .impl.utilities import generate_timestamp, generate_medallion, get_identity, suppress
 from .impl.builders import ClaimBuilder
-from .impl.tuples import Chain
+from .impl.tuples import Chain, SequenceKey
 from .impl.braid import Braid
 from .impl.accumulator import Accumulator, Decimal
 from .impl.timing import Timer, report_timing
@@ -76,5 +76,6 @@ __all__ = [
     "get_identity",
     "Request",
     "Pair",
+    "SequenceKey",
     "suppress",
 ]

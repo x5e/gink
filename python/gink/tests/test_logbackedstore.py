@@ -2,7 +2,7 @@ from select import select
 from logging import getLogger
 from platform import system
 from nacl.signing import SigningKey
-from typing import *
+from typing import Optional
 
 from ..impl.utilities import generate_medallion, generate_timestamp
 from ..impl.typedefs import MuTimestamp, Medallion
@@ -10,7 +10,7 @@ from ..impl.builders import BundleBuilder
 
 _logger = getLogger(__name__)
 
-from .. import *
+from .. import LogBackedStore
 
 def create_test_bundle(
         timestamp: Optional[MuTimestamp] = None,

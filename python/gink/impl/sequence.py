@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, Union, Tuple
+from typing import Optional, Iterable, Union, Tuple, cast, Iterator
 from typeguard import typechecked
 from random import randint
 
@@ -14,15 +14,15 @@ from .tuples import PositionedEntry, SequenceKey
 from .utilities import generate_timestamp
 
 
-class Sequence(Container):
+class Sequence[T: UserValue|Container](Container):
     _BEHAVIOR = SEQUENCE
 
-    @typechecked
+
     def __init__(
             self,
             *,
             muid: Optional[Union[Muid, str]] = None,
-            contents: Optional[Iterable[Union[UserValue, Container]]] = None,
+            contents: Optional[Iterable[T]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -54,7 +54,7 @@ class Sequence(Container):
         if immediate and len(bundler):
             bundler.commit()
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[T]:
         for thing in self.values():
             yield thing
 
@@ -69,10 +69,10 @@ class Sequence(Container):
         result += ",\n\t".join(stuffing) + "])"
         return result
 
-    @typechecked
+
     def append(
             self,
-            value: Union[UserValue, Container], *,
+            value: T, *,
             expiry: GenericTimestamp = None,
             bundler=None,
             comment=None
@@ -83,11 +83,11 @@ class Sequence(Container):
         """
         return self._add_entry(value=value, bundler=bundler, comment=comment, expiry=expiry)
 
-    @typechecked
+
     def insert(
             self,
             index: int,
-            value: Union[UserValue, Container],
+            value: T,
             expiry: GenericTimestamp = None,
             bundler=None,
             comment=None
@@ -108,10 +108,10 @@ class Sequence(Container):
             comment=comment,
             expiry=expiry)
 
-    @typechecked
+
     def extend(
             self,
-            iterable: Iterable[Union[UserValue, Container]], *,
+            iterable: Iterable[T], *,
             expiries: Union[GenericTimestamp, Iterable[GenericTimestamp]] = None,
             bundler=None,
             comment=None,
@@ -145,7 +145,7 @@ class Sequence(Container):
             bundler.commit()
         return bundler
 
-    @typechecked
+
     def yank(self, muid: Muid, *, dest: GenericTimestamp = None, bundler=None, comment=None) -> Muid:
         """ Removes or moves an entry by muid.
 
@@ -181,7 +181,7 @@ class Sequence(Container):
             bundler.commit()
         return muid
 
-    @typechecked
+
     def pop(self, index: int = -1, *, dest: GenericTimestamp = None, bundler=None, comment=None):
         """ (Re)move and return an item at index (default last).
 
@@ -196,7 +196,7 @@ class Sequence(Container):
         self.yank(sequence_key.entry_muid, dest=dest, bundler=bundler, comment=comment)
         return entry_value
 
-    @typechecked
+
     def remove(
         self,
         value: Union[UserValue, Container], *,
@@ -220,16 +220,16 @@ class Sequence(Container):
         self, *,
         as_of: GenericTimestamp = None,
         after: GenericTimestamp = None,
-        ) -> Iterable[Tuple[SequenceKey, Union[UserValue, Container]]]:
+        ) -> Iterable[Tuple[SequenceKey, T]]:
         """ Returns pairs of (muid, contents) for the sequence at the given time. """
         as_of = self._database.resolve_timestamp(as_of)
         after = self._database.resolve_timestamp(after) if after else 0
         for positioned in self._database.get_store().get_ordered_entries(self._muid, as_of=as_of, after=after):
             found = self._get_occupant(positioned.builder, positioned.entry_muid)
             sequence_key = SequenceKey(positioned.position, positioned.entry_muid)
-            yield sequence_key, found
+            yield sequence_key, cast(T, found)
 
-    def keys(self, *, as_of: GenericTimestamp = None, after: GenericTimestamp = None) -> Iterable[SequenceKey]:
+    def keys(self, *, as_of: GenericTimestamp = None, after: GenericTimestamp = None) -> Iterator[SequenceKey]:
         """ Returns an iterable of the keys in the sequence at the given time. """
         for key, _ in self.items(as_of=as_of, after=after):
             yield key
@@ -237,20 +237,20 @@ class Sequence(Container):
     def values(
         self, *,
         as_of: GenericTimestamp = None,
-        after: GenericTimestamp = None) -> Iterable[Union[UserValue, Container]]:
+        after: GenericTimestamp = None) -> Iterable[T]:
         """ Returns an iterable of the values in the sequence at the given time. """
         for _, val in self.items(as_of=as_of, after=after):
             yield val
 
-    def __getitem__(self, what):
+    def __getitem__(self, what) -> T:
         """ Gets the specified item, either index counting up from
             zero, or negative number when counting from end,
             or whatever is found at an address in case of muid.
         """
         return self.at(what)[1]
 
-    @typechecked
-    def at(self, index: int, *, as_of: GenericTimestamp = None) -> Tuple[SequenceKey, Union[UserValue, Container]]:
+
+    def at(self, index: int, *, as_of: GenericTimestamp = None) -> Tuple[SequenceKey, T]:
         """ Returns the ((position-ts, entry-muid), value) at the specified index.
 
             Index may be negative, in which case starts looking at the end.
@@ -264,7 +264,7 @@ class Sequence(Container):
             assert isinstance(positioned, PositionedEntry)
             found = self._get_occupant(positioned.builder, positioned.entry_muid)
             sequence_key = SequenceKey(positioned.position, positioned.entry_muid)
-            return sequence_key, found
+            return sequence_key, cast(T, found)
         raise IndexError(f"could not find anything at index {index}")
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
@@ -275,8 +275,8 @@ class Sequence(Container):
             count += 1
         return count
 
-    @typechecked
-    def index(self, value: Union[UserValue, Container], start=0, stop=None, *, as_of: GenericTimestamp = None) -> int:
+
+    def index(self, value: T, start=0, stop=None, *, as_of: GenericTimestamp = None) -> int:
         """ Return the first index of the value at the given time (or now).
 
             Raises a ValueError if the value isn't present and raise_if_missing is True,
@@ -294,8 +294,8 @@ class Sequence(Container):
             index += 1
         raise ValueError("matching item not found")
 
-    @typechecked
-    def __contains__(self, item: Union[UserValue, Container]) -> bool:
+
+    def __contains__(self, item: T) -> bool:
         """ Returns true if something matching item is in queue. """
         try:
             self.index(item)

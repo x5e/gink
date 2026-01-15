@@ -13,17 +13,17 @@ from .utilities import experimental
 
 
 @experimental
-class Property(Container):
+class Property[V: UserValue|Container](Container):
     _BEHAVIOR = PROPERTY
     _MISSING = object()
 
-    @typechecked
+
     def __init__(
             self,
             *,
             muid: Optional[Union[Muid, str]] = None,
-            contents: Optional[Union[Dict[Union[Addressable, Muid], Union[UserValue, Container]],
-                      Iterable[Tuple[Union[Addressable, Muid], Union[UserValue, Container]]]]] = None,
+            contents: Optional[Union[Dict[Union[Addressable, Muid], V],
+                      Iterable[Tuple[Union[Addressable, Muid], V]]]] = None,
             database: Optional[Database] = None,
             bundler: Optional[Bundler] = None,
             comment: Optional[str] = None,
@@ -70,7 +70,7 @@ class Property(Container):
         result += ",\n\t".join(stuffing) + "})"
         return result
 
-    def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[Muid, Union[UserValue, Container]]]:
+    def items(self, *, as_of: GenericTimestamp = None) -> Iterable[Tuple[Muid, V]]:
         """ Returns an iterable of (describing_muid, value) pairs for all entries in this property. """
         as_of = self._database.resolve_timestamp(as_of)
         iterable = self._database.get_store().get_keyed_entries(
@@ -80,7 +80,7 @@ class Property(Container):
                 continue
             muid = Muid.create(builder=entry_pair.builder.describing, context=entry_pair.address)
             value = self._get_occupant(entry_pair.builder, address=entry_pair.address)
-            yield muid, value
+            yield muid, cast(V, value)
 
     def size(self, *, as_of: GenericTimestamp = None) -> int:
         as_of = self._database.resolve_timestamp(as_of)
@@ -92,8 +92,8 @@ class Property(Container):
                 count += 1
         return count
 
-    @typechecked
-    def set(self, describing: Union[Addressable, Muid], value: Union[UserValue, Container], *,
+
+    def set(self, describing: Union[Addressable, Muid], value: V, *,
             bundler=None, comment=None) -> Muid:
         """ Sets the value of the property on the particular object addressed by describing.
 
@@ -104,9 +104,9 @@ class Property(Container):
             describing = describing._muid
         return self._add_entry(key=describing, value=value, bundler=bundler, comment=comment)
 
-    @typechecked
-    def update(self, from_what: Union[Dict[Union[Addressable, Muid], Union[UserValue, Container]],
-                                Iterable[Tuple[Union[Addressable, Muid], Union[UserValue, Container]]]],
+
+    def update(self, from_what: Union[Dict[Union[Addressable, Muid], V],
+                                Iterable[Tuple[Union[Addressable, Muid], V]]],
                                 *, bundler=None, comment=None):
         """ Performs a shallow copy of key/value pairs from the argument.
 
@@ -121,20 +121,20 @@ class Property(Container):
             for key in from_what:
                 self._add_entry(key=key, value=from_what[key], bundler=bundler) # type: ignore
         else:
-            from_what = cast(Iterable[Tuple[Union[Addressable, Muid], Union[UserValue, Container]]], from_what)
+            from_what = cast(Iterable[Tuple[Union[Addressable, Muid], V]], from_what)
             for key, val in from_what:
                 self._add_entry(key=key.get_muid(), value=val, bundler=bundler)
         if immediate:
             bundler.commit()
 
-    @typechecked
+
     def delete(self, describing: Union[Addressable, Muid], *, bundler=None, comment=None) -> Muid:
         """ Removes the value (if any) of this property on object pointed to by `describing`. """
         muid = cast(Muid, getattr(describing, "_muid", describing))
         return self._add_entry(key=muid, value=deletion, bundler=bundler, comment=comment)
 
-    def get(self, describing: Union[Addressable, Muid], default: Union[UserValue, Container] = None, *,
-            as_of: GenericTimestamp = None) -> Union[UserValue, Container]:
+    def get[D](self, describing: Union[Addressable, Muid], default: D | None = None, *,
+            as_of: GenericTimestamp = None) -> V|D|None:
         """ Gets the value of the property on the object it's describing, optionally in the past. """
         if not hasattr(describing, "_muid"):
             raise ValueError("describing must be a container")
@@ -143,7 +143,7 @@ class Property(Container):
         if found is None or found.builder.deletion:  # type: ignore
             return default
         value = self._get_occupant(found.builder, found.address)
-        return value
+        return cast(V, value)
 
     def get_by_value(
         self, value: Union[UserValue, Addressable, Muid], *, as_of: GenericTimestamp = None) -> Iterable[Container]:
@@ -157,13 +157,13 @@ class Property(Container):
                 muid=found_container.address, database=self._database, behavior=found_container.builder.behavior)
 
 
-    def __getitem__(self, key: Union[Addressable, Muid]) -> Union[UserValue, Container]:
+    def __getitem__(self, key: Union[Addressable, Muid]) -> V:
         """ Gets the value of the property on the object it's describing. """
         found = self.get(describing=key, default=self._MISSING)  # type: ignore
         if found is self._MISSING:
             raise KeyError(key)
-        return found
+        return cast(V, found)
 
-    def __setitem__(self, key: Union[Addressable, Muid], value: Union[UserValue, Container]):
+    def __setitem__(self, key: Union[Addressable, Muid], value: V):
         """ Sets the value of the property on the object it's describing. """
         self.set(describing=key, value=value)
