@@ -121,7 +121,7 @@ module.exports = class Expector {
      * Kill the underlying program, and resolve once the program has closed.
      * Note that the constructor starts a shell command, so this program will
      * kill that shell, and will leave programs started by that shell alive.
-     * TODO(https://github.com/google/gink/issues/30): kill decendants
+     * TODO(https://github.com/google/gink/issues/30): kill descendants
      */
     async close(timeout = 5000) {
         await this.spawned;
