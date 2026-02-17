@@ -13,21 +13,21 @@ let client;
         ["-l", port, "--auth-token", "abc", "--verbose"],
         { ...process.env },
     );
-    await server.expect("node.gink", 2000);
+    await server.expect("node.gink");
     client = new Expector("./tsc.out/implementation/main.js", ["--verbose"]);
-    await client.expect("node.gink", 2000);
+    await client.expect("node.gink");
     console.log("all ready");
 
     client.send(
         `void database.connectTo('ws://127.0.0.1:${port}', {onError: (err)=>console.error('unable to connect')});\n`,
     );
-    await client.expect("unable to connect", 2000);
+    await client.expect("unable to connect");
     console.log("saw rejection");
 
     client.send(
         `void database.connectTo('ws://127.0.0.1:${port}', {authToken:'abc', onError: (err)=>console.error(err, 'unable to connect')});\n`,
     );
-    await server.expect("Connection accepted.", 2000);
+    await server.expect("Connection accepted.");
     console.log("correct token accepted");
 
     console.log("ok!");

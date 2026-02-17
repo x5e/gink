@@ -14,7 +14,11 @@ module.exports = class Expector {
         this.expecting = null;
         this.closing = null;
         this.verbose = verbose;
+        this._closed = null; // { code, signal } once process has exited
         this.proc = spawn(program, args, options);
+        this.proc.on("close", (code, signal) => {
+            this._closed = { code, signal };
+        });
         const appender = this.notify.bind(this);
         this.proc.stdout.on("data", appender);
         this.proc.stderr.on("data", appender);
@@ -50,16 +54,54 @@ module.exports = class Expector {
     /**
      * Wait for the "what" string to appear in the stdout or stderr of the program,
      * but reject the promise if timeout happens before the expected string appears.
+     * If the process exits while waiting, rejects with a message that the process
+     * has exited (so the expected string can never appear).
      */
-    async expect(what, timeout = 1000) {
+    async expect(what, timeout = 5000) {
         await this.spawned;
+        if (this._closed) {
+            const { code, signal } = this._closed;
+            const exitInfo =
+                signal != null ? `signal=${signal}` : `code=${code}`;
+            throw new Error(
+                `process already exited (${exitInfo}); expected ${what}, had ${this.captured}`
+            );
+        }
         this.expecting = what;
         const thisExpector = this;
         const returning = new Promise((resolve, reject) => {
-            thisExpector.onHit = resolve;
-            setTimeout(() => {
-                reject(`expected ${what}, had ${thisExpector.captured}`);
+            let settled = false;
+            const cleanup = () => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeoutId);
+                thisExpector.proc.removeListener("close", onExit);
+            };
+            const timeoutId = setTimeout(() => {
+                if (thisExpector.expecting) {
+                    thisExpector.expecting = null;
+                    cleanup();
+                    reject(`expected ${what}, had ${thisExpector.captured}`);
+                }
             }, timeout);
+            const onExit = (code, signal) => {
+                if (thisExpector.expecting) {
+                    thisExpector.expecting = null;
+                    cleanup();
+                    const exitInfo =
+                        signal != null
+                            ? `signal=${signal}`
+                            : `code=${code}`;
+                    reject(
+                        `process exited (${exitInfo}) before expected string was seen; expected ${what}, had ${thisExpector.captured}`
+                    );
+                }
+            };
+            thisExpector.proc.once("close", onExit);
+            thisExpector.onHit = (match) => {
+                cleanup();
+                resolve(match);
+            };
         });
         this.notify();
         return returning;
@@ -81,7 +123,7 @@ module.exports = class Expector {
      * kill that shell, and will leave programs started by that shell alive.
      * TODO(https://github.com/google/gink/issues/30): kill decendants
      */
-    async close(timeout = 1000) {
+    async close(timeout = 5000) {
         await this.spawned;
         if (!this.closing) {
             this.closing = new Promise((resolve, reject) => {

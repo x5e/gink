@@ -17,7 +17,7 @@ process.chdir(__dirname + "/..");
         { env: { ...process.env } },
         false,
     );
-    await server.expect("node.gink", 2000);
+    await server.expect("node.gink");
 
     const client1 = new Database();
     await client1.connectTo(`ws://localhost:${port}`, {

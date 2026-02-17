@@ -10,8 +10,6 @@ from datetime import datetime, date, timedelta
 from re import fullmatch, IGNORECASE, search, sub, split, Match
 from psutil import pid_exists
 from requests import get
-from authlib.jose import jwt, JsonWebKey, KeySet
-from authlib.jose.errors import JoseError
 from time import time as get_time
 from typing import *
 from random import choice
@@ -205,39 +203,6 @@ def normalize_pair(pair: Tuple[Any, Any]) -> Tuple[Muid, Muid]:
     if not left or not rite:
         raise ValueError("pair tuple can only contain 2 containers or muids")
     return left, rite
-
-
-# URL to get Google's public keys
-GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs'
-
-_public_keys: Optional[KeySet] = None
-
-
-def decode_and_verify_jwt(token: bytes, app_id: Optional[str] = None) -> dict:
-    """ Get the useful claims from a jwt after deconstructing it. """
-    global _public_keys
-    if _public_keys is None:
-        response = get(GOOGLE_CERTS_URL)
-        response.raise_for_status()
-        jwks = response.json()
-        _public_keys = JsonWebKey.import_key_set(jwks)
-    try:
-        decoded = jwt.decode(token, _public_keys)
-        decoded.validate()
-    except JoseError as jose_error:
-        raise ValueError(jose_error)
-    if decoded.get('iss') not in ("https://accounts.google.com", "accounts.google.com"):
-        raise ValueError("not the issuer I expected")
-    if not decoded.get("email_verified"):
-        raise ValueError("email not verified")
-    if (decoded.get("exp") or 0) < get_time():
-        raise ValueError("jwt expired")
-    if app_id is not None and decoded.get("aud") != app_id:
-        raise ValueError("app id is not what I expected")
-    result = {}
-    for key in ["sub", "email", "name", "given_name", "family_name"]:
-        result[key] = decoded[key]
-    return result
 
 
 def generate_random_token() -> str:

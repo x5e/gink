@@ -2,7 +2,7 @@ PROTOS=$(wildcard proto/*.proto)
 export PATH := ./javascript/node_modules/.bin/:./node_modules/.bin/:$(PATH)
 PYTHON_CODE=$(wildcard python/*.py python/gink/impl/*.py python/gink/tests/*.py python/gink/*.py)
 
-all: python/gink/builders javascript/proto javascript/tsc.out javascript/content_root/generated
+all: python/gink/builders javascript/node_modules javascript/proto javascript/tsc.out javascript/content_root/generated
 
 .PHONY: clean running-as-root on-main-and-clean install-dependencies install-debian-packages javascript push-base
 

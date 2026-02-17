@@ -18,7 +18,7 @@ process.chdir(__dirname + "/..");
         "--ssl-key",
         "/etc/ssl/certs/localhost.key",
     ]);
-    await server.expect("secure", 2000);
+    await server.expect("secure");
 
     const client = new Expector("python3", [
         "-u",
@@ -36,7 +36,7 @@ process.chdir(__dirname + "/..");
     await sleep(100);
 
     client.send("root.get(3);\n");
-    await client.expect("\n4\n", 1000);
+    await client.expect("\n4\n");
     await sleep(100);
 
     await client.close();

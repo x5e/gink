@@ -15,7 +15,6 @@ unzip
 curl
 python3-typeshed
 ca-certificates
-python3-authlib
 python3-typeguard
 python3-nacl
 python3-dateutil

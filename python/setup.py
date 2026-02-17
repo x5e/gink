@@ -1,6 +1,10 @@
 from setuptools import setup, find_packages
 from pathlib import Path
 from os import environ
+from sys import version_info
+
+if version_info < (3, 12):
+    raise RuntimeError("This project requires Python 3.12 or newer.")
 
 
 setup(
@@ -26,7 +30,6 @@ setup(
         "lmdb",
         "protobuf",
         "psutil",
-        "authlib",
         "typeguard",
         "pynacl",
         "python-dateutil",

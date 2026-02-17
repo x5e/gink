@@ -13,7 +13,7 @@ process.chdir(__dirname + "/..");
         "-l",
         `*:${port}`,
     ]);
-    await python.expect("listen", 2000);
+    await python.expect("listen");
     await sleep(500);
 
     const client = new Expector(
@@ -27,15 +27,15 @@ process.chdir(__dirname + "/..");
         ],
         { env: { ...process.env } },
     );
-    await python.expect("connection established!", 2000);
-    await client.expect("connected!", 2000);
+    await python.expect("connection established!");
+    await client.expect("connected!");
 
     python.send("Directory(root=True).set(3,4);\n");
-    await python.expect("Muid", 2000);
+    await python.expect("Muid");
 
     await sleep(100);
     client.send("await root.get(3);\n");
-    await client.expect("\n4n\n", 2000);
+    await client.expect("\n4n\n");
 
     await python.close();
     await client.close();
@@ -45,7 +45,7 @@ process.chdir(__dirname + "/..");
     /*
     await client.close();
 
-    await client.expect("reconnecting", 2000);
+    await client.expect("reconnecting");
 
     const python2 = new Expector("python3", [
         "-u",
@@ -55,9 +55,9 @@ process.chdir(__dirname + "/..");
         "-l",
         `*:${port}`,
     ]);
-    await python2.expect("listen", 2000);
+    await python2.expect("listen");
 
-    await client.expect("got greeting", 2000);
+    await client.expect("got greeting");
 
     await client.close();
     await python2.close();
