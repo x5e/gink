@@ -21,8 +21,8 @@ process.chdir(__dirname + "/..");
             env: { ...process.env },
         },
     );
-    await server.expect("Secure", 2000);
-    await server.expect("ready", 2000);
+    await server.expect("Secure");
+    await server.expect("ready");
 
     const client = new Expector("python3", [
         "-u",
@@ -37,11 +37,11 @@ process.chdir(__dirname + "/..");
     await sleep(100);
 
     server.send("await root.set(3,4, 'test bundle');\n");
-    await server.expect("added bundle", 1000);
+    await server.expect("added bundle");
     await sleep(100);
 
     client.send("root.get(3);\n");
-    await client.expect("\n4.0\n", 1000);
+    await client.expect("\n4.0\n");
     await sleep(100);
 
     await client.close();

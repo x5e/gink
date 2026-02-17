@@ -47,7 +47,7 @@ it("share bundles between two pages", async () => {
         }
 
         await page1.reload();
-        await server.expect("disconnected.", 2000);
+        await server.expect("disconnected.");
 
         // Make sure server does not crash after page reload.
         await server.expect("got greeting", 5000);

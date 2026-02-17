@@ -13,7 +13,7 @@ process.chdir(__dirname + "/..");
         "-l",
         `*:${port}`,
     ]);
-    await server.expect("listen", 2000);
+    await server.expect("listen");
 
     const client = new Expector("python3", [
         "-u",
@@ -23,15 +23,15 @@ process.chdir(__dirname + "/..");
         "-c",
         `ws://localhost:${port}`,
     ]);
-    await client.expect("connect", 2000);
-    await server.expect("accepted", 2000);
+    await client.expect("connect");
+    await server.expect("accepted");
 
     server.send("Directory(root=True).set(3,4);\n");
-    await server.expect("Muid", 1000);
+    await server.expect("Muid");
     await sleep(100);
 
     client.send("root.get(3);\n");
-    await client.expect("\n4\n", 1000);
+    await client.expect("\n4\n");
 
     await client.close();
     await server.close();

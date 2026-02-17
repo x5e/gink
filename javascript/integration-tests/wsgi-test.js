@@ -15,7 +15,7 @@ process.chdir(__dirname + "/..");
         "--wsgi_listen_on",
         `*:${port}`,
     ]);
-    await server.expect("listening", 2000);
+    await server.expect("listening");
     await sleep(500);
 
     const result = (

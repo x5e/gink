@@ -29,6 +29,9 @@ from .impl.looping import loop
 from .impl.typedefs import (
     inf, GenericTimestamp, Request, AUTH_FULL, AUTH_NONE, AUTH_RITE, AUTH_READ, AUTH_WRITE, AuthFunc
 )
+from sys import version_info
+if version_info < (3, 12):
+    raise RuntimeError("Gink requires Python 3.12 or newer.")
 
 
 __all__ = [
