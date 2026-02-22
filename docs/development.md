@@ -45,13 +45,13 @@ Ensure you are in the gink/python directory. \
 Run all unit tests
 
 ```sh
-nose2
+python3 -m pytest
 ```
 
 Run a specific unit test
 
 ```sh
-nose2 gink.tests.test_module.test_name
+python3 -m pytest gink/tests/test_module.py::test_name
 ```
 
 Run integration tests

@@ -30,7 +30,7 @@ jobs:
       - name: Install Python packages
         run: cd ../python && pip3 install .[test] --break-system-packages
       - name: Run Python unit tests
-        run: cd ../python && nose2
+        run: cd ../python && python3 -m pytest
       - name: Run JS unit tests
         run: npm run test
       - name: Run JS integration tests

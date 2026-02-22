@@ -26,3 +26,4 @@ data.json
 *.db
 *.db-lock
 .venv
+PR.md
