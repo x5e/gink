@@ -1,0 +1,11 @@
+py312-sortedcontainers
+py312-protobuf3
+py312-pynacl
+py312-pynose
+py312-flask-cors
+py312-lmdb
+py312-psutil
+py312-typeguard
+py312-dateutil
+py312-wsproto
+py312-pytest

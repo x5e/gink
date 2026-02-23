@@ -37,7 +37,7 @@ setup(
         "requests",
     ],
     extras_require={
-        "test": ["nose2", "flask"],
+        "test": ["pytest", "flask"],
         "lint": ["mypy"],
         "performance": ["matplotlib"],
         "docs": [

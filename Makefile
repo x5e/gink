@@ -19,7 +19,7 @@ on-main-and-clean:
 	bash -c 'test -z "$$(git status --porcelain)"'
 
 test-python:
-	cd python && python3 -m nose2
+	cd python && python3 -m pytest
 
 test-javascript:
 	cd javascript && npm test

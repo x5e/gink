@@ -1,6 +1,6 @@
 npm
 protobuf-compiler
-python3-nose2
+python3-pytest
 mypy
 python3-requests
 python3-flask

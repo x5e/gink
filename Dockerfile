@@ -23,7 +23,7 @@ RUN mypy gink/impl gink/tests
 RUN pycodestyle --max-line-length=120 --select=E501 gink/impl/*.py gink/tests/*.py
 
 # Python unit-tests
-RUN python3 -m nose2
+RUN python3 -m pytest
 
 WORKDIR $GINK
 COPY javascript/*.js javascript/.prettier* ./javascript/
