@@ -24,3 +24,15 @@ def test_bundle_no_retention():
     except ValueError:
         return
     raise AssertionError("expected get_bundles to barf")
+
+
+def test_close_closes_watcher():
+    """Closing a file-backed store must release its inotify instance."""
+    store = LmdbStore()
+    assert store.is_selectable()
+    watcher = store._get_watcher()
+    assert watcher is not None and not watcher.closed
+
+    store.close()
+
+    assert watcher.closed

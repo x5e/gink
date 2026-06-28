@@ -164,6 +164,7 @@ class LogBackedStore(MemoryStore):
 
     def close(self):
         """Closes the underlying file."""
+        super().close()
         self._handle.close()
         self._is_closed = True
 

@@ -61,9 +61,10 @@ class BundleStore(Selectable):
         """ Return the underlying file name, or None if the store isn't file backed.
         """
 
-    @abstractmethod
     def close(self):
-        """ free resources """
+        """Close resources shared by all bundle stores."""
+        if hasattr(self, "_watcher"):
+            getattr(self, "_watcher").close()
 
     def is_closed(self) -> bool:
         """ Return true if closed """
