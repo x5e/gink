@@ -99,6 +99,7 @@ class AbstractStore(BundleStore, Generic[Lock]):
 
     def close(self):
         """Safely releases resources."""
+        super().close()
 
     @abstractmethod
     def _refresh_helper(self, lock: Lock, callback: Optional[Callable[[Decomposition], None]]=None, /) -> int:
