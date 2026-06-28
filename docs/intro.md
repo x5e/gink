@@ -25,7 +25,7 @@ I wanted a system that's:
 ##
 ```
 
-$> python3
+$> python
 
 >>> from gink import *
 
@@ -48,7 +48,7 @@ $> python3
 
 ```
 
-$> python3
+$> python
 
 >>> from gink import *
 
@@ -70,7 +70,7 @@ $> python3
 
 ```
 
-$> python3
+$> python
 
 >>> from gink import *
 

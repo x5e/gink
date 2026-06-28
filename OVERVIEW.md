@@ -160,8 +160,8 @@ Python tests:
 
 ```sh
 cd python
-python3 -m pytest
-python3 -m pytest gink/tests/test_directory.py
+python -m pytest
+python -m pytest gink/tests/test_directory.py
 ```
 
 Python lint/type checks used by the Docker build:

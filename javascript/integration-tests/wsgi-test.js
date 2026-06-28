@@ -5,7 +5,7 @@ process.chdir(__dirname + "/..");
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const server = new Expector("python3", [
+    const server = new Expector("python", [
         "-u",
         "-m",
         "gink",

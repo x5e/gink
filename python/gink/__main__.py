@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """ command line interface for Gink """
 from logging import basicConfig, getLogger
 from sys import exit, stdin, stderr, stdout

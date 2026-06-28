@@ -1,4 +1,4 @@
-#!.usr/bin/env python3
+#!.usr/bin/env python
 """ test the box class """
 from contextlib import closing
 import time

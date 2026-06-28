@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """ Contains the BundleInfo class. """
 from typing import Optional
 from struct import Struct

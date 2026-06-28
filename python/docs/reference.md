@@ -110,17 +110,17 @@ Historical reads depend on the store retaining history.
 The Python CLI entry point is:
 
 ```sh
-python3 -m gink [db_path] [options]
+python -m gink [db_path] [options]
 ```
 
 Common operations:
 
 ```sh
-printf 'hello' | python3 -m gink example.db --set greeting --string
-python3 -m gink example.db --get greeting --string
-python3 -m gink example.db --log
-python3 -m gink example.db --listen_on 8080 --loop
-python3 -m gink example.db --connect_to ws://localhost:8080 --loop
+printf 'hello' | python -m gink example.db --set greeting --string
+python -m gink example.db --get greeting --string
+python -m gink example.db --log
+python -m gink example.db --listen_on 8080 --loop
+python -m gink example.db --connect_to ws://localhost:8080 --loop
 ```
 
 Security note: treat `--load`, dumps intended for `eval`, and stdin execution as trusted-only workflows. See `docs/security.md`.
