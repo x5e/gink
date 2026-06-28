@@ -24,7 +24,7 @@ process.chdir(__dirname + "/..");
     await server.expect("Secure");
     await server.expect("ready");
 
-    const client = new Expector("python3", [
+    const client = new Expector("python", [
         "-u",
         "-m",
         "gink",

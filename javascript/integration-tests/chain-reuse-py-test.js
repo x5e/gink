@@ -17,7 +17,7 @@ for (const format of ["lmdb"]) {
     console.log(`using format=${format}`);
 
     const result1 = spawnSync(
-        "python3",
+        "python",
         [
             "-u",
             "-m",
@@ -42,7 +42,7 @@ for (const format of ["lmdb"]) {
     }
 
     const result2 = spawnSync(
-        "python3",
+        "python",
         [
             "-u",
             "-m",
@@ -67,7 +67,7 @@ for (const format of ["lmdb"]) {
     }
 
     const result3 = spawnSync(
-        "python3",
+        "python",
         [
             "-u",
             "-m",
@@ -95,7 +95,7 @@ for (const format of ["lmdb"]) {
         shell,
         [
             "-c",
-            `"python3 -m gink ${TEST_DB_PATH} --log --log_format %Q | sort -u | wc -l "`,
+            `"python -m gink ${TEST_DB_PATH} --log --log_format %Q | sort -u | wc -l "`,
         ],
         { shell: shell },
     );

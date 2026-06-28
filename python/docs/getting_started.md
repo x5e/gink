@@ -95,7 +95,7 @@ For deeper background, see the project-level docs:
 
 ## CLI
 ```sh
-python3 -u -m gink [arguments]
+python -u -m gink [arguments]
 ```
 
 ### Arguments

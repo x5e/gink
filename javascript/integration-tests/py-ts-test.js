@@ -14,7 +14,7 @@ let server = null;
     );
     await server.expect("node.gink");
 
-    client = new Expector("python3", [
+    client = new Expector("python", [
         "-u",
         "-m",
         "gink",

@@ -131,7 +131,7 @@ await database.connectTo("ws://localhost:8080");
 Or connect a Python process:
 
 ```sh
-python3 -m gink client.db --connect_to ws://localhost:8080 --loop
+python -m gink client.db --connect_to ws://localhost:8080 --loop
 ```
 
 Connected peers exchange bundle summaries and then send any bundles the other side is missing. See `docs/syncing.md` for the full model and caveats.

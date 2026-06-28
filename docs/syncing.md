@@ -53,13 +53,13 @@ await database.connectTo("ws://localhost:8080").ready;
 Listen for peers:
 
 ```sh
-python3 -m gink server.db --listen_on 8080 --loop
+python -m gink server.db --listen_on 8080 --loop
 ```
 
 Connect to another peer:
 
 ```sh
-python3 -m gink client.db --connect_to ws://localhost:8080 --loop
+python -m gink client.db --connect_to ws://localhost:8080 --loop
 ```
 
 Use `--auth_token`, `--ssl-cert`, and `--ssl-key` when appropriate. See `docs/security.md` before exposing a listener outside local development.
@@ -76,7 +76,7 @@ npx gink --listen-on 8080 --data-file /tmp/gink-server.log
 Connect a Python peer:
 
 ```sh
-python3 -m gink python-peer.db --connect_to ws://localhost:8080 --loop
+python -m gink python-peer.db --connect_to ws://localhost:8080 --loop
 ```
 
 Writes committed on either side should be exchanged as bundles. Cross-language behavior is exercised by tests in `javascript/integration-tests/`.

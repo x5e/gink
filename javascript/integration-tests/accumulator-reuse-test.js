@@ -22,7 +22,7 @@ process.exit(0);
     try {
         console.log("started");
         const args = ["-um", "gink", TEST_DB_PATH, "--interactive"];
-        const python1 = new Expector("python3", args);
+        const python1 = new Expector("python", args);
         python1.send("1+2\n");
         await python1.expect("3");
         console.log("got three");
@@ -42,7 +42,7 @@ process.exit(0);
         await python1.close();
         console.log("finished first process");
 
-        const cobra = new Expector("python3", args);
+        const cobra = new Expector("python", args);
         cobra.send("2+3\n");
         await cobra.expect("5");
         console.log("got 5");
