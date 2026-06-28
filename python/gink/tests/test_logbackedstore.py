@@ -1,12 +1,13 @@
 from select import select
 from logging import getLogger
-from platform import system
 from nacl.signing import SigningKey
 from typing import Optional
+import pytest
 
 from ..impl.utilities import generate_medallion, generate_timestamp
 from ..impl.typedefs import MuTimestamp, Medallion
 from ..impl.builders import BundleBuilder
+from ..impl.watcher import Watcher
 
 _logger = getLogger(__name__)
 
@@ -43,9 +44,8 @@ def create_test_bundle(
     return signed
 
 
+@pytest.mark.skipif(not Watcher.supported(), reason="file watcher is not available")
 def test_notification():
-    if system() != "Linux":
-        return
     fn = "/tmp/test_logbackedstore.tmp"
     store1 = LogBackedStore(fn)
     store2 = LogBackedStore(fn)

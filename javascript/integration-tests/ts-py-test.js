@@ -5,7 +5,7 @@ process.chdir(__dirname + "/..");
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    const python = new Expector("python3", [
+    const python = new Expector("python", [
         "-u",
         "-m",
         "gink",
@@ -47,7 +47,7 @@ process.chdir(__dirname + "/..");
 
     await client.expect("reconnecting");
 
-    const python2 = new Expector("python3", [
+    const python2 = new Expector("python", [
         "-u",
         "-m",
         "gink",

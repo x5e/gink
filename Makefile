@@ -1,7 +1,7 @@
 PROTOS=$(wildcard proto/*.proto)
 export PATH := ./javascript/node_modules/.bin/:./node_modules/.bin/:$(PATH)
 PYTHON_CODE=$(wildcard python/*.py python/gink/impl/*.py python/gink/tests/*.py python/gink/*.py)
-
+export PYTHON ?= python
 all: python/gink/builders javascript/node_modules javascript/proto javascript/tsc.out javascript/content_root/generated
 
 .PHONY: clean running-as-root on-main-and-clean install-dependencies install-debian-packages install-macports javascript push-base
@@ -14,12 +14,16 @@ rebuild: clean all
 running-as-root:
 	bash -c 'test `id -u` -eq 0'
 
+compatible-python:
+	@$(PYTHON) -c 'import sys; sys.exit(sys.version_info < (3, 12))' || \
+	(echo "Python 3.12 or newer is required, set PYTHON environment variable to the correct Python version" && false)
+
 on-main-and-clean:
 	bash -c 'test `git rev-parse --abbrev-ref HEAD` = main'
 	bash -c 'test -z "$$(git status --porcelain)"'
 
-test-python:
-	cd python && python3 -m pytest
+test-python: compatible-python
+	cd python && $(PYTHON) -m pytest
 
 test-javascript:
 	cd javascript && npm test

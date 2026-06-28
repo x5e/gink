@@ -14,28 +14,29 @@ Logbacked1 <- Share File -> Logbacked2
 Ensures if logbacked1 changes the file, logbacked2 will
 automatically pull the changes and broadcast them.
 */
-process.exit(0); // TODO: FIXME
 process.chdir(__dirname + "/..");
 let server = null;
 let result = 1;
 (async () => {
     const port = process.env.CURRENT_SAFE_PORT ?? 8080;
     console.log("starting");
-    server = new Expector("./tsc.out/implementation/main.js", ["-l", port], {
-        env: { ...process.env },
-    });
-    await server.expect("listening", 10000);
+    server = new Expector(
+        "./tsc.out/implementation/main.js",
+        ["-l", port, "--verbose"],
+        { env: { ...process.env } },
+    );
+    await server.expect("SimpleServer.ready", 10000);
     console.log("server started");
 
     const path = "/tmp/test_peer.store";
 
     if (existsSync(path)) unlinkSync(path);
     const lbstore1 = new LogBackedStore(path);
-    const instance1 = new Database(lbstore1);
+    const instance1 = new Database({ store: lbstore1 });
     await instance1.ready;
 
     const lbstore2 = new LogBackedStore(path);
-    const instance2 = new Database(lbstore2);
+    const instance2 = new Database({ store: lbstore2 });
     await instance2.ready;
     await instance2.connectTo(`ws://localhost:${port}`);
     console.log("second store connected to server");
@@ -43,8 +44,9 @@ let result = 1;
     await Directory.get(instance1).set("foo", "bar", "testing peer callback");
     console.log("wrote to first instance");
 
-    await new Promise((r) => setTimeout(r, 100));
-    await server.expect(/received bundle:.*testing peer callback/, 10000);
+    await server.expect("added bundle from 1", 10000);
+    server.send('console.log(await root.get("foo"));\n');
+    await server.expect("bar");
     console.log("received expected bundle");
     result = 0;
 })()

@@ -48,7 +48,7 @@ Import and initialize database and database:
 import { Database, IndexedDbStore, Directory } from "@x5e/gink";
 
 const store = new IndexedDbStore('examples');
-const instance = new Database(store);
+const instance = new Database({ store });
 ```
 All following examples will assume you have a store and instance.
 
@@ -103,7 +103,7 @@ A `Sequence` is the Gink version of a JavaScript Array. Sequences are specifical
 \
 Create a new Sequence:
 ```ts
-const seq: Sequence = await instance.createSequence();
+const seq: Sequence = await Sequence.create(instance);
 ```
 
 Pushing and popping
@@ -161,7 +161,7 @@ A parameter you may come across in many different functions of Gink is `asOf`. a
 \
 One easy way to interact with `asOf` is to save timestamps after certain operations.
 ```ts
-const directory = instance.createDirectory();
+const directory = await Directory.create(instance);
 
 // saving a timestamp before anything is added
 const time0 = generateTimestamp();
@@ -214,4 +214,53 @@ const hasABeforeClear = await directory.has("A", clearMuid.timestamp)
 
 ### Instance
 #### Connecting to other instances
-TODO
+Gink instances sync over WebSockets. A Node process can listen for incoming peers with `SimpleServer` or the CLI. Browser instances cannot listen for incoming connections, but they can connect to a server.
+
+Start a server from the command line:
+
+```sh
+npx gink --listen-on 8080 --data-file ./server.ginklog
+```
+
+Connect from TypeScript:
+
+```ts
+import { Database, IndexedDbStore } from "@x5e/gink";
+
+const store = new IndexedDbStore("browser-or-node-client");
+const instance = new Database({ store });
+
+await instance.ready;
+await instance.connectTo("ws://localhost:8080").ready;
+```
+
+Once connected, peers exchange summaries of the chains they have and then send missing bundles. Local writes can be made before or after connecting; missing bundles will be sent when a peer reconnects.
+
+To run a server in code:
+
+```ts
+import { LogBackedStore, SimpleServer } from "@x5e/gink";
+
+const server = new SimpleServer({
+    store: new LogBackedStore("./server.ginklog"),
+    port: 8080,
+    identity: "server@example",
+});
+
+await server.ready;
+```
+
+For non-local connections, prefer `wss://` and require a token:
+
+```sh
+export GINK_AUTH_TOKEN="$(openssl rand -hex 32)"
+npx gink --listen-on 8080 --data-file ./server.ginklog
+```
+
+```ts
+await instance.connectTo("wss://example.com/gink", {
+    authToken: process.env.GINK_AUTH_TOKEN,
+}).ready;
+```
+
+Token authentication is a simple connection gate, not a complete authorization model. Applications that expose Gink to untrusted users should add application-level authorization and read `docs/security.md`.

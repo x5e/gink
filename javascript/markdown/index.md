@@ -64,11 +64,11 @@ const { MemoryStore, Database } = require("@x5e/gink");
 
 // Initialize document store and database
 const store = new MemoryStore();
-const database = new Database(store);
+const database = new Database({ store });
 
 // Create a directory object (more info about this and other
 // data structures can be found on their respective pages)
-const directory = await database.createDirectory();
+const directory = await Directory.create(database);
 
 await directory.set("key1", "value1")
 
@@ -120,7 +120,7 @@ All examples will need a `Store` and `Database`:
 const { MemoryStore, Database } = require("@x5e/gink");
 
 const store = new MemoryStore();
-const database = new Database(store);
+const database = new Database({ store });
 ```
 
 ## Data Structures
@@ -258,7 +258,7 @@ const asSet = await ks.toSet();
 A `PairSet` is a data structure that resembles a Set, but has very specific items that can be added. The items in a `PairSet` consist of (`Container`, `Container`) pairs. The operations of a PairSet are pretty simple - the pair is either included or excluded.
 
 ```ts
-const ps = await database.createPairSet();
+const ps = await PairSet.create(database);
 
 // create a few other containers to add as pairs
 const box1 = await Box.create(database);
@@ -283,7 +283,7 @@ const toSet = await ps.getPairs();
 A `PairMap` is similar to a `PairSet`, in that its keys may only contain pairs of Containers (or their addresses). A `PairMap` goes a step further and allows a value to be associated to the pair of containers. Think of a `PairMap` as a JavaScript `Map` with keys of [Container, Container] that map to some value. Many of the methods here are the same as those of the JS Map.
 
 ```ts
-const pm = await database.createPairMap();
+const pm = await PairMap.create(database);
 
 const box1 = await Box.create(database);
 const box2 = await Box.create(database);
@@ -315,12 +315,12 @@ const items = await pm.items();
 A `Group` acts as a collection of containers that all have something in common. Similar to the `PairSet`, the most common operations are pretty simple - include or exclude.
 
 ```ts
-const group = await database.createGroup();
+const group = await Group.create(database);
 
 // create some containers to include
 const box1 = await Box.create(database);
 const box2 = await Box.create(database);
-const directory1 = await database.createDirectory();
+const directory1 = await Directory.create(database);
 
 // include by Container instance
 await group.include(box1);
@@ -354,9 +354,9 @@ for await (const member of members) {
 ### Property
 The Gink `Property` is a container specifically used to map a `Container` to a value. As the name suggests, this can be used for storing properties of a container. For this, the value would likely be a JavaScript `Object`.
 ```ts
-const property = await database.createProperty();
+const property = await Property.create(database);
 
-const directory = await database.createDirectory();
+const directory = await Directory.create(database);
 
 await property.set(directory, new Map([["property", "example"], ["last_changed", "now"]]));
 
@@ -380,7 +380,7 @@ A parameter you may come across in many different functions of Gink is `asOf`. a
 ```ts
 // using a directory for this example,
 // but all containers can make use of timestamps.
-const directory = await database.createDirectory();
+const directory = await Directory.create(database);
 
 // saving a timestamp before anything is added
 const time0 = generateTimestamp();
@@ -413,7 +413,7 @@ const asMap = await directory.toMap(-1);
 #### Clear
 All containers may be completely cleared out by using `Container.clear()`. By default, clearing out a container does not mean the data is gone, just that the container will now be empty. If the purge parameter is set to true, the data will be completely purged from the database.
 ```ts
-const directory = await database.createDirectory();
+const directory = await Directory.create(database);
 
 await directory.set('A', 'B');
 
@@ -433,12 +433,12 @@ const hasABeforeClear = await directory.has("A", clearMuid.timestamp);
 #### toJson
 All containers and their contents can be represented as JSON
 ```ts
-const directory = await database.createDirectory();
+const directory = await Directory.create(database);
 
 await directory.set("A", "B");
 
 // nesting Gink Directories
-const other = await database.createDirectory();
+const other = await Directory.create(database);
 await other.set("xxx", "yyy");
 
 await directory.set("C", other);
@@ -456,7 +456,7 @@ is comitted to the database, here is an example:
 ```ts
 const{ Bundler } = require("@x5e/gink");
 
-const directory = await database.createDirectory();
+const directory = await Directory.create(database);
 
 const bundler = await database.startBundle();
 
@@ -483,7 +483,7 @@ npx gink
 Once you have a server running, create a new database and connect it to the server:
 ```ts
 const store = new MemoryStore();
-const database = new Database(store);
+const database = new Database({ store });
 
 await database.connectTo("ws://localhost:8080"); // or wherever your server is hosted
 ```
@@ -498,8 +498,8 @@ await database.connectTo("wss://host2:port"); // wss for secure servers
 ```
 
 ### Token Authentication
-Start the Gink server with the environment variable GINK_TOKEN set to the token that will be required for a connection to be accepted.
-For example, `export GINK_TOKEN=1451jknr1jnak14jn`. <br>
+Start the Gink server with the environment variable `GINK_AUTH_TOKEN` set to the token that will be required for a connection to be accepted.
+For example, `export GINK_AUTH_TOKEN=1451jknr1jnak14jn`. <br>
 Now, when your server gets a connection attempt (presumably from another Gink database), they will need to have the token. <br>
 <br>
 For the client, there are two ways to supply a token:<br>

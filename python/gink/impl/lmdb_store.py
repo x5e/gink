@@ -683,6 +683,7 @@ class LmdbStore(AbstractStore):
             to_process = to_last_with_prefix(cursor, container, boundary=limit)
 
     def close(self):
+        super().close()
         self._handle.close()
         if self._temporary:
             self._file_path.unlink(missing_ok=True)
