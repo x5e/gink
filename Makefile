@@ -12,7 +12,7 @@ clean:
 rebuild: clean all
 
 running-as-root:
-	bash -c 'test `id -u` -eq 0'
+	@bash -c 'test `id -u` -eq 0'
 
 compatible-python:
 	@$(PYTHON) -c 'import sys; sys.exit(sys.version_info < (3, 12))' || \
@@ -37,8 +37,8 @@ install-debian-packages: running-as-root
 	apt-get update && \
 	apt-get install -y `cat packages.txt | tr '\n' ' '`
 
-install-macports: ports.txt
-	sudo port install `cat ports.txt | tr '\n' ' '`
+install-macports: ports.txt running-as-root
+	port install `cat ports.txt | tr '\n' ' '`
 
 install-protoc-gen-js: running-as-root
 	npm install -g protoc-gen-js # https://stackoverflow.com/questions/72572040
