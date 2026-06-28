@@ -58,7 +58,8 @@ javascript/content_root/
   Static dashboard and generated browser bundle target.
 
 docs/
-  Internal/project docs and specs. `docs/assessment.md` is a broad codebase assessment.
+  Internal/project docs and specs. Start with `architecture.md`, `data_model.md`,
+  `consistency.md`, `syncing.md`, and `security.md`.
 
 .github/workflows/
   CI and publishing workflows.
@@ -117,6 +118,9 @@ For docs and positioning:
 
 - Root `README.md` gives the public overview.
 - `docs/intro.md` is a slide-style conceptual intro.
+- `docs/architecture.md` explains the main implementation layers.
+- `docs/consistency.md` explains history, convergence, and conflict behavior.
+- `docs/security.md` explains trust boundaries and safety concerns.
 - `python/README.md` and `javascript/README.md` contain user-facing examples.
 - `docs/assessment.md` contains a candid internal assessment and recommended improvements.
 
@@ -223,7 +227,6 @@ When changing protocol or storage semantics, run both Python and TypeScript test
 These are not necessarily bugs for every task, but agents should keep them in mind:
 
 - External docs are incomplete relative to the implementation.
-- The consistency/conflict model is not yet documented in one canonical place.
 - Protocol-first claims would benefit from cross-language conformance fixtures.
 - Auth exists but should not be treated as a complete production authorization model.
 - Some high-risk integration paths need stronger, non-disabled tests.

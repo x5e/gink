@@ -116,7 +116,7 @@ $> python3
 ---
 
 <!-- _class: invert -->
-# Basic Conainer Types
+# Basic Container Types
 | Container Type | Usage | Keyed By | Holds |
 | :---: | :--: | :--: | :--: |
 | Directory | Key / Value Store | ints, strings, bytes | values and/or references
@@ -238,6 +238,6 @@ if __name__ == '__main__':
 ---
 <!-- _class: invert -->
 # Next Time:
-* syncronizing databases between servers
+* synchronizing databases between servers
 * sharing databases with Javascript backends
 * architecture and performance considerations

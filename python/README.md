@@ -1,6 +1,6 @@
 # Gink in General
 
-Gink aims to be a "protocol first" database system defined by the protocol for syncronizing
+Gink aims to be a "protocol first" database system defined by the protocol for synchronizing
 instances, rather than by a specific implementation. Defining the database in terms of
 the interchange format allows for independent implementations to interact seamlessly in
 a well-defined manner.
@@ -9,9 +9,13 @@ a well-defined manner.
 
 I created the Python implementation of Gink to be a testbed for new ideas and
 to provide the simplest expression of all the concepts in Gink.  Well written python
-code can essentially serve as executable psudocode.  Code written for this implementation
+code can essentially serve as executable pseudocode. Code written for this implementation
 has been biased in favor of readability and extensibility, rather than raw performance.
 For example, the code doesn't use async functions or multi-threading.
+
+The core idea is that familiar Python containers are backed by signed, versioned bundles.
+Most operations commit immediately, but you can group related changes into one bundle with
+`database.bundler("comment")`. Many reads accept `as_of` so you can inspect previous state.
 
 * [Installation](#installation)
     * [Examples](#examples)
@@ -68,7 +72,7 @@ Set key: value pairs:
 directory["key1"] = "value1"
 
 # Saves a timestamp after "key1" and before "key2"
-time = database.get_now() # more on this in All Containers examples
+time = generate_timestamp() # more on this in All Containers examples
 
 # Achieves the same thing as the previous set, just different syntax.
 directory.set("key2", {"test": "document"})
@@ -180,7 +184,7 @@ previous = box.get(as_of=-1)
 Another common way to use timestamps is to "save" a time between changes as a variable.
 ```python
 box = Box(contents="first_value")
-time_after_first = database.get_now()
+time_after_first = generate_timestamp()
 box.set("second_value")
 
 # Passing saved timestamp into as_of
@@ -195,7 +199,7 @@ directory = Directory()
 
 directory["foo"] = "bar"
 directory["bar"] = "foo"
-time_between = database.get_now()
+time_between = generate_timestamp()
 directory[7] = {"user": 1003203, "email": "test@test.com"}
 
 has_7 = 7 in directory # returns True
@@ -231,16 +235,14 @@ previous = directory.get("foo", as_of=clearance_muid.timestamp)
 #### Bundling and comments
 Think of a bundle as a commit in Git. A bundle is just a collection of changes with an optional comment/message. Without specifying a bundler object, most Gink operations will immediately commit the change in its own bundle, so you don't have to worry about always creating a new bundler, etc. However, if you do want to specify which changes go into a specific bundle, here is an example:
 ```python
-directory = Directory()
-bundler = Bundler(comment="example setting values in directory")
+directory = Directory(database=database)
 
-directory.set("key1", 1, bundler=bundler)
-directory.set("key2", "value2", bundler=bundler)
-directory.update({"key3": 3, "key4": 4}, bundler=bundler)
+with database.bundler("example setting values in directory") as bundler:
+    directory.set("key1", 1, bundler=bundler)
+    directory.set("key2", "value2", bundler=bundler)
+    directory.update({"key3": 3, "key4": 4}, bundler=bundler)
 
-# This seals the bundler and commits changes to database
-# at this point, no more changes may be added
-database.bundle(bundler)
+# Exiting the context manager seals the bundler and commits the bundle.
 ```
 
 #### Reset

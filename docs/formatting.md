@@ -6,7 +6,7 @@ Gink uses Prettier for all Javascript formatting. The Prettier configuration fil
 \
 If you don't use VSCode or just need more information/guidance, head to the [prettier docs](https://prettier.io/docs/en/install). \
 \
-To enable Pretter format on save in VSCode:
+To enable Prettier format on save in VSCode:
 
 1. Install the "Prettier - Code Formatter" extension in VSCode extensions.
 2. Press "Cmd + Shift + P" or "Ctrl + Shift + P" to open the command palette and type "user settings".
