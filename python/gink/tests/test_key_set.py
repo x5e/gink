@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """ test the KeySet class """
 from contextlib import closing
 from ..impl.muid import Muid

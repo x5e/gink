@@ -42,7 +42,7 @@ apt-get install make protobuf-compiler curl -y
 This process assumes you have npm, pip, and Python venv installed.
 
 ```sh
-apt-get install npm python3-pip python3-venv -y
+apt-get install npm python-pip python-venv -y
 ```
 
 ### Install dependencies
@@ -85,13 +85,13 @@ Ensure you are in the `gink/python` directory.
 Run all unit tests
 
 ```sh
-python3 -m pytest
+python -m pytest
 ```
 
 Run a specific unit test
 
 ```sh
-python3 -m pytest gink/tests/test_module.py::test_name
+python -m pytest gink/tests/test_module.py::test_name
 ```
 
 Run integration tests
