@@ -5,13 +5,15 @@ from ctypes.util import find_library
 from io import FileIO
 from time import time as get_time
 from os import fsencode, read
-from typing import Optional, Protocol, Type, Union
+from typing import Any, Callable, Optional, Protocol, Union, cast
 from pathlib import Path
 from select import select
-import select as select_module
+import select as _select_module
 from sys import argv
 from fcntl import ioctl
 from termios import FIONREAD
+
+select_module: Any = _select_module
 
 __all__ = ["libc_rand", "Watcher"]
 
@@ -52,6 +54,9 @@ class _WatcherBackend(Protocol):
 
     def close(self):
         """Close any resources used by the watcher."""
+
+
+_WatcherBackendFactory = Callable[[Union[Path, str]], _WatcherBackend]
 
 
 class _InotifyWatcher(FileIO):
@@ -118,11 +123,11 @@ class Watcher:
         self._backend = backend_class(path)
 
     @staticmethod
-    def _get_backend_class() -> Optional[Type[_WatcherBackend]]:
+    def _get_backend_class() -> Optional[_WatcherBackendFactory]:
         if _InotifyWatcher.supported():
-            return _InotifyWatcher
+            return cast(_WatcherBackendFactory, _InotifyWatcher)
         if _KqueueWatcher.supported():
-            return _KqueueWatcher
+            return cast(_WatcherBackendFactory, _KqueueWatcher)
         return None
 
     @staticmethod
