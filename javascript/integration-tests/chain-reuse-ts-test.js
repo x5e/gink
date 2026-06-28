@@ -7,7 +7,6 @@ process.chdir(__dirname + "/..");
 let result = 1;
 let instance;
 let instance2;
-process.exit(0); // TODO: fix
 (async () => {
     console.log("starting");
     if (existsSync(TEST_DB_PATH)) {

@@ -205,7 +205,11 @@ export class LogBackedStore extends LockableLog implements Store {
         for (const bundleBytes of bundles) {
             const bundle: BundleView = new Decomposition(bundleBytes);
             const added = await this.internalStore.addBundle(bundle);
-            if (!added) throw new Error("unexpected not added");
+            // A bundle can already be present when a file-watch pull races with
+            // another path that adds the same bundle. Store.addBundle is
+            // intentionally idempotent, so only broadcast bundles that this
+            // pull actually discovered.
+            if (!added) continue;
             const info = bundle.info;
             const identity = bundle.builder.getIdentity();
             this.hasMap.markAsHaving(bundle.info);
