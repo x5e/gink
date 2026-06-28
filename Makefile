@@ -4,7 +4,7 @@ PYTHON_CODE=$(wildcard python/*.py python/gink/impl/*.py python/gink/tests/*.py 
 export PYTHON ?= python
 all: python/gink/builders javascript/node_modules javascript/proto javascript/tsc.out javascript/content_root/generated
 
-.PHONY: clean running-as-root on-main-and-clean install-dependencies install-debian-packages javascript push-base
+.PHONY: clean running-as-root on-main-and-clean install-dependencies install-debian-packages install-macports javascript push-base
 
 clean:
 	rm -rf javascript/proto javascript/content_root/generated javascript/tsc.out python/gink/builders
@@ -12,7 +12,7 @@ clean:
 rebuild: clean all
 
 running-as-root:
-	bash -c 'test `id -u` -eq 0'
+	@bash -c 'test `id -u` -eq 0'
 
 compatible-python:
 	@$(PYTHON) -c 'import sys; sys.exit(sys.version_info < (3, 12))' || \
@@ -36,6 +36,9 @@ test: test-python test-javascript
 install-debian-packages: running-as-root
 	apt-get update && \
 	apt-get install -y `cat packages.txt | tr '\n' ' '`
+
+install-macports: ports.txt running-as-root
+	port install `cat ports.txt | tr '\n' ' '`
 
 install-protoc-gen-js: running-as-root
 	npm install -g protoc-gen-js # https://stackoverflow.com/questions/72572040
