@@ -9,7 +9,6 @@ from random import randint
 from datetime import datetime, date, timedelta
 from re import fullmatch, IGNORECASE, search, sub, split, Match
 from psutil import pid_exists
-from requests import get
 from time import time as get_time
 from typing import *
 from random import choice

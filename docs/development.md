@@ -1,6 +1,14 @@
 # Development
 
-This guide currently only walks through setup on Debian.
+This guide covers the common local development workflow. The most complete build path is Docker; the manual setup instructions are Debian-oriented but also describe the moving parts for other systems.
+
+Before changing implementation code, read:
+
+* `OVERVIEW.md` for a fast codebase map.
+* `docs/architecture.md` for the main system layers.
+* `docs/data_model.md` for protocol concepts.
+* `docs/consistency.md` for history and convergence semantics.
+* `docs/syncing.md` for peer sync.
 
 ## Build with Docker
 
@@ -11,11 +19,19 @@ Ensure you have Docker installed and you are in the root directory of gink.
 docker build .
 ```
 
-This builds everything and runs tests and linters. This is what is run on push to GitHub.
+This builds everything and runs tests and linters. This is the best single command to check whether both implementations still work together.
 
 ## Build without Docker
 
-This project uses a Makefile to handle most of the building processes. Before we jump in, ensure you have make, protobuf-compiler, and curl installed. If not, run the following commands:
+This project uses a Makefile to handle most build steps, including generated protobuf code. Do not hand-edit generated code.
+
+Before you start, ensure you have:
+
+* Python 3.12 or newer.
+* Node.js and npm.
+* `make`.
+* `protobuf-compiler`.
+* `curl`.
 
 ### Prerequisites
 
@@ -23,7 +39,7 @@ This project uses a Makefile to handle most of the building processes. Before we
 apt-get install make protobuf-compiler curl -y
 ```
 
-This process assumes you have npm, pip, and python venv installed.
+This process assumes you have npm, pip, and Python venv installed.
 
 ```sh
 apt-get install npm python3-pip python3-venv -y
@@ -36,12 +52,36 @@ make install-debian-packages && \
 make javascript/node_modules
 ```
 
+If you are not on Debian, install equivalent system packages manually and then run:
+
+```sh
+make javascript/node_modules
+```
+
+### Generated files
+
+The protocol buffers in `proto/` generate code for both implementations.
+
+```sh
+make python/gink/builders
+make javascript
+```
+
+Common generated/build output includes:
+
+* `python/gink/builders`
+* `javascript/proto`
+* `javascript/tsc.out`
+* `javascript/content_root/generated`
+
+Regenerate those artifacts through `make` instead of editing them directly.
+
 ### Python
 
 #### Running tests
 
-Ensure you are in the gink/python directory. \
-\
+Ensure you are in the `gink/python` directory.
+
 Run all unit tests
 
 ```sh
@@ -85,8 +125,8 @@ pycodestyle --max-line-length=120 --select=E501 gink/impl/*.py gink/tests/*.py
 
 #### Running tests
 
-Ensure you are in the gink/javascript directory. \
-\
+Ensure you are in the `gink/javascript` directory.
+
 Unit tests via Node.js
 
 ```sh
@@ -118,4 +158,16 @@ Browser integration tests
 npm run browser-integration
 ```
 
-It is recommended you start with running the Node unit tests, then the integration tests. Before you push, run `docker build .` to ensure everthing is working together.
+It is recommended you start with running the Node unit tests, then the integration tests. Before you push, run `docker build .` to ensure everything is working together.
+
+## Documentation Changes
+
+Most high-level project documentation lives in `docs/` and root-level Markdown files. Python user docs live in `python/docs/` and are built with Sphinx/MyST. TypeScript user docs are generated separately from the TypeScript package/docs pipeline.
+
+When updating examples:
+
+* Prefer explicit store and database construction.
+* In Python, pass `database=database` when creating containers in examples.
+* In TypeScript, construct databases with `new Database({ store })`.
+* Avoid examples that rely on generated files or build output being checked in.
+* Mention security caveats for dump/load, REPL, network listeners, and auth tokens when relevant.

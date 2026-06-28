@@ -9,3 +9,7 @@ py312-typeguard
 py312-dateutil
 py312-wsproto
 py312-pytest
+py312-mypy
+py312-dateutil
+py312-requests
+py312-types-python-dateutil

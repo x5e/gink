@@ -1,5 +1,17 @@
 # The Gink Data Model
 
+This document describes the protocol-level data model: the objects that are encoded into
+protobuf and exchanged between implementations. If you are new to the project, read
+`docs/architecture.md` first, then come here for details.
+
+Related documents:
+
+* `docs/architecture.md` explains how the protocol, stores, APIs, and sync layer fit together.
+* `docs/consistency.md` explains history, as-of reads, convergence, and conflict behavior.
+* `docs/syncing.md` explains peer-to-peer bundle exchange.
+* `docs/security.md` explains trust boundaries and safety concerns.
+* `docs/muid.md` explains the identifier format used throughout the data model.
+
 Gink strives to take a "protocol first" approach, which is to say, that the data stored
 and exchanged among gink instances is defined using common protocol-buffer specifications,
 and how that proto data should be treated is independent of how any single implementation
@@ -18,7 +30,7 @@ This document specifically will not cover:
 * the synchronization protocol
 * details of the lmdb or log-backed file formats
 * information about any specific implementation
-Separate documents will be created for all of those topics (eventually).
+Those topics are covered, at least at a high level, in the related documents above.
 
 ## Changes and Bundles
 
